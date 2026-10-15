@@ -132,7 +132,7 @@ regenerates as you change things, plus a difficulty meter.
 | **Rests** | whole · half · quarter · eighth · sixteenth (independent of notes) | quarter |
 | **Extras** | dotted notes · ties / syncopation · triplets | off |
 | **Bars** | 1 – 16 (stepper) | 4 |
-| **Tempo** | 40 – 200 BPM (slider) + presets (Largo 50, Andante 76, Moderato 96, Allegro 120) | 80 |
+| **Tempo** | 40 – 200 BPM (slider) + presets (Largo 50, Adagio 70, Andante 90, Moderato 112, Allegro 132); the slider shows the tempo word for the current range (§14) | 80 |
 | **Metronome during play** | on / accent first beat only / off | on |
 | **Count-in** | 0 / 1 / 2 bars | 1 |
 | **Density** | sparse · balanced · busy (bias toward longer or shorter values) | balanced |
@@ -247,6 +247,10 @@ eighth) the generator chooses one option with weighted randomness:
 | triplet eighths | 1 beat | triplets, eighth |
 | dotted half | bar of 3/4 | dotted, half |
 
+Cells are only placed on metric nodes they exactly span. In 4/4 the 2-beat cells start on
+beat 1 or beat 3 (the half-bar nodes), so they never hide the middle of the bar. In 3/4 a
+2-beat cell may start on beat 1 or 2, since 3/4 has no half-bar.
+
 Each leaf is then made a **note or rest**:
 `P(rest)` depends on the *rest amount* setting and is lower on strong positions (weight ≥ 3)
 and lower for the very first event of the exercise, so the rhythm "lands" on the beat.
@@ -312,13 +316,17 @@ note/rest). A separate **speller** turns it into **notation** following engravin
 
 - **Notes** that cross a structural boundary are split with **ties**: in 4/4 a note may
   not cross the middle of the bar (beat 3) unless it starts on beat 1 (half, dotted half,
-  whole) — e.g. quarter–half–quarter is written quarter–(quarter⁀quarter)–quarter in
-  *strict* style, or left as-is in *common* style (setting for teachers; default: common).
-- **Rests** never get tied; they are split per beat: in 4/4 a half rest only on beat 1 or
-  3; dotted rests avoided in simple meters; a fully empty bar always gets a whole rest
-  (also in 2/4 and 3/4).
-- **Beaming** per beat (simple meters) or per dotted-quarter (compound); in 4/4, four
-  eighths may be beamed across beats 1–2 or 3–4. Sixteenths beamed per beat.
+  whole). For example quarter–half–quarter is written quarter–(quarter⁀quarter)–quarter.
+  This *strict* style is the default. A teacher setting allows the *common* simplified
+  spelling of a few well-known syncopations (e.g. quarter–half–quarter), which many method
+  books print as-is.
+- **Rests** are never tied; they are written to show the beat. In 4/4 a two-beat (half)
+  rest only on beat 1 or 3; a two-beat silence starting on beat 2 is two quarter rests.
+  In simple meters, dotted rests are used only when shorter than one beat. A fully empty
+  bar gets a single whole rest centred in the bar, in every time signature.
+- **Beaming** per beat (simple meters) or per dotted-quarter (compound); never across
+  beats 2–3 in 4/4. Four eighths may be beamed as a half-bar group (beats 1–2 or 3–4) in
+  4/4, an accepted alternative; the default beams per beat. Sixteenths beamed per beat.
 - Triplets get a bracket/number per beat.
 
 Keeping rhythm and spelling separate lets dictation compare *what you heard* rather than
@@ -334,8 +342,10 @@ difficulty = w1·subdivisionDepth + w2·onsetsPerBeat + w3·syncopation
            + w4·restRatio + w5·ties + w6·distinctValues + w7·tempoFactor
 ```
 
-Syncopation uses the Longuet-Higgins & Lee measure: a note on a weak position followed by
-silence (rest or held note) on a stronger position scores `weight(strong) − weight(weak)`.
+Syncopation uses the Longuet-Higgins & Lee (1984) measure, as formalised by Fitch &
+Rosenfeld (2007): a note on a weak position followed by silence (rest or held note) on a
+stronger position scores `weight(strong) − weight(weak)`. The weights follow the metrical
+hierarchy of Lerdahl & Jackendoff (1983).
 
 ### 5.9 Data model
 
@@ -411,7 +421,11 @@ next onset) = OK.
 
 - **Accuracy %** = points / max points (floored at 0).
 - **Stars:** ★ ≥ 60% · ★★ ≥ 80% · ★★★ ≥ 95% and no misses.
-- **Tendency:** mean signed offset → *"You're rushing by ~25 ms"* / *"dragging"* / *"steady"*.
+- **Tendency:** mean signed offset → *"rushing"* / *"dragging"* / *"steady"*. People
+  tapping along to a beat naturally land tens of milliseconds early (*negative mean
+  asynchrony*, Repp 2005), so a small early average is normal and is reported as
+  *steady*. The rushing tip only appears beyond about −40 ms (tunable after playtesting);
+  dragging beyond about +30 ms. Device latency is removed separately by calibration (§6.1).
 - **Steadiness:** standard deviation of offsets.
 - **Combo:** consecutive Perfect/Great hits; max combo shown on results.
 - Dictation: % of beats correct; plays used; 3 stars = all correct with ≤ 2 plays.
@@ -454,15 +468,21 @@ Two stars on a lesson unlocks the next.
 |---|---|
 | 1 | Quarter & half notes in 4/4 |
 | 2 | Quarter & half rests |
-| 3 | 3/4, dotted half, whole note & rest |
+| 3 | 3/4, whole note & whole rest |
 | 4 | Eighth notes (pairs) |
 | 5 | 2/4, eighth rests, mixed meters |
-| 6 | Dotted quarter + eighth |
-| 7 | Sixteenths (four, then 8th+2×16th combinations) |
-| 8 | Ties & syncopation |
-| 9 | Dotted eighth + sixteenth |
-| 10 | Triplets |
-| 11 *(later)* | Compound meters 6/8, 3/8, 9/8, 12/8 |
+| 6 | Ties |
+| 7 | Dotted notes: dotted half, then dotted quarter + eighth |
+| 8 | Sixteenths (four, then 8th+2×16th combinations) |
+| 9 | Syncopation |
+| 10 | Dotted eighth + sixteenth |
+| 11 | Triplets |
+| 12 *(later)* | Compound meters 6/8, 3/8, 9/8, 12/8 |
+
+Ties come before dotted notes on purpose: a dot can then be taught as a shortcut for a tie
+(a dotted quarter sounds exactly like a quarter tied to an eighth), a common approach in
+rhythm teaching. Eighths come before dotted quarter + eighth because that figure combines a
+lengthened beat with a divided beat.
 
 Each unit offers both *Tap* and *Dictation* lessons.
 
@@ -549,12 +569,15 @@ with the matching preset.
 | 1 | Note values | Whole, half, quarter, eighth, sixteenth; the note tree (each row one 4/4 bar); head, stem, flag, beam; Dutch names. |
 | 2 | Rests | The five rests, where they sit on the line, empty-bar whole rest, half-rest placement, rests never tied. |
 | 3 | Time signatures | Top and bottom number; 2/4, 3/4, 4/4 with strong and weak beats; 6/8 marked as later. |
-| 4 | Counting | 1 2 3 4 · 1 & 2 & · 1 e & a. |
-| 5 | Dotted notes | A dot adds half: dotted half 3, dotted quarter 1½, dotted eighth ¾. |
-| 6 | Ties | Two notes, one sound; across barlines and mid-bar; tap only the first. |
+| 4 | Counting | 1 2 3 4 · 1 & 2 & · 1 e & a (the common English system; other syllables exist). |
+| 5 | Ties | Two notes of the same pitch, one sound; across barlines and the middle of a 4/4 bar; tap only the first. |
+| 6 | Dotted notes | A dot adds half: dotted half 3, dotted quarter 1½, dotted eighth ¾; a dot works like a tie. |
 | 7 | Syncopation | Notes starting on weak positions and held through strong ones. |
 | 8 | Triplets | Three in the time of two; "1-trip-let". |
-| 9 | Tempo | BPM and tempo names (Largo, Andante, Moderato, Allegro). |
+| 9 | Tempo | BPM and tempo names with their usual metronome ranges, noting that they vary. |
+
+Every claim on the Learn pages is checked against the sources in
+[`THEORY-SOURCES.md`](THEORY-SOURCES.md), and each page ends with its sources.
 
 The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings.
 
@@ -657,10 +680,21 @@ Property tests over thousands of random seeds and random settings:
 
 1. **Language:** Dutch first, English first, or both from the start? (Design assumes both.)
 2. **"Muzieklab" curriculum:** is this based on a specific school method whose order of
-   topics and notation conventions (e.g. counting syllables "1-en-2-en") we should follow?
+   topics and notation conventions we should follow? In particular, which counting
+   syllables does it use? Dutch teaching commonly counts "1 en 2 en", but I could not
+   confirm a single standard for sixteenths, so the app ships the English system
+   (Open Music Theory) and makes syllables a setting until this is confirmed.
 3. **Pitch reading:** should a later module add note *names* on a 5-line staff
    (treble/bass clef), or stay rhythm-only?
 4. **Compound meters** (6/8 etc.) in v1, or after the core is solid?
 5. **Counting aid:** show counting text under the notes ("1 & 2 &") as an optional help?
 6. **Tap vs hold:** is pure tapping enough for v1, or should Hold mode be in v1 so rests
    and durations really count?
+
+---
+
+## 14. Theory sources
+
+The music theory and notation rules in this document and in the app's Learn pages are
+checked against published sources. The claim-by-claim list, with what was corrected, is in
+[`THEORY-SOURCES.md`](THEORY-SOURCES.md).

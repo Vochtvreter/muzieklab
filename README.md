@@ -7,6 +7,7 @@ listen and write down the rhythm you hear.
 
 **Status:** design phase.
 
+- [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,
