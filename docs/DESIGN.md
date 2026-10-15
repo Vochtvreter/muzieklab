@@ -663,7 +663,7 @@ Property tests over thousands of random seeds and random settings:
 **Language:** v1 is **English only**, with American English spelling and note names
 (quarter, eighth) throughout. Never mix languages in the UI.
 
-**The whole app must be localizable** so translations (Dutch first) can be added later
+**The whole app must be localizable** so translations can be added later
 without code changes:
 
 - No hard-coded user-facing text. Every string (buttons, Learn chapters, feedback, tips,
@@ -673,8 +673,8 @@ without code changes:
 - Theory terms are message keys too, not literals: note and rest names, tempo words,
   counting syllables ("1 & 2 &" differs per language and teaching method), rank names.
 - Format numbers, dates and BPM with `Intl` for the active locale.
-- Layout must survive longer translations (Dutch and German text often runs 20–35 %
-  longer): no fixed-width text boxes; labels may wrap.
+- Layout must survive longer translations (Dutch and German text is often noticeably
+  longer than English): no fixed-width text boxes; labels may wrap.
 - Notation images carry no baked-in words. Counting under notes is drawn from the
   locale's syllables at render time.
 - Theory content (Learn pages) is stored as structured, translatable content, with its
