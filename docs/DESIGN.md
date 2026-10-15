@@ -441,9 +441,8 @@ and dots) stops sounding.
 
 When the next note follows directly, the player must lift to press again, so "held too
 long" cannot happen there; any release between the early limit and the next press is
-right. Release windows are looser than press windows because people judge the end of a
-sound less precisely than its start; the values are starting points to tune in
-playtesting.
+right. Release windows are deliberately looser than press windows (a design choice, not a
+sourced rule); the values are starting points to tune in playtesting.
 
 ### 6.3 Scores
 
