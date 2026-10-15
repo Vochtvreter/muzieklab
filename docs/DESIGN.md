@@ -40,7 +40,7 @@ game rather than homework.
 
 | Term | Meaning |
 |---|---|
-| **Note value** | Duration symbol: whole (hele), half (halve), quarter (kwart), eighth (achtste), sixteenth (zestiende). |
+| **Note value** | Duration symbol: whole, half, quarter, eighth, sixteenth (American names; British names such as crotchet and quaver can come with localization). |
 | **Rest** | Silence with a duration, same family of values. |
 | **Meter / time signature** | e.g. 2/4, 3/4, 4/4: beats per bar and the beat unit. |
 | **Tick** | Internal integer time unit. **48 ticks = 1 quarter note** (see §5.1). |
@@ -489,7 +489,7 @@ Each unit offers both *Tap* and *Dictation* lessons.
 ### 8.3 Progression & rewards
 
 - **XP** = base × difficulty × accuracy (+ bonus for no replays, max combo, 3 stars).
-- **Levels / ranks** (e.g. *Tik → Tel → Maat → Groove → Metronoom → Maestro*).
+- **Levels / ranks** (e.g. *Tick → Count → Measure → Groove → Metronome → Maestro*).
 - **Streak** of practice days (a daily challenge or any 3 exercises keeps it).
 - **Daily Challenge** (date-seeded, same for everyone).
 - **Achievements**: *Perfect bar*, *50 perfect taps in a row*, *First sixteenths*,
@@ -554,7 +554,7 @@ attribute (they default to black and disappear on a dark background).
 | **Path** | Units as a vertical path with lessons, stars and locks. |
 | **Progress** | Charts, skill map, achievements. |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
-| **Settings** | Language (NL / EN), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme. |
+| **Settings** | Language (English only in v1; the picker appears once translations exist), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme. |
 
 ### 9.1 Learn: theory in chapters
 
@@ -567,7 +567,7 @@ the matching preset. Chapter headers show which Learning Path units use them.
 | Chapter | Sections | Path units |
 |---|---|---|
 | **1 · Pulse and meter** | 1.1 The beat and tempo (BPM, tempo words) · 1.2 Bars and time signatures (barlines, final barline, 2/4 3/4 4/4) · 1.3 Strong and weak beats | 1, 3, 5 |
-| **2 · Note values** | 2.1 Reading the shape (head, stem, flags; Dutch names; beats) · 2.2 The note tree | 1, 3, 4, 8 |
+| **2 · Note values** | 2.1 Reading the shape (head, stem, flags; beats) · 2.2 The note tree | 1, 3, 4, 8 |
 | **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly (centred whole-bar rest, half-rest placement, dotted rests, no ties) | 2, 3, 5 |
 | **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | 4, 8 |
 | **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes (a dot as a shortcut for a tie) | 6, 7, 10 |
@@ -642,7 +642,7 @@ src/
   ui/
     screens/ Home, Setup, Play, Dictation, Results, Path, Progress, Settings
     components/ ...
-  i18n/ nl.json en.json
+  i18n/ en.json         # every user-facing string; other locales added later
 ```
 
 ### 10.3 Testing strategy
@@ -658,10 +658,29 @@ Property tests over thousands of random seeds and random settings:
 
 ---
 
-## 11. Accessibility & i18n
+## 11. Accessibility & localization
 
-- UI in **Dutch and English** from day one (note names differ: *hele, halve, kwart,
-  achtste, zestiende*).
+**Language:** v1 is **English only**, with American English spelling and note names
+(quarter, eighth) throughout. Never mix languages in the UI.
+
+**The whole app must be localizable** so translations (Dutch first) can be added later
+without code changes:
+
+- No hard-coded user-facing text. Every string (buttons, Learn chapters, feedback, tips,
+  achievements, aria labels and image alt text) lives in a message catalog (`i18n/en.json`)
+  and is looked up by key. Use ICU message format for plurals and variables
+  ("{count, plural, one {# beat} other {# beats}}").
+- Theory terms are message keys too, not literals: note and rest names, tempo words,
+  counting syllables ("1 & 2 &" differs per language and teaching method), rank names.
+- Format numbers, dates and BPM with `Intl` for the active locale.
+- Layout must survive longer translations (Dutch and German text often runs 20–35 %
+  longer): no fixed-width text boxes; labels may wrap.
+- Notation images carry no baked-in words. Counting under notes is drawn from the
+  locale's syllables at render time.
+- Theory content (Learn pages) is stored as structured, translatable content, with its
+  sources kept per locale (for example Dutch Wikipedia for Dutch note names, already
+  checked in `THEORY-SOURCES.md`).
+- `lang` attribute set from the active locale; right-to-left support is not planned.
 - Screen-reader labels for controls; notation itself gets a text alternative
   ("quarter, quarter, half").
 - High-contrast theme; big touch targets (≥ 48 px).
@@ -677,13 +696,13 @@ Property tests over thousands of random seeds and random settings:
 | M3 | **Setup & persistence** | Practice setup screen with validation + live preview; settings saved. |
 | M4 | **Dictation** | Choose + Build input, comparison, replays. Echo mode. |
 | M5 | **Game layer** | XP, levels, Learning Path, daily challenge, streaks, achievements. |
-| M6 | **Polish** | Calibration, PWA/offline, mobile tuning, NL/EN, progress screen, Weak Spots. |
+| M6 | **Polish** | Calibration, PWA/offline, mobile tuning, localization-ready check (all strings in the catalog), progress screen, Weak Spots. |
 
 ---
 
 ## 13. Open questions
 
-1. **Language:** Dutch first, English first, or both from the start? (Design assumes both.)
+1. **Language:** decided: English only for v1, fully localizable (§11). Which language comes next, and when?
 2. **"Muzieklab" curriculum:** is this based on a specific school method whose order of
    topics and notation conventions we should follow? In particular, which counting
    syllables does it use? Dutch teaching commonly counts "1 en 2 en", but I could not
