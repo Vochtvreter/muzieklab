@@ -129,6 +129,51 @@ engine as 3.1 and 3.2, so it's cheap to add.
 | **Weak Spots** | Adaptive: the generator boosts cells/meters the player scores worst on (§8.4). |
 | **Learn** | Theory library: one topic per thing you can practise (§9.1), each with notation examples, counting and a quick check, linking straight to a matching practice preset. |
 
+### 3.5 Read Notes — *pitch reading*
+
+A separate mode for reading **which** note is written, in the **treble clef** and the
+**bass clef** (other clefs later). A line of whole notes is shown on a five-line staff;
+the current note is highlighted and the player names it. Answered notes turn green or red,
+like the rhythm notation.
+
+**Three ways to answer** (switchable at any time, also mid-round):
+
+| Input | How it works |
+|---|---|
+| **do re mi** | Seven buttons: do re mi fa sol la si, in that order. Fixed do: *do* is always C. |
+| **Letters** | Seven buttons: C D E F G A B, in the same order as the piano (so each button sits where its key is). Each button also shows the other name in small type, so the two systems are learned together. |
+| **Piano** | One octave, C to B: 7 white and 5 black keys. Black keys answer sharps and flats; both names of a black key (F♯ = G♭) are accepted. Optional key labels: letters, do re mi, or none. |
+
+- The answer is the **pitch class**: the octave does not matter (any C answers a C),
+  because the input is one octave. Naming the octave (C4 vs C5) could be a later option.
+- With sharps or flats on and a names input, a **♯ / ♭ key** is added next to the seven
+  names; the written spelling is required (F♯ is not accepted for a written G♭).
+- Desktop: names are typed with the letter keys (C D E F G A B); the piano maps to the
+  computer keyboard with the common layout **A S D F G H J** = C D E F G A B and
+  **W E T Y U** = C♯ D♯ F♯ G♯ A♯.
+- A **Hint** shows the nearest landmark ("just below the bottom line, E") and marks the
+  note as assisted.
+
+**Settings** (Read notes setup screen)
+
+| Setting | Options | Default |
+|---|---|---|
+| Clefs | treble · bass (at least one) | both |
+| Answer with | names · piano · mixed | names |
+| Range | on the staff (11 positions: lines, spaces, and the space just outside each end) · +1 ledger line (15) · +2 ledger lines (19) | on the staff |
+| Sharps and flats | none · sharps · sharps and flats | none |
+| Notes per round | 10 – 50 | 20 |
+| Time per note | off · 5 s · 3 s | off |
+
+**Note generator:** draws from the allowed positions with no immediate repeats and no
+more than two steps of the same direction in a row, and boosts notes the player recently
+got wrong or answered slowly (spaced repetition per note). In mixed-clef rounds the clef
+changes at most every 4 notes, with a visible clef change.
+
+**Scoring:** correct / total, average response time, and a per-note weak-spot list
+("E on the top space"). Stars: ★ ≥ 70% · ★★ ≥ 85% · ★★★ ≥ 95% with an average under 2 s
+(starting values, to tune). XP and streaks work as in the rhythm modes.
+
 ---
 
 ## 4. Exercise settings
@@ -606,6 +651,7 @@ the matching preset. Chapter headers show which Learning Path units use them.
 | **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes (a dot as a shortcut for a tie) | 6, 7, 10 |
 | **6 · Off the beat** | 6.1 Syncopation · 6.2 Triplets | 9, 11 |
 | **7 · Compound meter** *(later)* | 7.1 Six-eight | 12 |
+| **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) · 8.6 The piano octave (groups of 2 and 3 black keys, sharps and flats) | Read notes |
 
 Why this order: pulse and meter come first because every later rule refers to beats and
 strong positions. Note values come before rests because each rest is defined by its note.
@@ -707,6 +753,10 @@ without code changes:
   achievements, aria labels and image alt text) lives in a message catalog (`i18n/en.json`)
   and is looked up by key. Use ICU message format for plurals and variables
   ("{count, plural, one {# beat} other {# beats}}").
+- Note names are locale data, not just strings: letter names differ by language (German
+  uses H for B), fixed-do languages use do re mi as the note names, and English
+  movable-do teaching says "ti" instead of "si". Memory aids ("Every Good Boy Does
+  Fine") are per-language content.
 - Theory terms are message keys too, not literals: note and rest names, tempo words,
   counting syllables ("1 & 2 &" differs per language and teaching method), rank names.
 - Format numbers, dates and BPM with `Intl` for the active locale.
@@ -733,6 +783,7 @@ without code changes:
 | M3 | **Setup & persistence** | Practice setup screen with validation + live preview; settings saved. |
 | M4 | **Dictation** | Choose + Build input, comparison, replays. Echo mode. |
 | M5 | **Game layer** | XP, levels, Learning Path, daily challenge, streaks, achievements. |
+| M5b | **Read notes** | Note generator, treble and bass clef rendering, names / piano input, setup, scoring, Learn chapter 8. |
 | M6 | **Polish** | Calibration, PWA/offline, mobile tuning, localization-ready check (all strings in the catalog), progress screen, Weak Spots. |
 
 ---

@@ -23,6 +23,24 @@ checked page by page.
 | Barlines divide music into bars (measures); a thin line followed by a thick one ends a piece | Verified | [Wiki-Bar] |
 | At 60 BPM there is one beat per second | Verified (definition of BPM) | — |
 
+## Reading notes (chapter 8, Read notes mode)
+
+| Claim | Status | Source |
+|---|---|---|
+| Treble clef = G clef: its curl marks line 2 as G4 (the G above middle C) | Verified | [Wiki-Clef], [MTN-Staff] |
+| Bass clef = F clef: its two dots mark line 4 as F3 (the F below middle C) | Verified | [Wiki-Clef], [MTN-Staff] |
+| Middle C (C4) sits on one ledger line below the treble staff and one above the bass staff | Verified | [MTN-Staff] |
+| Ledger lines extend the staff for notes above or below it | Verified | [MTN-Staff] |
+| Treble lines E G B D F, spaces F A C E; bass lines G B D F A, spaces A C E G | Verified | [Dummies-Staff], [MTP-Mnemonics] |
+| Memory aids ("Every Good Boy Does Fine", "FACE", "Good Boys Do Fine Always", "All Cows Eat Grass") | Convention: many variants exist; shown as optional aids | [MTP-Mnemonics] |
+| Fixed do: do re mi fa sol la si are the note names C D E F G A B | Verified | [Wiki-Solfege] |
+| "ti" replaced "si" in English use (Sarah Glover, 19th century) | Verified | [Wiki-Solfege] |
+| An octave on the piano has 7 white and 5 black keys; black keys are the sharps/flats (C♯/D♭, D♯/E♭, F♯/G♭, G♯/A♭, A♯/B♭) | Verified | [Wiki-Keyboard] |
+| Black keys come in groups of two and three; C is the white key just left of the group of two | Verified (standard piano teaching) | [KeyNotes-Layout] |
+| A sharp raises a note to the very next key on the right, a flat lowers it to the next key on the left | Verified (a semitone; follows from the keyboard layout) | [Wiki-Keyboard] |
+| "On the staff" = 11 positions per clef (5 lines, 4 spaces, the space just outside each end) | Design choice for the Range setting | — |
+| Computer-keyboard piano layout A S D F G H J / W E T Y U | Convention used by many music apps; a design choice | — |
+
 ## Note values and rests
 
 | Claim | Status | Source |
@@ -89,6 +107,13 @@ checked page by page.
 
 - **[OMT]** Gotham, M., Gullings, K., Hamm, C., Hughes, B., Jarvis, B., Lavengood, M., & Peterson, J. *Open Music Theory*, 2nd ed., "Simple Meter and Time Signatures" and following rhythm chapters. https://human.libretexts.org/Bookshelves/Music/Music_Theory/Open_Music_Theory_2e_(Gotham_et_al.)/01%3A_Fundamentals/1.09%3A_Simple_Meter_and_Time_Signatures
 - **[OMT-Compound]** Gotham, M. et al. *Open Music Theory*, 2nd ed., "Compound Meter and Time Signatures". https://human.libretexts.org/Bookshelves/Music/Music_Theory/Open_Music_Theory_2e_(Gotham_et_al.)/01%3A_Fundamentals/1.10%3A_Compound_Meter_and_Time_Signatures
+- **[Wiki-Clef]** "Clef". Wikipedia. https://en.wikipedia.org/wiki/Clef
+- **[MTN-Staff]** musictheory.net, "The Staff, Clefs, and Ledger Lines". https://www.musictheory.net/lessons/10
+- **[Dummies-Staff]** "Size Up the Staff: How to Read Treble and Bass Clef". Dummies. https://www.dummies.com/article/academics-the-arts/music/instruments/piano/size-up-the-staff-how-to-read-treble-and-bass-clef-155363
+- **[MTP-Mnemonics]** Music Theory Practice, "Clef Mnemonics". https://music-theory-practice.com/reference/clef-mnemonics
+- **[Wiki-Solfege]** "Solfège". Wikipedia. https://en.wikipedia.org/wiki/Solf%C3%A8ge
+- **[Wiki-Keyboard]** "Musical keyboard". Wikipedia. https://en.wikipedia.org/wiki/Musical_keyboard
+- **[KeyNotes-Layout]** Key-Notes, "Layout of piano keys". https://www.key-notes.com/blog/layout-of-piano-keys
 - **[Wiki-Dotted]** "Dotted note". Wikipedia. https://en.wikipedia.org/wiki/Dotted_note
 - **[Wiki-Beat]** "Beat (music)". Wikipedia. https://en.wikipedia.org/wiki/Beat_(music)
 - **[Wiki-Bar]** "Bar (music)". Wikipedia. https://en.wikipedia.org/wiki/Bar_(music)
