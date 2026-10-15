@@ -556,28 +556,33 @@ attribute (they default to black and disappear on a dark background).
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
 | **Settings** | Language (NL / EN), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme. |
 
-### 9.1 Learn: theory topics
+### 9.1 Learn: theory in chapters
 
-Every setting in Free practice has a matching topic, so the player can look up any symbol
-they meet in an exercise. Each topic page has a short explanation, rendered notation with
-the counting written under the notes (held or silent counts in grey brackets), key facts,
-an optional quick-check question, and a *Practise this* button that opens Free practice
-with the matching preset.
+The theory is split into seven chapters in teaching order. Each chapter only relies on
+earlier chapters, and each section matches a setting in Free practice. Every section has a
+short explanation, rendered notation with the counting under the notes (held or silent
+counts in grey brackets), key facts, and a *Practise* link that opens Free practice with
+the matching preset. Chapter headers show which Learning Path units use them.
 
-| # | Topic | Covers |
+| Chapter | Sections | Path units |
 |---|---|---|
-| 1 | Note values | Whole, half, quarter, eighth, sixteenth; the note tree (each row one 4/4 bar); head, stem, flag, beam; Dutch names. |
-| 2 | Rests | The five rests, where they sit on the line, empty-bar whole rest, half-rest placement, rests never tied. |
-| 3 | Time signatures | Top and bottom number; 2/4, 3/4, 4/4 with strong and weak beats; 6/8 marked as later. |
-| 4 | Counting | 1 2 3 4 · 1 & 2 & · 1 e & a (the common English system; other syllables exist). |
-| 5 | Ties | Two notes of the same pitch, one sound; across barlines and the middle of a 4/4 bar; tap only the first. |
-| 6 | Dotted notes | A dot adds half: dotted half 3, dotted quarter 1½, dotted eighth ¾; a dot works like a tie. |
-| 7 | Syncopation | Notes starting on weak positions and held through strong ones. |
-| 8 | Triplets | Three in the time of two; "1-trip-let". |
-| 9 | Tempo | BPM and tempo names with their usual metronome ranges, noting that they vary. |
+| **1 · Pulse and meter** | 1.1 The beat and tempo (BPM, tempo words) · 1.2 Bars and time signatures (barlines, final barline, 2/4 3/4 4/4) · 1.3 Strong and weak beats | 1, 3, 5 |
+| **2 · Note values** | 2.1 Reading the shape (head, stem, flags; Dutch names; beats) · 2.2 The note tree | 1, 3, 4, 8 |
+| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly (centred whole-bar rest, half-rest placement, dotted rests, no ties) | 2, 3, 5 |
+| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | 4, 8 |
+| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes (a dot as a shortcut for a tie) | 6, 7, 10 |
+| **6 · Off the beat** | 6.1 Syncopation · 6.2 Triplets | 9, 11 |
+| **7 · Compound meter** *(later)* | 7.1 Six-eight | 12 |
 
-Every claim on the Learn pages is checked against the sources in
-[`THEORY-SOURCES.md`](THEORY-SOURCES.md), and each page ends with its sources.
+Why this order: pulse and meter come first because every later rule refers to beats and
+strong positions. Note values come before rests because each rest is defined by its note.
+Dividing the beat (and its counting syllables) comes before ties and dots, because a dotted
+quarter + eighth can only be counted once "&" is known. Ties come before dots so the dot can
+be explained as a tie. Syncopation needs strong and weak beats, ties and eighths, so it
+comes late. Compound meter changes what the time signature means, so it is last.
+
+On mobile the Learn tab lists the chapters as cards that expand into their sections, with
+read status; desktop shows the whole reference with a chapter outline in the sidebar.
 
 The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings.
 

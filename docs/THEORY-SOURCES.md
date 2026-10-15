@@ -14,6 +14,15 @@ checked page by page.
 
 ---
 
+## Pulse and bars (chapter 1)
+
+| Claim | Status | Source |
+|---|---|---|
+| The beat is the basic unit of time, the steady pulse you would tap your foot to | Verified | [Wiki-Beat] |
+| The downbeat (beat 1) is the strongest; in 4/4 beats 2 and 4 are weak | Verified | [Wiki-Beat], [OMT] |
+| Barlines divide music into bars (measures); a thin line followed by a thick one ends a piece | Verified | [Wiki-Bar] |
+| At 60 BPM there is one beat per second | Verified (definition of BPM) | — |
+
 ## Note values and rests
 
 | Claim | Status | Source |
@@ -78,6 +87,8 @@ checked page by page.
 
 - **[OMT]** Gotham, M., Gullings, K., Hamm, C., Hughes, B., Jarvis, B., Lavengood, M., & Peterson, J. *Open Music Theory*, 2nd ed., "Simple Meter and Time Signatures" and following rhythm chapters. https://human.libretexts.org/Bookshelves/Music/Music_Theory/Open_Music_Theory_2e_(Gotham_et_al.)/01%3A_Fundamentals/1.09%3A_Simple_Meter_and_Time_Signatures
 - **[OMT-Compound]** Gotham, M. et al. *Open Music Theory*, 2nd ed., "Compound Meter and Time Signatures". https://human.libretexts.org/Bookshelves/Music/Music_Theory/Open_Music_Theory_2e_(Gotham_et_al.)/01%3A_Fundamentals/1.10%3A_Compound_Meter_and_Time_Signatures
+- **[Wiki-Beat]** "Beat (music)". Wikipedia. https://en.wikipedia.org/wiki/Beat_(music)
+- **[Wiki-Bar]** "Bar (music)". Wikipedia. https://en.wikipedia.org/wiki/Bar_(music)
 - **[Gould]** Gould, E. (2011). *Behind Bars: The Definitive Guide to Music Notation*. London: Faber Music.
 - **[MMT-Beam]** Williams, V. *MyMusicTheory*, "Grouping and beaming". https://mymusictheory.com/rhythm/grouping-and-beaming/
 - **[MMT-Rests]** Williams, V. *MyMusicTheory*, "Rests (grade 3)". https://mymusictheory.com/rhythm/rests-grade-3/
