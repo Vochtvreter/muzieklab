@@ -54,29 +54,41 @@ game rather than homework.
 
 ### 3.1 Tap the Rhythm — *read & play* (core mode)
 
-The player sees the notation and taps every note onset in time.
+The player sees the notation and plays it with one "button": **press when a note starts,
+hold it for the note's length, and let go when it ends** (*tap & hold*, the default).
+Because the release counts, note lengths and rests are tested, not only where notes start.
+In pure tapping, a quarter note and an "eighth + eighth rest" would feel identical.
 
 **Flow**
 
 1. **Preview** — the exercise is shown. Optional *"Listen first"* button plays it once.
 2. **Count-in** — one bar of metronome clicks (configurable 0–2 bars) with big
    on-screen counts "1 – 2 – 3 – 4".
-3. **Play** — a cursor sweeps across the notation in time. The player taps on every note.
-   Rests = don't tap. Tied notes = tap only once (the tie continues the sound, no new
-   onset — an important reading lesson).
-4. **Live feedback** — each notehead turns green / yellow / red as it's judged; a short
-   percussion sound plays on every tap; a combo counter grows on consecutive good hits.
+3. **Play** — a cursor sweeps across the notation in time. The player presses on every
+   note and holds it for its length. Rests = nothing pressed. Tied notes = press once and
+   keep holding through the tied note (the tie continues the sound, no new onset — an
+   important reading lesson). A dotted note is held for its extra half.
+4. **Live feedback** — each notehead turns green / yellow / red as its start is judged; a
+   short sound plays on every press and sustains while held. The **tap pad** shows a ring
+   that fills while you hold, reaching full at the moment the note ends. Under the notation
+   a **length lane** draws every note to scale in gray (so durations are visible at a
+   glance) and your holds on top in color; a note let go too early gets a dashed outline.
+   A combo counter grows on consecutive notes that were both started well and held right.
 5. **Results** (§6.4).
 
 **Input**
 
-- Desktop: **any key** (except Esc = pause) or mouse button. Key auto-repeat is ignored.
-- Mobile: a large **tap pad** in the bottom half of the screen (`pointerdown`, not `click`).
+- Desktop: **any key** (except Esc = pause) or mouse button: `keydown` = press,
+  `keyup` = release. Key auto-repeat events are ignored. If several keys are down, the
+  hold lasts until the last one is released.
+- Mobile: a large **tap pad** in the bottom half of the screen: `pointerdown` = press,
+  `pointerup` / `pointercancel` = release. The pad captures the pointer
+  (`setPointerCapture`), so sliding off the pad does not end the hold.
+- Releases are timestamped with the same clock as presses (§6.1).
 
-**Sub-option: Hold mode (advanced).** In pure tap mode, a quarter note and an
-"eighth + eighth rest" sound identical (same onsets). Hold mode makes the player press
-*and hold* for the note's length, so durations and rests really count. Release timing is
-judged more loosely than onsets (see §6.2).
+**Setting: Hold notes for their length** (on by default). Off = *tap only*: only note
+starts are judged, for beginners and the first Path units. The Learning Path switches it
+on from unit 2 (rests), where lengths start to matter.
 
 ### 3.2 Rhythm Dictation — *listen & write*
 
@@ -127,6 +139,7 @@ regenerates as you change things, plus a difficulty meter.
 | Setting | Options | Default |
 |---|---|---|
 | **Mode** | Tap · Dictation (Choose / Build) · Echo | Tap |
+| **Hold notes for their length** | on (tap & hold) · off (tap only) | on |
 | **Time signatures** | 2/4 · 3/4 · 4/4 *(v1)*; 2/2 · 3/8 · 6/8 · 9/8 · 12/8 · 5/4 *(later)*. Multi-select: each exercise picks one at random. | 4/4 |
 | **Note values** | whole · half · quarter · eighth · sixteenth | half, quarter |
 | **Rests** | whole · half · quarter · eighth · sixteenth (independent of notes) | quarter |
@@ -400,9 +413,11 @@ codes are reproducible across devices.
 1. Expected onsets = start times of all note events that are not tie continuations.
 2. Taps and onsets are both sorted in time; each tap is matched to the nearest unmatched
    onset inside its judgement window (greedy in time order is sufficient for 1-D).
-3. Unmatched onsets = **miss**. Unmatched taps = **extra tap** (penalised, so mashing doesn't pay).
+3. Unmatched onsets = **miss**. Unmatched taps = **extra tap** (penalized, so mashing doesn't pay).
+4. With holding on, each matched press is paired with its release, and the release is
+   judged against the note's end (below).
 
-**Windows** are absolute, but shrink for fast passages so neighbouring sixteenths can't be
+**Windows** are absolute, but shrink for fast passages so neighboring sixteenths can't be
 confused: `window = min(base, 0.4 × gap to the neighbouring onset)`.
 
 | Judgement | Window (default) | Points |
@@ -414,8 +429,21 @@ confused: `window = min(base, 0.4 × gap to the neighbouring onset)`.
 | Extra tap | — | −25 |
 
 A *lenient* setting (×1.5 windows) exists for young beginners.
-**Hold mode** additionally judges release: within 20% of the note length (or before the
-next onset) = OK.
+
+**Release (hold) judgment**, with holding on. `end` = the moment the note (including ties
+and dots) stops sounding.
+
+| Hold judgment | Rule (default) | Points |
+|---|---|---|
+| Held right | released between `end − max(25% of the note, 120 ms)` and `end + 120 ms` | ±0 |
+| Cut short | released earlier than that | −20 |
+| Held too long | released more than 120 ms after `end` (only possible before a rest, or at the end) | −20 |
+
+When the next note follows directly, the player must lift to press again, so "held too
+long" cannot happen there; any release between the early limit and the next press is
+right. Release windows are looser than press windows because people judge the end of a
+sound less precisely than its start; the values are starting points to tune in
+playtesting.
 
 ### 6.3 Scores
 
@@ -427,15 +455,21 @@ next onset) = OK.
   *steady*. The rushing tip only appears beyond about −40 ms (tunable after playtesting);
   dragging beyond about +30 ms. Device latency is removed separately by calibration (§6.1).
 - **Steadiness:** standard deviation of offsets.
-- **Combo:** consecutive Perfect/Great hits; max combo shown on results.
+- **Combo:** consecutive notes started Perfect/Great **and** held right; a Good, Miss,
+  cut-short or held-too-long note resets it. Max combo shown on results.
 - Dictation: % of beats correct; plays used; 3 stars = all correct with ≤ 2 plays.
 
 ### 6.4 Results screen
 
 - Stars, accuracy, XP earned (animated).
-- The exercise again with every note coloured by judgement.
-- **Timing strip:** one dot per note, plotted early ↔ late around a centre line.
-- Tendency + steadiness, one-line coaching tip.
+- The exercise again with every note colored by judgment.
+- Counts per judgment, plus a hold line: *held right · cut short · held too long*.
+- **Timing and length lane:** the exercise drawn to scale (two bars per row): every note's
+  length in gray, the player's hold on top in color, starting where they pressed. Early or
+  late presses show as a shifted start; cut-short notes show a dashed outline for the part
+  that was not held; misses show ×.
+- Tendency + steadiness, one-line coaching tip (it names the worst hold problem first,
+  e.g. "You let go of the dotted quarter in bar 2 too early").
 - Buttons: **Retry** (same exercise) · **Next** (new exercise, same settings) · **Listen**
   (correct playback) · **Settings**.
 
@@ -716,8 +750,8 @@ without code changes:
    (treble/bass clef), or stay rhythm-only?
 4. **Compound meters** (6/8 etc.) in v1, or after the core is solid?
 5. **Counting aid:** show counting text under the notes ("1 & 2 &") as an optional help?
-6. **Tap vs hold:** is pure tapping enough for v1, or should Hold mode be in v1 so rests
-   and durations really count?
+6. **Tap vs hold:** decided: tap & hold is the default in v1; tap only stays as a setting
+   for beginners (§3.1).
 
 ---
 
