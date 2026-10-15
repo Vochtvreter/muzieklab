@@ -58,6 +58,7 @@ checked page by page.
 | Claim | Status | Source |
 |---|---|---|
 | Beats counted 1 2 3 4; eighths "&"; sixteenths "e & a" ("a" said "uh") | Verified | [OMT] |
+| Pronunciation of "1 e & a" as "one-ee-and-uh" ("e" said "ee") | Convention: [OMT] gives "uh" for "a" but no pronunciation for "e"; "ee" is the usual reading of the syllable | [OMT] |
 | This is one counting system; Dutch teaching often uses "1 en 2 en" | Convention: the Learn page says teachers may use other syllables; syllables become a setting | open question in DESIGN §13 |
 | Syncopation = a note on a weak position followed by silence or a held note on a stronger position | Verified | [LHL], [Huron] *standard references*, as summarised in [Frontiers-2024] |
 | Triplet = three equal notes in the time of two of the same value; "1-trip-let" | Verified (definition); syllable is a common convention | [OMT] |
