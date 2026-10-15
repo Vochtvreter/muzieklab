@@ -581,8 +581,12 @@ quarter + eighth can only be counted once "&" is known. Ties come before dots so
 be explained as a tie. Syncopation needs strong and weak beats, ties and eighths, so it
 comes late. Compound meter changes what the time signature means, so it is last.
 
-On mobile the Learn tab lists the chapters as cards that expand into their sections, with
-read status; desktop shows the whole reference with a chapter outline in the sidebar.
+**Each chapter is its own page**, never one long page with everything. A chapter page has:
+its number and title, what it builds on and which Path units use it, its sections, a quick
+check question, the sources for that chapter only, and previous / next chapter links. On
+mobile the Learn tab lists the chapters as cards that expand into their sections, with read
+status; on desktop a sidebar lists all chapters, with the open chapter's sections nested
+under it. The design canvas shows chapter 2 (mobile) and chapter 5 (desktop) as examples.
 
 The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings.
 

@@ -30,7 +30,8 @@ checked page by page.
 | Whole = 4 beats, half = 2, quarter = 1, eighth = ½, sixteenth = ¼ in 2/4, 3/4, 4/4 (quarter-note beat) | Verified | [OMT] |
 | Each flag or beam halves the value; quarters are never beamed | Verified | [OMT] |
 | Dutch names: hele, halve, kwart-, achtste, zestiende noot / rust (for the future Dutch translation; not shown in v1, which is English only) | Verified | [NL-Nootwaarde], [NL-Rust] |
-| A dot adds half the value (dotted half 3, dotted quarter 1½, dotted eighth ¾); also on rests | Verified | [NL-Rust], [Wiki-Rest] |
+| A dot adds half the value (dotted half 3, dotted quarter 1½, dotted eighth ¾); also on rests | Verified | [Wiki-Dotted], [NL-Rust], [Wiki-Rest] |
+| A dotted note equals the note tied to one of half its value (dotted quarter = quarter tied to eighth) | Verified | [Wiki-Dotted] |
 | A completely empty bar gets one whole rest, **centred**, in any time signature | **Corrected**: the rest tree drew it on beat 1; now centred | [Wiki-Rest], [MMT-Rests] |
 | Whole rest hangs below the line, half rest sits on it | Verified (standard engraving) | [Gould] *standard reference* |
 | In 4/4 a two-beat rest only on beat 1 or 3; on beat 2 use two quarter rests | Verified | [MMT-Rests] |
@@ -88,6 +89,7 @@ checked page by page.
 
 - **[OMT]** Gotham, M., Gullings, K., Hamm, C., Hughes, B., Jarvis, B., Lavengood, M., & Peterson, J. *Open Music Theory*, 2nd ed., "Simple Meter and Time Signatures" and following rhythm chapters. https://human.libretexts.org/Bookshelves/Music/Music_Theory/Open_Music_Theory_2e_(Gotham_et_al.)/01%3A_Fundamentals/1.09%3A_Simple_Meter_and_Time_Signatures
 - **[OMT-Compound]** Gotham, M. et al. *Open Music Theory*, 2nd ed., "Compound Meter and Time Signatures". https://human.libretexts.org/Bookshelves/Music/Music_Theory/Open_Music_Theory_2e_(Gotham_et_al.)/01%3A_Fundamentals/1.10%3A_Compound_Meter_and_Time_Signatures
+- **[Wiki-Dotted]** "Dotted note". Wikipedia. https://en.wikipedia.org/wiki/Dotted_note
 - **[Wiki-Beat]** "Beat (music)". Wikipedia. https://en.wikipedia.org/wiki/Beat_(music)
 - **[Wiki-Bar]** "Bar (music)". Wikipedia. https://en.wikipedia.org/wiki/Bar_(music)
 - **[Gould]** Gould, E. (2011). *Behind Bars: The Definitive Guide to Music Notation*. London: Faber Music.
