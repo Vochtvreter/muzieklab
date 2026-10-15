@@ -115,6 +115,7 @@ engine as 3.1 and 3.2, so it's cheap to add.
 | **Learning Path** | Curated units that unlock step by step (§8.2). Each lesson is just a preset of settings + a pass requirement. |
 | **Daily Challenge** | One exercise per day, seeded by the date, so everyone gets the same one. Keeps the streak alive. |
 | **Weak Spots** | Adaptive: the generator boosts cells/meters the player scores worst on (§8.4). |
+| **Learn** | Theory library: one topic per thing you can practise (§9.1), each with notation examples, counting and a quick check, linking straight to a matching practice preset. |
 
 ---
 
@@ -532,7 +533,30 @@ attribute (they default to black and disappear on a dark background).
 | **Results** | Stars, accuracy, timing strip, tips, Retry / Next. |
 | **Path** | Units as a vertical path with lessons, stars and locks. |
 | **Progress** | Charts, skill map, achievements. |
+| **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
 | **Settings** | Language (NL / EN), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme. |
+
+### 9.1 Learn: theory topics
+
+Every setting in Free practice has a matching topic, so the player can look up any symbol
+they meet in an exercise. Each topic page has a short explanation, rendered notation with
+the counting written under the notes (held or silent counts in grey brackets), key facts,
+an optional quick-check question, and a *Practise this* button that opens Free practice
+with the matching preset.
+
+| # | Topic | Covers |
+|---|---|---|
+| 1 | Note values | Whole, half, quarter, eighth, sixteenth; the note tree (each row one 4/4 bar); head, stem, flag, beam; Dutch names. |
+| 2 | Rests | The five rests, where they sit on the line, empty-bar whole rest, half-rest placement, rests never tied. |
+| 3 | Time signatures | Top and bottom number; 2/4, 3/4, 4/4 with strong and weak beats; 6/8 marked as later. |
+| 4 | Counting | 1 2 3 4 · 1 & 2 & · 1 e & a. |
+| 5 | Dotted notes | A dot adds half: dotted half 3, dotted quarter 1½, dotted eighth ¾. |
+| 6 | Ties | Two notes, one sound; across barlines and mid-bar; tap only the first. |
+| 7 | Syncopation | Notes starting on weak positions and held through strong ones. |
+| 8 | Triplets | Three in the time of two; "1-trip-let". |
+| 9 | Tempo | BPM and tempo names (Largo, Andante, Moderato, Allegro). |
+
+The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings.
 
 ### UX principles
 
