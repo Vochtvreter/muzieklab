@@ -9,4 +9,5 @@ listen and write down the rhythm you hear.
 
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
-- [Screen mockups](docs/mockups/index.html): open in a browser.
+- [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,
+  foundations (colour, type, components) and the exercise engine.

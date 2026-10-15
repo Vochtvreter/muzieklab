@@ -1,7 +1,7 @@
 # Muzieklab — Design Document
 
 > Status: **Draft v0.1** — design only, no code yet.
-> Visual mockups of the main screens: [`docs/mockups/index.html`](mockups/index.html).
+> Visual design (screens, foundations, engine): [Muzieklab App Design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE).
 
 ---
 
@@ -490,7 +490,38 @@ tendency trend (rushing/dragging over time).
 
 ## 9. Screens & UX
 
-See [`docs/mockups/index.html`](mockups/index.html) for visual mockups.
+See the [Muzieklab App Design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE)
+for the screen designs (mobile flow, desktop play, dark mode), the foundations and the
+engine overview.
+
+### Visual design tokens
+
+Neutral greys with a slight green-blue cast, near-black ink, one slate accent. Colour is
+reserved for feedback; gold only for rewards (stars, streak, XP).
+
+| Token | Light | Dark |
+|---|---|---|
+| Ground | `#eef1f0` | `#101415` |
+| Paper / surface | `#ffffff` | `#191f20` |
+| Line | `#d8dfde` | `#2f3839` |
+| Muted text | `#5a6667` | `#9aa7a7` |
+| Ink (text and notes) | `#161b1c` | `#e8eeed` |
+| Accent (slate) | `#2f6669` | `#8fbfc1` |
+| Accent soft | `#dfeaea` | `#1c3031` |
+| Reward gold | `#e0a526` | `#e0a526` |
+| Perfect / great | `#1f8a5b` | `#4cc38a` |
+| Good (early/late) | `#b7791f` | `#f0b429` |
+| Miss | `#d64545` | `#ff6b6b` |
+
+Type: **Unbounded** (display, scores, counts), **Figtree** (UI and body),
+**JetBrains Mono** (numbers, ms, BPM, codes), **Noto Music** (note and rest glyphs on
+buttons). Corners 12–14 px on controls, 20 px on cards, 32 px on the tap pad; touch
+targets ≥ 44 px.
+
+**Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
+(black on paper, light on dark), never a hard-coded black. VexFlow output must have every
+glyph's fill set from the theme, including paths that VexFlow leaves without a fill
+attribute (they default to black and disappear on a dark background).
 
 | Screen | Key elements |
 |---|---|
