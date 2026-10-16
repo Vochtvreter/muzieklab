@@ -712,6 +712,14 @@ engine and screens:
 - **Echo mode:** Play with the notation hidden until it has been tapped back.
 - **Dark theme:** generated from the light screens by colour role.
 
+**v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Three things
+change in the app:
+- The tab bar becomes Home · Path · Learn · Settings.
+- Results tips link to the matching section.
+- Every section ends with a practice link.
+
+Chapters 8–9 and flash cards arrive later, with note reading.
+
 Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
 Progress, XP and levels.
 
