@@ -681,8 +681,32 @@ tendency trend (rushing/dragging over time).
 ## 9. Screens & UX
 
 See the [Muzieklab App Design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE)
-for the screen designs (mobile flow, desktop play, dark mode), the foundations and the
-engine overview.
+for the screen designs. It has three pages:
+
+- **Light**: every app screen in the light theme.
+- **Dark**: the same screens, in the same positions, in the dark theme.
+- **Foundations & engine**: the design foundations (tokens, type, motion, scrolling) and the
+  exercise engine overview.
+
+On Light and Dark, each feature (Home, Rhythm, Learn, Read notes, Test yourself, Scales) is one
+row. The row has three columns: its **mobile** screens (390 × 844), then the **tablet**
+(834 × 1194) and **desktop** (1280 wide, fluid) versions of its main screens.
+
+**Breakpoints.** Phone < 700 px; tablet 700–1099 px; desktop ≥ 1100 px.
+- On tablet and desktop, the mobile bottom tab bar becomes a top header with the same five
+  items (Home · Path · Learn · Progress · Settings). The active item has the soft slate pill and
+  `aria-current="page"`.
+- Exercise screens swap that header for the exercise header: title, progress, and
+  Pause / Quit.
+- Large screens show the same content and data as mobile, laid out side by side. They add no
+  extra features.
+
+**Dark theme.** Every colour maps by role, as in the token table below. There are three rules
+on top of the table:
+- Text on a filled accent (white on slate, white on ink) becomes dark ink, because those fills
+  turn light.
+- Pianos keep piano colours in both themes: light keys, near-black black keys.
+- A raised control (the segmented thumb) is lighter than its track.
 
 ### Visual design tokens
 
