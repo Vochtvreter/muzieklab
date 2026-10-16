@@ -141,14 +141,17 @@ like the rhythm notation.
 | Input | How it works |
 |---|---|
 | **do re mi** | Seven buttons: do re mi fa sol la si, in that order. Fixed do: *do* is always C. |
-| **Letters** | Seven buttons: C D E F G A B, in the same order as the piano (so each button sits where its key is). Each button also shows the other name in small type, so the two systems are learned together. |
+| **Letters** | Seven buttons in alphabetical order: A B C D E F G. Each button also shows the do re mi name in small type, so the two systems are learned together. |
 | **Piano** | One octave, C to B: 7 white and 5 black keys. Black keys answer sharps and flats; both names of a black key (F♯ = G♭) are accepted. Optional key labels: letters, do re mi, or none. |
 
 - The answer is the **pitch class**: the octave does not matter (any C answers a C),
   because the input is one octave. Naming the octave (C4 vs C5) could be a later option.
-- With sharps or flats on and a names input, a **♯ / ♭ key** is added next to the seven
-  names; the written spelling is required (F♯ is not accepted for a written G♭).
-- Desktop: names are typed with the letter keys (C D E F G A B); the piano maps to the
+- Both name inputs (do re mi and letters) have a **sign row: ♭ · ♮ · ♯**, always visible.
+  The player picks the sign first (♮, no sign, is the default) and the seven buttons
+  update to show it (D♯, re♯). The written spelling is required: right letter with the
+  wrong sign is wrong, and F♯ is not accepted for a written G♭. Desktop keys: − = ♭,
+  0 = ♮, = = ♯, then the letter.
+- Desktop: names are typed with the letter keys (A–G); the piano maps to the
   computer keyboard with the common layout **A S D F G H J** = C D E F G A B and
   **W E T Y U** = C♯ D♯ F♯ G♯ A♯.
 - A **Hint** shows the nearest landmark ("just below the bottom line, E") and marks the
@@ -173,6 +176,23 @@ changes at most every 4 notes, with a visible clef change.
 **Scoring:** correct / total, average response time, and a per-note weak-spot list
 ("E on the top space"). Stars: ★ ≥ 70% · ★★ ≥ 85% · ★★★ ≥ 95% with an average under 2 s
 (starting values, to tune). XP and streaks work as in the rhythm modes.
+
+### 3.6 Test yourself — *flash cards*
+
+A quick theory check on any **chapters the player chooses**, opened from the Learn tab.
+
+- **Setup:** tick chapters (1–8; chapters marked *later* have no cards yet; a "Chapters I
+  read" shortcut selects the read ones), card types (*symbols*: "which rest is this?";
+  *facts and rules*: "how long is a dotted quarter?"; *staff reading*: name a note or a
+  staff line), 10 / 20 / 30 cards, and **Flip** or **Choice** (four options).
+- **Flip mode:** the front shows a question and a symbol or a bit of notation. Tapping the
+  card (or *Show answer*) turns it over: the answer, a one-line explanation and a link
+  to the Learn section it comes from. The player rates it **Again · Almost · Knew it**.
+- **Spaced repetition:** a simple Leitner scheme per card. *Again* puts the card back in
+  this round, *Almost* brings it back tomorrow, *Knew it* moves it up a box (4 days, then
+  longer). Cards the player missed come first in the next round.
+- **Card content** is written from the Learn chapters only, so every answer is covered
+  by `THEORY-SOURCES.md`. Cards are localizable content like the chapters.
 
 ---
 
