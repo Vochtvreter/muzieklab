@@ -692,6 +692,21 @@ On Light and Dark, each feature (Home, Rhythm, Learn, Read notes, Test yourself,
 row. The row has three columns: its **mobile** screens (390 × 844), then the **tablet**
 (834 × 1194) and **desktop** (1280 wide, fluid) versions of its main screens.
 
+**Design scope: MVP vs later.** MVP is what v1 (milestones M1–M6) needs so that every loop
+closes and every tab leads somewhere. All MVP screens are designed on the canvas.
+
+| MVP (designed) | Later (nice to have, not designed yet) |
+|---|---|
+| Progress (rhythm / notes / scales; streak calendar, accuracy, skill map with *Practice weak spots*, tendency, achievements strip) | A dedicated Weak Spots mode screen (for now it is a practice-setup preset) |
+| Settings (sound, timing leniency, tap & hold, counting syllables, notation style, theme) and Calibration (tap along with 16 clicks) | Echo mode play screen (reuses Play without notation) |
+| Pause menu (sheet on phone and tablet, dialog on desktop) | Daily challenge intro and result variant (uses the normal Play and Results) |
+| Results with Listen, Settings and the exercise code (copy) | A full achievements list and personal-best history |
+| Level-up / achievement / personal-best moment after a result | Onboarding and day-one empty states |
+| Round summaries for Read notes, Scales and Flash cards | Entering an exercise code to play a shared exercise |
+| Working dictation (Listen & write) with check and feedback | Tablet and desktop versions of the remaining screens (path, setups, results, listen, scale exercises, flip cards) |
+| Setup validation (unplayable time signatures, disabled Start) and the first-time How to play | |
+| The unit boss on the Learning Path | |
+
 **Breakpoints.** Phone < 700 px; tablet 700–1099 px; desktop ≥ 1100 px.
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same five
   items (Home · Path · Learn · Progress · Settings). The active item has the soft slate pill and
