@@ -722,6 +722,12 @@ beat highlight. With *reduce motion* set on the device, all of it is switched of
 The *Foundations* board on the design canvas has a **Motion · try it** section with a live
 demo of each row of this table.
 
+**Scrolling.** Screens are laid out to fit, so a page never shows a scrollbar, and never
+scrolls during play. Only lists that can grow scroll (chapter list, key list, results
+history); they use the app scrollbar: a 4 px fully rounded thumb in a 10 px gutter on a
+clear track, no arrows, `#b9c3c2` (hover `#8a9596`), dark `#3d4849` (hover `#5d6a6b`).
+Long Learn pages scroll the whole page on phones with the system scrollbar hidden.
+
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every
 glyph's fill set from the theme, including paths that VexFlow leaves without a fill
