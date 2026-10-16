@@ -714,7 +714,7 @@ targets ≥ 44 px.
 |---|---|---|
 | A button or chip turns on/off (color, border, shadow) | cross-fade | 180 ms, ease-out |
 | Pressing any button | scales to 97 % while pressed | 120 ms |
-| Any pick-one group, including segmented controls (sign row ♭ ♮ ♯, range, key list, circle of fifths) | the highlight is **grabbed by its leading edge and dragged** to the new choice. The front is pulled to the new choice while the back stays put, so the blob stretches across the whole gap (old choice to new) and thins to about half its thickness, losing its shape; then the back snaps forward, the blob gathers around the new choice, overshoots a hair (0.95 × 1.08) and regains the choice's shape. Diagonal moves stretch along the straight line between the two; differently sized choices resize on the way. Transforms only (FLIP), linear between the shape keyframes, so it stays fluent. Chips get a translucent slate tint; the chosen chip's slate edge fades in | 620 ms |
+| Any pick-one group, including segmented controls (sign row ♭ ♮ ♯, range, key list, circle of fifths) | the highlight **slides** from the old choice to the new one in a straight line, resizing to fit if the choices differ in size. No stretching or reshaping: a plain transform slide with a standard ease-out (cubic-bezier(.2, 0, 0, 1)), as in iOS and Material segmented controls. Chips get a translucent slate tint; the chosen chip's slate edge fades in | 260 ms |
 | Pick-many chips (time signatures, note values, chapters) | each chip cross-fades on or off | 180 ms |
 | Switches, check boxes, progress bars | knob slides, fill grows | 200–300 ms |
 | Something appears (feedback, the answer side) | fades in from 4 px above | 220 ms |
