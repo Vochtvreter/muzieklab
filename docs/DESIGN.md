@@ -692,6 +692,21 @@ On Light and Dark, each feature (Home, Rhythm, Learn, Read notes, Test yourself,
 row. The row has three columns: its **mobile** screens (390 × 844), then the **tablet**
 (834 × 1194) and **desktop** (1280 wide, fluid) versions of its main screens.
 
+**MVP canvas.** The [Muzieklab MVP canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS) holds the smallest
+product that proves the core promise: endless rhythm exercises built from real theory, with fair timing feedback. It is
+one loop, *pick → play → feedback → next*:
+- Home (Continue + Free practice + streak)
+- Practice setup (tap mode, with validation)
+- Play (first-time How to play, Pause)
+- Results (timing lane, tip, Listen, Retry / Next)
+- Learning Path (stars and locks)
+- Lean Settings and Calibration
+- Desktop Home and Play
+- Light theme only
+
+Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
+Progress, XP and levels.
+
 **Design scope: MVP vs later.** MVP is what v1 (milestones M1–M6) needs so that every loop
 closes and every tab leads somewhere. All MVP screens are designed on the canvas.
 
