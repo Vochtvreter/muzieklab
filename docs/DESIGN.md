@@ -155,20 +155,44 @@ like the rhythm notation.
   computer keyboard with the common layout **A S D F G H J** = C D E F G A B and
   **W E T Y U** = C♯ D♯ F♯ G♯ A♯.
 - A **Hint** shows the nearest landmark ("just below the bottom line, E") and marks the
-  note as assisted.
+  note as assisted. In a key with sharps or flats it also points at the key signature
+  ("the top line is F; look at the sharp after the clef").
+
+**Keys.** The player chooses which key to read in, on its own screen (*Key*, opened from
+the setup). All 15 standard key signatures are offered: C major (no signs), then sharps
+and flats side by side by count (G | F, D | B♭, A | E♭, E | A♭, B | D♭, F♯ | G♭,
+C♯ | C♭). Each key is shown as a small treble staff with its key signature, with the major
+key and its relative minor (G major · E minor), because a key signature fits both and the
+notes read the same.
+
+- **One key** (default) or **Mix keys** (pick several; a new key every 5 notes, announced
+  with the new key signature before the next note).
+- The key signature is drawn after the clef on every staff in the round, in both clefs.
+- Notes affected by the key signature have **no sign next to them**, but the answer is
+  still the full written name: in G major the top line of the treble staff is **F♯**, so
+  the player picks ♯ and F (or the F♯ black key). F without ♯ is wrong, and the feedback
+  says why ("G major has F♯ in the key signature").
+- Every whole note is drawn in **its own bar** (a bar line after each note). An accidental
+  only lasts until the next bar line, so a sign never carries over to the next note.
+- With **Extra sharps and flats** on, a note can also carry a sign that changes the key
+  signature's note: ♯ or ♭, or ♮ to cancel it (F♮ in G major). Alterations that would
+  need a double sharp or double flat are left out.
+- The Learn chapter 8.7 *Key signatures* explains all of this, linked from the Key screen
+  ("What is a key?").
 
 **Settings** (Read notes setup screen)
 
 | Setting | Options | Default |
 |---|---|---|
 | Clefs | treble · bass (at least one) | both |
+| Key | any of the 15 key signatures; one key or a mix | C major |
 | Answer with | names · piano · mixed | names |
 | Range | on the staff (11 positions: lines, spaces, and the space just outside each end) · +1 ledger line (15) · +2 ledger lines (19) | on the staff |
-| Sharps and flats | none · sharps · sharps and flats | none |
+| Extra sharps and flats (signs next to notes, on top of the key signature) | none · sharps · sharps and flats | none |
 | Notes per round | 10 – 50 | 20 |
 | Time per note | off · 5 s · 3 s | off |
 
-**Note generator:** draws from the allowed positions with no immediate repeats and no
+**Note generator:** draws from the allowed positions, spelled in the chosen key, with no immediate repeats and no
 more than two steps of the same direction in a row, and boosts notes the player recently
 got wrong or answered slowly (spaced repetition per note). In mixed-clef rounds the clef
 changes at most every 4 notes, with a visible clef change.
@@ -184,10 +208,16 @@ A quick theory check on any **chapters the player chooses**, opened from the Lea
 - **Setup:** tick chapters (1–8; chapters marked *later* have no cards yet; a "Chapters I
   read" shortcut selects the read ones), card types (*symbols*: "which rest is this?";
   *facts and rules*: "how long is a dotted quarter?"; *staff reading*: name a note or a
-  staff line), 10 / 20 / 30 cards, and **Flip** or **Choice** (four options).
+  staff line), 10 / 20 / 30 cards, and **Flip** or **Choice** (three options).
 - **Flip mode:** the front shows a question and a symbol or a bit of notation. Tapping the
   card (or *Show answer*) turns it over: the answer, a one-line explanation and a link
   to the Learn section it comes from. The player rates it **Again · Almost · Knew it**.
+- **Choice mode:** the same card with three answers (A, B, C) under it. The two wrong
+  answers are real terms from the same chapter (for "lines of the treble staff": E G B D F,
+  with F A C E, the spaces, and G B D F A, the bass lines), so a guess is never free.
+  After a pick, the right answer turns green and a wrong pick red, and the card shows the
+  explanation and the Learn link. No self-rating: right counts as *Knew it*, wrong as
+  *Again*. *Next card* stays disabled until an answer is picked.
 - **Spaced repetition:** a simple Leitner scheme per card. *Again* puts the card back in
   this round, *Almost* brings it back tomorrow, *Knew it* moves it up a box (4 days, then
   longer). Cards the player missed come first in the next round.
@@ -671,7 +701,7 @@ the matching preset. Chapter headers show which Learning Path units use them.
 | **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes (a dot as a shortcut for a tie) | 6, 7, 10 |
 | **6 · Off the beat** | 6.1 Syncopation · 6.2 Triplets | 9, 11 |
 | **7 · Compound meter** *(later)* | 7.1 Six-eight | 12 |
-| **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) · 8.6 The piano octave (groups of 2 and 3 black keys, sharps and flats) | Read notes |
+| **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) · 8.6 The piano octave (groups of 2 and 3 black keys, sharps and flats) · 8.7 Key signatures (order of sharps F C G D A E B and flats B E A D G C F, naming the key, relative minor, a sign lasts until the bar line) | Read notes |
 
 Why this order: pulse and meter come first because every later rule refers to beats and
 strong positions. Note values come before rests because each rest is defined by its note.

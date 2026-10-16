@@ -23,7 +23,7 @@ checked page by page.
 | Barlines divide music into bars (measures); a thin line followed by a thick one ends a piece | Verified | [Wiki-Bar] |
 | At 60 BPM there is one beat per second | Verified (definition of BPM) | — |
 
-## Reading notes (chapter 8, Read notes mode)
+## Reading notes and keys (chapter 8, Read notes mode)
 
 | Claim | Status | Source |
 |---|---|---|
@@ -40,6 +40,14 @@ checked page by page.
 | A sharp raises a note to the very next key on the right, a flat lowers it to the next key on the left | Verified (a semitone; follows from the keyboard layout) | [Wiki-Keyboard] |
 | "On the staff" = 11 positions per clef (5 lines, 4 spaces, the space just outside each end) | Design choice for the Range setting | — |
 | Computer-keyboard piano layout A S D F G H J / W E T Y U | Convention used by many music apps; a design choice | — |
+| A key signature applies to every note on its line or space, in every octave, for the rest of the piece | Verified | [Wiki-KeySig] |
+| Sharps are added in the order F C G D A E B, flats in the order B E A D G C F; up to seven of each | Verified | [Wiki-KeySig] |
+| There are 15 standard key signatures (none, 1–7 sharps, 1–7 flats) | Verified | [Wiki-KeySig] |
+| Sharp keys: the major key is a semitone above the last sharp (F♯ → G major). Flat keys: the second-to-last flat names the major key (B♭ E♭ → B♭ major); one flat is F major | Verified | [MT21C-KeySig] |
+| Each major key shares its key signature with its relative minor (G major / E minor) | Verified | [Wiki-KeySig], [MT21C-KeySig] |
+| An accidental applies to its note and to later notes on the same position until the bar line; a natural cancels a sharp or flat | Verified | [Wiki-Accidental] |
+| One whole note per bar in Read notes, so an accidental never carries to the next note | Design choice (follows from the rule above) | — |
+| Mix keys: a new key every 5 notes, announced first | Design choice | — |
 
 ## Note values and rests
 
@@ -114,6 +122,9 @@ checked page by page.
 - **[Wiki-Solfege]** "Solfège". Wikipedia. https://en.wikipedia.org/wiki/Solf%C3%A8ge
 - **[Wiki-Keyboard]** "Musical keyboard". Wikipedia. https://en.wikipedia.org/wiki/Musical_keyboard
 - **[KeyNotes-Layout]** Key-Notes, "Layout of piano keys". https://www.key-notes.com/blog/layout-of-piano-keys
+- **[Wiki-KeySig]** "Key signature". Wikipedia. https://en.wikipedia.org/wiki/Key_signature
+- **[MT21C-KeySig]** Hutchinson, R. *Music Theory for the 21st-Century Classroom*, "Major Key Signatures". https://musictheory.pugetsound.edu/mt21c/MajorKeySignatures.html
+- **[Wiki-Accidental]** "Accidental (music)". Wikipedia. https://en.wikipedia.org/wiki/Accidental_(music)
 - **[Wiki-Dotted]** "Dotted note". Wikipedia. https://en.wikipedia.org/wiki/Dotted_note
 - **[Wiki-Beat]** "Beat (music)". Wikipedia. https://en.wikipedia.org/wiki/Beat_(music)
 - **[Wiki-Bar]** "Bar (music)". Wikipedia. https://en.wikipedia.org/wiki/Bar_(music)
