@@ -74,6 +74,13 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    a **length lane** draws every note to scale in gray (so durations are visible at a
    glance) and your holds on top in color; a note let go too early gets a dashed outline.
    A combo counter grows on consecutive notes that were both started well and held right.
+   The pad itself only says what it is, a quarter-note symbol and **Rhythm**; it never
+   carries instructions. The judgment (GREAT, GOOD · LATE…) shows just above the pad.
+5. **First time** — the first time a player opens a rhythm exercise, a *How to play*
+   sheet slides up over the paused exercise: a small press → hold → lift diagram and
+   three steps (press when a note starts; hold for its length and lift when it ends;
+   stay off on rests, keep holding on ties), plus "any key works on a computer".
+   *Got it* closes it; *Pause → How to play* shows it again.
 5. **Results** (§6.4).
 
 **Input**
@@ -667,6 +674,21 @@ Type: **Unbounded** (display, scores, counts), **Figtree** (UI and body),
 buttons). Corners 12–14 px on controls, 20 px on cards, 32 px on the tap pad; touch
 targets ≥ 44 px.
 
+**Motion.** Every change of highlight eases instead of jumping, and stays subtle:
+
+| What | Motion | Time |
+|---|---|---|
+| A button or chip turns on/off (color, border, shadow) | cross-fade | 180 ms, ease-out |
+| Pressing any button | scales to 97 % while pressed | 120 ms |
+| Segmented control (do re mi / A B C, Flip / Choice…) | the white highlight slides to the new option | 240 ms, cubic-bezier(.3,.8,.3,1) |
+| Switches, check boxes, progress bars | knob slides, fill grows | 200–300 ms |
+| Something appears (feedback, an opened chapter's sections, the answer side) | fades in from 4 px above | 220 ms |
+| A sheet (How to play) | slides up 32 px and fades in | 320 ms |
+| Beat counter in play | the highlight moves to the next beat | 120 ms (shorter than the shortest beat) |
+
+Nothing loops or bounces, and nothing animates during timing-critical input except the
+beat highlight. With *reduce motion* set on the device, all of it is switched off.
+
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every
 glyph's fill set from the theme, including paths that VexFlow leaves without a fill
@@ -712,7 +734,8 @@ comes late. Compound meter changes what the time signature means, so it is last.
 
 **Each chapter is its own page**, never one long page with everything. A chapter page has:
 its number and title, what it builds on and which Path units use it, its sections, a quick
-check question, the sources for that chapter only, and previous / next chapter links. On
+check question, and previous / next chapter links. Sources are not shown to the player;
+they live in `THEORY-SOURCES.md`, where every claim on the page is checked. On
 mobile the Learn tab lists the chapters as cards that expand into their sections, with read
 status; on desktop a sidebar lists all chapters, with the open chapter's sections nested
 under it. The design canvas shows chapter 2 (mobile) and chapter 5 (desktop) as examples.
