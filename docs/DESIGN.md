@@ -714,7 +714,7 @@ targets ≥ 44 px.
 |---|---|---|
 | A button or chip turns on/off (color, border, shadow) | cross-fade | 180 ms, ease-out |
 | Pressing any button | scales to 97 % while pressed | 120 ms |
-| Any pick-one group, including segmented controls (sign row ♭ ♮ ♯, range, key list, circle of fifths) | one **liquid** highlight travels from the old choice to the new one: the edge on the side it moves toward leads, the other edge trails, so it stretches like a dragged drop and squashes slightly (scale 1.02 × 0.86 halfway) before settling around the new choice. Never a fade-out plus a fade-in | leading edge 200 ms, trailing edge 460 ms |
+| Any pick-one group, including segmented controls (sign row ♭ ♮ ♯, range, key list, circle of fifths) | the highlight is **dragged like liquid**: a head races to the new choice with a slight overshoot, the tail is pulled after it and shrinks on the way, and a bridge between them thins into a neck; an SVG goo filter (blur 5 px, alpha threshold) melts the three into one drop that snaps back into shape on arrival. Chips get a tinted drop that multiplies over them; the chosen chip's slate edge fades in. Never a fade-out plus a fade-in | head 320 ms, tail and neck 720 ms |
 | Pick-many chips (time signatures, note values, chapters) | each chip cross-fades on or off | 180 ms |
 | Switches, check boxes, progress bars | knob slides, fill grows | 200–300 ms |
 | Something appears (feedback, an opened chapter's sections, the answer side) | fades in from 4 px above | 220 ms |
