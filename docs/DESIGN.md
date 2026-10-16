@@ -208,6 +208,37 @@ changes at most every 4 notes, with a visible clef change.
 ("E on the top space"). Stars: ★ ≥ 70% · ★★ ≥ 85% · ★★★ ≥ 95% with an average under 2 s
 (starting values, to tune). XP and streaks work as in the rhythm modes.
 
+### 3.7 Scales — *every key*
+
+Learn and practice major and minor scales in all 15 keys.
+
+- **Scales hub = the circle of fifths.** The 12 positions run clockwise from C (one sharp
+  more each step) and anticlockwise (one flat more). Major keys are the outer ring, their
+  relative minors the inner ring; a *Major / Minor* switch makes one ring the active one.
+  The three positions at the bottom carry both spellings (B/C♭, F♯/G♭, D♭/C♯); tapping
+  the selected key again switches spelling. Each key is filled by progress (★ light,
+  ★★ mid, ★★★ dark slate); for minor, by how many of the three forms have ★★ or more.
+  The centre shows the selected key signature. Under the circle: the scale's notes (each
+  letter once, sharps and flats tinted), stars, *Options* and *Practice*, plus *Go round
+  the circle* (all 15 in circle order).
+- **Settings:** keys (the selected key · all 15 · choose, using the Key screen from Read
+  notes) · scales (major, natural minor, harmonic minor, melodic minor; each shows its
+  step pattern) · answer with (piano · names · mixed) · direction (up · up and down) ·
+  write with (♯ ♭ signs · key signature) · show the steps (W and H) · play each note.
+  A minor scale uses the relative minor of the chosen key (G → E minor).
+- **Piano:** a keyboard window that starts on the tonic (9 white keys, enough for one
+  octave from any starting note). The player plays the scale note by note; each right
+  note is written on the staff and fills the next degree box. The W/H steps sit between
+  the boxes. A wrong key flashes red and the feedback names the step ("From G, go a whole
+  step: skip one key"). *Hear it so far* and *Start over* are always there.
+- **Names (spelling):** the letters are given, one per degree, because a scale uses each
+  letter once; the player chooses ♭, ♮ or ♯ for each. This drills exactly what changes
+  between keys and between the minor forms (D♯ in E harmonic minor). Double sharps and
+  flats (F𝄪 in G♯ harmonic minor) appear only in keys that need them.
+- **Melodic minor down** is written as natural minor (the classical form).
+- **Scoring:** a scale is right when it was finished without mistakes; stars by mistakes
+  (0 → ★★★, 1 → ★★, 2–3 → ★). A scale with mistakes comes back at the end of the round.
+
 ### 3.6 Test yourself — *flash cards*
 
 A quick theory check on any **chapters the player chooses**, opened from the Learn tab.
@@ -724,6 +755,7 @@ the matching preset. Chapter headers show which Learning Path units use them.
 | **6 · Off the beat** | 6.1 Syncopation · 6.2 Triplets | 9, 11 |
 | **7 · Compound meter** *(later)* | 7.1 Six-eight | 12 |
 | **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) · 8.6 The piano octave (groups of 2 and 3 black keys, sharps and flats) · 8.7 Key signatures (order of sharps F C G D A E B and flats B E A D G C F, naming the key, relative minor, a sign lasts until the bar line) | Read notes |
+| **9 · Scales** | 9.1 Half steps and whole steps · 9.2 The major scale (W W H W W W H) · 9.3 Major scales in every key (each letter once; the scale's signs = its key signature) · 9.4 The circle of fifths (15 key signatures, 12 sounding keys) · 9.5 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 9.6 Scale degrees (tonic … leading tone; fixed do in this app) | Scales |
 
 Why this order: pulse and meter come first because every later rule refers to beats and
 strong positions. Note values come before rests because each rest is defined by its note.

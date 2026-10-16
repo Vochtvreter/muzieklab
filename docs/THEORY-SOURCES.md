@@ -49,6 +49,26 @@ checked page by page.
 | One whole note per bar in Read notes, so an accidental never carries to the next note | Design choice (follows from the rule above) | — |
 | Mix keys: a new key every 5 notes, announced first | Design choice | — |
 
+## Scales (chapter 9, Scales mode)
+
+| Claim | Status | Source |
+|---|---|---|
+| A half step (semitone) is the next key on the piano; a whole step is two half steps | Verified | [Wiki-Major], [Wiki-Keyboard] |
+| Major scale step pattern: W W H W W W H | Verified | [Wiki-Major] |
+| C major is the only major scale with no sharps or flats (white keys only) | Verified | [Wiki-Major] |
+| Each letter is used once in a major or minor scale, so G major has F♯ (not G♭) | Verified (diatonic spelling) | [Wiki-Major], [MT21C-KeySig] |
+| The sharps or flats of a major scale are its key signature | Verified | [Wiki-KeySig] |
+| Clockwise on the circle of fifths each key adds a sharp; anticlockwise each adds a flat | Verified | [Wiki-CoF] |
+| B/C♭, F♯/G♭ and C♯/D♭ are enharmonic keys at the bottom of the circle; 15 key signatures | Verified | [Wiki-CoF], [Wiki-KeySig] |
+| Natural minor uses the notes of its relative major from the 6th degree (A minor = C major from A); pattern W H W W H W W | Verified | [Wiki-Minor] |
+| Harmonic minor raises the 7th degree, giving an augmented second (1½ steps) between 6 and 7 | Verified | [Wiki-Minor] |
+| Melodic minor raises the 6th and 7th ascending and uses natural minor descending | Verified | [Wiki-Minor] |
+| Degree names: tonic, supertonic, mediant, subdominant, dominant, submediant, leading tone | Verified | [Wiki-Major] |
+| The 7th a whole step below the tonic is called the subtonic | Verified | [Wiki-Subtonic] |
+| The dominant is next in importance after the tonic | Verified | [Wiki-Dominant] |
+| Movable do (do = degree 1) exists alongside fixed do | Verified; the app uses fixed do | [Wiki-Solfege] |
+| Letters given, player picks the sign (spelling drill); stars by mistakes | Design choice | — |
+
 ## Note values and rests
 
 | Claim | Status | Source |
@@ -124,6 +144,11 @@ checked page by page.
 - **[KeyNotes-Layout]** Key-Notes, "Layout of piano keys". https://www.key-notes.com/blog/layout-of-piano-keys
 - **[Wiki-KeySig]** "Key signature". Wikipedia. https://en.wikipedia.org/wiki/Key_signature
 - **[MT21C-KeySig]** Hutchinson, R. *Music Theory for the 21st-Century Classroom*, "Major Key Signatures". https://musictheory.pugetsound.edu/mt21c/MajorKeySignatures.html
+- **[Wiki-Major]** "Major scale". Wikipedia. https://en.wikipedia.org/wiki/Major_scale
+- **[Wiki-Minor]** "Minor scale". Wikipedia. https://en.wikipedia.org/wiki/Minor_scale
+- **[Wiki-CoF]** "Circle of fifths". Wikipedia. https://en.wikipedia.org/wiki/Circle_of_fifths
+- **[Wiki-Subtonic]** "Subtonic". Wikipedia. https://en.wikipedia.org/wiki/Subtonic
+- **[Wiki-Dominant]** "Dominant (music)". Wikipedia. https://en.wikipedia.org/wiki/Dominant_(music)
 - **[Wiki-Accidental]** "Accidental (music)". Wikipedia. https://en.wikipedia.org/wiki/Accidental_(music)
 - **[Wiki-Dotted]** "Dotted note". Wikipedia. https://en.wikipedia.org/wiki/Dotted_note
 - **[Wiki-Beat]** "Beat (music)". Wikipedia. https://en.wikipedia.org/wiki/Beat_(music)
