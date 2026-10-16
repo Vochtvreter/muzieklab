@@ -719,6 +719,8 @@ targets ≥ 44 px.
 
 Nothing loops or bounces, and nothing animates during timing-critical input except the
 beat highlight. With *reduce motion* set on the device, all of it is switched off.
+The *Foundations* board on the design canvas has a **Motion · try it** section with a live
+demo of each row of this table.
 
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every
