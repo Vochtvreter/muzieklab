@@ -790,7 +790,7 @@ by side (lines | spaces, example | rule, text | keyboard) and stack again on nar
 so notation keeps a readable size instead of stretching. Desktop adds the chapter sidebar;
 on tablet the sidebar becomes a row of section chips under the title. The canvas shows chapter 8 at 834 px (tablet) and 1280 px (desktop).
 
-The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings.
+The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings. The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
 
 ### UX principles
 
