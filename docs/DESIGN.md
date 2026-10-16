@@ -714,12 +714,11 @@ targets ≥ 44 px.
 |---|---|---|
 | A button or chip turns on/off (color, border, shadow) | cross-fade | 180 ms, ease-out |
 | Pressing any button | scales to 97 % while pressed | 120 ms |
-| Segmented control (do re mi / A B C, Flip / Choice…) | the white highlight slides to the new option | 240 ms, cubic-bezier(.3,.8,.3,1) |
-| Any pick-one group (sign row ♭ ♮ ♯, range, key list, circle of fifths) | one highlight travels from the old choice to the new one; never a fade-out plus a fade-in | 260 ms, same curve |
+| Any pick-one group, including segmented controls (sign row ♭ ♮ ♯, range, key list, circle of fifths) | one **liquid** highlight travels from the old choice to the new one: the edge on the side it moves toward leads, the other edge trails, so it stretches like a dragged drop and squashes slightly (scale 1.02 × 0.86 halfway) before settling around the new choice. Never a fade-out plus a fade-in | leading edge 200 ms, trailing edge 460 ms |
 | Pick-many chips (time signatures, note values, chapters) | each chip cross-fades on or off | 180 ms |
 | Switches, check boxes, progress bars | knob slides, fill grows | 200–300 ms |
 | Something appears (feedback, an opened chapter's sections, the answer side) | fades in from 4 px above | 220 ms |
-| A sheet (How to play) | slides up 32 px and fades in | 320 ms |
+| A sheet (How to play) | slides up 32 px and fades in; closing plays it in reverse (slides down, backdrop fades) | 320 ms in, 240 ms out |
 | Beat counter in play | the highlight moves to the next beat | 120 ms (shorter than the shortest beat) |
 
 Nothing loops or bounces, and nothing animates during timing-critical input except the
