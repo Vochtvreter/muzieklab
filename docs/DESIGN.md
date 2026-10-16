@@ -783,10 +783,11 @@ they live in `THEORY-SOURCES.md`, where every claim on the page is checked. On
 mobile the Learn tab lists the chapters as cards that expand into their sections, with read
 status; on desktop a sidebar lists all chapters, with the open chapter's sections nested
 under it. The design canvas shows chapter 2 (mobile) and chapter 5 (desktop) as examples.
-On tablet (≥ 700 px) and desktop (≥ 1100 px) a chapter page keeps its phone-sized
-sections and flows them in two newspaper-style columns, so notation stays at a readable
-scale. Desktop adds the chapter sidebar; on tablet the sidebar becomes a row of section
-chips under the title. The canvas shows chapter 8 at 834 px (tablet) and 1280 px (desktop).
+On tablet (≥ 700 px) and desktop (≥ 1100 px) a chapter page keeps one column of
+sections in reading order, each filling the width. Inside a section, related parts sit side
+by side (lines | spaces, example | rule, text | keyboard) and stack again on narrow screens,
+so notation keeps a readable size instead of stretching. Desktop adds the chapter sidebar;
+on tablet the sidebar becomes a row of section chips under the title. The canvas shows chapter 8 at 834 px (tablet) and 1280 px (desktop).
 
 The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings.
 
