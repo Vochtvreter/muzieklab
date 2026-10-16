@@ -80,7 +80,10 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    sheet slides up over the paused exercise: a small press → hold → lift diagram and
    three steps (press when a note starts; hold for its length and lift when it ends;
    stay off on rests, keep holding on ties), plus "any key works on a computer".
-   *Got it* closes it; *Pause → How to play* shows it again.
+   *Got it* closes it. To see it again there is a small, muted **?** icon in the top bar,
+   next to Pause (desktop: the ? key). It pauses the exercise and opens the same sheet,
+   labelled *Paused* instead of *First time here*. The icon stays quiet (muted gray,
+   no label) because it is rarely needed once the player knows the game.
 5. **Results** (§6.4).
 
 **Input**
