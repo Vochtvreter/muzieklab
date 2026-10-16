@@ -720,6 +720,10 @@ change in the app:
 
 Chapters 8–9 and flash cards arrive later, with note reading.
 
+**v1.3 · Scales** adds major and minor scales (natural, harmonic, melodic) in all 15 keys: the circle of fifths hub,
+playing on the piano, spelling with ♭ ♮ ♯, and a round summary. Home's free practice splits into Rhythm and Scales.
+The scales Learn chapter becomes chapter 8 of 8, written to stand on its own because note reading is not in yet.
+
 Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
 Progress, XP and levels.
 
