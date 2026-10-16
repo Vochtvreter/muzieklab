@@ -704,6 +704,14 @@ one loop, *pick → play → feedback → next*:
 - Desktop Home and Play
 - Light theme only
 
+**v1.1 · Quick wins** (a page on the MVP canvas) holds the first features after the MVP. Each one reuses the MVP's
+engine and screens:
+- **Daily challenge:** a date-seeded preset; one Home card and a results badge.
+- **XP and levels:** one formula on the existing score, plus a level-up sheet.
+- **Exercise codes:** settings + seed, already encoded by the engine, shown with Copy.
+- **Echo mode:** Play with the notation hidden until it has been tapped back.
+- **Dark theme:** generated from the light screens by colour role.
+
 Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
 Progress, XP and levels.
 
