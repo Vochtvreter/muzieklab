@@ -1912,14 +1912,14 @@
 }
 /* The hidden all-perfect star: the three shrink into an arc over one big star that pops in. */
 .score-stars--bonus .score-stars-row {
-  gap: 16px;
+  gap: 8px;
   font-size: 22px;
 }
 .score-stars--bonus .score-stars-row > :first-child {
-  transform: translateY(20px) rotate(-28deg);
+  transform: translateY(15px) rotate(-26deg);
 }
 .score-stars--bonus .score-stars-row > :last-child {
-  transform: translateY(20px) rotate(28deg);
+  transform: translateY(15px) rotate(26deg);
 }
 .score-stars .is-bonus {
   margin-top: -2px;
