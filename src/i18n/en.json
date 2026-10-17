@@ -18,7 +18,9 @@
     "cancel": "Cancel",
     "dash": "—",
     "join": "{a} · {b}",
-    "and": "{a} and {b}"
+    "and": "{a} and {b}",
+    "orList": "{a} or {b}",
+    "commaList": "{a}, {b}"
   },
   "stars": {
     "label": "{count} of {total} stars",
@@ -60,15 +62,69 @@
     "unlocks": "Unlocks with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
     "lessonStars": "Lesson {id}: {count} of 3 stars",
-    "units": {
-      "1": "Quarter and half notes",
-      "2": "Rests",
-      "3": "Three-four, whole notes",
-      "4": "Eighth notes",
-      "5": "Two-four, eighth rests",
-      "6": "Ties",
-      "7": "Dotted notes",
-      "8": "Sixteenths"
+    "u1": {
+      "title": "Quarter and half notes",
+      "l1": "Quarter notes",
+      "l2": "Half notes",
+      "l3": "Halves and quarters",
+      "l4": "A little faster",
+      "l5": "Unit review"
+    },
+    "u2": {
+      "title": "Rests",
+      "l1": "Hold for the length",
+      "l2": "Quarter rests",
+      "l3": "Half rests",
+      "l4": "Quarter and half rests",
+      "l5": "Unit review"
+    },
+    "u3": {
+      "title": "Three-four, whole notes",
+      "l1": "Three beats in a bar",
+      "l2": "Rests in three-four",
+      "l3": "Whole notes",
+      "l4": "Whole rests",
+      "l5": "Unit review"
+    },
+    "u4": {
+      "title": "Eighth notes",
+      "l1": "Eighth-note pairs",
+      "l2": "Eighths and quarters",
+      "l3": "Eighths with half notes",
+      "l4": "Eighths in three-four",
+      "l5": "Unit review"
+    },
+    "u5": {
+      "title": "Two-four, eighth rests",
+      "l1": "Two beats in a bar",
+      "l2": "Eighth rests",
+      "l3": "Eighth rests in two-four",
+      "l4": "Mixed meters",
+      "l5": "Unit review"
+    },
+    "u6": {
+      "title": "Ties",
+      "l1": "Tied notes",
+      "l2": "Ties with eighths",
+      "l3": "Ties in three-four",
+      "l4": "Ties and rests",
+      "l5": "Unit review"
+    },
+    "u7": {
+      "title": "Dotted notes",
+      "l1": "Dotted half notes",
+      "l2": "Dotted halves in four-four",
+      "l3": "Dotted quarter + eighth",
+      "l4": "Dotted quarters in three-four",
+      "l5": "Unit review"
+    },
+    "u8": {
+      "title": "Sixteenths",
+      "l1": "Four sixteenths",
+      "l2": "Sixteenths and half notes",
+      "l3": "Eighth and two sixteenths",
+      "l4": "Sixteenth combinations",
+      "l5": "Unit review"
     }
   },
   "setup": {
@@ -114,42 +170,43 @@
     "restAmount": "Rest amount",
     "restFew": "Few",
     "restSome": "Some",
-    "restMany": "Many"
-  },
-  "feasibility": {
-    "needs": "{meter} needs {values}",
-    "noNotes": "Turn on at least one note value to play"
+    "restMany": "Many",
+    "needs": "{meter} needs {first, select, value.eighth {an} value.dottedEighth {an} rest.eighth {an} rest.dottedEighth {an} other {a}} {values}",
+    "needsMore": "{meter} needs more note values"
   },
   "value": {
-    "whole": "whole",
-    "half": "half",
-    "quarter": "quarter",
-    "eighth": "eighth",
-    "sixteenth": "sixteenth"
-  },
-  "note": {
-    "whole": "Whole note",
-    "half": "Half note",
-    "quarter": "Quarter note",
-    "eighth": "Eighth note",
-    "sixteenth": "Sixteenth note"
+    "whole": "whole note",
+    "dottedWhole": "dotted whole note",
+    "tripletWhole": "triplet whole note",
+    "half": "half note",
+    "dottedHalf": "dotted half",
+    "tripletHalf": "triplet half note",
+    "quarter": "quarter note",
+    "dottedQuarter": "dotted quarter note",
+    "tripletQuarter": "triplet quarter note",
+    "eighth": "eighth note",
+    "dottedEighth": "dotted eighth note",
+    "tripletEighth": "triplet eighth note",
+    "sixteenth": "sixteenth note",
+    "tripletSixteenth": "triplet sixteenth note"
   },
   "rest": {
-    "whole": "Whole rest",
-    "half": "Half rest",
-    "quarter": "Quarter rest",
-    "eighth": "Eighth rest",
-    "sixteenth": "Sixteenth rest"
+    "whole": "whole rest",
+    "dottedWhole": "dotted whole rest",
+    "half": "half rest",
+    "dottedHalf": "dotted half rest",
+    "quarter": "quarter rest",
+    "dottedQuarter": "dotted quarter rest",
+    "eighth": "eighth rest",
+    "dottedEighth": "dotted eighth rest",
+    "sixteenth": "sixteenth rest"
   },
   "notation": {
-    "note": "{dotted, select, true {dotted {value}} other {{value}}}",
-    "rest": "{dotted, select, true {dotted {value} rest} other {{value} rest}}",
-    "wholeBarRest": "whole-bar rest",
     "tied": "{name}, tied",
-    "triplet": "{name} triplet",
+    "triplet": "{name}",
+    "wholeBarRest": "whole-bar rest",
     "bar": "Bar {n}: {items}",
     "label": "Rhythm in {meter}. {bars}",
-    "list": "{a}, {b}",
     "empty": "Empty staff"
   },
   "tempo": {
@@ -342,5 +399,19 @@
     "title": "Something went wrong",
     "text": "The page hit an error. Reloading usually fixes it.",
     "reload": "Reload"
+  },
+  "noteButton": {
+    "whole": "Whole note",
+    "half": "Half note",
+    "quarter": "Quarter note",
+    "eighth": "Eighth note",
+    "sixteenth": "Sixteenth note"
+  },
+  "restButton": {
+    "whole": "Whole rest",
+    "half": "Half rest",
+    "quarter": "Quarter rest",
+    "eighth": "Eighth rest",
+    "sixteenth": "Sixteenth rest"
   }
 }
