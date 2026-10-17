@@ -1238,7 +1238,6 @@ button.lesson-stars:hover {
   font-family: var(--font-mono);
   color: var(--ink);
   letter-spacing: 0;
-  text-transform: none;
 }
 .tempo-range {
   width: 100%;

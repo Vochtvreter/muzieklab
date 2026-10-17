@@ -60,7 +60,21 @@ describe('attachTapInput: keyboard', () => {
     ]);
   });
 
-  it('holds until the last key is up', () => {
+  it('a second key while one is held is a new press (rolling fingers), released with the last key', () => {
+    const { log } = setup();
+    fire(document.body, key('keydown', 'a'), 100);
+    fire(document.body, key('keydown', 's'), 300);
+    fire(document.body, key('keyup', 'a'), 350);
+    fire(document.body, key('keyup', 's'), 400);
+    expect(log).toEqual([
+      ['down', 100],
+      ['up', 300],
+      ['down', 300],
+      ['up', 400],
+    ]);
+  });
+
+  it('two keys within the chord window are one press, held until the last key is up', () => {
     const { log } = setup();
     fire(document.body, key('keydown', 'a'), 100);
     fire(document.body, key('keydown', 's'), 120);

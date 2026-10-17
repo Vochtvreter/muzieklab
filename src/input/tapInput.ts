@@ -25,6 +25,12 @@ const IGNORED_KEYS = new Set([
 /** F1–F24, media / volume / browser keys belong to the browser or the OS. */
 const IGNORED_KEY_PATTERN = /^(F\d{1,2}|Audio.*|Media.*|Browser.*|Launch.*)$/;
 
+/**
+ * A second key or finger going down while one is held is a new press (rolling fingers on fast notes), unless it comes
+ * within this many ms of the held one: then it is the same press played as a chord. A sixteenth at 200 BPM is 75 ms.
+ */
+export const ROLL_MIN_MS = 50;
+
 const TEXT_INPUT = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
 const ACTIVATABLE = 'button, a[href], summary, [role="button"], [role="link"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"], [role="menuitem"], [role="option"]';
 
@@ -51,10 +57,20 @@ export function attachTapInput(pad: HTMLElement | null, handlers: TapHandlers, o
   const pointers = new Set<number>();
   const held = (): boolean => keys.size + pointers.size > 0;
 
+  let pressedAt = 0;
   const press = (add: () => void, timeStamp: number): void => {
     const was = held();
     add();
-    if (!was && held()) handlers.down(timeStamp);
+    if (!held()) return;
+    if (!was) {
+      pressedAt = timeStamp;
+      handlers.down(timeStamp);
+    } else if (timeStamp - pressedAt >= ROLL_MIN_MS) {
+      // Rolled onto another key or finger: the held note ends here and a new one starts.
+      handlers.up(timeStamp);
+      pressedAt = timeStamp;
+      handlers.down(timeStamp);
+    }
   };
   const release = (remove: () => boolean, timeStamp: number): void => {
     if (remove() && !held()) handlers.up(timeStamp);
