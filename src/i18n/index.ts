@@ -83,3 +83,12 @@ export function tipText(tip: { key: string; params: Record<string, string | numb
   const extra: Record<string, string | number> = typeof p.liftPart === 'string' ? { liftPartKey: p.liftPart, beat: p.liftBeat ?? '' } : {};
   return t(tip.key, { ...translateParams({ ...p, ...extra }), liftPartKey: extra.liftPartKey });
 }
+
+/** A yyyy-mm-dd date for the daily challenge: short month ("Oct"), day ("15"), short ("Oct 15") and long ("October 15"). */
+export function dateParts(iso: string): { month: string; day: string; short: string; long: string } {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
+  if (Number.isNaN(d.getTime())) return { month: '', day: iso, short: iso, long: iso };
+  const f = (o: Intl.DateTimeFormatOptions): string => new Intl.DateTimeFormat(locale, o).format(d);
+  return { month: f({ month: 'short' }), day: f({ day: 'numeric' }), short: formatShortDate(iso), long: f({ month: 'long', day: 'numeric' }) };
+}

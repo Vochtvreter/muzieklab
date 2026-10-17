@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type Timeline } from '../../core/api';
 import { defaultProgress } from '../../game/storage';
 import { UNITS } from '../../game/path';
-import { difficultyLevel, lastTimeChips, metersLabel, orList, signed, signedMs, starsText, tempoWordKey } from './format';
+import { difficultyLevel, lastTimeChips, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
 import { continueLesson, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
 import { beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
@@ -32,10 +32,15 @@ describe('formatting', () => {
     expect(signedMs(38)).toBe('+38 ms');
   });
   it('draws stars and the difficulty meter', () => {
-    expect(starsText(2)).toBe('★★☆☆');
-    expect(starsText(0)).toBe('☆☆☆☆');
+    // Three slots; the 4th star only shows once it is earned.
+    expect(starsText(2)).toBe('★★☆');
+    expect(starsText(0)).toBe('☆☆☆');
+    expect(starsText(3)).toBe('★★★');
     expect(starsText(4)).toBe('★★★★');
     expect(starsText(5)).toBe('★★★★');
+    expect(starsLabel(2)).toBe('2 of 3 stars');
+    expect(starsLabel(4)).toBe('3 of 3 stars and the bonus 4th star');
+    expect(starsLabel(5)).toBe('Diamond star, all perfect');
     expect(difficultyLevel(0)).toBe(1);
     expect(difficultyLevel(5)).toBe(3);
     expect(difficultyLevel(10)).toBe(5);

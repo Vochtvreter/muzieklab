@@ -24,13 +24,40 @@
   },
   "stars": {
     "label": "{count} of {total} stars",
-    "of4": "{count} of 4 stars",
+    "of3": "{count} of 3 stars",
+    "fourth": "3 of 3 stars and the bonus 4th star",
     "diamond": "Diamond star, all perfect"
   },
   "streak": {
     "pill": "{count, plural, =0 {No streak yet} one {#-day streak} other {#-day streak}}",
     "keep": "Play one exercise a day to keep it",
     "label": "Streak"
+  },
+  "xp": {
+    "level": "Level {level}",
+    "rankLine": " · {rank}",
+    "ofSpan": "{into} / {span} XP",
+    "toNext": "{count} XP to level {next}",
+    "bar": "XP bar: {into} of {span}",
+    "label": "Level and XP",
+    "earned": "+{count} XP"
+  },
+  "rank": {
+    "tick": "Tick",
+    "count": "Count",
+    "measure": "Measure",
+    "groove": "Groove",
+    "metronome": "Metronome",
+    "maestro": "Maestro"
+  },
+  "levelUp": {
+    "eyebrow": "Level up",
+    "title": "Level {level} · {rank}",
+    "newRank": "New rank: up from {rank}",
+    "sameRank": "Up from level {level}",
+    "ranks": "Ranks",
+    "into": "{count} XP into level {level}",
+    "continue": "Continue"
   },
   "home": {
     "title": "Home",
@@ -46,7 +73,13 @@
     "pathEyebrow": "Learning path",
     "pathView": "View path →",
     "pathLocked": "2 stars on every unit {unit} lesson",
-    "unitStars": "{count} ★"
+    "unitStars": "{count} ★",
+    "dailyTitle": "Daily challenge",
+    "dailyMeta": "{meter} · {bars} · {bpm} BPM · same for everyone",
+    "dailyPlay": "Play",
+    "dailyAgain": "Play again",
+    "dailyDone": "Done today · {accuracy}%",
+    "dailyPlayLabel": "Play the daily challenge for {date}"
   },
   "tile": {
     "next": "next lesson, no stars yet",
@@ -131,8 +164,12 @@
   },
   "setup": {
     "title": "Free practice",
-    "subtitle": "Tap mode · tap each note in time",
     "reset": "Reset",
+    "mode": "Mode",
+    "modeTap": "Tap",
+    "modeEcho": "Echo",
+    "hintTap": "Read the notation and tap each note in time",
+    "hintEcho": "Hear it, then tap it back from memory",
     "holdTitle": "Hold notes for their length",
     "holdOn": "Note lengths and rests count",
     "holdOff": "Only when each note starts counts",
@@ -263,7 +300,30 @@
     "pad": "Rhythm pad",
     "padLabel": "Rhythm",
     "staffLabel": "{rhythm} Cursor on note {note}.",
-    "staffLabelIdle": "{rhythm}"
+    "staffLabelIdle": "{rhythm}",
+    "echo": {
+      "where": "Echo · {where}",
+      "listen": "Listen",
+      "tapBack": "Tap it back",
+      "play": "Play the rhythm",
+      "replay": "Replay the rhythm",
+      "listenTitle": "Listen to the rhythm",
+      "playing": "Playing…",
+      "meta": "{bars} · {meter} · {bpm} BPM",
+      "playsLeft": "{count, plural, =0 {No plays left} one {# play left} other {# plays left}}",
+      "start": "Tap it back",
+      "yourTurn": "Your turn",
+      "nowTap": "Now tap it back",
+      "tapsSoFar": "{count, plural, one {tap so far} other {taps so far}}",
+      "fromMemory": "From memory. The notation shows when you’re done.",
+      "hearAgain": "Hear again · {count} left",
+      "noPlays": "No plays left",
+      "done": "Done",
+      "listenFirst": "LISTEN FIRST",
+      "listening": "LISTEN…",
+      "yourTurnCue": "YOUR TURN",
+      "hidden": "The notation is hidden until you have tapped the rhythm back."
+    }
   },
   "judge": {
     "perfect": "PERFECT",
@@ -297,7 +357,13 @@
       "step2": "Only the start counts here: no need to hold the note.",
       "step3": "On a rest, don't tap."
     },
-    "ios": "No clicks? Turn up the volume and check that the ring/silent switch is not on silent."
+    "ios": "No clicks? Turn up the volume and check that the ring/silent switch is not on silent.",
+    "echo": {
+      "eyebrow": "Echo mode",
+      "step1": "Listen to the rhythm. You can hear it twice.",
+      "step2": "Tap it back on the Rhythm pad from memory. Hold each note for its length.",
+      "step3": "The notation shows at the end, with your timing on every note."
+    }
   },
   "ready": {
     "title": "Ready?",
@@ -322,9 +388,19 @@
     "docTitle": "Results",
     "lessonDone": "Lesson {id} done",
     "practiceDone": "Exercise done",
+    "dailyDone": "Daily challenge done",
+    "echoDone": "Echo done",
+    "dailySub": "{date} · same for everyone",
+    "code": "Code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyTitle": "Copy the exercise code",
     "backHome": "Back to home",
     "accuracy": "{value}%",
     "summary": "accuracy · max combo {combo}",
+    "streakKept": "Streak kept · {count, plural, one {# day} other {# days}}",
+    "newBest": "New personal best",
+    "newBestTitle": "Your best accuracy on a daily so far",
     "allPerfect": "All perfect! Diamond star",
     "perfect": "Perfect",
     "great": "Great",
@@ -336,6 +412,7 @@
     "holdsShort": "{count} cut short",
     "holdsLong": "{count} held too long",
     "staffLabel": "The exercise with every note colored by judgment. {rhythm}",
+    "echoStaffLabel": "The rhythm you heard, revealed, each note colored by your timing. {rhythm}",
     "timing": "Timing and length",
     "timingLegend": "gray = note · color = your hold",
     "tapTiming": "Timing",
@@ -398,7 +475,7 @@
     "online": "Needs a connection",
     "reset": "Reset progress",
     "resetQuestion": "Erase all progress?",
-    "resetDetail": "Streak and stars. No undo.",
+    "resetDetail": "Streak, stars and XP. No undo.",
     "resetConfirm": "Reset",
     "resetDone": "Progress was reset."
   },

@@ -1,20 +1,26 @@
-/** Home: streak, Continue (the next lesson), Free practice with last time's settings. Desktop adds the path summary. */
+/**
+ * Home: streak, level and XP, Continue (the next lesson), the daily challenge and Free practice with last time's settings.
+ * Desktop adds the path summary.
+ */
 import { useMemo } from 'react';
 import { exerciseView } from '../exerciseView';
-import { MAX_STARS } from '../../core/api';
+import { SHOWN_STARS } from '../../core/api';
+import { dailyChallenge } from '../../game/daily';
 import { lessonSettings, UNITS, unitStars, type Unit } from '../../game/path';
 import { streak } from '../../game/storage';
-import { t, tx } from '../../i18n';
+import { levelInfo } from '../../game/xp';
+import { dateParts, t, tx } from '../../i18n';
 import { AppShell } from '../components/AppShell';
 import { LessonTiles, StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
+import { DateTile, XpLine } from '../components/Reward';
 import { useBreakpoint, useDocTitle, useToday } from '../hooks';
 import { lastTimeChips, metersLabel } from '../lib/format';
 import { continueLesson, lessonNumber, lessonPreview, unitStates } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link } from '../router';
 import { todayIso, useStore } from '../store';
-import { useStartLesson } from './start';
+import { useStartDaily, useStartLesson } from './start';
 
 function StreakPill({ days }: { days: number }): JSX.Element {
   return (
@@ -46,11 +52,37 @@ export function Home(): JSX.Element {
   const { state } = useStore();
   const bp = useBreakpoint();
   const startLesson = useStartLesson();
+  const startDaily = useStartDaily();
   useDocTitle(t('app.docTitle', { page: t('home.title') }));
   const today = useToday(todayIso);
   const days = streak(state.progress.practiceDays, today);
   const cont = continueLesson(state.progress);
   const last = state.progress.lastSettings;
+  const xp = levelInfo(state.progress.xp);
+  const daily = useMemo(() => dailyChallenge(today).settings, [today]);
+  const dailyDone = state.progress.daily?.day === today ? state.progress.daily : null;
+
+  const xpBlock = (
+    <section aria-label={t('xp.label')} className={bp === 'desktop' ? 'card xp-card' : undefined}>
+      <XpLine info={xp} />
+    </section>
+  );
+
+  const dailyCard = (
+    <section aria-labelledby="daily-title" className="daily-card">
+      <DateTile day={today} />
+      <div className="daily-text">
+        <h2 id="daily-title">{t('home.dailyTitle')}</h2>
+        <div className="muted-text">
+          {t('home.dailyMeta', { meter: metersLabel(daily.meters), bars: t('common.bars', { count: daily.bars }), bpm: daily.tempo })}
+        </div>
+        {dailyDone && <div className="daily-done">{t('home.dailyDone', { accuracy: Math.round(dailyDone.accuracy) })}</div>}
+      </div>
+      <button type="button" className="btn btn--ink daily-btn" aria-label={t('home.dailyPlayLabel', { date: dateParts(today).long })} onClick={startDaily}>
+        {t(dailyDone ? 'home.dailyAgain' : 'home.dailyPlay')}
+      </button>
+    </section>
+  );
 
   const continueCard = cont && (
     <section aria-labelledby="continue-title" className="continue-card">
@@ -129,10 +161,12 @@ export function Home(): JSX.Element {
                 <span className="muted-text">{t('streak.keep')}</span>
               </span>
             </section>
+            {xpBlock}
             {cont && <PathSummary currentUnit={cont.unit} currentId={cont.done ? null : cont.lesson.id} />}
           </aside>
           <div className="home-desk-main">
             {continueCard}
+            {dailyCard}
             {freeCard}
           </div>
         </div>
@@ -154,7 +188,9 @@ export function Home(): JSX.Element {
           )}
           <StreakPill days={days} />
         </div>
+        {xpBlock}
         {continueCard}
+        {dailyCard}
         {freeCard}
       </div>
     </AppShell>
@@ -182,7 +218,7 @@ function PathSummary({ currentUnit, currentId }: { currentUnit: Unit; currentId:
   const curIdx = UNITS.indexOf(currentUnit);
   const nextUnit = UNITS[curIdx + 1];
   const totalStars = UNITS.reduce((s, u) => s + unitStars(p, u.id), 0);
-  const max = UNITS.reduce((s, u) => s + u.lessons.length * MAX_STARS, 0);
+  const max = UNITS.reduce((s, u) => s + u.lessons.length * SHOWN_STARS, 0);
   const cur = currentId ? currentUnit.lessons.find((l) => l.id === currentId) : null;
   return (
     <Link to="/path" className="card path-card">
@@ -200,7 +236,7 @@ function PathSummary({ currentUnit, currentId }: { currentUnit: Unit; currentId:
                 <Icon name="check" size={12} strokeWidth={3.4} />
               </span>
               <span className="path-card-unit-title">{t('path.unitTitle', { id: u.id, title: tx(u.titleKey) })}</span>
-              <span className="path-card-unit-stars" aria-label={t('stars.label', { count: unitStars(p, u.id), total: u.lessons.length * MAX_STARS })}>
+              <span className="path-card-unit-stars" aria-label={t('stars.label', { count: unitStars(p, u.id), total: u.lessons.length * SHOWN_STARS })}>
                 {t('home.unitStars', { count: unitStars(p, u.id) })}
               </span>
             </span>

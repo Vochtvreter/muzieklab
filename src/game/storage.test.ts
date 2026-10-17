@@ -5,6 +5,7 @@ import {
   PREFS_KEY,
   PROGRESS_KEY,
   addPracticeDay,
+  defaultProgress,
   loadPrefs,
   loadProgress,
   localDateIso,
@@ -42,7 +43,7 @@ describe('prefs and progress storage', () => {
 
   it('falls back to defaults when nothing is stored', () => {
     expect(loadPrefs()).toEqual(DEFAULT_PREFS);
-    expect(loadProgress()).toEqual({ lessons: {}, practiceDays: [], lastSettings: null });
+    expect(loadProgress()).toEqual(defaultProgress());
   });
 
   it('round-trips', () => {
@@ -53,6 +54,9 @@ describe('prefs and progress storage', () => {
       lessons: { '1.1': { stars: 3, bestAccuracy: 97 }, '1.2': { stars: 1, bestAccuracy: 61.5 }, '1.3': { stars: 4, bestAccuracy: 98 }, '1.4': { stars: 5, bestAccuracy: 100 } },
       practiceDays: ['2026-10-16', '2026-10-17'],
       lastSettings: { ...DEFAULT_SETTINGS, meters: ['3/4', '4/4'], tempo: 88 },
+      xp: 1445,
+      daily: { day: '2026-10-17', stars: 3, accuracy: 91.5 },
+      dailyBest: 94,
     };
     saveProgress(progress);
     expect(loadProgress()).toEqual(progress);
@@ -111,7 +115,7 @@ describe('prefs and progress storage', () => {
 
   it('resetProgress clears progress but keeps prefs', () => {
     savePrefs({ ...DEFAULT_PREFS, calibrationMs: 20 });
-    saveProgress({ lessons: { '1.1': { stars: 2, bestAccuracy: 80 } }, practiceDays: [], lastSettings: null });
+    saveProgress({ ...defaultProgress(), lessons: { '1.1': { stars: 2, bestAccuracy: 80 } } });
     resetProgress();
     expect(loadProgress().lessons).toEqual({});
     expect(loadPrefs().calibrationMs).toBe(20);
@@ -123,7 +127,7 @@ describe('helpers', () => {
     expect(localDateIso(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
   });
   it('addPracticeDay keeps days unique and sorted', () => {
-    const p: Progress = { lessons: {}, practiceDays: ['2026-10-17'], lastSettings: null };
+    const p: Progress = { ...defaultProgress(), practiceDays: ['2026-10-17'] };
     expect(addPracticeDay(p, '2026-10-17')).toBe(p);
     expect(addPracticeDay(p, '2026-10-16').practiceDays).toEqual(['2026-10-16', '2026-10-17']);
   });

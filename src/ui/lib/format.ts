@@ -1,6 +1,6 @@
 /** Small, pure formatting helpers for the screens. Text always comes from the i18n catalog. */
 import { t } from '../../i18n';
-import { DIAMOND, MAX_STARS, type MeterId, type Settings } from '../../core/api';
+import { DIAMOND, MAX_STARS, SHOWN_STARS, type MeterId, type Settings } from '../../core/api';
 
 /** Tempo word for a BPM (the setup slider label, DESIGN.md §4): a message key under `tempo.`. */
 export function tempoWordKey(bpm: number): string {
@@ -32,15 +32,21 @@ export function signedMs(ms: number): string {
   return t('common.ms', { value: signed(ms) });
 }
 
-/** "★★☆☆" for 0–4 stars (the diamond, all perfect, is drawn by `StarsMark` in their place). */
-export function starsText(stars: number): string {
-  const n = Math.max(0, Math.min(MAX_STARS, Math.round(stars)));
-  return '★'.repeat(n) + '☆'.repeat(MAX_STARS - n);
+/** Star slots to draw: three, or four once the 4th star is earned (the diamond is drawn on its own). */
+export function starSlots(stars: number): number {
+  return stars >= MAX_STARS ? MAX_STARS : SHOWN_STARS;
 }
 
-/** "2 of 4 stars", or the diamond: for screen readers. */
+/** "★★☆" for 0–3 stars, "★★★★" for 4 (the diamond, all perfect, is drawn by `StarsMark` in their place). */
+export function starsText(stars: number): string {
+  const n = Math.max(0, Math.min(MAX_STARS, Math.round(stars)));
+  return '★'.repeat(n) + '☆'.repeat(starSlots(n) - n);
+}
+
+/** "2 of 3 stars", the 4th star, or the diamond: for screen readers. */
 export function starsLabel(stars: number): string {
-  return stars === DIAMOND ? t('stars.diamond') : t('stars.of4', { count: Math.min(MAX_STARS, stars) });
+  if (stars === DIAMOND) return t('stars.diamond');
+  return stars >= MAX_STARS ? t('stars.fourth') : t('stars.of3', { count: Math.max(0, stars) });
 }
 
 /** Meters in canonical order, joined with " · " (e.g. "3/4 · 4/4"). */

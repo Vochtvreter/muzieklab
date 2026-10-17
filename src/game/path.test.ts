@@ -1,14 +1,14 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { NOTE_VALUES, type MeterId, type NoteValue, type Settings } from '../core/types';
 import { UNITS, findLesson, isUnlocked, lessonSettings, nextLesson, pathStars, recordLessonResult, unitStars } from './path';
-import type { LessonProgress, Progress } from './storage';
+import { defaultProgress, type LessonProgress, type Progress } from './storage';
 
 const allIds = UNITS.flatMap((u) => u.lessons.map((l) => l.id));
 
 function progressWith(stars: Record<string, LessonProgress['stars']>): Progress {
   const lessons: Progress['lessons'] = {};
   for (const [id, s] of Object.entries(stars)) lessons[id] = { stars: s, bestAccuracy: 80 };
-  return { lessons, practiceDays: [], lastSettings: null };
+  return { ...defaultProgress(), lessons };
 }
 const starsUpTo = (lastId: string, s: LessonProgress['stars'] = 2) =>
   Object.fromEntries(allIds.slice(0, allIds.indexOf(lastId) + 1).map((id) => [id, s]));
@@ -158,9 +158,9 @@ describe('unlocking and progress', () => {
     expect(unitStars(p, 7)).toBe(5);
     expect(unitStars(p, 8)).toBe(0);
     expect(unitStars(p, 42)).toBe(0);
-    expect(pathStars(p)).toEqual({ earned: 6, max: 160 });
-    // The diamond (all perfect) counts as four.
-    expect(unitStars(progressWith({ '7.1': 5, '7.2': 4 }), 7)).toBe(8);
+    expect(pathStars(p)).toEqual({ earned: 6, max: 120 });
+    // Totals count three stars per lesson: the hidden 4th star and the diamond count as three.
+    expect(unitStars(progressWith({ '7.1': 5, '7.2': 4 }), 7)).toBe(6);
   });
 
   it('recordLessonResult keeps the best stars and accuracy', () => {

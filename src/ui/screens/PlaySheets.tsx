@@ -6,9 +6,18 @@ import { Icon } from '../components/Icon';
 const isIOS = (): boolean =>
   typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
-/** How to play. `hold: false` (tap only, unit 1): only when each note starts counts, so nothing about holding. */
-export function HowToContent({ eyebrow, desktop, hold = true, onDone }: { eyebrow: string; desktop: boolean; hold?: boolean; onDone(): void }): JSX.Element {
-  const k = hold ? 'howto.' : 'howto.tap.';
+/**
+ * How to play. `hold: false` (tap only, unit 1): only when each note starts counts, so nothing about holding.
+ * `echo`: listen first, tap back from memory, the notation shows at the end.
+ */
+export function HowToContent({ eyebrow, desktop, hold = true, echo = false, onDone }: {
+  eyebrow: string;
+  desktop: boolean;
+  hold?: boolean;
+  echo?: boolean;
+  onDone(): void;
+}): JSX.Element {
+  const k = echo ? 'howto.echo.' : hold ? 'howto.' : 'howto.tap.';
   return (
     <>
       <div className="sheet-head">

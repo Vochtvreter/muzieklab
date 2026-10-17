@@ -2,6 +2,7 @@ import type { Settings } from './types';
 
 /** Practice setup defaults (§4). */
 export const DEFAULT_SETTINGS: Settings = {
+  mode: 'tap',
   hold: true,
   meters: ['4/4'],
   notes: ['half', 'quarter'],

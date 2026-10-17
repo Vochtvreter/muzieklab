@@ -5,15 +5,19 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react';
 import { DEFAULT_SETTINGS, generateExercise, type Exercise, type JudgeResult, type Settings, type Tap } from '../core/api';
 import { lessonSettings, recordLessonResult } from '../game/path';
+import { xpForResult } from '../game/xp';
 import {
   addPracticeDay,
   defaultProgress,
+  isEmptyProgress,
   loadPrefs,
   loadProgress,
   localDateIso,
   resetProgress as clearStoredProgress,
   savePrefs,
   saveProgress,
+  streak,
+  sanitizeSettings,
   type Prefs,
   type Progress,
 } from '../game/storage';
@@ -23,6 +27,8 @@ export interface Run {
   exercise: Exercise;
   /** Lesson id ("7.3") or null for free practice. */
   lessonId: string | null;
+  /** The daily challenge's date (yyyy-mm-dd) when this run is one, else null. */
+  daily: string | null;
   /** Restored after a reload: Play waits for a tap (Ready · Start) before it makes sound. */
   needsGesture?: boolean;
 }
@@ -34,12 +40,13 @@ interface StoredRun {
   settings: Settings;
   seed: number;
   lessonId: string | null;
+  daily?: string | null;
 }
 
 function saveRun(run: Run | null): void {
   try {
     if (!run) sessionStorage.removeItem(RUN_KEY);
-    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId } satisfies StoredRun));
+    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId, daily: run.daily } satisfies StoredRun));
   } catch {
     /* storage blocked: a reload goes back to Setup, as before */
   }
@@ -53,17 +60,32 @@ export function restoreRun(): Run | null {
     const v = JSON.parse(raw) as Partial<StoredRun>;
     if (!v || typeof v.seed !== 'number' || typeof v.settings !== 'object' || v.settings === null) return null;
     const lessonId = typeof v.lessonId === 'string' ? v.lessonId : null;
-    const run = makeRun(v.settings as Settings, v.seed, lessonId);
+    const daily = typeof v.daily === 'string' ? v.daily : null;
+    const settings = sanitizeSettings(v.settings);
+    const run = settings && makeRun(settings, v.seed, lessonId, daily);
     return run && { ...run, needsGesture: true };
   } catch {
     return null;
   }
 }
 
+/** What a finished run earned, for Results and the level-up sheet. */
+export interface Reward {
+  xp: number;
+  /** Total XP before and after this run. */
+  xpBefore: number;
+  xpAfter: number;
+  /** Streak in days after this run when it counted as practice, else null. */
+  streak: number | null;
+  /** A daily challenge beat the best daily accuracy so far. */
+  dailyBest: boolean;
+}
+
 export interface LastResult {
   run: Run;
   result: JudgeResult;
   taps: Tap[];
+  reward: Reward;
 }
 
 export interface AppState {
@@ -89,16 +111,34 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'settings':
       return { ...state, settings: action.settings };
     case 'start': {
-      const progress = action.run.lessonId ? state.progress : { ...state.progress, lastSettings: action.run.exercise.settings };
+      const free = !action.run.lessonId && !action.run.daily;
+      const progress = free ? { ...state.progress, lastSettings: action.run.exercise.settings } : state.progress;
       return { ...state, run: action.run, progress };
     }
     case 'finish': {
       if (!state.run) return state;
       // The streak counts a day with real practice: at least one note hit (letting a run play out untouched does not).
-      const practised = action.result.notes.some((n) => n.judgement !== 'miss');
+      const { result } = action;
+      const practised = result.notes.some((n) => n.judgement !== 'miss');
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
-      if (state.run.lessonId) progress = recordLessonResult(progress, state.run.lessonId, action.result.stars, action.result.accuracy);
-      return { ...state, progress, last: { run: state.run, result: action.result, taps: action.taps } };
+      if (state.run.lessonId) progress = recordLessonResult(progress, state.run.lessonId, result.stars, result.accuracy);
+      let dailyBest = false;
+      const day = state.run.daily;
+      const firstDaily = !!day && practised && progress.daily?.day !== day;
+      if (day && practised) {
+        const prev = progress.daily?.day === day ? progress.daily : null;
+        dailyBest = result.accuracy > progress.dailyBest;
+        progress = {
+          ...progress,
+          daily: { day, stars: prev && prev.stars > result.stars ? prev.stars : result.stars, accuracy: Math.max(prev?.accuracy ?? 0, result.accuracy) },
+          dailyBest: Math.max(progress.dailyBest, result.accuracy),
+        };
+      }
+      const xp = xpForResult(state.run.exercise, result, firstDaily);
+      const xpBefore = progress.xp;
+      progress = { ...progress, xp: xpBefore + xp };
+      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest };
+      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward } };
     }
     case 'resetProgress':
       return { ...state, progress: defaultProgress(), last: null };
@@ -118,9 +158,9 @@ export function runSettings(state: Pick<AppState, 'prefs' | 'settings'>, lessonI
 }
 
 /** Generates a run; null when the settings cannot make an exercise. */
-export function makeRun(settings: Settings, seed: number, lessonId: string | null): Run | null {
+export function makeRun(settings: Settings, seed: number, lessonId: string | null, daily: string | null = null): Run | null {
   try {
-    return { exercise: generateExercise(settings, seed), lessonId };
+    return { exercise: generateExercise(settings, seed), lessonId, daily };
   } catch (e) {
     console.error('generateExercise failed', e);
     return null;
@@ -153,7 +193,7 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
   }, [state.prefs]);
   useEffect(() => {
     if (first.current) return;
-    if (state.progress.practiceDays.length === 0 && Object.keys(state.progress.lessons).length === 0 && !state.progress.lastSettings) {
+    if (isEmptyProgress(state.progress)) {
       clearStoredProgress();
     } else {
       saveProgress(state.progress);

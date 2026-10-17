@@ -79,13 +79,15 @@ interface PadProps {
   progress: number;
   held: boolean;
   label?: ReactNode;
+  /** Echo, while listening: the pad shows but does not take taps yet. */
+  disabled?: boolean;
 }
 
 /** Phone / tablet tap pad: a quarter-note glyph and "Rhythm", with a ring that fills while you hold. */
-export const TapPad = forwardRef<HTMLButtonElement, PadProps>(function TapPad({ progress, held, label }, ref) {
+export const TapPad = forwardRef<HTMLButtonElement, PadProps>(function TapPad({ progress, held, label, disabled }, ref) {
   const dash = (RING_C * Math.max(0, Math.min(1, progress))).toFixed(1);
   return (
-    <button ref={ref} type="button" className={'pad' + (held ? ' is-held' : '')} aria-label={t('play.pad')}>
+    <button ref={ref} type="button" className={'pad' + (held ? ' is-held' : '')} aria-label={t('play.pad')} disabled={disabled}>
       <svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true" className="pad-ring">
         <circle cx="75" cy="75" r="66" fill="none" className="pad-ring-track" strokeWidth="8" />
         <circle cx="75" cy="75" r="66" fill="none" className="pad-ring-fill" strokeWidth="8" strokeLinecap="round"

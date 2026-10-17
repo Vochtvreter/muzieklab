@@ -26,8 +26,13 @@ export type Density = 'sparse' | 'balanced' | 'busy';
 export type RestAmount = 'few' | 'some' | 'many';
 export type Leniency = 'strict' | 'normal' | 'relaxed';
 
-/** Practice settings (§4). Only the Tap mode is in the MVP. */
+/** Tap: read and tap the notation. Echo: hear the rhythm and tap it back with the notation hidden (§3.3). */
+export type Mode = 'tap' | 'echo';
+export const MODES: Mode[] = ['tap', 'echo'];
+
+/** Practice settings (§4). */
 export interface Settings {
+  mode: Mode;
   hold: boolean; // tap & hold (true) or tap only
   meters: MeterId[];
   notes: NoteValue[];
@@ -131,8 +136,13 @@ export interface JudgeOptions {
 /** 0–4 stars, or the diamond (5) for an all-Perfect run (every start Perfect, every hold right, no extra taps). */
 export type Stars = 0 | 1 | 2 | 3 | 4 | 5;
 export const DIAMOND = 5;
-/** Star slots shown for a lesson; the diamond takes their place and counts as all of them in totals. */
+/** The most stars a run can earn; the diamond takes their place. */
 export const MAX_STARS = 4;
+/**
+ * Star slots shown before the 4th star is earned: three. The 4th star and the diamond only appear once achieved, and
+ * star totals count three per lesson.
+ */
+export const SHOWN_STARS = 3;
 
 export interface JudgeResult {
   notes: NoteResult[];

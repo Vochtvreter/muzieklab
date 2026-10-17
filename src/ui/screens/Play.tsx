@@ -1,9 +1,10 @@
 /**
  * Play · tap the rhythm. Phone and tablet: top bar, lesson / bar / tempo line with the combo, the staff and length
  * lane, the beat counter, the judgement and the big pad. Desktop (≥ 1100 px): the exercise header, a wide staff card,
- * the key-cap pad and four small stat cards; sheets become dialogs.
+ * the key-cap pad and four small stat cards; sheets become dialogs. Echo: a listen phase first (Echo.tsx), then the
+ * same screen with the staff and lane swapped for the tap-back card.
  */
-import { useCallback, useEffect, useMemo, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import type { JudgeResult, Tap } from '../../core/api';
 import { findLesson } from '../../game/path';
 import { LengthLane } from '../../render/LengthLane';
@@ -21,6 +22,7 @@ import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
 import { Link, navigate } from '../router';
 import { todayIso, useStore, type Run } from '../store';
+import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
 import { HowToContent, PauseContent, ReadyContent } from './PlaySheets';
 import { usePlaySession } from './playSession';
 
@@ -32,10 +34,44 @@ export function Play(): JSX.Element | null {
     if (!run || !view) navigate('/setup', { replace: true });
   }, [run, view]);
   if (!run || !view) return null;
+  if (run.exercise.settings.mode === 'echo') return <EchoPlay run={run} view={view} />;
   return <PlayRun run={run} view={view} />;
 }
 
-function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
+/** Where the run comes from: "Lesson 2.3", "Daily challenge", "Free practice". */
+function runWhere(run: Run): string {
+  if (run.lessonId) return t('play.lesson', { id: run.lessonId });
+  if (run.daily) return t('home.dailyTitle');
+  return t('play.free');
+}
+
+/** Echo: listen (up to ECHO_PLAYS times), then tap it back with the notation hidden; Hear again goes back to listening. */
+function EchoPlay({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
+  const { dispatch } = useStore();
+  const [tapping, setTapping] = useState(false);
+  const [plays, setPlays] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const onPlayed = useCallback(() => setPlays((n) => n + 1), []);
+  const where = echoWhere(runWhere(run));
+  // A fresh run object for each attempt: Play starts it straight away (the tap on Tap it back is the gesture).
+  const tapBack = (): void => {
+    dispatch({ type: 'start', run: { exercise: run.exercise, lessonId: run.lessonId, daily: run.daily } });
+    setTapping(true);
+  };
+  const hearAgain = (): void => {
+    setAutoPlay(true);
+    setTapping(false);
+  };
+  if (tapping) return <PlayRun run={run} view={view} echo={{ playsLeft: ECHO_PLAYS - plays, onHearAgain: hearAgain }} />;
+  return <EchoListen run={run} view={view} where={where} playsLeft={ECHO_PLAYS - plays} autoPlay={autoPlay} onPlayed={onPlayed} onTapBack={tapBack} />;
+}
+
+interface EchoProps {
+  playsLeft: number;
+  onHearAgain(): void;
+}
+
+function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: EchoProps }): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
@@ -55,7 +91,10 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
     if (state.last?.run === run) navigate('/results', { replace: true });
   }, [state.last, run]);
   const onIntroDone = useCallback(() => dispatch({ type: 'prefs', patch: { seenHowTo: true } }), [dispatch]);
-  const s = usePlaySession(run, view, state.prefs, onIntroDone, onFinish);
+  // Echo has its own How to play in the listen phase, so tapping starts straight away.
+  const isEcho = !!echo;
+  const prefs = useMemo(() => (isEcho ? { ...state.prefs, seenHowTo: true } : state.prefs), [isEcho, state.prefs]);
+  const s = usePlaySession(run, view, prefs, onIntroDone, onFinish);
 
   // Esc closes an open sheet (Resume / Got it); ? swaps to How to play.
   useEffect(() => {
@@ -81,13 +120,20 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
   const tg = Math.max(0, s.frame.tg);
   const curBar = Math.min(bars - 1, Math.floor(tg / view.barSeconds));
   const progress = total > 0 ? Math.min(1, tg / total) : 0;
-  const where = lesson ? t('play.lesson', { id: lesson.lesson.id }) : t('play.free');
-  const barText = t('play.barOf', { bar: curBar + 1, total: bars });
+  const where = echo ? echoWhere(runWhere(run)) : runWhere(run);
+  const barText = echo ? t('play.echo.tapBack') : t('play.barOf', { bar: curBar + 1, total: bars });
 
   const perRow = desktop ? 4 : 2;
   const from = windowStart(curBar, perRow, 2, bars);
   const shownBars = useMemo(() => view.bars.slice(from, from + perRow * 2), [view.bars, from, perRow]);
   const rhythm = useMemo(() => describeBars(shownBars, ex.meter.id, from + 1), [shownBars, ex.meter.id, from]);
+  const echoCard = echo && (
+    <EchoCard taps={s.taps.length} playsLeft={echo.playsLeft} onDone={s.skip}
+      onHearAgain={() => {
+        s.stop();
+        echo.onHearAgain();
+      }} />
+  );
   const staff = (
     <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} />
   );
@@ -119,7 +165,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
     <AnalogMetronome beats={ex.meter.beatsPerBar} active={beat.inBar} at={s.frame.beats} tempo={ex.tempo} label={beatLabel} still={still} />
   );
   const fbClass = 'judgement' + (s.feedback ? ' tone-' + s.feedback.tone : '');
-  const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : ' ';
+  const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : echo && s.phase === 'running' ? t('play.echo.yourTurnCue') : ' ';
 
   // Quit swaps Play for Home in the history, so Back does not walk into the exercise again.
   const quit = (): void => {
@@ -142,7 +188,8 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
       labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
       maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined}>
       {sheetShown === 'help' ? (
-        <HowToContent eyebrow={t(s.phase === 'intro' ? 'howto.firstTime' : 'howto.paused')} desktop={desktop} hold={ex.settings.hold} onDone={s.closeSheet} />
+        <HowToContent eyebrow={t(echo ? 'howto.echo.eyebrow' : s.phase === 'intro' ? 'howto.firstTime' : 'howto.paused')} desktop={desktop} hold={ex.settings.hold} echo={!!echo}
+          onDone={s.closeSheet} />
       ) : sheetShown === 'ready' ? (
         <ReadyContent context={where} onStart={s.closeSheet}
           detail={t('ready.detail', { bars: t('common.bars', { count: bars }), meter: metersLabel([ex.meter.id]), bpm: ex.tempo })} />
@@ -165,7 +212,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
         <header className="dplay-head">
           <div className="brand brand--static">{t('app.name')}</div>
           <div className="dplay-title">
-            <span className="eyebrow">{lesson ? t('play.lessonTitle', { id: lesson.lesson.id, title: tx(lesson.lesson.title) }) : t('play.free')}</span>
+            <span className="eyebrow">{lesson && !echo ? t('play.lessonTitle', { id: lesson.lesson.id, title: tx(lesson.lesson.title) }) : where}</span>
             <span className="mono-line">
               {barText} · {metersLabel([ex.meter.id])} · <span className="music">𝅘𝅥</span> {t('play.beatEquals', { bpm: ex.tempo })}
             </span>
@@ -191,9 +238,13 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
         <main className="dplay-main">
           <div className="card dplay-staff">
             <div className="dplay-staff-inner">
-              {staff}
-              {laneHead}
-              {lane}
+              {echoCard || (
+                <>
+                  {staff}
+                  {laneHead}
+                  {lane}
+                </>
+              )}
             </div>
           </div>
           <div className="dplay-row">
@@ -280,10 +331,14 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
           </div>
         </div>
 
-        <div className="card play-staff">
-          {staff}
-          {laneHead}
-          {lane}
+        <div className={'card play-staff' + (echo ? ' play-staff--echo' : '')}>
+          {echoCard || (
+            <>
+              {staff}
+              {laneHead}
+              {lane}
+            </>
+          )}
         </div>
 
         {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} label={beatLabel} />}
@@ -292,9 +347,11 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
           {fbText}
         </div>
         <TapPad ref={s.setPad as (el: HTMLButtonElement | null) => void} progress={s.frame.ring} held={s.frame.held} />
-        <button type="button" className="skip-link" onClick={s.skip} disabled={s.phase === 'intro'}>
-          {t('play.skip')}
-        </button>
+        {!echo && (
+          <button type="button" className="skip-link" onClick={s.skip} disabled={s.phase === 'intro'}>
+            {t('play.skip')}
+          </button>
+        )}
       </div>
       {sheet}
     </ExerciseFrame>
