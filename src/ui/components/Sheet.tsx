@@ -20,8 +20,10 @@ const FOCUSABLE = 'button:not([disabled]), a[href], input, [tabindex]:not([tabin
 export function Sheet({ variant, closing, panelKey, labelledBy, modal = true, maxWidth, children }: SheetProps): JSX.Element {
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Focus goes to the panel's main action ([data-autofocus], e.g. Resume), else its first control.
   useEffect(() => {
-    const first = panelRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+    const panel = panelRef.current;
+    const first = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel?.querySelector<HTMLElement>(FOCUSABLE);
     first?.focus({ preventScroll: true });
   }, [panelKey]);
 

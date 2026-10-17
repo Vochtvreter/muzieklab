@@ -1,8 +1,14 @@
-/** The How to play and Pause sheets (phone / tablet) and dialogs (desktop). */
+/** The How to play, Ready and Pause sheets (phone / tablet) and dialogs (desktop). */
 import { t } from '../../i18n';
 import { Icon } from '../components/Icon';
 
-export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; desktop: boolean; onDone(): void }): JSX.Element {
+/** iPhone and iPad (iPadOS reports itself as a Mac with touch). */
+const isIOS = (): boolean =>
+  typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+/** How to play. `hold: false` (tap only, unit 1): only when each note starts counts, so nothing about holding. */
+export function HowToContent({ eyebrow, desktop, hold = true, onDone }: { eyebrow: string; desktop: boolean; hold?: boolean; onDone(): void }): JSX.Element {
+  const k = hold ? 'howto.' : 'howto.tap.';
   return (
     <>
       <div className="sheet-head">
@@ -11,6 +17,7 @@ export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; de
           {t('howto.title')}
         </h2>
       </div>
+      {hold ? (
       <svg width="350" height="74" viewBox="0 0 350 74" role="img" aria-label={t('howto.diagram')} className="howto-diagram">
         <rect x="18" y="34" width="196" height="16" rx="8" className="d-fill" />
         <rect x="230" y="34" width="100" height="16" rx="8" className="d-empty" />
@@ -32,18 +39,39 @@ export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; de
           {t('howto.oneNote')}
         </text>
       </svg>
+      ) : (
+        <svg width="350" height="74" viewBox="0 0 350 74" role="img" aria-label={t('howto.tap.diagram')} className="howto-diagram">
+          <rect x="18" y="34" width="196" height="16" rx="8" className="d-empty" />
+          <rect x="230" y="34" width="100" height="16" rx="8" className="d-empty" />
+          <path d="M18 12v14M12 20l6 6 6-6" fill="none" className="d-ink" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M230 12v14M224 20l6 6 6-6" fill="none" className="d-ink" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <text x="30" y="22" fontSize="13" fontWeight="700" className="d-text">
+            {t('howto.tap.tap')}
+          </text>
+          <text x="242" y="22" fontSize="13" fontWeight="700" className="d-text">
+            {t('howto.tap.tap')}
+          </text>
+          <text x="116" y="68" textAnchor="middle" fontSize="12" className="d-muted">
+            {t('howto.oneNote')}
+          </text>
+          <text x="280" y="68" textAnchor="middle" fontSize="12" className="d-muted">
+            {t('howto.nextNote')}
+          </text>
+        </svg>
+      )}
       <ol className="steps">
         {[1, 2, 3].map((n) => (
           <li key={n}>
             <span className="step-n" aria-hidden="true">
               {n}
             </span>
-            <span>{t('howto.step' + n)}</span>
+            <span>{t(k + 'step' + n)}</span>
           </li>
         ))}
       </ol>
       <span className="sheet-note">{t(desktop ? 'howto.desktop' : 'howto.computer')}</span>
-      <button type="button" className="btn btn--accent sheet-cta" onClick={onDone} aria-keyshortcuts={desktop ? 'Escape' : undefined}>
+      {isIOS() && <span className="sheet-note">{t('howto.ios')}</span>}
+      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onDone} aria-keyshortcuts={desktop ? 'Escape' : undefined}>
         {t('howto.gotIt')}
         {desktop && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}
       </button>
@@ -51,8 +79,30 @@ export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; de
   );
 }
 
+/** Shown when Play opens without a tap (a reload, Back / Forward): browsers only start the audio after one. */
+export function ReadyContent({ context, detail, onStart }: { context: string; detail: string; onStart(): void }): JSX.Element {
+  return (
+    <>
+      <div className="sheet-head">
+        <span className="eyebrow">{context}</span>
+        <h2 id="readytitle" className="sheet-title">
+          {t('ready.title')}
+        </h2>
+      </div>
+      <p className="sheet-text">{detail}</p>
+      {/* No Esc shortcut here: Esc is not a gesture browsers accept for starting audio. Enter or Space on the button is. */}
+      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onStart}>
+        <Icon name="play" size={18} />
+        {t('ready.start')}
+      </button>
+    </>
+  );
+}
+
 interface PauseProps {
   context: string;
+  /** The audio was interrupted (a call, Siri, the browser): say so instead of the count-in note. */
+  interrupted?: boolean;
   desktop: boolean;
   lesson: boolean;
   onResume(): void;
@@ -102,12 +152,13 @@ export function PauseContent(p: PauseProps): JSX.Element {
       </div>
       <div className="sheet-note sheet-note--icon">
         <Icon name="metronome" size={18} strokeWidth={1.8} />
-        <span>{t('pause.note')}</span>
+        <span role={p.interrupted ? 'status' : undefined}>{t(p.interrupted ? 'pause.interrupted' : 'pause.note')}</span>
       </div>
-      <button type="button" className="btn btn--accent sheet-cta" onClick={p.onResume} aria-keyshortcuts={p.desktop ? 'Escape' : undefined}>
+      {/* After an interruption Esc cannot restart the audio (not a user-activation key): no Esc shortcut then. */}
+      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={p.onResume} aria-keyshortcuts={p.desktop && !p.interrupted ? 'Escape' : undefined}>
         <Icon name="play" size={18} />
         {t('pause.resume')}
-        {p.desktop && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}
+        {p.desktop && !p.interrupted && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}
       </button>
     </>
   );

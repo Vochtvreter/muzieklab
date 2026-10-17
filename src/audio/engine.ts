@@ -28,6 +28,8 @@ export interface StartOptions {
   playRhythm: boolean;
   /** Seconds between now and the first count-in click. */
   leadIn?: number;
+  /** Count-in beats still fire onBeat (for the visual counter) but make no sound. */
+  silentCountIn?: boolean;
 }
 
 export interface Started {
@@ -44,6 +46,11 @@ export interface AudioEngine {
   now(): number;
   /** Converts an input event.timeStamp (performance.now() timebase) to audio time, minus output latency and the calibration offset. */
   eventToAudioTime(timeStamp: number): number;
+  /**
+   * The audio time a press made right now would be judged at: the time being *heard*, on the same clock as
+   * eventToAudioTime. now() runs ahead of it by the output latency (tens of ms; 150+ on Bluetooth).
+   */
+  heardNow(): number;
   setVolumes(v: Volumes): void;
   /** Silences the metronome during play only; count-in and calibration clicks stay audible at the metronome volume. */
   setMetronomeMuted(muted: boolean): void;
@@ -61,6 +68,10 @@ export interface AudioEngine {
   onBeat(cb: (beat: { index: number; inBar: number; countIn: boolean; time: number }) => void): () => void;
   /** Plain click track for calibration: `count` clicks at `bpm`, returns their audio times. */
   clicks(count: number, bpm: number, leadIn?: number): number[];
+  /** The AudioContext state ('running', 'suspended', 'interrupted' on iOS…), or 'none' without Web Audio. */
+  audioState(): string;
+  /** Called when the AudioContext state changes (an iOS call or Siri interrupts it, the browser suspends it). */
+  onStateChange(cb: (state: string) => void): () => void;
 }
 
 type BeatCallback = Parameters<AudioEngine['onBeat']>[0];
@@ -109,6 +120,7 @@ class WebAudioEngine implements AudioEngine {
   private raf: number | null = null;
 
   private listeners = new Set<BeatCallback>();
+  private stateListeners = new Set<(state: string) => void>();
   private voices = new Set<Voice>();
   private tapVoice: Voice | null = null;
 
@@ -117,7 +129,19 @@ class WebAudioEngine implements AudioEngine {
     if (this.ctx) return this.ctx;
     const Ctor = audioContextClass();
     if (!Ctor) return null;
+    // iOS: 'playback' keeps the clicks audible with the ring/silent switch on (Safari 16.4+).
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) {
+      try {
+        session.type = 'playback';
+      } catch {
+        /* read-only in some versions */
+      }
+    }
     const ctx = new Ctor({ latencyHint: 'interactive' });
+    ctx.addEventListener('statechange', () => {
+      for (const cb of [...this.stateListeners]) cb(ctx.state);
+    });
     const master = ctx.createGain();
     master.gain.value = 0.8;
     master.connect(ctx.destination);
@@ -168,6 +192,10 @@ class WebAudioEngine implements AudioEngine {
     return perfToAudioTime(timeStamp, { perfMs: pNow, audioS: ctx.currentTime }, this.latency(), this.calibrationMs);
   }
 
+  heardNow(): number {
+    return this.eventToAudioTime(perfNow());
+  }
+
   private latency(): number {
     const ctx = this.ctx;
     if (!ctx) return 0;
@@ -215,7 +243,7 @@ class WebAudioEngine implements AudioEngine {
     });
     const exerciseStart = exerciseStartTime(startTime, opts.tempo, beatsPerBar, opts.countInBars);
     const jobs: Job[] = beats
-      .filter((b) => b.audible)
+      .filter((b) => b.audible && !(b.countIn && opts.silentCountIn))
       .map((b) => ({ time: b.time, play: (c, t) => this.click(c, t, b.accent, b.countIn ? 'cue' : 'metronome') }));
     if (opts.playRhythm) {
       for (const n of planNotes(opts.timeline, exerciseStart)) {
@@ -255,6 +283,17 @@ class WebAudioEngine implements AudioEngine {
       if (ctx) this.fadeOut(ctx, v, 0.01);
       this.voices.delete(v);
     }
+  }
+
+  audioState(): string {
+    return this.ctx ? this.ctx.state : 'none';
+  }
+
+  onStateChange(cb: (state: string) => void): () => void {
+    this.stateListeners.add(cb);
+    return () => {
+      this.stateListeners.delete(cb);
+    };
   }
 
   onBeat(cb: BeatCallback): () => void {

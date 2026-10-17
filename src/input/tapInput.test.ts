@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { attachTapInput, type TapHandlers } from './tapInput';
+import { attachTapInput, type TapHandlers, type TapInputOptions } from './tapInput';
 
 type Log = Array<[string, number?]>;
 
 const attached: Array<() => void> = [];
 afterEach(() => attached.splice(0).forEach((d) => d()));
 
-function setup(withPad = true) {
+function setup(withPad = true, opts: TapInputOptions = {}) {
   document.body.innerHTML = '<button id="pause">Pause</button><input id="field" /><div id="pad" tabindex="0"></div>';
   const pad = withPad ? (document.getElementById('pad') as HTMLElement) : null;
   const captured: number[] = [];
@@ -18,7 +18,7 @@ function setup(withPad = true) {
     pause: () => log.push(['pause']),
     help: () => log.push(['help']),
   };
-  const detach = attachTapInput(pad, handlers);
+  const detach = attachTapInput(pad, handlers, opts);
   attached.push(detach);
   return { pad, log, detach, captured };
 }
@@ -60,7 +60,21 @@ describe('attachTapInput: keyboard', () => {
     ]);
   });
 
-  it('holds until the last key is up', () => {
+  it('a second key while one is held is a new press (rolling fingers), released with the last key', () => {
+    const { log } = setup();
+    fire(document.body, key('keydown', 'a'), 100);
+    fire(document.body, key('keydown', 's'), 300);
+    fire(document.body, key('keyup', 'a'), 350);
+    fire(document.body, key('keyup', 's'), 400);
+    expect(log).toEqual([
+      ['down', 100],
+      ['up', 300],
+      ['down', 300],
+      ['up', 400],
+    ]);
+  });
+
+  it('two keys within the chord window are one press, held until the last key is up', () => {
     const { log } = setup();
     fire(document.body, key('keydown', 'a'), 100);
     fire(document.body, key('keydown', 's'), 120);
@@ -119,6 +133,25 @@ describe('attachTapInput: keyboard', () => {
     expect(log).toEqual([
       ['down', 4],
       ['up', 5],
+    ]);
+  });
+
+  it('with claimActivationKeys, Space/Enter on a focused button tap and do not activate it', () => {
+    const { log } = setup(true, { claimActivationKeys: true });
+    const btn = document.getElementById('pause')!;
+    const space = fire(btn, key('keydown', ' ', { code: 'Space' }), 1);
+    expect(space.defaultPrevented).toBe(true);
+    const up = fire(btn, key('keyup', ' ', { code: 'Space' }), 2);
+    expect(up.defaultPrevented).toBe(true);
+    fire(btn, key('keydown', 'Enter', { code: 'Enter' }), 3);
+    fire(btn, key('keyup', 'Enter', { code: 'Enter' }), 4);
+    // Typing in a field still never taps.
+    fire(document.getElementById('field')!, key('keydown', ' ', { code: 'Space' }), 5);
+    expect(log).toEqual([
+      ['down', 1],
+      ['up', 2],
+      ['down', 3],
+      ['up', 4],
     ]);
   });
 

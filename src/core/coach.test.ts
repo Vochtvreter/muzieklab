@@ -44,6 +44,37 @@ describe('coachTip', () => {
     expect(coachTip(judge(tl, taps, opts), tl, ex)).toEqual({ key: 'tip.missed', params: { count: 2, bar: 2 } });
   });
 
+  it('an off-track run names the misses, not the timing of the few notes that were hit', () => {
+    // The QA case: most notes missed, the hits late. "You were dragging" was the tip.
+    const taps = perfectTaps(tl)
+      .slice(0, 2)
+      .map((t) => ({ down: t.down + 0.06, up: (t.up as number) + 0.06 }));
+    expect(coachTip(judge(tl, taps, opts), tl, ex)).toMatchObject({ key: 'tip.missed', params: { count: 5 } });
+  });
+
+  it('an off-track run with more extra taps than misses names the extra taps', () => {
+    const taps = [...perfectTaps(tl), ...[0.5, 1.5, 2.5].map((d) => ({ down: d, up: d + 0.1 }))];
+    expect(coachTip(judge(tl, taps, { hold: false, leniency: 'normal' }), tl, ex)).toEqual({ key: 'tip.extraTaps', params: { count: 3 } });
+  });
+
+  it('a low score from cut-short holds is still a hold tip, even with one miss', () => {
+    const ex5 = makeExercise('4/4', [[[48, 'n'], [48, 'n'], [48, 'n'], [48, 'n']], [[48, 'n'], [48, 'n'], [48, 'n'], [48, 'n']]]);
+    const tl5 = buildTimeline(ex5);
+    const taps = perfectTaps(tl5)
+      .slice(0, 7)
+      .map((t) => ({ down: t.down, up: t.down + 0.2 }));
+    const r = judge(tl5, taps, opts);
+    expect(r.counts.miss).toBe(1);
+    expect(coachTip(r, tl5, ex5).key).toBe('tip.cutShort');
+  });
+
+  it('no tendency tip from too few hits', () => {
+    const ex4 = makeExercise('4/4', [[[96, 'n'], [96, 'n']]]);
+    const tl4 = buildTimeline(ex4);
+    const late = perfectTaps(tl4).map((t) => ({ down: t.down + 0.06, up: (t.up as number) + 0.06 }));
+    expect(coachTip(judge(tl4, late, opts), tl4, ex4).key).not.toBe('tip.dragging');
+  });
+
   it('praises a clean run', () => {
     expect(coachTip(judge(tl, perfectTaps(tl), opts), tl, ex)).toEqual({ key: 'tip.perfect', params: {} });
   });

@@ -54,6 +54,22 @@ describe('layoutLane', () => {
     expect(holds.map((h) => h.tone)).toEqual(['live', 'live']);
   });
 
+  it('on results, a press that matched no note is an extra (outlined), never a hit-coloured hold', () => {
+    const { taps, result } = demoPlay(timeline, null);
+    const stray = { down: timeline.notes[0].onset + 0.3, up: timeline.notes[0].onset + 0.4 };
+    const l = layoutLane({ ...base, barsPerRow: 2, taps: [...taps, stray], result, rowHeight: 30 });
+    const tones = of(l.shapes, 'hold').map((h) => h.tone);
+    expect(tones).toContain('extra');
+    expect(tones).not.toContain('live');
+  });
+
+  it('tap only: presses are short marks where they landed, not holds', () => {
+    const taps = [{ down: 0, up: 1.5 }];
+    const l = layoutLane({ ...base, barsPerRow: 4, taps, now: 2, rowHeight: 26, hold: false });
+    const [mark] = of(l.shapes, 'hold');
+    expect(mark.w).toBeLessThanOrEqual(4);
+  });
+
   it('splits notes and holds across rows', () => {
     const tl = { notes: [{ index: 0, bar: 0, tick: 144, onset: 0, end: 0, durationTicks: 96, next: 'end' as const }], totalSeconds: 4 * 0.75 * 2, beatSeconds: 0.75 };
     const taps = [{ down: 3 * 0.75, up: 5 * 0.75 }];

@@ -9,6 +9,14 @@ export interface TapHandlers {
   help?(): void;
 }
 
+export interface TapInputOptions {
+  /**
+   * Space and Enter are taps even on a focused button or link. For a running exercise: a control that kept focus
+   * after a click (the metronome switch, ?) would otherwise swallow every Space. Esc and ? still reach their handlers.
+   */
+  claimActivationKeys?: boolean;
+}
+
 /** Keys that never count as a tap: modifiers, Tab (focus navigation), locks and browser/system keys. */
 const IGNORED_KEYS = new Set([
   'Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'OS', 'Super', 'Hyper', 'Fn', 'FnLock',
@@ -17,11 +25,17 @@ const IGNORED_KEYS = new Set([
 /** F1–F24, media / volume / browser keys belong to the browser or the OS. */
 const IGNORED_KEY_PATTERN = /^(F\d{1,2}|Audio.*|Media.*|Browser.*|Launch.*)$/;
 
+/**
+ * A second key or finger going down while one is held is a new press (rolling fingers on fast notes), unless it comes
+ * within this many ms of the held one: then it is the same press played as a chord. A sixteenth at 200 BPM is 75 ms.
+ */
+export const ROLL_MIN_MS = 50;
+
 const TEXT_INPUT = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
 const ACTIVATABLE = 'button, a[href], summary, [role="button"], [role="link"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"], [role="menuitem"], [role="option"]';
 
 /** Whether a key event is a tap. Returns false when the key belongs to focus or to a focused control. */
-export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null): boolean {
+export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null, opts: TapInputOptions = {}): boolean {
   if (IGNORED_KEYS.has(e.key) || IGNORED_KEY_PATTERN.test(e.key)) return false;
   // Shortcuts (Ctrl/Cmd/Alt + key) stay with the browser.
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
@@ -30,7 +44,7 @@ export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null): boolean {
   // Typing in a field is never a tap.
   if (target.closest(TEXT_INPUT)) return false;
   // Space/Enter activate a focused button (Pause, ?, Listen…): leave them to it. Other keys still tap.
-  if ((e.key === ' ' || e.key === 'Enter') && target.closest(ACTIVATABLE)) return false;
+  if ((e.key === ' ' || e.key === 'Enter') && !opts.claimActivationKeys && target.closest(ACTIVATABLE)) return false;
   return true;
 }
 
@@ -38,15 +52,25 @@ export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null): boolean {
  * Keyboard (any key except Esc and ?, auto-repeat ignored, held until the last key is up) on `window`,
  * and pointer on `pad` (pointerdown/up/cancel with pointer capture). Returns a detach function. §3.1 Input.
  */
-export function attachTapInput(pad: HTMLElement | null, handlers: TapHandlers): () => void {
+export function attachTapInput(pad: HTMLElement | null, handlers: TapHandlers, opts: TapInputOptions = {}): () => void {
   const keys = new Set<string>();
   const pointers = new Set<number>();
   const held = (): boolean => keys.size + pointers.size > 0;
 
+  let pressedAt = 0;
   const press = (add: () => void, timeStamp: number): void => {
     const was = held();
     add();
-    if (!was && held()) handlers.down(timeStamp);
+    if (!held()) return;
+    if (!was) {
+      pressedAt = timeStamp;
+      handlers.down(timeStamp);
+    } else if (timeStamp - pressedAt >= ROLL_MIN_MS) {
+      // Rolled onto another key or finger: the held note ends here and a new one starts.
+      handlers.up(timeStamp);
+      pressedAt = timeStamp;
+      handlers.down(timeStamp);
+    }
   };
   const release = (remove: () => boolean, timeStamp: number): void => {
     if (remove() && !held()) handlers.up(timeStamp);
@@ -83,7 +107,7 @@ export function attachTapInput(pad: HTMLElement | null, handlers: TapHandlers): 
       }
       return;
     }
-    if (!isTapKey(e, pad)) return;
+    if (!isTapKey(e, pad, opts)) return;
     // Stop Space scrolling, Firefox quick-find on / and ', and button activation on the pad.
     e.preventDefault();
     if (e.repeat) return;

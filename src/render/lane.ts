@@ -14,9 +14,15 @@ export interface LaneInput {
   now?: number | null;
   width: number;
   rowHeight: number;
+  /**
+   * Tap & hold (default). With `false` (tap only) a press is drawn as a short mark where it landed: how long it was
+   * held does not count, so drawing the hold would suggest it does.
+   */
+  hold?: boolean;
 }
 
-export type HoldTone = 'hit' | 'early' | 'live';
+/** `extra`: a press that matched no note (results only), so it never looks like a hit. */
+export type HoldTone = 'hit' | 'early' | 'live' | 'extra';
 
 export type LaneShape =
   | { kind: 'grid'; x: number; y1: number; y2: number; strong: boolean }
@@ -111,7 +117,11 @@ export function layoutLane(input: LaneInput): LaneLayout {
     return input.now ?? timeline.totalSeconds; // still held: grows to the playhead
   };
 
+  const tapOnly = input.hold === false;
+  /** Width of a tap-only mark in ticks: about 3 px. */
+  const markTicks = 3 / unit;
   const pushHold = (t0: number, t1: number, tone: HoldTone) => {
+    if (tapOnly) t1 = t0 + markTicks;
     // A zero-length press still shows as a short mark (min width 2, as in the design).
     for (const s of segments(t0, Math.max(t1, t0 + 1e-6))) {
       const x = s.x0 + (s.head ? 1 : 0);
@@ -146,11 +156,13 @@ export function layoutLane(input: LaneInput): LaneLayout {
     }
   }
 
-  // Taps not (yet) judged against a note: drawn where they happened, in the neutral live colour.
+  // Taps not (yet) judged against a note: drawn where they happened. Live: neutral, they may still match a note.
+  // On results they never will: extra taps, outlined in the miss colour.
+  const extraTone: HoldTone = input.result && input.now == null ? 'extra' : 'live';
   for (const tap of input.taps) {
     if (judgedDowns.has(tap.down)) continue;
     if (input.now != null && tap.down > input.now) continue;
-    pushHold(toTick(tap.down), toTick(holdUntil(tap)), 'live');
+    pushHold(toTick(tap.down), toTick(holdUntil(tap)), extraTone);
   }
 
   if (input.now != null) {

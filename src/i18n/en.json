@@ -52,7 +52,8 @@
     "done": "{count} of 3 stars",
     "next": "next lesson, no stars yet",
     "nextStars": "next lesson, {count} of 3 stars",
-    "notStarted": "not started"
+    "notStarted": "not started",
+    "play": "Play lesson {id}, {state}"
   },
   "path": {
     "title": "Learning path",
@@ -64,6 +65,9 @@
     "start": "Start lesson {id}",
     "lessonStars": "Lesson {id}: {count} of 3 stars",
     "lessonAllPerfect": "Lesson {id}: 3 of 3 stars, all perfect",
+    "playLesson": "Play lesson {id}: {count} of 3 stars",
+    "playLessonAllPerfect": "Play lesson {id}: 3 of 3 stars, all perfect",
+    "lockedLesson": "Lesson {id}, locked",
     "u1": {
       "title": "Quarter and half notes",
       "l1": "Quarter notes",
@@ -164,7 +168,7 @@
     "metronomeAccent": "Beat 1",
     "metronomeOff": "Off",
     "countIn": "Count-in",
-    "countInValue": "{count, plural, =0 {None} one {# bar} other {# bars}}",
+    "countInValue": "{count, plural, =0 {Silent} one {# bar} other {# bars}}",
     "density": "Density",
     "densitySparse": "Sparse",
     "densityBalanced": "Balanced",
@@ -253,6 +257,11 @@
     "length": "Length",
     "lengthLegend": "gray = note, color = your hold",
     "lengthLegendLong": "gray = how long each note lasts, color = how long you held",
+    "noScore": "–",
+    "skip": "Skip to results",
+    "tapTiming": "Timing",
+    "tapLegend": "gray = note, mark = your tap",
+    "tapLegendLong": "gray = each note, mark = when you tapped",
     "barsRange": "{from, select, other {bars {from}–{to}}}",
     "barsOne": "bar {from}",
     "pad": "Rhythm pad",
@@ -284,7 +293,20 @@
     "step3": "On a rest, stay off the pad. On a tie, keep holding.",
     "computer": "On a computer, any key works as the Rhythm pad. Tap ? at the top to see this again.",
     "desktop": "Any key works as the Rhythm pad. Press ? to see this again.",
-    "gotIt": "Got it"
+    "gotIt": "Got it",
+    "tap": {
+      "diagram": "Tap when each note starts; how long you hold does not count",
+      "tap": "tap",
+      "step1": "Tap the Rhythm pad when a note starts.",
+      "step2": "Only the start counts here: no need to hold the note.",
+      "step3": "On a rest, don't tap."
+    },
+    "ios": "No clicks? Turn up the volume and check that the ring/silent switch is not on silent."
+  },
+  "ready": {
+    "title": "Ready?",
+    "detail": "{bars} in {meter} at {bpm} BPM. The count-in starts when you press Start.",
+    "start": "Start"
   },
   "pause": {
     "title": "Paused",
@@ -295,6 +317,7 @@
     "quitLesson": "Quit lesson",
     "quitPractice": "Quit practice",
     "note": "The count-in plays again when you resume.",
+    "interrupted": "The sound was interrupted. Resume to carry on from this bar.",
     "resume": "Resume",
     "esc": "Esc",
     "question": "?"
@@ -319,6 +342,9 @@
     "staffLabel": "The exercise with every note colored by judgment. {rhythm}",
     "timing": "Timing and length",
     "timingLegend": "gray = note · color = your hold",
+    "tapTiming": "Timing",
+    "tapTimingLegend": "gray = note · mark = your tap",
+    "extraLegend": "red outline = extra tap",
     "listen": "Listen",
     "playing": "Playing",
     "listenTitle": "Hear the correct rhythm",

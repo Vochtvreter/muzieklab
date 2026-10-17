@@ -1,7 +1,7 @@
 /** Small shared pieces: lesson tiles, the staff with a safety net, the tap pad, the beat counter. */
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import type { Meter, NotatedBar } from '../../core/api';
-import type { Unit } from '../../game/path';
+import { isUnlocked, type Unit } from '../../game/path';
 import type { Progress } from '../../game/storage';
 import { Staff, type NoteMark } from '../../render/Staff';
 import { t } from '../../i18n';
@@ -9,8 +9,17 @@ import { starsText } from '../lib/format';
 import { lessonStars, tileStates } from '../lib/lessons';
 import { ErrorBoundary } from './ErrorBoundary';
 
-/** The 7.1–7.5 strip. `onFill`: on the slate Continue card (phone, tablet); otherwise on paper (desktop). */
-export function LessonTiles({ unit, progress, currentId, onFill }: { unit: Unit; progress: Progress; currentId: string | null; onFill: boolean }): JSX.Element {
+/**
+ * The 7.1–7.5 strip. `onFill`: on the slate Continue card (phone, tablet); otherwise on paper (desktop).
+ * With `onPick`, unlocked lessons are buttons that start that lesson (replay one for more stars).
+ */
+export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
+  unit: Unit;
+  progress: Progress;
+  currentId: string | null;
+  onFill: boolean;
+  onPick?: (lessonId: string) => void;
+}): JSX.Element {
   const states = tileStates(progress, unit, currentId);
   return (
     <div className={'tiles' + (onFill ? ' tiles--fill' : ' tiles--paper')} style={{ gridTemplateColumns: `repeat(${unit.lessons.length}, minmax(0, 1fr))` }}>
@@ -19,6 +28,16 @@ export function LessonTiles({ unit, progress, currentId, onFill }: { unit: Unit;
         const st = states[i];
         const shown = Math.min(3, n);
         const aria = st === 'current' ? (n ? t('tile.nextStars', { count: shown }) : t('tile.next')) : st === 'done' ? t('tile.done', { count: shown }) : t('tile.notStarted');
+        if (onPick && isUnlocked(progress, l.id)) {
+          return (
+            <button key={l.id} type="button" className={'tile tile--' + st + ' tile--btn'} aria-label={t('tile.play', { id: l.id, state: aria })} onClick={() => onPick(l.id)}>
+              <span className="tile-id" aria-hidden="true">{l.id}</span>
+              <span className="tile-stars" aria-hidden="true">
+                {starsText(n)}
+              </span>
+            </button>
+          );
+        }
         return (
           <span key={l.id} className={'tile tile--' + st}>
             <span className="tile-id">{l.id}</span>

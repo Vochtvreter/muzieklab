@@ -62,8 +62,9 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
 **Flow**
 
 1. **Preview** — the exercise is shown. Optional *"Listen first"* button plays it once.
-2. **Count-in** — one bar of metronome clicks (configurable 0–2 bars) with big
-   on-screen counts "1 – 2 – 3 – 4".
+2. **Count-in** — one bar of metronome clicks (configurable: silent, 1 or 2 bars) with big
+   on-screen counts "1 – 2 – 3 – 4". *Silent* keeps the bar and the counts, without clicks,
+   so the first note never comes without warning.
 3. **Play** — a cursor sweeps across the notation in time. The player presses on every
    note and holds it for its length. Rests = nothing pressed. Tied notes = press once and
    keep holding through the tied note (the tie continues the sound, no new onset — an
@@ -90,7 +91,9 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
 
 - Desktop: **any key** (except Esc = pause) or mouse button: `keydown` = press,
   `keyup` = release. Key auto-repeat events are ignored. If several keys are down, the
-  hold lasts until the last one is released.
+  hold lasts until the last one is released. A key (or finger) going down while another is
+  held starts a new press, so rolling two fingers over fast notes works; within 50 ms of the
+  held press it counts as the same press (a chord).
 - Mobile: a large **tap pad** in the bottom half of the screen: `pointerdown` = press,
   `pointerup` / `pointercancel` = release. The pad captures the pointer
   (`setPointerCapture`), so sliding off the pad does not end the hold.
@@ -283,7 +286,7 @@ regenerates as you change things, plus a difficulty meter.
 | **Bars** | 1 – 16 (stepper) | 4 |
 | **Tempo** | 40 – 200 BPM (slider) + presets (Largo 50, Adagio 70, Andante 90, Moderato 112, Allegro 132); the slider shows the tempo word for the current range (§14) | 80 |
 | **Metronome during play** | on / accent first beat only / off | on |
-| **Count-in** | 0 / 1 / 2 bars | 1 |
+| **Count-in** | silent / 1 / 2 bars (silent = one bar with only the on-screen count, no clicks) | 1 |
 | **Density** | sparse · balanced · busy (bias toward longer or shorter values) | balanced |
 | **Rest amount** | few · some · many | some |
 
@@ -612,9 +615,13 @@ sourced rule); the values are starting points to tune in playtesting.
 - **Timing and length lane:** the exercise drawn to scale (two bars per row): every note's
   length in gray, the player's hold on top in color, starting where they pressed. Early or
   late presses show as a shifted start; cut-short notes show a dashed outline for the part
-  that was not held; misses show ×.
-- Tendency + steadiness, one-line coaching tip (it names the worst hold problem first,
-  e.g. "You let go of the dotted quarter in bar 2 too early").
+  that was not held; misses show ×; taps that matched no note show as a red outline.
+  In tap-only exercises a press is a short mark where it landed (holding does not count).
+- Tendency + steadiness, one-line coaching tip. When misses and extra taps add up to a
+  quarter or more of the notes, it names that first: timing advice is
+  beside the point when the player lost their place. Otherwise it names the worst hold
+  problem first, e.g. "You let go of the dotted quarter in bar 2 too early", then the
+  tendency (only from 4+ hit notes).
 - Buttons: **Retry** (same exercise) · **Next** (new exercise, same settings) · **Listen**
   (correct playback) · **Settings**.
 
@@ -669,7 +676,8 @@ Each unit offers both *Tap* and *Dictation* lessons.
 
 - **XP** = base × difficulty × accuracy (+ bonus for no replays, max combo, 3 stars).
 - **Levels / ranks** (e.g. *Tick → Count → Measure → Groove → Metronome → Maestro*).
-- **Streak** of practice days (a daily challenge or any 3 exercises keeps it).
+- **Streak** of practice days. MVP: one finished exercise with at least one note hit keeps it
+  (as the Home card says); later a daily challenge or any 3 exercises.
 - **Daily Challenge** (date-seeded, same for everyone).
 - **Achievements**: *Perfect bar*, *50 perfect taps in a row*, *First sixteenths*,
   *No replays needed*, *Played at 160 BPM*, *7-day streak*, …

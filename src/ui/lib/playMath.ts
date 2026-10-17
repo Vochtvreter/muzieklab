@@ -78,9 +78,12 @@ export function cursorAt(notes: TimedNote[], t: number, totalSeconds: number, lo
   return idx;
 }
 
-/** "So far" accuracy while playing, from the starts judged up to now (holds are added in the final result). */
-export function liveAccuracy(judged: Judgement[], extraTaps: number): number {
-  if (judged.length === 0) return 100;
+/**
+ * "So far" accuracy while playing, from the starts judged up to now (holds are added in the final result).
+ * null before anything was judged or tapped: there is no score yet (shown as a dash, not 100%).
+ */
+export function liveAccuracy(judged: Judgement[], extraTaps: number): number | null {
+  if (judged.length === 0) return extraTaps > 0 ? 0 : null;
   const pts = judged.reduce((s, j) => s + POINTS[j], 0) + extraTaps * EXTRA_TAP_POINTS;
   return Math.max(0, Math.round(pts / judged.length));
 }
