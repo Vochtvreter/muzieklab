@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { DEFAULT_NOTE_SETTINGS } from '../core/noteRound';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import {
   DEFAULT_PREFS,
@@ -57,9 +58,17 @@ describe('prefs and progress storage', () => {
       xp: 1445,
       daily: { day: '2026-10-17', stars: 3, accuracy: 91.5 },
       dailyBest: 94,
+      notes: { settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G', 'Eb'], mixKeys: true }, weak: { 'treble:38': 3, 'bass:21': 1 } },
+      learnRead: ['8.1', '8.2'],
     };
     saveProgress(progress);
     expect(loadProgress()).toEqual(progress);
+  });
+
+  it('keeps valid Read notes weak spots and Learn sections only', () => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ notes: { weak: { 'treble:38': 9, 'alto:20': 2, 'bass:21': 0, x: 1 } }, learnRead: ['8.1', 'x', '8.1'] }));
+    expect(loadProgress().notes).toEqual({ settings: null, weak: { 'treble:38': 5 } });
+    expect(loadProgress().learnRead).toEqual(['8.1']);
   });
 
   it('reads an all-perfect 4 saved before the diamond as the diamond', () => {

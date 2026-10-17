@@ -15,3 +15,5 @@ export { valueKey, restKey } from './values';
 export { encodeCode, decodeCode } from './code';
 export type { CoachTip } from './coach';
 export * from './types';
+export * from './pitch';
+export * from './noteRound';

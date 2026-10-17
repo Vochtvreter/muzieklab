@@ -1,6 +1,6 @@
 /** Small, pure formatting helpers for the screens. Text always comes from the i18n catalog. */
 import { t } from '../../i18n';
-import { DIAMOND, MAX_STARS, SHOWN_STARS, type MeterId, type Settings } from '../../core/api';
+import { DIAMOND, MAX_STARS, SHOWN_STARS, type MeterId } from '../../core/api';
 
 /** Tempo word for a BPM (the setup slider label, DESIGN.md §4): a message key under `tempo.`. */
 export function tempoWordKey(bpm: number): string {
@@ -53,11 +53,6 @@ export function starsLabel(stars: number): string {
 export function metersLabel(meters: MeterId[]): string {
   const order: MeterId[] = ['2/4', '3/4', '4/4'];
   return order.filter((m) => meters.includes(m)).join(' · ');
-}
-
-/** The "Last time" chips on Home: meters, bars, tempo. */
-export function lastTimeChips(s: Settings): string[] {
-  return [metersLabel(s.meters), t('common.bars', { count: s.bars }), t('common.bpm', { value: s.tempo })];
 }
 
 /** Translated list "a, b or c" from message keys. */

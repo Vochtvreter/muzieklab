@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Muzieklab',
         short_name: 'Muzieklab',
-        description: 'Practise reading and tapping rhythms.',
+        description: 'Practise reading and tapping rhythms, and reading notes.',
         lang: 'en',
         start_url: './',
         scope: './',

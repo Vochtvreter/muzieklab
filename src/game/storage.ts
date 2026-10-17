@@ -1,6 +1,7 @@
 import type { Leniency, MeterId, NoteValue, Settings, Stars } from '../core/types';
 import { DIAMOND, METER_IDS, MODES, NOTE_VALUES } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
+import { MAX_WEAK, parseNoteId, sanitizeNoteSettings, type NoteSettings, type WeakSpots } from '../core/noteRound';
 import type { Volumes } from '../audio/engine';
 
 export interface Prefs {
@@ -18,6 +19,10 @@ export interface Prefs {
   holdMode: 'hold' | 'tap';
   /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */
   metronomeLook: 'digital' | 'analog';
+  /** Read notes: the name buttons show do re mi (fixed do) or letters. */
+  noteNames: 'solfege' | 'letters';
+  /** Read notes: the piano keys' labels. */
+  pianoLabels: 'letters' | 'solfege' | 'off';
 }
 
 export interface LessonProgress {
@@ -41,6 +46,10 @@ export interface Progress {
   daily: DailyProgress | null;
   /** Best accuracy on any daily challenge so far (0 before the first). */
   dailyBest: number;
+  /** Read notes: the setup as last edited, and the weak spots per note (§3.5 spaced repetition). */
+  notes: { settings: NoteSettings | null; weak: WeakSpots };
+  /** Learn sections read, e.g. "8.2". */
+  learnRead: string[];
 }
 
 /** Versioned keys: a future format gets a new key (and may migrate from the old one). */
@@ -59,15 +68,26 @@ export const DEFAULT_PREFS: Prefs = {
   seenEchoHowTo: false,
   holdMode: 'hold',
   metronomeLook: 'digital',
+  noteNames: 'solfege',
+  pianoLabels: 'letters',
 };
 
 export function defaultProgress(): Progress {
-  return { lessons: {}, practiceDays: [], lastSettings: null, xp: 0, daily: null, dailyBest: 0 };
+  return { lessons: {}, practiceDays: [], lastSettings: null, xp: 0, daily: null, dailyBest: 0, notes: { settings: null, weak: {} }, learnRead: [] };
 }
 
 /** True when nothing has been earned or saved yet (storage can then be cleared). */
 export function isEmptyProgress(p: Progress): boolean {
-  return p.practiceDays.length === 0 && Object.keys(p.lessons).length === 0 && !p.lastSettings && p.xp === 0 && !p.daily;
+  return (
+    p.practiceDays.length === 0 &&
+    Object.keys(p.lessons).length === 0 &&
+    !p.lastSettings &&
+    p.xp === 0 &&
+    !p.daily &&
+    !p.notes.settings &&
+    Object.keys(p.notes.weak).length === 0 &&
+    p.learnRead.length === 0
+  );
 }
 
 // --- validation helpers: keep what is valid, fall back to the default for the rest ----------
@@ -123,6 +143,8 @@ export function sanitizePrefs(raw: unknown): Prefs {
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
+    noteNames: oneOf(raw.noteNames, ['solfege', 'letters'] as const, d.noteNames),
+    pianoLabels: oneOf(raw.pianoLabels, ['letters', 'solfege', 'off'] as const, d.pianoLabels),
   };
 }
 
@@ -178,7 +200,23 @@ export function sanitizeProgress(raw: unknown): Progress {
     xp: Math.floor(num(raw.xp, 0, 0, 1e9)),
     daily,
     dailyBest: num(raw.dailyBest, 0, 0, 100),
+    notes: sanitizeNotes(raw.notes),
+    learnRead: Array.isArray(raw.learnRead)
+      ? [...new Set(raw.learnRead.filter((x): x is string => typeof x === 'string' && /^\d{1,2}\.\d{1,2}$/.test(x)))]
+      : [],
   };
+}
+
+function sanitizeNotes(raw: unknown): Progress['notes'] {
+  if (!isObj(raw)) return { settings: null, weak: {} };
+  const weak: WeakSpots = {};
+  if (isObj(raw.weak)) {
+    for (const [id, w] of Object.entries(raw.weak)) {
+      const v = Math.round(num(w, 0, 0, MAX_WEAK));
+      if (v > 0 && parseNoteId(id)) weak[id] = v;
+    }
+  }
+  return { settings: sanitizeNoteSettings(raw.settings), weak };
 }
 
 export function loadPrefs(): Prefs {

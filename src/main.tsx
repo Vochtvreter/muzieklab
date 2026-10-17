@@ -26,6 +26,7 @@ import '@fontsource/noto-music/music-400.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/app.css';
+import './styles/notes.css';
 
 setLocale('en');
 

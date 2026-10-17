@@ -47,6 +47,17 @@
   --gold: #b7791f;
   --gold-ink: #9a6a10;
   --miss: #c23b3b;
+  /* Answer feedback fills (Read notes, Learn checks) */
+  --good-soft: #e3f2ea;
+  --good-ink: #176c47;
+  --miss-soft: #fbe4e4;
+  --miss-ink: #a12f2f;
+  /* Pianos keep piano colours in both themes (§9): light keys, near-black black keys */
+  --piano-white: #ffffff;
+  --piano-white-edge: #c9d2d1;
+  --piano-white-label: #5a6667;
+  --piano-black: #161b1c;
+  --piano-black-label: #9aa5a5;
   /* Notation and length lane (render/theme.ts) */
   --slate: #2f6669;
   --staff: #9aa5a5;
@@ -129,6 +140,15 @@
     --gold: #f0b429;
     --gold-ink: #f0c35a;
     --miss: #ff6b6b;
+    --good-soft: #15301f;
+    --good-ink: #7ad9a8;
+    --miss-soft: #3a1c1c;
+    --miss-ink: #ff9a9a;
+    --piano-white: #e8eeed;
+    --piano-white-edge: #9aa7a7;
+    --piano-white-label: #3d4849;
+    --piano-black: #0b0e0f;
+    --piano-black-label: #9aa5a5;
     --slate: #8fbfc1;
     --staff: #5d6a6b;
     --lane-note: #222a2b;
@@ -177,6 +197,15 @@
   --gold: #f0b429;
   --gold-ink: #f0c35a;
   --miss: #ff6b6b;
+  --good-soft: #15301f;
+  --good-ink: #7ad9a8;
+  --miss-soft: #3a1c1c;
+  --miss-ink: #ff9a9a;
+  --piano-white: #e8eeed;
+  --piano-white-edge: #9aa7a7;
+  --piano-white-label: #3d4849;
+  --piano-black: #0b0e0f;
+  --piano-black-label: #9aa5a5;
   --slate: #8fbfc1;
   --staff: #5d6a6b;
   --lane-note: #222a2b;

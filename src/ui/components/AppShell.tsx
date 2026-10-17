@@ -11,6 +11,7 @@ import { Icon, type IconName } from './Icon';
 const ITEMS: { to: Route; key: string; icon: IconName }[] = [
   { to: '/', key: 'nav.home', icon: 'home' },
   { to: '/path', key: 'nav.path', icon: 'path' },
+  { to: '/learn', key: 'nav.learn', icon: 'book' },
   { to: '/settings', key: 'nav.settings', icon: 'sliders' },
 ];
 
