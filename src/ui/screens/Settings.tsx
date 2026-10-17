@@ -1,13 +1,14 @@
-/** Settings: sound, timing (calibrate, leniency), playing (input), display (theme), about (version, offline, reset). */
+/** Settings: sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about (version, offline, reset). */
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Leniency } from '../../core/api';
 import type { Prefs } from '../../game/storage';
 import { formatShortDate, t } from '../../i18n';
 import { applyAudioPrefs } from '../audio';
 import { AppShell } from '../components/AppShell';
+import { AnalogMetronome, BeatRow } from '../components/Bits';
 import { Segmented, SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
-import { useBreakpoint, useDocTitle } from '../hooks';
+import { useBreakpoint, useDocTitle, useReducedMotion } from '../hooks';
 import { signedMs } from '../lib/format';
 import { Link } from '../router';
 import { useStore } from '../store';
@@ -95,6 +96,15 @@ export function SettingsScreen(): JSX.Element {
                 { value: 'light', label: t('settings.themeLight') },
                 { value: 'dark', label: t('settings.themeDark') },
               ]} first />
+            <SegRow label={t('settings.metronomeLook')} group={t('settings.metronomeLookGroup')} value={prefs.metronomeLook}
+              onChange={(v: Prefs['metronomeLook']) => set({ metronomeLook: v })}
+              hint={t(prefs.metronomeLook === 'analog' ? 'settings.hintAnalog' : 'settings.hintDigital')}
+              options={[
+                { value: 'digital', label: t('settings.lookDigital') },
+                { value: 'analog', label: t('settings.lookAnalog') },
+              ]}>
+              <LookPreview look={prefs.metronomeLook} />
+            </SegRow>
           </Section>
 
           <Section id="about" title={t('settings.about')}>
@@ -196,9 +206,11 @@ interface SegRowProps<T extends string> {
   onChange(v: T): void;
   hint: string;
   first?: boolean;
+  /** Shown under the hint, e.g. a preview of the choice. */
+  children?: ReactNode;
 }
 
-function SegRow<T extends string>({ label, group, value, options, onChange, hint, first }: SegRowProps<T>): JSX.Element {
+function SegRow<T extends string>({ label, group, value, options, onChange, hint, first, children }: SegRowProps<T>): JSX.Element {
   return (
     <div className={'seg-row' + (first ? ' is-first' : '')}>
       <div className="seg-row-line">
@@ -207,6 +219,39 @@ function SegRow<T extends string>({ label, group, value, options, onChange, hint
       </div>
       <span aria-live="polite" className="row-sub">
         {hint}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+const PREVIEW_BPM = 80;
+const PREVIEW_BEATS = 4;
+
+/** Metronome look: the chosen beat counter ticking silently in 4/4 at 80 BPM, as it will look on Play. */
+function LookPreview({ look }: { look: Prefs['metronomeLook'] }): JSX.Element {
+  const still = useReducedMotion();
+  const [at, setAt] = useState(0);
+  useEffect(() => {
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (now: number): void => {
+      setAt(((now - t0) / 1000) * (PREVIEW_BPM / 60));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const active = Math.floor(at + 1e-6) % PREVIEW_BEATS;
+  return (
+    <div className="look-preview" aria-hidden="true">
+      {look === 'analog' ? (
+        <AnalogMetronome beats={PREVIEW_BEATS} active={active} at={at} tempo={PREVIEW_BPM} label="" still={still} />
+      ) : (
+        <BeatRow beats={PREVIEW_BEATS} active={active} label="" />
+      )}
+      <span className="look-preview-tempo">
+        <span className="music">𝅘𝅥</span> {t('play.beatEquals', { bpm: PREVIEW_BPM })}
       </span>
     </div>
   );

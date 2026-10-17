@@ -42,6 +42,8 @@ const AUDIO_START_GRACE_MS = 800;
 export interface Frame {
   tg: number;
   beat: BeatState;
+  /** Beats since the first beat of the exercise, with the fraction (negative in the count-in): drives the pendulum. */
+  beats: number;
   cursor: number | null;
   ring: number;
   held: boolean;
@@ -104,7 +106,7 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
   const [sheet, setSheet] = useState<SheetKind>(!prefs.seenHowTo ? 'help' : gated ? 'ready' : null);
   const [interrupted, setInterrupted] = useState(false);
   const segStartedAt = useRef(0);
-  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, cursor: view.timeline.notes.length ? 0 : null, ring: 0, held: false });
+  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, cursor: view.timeline.notes.length ? 0 : null, ring: 0, held: false });
   const [marks, setMarks] = useState<Record<number, NoteMark>>({});
   const [feedback, setFeedback] = useState<PlaySession['feedback']>(null);
   const [combo, setCombo] = useState(0);
@@ -195,7 +197,7 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     const beat = beatAt(ts, view.timeline.beatSeconds, meter.beatsPerBar, s.countInBeats, s.timeline.totalSeconds);
     const cursor = ts < 0 ? (s.timeline.notes.length ? s.firstIndex : null) : cursorAt(view.timeline.notes, tg, view.timeline.totalSeconds);
     const cur = current.current;
-    setFrame({ tg, beat, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current });
+    setFrame({ tg, beat, beats: view.timeline.beatSeconds > 0 ? ts / view.timeline.beatSeconds : 0, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current });
     const over = ts - s.timeline.totalSeconds;
     if ((over > END_GRACE_S && !cur) || over > END_HARD_S) {
       finish();
