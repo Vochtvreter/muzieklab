@@ -10,13 +10,13 @@ const NORMAL: JudgeOptions = { hold: true, leniency: 'normal' };
 const quarters = (): Timeline => buildTimeline(makeExercise('4/4', [[[48, 'n'], [48, 'n'], [48, 'n'], [48, 'r']]], {}, 60));
 
 describe('judge', () => {
-  it('gives perfect synthetic taps 100% and 3 stars (property over random exercises)', () => {
+  it('gives perfect synthetic taps 100% and the hidden 4th star (property over random exercises)', () => {
     fc.assert(
       fc.property(settingsArb, seedArb, fc.boolean(), (s, seed, hold) => {
         const tl = buildTimeline(generateExercise(s, seed));
         const r = judge(tl, perfectTaps(tl), { hold, leniency: 'normal' });
         expect(r.accuracy).toBe(100);
-        expect(r.stars).toBe(3);
+        expect(r.stars).toBe(4);
         expect(r.counts.perfect).toBe(tl.notes.length);
         expect(r.extraTaps).toBe(0);
         expect(r.combo).toBe(tl.notes.length);
@@ -113,6 +113,31 @@ describe('judge', () => {
     const nearlyAll = judge(tl, [], NORMAL);
     expect(nearlyAll.accuracy).toBe(0);
     expect(nearlyAll.stars).toBe(0);
+  });
+
+  it('gives 3 stars for the rhythm right with mostly good timing, the 4th only for a flawless run (§6.3)', () => {
+    const tl = quarters();
+    const at = (offsetsMs: number[], hold = false) =>
+      judge(tl, tl.notes.map((n, i) => ({ down: n.onset + offsetsMs[i] / 1000, up: n.end - 0.05 })), { hold, leniency: 'normal' });
+    expect(at([0, 0, 0]).stars).toBe(4);
+    expect(at([0, 0, 0], true).stars).toBe(4);
+    // One Great: 290 / 300 = 96.7%. All Great: 90%.
+    expect(at([0, 50, 0]).stars).toBe(3);
+    expect(at([50, -50, 50]).stars).toBe(2);
+    // Perfect + Great + Good: 260 / 300 = 86.7%, the rhythm right but loose.
+    expect(at([0, 50, 100]).stars).toBe(2);
+    // A wrong hold or an extra tap takes the 4th star, not the 3rd.
+    const taps = perfectTaps(tl);
+    taps[2] = { down: 2, up: 2.4 }; // cut short: 280 / 300
+    expect(judge(tl, taps, NORMAL).stars).toBe(3);
+    const long = buildTimeline(makeExercise('4/4', Array.from({ length: 4 }, () => [[48, 'n'], [48, 'n'], [48, 'n'], [48, 'n']] as [number, 'n'][]), {}, 60));
+    const extra = judge(long, [...perfectTaps(long), { down: 3.5, up: 3.6 }], NORMAL);
+    expect(extra.extraTaps).toBe(1);
+    expect(extra.stars).toBe(3);
+    // A miss is a rhythm error: never 3 stars, even with high accuracy.
+    const missOne = judge(long, perfectTaps(long).filter((_, i) => i !== 5), { hold: false, leniency: 'normal' });
+    expect(missOne.accuracy).toBeGreaterThanOrEqual(92);
+    expect(missOne.stars).toBe(2);
   });
 });
 

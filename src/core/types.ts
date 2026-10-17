@@ -128,13 +128,16 @@ export interface JudgeOptions {
   leniency: Leniency; // strict ×0.75, normal ×1, relaxed ×1.5 on the windows
 }
 
+/** 0–3 stars, plus a hidden 4th for an all-Perfect run (every start Perfect, every hold right, no extra taps). */
+export type Stars = 0 | 1 | 2 | 3 | 4;
+
 export interface JudgeResult {
   notes: NoteResult[];
   extraTaps: number;
   points: number;
   maxPoints: number;
   accuracy: number; // 0–100
-  stars: 0 | 1 | 2 | 3;
+  stars: Stars;
   combo: number; // running, at the end
   maxCombo: number;
   counts: Record<Judgement, number>;

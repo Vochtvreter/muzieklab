@@ -26,7 +26,8 @@ export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
       {unit.lessons.map((l, i) => {
         const n = lessonStars(progress, l.id);
         const st = states[i];
-        const aria = st === 'current' ? (n ? t('tile.nextStars', { count: n }) : t('tile.next')) : st === 'done' ? t('tile.done', { count: n }) : t('tile.notStarted');
+        const shown = Math.min(3, n);
+        const aria = st === 'current' ? (n ? t('tile.nextStars', { count: shown }) : t('tile.next')) : st === 'done' ? t('tile.done', { count: shown }) : t('tile.notStarted');
         if (onPick && isUnlocked(progress, l.id)) {
           return (
             <button key={l.id} type="button" className={'tile tile--' + st + ' tile--btn'} aria-label={t('tile.play', { id: l.id, state: aria })} onClick={() => onPick(l.id)}>

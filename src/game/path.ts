@@ -146,10 +146,10 @@ export function nextLesson(progress: Progress): Lesson | null {
   return ALL_LESSONS.find((x) => starsOf(progress, x.lesson.id) < UNLOCK_STARS)?.lesson ?? null;
 }
 
-/** Stars earned in a unit (max 3 per lesson). */
+/** Stars earned in a unit (max 3 per lesson: the hidden all-perfect star is a bonus, not part of the total). */
 export function unitStars(progress: Progress, unitId: number): number {
   const u = UNITS.find((x) => x.id === unitId);
-  return u ? u.lessons.reduce((sum, l) => sum + starsOf(progress, l.id), 0) : 0;
+  return u ? u.lessons.reduce((sum, l) => sum + Math.min(3, starsOf(progress, l.id)), 0) : 0;
 }
 
 /** Stars over the whole path, for the "79 / 120 ★" header. */

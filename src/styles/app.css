@@ -1118,6 +1118,9 @@ button.lesson-stars:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.unit-stars .star-bonus {
+  margin-left: 2px;
+}
 .unit-sub {
   display: flex;
   align-items: center;
@@ -2014,13 +2017,46 @@ button.lesson-stars:hover {
 }
 .score-stars {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  align-items: center;
   font-size: 34px;
   line-height: 1;
   color: var(--rule-strong);
 }
+.score-stars-row {
+  display: flex;
+  gap: 8px;
+}
 .score-stars .is-on {
   color: var(--reward);
+}
+/* The hidden all-perfect star: the three shrink into an arc over one big star that pops in. */
+.score-stars--bonus .score-stars-row {
+  gap: 8px;
+  font-size: 22px;
+}
+.score-stars--bonus .score-stars-row > :first-child {
+  transform: translateY(15px) rotate(-26deg);
+}
+.score-stars--bonus .score-stars-row > :last-child {
+  transform: translateY(15px) rotate(26deg);
+}
+.score-stars .is-bonus {
+  margin-top: -2px;
+  font-size: 64px;
+  text-shadow: 0 0 0.18em var(--reward-soft);
+  animation: star-pop 560ms cubic-bezier(0.2, 1.4, 0.4, 1) 200ms both;
+}
+@keyframes star-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3) rotate(-40deg);
+  }
+}
+.score-bonus {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--reward-ink);
 }
 .score-pct {
   font-family: var(--font-display);

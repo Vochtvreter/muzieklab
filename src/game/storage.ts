@@ -1,4 +1,4 @@
-import type { Leniency, MeterId, NoteValue, Settings } from '../core/types';
+import type { Leniency, MeterId, NoteValue, Settings, Stars } from '../core/types';
 import { METER_IDS, NOTE_VALUES } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import type { Volumes } from '../audio/engine';
@@ -17,7 +17,7 @@ export interface Prefs {
 }
 
 export interface LessonProgress {
-  stars: 0 | 1 | 2 | 3;
+  stars: Stars;
   bestAccuracy: number;
 }
 
@@ -131,7 +131,7 @@ export function sanitizeProgress(raw: unknown): Progress {
   if (isObj(raw.lessons)) {
     for (const [id, l] of Object.entries(raw.lessons)) {
       if (!isObj(l)) continue;
-      lessons[id] = { stars: oneOf(l.stars, [0, 1, 2, 3] as const, 0), bestAccuracy: num(l.bestAccuracy, 0, 0, 100) };
+      lessons[id] = { stars: oneOf(l.stars, [0, 1, 2, 3, 4] as const, 0), bestAccuracy: num(l.bestAccuracy, 0, 0, 100) };
     }
   }
   const days = Array.isArray(raw.practiceDays)
