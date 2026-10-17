@@ -2118,7 +2118,23 @@ button.lesson-stars:hover {
 .score-stars .is-on {
   color: var(--reward);
 }
-/* The diamond (all perfect): one big star in place of the four, popping in. */
+/* The 4th star: the three shrink into a small arc over one big star that pops in. */
+.score-stars--bonus .score-stars-row {
+  font-size: 22px;
+}
+.score-stars--bonus .score-stars-row > :first-child {
+  transform: translateY(12px) rotate(-20deg);
+}
+.score-stars--bonus .score-stars-row > :last-child {
+  transform: translateY(12px) rotate(20deg);
+}
+.score-stars .is-bonus {
+  margin-top: -2px;
+  font-size: 61px;
+  text-shadow: 0 0 0.18em var(--reward-soft);
+  animation: star-pop 560ms cubic-bezier(0.2, 1.4, 0.4, 1) 200ms both;
+}
+/* The diamond (all perfect): one big star in place of the others, popping in. */
 .score-stars--diamond .diamond-star {
   font-size: 64px;
   animation: star-pop 560ms cubic-bezier(0.2, 1.4, 0.4, 1) 200ms both;
