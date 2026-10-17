@@ -20,6 +20,25 @@ npm run build      # type check + production build in dist/
 On a computer any key is the tap pad; on a phone, tap the pad on screen. Run
 Settings → Calibrate once per device so the timing scores match what you hear.
 
+## Deploy
+
+`.github/workflows/deploy.yml` tests, builds and publishes the app to GitHub Pages on every push to `main`
+(or by hand: **Actions → Deploy to GitHub Pages → Run workflow**). One-time setup: **Settings → Pages →
+Build and deployment → Source = GitHub Actions**. The app is then live at
+`https://vochtvreter.github.io/muzieklab/`. The build uses a relative base, so it works under any path.
+
+To serve it at `https://vivanova.app/muzieklab/` as well, add this to the vivanova.app server block in nginx and
+reload (`sudo nginx -t && sudo systemctl reload nginx`); every deploy to Pages then shows up there too:
+
+```nginx
+location = /muzieklab { return 301 /muzieklab/; }
+location /muzieklab/ {
+    proxy_pass https://vochtvreter.github.io/muzieklab/;
+    proxy_set_header Host vochtvreter.github.io;
+    proxy_ssl_server_name on;
+}
+```
+
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
