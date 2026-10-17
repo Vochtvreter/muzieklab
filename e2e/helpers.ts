@@ -18,17 +18,18 @@ export async function expectClickable(el: Locator, opts: { scroll?: boolean } = 
   await expect(el).toBeVisible();
   // Off for screens that must fit without scrolling (Play): scripts can scroll overflow: hidden boxes, people cannot.
   if (opts.scroll !== false) await el.scrollIntoViewIfNeeded();
-  const box = await el.boundingBox();
-  expect(box, 'element has a box').not.toBeNull();
-  const vp = el.page().viewportSize()!;
-  const x = box!.x + box!.width / 2;
-  const y = box!.y + box!.height / 2;
-  expect(x >= 0 && x <= vp.width && y >= 0 && y <= vp.height, 'centre is on screen').toBe(true);
-  const hit = await el.evaluate((node, [px, py]) => {
-    const top = document.elementFromPoint(px, py);
-    return !!top && (node === top || node.contains(top));
-  }, [x, y] as const);
-  expect(hit, 'nothing covers the element').toBe(true);
+  // Web fonts that load late reflow the page; measure after them, and measure and hit-test in one step.
+  await el.evaluate(() => document.fonts.ready.then(() => undefined));
+  const probe = (): Promise<string> =>
+    el.evaluate((node) => {
+      const r = node.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      if (x < 0 || x > window.innerWidth || y < 0 || y > window.innerHeight) return 'centre is off screen';
+      const top = document.elementFromPoint(x, y);
+      return top && (node === top || node.contains(top)) ? 'ok' : 'covered by ' + (top ? top.tagName.toLowerCase() + '.' + top.className : 'nothing');
+    });
+  await expect.poll(probe, { message: 'the element is on screen and nothing covers it', timeout: 3000 }).toBe('ok');
 }
 
 /** The box shows all of its content (nothing spills out of a card that was squeezed too small). */
