@@ -61,7 +61,8 @@ export function tx(keyOrText: string, params?: MessageParams): string {
 
 /** Locale-aware short date, e.g. "Oct 12". */
 export function formatShortDate(iso: string): string {
-  const d = new Date(iso);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(d);
 }

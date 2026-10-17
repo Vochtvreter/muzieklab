@@ -1,20 +1,10 @@
 /** Text alternative for the staff (DESIGN.md §11): "Rhythm in 4/4. Bar 1: quarter note, quarter note, half note." */
-import type { MeterId, NotatedBar, NotatedSymbol, NoteValue } from '../../core/api';
+import { restKey, valueKey, type MeterId, type NotatedBar, type NotatedSymbol } from '../../core/api';
 import { t } from '../../i18n';
 
-const CAP: Record<NoteValue, string> = {
-  whole: 'Whole',
-  half: 'Half',
-  quarter: 'Quarter',
-  eighth: 'Eighth',
-  sixteenth: 'Sixteenth',
-};
-
-/** Message key for one symbol, matching the engine's value/rest keys (value.dottedQuarter, rest.eighth, …). */
+/** Message key for one symbol: the engine's value/rest keys (value.dottedQuarter, rest.eighth, …). */
 export function symbolKey(s: NotatedSymbol): string {
-  if (s.kind === 'rest') return s.dots ? 'rest.dotted' + CAP[s.value] : 'rest.' + s.value;
-  if (s.tuplet) return 'value.triplet' + CAP[s.value];
-  return s.dots ? 'value.dotted' + CAP[s.value] : 'value.' + s.value;
+  return s.kind === 'rest' ? restKey(s.value, s.dots) : valueKey(s.value, s.dots, !!s.tuplet);
 }
 
 export function describeSymbol(s: NotatedSymbol): string {
