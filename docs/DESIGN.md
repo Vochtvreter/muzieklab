@@ -91,7 +91,9 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
 
 - Desktop: **any key** (except Esc = pause) or mouse button: `keydown` = press,
   `keyup` = release. Key auto-repeat events are ignored. If several keys are down, the
-  hold lasts until the last one is released.
+  hold lasts until the last one is released. A key (or finger) going down while another is
+  held starts a new press, so rolling two fingers over fast notes works; within 50 ms of the
+  held press it counts as the same press (a chord).
 - Mobile: a large **tap pad** in the bottom half of the screen: `pointerdown` = press,
   `pointerup` / `pointercancel` = release. The pad captures the pointer
   (`setPointerCapture`), so sliding off the pad does not end the hold.
