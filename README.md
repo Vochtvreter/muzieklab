@@ -15,6 +15,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm test           # Vitest, including property tests of the rhythm engine
 npm run build      # type check + production build in dist/
+npm run e2e        # Playwright: layout at every screen size and a full lesson (builds first)
 ```
 
 On a computer any key is the tap pad; on a phone, tap the pad on screen. Run
