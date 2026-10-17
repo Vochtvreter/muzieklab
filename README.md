@@ -27,25 +27,6 @@ Settings → Calibrate once per device so the timing scores match what you hear.
 Build and deployment → Source = GitHub Actions**. The app is then live at
 `https://vochtvreter.github.io/muzieklab/`. The build uses a relative base, so it works under any path.
 
-`.github/workflows/deploy-vivanova.yml` tests, builds and copies the app straight to the vivanova.app server over SSH
-on every push to `main` (or by hand: **Actions → Deploy to vivanova.app → Run workflow**). It needs these repository
-secrets (**Settings → Secrets and variables → Actions**): `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` (the folder
-nginx serves as `/muzieklab/`, ending in `/muzieklab`, e.g. `/var/www/vivanova.app/muzieklab`) and either
-`DEPLOY_SSH_KEY` (preferred) or `DEPLOY_PASSWORD`. If that folder is not under the site's nginx `root`, add
-`location /muzieklab/ { alias <DEPLOY_PATH>/; }` to the vivanova.app server block.
-
-Alternatively, to proxy the Pages build at `https://vivanova.app/muzieklab/`, add this to the vivanova.app server block
-in nginx and reload (`sudo nginx -t && sudo systemctl reload nginx`); every deploy to Pages then shows up there too:
-
-```nginx
-location = /muzieklab { return 301 /muzieklab/; }
-location /muzieklab/ {
-    proxy_pass https://vochtvreter.github.io/muzieklab/;
-    proxy_set_header Host vochtvreter.github.io;
-    proxy_ssl_server_name on;
-}
-```
-
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
