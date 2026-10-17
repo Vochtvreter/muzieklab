@@ -20,13 +20,6 @@ npm run build      # type check + production build in dist/
 On a computer any key is the tap pad; on a phone, tap the pad on screen. Run
 Settings → Calibrate once per device so the timing scores match what you hear.
 
-## Deploy
-
-`.github/workflows/deploy.yml` tests, builds and publishes the app to GitHub Pages on every push to `main`
-(or by hand: **Actions → Deploy to GitHub Pages → Run workflow**). One-time setup: **Settings → Pages →
-Build and deployment → Source = GitHub Actions**. The app is then live at
-`https://vochtvreter.github.io/muzieklab/`. The build uses a relative base, so it works under any path.
-
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
