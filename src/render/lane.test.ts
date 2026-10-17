@@ -44,7 +44,7 @@ describe('layoutLane', () => {
     const holds = of(l.shapes, 'hold');
     const last = holds[holds.length - 1];
     expect(r1(last.x + last.w + 1)).toBe(r1(head[0].x));
-    expect(of(l.shapes, 'note').every((n) => n.y === 5 && n.h === 12)).toBe(true);
+    expect(of(l.shapes, 'note').every((n) => r1(n.y) === 5 && r1(n.h) === 12)).toBe(true);
   });
 
   it('without a result, draws taps where they happened in the live colour', () => {

@@ -12,6 +12,8 @@ export interface Prefs {
   calibrationMs: number; // device offset
   calibratedAt: string | null; // ISO date
   seenHowTo: boolean;
+  /** Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold'. */
+  holdMode: 'hold' | 'tap';
 }
 
 export interface LessonProgress {
@@ -38,6 +40,7 @@ export const DEFAULT_PREFS: Prefs = {
   calibrationMs: 0,
   calibratedAt: null,
   seenHowTo: false,
+  holdMode: 'hold',
 };
 
 export function defaultProgress(): Progress {
@@ -94,6 +97,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     calibrationMs: num(raw.calibrationMs, d.calibrationMs, -500, 500),
     calibratedAt: typeof raw.calibratedAt === 'string' ? raw.calibratedAt : null,
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
+    holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
   };
 }
 

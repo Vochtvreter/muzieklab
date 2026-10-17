@@ -38,10 +38,18 @@
   --gold-star: #c48a12;
 
   /* Feedback */
-  --ok: #1f8a5b; /* perfect / great / held right */
-  --good: #b7791f; /* good, early / late */
-  --good-ink: #9a6a10;
+  --hit: #1f8a5b; /* perfect / great / held right */
+  --early: #b7791f; /* good (early / late), cut-short outline */
+  --early-ink: #9a6a10; /* "GOOD · LATE" text */
   --miss: #c23b3b;
+
+  /* Notation and length lane (names read by src/render/theme.ts) */
+  --good: var(--hit); /* render: perfect / great */
+  --slate: var(--accent);
+  --staff: #9aa5a5;
+  --lane-note: #dde4e3;
+  --lane-grid: #e3e8e7;
+  --lane-bar: #b9c3c2;
 
   /* Raised controls */
   --thumb: #ffffff;
@@ -99,10 +107,14 @@
     --gold-soft: #3a2f14;
     --gold-ink: #f0c35a;
     --gold-star: #f0c35a;
-    --ok: #4cc38a;
-    --good: #f0b429;
-    --good-ink: #f0c35a;
+    --hit: #4cc38a;
+    --early: #f0b429;
+    --early-ink: #f0c35a;
     --miss: #ff6b6b;
+    --staff: #6b7778;
+    --lane-note: #222a2b;
+    --lane-grid: #262e2f;
+    --lane-bar: #4a5657;
     --thumb: #3a4546;
     --thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     --knob: #191f20;
@@ -142,10 +154,14 @@
   --gold-soft: #3a2f14;
   --gold-ink: #f0c35a;
   --gold-star: #f0c35a;
-  --ok: #4cc38a;
-  --good: #f0b429;
-  --good-ink: #f0c35a;
+  --hit: #4cc38a;
+  --early: #f0b429;
+  --early-ink: #f0c35a;
   --miss: #ff6b6b;
+  --staff: #6b7778;
+  --lane-note: #222a2b;
+  --lane-grid: #262e2f;
+  --lane-bar: #4a5657;
   --thumb: #3a4546;
   --thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   --knob: #191f20;
