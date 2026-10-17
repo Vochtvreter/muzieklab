@@ -1,19 +1,25 @@
-/** Results (DESIGN.md §6.4): stars, accuracy, counts, holds, the judged staff, the timing and length lane, a tip. */
+/**
+ * Results (DESIGN.md §6.4): the exercise code, stars, accuracy and XP, the daily challenge's badges, counts, holds, the
+ * judged staff (in Echo the notation's reveal), the timing and length lane, a tip, and the level-up sheet.
+ */
 import { useEffect, useMemo, useState } from 'react';
-import { coachTip, DIAMOND, MAX_STARS, type Judgement } from '../../core/api';
+import { coachTip, DIAMOND, encodeCode, MAX_STARS, type Judgement } from '../../core/api';
+import { levelInfo } from '../../game/xp';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
-import { t, tipText } from '../../i18n';
+import { dateParts, t, tipText } from '../../i18n';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
 import { StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
+import { CodeCopy, LevelUpContent } from '../components/Reward';
+import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
-import { useDocTitle } from '../hooks';
+import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
 import { starsLabel } from '../lib/format';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
-import { useStore } from '../store';
+import { useStore, type LastResult } from '../store';
 import { useReplay } from './start';
 
 const COUNTS: { key: Judgement | 'extra'; tone: string }[] = [
@@ -24,13 +30,32 @@ const COUNTS: { key: Judgement | 'extra'; tone: string }[] = [
   { key: 'extra', tone: 'ink' },
 ];
 
+/** Results whose level-up sheet was shown already: coming back to the screen does not show it again. */
+const levelUpShown = new WeakSet<LastResult>();
+
 export function Results(): JSX.Element | null {
   const { state, dispatch } = useStore();
   const replay = useReplay();
+  const bp = useBreakpoint();
   const [playing, setPlaying] = useState(false);
   useDocTitle(t('app.docTitle', { page: t('results.docTitle') }));
   const last = state.last;
   const view = last ? exerciseView(last.run.exercise) : null;
+
+  const leveledUp = !!last && levelInfo(last.reward.xpAfter).level > levelInfo(last.reward.xpBefore).level;
+  const [levelUp, setLevelUp] = useState<'open' | null>(() => (last && leveledUp && !levelUpShown.has(last) ? 'open' : null));
+  useEffect(() => {
+    if (last && levelUp) levelUpShown.add(last);
+  }, [last, levelUp]);
+  const { shown: levelUpSheet, closing } = useLingering(levelUp, 240);
+  useEffect(() => {
+    if (!levelUp) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setLevelUp(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [levelUp]);
 
   useEffect(() => {
     if (!last || !view) navigate('/', { replace: true });
@@ -84,6 +109,16 @@ export function Results(): JSX.Element | null {
   };
 
   const diamond = result.stars === DIAMOND;
+  const { reward } = last;
+  const echo = ex.settings.mode === 'echo';
+  const title = run.daily
+    ? t('results.dailyDone')
+    : run.lessonId
+      ? t('results.lessonDone', { id: run.lessonId })
+      : echo
+        ? t('results.echoDone')
+        : t('results.practiceDone');
+  const badges = run.daily && (reward.streak !== null || reward.dailyBest);
   const countOf = (k: Judgement | 'extra'): number => (k === 'extra' ? result.extraTaps : result.counts[k]);
 
   return (
@@ -93,8 +128,11 @@ export function Results(): JSX.Element | null {
           <Link to="/" aria-label={t('results.backHome')} className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
-          <h1 className="screen-title">{run.lessonId ? t('results.lessonDone', { id: run.lessonId }) : t('results.practiceDone')}</h1>
+          <h1 className="screen-title">{title}</h1>
         </div>
+        <CodeCopy code={encodeCode(ex.settings, ex.seed)}>
+          {run.daily && <span className="muted-text">{t('results.dailySub', { date: dateParts(run.daily).short })}</span>}
+        </CodeCopy>
 
         <div className="score">
           {/* A flawless run shows one big diamond star in place of the four (§6.3). */}
@@ -115,8 +153,27 @@ export function Results(): JSX.Element | null {
           </div>
           {diamond && <div className="score-bonus">{t('results.allPerfect')}</div>}
           <div className="score-pct">{t('results.accuracy', { value: Math.round(result.accuracy) })}</div>
-          <div className="muted-text score-sub">{t('results.summary', { combo: result.maxCombo })}</div>
+          <div className="muted-text score-sub">
+            {t('results.summary', { combo: result.maxCombo })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
+          </div>
         </div>
+
+        {badges && (
+          <div className="badges">
+            {reward.streak !== null && (
+              <span className="badge">
+                <span className="streak-dot" aria-hidden="true" />
+                {t('results.streakKept', { count: reward.streak })}
+              </span>
+            )}
+            {reward.dailyBest && (
+              <span className="badge badge--gold" title={t('results.newBestTitle')}>
+                <Icon name="trophy" size={15} />
+                {t('results.newBest')}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="card counts-card">
           <div className="counts">
@@ -138,7 +195,7 @@ export function Results(): JSX.Element | null {
 
         <div className="card results-staff">
           <StaffBox bars={view.bars} meter={ex.meter} barsPerRow={2} marks={marks}
-            label={t('results.staffLabel', { rhythm: describeBars(view.bars, ex.meter.id) })} />
+            label={t(echo ? 'results.echoStaffLabel' : 'results.staffLabel', { rhythm: describeBars(view.bars, ex.meter.id) })} />
         </div>
 
         <div className="card results-lane">
@@ -172,15 +229,20 @@ export function Results(): JSX.Element | null {
             </Link>
           </div>
           <div className="results-main">
-            <button type="button" className="btn btn--outline" onClick={() => replay(ex, run.lessonId, true)}>
+            <button type="button" className="btn btn--outline" onClick={() => replay(run, true)}>
               {t('results.retry')}
             </button>
-            <button type="button" className="btn btn--accent" onClick={() => replay(ex, run.lessonId, false)}>
+            <button type="button" className="btn btn--accent" onClick={() => replay(run, false)}>
               {t('results.next')}
             </button>
           </div>
         </div>
       </div>
+      {levelUpSheet && (
+        <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="levelup" labelledBy="leveluptitle" maxWidth={bp === 'desktop' ? 460 : undefined}>
+          <LevelUpContent xpBefore={reward.xpBefore} xpAfter={reward.xpAfter} onDone={() => setLevelUp(null)} />
+        </Sheet>
+      )}
     </ExerciseFrame>
   );
 }

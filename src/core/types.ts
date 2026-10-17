@@ -26,8 +26,13 @@ export type Density = 'sparse' | 'balanced' | 'busy';
 export type RestAmount = 'few' | 'some' | 'many';
 export type Leniency = 'strict' | 'normal' | 'relaxed';
 
-/** Practice settings (§4). Only the Tap mode is in the MVP. */
+/** Tap: read and tap the notation. Echo: hear the rhythm and tap it back with the notation hidden (§3.3). */
+export type Mode = 'tap' | 'echo';
+export const MODES: Mode[] = ['tap', 'echo'];
+
+/** Practice settings (§4). */
 export interface Settings {
+  mode: Mode;
   hold: boolean; // tap & hold (true) or tap only
   meters: MeterId[];
   notes: NoteValue[];

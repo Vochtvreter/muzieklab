@@ -12,5 +12,6 @@ export { judge, createLiveJudge, POINTS, EXTRA_TAP_POINTS } from './judge';
 export type { LiveJudge, LivePress } from './judge';
 export { coachTip } from './coach';
 export { valueKey, restKey } from './values';
+export { encodeCode, decodeCode } from './code';
 export type { CoachTip } from './coach';
 export * from './types';

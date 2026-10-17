@@ -731,6 +731,19 @@ engine and screens:
 - **Echo mode:** Play with the notation hidden until it has been tapped back.
 - **Dark theme:** generated from the light screens by colour role.
 
+Built in v0.2 (dark theme was already in the MVP):
+- **Daily challenge** (`game/daily.ts`): the date picks one of eight mid-path presets, a tempo (72–104) and 4 or 8 bars,
+  then the seed. The day's first finish earns 20 bonus XP; Results shows *Streak kept* and *New personal best* (best
+  daily accuracy so far). Next after a daily is free practice with the same settings.
+- **XP and levels** (`game/xp.ts`): XP = bars × (4 + difficulty) × accuracy, + 5 / 10 / 20 for 3 / 4 stars / the
+  diamond; nothing when no note was hit. Level *n* takes 100 + 50 (*n* − 1) XP. Ranks start at levels 1, 3, 5, 8, 12
+  and 16: Tick, Count, Measure, Groove, Metronome, Maestro.
+- **Exercise codes** (`core/code.ts`): `T44-HQE-RQ-4B-120-7K2QF` = mode and meters, notes, rests, bars, tempo, optional
+  `X` flags for settings off their default, and the seed in Crockford base 32. Shown on Results with Copy; entering a
+  code is still later.
+- **Echo mode:** a Tap · Echo switch on Practice setup. Play first shows a listen card (two plays), then the normal
+  Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
+
 **v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Three things
 change in the app:
 - The tab bar becomes Home · Path · Learn · Settings.

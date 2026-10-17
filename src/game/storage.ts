@@ -1,5 +1,5 @@
 import type { Leniency, MeterId, NoteValue, Settings, Stars } from '../core/types';
-import { DIAMOND, METER_IDS, NOTE_VALUES } from '../core/types';
+import { DIAMOND, METER_IDS, MODES, NOTE_VALUES } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import type { Volumes } from '../audio/engine';
 
@@ -12,6 +12,8 @@ export interface Prefs {
   calibrationMs: number; // device offset
   calibratedAt: string | null; // ISO date
   seenHowTo: boolean;
+  /** The Echo mode's How to play was shown once. */
+  seenEchoHowTo: boolean;
   /** Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold'. */
   holdMode: 'hold' | 'tap';
   /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */
@@ -23,10 +25,22 @@ export interface LessonProgress {
   bestAccuracy: number;
 }
 
+/** The daily challenge most recently played: its date and the best result that day. */
+export interface DailyProgress {
+  day: string; // yyyy-mm-dd
+  stars: Stars;
+  accuracy: number;
+}
+
 export interface Progress {
   lessons: Record<string, LessonProgress>; // key: lesson id, e.g. "7.3"
   practiceDays: string[]; // ISO dates (yyyy-mm-dd) with at least one finished exercise
   lastSettings: Settings | null;
+  /** Total XP earned (levels follow from it, game/xp.ts). */
+  xp: number;
+  daily: DailyProgress | null;
+  /** Best accuracy on any daily challenge so far (0 before the first). */
+  dailyBest: number;
 }
 
 /** Versioned keys: a future format gets a new key (and may migrate from the old one). */
@@ -42,12 +56,18 @@ export const DEFAULT_PREFS: Prefs = {
   calibrationMs: 0,
   calibratedAt: null,
   seenHowTo: false,
+  seenEchoHowTo: false,
   holdMode: 'hold',
   metronomeLook: 'digital',
 };
 
 export function defaultProgress(): Progress {
-  return { lessons: {}, practiceDays: [], lastSettings: null };
+  return { lessons: {}, practiceDays: [], lastSettings: null, xp: 0, daily: null, dailyBest: 0 };
+}
+
+/** True when nothing has been earned or saved yet (storage can then be cleared). */
+export function isEmptyProgress(p: Progress): boolean {
+  return p.practiceDays.length === 0 && Object.keys(p.lessons).length === 0 && !p.lastSettings && p.xp === 0 && !p.daily;
 }
 
 // --- validation helpers: keep what is valid, fall back to the default for the rest ----------
@@ -100,6 +120,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     calibrationMs: num(raw.calibrationMs, d.calibrationMs, -500, 500),
     calibratedAt: typeof raw.calibratedAt === 'string' ? raw.calibratedAt : null,
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
+    seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
   };
@@ -113,6 +134,7 @@ export function sanitizeSettings(raw: unknown): Settings | null {
   const notes = subset<NoteValue>(raw.notes, NOTE_VALUES);
   const rests = subset<NoteValue>(raw.rests, NOTE_VALUES);
   return {
+    mode: oneOf(raw.mode, MODES, d.mode),
     hold: bool(raw.hold, d.hold),
     meters: meters && meters.length ? meters : [...d.meters],
     notes: notes && notes.length ? notes : [...d.notes],
@@ -144,7 +166,19 @@ export function sanitizeProgress(raw: unknown): Progress {
   const days = Array.isArray(raw.practiceDays)
     ? [...new Set(raw.practiceDays.filter((x): x is string => typeof x === 'string' && ISO_DATE.test(x)))].sort()
     : [];
-  return { lessons, practiceDays: days, lastSettings: sanitizeSettings(raw.lastSettings) };
+  const d = isObj(raw.daily) ? raw.daily : null;
+  const daily: DailyProgress | null =
+    d && typeof d.day === 'string' && ISO_DATE.test(d.day)
+      ? { day: d.day, stars: oneOf(d.stars, [0, 1, 2, 3, 4, DIAMOND] as const, 0), accuracy: num(d.accuracy, 0, 0, 100) }
+      : null;
+  return {
+    lessons,
+    practiceDays: days,
+    lastSettings: sanitizeSettings(raw.lastSettings),
+    xp: Math.floor(num(raw.xp, 0, 0, 1e9)),
+    daily,
+    dailyBest: num(raw.dailyBest, 0, 0, 100),
+  };
 }
 
 export function loadPrefs(): Prefs {
@@ -159,7 +193,7 @@ export function loadProgress(): Progress {
 export function saveProgress(p: Progress): void {
   writeJson(PROGRESS_KEY, p);
 }
-/** Settings → Reset progress: stars, streak and last settings (prefs and calibration are kept). */
+/** Settings → Reset progress: stars, XP, streak, daily results and last settings (prefs and calibration are kept). */
 export function resetProgress(): void {
   try {
     localStorage.removeItem(PROGRESS_KEY);

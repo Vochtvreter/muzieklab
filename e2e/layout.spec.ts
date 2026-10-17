@@ -26,10 +26,36 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('home: level, XP and the daily challenge', async ({ page }) => {
+      known(name, 'home-daily');
+      await page.goto('./');
+      await expect(page.getByRole('img', { name: 'XP bar: 0 of 100' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: /^Play the daily challenge for / }));
+      await expectNoOverlap(page.locator('.continue-card'), page.locator('.daily-card'));
+      await expectNoOverlap(page.locator('.daily-card'), page.locator('.free-card'));
+      await expectNotSqueezed(page.locator('.daily-card'));
+      await expectNoSideScroll(page);
+    });
+
     test('setup: start button', async ({ page }) => {
       known(name, 'setup');
       await page.goto('./#/setup');
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
+      await expectClickable(page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('echo: listen, then the tap-back card and the pad', async ({ page }) => {
+      known(name, 'echo');
+      await page.goto('./#/setup');
+      await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }).click();
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expectClickable(page.getByRole('button', { name: 'Got it' }));
+      await page.getByRole('button', { name: 'Got it' }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expectClickable(page.getByRole('button', { name: 'Play the rhythm' }), { scroll: false });
+      await expectNotSqueezed(page.locator('.echo-card'));
+      if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expect(pad(page)).toBeVisible();
       await expectNoSideScroll(page);
     });
 

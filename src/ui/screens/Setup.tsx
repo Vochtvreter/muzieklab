@@ -1,6 +1,6 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
 import { useMemo, useState } from 'react';
-import { checkSettings, DEFAULT_SETTINGS, METER_IDS, NOTE_VALUES, type Density, type MeterId, type NoteValue, type RestAmount, type Settings } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
 import { ExerciseFrame } from '../components/AppShell';
@@ -63,11 +63,21 @@ export function Setup(): JSX.Element {
           </Link>
           <div className="screen-head-text">
             <h1 className="screen-title">{t('setup.title')}</h1>
-            <span className="muted-text">{t('setup.subtitle')}</span>
           </div>
-          <button type="button" className="text-btn" onClick={() => update({ ...DEFAULT_SETTINGS, hold })}>
+          <button type="button" className="text-btn" onClick={() => update({ ...DEFAULT_SETTINGS, mode: s.mode, hold })}>
             {t('setup.reset')}
           </button>
+        </div>
+
+        <div className="mode-field">
+          <Segmented<Mode> label={t('setup.mode')} value={s.mode} onChange={(v) => update({ mode: v })}
+            options={[
+              { value: 'tap', label: t('setup.modeTap') },
+              { value: 'echo', label: t('setup.modeEcho') },
+            ]} />
+          <span className="muted-text" aria-live="polite">
+            {t(s.mode === 'echo' ? 'setup.hintEcho' : 'setup.hintTap')}
+          </span>
         </div>
 
         <button type="button" role="switch" aria-checked={hold} className="switch-row"

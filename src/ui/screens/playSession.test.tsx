@@ -64,7 +64,7 @@ function setup(settings: Partial<Settings> = {}, runExtra: { needsGesture?: bool
   starts.length = 0;
   const ex = generateExercise({ ...DEFAULT_SETTINGS, bars: 4, tempo: 80, rests: [], ...settings }, 3);
   const view = exerciseView(ex)!;
-  const run = { exercise: ex, lessonId: null, ...runExtra };
+  const run = { exercise: ex, lessonId: null, daily: null, ...runExtra };
   const prefs = { ...DEFAULT_PREFS, seenHowTo: true };
   const done: { result: JudgeResult | null } = { result: null };
   const hook = renderHook(() =>
@@ -232,7 +232,7 @@ describe('usePlaySession', () => {
   it('a run that already played waits on the Ready sheet when Play opens again (Back / Forward)', () => {
     const ex = generateExercise({ ...DEFAULT_SETTINGS, bars: 2 }, 5);
     const view = exerciseView(ex)!;
-    const run = { exercise: ex, lessonId: null };
+    const run = { exercise: ex, lessonId: null, daily: null };
     const prefs = { ...DEFAULT_PREFS, seenHowTo: true };
     starts.length = 0;
     const first = renderHook(() => usePlaySession(run, view, prefs, () => undefined, () => undefined));

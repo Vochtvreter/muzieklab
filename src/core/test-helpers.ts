@@ -39,6 +39,7 @@ const subset = <T>(items: readonly T[]): fc.Arbitrary<T[]> =>
   fc.array(fc.boolean(), { minLength: items.length, maxLength: items.length }).map((bits) => items.filter((_, i) => bits[i]));
 
 export const settingsArb: fc.Arbitrary<Settings> = fc.record({
+  mode: fc.constantFrom<Settings['mode']>('tap', 'echo'),
   hold: fc.boolean(),
   meters: subset(METER_IDS).filter((m) => m.length > 0),
   notes: subset<NoteValue>(NOTE_VALUES),

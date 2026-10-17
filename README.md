@@ -5,8 +5,10 @@ signatures, note values, rests and number of bars; the app generates a new, musi
 sensible exercise each time. Tap the rhythm in time on any key or the phone screen, or
 listen and write down the rhythm you hear.
 
-**Status:** MVP built: rhythm practice in Tap mode (learning path, free practice, play,
-results with coaching, settings, calibration), on phone, tablet and desktop, in light and dark.
+**Status:** v0.2: the MVP (rhythm practice in Tap mode: learning path, free practice, play,
+results with coaching, settings, calibration) plus the v1.1 quick wins: a daily challenge, XP and
+levels, exercise codes with Copy, and Echo mode (hear it, tap it back from memory). On phone,
+tablet and desktop, in light and dark.
 
 ## Run it
 
