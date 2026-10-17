@@ -45,6 +45,8 @@ export interface AudioEngine {
   /** Converts an input event.timeStamp (performance.now() timebase) to audio time, minus output latency and the calibration offset. */
   eventToAudioTime(timeStamp: number): number;
   setVolumes(v: Volumes): void;
+  /** Silences the metronome during play only; count-in and calibration clicks stay audible at the metronome volume. */
+  setMetronomeMuted(muted: boolean): void;
   setCalibrationOffsetMs(ms: number): void;
   start(opts: StartOptions): Started;
   stop(): void;
@@ -63,6 +65,8 @@ export interface AudioEngine {
 
 type BeatCallback = Parameters<AudioEngine['onBeat']>[0];
 type Channel = keyof Volumes;
+/** Output routes: the volume channels plus `cue` (count-in and calibration clicks, never muted). */
+type Route = Channel | 'cue';
 
 /** One scheduled sound: played by the look-ahead scheduler when its time is within reach. */
 interface Job {
@@ -92,7 +96,8 @@ const perfNow = (): number => (typeof performance !== 'undefined' ? performance.
 
 class WebAudioEngine implements AudioEngine {
   private ctx: AudioContext | null = null;
-  private channels: Record<Channel, GainNode> | null = null;
+  private channels: Record<Route, GainNode> | null = null;
+  private metronomeMuted = false;
   private volumes: Volumes = { ...DEFAULT_VOLUMES };
   private calibrationMs = 0;
 
@@ -121,7 +126,7 @@ class WebAudioEngine implements AudioEngine {
       g.connect(master);
       return g;
     };
-    this.channels = { metronome: channel(), rhythm: channel(), tap: channel() };
+    this.channels = { metronome: channel(), rhythm: channel(), tap: channel(), cue: channel() };
     this.ctx = ctx;
     this.applyVolumes();
     return ctx;
@@ -177,11 +182,17 @@ class WebAudioEngine implements AudioEngine {
   private applyVolumes(): void {
     const ctx = this.ctx;
     if (!ctx || !this.channels) return;
-    for (const k of Object.keys(this.channels) as Channel[]) {
-      const v = Math.min(1, Math.max(0, this.volumes[k]));
+    for (const k of Object.keys(this.channels) as Route[]) {
+      const v = Math.min(1, Math.max(0, this.volumes[k === 'cue' ? 'metronome' : k]));
+      const muted = k === 'metronome' && this.metronomeMuted;
       // Squared: the slider feels closer to linear loudness.
-      this.channels[k].gain.setTargetAtTime(v * v, ctx.currentTime, 0.02);
+      this.channels[k].gain.setTargetAtTime(muted ? 0 : v * v, ctx.currentTime, 0.02);
     }
+  }
+
+  setMetronomeMuted(muted: boolean): void {
+    this.metronomeMuted = muted;
+    this.applyVolumes();
   }
 
   setCalibrationOffsetMs(ms: number): void {
@@ -205,7 +216,7 @@ class WebAudioEngine implements AudioEngine {
     const exerciseStart = exerciseStartTime(startTime, opts.tempo, beatsPerBar, opts.countInBars);
     const jobs: Job[] = beats
       .filter((b) => b.audible)
-      .map((b) => ({ time: b.time, play: (c, t) => this.click(c, t, b.accent) }));
+      .map((b) => ({ time: b.time, play: (c, t) => this.click(c, t, b.accent, b.countIn ? 'cue' : 'metronome') }));
     if (opts.playRhythm) {
       for (const n of planNotes(opts.timeline, exerciseStart)) {
         jobs.push({ time: n.time, play: (c, t) => this.woodblock(c, t, n.end) });
@@ -222,7 +233,7 @@ class WebAudioEngine implements AudioEngine {
     const times = clickTimes(count, bpm, this.now() + (leadIn ?? 0.5));
     const beats: BeatEvent[] = times.map((time, i) => ({ index: i, inBar: i % 4, countIn: false, time, accent: false, audible: true }));
     this.run(
-      times.map((time) => ({ time, play: (c, t) => this.click(c, t, false) })),
+      times.map((time) => ({ time, play: (c, t) => this.click(c, t, false, 'cue') })),
       beats,
     );
     return times;
@@ -323,7 +334,7 @@ class WebAudioEngine implements AudioEngine {
 
   // --- sounds ------------------------------------------------------------------------------
 
-  private voice(ctx: AudioContext, channel: Channel, type: OscillatorType, freq: number, at: number, stopAt: number | null): Voice {
+  private voice(ctx: AudioContext, channel: Route, type: OscillatorType, freq: number, at: number, stopAt: number | null): Voice {
     const src = ctx.createOscillator();
     src.type = type;
     src.frequency.setValueAtTime(freq, at);
@@ -361,8 +372,8 @@ class WebAudioEngine implements AudioEngine {
   }
 
   /** Metronome click: beat 1 higher and a little louder. */
-  private click(ctx: AudioContext, at: number, accent: boolean): void {
-    const v = this.voice(ctx, 'metronome', 'triangle', accent ? 1760 : 1175, at, at + 0.06);
+  private click(ctx: AudioContext, at: number, accent: boolean, route: Route): void {
+    const v = this.voice(ctx, route, 'triangle', accent ? 1760 : 1175, at, at + 0.06);
     this.envelope(v.env, at, accent ? 0.9 : 0.6, 0.001, 0.045);
   }
 

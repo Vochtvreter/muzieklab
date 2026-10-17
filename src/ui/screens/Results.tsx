@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { coachTip, type Judgement } from '../../core/api';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
-import { t, translateParams } from '../../i18n';
+import { t, tipText } from '../../i18n';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
 import { StaffBox } from '../components/Bits';
@@ -54,7 +54,7 @@ export function Results(): JSX.Element | null {
     if (!last || !view) return null;
     try {
       const c = coachTip(last.result, view.timeline, last.run.exercise);
-      return t(c.key, translateParams(c.params));
+      return tipText(c);
     } catch (e) {
       console.error('coachTip failed', e);
       return null;

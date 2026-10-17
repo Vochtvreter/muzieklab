@@ -151,8 +151,9 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     if (missed) {
       rebuildMarks();
       setFeedback({ key: 'judge.miss', tone: 'miss' });
-      setCombo(s.judge.combo());
     }
+    // The judge settles the combo once a note's hold is over, so read it every frame.
+    setCombo(s.judge.combo());
     const beat = beatAt(ts, view.timeline.beatSeconds, meter.beatsPerBar, s.countInBeats, s.timeline.totalSeconds);
     const cursor = ts < 0 ? (s.timeline.notes.length ? s.firstIndex : null) : cursorAt(view.timeline.notes, tg, view.timeline.totalSeconds);
     const cur = current.current;

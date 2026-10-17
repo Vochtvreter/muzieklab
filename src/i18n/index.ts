@@ -70,6 +70,16 @@ export function formatShortDate(iso: string): string {
 /** Params whose values are message keys (e.g. an engine's `value: 'value.dottedQuarter'`) translated to text. */
 export function translateParams(params: Record<string, string | number>): MessageParams {
   const out: MessageParams = {};
-  for (const [k, v] of Object.entries(params)) out[k] = typeof v === 'string' && hasMessage(v) ? t(v) : v;
+  for (const [k, v] of Object.entries(params)) out[k] = typeof v === 'string' && hasMessage(v) ? t(v, params) : v;
   return out;
+}
+
+/**
+ * A coaching tip from core/coach: key-valued params are translated, and `liftPart` (a count.* key) is also passed
+ * through as `liftPartKey` so messages can choose wording (“lift on 3” vs “lift on the &”). count.beat shows the beat.
+ */
+export function tipText(tip: { key: string; params: Record<string, string | number> }): string {
+  const p = tip.params;
+  const extra: Record<string, string | number> = typeof p.liftPart === 'string' ? { liftPartKey: p.liftPart, beat: p.liftBeat ?? '' } : {};
+  return t(tip.key, { ...translateParams({ ...p, ...extra }), liftPartKey: extra.liftPartKey });
 }

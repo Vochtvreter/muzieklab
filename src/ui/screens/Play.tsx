@@ -46,10 +46,13 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
   const onFinish = useCallback(
     (result: JudgeResult, taps: Tap[]) => {
       dispatch({ type: 'finish', result, taps, today: todayIso() });
-      navigate('/results', { replace: true });
     },
     [dispatch],
   );
+  // Go to Results once the store holds this run's result (not before, or Results would see the old state).
+  useEffect(() => {
+    if (state.last?.run === run) navigate('/results', { replace: true });
+  }, [state.last, run]);
   const onIntroDone = useCallback(() => dispatch({ type: 'prefs', patch: { seenHowTo: true } }), [dispatch]);
   const s = usePlaySession(run, view, state.prefs, onIntroDone, onFinish);
 

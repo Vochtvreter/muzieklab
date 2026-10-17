@@ -124,7 +124,7 @@ export function Calibration(): JSX.Element {
   const dots = offsets.map((v, i) => {
     const level = offsets.slice(0, i).filter((w) => Math.abs(w - v) < 5).length;
     const last = i === n - 1 && phase === 'measuring';
-    return <span key={i} className={'cal-dot m-in' + (last ? ' is-last' : '')} style={{ left: pct(v), top: 56 - level * 10 }} />;
+    return <span key={i} className={'cal-dot m-in' + (last ? ' is-last' : '')} style={{ left: pct(v), top: 56 - Math.min(level, 5) * 10 }} />;
   });
 
   const lastLabel = phase === 'idle' ? t('calibrate.pressToStart') : n ? t('calibrate.lastTap', { offset: signedMs(offsets[n - 1]) }) : t('calibrate.tapEach');

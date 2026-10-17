@@ -418,8 +418,8 @@
     "sixteenth": "Sixteenth rest"
   },
   "tip": {
-    "cutShort": "You let go of the {value} in bar {bar} too early. Hold it longer and lift on {liftPart, select, count.beat {“{liftBeat}”} count.and {the “&” after {liftBeat}} count.e {the “e” after {liftBeat}} count.a {the “a” after {liftBeat}} count.trip {the second triplet note of {liftBeat}} other {beat {liftBeat}}}.",
-    "heldLong": "You held the {value} in bar {bar} too long. Lift on {liftPart, select, count.beat {“{liftBeat}”} count.and {the “&” after {liftBeat}} count.e {the “e” after {liftBeat}} count.a {the “a” after {liftBeat}} count.trip {the second triplet note of {liftBeat}} other {beat {liftBeat}}}.",
+    "cutShort": "You let go of the {value} in bar {bar} too early. {liftPartKey, select, count.beat {Hold it until “{liftPart}” and lift there.} other {Hold it through “{liftBeat}” and lift on the “{liftPart}”.}}",
+    "heldLong": "You held the {value} in bar {bar} too long. {liftPartKey, select, count.beat {Lift on “{liftPart}”.} other {Lift on the “{liftPart}” after “{liftBeat}”.}}",
     "rushing": "You were rushing: on average {ms} ms early. Wait for each note.",
     "dragging": "You were dragging: on average {ms} ms late. Press a little sooner.",
     "missed": "{count, plural, one {You missed # note} other {You missed # notes}}, most in bar {bar}. Read one beat ahead.",
@@ -427,5 +427,13 @@
     "unsteady": "Your timing wandered by about {ms} ms. Count along quietly to stay steady.",
     "perfect": "Every note perfect. Try a faster tempo or more bars.",
     "good": "Nicely done. Keep the beat steady and try the next one."
+  },
+  "count": {
+    "beat": "{beat}",
+    "e": "e",
+    "and": "&",
+    "a": "a",
+    "trip": "trip",
+    "let": "let"
   }
 }

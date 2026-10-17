@@ -84,7 +84,7 @@ const EXTRA_POINTS = -25;
 export function liveAccuracy(judged: Judgement[], extraTaps: number): number {
   if (judged.length === 0) return 100;
   const pts = judged.reduce((s, j) => s + POINTS[j], 0) + extraTaps * EXTRA_POINTS;
-  return Math.max(0, Math.round((pts / (judged.length * 100)) * 100));
+  return Math.max(0, Math.round(pts / judged.length));
 }
 
 /** Judgement line above the pad: message key + colour role. */

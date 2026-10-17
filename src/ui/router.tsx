@@ -1,5 +1,5 @@
 /** A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/settings, #/calibrate (and #/dev/render). */
-import { useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent } from 'react';
+import { useSyncExternalStore, type AnchorHTMLAttributes } from 'react';
 
 export type Route = '/' | '/path' | '/setup' | '/play' | '/results' | '/settings' | '/calibrate' | '/dev/render';
 
@@ -39,9 +39,6 @@ export function navigate(to: Route, opts: { replace?: boolean } = {}): void {
 type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { to: Route };
 
 /** A real link (<a href="#/…">), so it works with the keyboard, middle-click and screen readers. */
-export function Link({ to, onClick, ...rest }: LinkProps): JSX.Element {
-  const handle = (e: MouseEvent<HTMLAnchorElement>): void => {
-    onClick?.(e);
-  };
-  return <a href={'#' + to} onClick={handle} {...rest} />;
+export function Link({ to, ...rest }: LinkProps): JSX.Element {
+  return <a href={'#' + to} {...rest} />;
 }
