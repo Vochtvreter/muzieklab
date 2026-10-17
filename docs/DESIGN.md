@@ -664,7 +664,8 @@ Each unit offers both *Tap* and *Dictation* lessons.
 
 - **XP** = base × difficulty × accuracy (+ bonus for no replays, max combo, 3 stars).
 - **Levels / ranks** (e.g. *Tick → Count → Measure → Groove → Metronome → Maestro*).
-- **Streak** of practice days (a daily challenge or any 3 exercises keeps it).
+- **Streak** of practice days. MVP: one finished exercise with at least one note hit keeps it
+  (as the Home card says); later a daily challenge or any 3 exercises.
 - **Daily Challenge** (date-seeded, same for everyone).
 - **Achievements**: *Perfect bar*, *50 perfect taps in a row*, *First sixteenths*,
   *No replays needed*, *Played at 160 BPM*, *7-day streak*, …

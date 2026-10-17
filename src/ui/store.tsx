@@ -94,7 +94,9 @@ export function reducer(state: AppState, action: Action): AppState {
     }
     case 'finish': {
       if (!state.run) return state;
-      let progress = addPracticeDay(state.progress, action.today);
+      // The streak counts a day with real practice: at least one note hit (letting a run play out untouched does not).
+      const practised = action.result.notes.some((n) => n.judgement !== 'miss');
+      let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
       if (state.run.lessonId) progress = recordLessonResult(progress, state.run.lessonId, action.result.stars, action.result.accuracy);
       return { ...state, progress, last: { run: state.run, result: action.result, taps: action.taps } };
     }

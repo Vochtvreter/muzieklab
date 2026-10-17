@@ -51,7 +51,8 @@
     "done": "{count} of 3 stars",
     "next": "next lesson, no stars yet",
     "nextStars": "next lesson, {count} of 3 stars",
-    "notStarted": "not started"
+    "notStarted": "not started",
+    "play": "Play lesson {id}, {state}"
   },
   "path": {
     "title": "Learning path",
@@ -62,6 +63,8 @@
     "unlocks": "Unlocks with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
     "lessonStars": "Lesson {id}: {count} of 3 stars",
+    "playLesson": "Play lesson {id}: {count} of 3 stars",
+    "lockedLesson": "Lesson {id}, locked",
     "u1": {
       "title": "Quarter and half notes",
       "l1": "Quarter notes",

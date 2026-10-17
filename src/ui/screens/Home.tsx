@@ -7,7 +7,7 @@ import { t, tx } from '../../i18n';
 import { AppShell } from '../components/AppShell';
 import { LessonTiles, StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
-import { useBreakpoint, useDocTitle } from '../hooks';
+import { useBreakpoint, useDocTitle, useToday } from '../hooks';
 import { lastTimeChips, metersLabel } from '../lib/format';
 import { continueLesson, lessonNumber, lessonPreview, unitStates } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
@@ -46,7 +46,8 @@ export function Home(): JSX.Element {
   const bp = useBreakpoint();
   const startLesson = useStartLesson();
   useDocTitle(t('app.docTitle', { page: t('home.title') }));
-  const days = streak(state.progress.practiceDays, todayIso());
+  const today = useToday(todayIso);
+  const days = streak(state.progress.practiceDays, today);
   const cont = continueLesson(state.progress);
   const last = state.progress.lastSettings;
 
@@ -79,7 +80,7 @@ export function Home(): JSX.Element {
           </div>
         </div>
       )}
-      {bp !== 'desktop' && <LessonTiles unit={cont.unit} progress={state.progress} currentId={cont.lesson.id} onFill />}
+      {bp !== 'desktop' && <LessonTiles unit={cont.unit} progress={state.progress} currentId={cont.lesson.id} onFill onPick={startLesson} />}
       <button type="button" className="btn btn--on-fill continue-btn" onClick={() => startLesson(cont.lesson.id)}>
         {t(cont.done ? 'home.replayButton' : 'home.continueButton')}
       </button>
