@@ -43,7 +43,7 @@ export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; de
         ))}
       </ol>
       <span className="sheet-note">{t(desktop ? 'howto.desktop' : 'howto.computer')}</span>
-      <button type="button" className="btn btn--accent sheet-cta" onClick={onDone} aria-keyshortcuts={desktop ? 'Escape' : undefined}>
+      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onDone} aria-keyshortcuts={desktop ? 'Escape' : undefined}>
         {t('howto.gotIt')}
         {desktop && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}
       </button>
@@ -104,7 +104,7 @@ export function PauseContent(p: PauseProps): JSX.Element {
         <Icon name="metronome" size={18} strokeWidth={1.8} />
         <span>{t('pause.note')}</span>
       </div>
-      <button type="button" className="btn btn--accent sheet-cta" onClick={p.onResume} aria-keyshortcuts={p.desktop ? 'Escape' : undefined}>
+      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={p.onResume} aria-keyshortcuts={p.desktop ? 'Escape' : undefined}>
         <Icon name="play" size={18} />
         {t('pause.resume')}
         {p.desktop && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}

@@ -162,7 +162,7 @@
     "metronomeAccent": "Beat 1",
     "metronomeOff": "Off",
     "countIn": "Count-in",
-    "countInValue": "{count, plural, =0 {None} one {# bar} other {# bars}}",
+    "countInValue": "{count, plural, =0 {Silent} one {# bar} other {# bars}}",
     "density": "Density",
     "densitySparse": "Sparse",
     "densityBalanced": "Balanced",

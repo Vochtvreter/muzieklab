@@ -62,8 +62,9 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
 **Flow**
 
 1. **Preview** — the exercise is shown. Optional *"Listen first"* button plays it once.
-2. **Count-in** — one bar of metronome clicks (configurable 0–2 bars) with big
-   on-screen counts "1 – 2 – 3 – 4".
+2. **Count-in** — one bar of metronome clicks (configurable: silent, 1 or 2 bars) with big
+   on-screen counts "1 – 2 – 3 – 4". *Silent* keeps the bar and the counts, without clicks,
+   so the first note never comes without warning.
 3. **Play** — a cursor sweeps across the notation in time. The player presses on every
    note and holds it for its length. Rests = nothing pressed. Tied notes = press once and
    keep holding through the tied note (the tie continues the sound, no new onset — an
@@ -283,7 +284,7 @@ regenerates as you change things, plus a difficulty meter.
 | **Bars** | 1 – 16 (stepper) | 4 |
 | **Tempo** | 40 – 200 BPM (slider) + presets (Largo 50, Adagio 70, Andante 90, Moderato 112, Allegro 132); the slider shows the tempo word for the current range (§14) | 80 |
 | **Metronome during play** | on / accent first beat only / off | on |
-| **Count-in** | 0 / 1 / 2 bars | 1 |
+| **Count-in** | silent / 1 / 2 bars (silent = one bar with only the on-screen count, no clicks) | 1 |
 | **Density** | sparse · balanced · busy (bias toward longer or shorter values) | balanced |
 | **Rest amount** | few · some · many | some |
 

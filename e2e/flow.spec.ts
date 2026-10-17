@@ -40,8 +40,22 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
     if (input === 'key') await page.keyboard.press('Escape');
     else await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Paused' })).toBeVisible();
-    await page.getByRole('button', { name: /Resume/ }).click();
+    if (input === 'key') {
+      // Focus starts on Resume, so Enter carries on (it used to land on Restart).
+      await expect(page.getByRole('button', { name: /Resume/ })).toBeFocused();
+      await page.keyboard.press('Enter');
+    } else {
+      await page.getByRole('button', { name: /Resume/ }).click();
+    }
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    if (input === 'key') {
+      // A control that keeps focus after a click does not swallow Space: Space is a tap, the switch stays on.
+      const metronome = page.getByRole('switch', { name: 'Metronome' });
+      await metronome.click();
+      await metronome.click();
+      await page.keyboard.press(' ');
+      await expect(metronome).toHaveAttribute('aria-checked', 'true');
+    }
 
     // Count-in (4 s) + 2 bars (8 s) + grace: tap along until Results shows.
     for (let i = 0; i < 16 && !page.url().includes('/results'); i++) {
