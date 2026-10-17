@@ -1910,12 +1910,19 @@
 .score-stars .is-on {
   color: var(--reward);
 }
-/* The hidden all-perfect star: the three shrink into a row above one big star that pops in. */
+/* The hidden all-perfect star: the three shrink into an arc over one big star that pops in. */
 .score-stars--bonus .score-stars-row {
-  gap: 6px;
+  gap: 24px;
   font-size: 22px;
 }
+.score-stars--bonus .score-stars-row > :first-child {
+  transform: translateY(24px) rotate(-30deg);
+}
+.score-stars--bonus .score-stars-row > :last-child {
+  transform: translateY(24px) rotate(30deg);
+}
 .score-stars .is-bonus {
+  margin-top: -2px;
   font-size: 76px;
   text-shadow: 0 0 0.18em var(--reward-soft);
   animation: star-pop 560ms cubic-bezier(0.2, 1.4, 0.4, 1) 200ms both;
