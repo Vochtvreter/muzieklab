@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 export type Breakpoint = 'phone' | 'tablet' | 'desktop';
 
@@ -7,15 +7,16 @@ function mq(query: string): MediaQueryList | null {
 }
 
 export function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-    (cb) => {
+  // A stable subscribe function: a new one each render makes React resubscribe, and Play renders every frame.
+  const subscribe = useCallback(
+    (cb: () => void) => {
       const m = mq(query);
       m?.addEventListener('change', cb);
       return () => m?.removeEventListener('change', cb);
     },
-    () => mq(query)?.matches ?? false,
-    () => false,
+    [query],
   );
+  return useSyncExternalStore(subscribe, () => mq(query)?.matches ?? false, () => false);
 }
 
 /** DESIGN.md §9 breakpoints: phone < 700 px, tablet 700–1099 px, desktop ≥ 1100 px. */

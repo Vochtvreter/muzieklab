@@ -36,7 +36,7 @@ export function SettingsScreen(): JSX.Element {
   const setVol = (k: VolKey, v: number, sw?: 'metronomeOn' | 'tapSoundOn'): void =>
     set({ volumes: { ...prefs.volumes, [k]: v / 100 }, ...(sw ? { [sw]: true } : {}) });
 
-  const offline = typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller;
+  const offline = useOfflineReady();
 
   return (
     <AppShell bp={bp} active="/settings">
@@ -210,4 +210,17 @@ function SegRow<T extends string>({ label, group, value, options, onChange, hint
       </span>
     </div>
   );
+}
+
+/** True once a service worker controls the page (the app works offline); updates when it takes over. */
+function useOfflineReady(): boolean {
+  const sw = typeof navigator !== 'undefined' ? navigator.serviceWorker : undefined;
+  const [ready, setReady] = useState(() => !!sw?.controller);
+  useEffect(() => {
+    if (!sw) return;
+    const update = (): void => setReady(!!sw.controller);
+    sw.addEventListener('controllerchange', update);
+    return () => sw.removeEventListener('controllerchange', update);
+  }, [sw]);
+  return ready;
 }
