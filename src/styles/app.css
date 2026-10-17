@@ -596,8 +596,8 @@
   background: var(--reward);
 }
 .continue-card {
-  flex: 1;
-  min-height: 0;
+  /* Fills a tall screen, but never shrinks below its content: on a short screen the page scrolls instead. */
+  flex: 1 0 auto;
   background: var(--accent);
   color: var(--on-fill);
   border-radius: 22px;
@@ -1312,6 +1312,12 @@
   margin-top: auto;
   flex: none;
 }
+/* Setup scrolls on short screens (a 1280 × 800 laptop, a small phone): Start stays in view at the bottom. */
+.setup .start-btn {
+  position: sticky;
+  bottom: 0;
+  box-shadow: 0 -18px 14px -6px var(--ground);
+}
 .staff-fallback {
   margin: 0;
   padding: 8px;
@@ -1437,6 +1443,58 @@
 }
 .judgement--phone {
   margin-top: auto;
+}
+
+/*
+ * Phone in landscape (short and wide): one column would push the pad off the screen, and Play cannot scroll.
+ * Two columns instead: info and staff on the left; beats, judgement and the pad on the right.
+ */
+@media (orientation: landscape) and (max-height: 560px) {
+  .frame--play .frame-column {
+    max-width: 1000px;
+  }
+  .play {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    gap: 8px 20px;
+    padding: max(10px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
+  .play-top {
+    grid-column: 1 / -1;
+  }
+  .play-info {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .play-staff {
+    grid-column: 1;
+    grid-row: 3 / span 2;
+    align-self: start;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+  .play .beats {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: center;
+  }
+  .judgement--phone {
+    grid-column: 2;
+    grid-row: 3;
+    margin-top: 0;
+  }
+  .play .pad {
+    grid-column: 2;
+    grid-row: 4;
+    min-height: 0;
+    height: 100%;
+  }
+  .play .pad-ring {
+    width: min(150px, 60%);
+    height: auto;
+    max-height: 70%;
+  }
 }
 .judgement--cal {
   margin-top: auto;
@@ -2130,6 +2188,17 @@
 .seg--settings {
   flex: none;
   width: 238px;
+}
+/* Below the 390 px board the label and a 238 px control no longer fit on one line: stack them. */
+@media (max-width: 389.98px) {
+  .seg-row-line {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .seg--settings {
+    width: auto;
+  }
 }
 .about-row {
   padding: 10px 16px;

@@ -9,18 +9,23 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
   test(`play a lesson to the end (${name})`, async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize(VIEWPORTS[name]);
-    const tap = async (): Promise<void> => {
+    /** One tap; false when the pad is gone (the run ended and Results replaced Play between checks). */
+    const tap = async (): Promise<boolean> => {
       if (input === 'key') {
         await page.keyboard.down('j');
         await page.waitForTimeout(150);
         await page.keyboard.up('j');
       } else {
-        const box = (await pad(page).boundingBox())!;
+        const box = await pad(page)
+          .boundingBox({ timeout: 2000 })
+          .catch(() => null);
+        if (!box) return false;
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
         await page.mouse.down();
         await page.waitForTimeout(150);
         await page.mouse.up();
       }
+      return true;
     };
 
     await page.goto('./');
@@ -40,7 +45,7 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
 
     // Count-in (4 s) + 2 bars (8 s) + grace: tap along until Results shows.
     for (let i = 0; i < 16 && !page.url().includes('/results'); i++) {
-      await tap();
+      if (!(await tap())) break;
       await page.waitForTimeout(850);
     }
     await expect(page).toHaveURL(/#\/results$/, { timeout: 10_000 });
