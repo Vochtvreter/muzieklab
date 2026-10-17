@@ -21,6 +21,12 @@ npm run e2e        # Playwright: layout at every screen size and a full lesson (
 On a computer any key is the tap pad; on a phone, tap the pad on screen. Run
 Settings → Calibrate once per device so the timing scores match what you hear.
 
+## Install on a phone
+
+Open the site in the phone's browser and go to Settings → Install app. On Android (Chrome,
+Edge, Samsung Internet) tap *Install*; on iPhone and iPad tap Share, then *Add to Home Screen*.
+The installed app opens full screen and works offline.
+
 ## Deploy
 
 Every push to `main` runs the tests, builds and redeploys the site to GitHub Pages

@@ -1,4 +1,4 @@
-/** Settings: sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about (version, offline, reset). */
+/** Settings: sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about (install, version, offline, reset). */
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Leniency } from '../../core/api';
 import type { Prefs } from '../../game/storage';
@@ -9,6 +9,7 @@ import { AnalogMetronome, BeatRow } from '../components/Bits';
 import { Segmented, SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle, useReducedMotion } from '../hooks';
+import { promptInstall, useInstallState } from '../install';
 import { signedMs } from '../lib/format';
 import { Link } from '../router';
 import { useStore } from '../store';
@@ -108,6 +109,7 @@ export function SettingsScreen(): JSX.Element {
           </Section>
 
           <Section id="about" title={t('settings.about')}>
+            <InstallRow />
             <div className="about-row">
               <span className="about-version">
                 <b>{t('settings.version')}</b>
@@ -253,6 +255,31 @@ function LookPreview({ look }: { look: Prefs['metronomeLook'] }): JSX.Element {
       <span className="look-preview-tempo">
         <span className="music">𝅘𝅥</span> {t('play.beatEquals', { bpm: PREVIEW_BPM })}
       </span>
+    </div>
+  );
+}
+
+/** Add to home screen: the browser's install dialog where there is one, otherwise how to do it by hand. */
+function InstallRow(): JSX.Element {
+  const state = useInstallState();
+  const hint = { installed: 'settings.installHintDone', prompt: 'settings.installHint', ios: 'settings.installHintIos', manual: 'settings.installHintManual' }[state];
+  return (
+    <div className="about-row install-row">
+      <span className="row-link-text">
+        <b>{t('settings.install')}</b>
+        <span className="row-sub">{t(hint)}</span>
+      </span>
+      {state === 'prompt' && (
+        <button type="button" className="small-btn" onClick={() => void promptInstall().catch((e) => console.error(e))}>
+          {t('settings.installButton')}
+        </button>
+      )}
+      {state === 'installed' && (
+        <span className="offline">
+          <Icon name="check" size={16} strokeWidth={2.6} className="tone-good" />
+          {t('settings.installed')}
+        </span>
+      )}
     </div>
   );
 }

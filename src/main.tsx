@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { setLocale } from './i18n';
+import { initInstall } from './ui/install';
 // Fonts are bundled (no Google Fonts request), so they work offline: Latin and Latin Extended (for Dutch and other
 // European languages later), plus the music symbols the chips and pad use.
 import '@fontsource/figtree/latin-400.css';
@@ -28,6 +29,7 @@ import './styles/base.css';
 import './styles/app.css';
 
 setLocale('en');
+initInstall();
 
 const root = document.getElementById('root');
 if (root) {
