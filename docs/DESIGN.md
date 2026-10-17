@@ -595,9 +595,11 @@ sourced rule); the values are starting points to tune in playtesting.
 - **Accuracy %** = points / max points (floored at 0).
 - **Stars:** ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% · ★★★★ ≥ 95% with no Good and no Miss (no
   yellow or red noteheads).
+- **Three star slots are shown** (☆☆☆) on the results, the lesson tiles and the Path. The 4th star is a hidden
+  bonus: its slot only appears once it is earned (★★★★).
 - **Diamond star (all perfect, 100%):** every start Perfect, every hold right, no extra taps.
-  One diamond star shows in place of the four, on the results, the lesson tiles and the
-  Path. Path totals count it as four.
+  It is also hidden until earned; then one diamond star shows in place of the stars. Path totals count three stars
+  per lesson (e.g. 79 / 120 ★), so the 4th star and the diamond count as three there.
 - **Tendency:** mean signed offset → *"rushing"* / *"dragging"* / *"steady"*. People
   tapping along to a beat naturally land tens of milliseconds early (*negative mean
   asynchrony*, Repp 2005), so a small early average is normal and is reported as

@@ -1,4 +1,4 @@
-import { MAX_STARS, type Settings } from '../core/types';
+import { SHOWN_STARS, type Settings } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import type { LessonProgress, Progress } from './storage';
 
@@ -146,17 +146,17 @@ export function nextLesson(progress: Progress): Lesson | null {
   return ALL_LESSONS.find((x) => starsOf(progress, x.lesson.id) < UNLOCK_STARS)?.lesson ?? null;
 }
 
-/** Stars earned in a unit (max 4 per lesson: the diamond counts as four). */
+/** Stars earned in a unit (max 3 per lesson: the hidden 4th star and the diamond count as three). */
 export function unitStars(progress: Progress, unitId: number): number {
   const u = UNITS.find((x) => x.id === unitId);
-  return u ? u.lessons.reduce((sum, l) => sum + Math.min(MAX_STARS, starsOf(progress, l.id)), 0) : 0;
+  return u ? u.lessons.reduce((sum, l) => sum + Math.min(SHOWN_STARS, starsOf(progress, l.id)), 0) : 0;
 }
 
-/** Stars over the whole path, for the "79 / 160 ★" header. */
+/** Stars over the whole path, for the "79 / 120 ★" header. */
 export function pathStars(progress: Progress): { earned: number; max: number } {
   return {
     earned: UNITS.reduce((sum, u) => sum + unitStars(progress, u.id), 0),
-    max: ALL_LESSONS.length * MAX_STARS,
+    max: ALL_LESSONS.length * SHOWN_STARS,
   };
 }
 

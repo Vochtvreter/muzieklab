@@ -4,7 +4,7 @@
  */
 import { useMemo } from 'react';
 import { exerciseView } from '../exerciseView';
-import { MAX_STARS } from '../../core/api';
+import { SHOWN_STARS } from '../../core/api';
 import { dailyChallenge } from '../../game/daily';
 import { lessonSettings, UNITS, unitStars, type Unit } from '../../game/path';
 import { streak } from '../../game/storage';
@@ -218,7 +218,7 @@ function PathSummary({ currentUnit, currentId }: { currentUnit: Unit; currentId:
   const curIdx = UNITS.indexOf(currentUnit);
   const nextUnit = UNITS[curIdx + 1];
   const totalStars = UNITS.reduce((s, u) => s + unitStars(p, u.id), 0);
-  const max = UNITS.reduce((s, u) => s + u.lessons.length * MAX_STARS, 0);
+  const max = UNITS.reduce((s, u) => s + u.lessons.length * SHOWN_STARS, 0);
   const cur = currentId ? currentUnit.lessons.find((l) => l.id === currentId) : null;
   return (
     <Link to="/path" className="card path-card">
@@ -236,7 +236,7 @@ function PathSummary({ currentUnit, currentId }: { currentUnit: Unit; currentId:
                 <Icon name="check" size={12} strokeWidth={3.4} />
               </span>
               <span className="path-card-unit-title">{t('path.unitTitle', { id: u.id, title: tx(u.titleKey) })}</span>
-              <span className="path-card-unit-stars" aria-label={t('stars.label', { count: unitStars(p, u.id), total: u.lessons.length * MAX_STARS })}>
+              <span className="path-card-unit-stars" aria-label={t('stars.label', { count: unitStars(p, u.id), total: u.lessons.length * SHOWN_STARS })}>
                 {t('home.unitStars', { count: unitStars(p, u.id) })}
               </span>
             </span>

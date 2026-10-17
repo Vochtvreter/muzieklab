@@ -136,8 +136,13 @@ export interface JudgeOptions {
 /** 0–4 stars, or the diamond (5) for an all-Perfect run (every start Perfect, every hold right, no extra taps). */
 export type Stars = 0 | 1 | 2 | 3 | 4 | 5;
 export const DIAMOND = 5;
-/** Star slots shown for a lesson; the diamond takes their place and counts as all of them in totals. */
+/** The most stars a run can earn; the diamond takes their place. */
 export const MAX_STARS = 4;
+/**
+ * Star slots shown before the 4th star is earned: three. The 4th star and the diamond only appear once achieved, and
+ * star totals count three per lesson.
+ */
+export const SHOWN_STARS = 3;
 
 export interface JudgeResult {
   notes: NoteResult[];

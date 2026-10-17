@@ -158,9 +158,9 @@ describe('unlocking and progress', () => {
     expect(unitStars(p, 7)).toBe(5);
     expect(unitStars(p, 8)).toBe(0);
     expect(unitStars(p, 42)).toBe(0);
-    expect(pathStars(p)).toEqual({ earned: 6, max: 160 });
-    // The diamond (all perfect) counts as four.
-    expect(unitStars(progressWith({ '7.1': 5, '7.2': 4 }), 7)).toBe(8);
+    expect(pathStars(p)).toEqual({ earned: 6, max: 120 });
+    // Totals count three stars per lesson: the hidden 4th star and the diamond count as three.
+    expect(unitStars(progressWith({ '7.1': 5, '7.2': 4 }), 7)).toBe(6);
   });
 
   it('recordLessonResult keeps the best stars and accuracy', () => {

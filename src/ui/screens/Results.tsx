@@ -3,7 +3,7 @@
  * judged staff (in Echo the notation's reveal), the timing and length lane, a tip, and the level-up sheet.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { coachTip, DIAMOND, encodeCode, MAX_STARS, type Judgement } from '../../core/api';
+import { coachTip, DIAMOND, encodeCode, type Judgement } from '../../core/api';
 import { levelInfo } from '../../game/xp';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
@@ -16,7 +16,7 @@ import { CodeCopy, LevelUpContent } from '../components/Reward';
 import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
-import { starsLabel } from '../lib/format';
+import { starSlots, starsLabel } from '../lib/format';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
 import { useStore, type LastResult } from '../store';
@@ -143,7 +143,7 @@ export function Results(): JSX.Element | null {
               </span>
             ) : (
               <span className="score-stars-row">
-                {Array.from({ length: MAX_STARS }, (_, i) => (
+                {Array.from({ length: starSlots(result.stars) }, (_, i) => (
                   <span key={i} aria-hidden="true" className={i < result.stars ? 'is-on' : ''}>
                     ★
                   </span>

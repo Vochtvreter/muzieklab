@@ -24,7 +24,8 @@
   },
   "stars": {
     "label": "{count} of {total} stars",
-    "of4": "{count} of 4 stars",
+    "of3": "{count} of 3 stars",
+    "fourth": "3 of 3 stars and the bonus 4th star",
     "diamond": "Diamond star, all perfect"
   },
   "streak": {
