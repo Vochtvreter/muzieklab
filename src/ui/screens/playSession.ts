@@ -34,8 +34,11 @@ export type SheetKind = 'help' | 'pause' | 'ready' | null;
  * StrictMode double mount in development still auto-starts.
  */
 const played = new WeakSet<Run>();
-/** Audio states that stop the clock: the browser suspended the context, or iOS interrupted it (a call, Siri). */
-const STOPPED_AUDIO = new Set(['suspended', 'interrupted']);
+/**
+ * Audio states that stop the clock: the browser suspended the context, iOS interrupted it (a call, Siri), or its clock
+ * froze while it says 'running' (iOS, back from the background).
+ */
+const STOPPED_AUDIO = new Set(['suspended', 'interrupted', 'stalled']);
 /** How long the context may take to start running before Play treats it as stopped (ms). */
 const AUDIO_START_GRACE_MS = 800;
 

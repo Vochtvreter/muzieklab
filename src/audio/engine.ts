@@ -68,7 +68,10 @@ export interface AudioEngine {
   onBeat(cb: (beat: { index: number; inBar: number; countIn: boolean; time: number }) => void): () => void;
   /** Plain click track for calibration: `count` clicks at `bpm`, returns their audio times. */
   clicks(count: number, bpm: number, leadIn?: number): number[];
-  /** The AudioContext state ('running', 'suspended', 'interrupted' on iOS…), or 'none' without Web Audio. */
+  /**
+   * The AudioContext state ('running', 'suspended', 'interrupted' on iOS…), or 'none' without Web Audio. 'stalled' when
+   * it says 'running' but its clock stands still (iOS, back from the background): the next unlock() replaces it.
+   */
   audioState(): string;
   /** Called when the AudioContext state changes (an iOS call or Siri interrupts it, the browser suspends it). */
   onStateChange(cb: (state: string) => void): () => void;
@@ -97,6 +100,8 @@ const STALE_S = 0.03;
 /** onBeat may fire this much before the click is heard (about half a frame). */
 const BEAT_EARLY_S = 0.008;
 const SILENT = 0.0001;
+/** A 'running' context whose clock has not moved for this long is stalled (ms). */
+const STALL_MS = 500;
 
 function audioContextClass(): typeof AudioContext | null {
   const g = globalThis as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
@@ -123,6 +128,24 @@ class WebAudioEngine implements AudioEngine {
   private stateListeners = new Set<(state: string) => void>();
   private voices = new Set<Voice>();
   private tapVoice: Voice | null = null;
+  /**
+   * The context needs replacing at the next unlock(): the page was hidden since (iOS can hand back a context that
+   * never runs again, or whose clock is frozen while it says 'running'), or it was seen stalled.
+   */
+  private stale = false;
+  /** Last time the context clock was seen moving, for the stall check in audioState(). */
+  private clockSeen = { audio: 0, perf: 0 };
+
+  constructor() {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
+    const hidden = (): void => {
+      if (this.ctx) this.stale = true;
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') hidden();
+    });
+    window.addEventListener('pagehide', hidden);
+  }
 
   /** Lazily creates the context (null where Web Audio is missing, e.g. tests). */
   private context(): AudioContext | null {
@@ -140,6 +163,8 @@ class WebAudioEngine implements AudioEngine {
     }
     const ctx = new Ctor({ latencyHint: 'interactive' });
     ctx.addEventListener('statechange', () => {
+      if (ctx !== this.ctx) return; // a replaced context closing
+      this.markClock();
       for (const cb of [...this.stateListeners]) cb(ctx.state);
     });
     const master = ctx.createGain();
@@ -156,7 +181,22 @@ class WebAudioEngine implements AudioEngine {
     return ctx;
   }
 
+  /** Drops the current context (closing it) so the next context() call builds a fresh one. */
+  private discard(): void {
+    const old = this.ctx;
+    if (!old) return;
+    this.stop();
+    this.tapVoice = null;
+    this.voices.clear();
+    this.ctx = null;
+    this.channels = null;
+    this.stale = false;
+    if (typeof old.close === 'function') void old.close().catch(() => undefined);
+  }
+
   async unlock(): Promise<void> {
+    // Inside a gesture, a new context starts reliably; resuming one iOS interrupted or froze in the background does not.
+    if (this.ctx && (this.stale || (this.ctx.state as string) === 'interrupted')) this.discard();
     const ctx = this.context();
     if (!ctx) return;
     // iOS: starting a (silent) source inside the gesture unlocks output, resume() alone is not always enough.
@@ -231,6 +271,7 @@ class WebAudioEngine implements AudioEngine {
     this.stop();
     const ctx = this.context();
     if (ctx && ctx.state !== 'running') void ctx.resume().catch(() => undefined);
+    this.markClock();
     const startTime = this.now() + (opts.leadIn ?? 0.1);
     const { beatsPerBar } = opts.meter;
     const beats = planBeats({
@@ -258,6 +299,7 @@ class WebAudioEngine implements AudioEngine {
     this.stop();
     const ctx = this.context();
     if (ctx && ctx.state !== 'running') void ctx.resume().catch(() => undefined);
+    this.markClock();
     const times = clickTimes(count, bpm, this.now() + (leadIn ?? 0.5));
     const beats: BeatEvent[] = times.map((time, i) => ({ index: i, inBar: i % 4, countIn: false, time, accent: false, audible: true }));
     this.run(
@@ -286,7 +328,19 @@ class WebAudioEngine implements AudioEngine {
   }
 
   audioState(): string {
-    return this.ctx ? this.ctx.state : 'none';
+    const ctx = this.ctx;
+    if (!ctx) return 'none';
+    if (ctx.state !== 'running' || ctx.currentTime !== this.clockSeen.audio) {
+      this.markClock();
+      return ctx.state;
+    }
+    if (perfNow() - this.clockSeen.perf < STALL_MS) return ctx.state;
+    this.stale = true;
+    return 'stalled';
+  }
+
+  private markClock(): void {
+    this.clockSeen = { audio: this.ctx ? this.ctx.currentTime : 0, perf: perfNow() };
   }
 
   onStateChange(cb: (state: string) => void): () => void {

@@ -56,3 +56,81 @@ describe('audio engine without Web Audio', () => {
     engine.setCalibrationOffsetMs(0);
   });
 });
+
+// iOS, back from the background: the context can stay 'interrupted', or say 'running' with a frozen clock.
+describe('audio engine coming back from the background', () => {
+  class FakeContext extends EventTarget {
+    static made: FakeContext[] = [];
+    state = 'running';
+    currentTime = 0;
+    sampleRate = 44100;
+    closed = false;
+    destination = {};
+    constructor() {
+      super();
+      FakeContext.made.push(this);
+    }
+    private node = () => ({ connect() {}, disconnect() {}, gain: { value: 1, setTargetAtTime() {} } });
+    createGain = this.node;
+    createBuffer = () => ({});
+    createBufferSource = () => ({ ...this.node(), buffer: null, start() {} });
+    resume = async () => undefined;
+    close = async () => {
+      this.closed = true;
+    };
+  }
+  const doc = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['performance'] });
+    vi.resetModules();
+    FakeContext.made = [];
+    vi.stubGlobal('AudioContext', FakeContext);
+    vi.stubGlobal('document', doc);
+    vi.stubGlobal('window', new EventTarget());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  const fresh = async () => (await import('./engine')).getAudioEngine();
+
+  it('replaces an interrupted context on the next unlock', async () => {
+    const engine = await fresh();
+    await engine.unlock();
+    FakeContext.made[0].state = 'interrupted';
+    await engine.unlock();
+    expect(FakeContext.made).toHaveLength(2);
+    expect(FakeContext.made[0].closed).toBe(true);
+    expect(engine.audioState()).toBe('running');
+  });
+
+  it('reads a running context with a frozen clock as stalled, and replaces it', async () => {
+    const engine = await fresh();
+    await engine.unlock();
+    const ctx = FakeContext.made[0];
+    expect(engine.audioState()).toBe('running');
+    vi.advanceTimersByTime(300);
+    ctx.currentTime = 0.3; // moving
+    expect(engine.audioState()).toBe('running');
+    vi.advanceTimersByTime(600); // frozen since
+    expect(engine.audioState()).toBe('stalled');
+    await engine.unlock();
+    expect(FakeContext.made).toHaveLength(2);
+    expect(engine.audioState()).toBe('running');
+  });
+
+  it('starts a fresh context after the page was hidden', async () => {
+    const engine = await fresh();
+    await engine.unlock();
+    await engine.unlock();
+    expect(FakeContext.made).toHaveLength(1);
+    doc.visibilityState = 'hidden';
+    doc.dispatchEvent(new Event('visibilitychange'));
+    doc.visibilityState = 'visible';
+    await engine.unlock();
+    expect(FakeContext.made).toHaveLength(2);
+    expect(FakeContext.made[0].closed).toBe(true);
+  });
+});
