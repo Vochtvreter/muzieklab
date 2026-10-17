@@ -28,6 +28,8 @@ export interface StartOptions {
   playRhythm: boolean;
   /** Seconds between now and the first count-in click. */
   leadIn?: number;
+  /** Count-in beats still fire onBeat (for the visual counter) but make no sound. */
+  silentCountIn?: boolean;
 }
 
 export interface Started {
@@ -44,6 +46,11 @@ export interface AudioEngine {
   now(): number;
   /** Converts an input event.timeStamp (performance.now() timebase) to audio time, minus output latency and the calibration offset. */
   eventToAudioTime(timeStamp: number): number;
+  /**
+   * The audio time a press made right now would be judged at: the time being *heard*, on the same clock as
+   * eventToAudioTime. now() runs ahead of it by the output latency (tens of ms; 150+ on Bluetooth).
+   */
+  heardNow(): number;
   setVolumes(v: Volumes): void;
   /** Silences the metronome during play only; count-in and calibration clicks stay audible at the metronome volume. */
   setMetronomeMuted(muted: boolean): void;
@@ -168,6 +175,10 @@ class WebAudioEngine implements AudioEngine {
     return perfToAudioTime(timeStamp, { perfMs: pNow, audioS: ctx.currentTime }, this.latency(), this.calibrationMs);
   }
 
+  heardNow(): number {
+    return this.eventToAudioTime(perfNow());
+  }
+
   private latency(): number {
     const ctx = this.ctx;
     if (!ctx) return 0;
@@ -215,7 +226,7 @@ class WebAudioEngine implements AudioEngine {
     });
     const exerciseStart = exerciseStartTime(startTime, opts.tempo, beatsPerBar, opts.countInBars);
     const jobs: Job[] = beats
-      .filter((b) => b.audible)
+      .filter((b) => b.audible && !(b.countIn && opts.silentCountIn))
       .map((b) => ({ time: b.time, play: (c, t) => this.click(c, t, b.accent, b.countIn ? 'cue' : 'metronome') }));
     if (opts.playRhythm) {
       for (const n of planNotes(opts.timeline, exerciseStart)) {

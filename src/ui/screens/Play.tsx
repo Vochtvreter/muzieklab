@@ -60,6 +60,8 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
   useEffect(() => {
     if (!s.sheet) return;
     const onKey = (e: KeyboardEvent): void => {
+      // Holding Esc must not pause and then, on auto-repeat, resume straight away.
+      if (e.repeat) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         s.closeSheet();

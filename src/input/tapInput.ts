@@ -9,6 +9,14 @@ export interface TapHandlers {
   help?(): void;
 }
 
+export interface TapInputOptions {
+  /**
+   * Space and Enter are taps even on a focused button or link. For a running exercise: a control that kept focus
+   * after a click (the metronome switch, ?) would otherwise swallow every Space. Esc and ? still reach their handlers.
+   */
+  claimActivationKeys?: boolean;
+}
+
 /** Keys that never count as a tap: modifiers, Tab (focus navigation), locks and browser/system keys. */
 const IGNORED_KEYS = new Set([
   'Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'OS', 'Super', 'Hyper', 'Fn', 'FnLock',
@@ -21,7 +29,7 @@ const TEXT_INPUT = 'input, textarea, select, [contenteditable]:not([contentedita
 const ACTIVATABLE = 'button, a[href], summary, [role="button"], [role="link"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"], [role="menuitem"], [role="option"]';
 
 /** Whether a key event is a tap. Returns false when the key belongs to focus or to a focused control. */
-export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null): boolean {
+export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null, opts: TapInputOptions = {}): boolean {
   if (IGNORED_KEYS.has(e.key) || IGNORED_KEY_PATTERN.test(e.key)) return false;
   // Shortcuts (Ctrl/Cmd/Alt + key) stay with the browser.
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
@@ -30,7 +38,7 @@ export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null): boolean {
   // Typing in a field is never a tap.
   if (target.closest(TEXT_INPUT)) return false;
   // Space/Enter activate a focused button (Pause, ?, Listen…): leave them to it. Other keys still tap.
-  if ((e.key === ' ' || e.key === 'Enter') && target.closest(ACTIVATABLE)) return false;
+  if ((e.key === ' ' || e.key === 'Enter') && !opts.claimActivationKeys && target.closest(ACTIVATABLE)) return false;
   return true;
 }
 
@@ -38,7 +46,7 @@ export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null): boolean {
  * Keyboard (any key except Esc and ?, auto-repeat ignored, held until the last key is up) on `window`,
  * and pointer on `pad` (pointerdown/up/cancel with pointer capture). Returns a detach function. §3.1 Input.
  */
-export function attachTapInput(pad: HTMLElement | null, handlers: TapHandlers): () => void {
+export function attachTapInput(pad: HTMLElement | null, handlers: TapHandlers, opts: TapInputOptions = {}): () => void {
   const keys = new Set<string>();
   const pointers = new Set<number>();
   const held = (): boolean => keys.size + pointers.size > 0;
@@ -83,7 +91,7 @@ export function attachTapInput(pad: HTMLElement | null, handlers: TapHandlers): 
       }
       return;
     }
-    if (!isTapKey(e, pad)) return;
+    if (!isTapKey(e, pad, opts)) return;
     // Stop Space scrolling, Firefox quick-find on / and ', and button activation on the pad.
     e.preventDefault();
     if (e.repeat) return;
