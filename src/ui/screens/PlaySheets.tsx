@@ -1,6 +1,10 @@
-/** The How to play and Pause sheets (phone / tablet) and dialogs (desktop). */
+/** The How to play, Ready and Pause sheets (phone / tablet) and dialogs (desktop). */
 import { t } from '../../i18n';
 import { Icon } from '../components/Icon';
+
+/** iPhone and iPad (iPadOS reports itself as a Mac with touch). */
+const isIOS = (): boolean =>
+  typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
 export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; desktop: boolean; onDone(): void }): JSX.Element {
   return (
@@ -43,6 +47,7 @@ export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; de
         ))}
       </ol>
       <span className="sheet-note">{t(desktop ? 'howto.desktop' : 'howto.computer')}</span>
+      {isIOS() && <span className="sheet-note">{t('howto.ios')}</span>}
       <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onDone} aria-keyshortcuts={desktop ? 'Escape' : undefined}>
         {t('howto.gotIt')}
         {desktop && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}
@@ -51,8 +56,30 @@ export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; de
   );
 }
 
+/** Shown when Play opens without a tap (a reload, Back / Forward): browsers only start the audio after one. */
+export function ReadyContent({ context, detail, onStart }: { context: string; detail: string; onStart(): void }): JSX.Element {
+  return (
+    <>
+      <div className="sheet-head">
+        <span className="eyebrow">{context}</span>
+        <h2 id="readytitle" className="sheet-title">
+          {t('ready.title')}
+        </h2>
+      </div>
+      <p className="sheet-text">{detail}</p>
+      {/* No Esc shortcut here: Esc is not a gesture browsers accept for starting audio. Enter or Space on the button is. */}
+      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onStart}>
+        <Icon name="play" size={18} />
+        {t('ready.start')}
+      </button>
+    </>
+  );
+}
+
 interface PauseProps {
   context: string;
+  /** The audio was interrupted (a call, Siri, the browser): say so instead of the count-in note. */
+  interrupted?: boolean;
   desktop: boolean;
   lesson: boolean;
   onResume(): void;
@@ -102,12 +129,13 @@ export function PauseContent(p: PauseProps): JSX.Element {
       </div>
       <div className="sheet-note sheet-note--icon">
         <Icon name="metronome" size={18} strokeWidth={1.8} />
-        <span>{t('pause.note')}</span>
+        <span role={p.interrupted ? 'status' : undefined}>{t(p.interrupted ? 'pause.interrupted' : 'pause.note')}</span>
       </div>
-      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={p.onResume} aria-keyshortcuts={p.desktop ? 'Escape' : undefined}>
+      {/* After an interruption Esc cannot restart the audio (not a user-activation key): no Esc shortcut then. */}
+      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={p.onResume} aria-keyshortcuts={p.desktop && !p.interrupted ? 'Escape' : undefined}>
         <Icon name="play" size={18} />
         {t('pause.resume')}
-        {p.desktop && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}
+        {p.desktop && !p.interrupted && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}
       </button>
     </>
   );

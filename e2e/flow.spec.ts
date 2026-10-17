@@ -70,3 +70,42 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
     await expect(page.getByText('1-day streak')).toBeVisible();
   });
 }
+
+test('a reload on Play keeps the lesson and waits for Start', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Got it' }).click();
+  await page.reload();
+  await expect(page).toHaveURL(/#\/play$/);
+  await expect(page.getByRole('dialog', { name: 'Ready?' }).getByText('Lesson 1.1', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('img', { name: /Count-in, beat|Counting beat/ })).toBeAttached({ timeout: 3000 });
+});
+
+test('after quitting, Back does not walk into the exercise again', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Got it' }).click();
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await page.goBack();
+  // Back from Home now leaves Home, or lands on Play waiting for a tap; never a running exercise.
+  if (page.url().includes('#/play')) await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
+});
+
+test('Esc does not start the Ready sheet (browsers do not let Esc start audio); Start does', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Got it' }).click();
+  await page.reload();
+  await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});

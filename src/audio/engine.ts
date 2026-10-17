@@ -68,6 +68,10 @@ export interface AudioEngine {
   onBeat(cb: (beat: { index: number; inBar: number; countIn: boolean; time: number }) => void): () => void;
   /** Plain click track for calibration: `count` clicks at `bpm`, returns their audio times. */
   clicks(count: number, bpm: number, leadIn?: number): number[];
+  /** The AudioContext state ('running', 'suspended', 'interrupted' on iOS…), or 'none' without Web Audio. */
+  audioState(): string;
+  /** Called when the AudioContext state changes (an iOS call or Siri interrupts it, the browser suspends it). */
+  onStateChange(cb: (state: string) => void): () => void;
 }
 
 type BeatCallback = Parameters<AudioEngine['onBeat']>[0];
@@ -116,6 +120,7 @@ class WebAudioEngine implements AudioEngine {
   private raf: number | null = null;
 
   private listeners = new Set<BeatCallback>();
+  private stateListeners = new Set<(state: string) => void>();
   private voices = new Set<Voice>();
   private tapVoice: Voice | null = null;
 
@@ -124,7 +129,19 @@ class WebAudioEngine implements AudioEngine {
     if (this.ctx) return this.ctx;
     const Ctor = audioContextClass();
     if (!Ctor) return null;
+    // iOS: 'playback' keeps the clicks audible with the ring/silent switch on (Safari 16.4+).
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) {
+      try {
+        session.type = 'playback';
+      } catch {
+        /* read-only in some versions */
+      }
+    }
     const ctx = new Ctor({ latencyHint: 'interactive' });
+    ctx.addEventListener('statechange', () => {
+      for (const cb of [...this.stateListeners]) cb(ctx.state);
+    });
     const master = ctx.createGain();
     master.gain.value = 0.8;
     master.connect(ctx.destination);
@@ -266,6 +283,17 @@ class WebAudioEngine implements AudioEngine {
       if (ctx) this.fadeOut(ctx, v, 0.01);
       this.voices.delete(v);
     }
+  }
+
+  audioState(): string {
+    return this.ctx ? this.ctx.state : 'none';
+  }
+
+  onStateChange(cb: (state: string) => void): () => void {
+    this.stateListeners.add(cb);
+    return () => {
+      this.stateListeners.delete(cb);
+    };
   }
 
   onBeat(cb: BeatCallback): () => void {

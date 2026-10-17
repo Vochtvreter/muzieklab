@@ -44,7 +44,8 @@ export function useReplay(): (exercise: Exercise, lessonId: string | null, same:
       const run = same ? { exercise, lessonId } : makeRun(exercise.settings, newSeed(), lessonId);
       if (!run) return;
       dispatch({ type: 'start', run });
-      navigate('/play');
+      // Results is swapped for Play (and Play for Results at the end), so Back leaves the exercise, not replays it.
+      navigate('/play', { replace: true });
     },
     [dispatch],
   );
