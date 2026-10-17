@@ -1,4 +1,5 @@
 /** Pure helpers for the Play screen: segments after a pause, staff windows, beats, live score. */
+import { EXTRA_TAP_POINTS, POINTS } from '../../core/api';
 import type { Judgement, JudgeResult, LivePress, NoteResult, Tap, Timeline, TimedNote } from '../../core/api';
 
 /**
@@ -77,13 +78,10 @@ export function cursorAt(notes: TimedNote[], t: number, totalSeconds: number, lo
   return idx;
 }
 
-const POINTS: Record<Judgement, number> = { perfect: 100, great: 80, good: 50, miss: 0 };
-const EXTRA_POINTS = -25;
-
 /** "So far" accuracy while playing, from the starts judged up to now (holds are added in the final result). */
 export function liveAccuracy(judged: Judgement[], extraTaps: number): number {
   if (judged.length === 0) return 100;
-  const pts = judged.reduce((s, j) => s + POINTS[j], 0) + extraTaps * EXTRA_POINTS;
+  const pts = judged.reduce((s, j) => s + POINTS[j], 0) + extraTaps * EXTRA_TAP_POINTS;
   return Math.max(0, Math.round(pts / judged.length));
 }
 

@@ -17,7 +17,8 @@ export function LessonTiles({ unit, progress, currentId, onFill }: { unit: Unit;
       {unit.lessons.map((l, i) => {
         const n = lessonStars(progress, l.id);
         const st = states[i];
-        const aria = st === 'current' ? (n ? t('tile.nextStars', { count: n }) : t('tile.next')) : st === 'done' ? t('tile.done', { count: n }) : t('tile.notStarted');
+        const shown = Math.min(3, n);
+        const aria = st === 'current' ? (n ? t('tile.nextStars', { count: shown }) : t('tile.next')) : st === 'done' ? t('tile.done', { count: shown }) : t('tile.notStarted');
         return (
           <span key={l.id} className={'tile tile--' + st}>
             <span className="tile-id">{l.id}</span>

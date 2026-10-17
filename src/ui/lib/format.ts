@@ -32,7 +32,7 @@ export function signedMs(ms: number): string {
   return t('common.ms', { value: signed(ms) });
 }
 
-/** "★★☆" for 0–3 stars. */
+/** "★★☆" for 0–3 stars (the hidden 4th, all perfect, shows as three: callers add its own mark). */
 export function starsText(stars: number): string {
   const n = Math.max(0, Math.min(3, Math.round(stars)));
   return '★'.repeat(n) + '☆'.repeat(3 - n);

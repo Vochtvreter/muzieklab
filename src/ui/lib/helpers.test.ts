@@ -33,6 +33,7 @@ describe('formatting', () => {
   it('draws stars and the difficulty meter', () => {
     expect(starsText(2)).toBe('★★☆');
     expect(starsText(0)).toBe('☆☆☆');
+    expect(starsText(4)).toBe('★★★');
     expect(difficultyLevel(0)).toBe(1);
     expect(difficultyLevel(5)).toBe(3);
     expect(difficultyLevel(10)).toBe(5);
@@ -153,7 +154,7 @@ describe('play maths', () => {
 
   it('scores the starts so far and words the judgement', () => {
     expect(liveAccuracy([], 0)).toBe(100);
-    expect(liveAccuracy(['perfect', 'great', 'good', 'miss'], 0)).toBe(58);
+    expect(liveAccuracy(['perfect', 'great', 'good', 'miss'], 0)).toBe(65);
     expect(liveAccuracy(['perfect'], 1)).toBe(75);
     expect(pressFeedback({ index: 0, judgement: 'good', offsetMs: 90 })).toEqual({ key: 'judge.goodLate', tone: 'gold' });
     expect(pressFeedback({ index: 0, judgement: 'good', offsetMs: -90 }).key).toBe('judge.goodEarly');

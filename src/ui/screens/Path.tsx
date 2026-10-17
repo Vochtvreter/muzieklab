@@ -49,8 +49,10 @@ export function PathScreen(): JSX.Element {
                       {u.lessons.map((l) => {
                         const n = lessonStars(p, l.id);
                         return (
-                          <span key={l.id} role="img" className={n ? 'has-stars' : ''} aria-label={t('path.lessonStars', { id: l.id, count: n })}>
+                          <span key={l.id} role="img" className={n ? 'has-stars' : ''}
+                            aria-label={n === 4 ? t('path.lessonAllPerfect', { id: l.id }) : t('path.lessonStars', { id: l.id, count: n })}>
                             {starsText(n)}
+                            {n === 4 && <span className="star-bonus">✦</span>}
                           </span>
                         );
                       })}

@@ -24,7 +24,8 @@
   },
   "stars": {
     "label": "{count} of {total} stars",
-    "of3": "{count} of 3 stars"
+    "of3": "{count} of 3 stars",
+    "allPerfect": "3 of 3 stars, plus the all-perfect star"
   },
   "streak": {
     "pill": "{count, plural, =0 {No streak yet} one {#-day streak} other {#-day streak}}",
@@ -62,6 +63,7 @@
     "unlocks": "Unlocks with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
     "lessonStars": "Lesson {id}: {count} of 3 stars",
+    "lessonAllPerfect": "Lesson {id}: 3 of 3 stars, all perfect",
     "u1": {
       "title": "Quarter and half notes",
       "l1": "Quarter notes",
@@ -304,6 +306,7 @@
     "backHome": "Back to home",
     "accuracy": "{value}%",
     "summary": "accuracy · max combo {combo}",
+    "allPerfect": "All perfect! Bonus star",
     "perfect": "Perfect",
     "great": "Great",
     "good": "Good",

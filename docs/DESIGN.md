@@ -559,12 +559,19 @@ confused: `window = min(base, 0.4 × gap to the neighbouring onset)`.
 | Judgement | Window (default) | Points |
 |---|---|---|
 | Perfect | ≤ 35 ms | 100 |
-| Great | ≤ 70 ms | 80 |
-| Good | ≤ 120 ms | 50 |
+| Great | ≤ 70 ms | 90 |
+| Good | ≤ 120 ms | 70 |
 | Miss | — | 0 |
 | Extra tap | — | −25 |
 
 A *lenient* setting (×1.5 windows) exists for young beginners.
+
+Getting the rhythm right matters more than millisecond accuracy, so a note started anywhere
+inside its window keeps most of its points (70): the Perfect / Great step on top rewards
+timing. Missed notes, extra taps and wrong lengths are the rhythm errors and cost the most.
+Playtesting showed the first values (Great 80, Good 50) made three stars need near-perfect
+timing: in a simulation of normal human tapping spread (σ ≈ 30–40 ms after calibration),
+3 stars came in only 7–30 % of runs, against 65–95 % with these values.
 
 **Release (hold) judgment**, with holding on. `end` = the moment the note (including ties
 and dots) stops sounding.
@@ -583,7 +590,10 @@ sourced rule); the values are starting points to tune in playtesting.
 ### 6.3 Scores
 
 - **Accuracy %** = points / max points (floored at 0).
-- **Stars:** ★ ≥ 60% · ★★ ≥ 80% · ★★★ ≥ 95% and no misses.
+- **Stars:** ★ ≥ 60% · ★★ ≥ 80% · ★★★ ≥ 92% and no misses.
+- **Hidden 4th star (all perfect):** every start Perfect, every hold right, no extra taps.
+  It is not shown as an empty slot: it only appears on the results (and as a ✦ next to the
+  lesson on the Path) once earned. Path totals still count at most 3 per lesson.
 - **Tendency:** mean signed offset → *"rushing"* / *"dragging"* / *"steady"*. People
   tapping along to a beat naturally land tens of milliseconds early (*negative mean
   asynchrony*, Repp 2005), so a small early average is normal and is reported as
