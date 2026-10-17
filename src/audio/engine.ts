@@ -84,9 +84,8 @@ const BEAT_EARLY_S = 0.008;
 const SILENT = 0.0001;
 
 function audioContextClass(): typeof AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  const w = window as Window & { webkitAudioContext?: typeof AudioContext };
-  return w.AudioContext ?? w.webkitAudioContext ?? null;
+  const g = globalThis as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+  return g.AudioContext ?? g.webkitAudioContext ?? null;
 }
 
 const perfNow = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -239,8 +238,12 @@ class WebAudioEngine implements AudioEngine {
     this.jobCursor = 0;
     this.beatCursor = 0;
     const ctx = this.ctx;
-    if (ctx) for (const v of this.voices) this.fadeOut(ctx, v, 0.01);
-    this.voices.clear();
+    // Scheduled clicks and notes go; a tap the player is still holding keeps sounding until tapUp().
+    for (const v of [...this.voices]) {
+      if (v === this.tapVoice) continue;
+      if (ctx) this.fadeOut(ctx, v, 0.01);
+      this.voices.delete(v);
+    }
   }
 
   onBeat(cb: BeatCallback): () => void {

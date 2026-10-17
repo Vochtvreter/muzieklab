@@ -130,20 +130,29 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
           }
         }
         tieFrom = sym.tieToNext ? { note, row } : null;
+      } else {
+        tieFrom = null;
       }
       return note;
     });
 
     // Tuplets change the notes' ticks, so they must exist before the voice is filled.
     const pairs = bar.symbols.map((sym, j) => ({ sym, note: notes[j] }));
+    const beamable = (sym: NotatedSymbol) =>
+      sym.kind === 'note' && sym.beamGroup !== undefined && (sym.value === 'eighth' || sym.value === 'sixteenth');
     const tuplets = groupBy(pairs, (p) => p.sym.tuplet?.id).map(
-      (g) => new Tuplet(g.map((p) => p.note), { num_notes: 3, notes_occupied: 2, ratioed: false }),
+      (g) =>
+        new Tuplet(
+          g.map((p) => p.note),
+          // A beamed triplet shows just the 3; otherwise a bracket.
+          { num_notes: 3, notes_occupied: 2, ratioed: false, bracketed: !g.every((p) => beamable(p.sym)) },
+        ),
     );
     const voice = new Voice({ num_beats: meter.beatsPerBar, beat_value: 4 }).setMode(Voice.Mode.SOFT);
     voice.addTickables(notes);
     // Beams are made before drawing so the beamed notes drop their flags.
     const beams = groupBy(pairs, (p) => p.sym.beamGroup)
-      .map((g) => g.filter((p) => p.sym.kind === 'note' && (p.sym.value === 'eighth' || p.sym.value === 'sixteenth')))
+      .map((g) => g.filter((p) => beamable(p.sym)))
       .filter((g) => g.length >= 2)
       .map((g) => new Beam(g.map((p) => p.note)));
 
@@ -173,15 +182,16 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
  * also renders black) for unstyled glyphs; those become ink, or the mark colour of the note they belong to.
  */
 function paintSvg(svg: SVGSVGElement, pal: StaffPalette, colourById: Map<string, string>): void {
-  const own = new Set([...colourById.values()]);
+  const own = new Set([...colourById.values()].map((c) => c.toLowerCase()));
   const colourOf = (el: Element): string => {
     const g = el.closest('g.vf-stavenote');
     const id = g?.id.replace(/^vf-/, '');
     return (id && colourById.get(id)) || pal.ink;
   };
+  // Paths without a fill or stroke (stems, ties) inherit these, so nothing falls back to black.
   svg.setAttribute('fill', pal.ink);
+  svg.setAttribute('stroke', pal.ink);
   svg.querySelectorAll('*').forEach((el) => {
-    if (el.tagName === 'g') return;
     const fill = (el.getAttribute('fill') ?? '').toLowerCase();
     if (fill !== 'none' && !own.has(fill)) el.setAttribute('fill', colourOf(el));
     const stroke = (el.getAttribute('stroke') ?? '').toLowerCase();

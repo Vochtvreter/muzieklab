@@ -1,0 +1,160 @@
+/*
+ * Design tokens (DESIGN.md §9). Light values come from the MVP canvas; dark values follow the
+ * canvas dark generator's colour-role map (scratchpad vf/gen_dark.py, MAP / TEXT_ON_FILL / SNIPPETS).
+ * The theme follows the device (prefers-color-scheme) unless Settings forces data-theme="light|dark".
+ */
+:root {
+  /* Surfaces and lines */
+  --ground: #eef1f0;
+  --paper: #ffffff;
+  --line: #d8dfde;
+  --divider: #e7eceb; /* hairlines inside cards */
+  --grid: #e3e8e7; /* beat grid lines, empty bars in diagrams */
+  --track: #dde4e3; /* segmented track, disabled fill, gray note lengths */
+  --rule: #b9c3c2; /* inactive beat numbers, bar lines, empty stars */
+  --rule-strong: #c9d2d1; /* switch track off, spine, greyed chip border */
+  --spine: #c9d2d1;
+
+  /* Text */
+  --ink: #161b1c;
+  --muted: #5a6667;
+  --faint: #8a9596; /* the quiet ? icon, chevrons */
+  --disabled: #6b7778;
+
+  /* Slate accent */
+  --accent: #2f6669;
+  --accent-ink: #1f4a4c; /* text in slate tints */
+  --accent-soft: #dfeaea; /* pill, pad, chosen chip */
+  --accent-ring: #b5cfcf; /* pad ring track */
+  --accent-halo: #d3e3e3; /* current path node halo */
+  --on-fill: #ffffff; /* text on a filled accent or ink */
+  --on-fill-muted: #cfe2e2;
+  --tile-overlay: rgba(255, 255, 255, 0.1);
+
+  /* Rewards */
+  --gold: #e0a526;
+  --gold-soft: #f8edd2;
+  --gold-ink: #8a6412;
+  --gold-star: #c48a12;
+
+  /* Feedback */
+  --ok: #1f8a5b; /* perfect / great / held right */
+  --good: #b7791f; /* good, early / late */
+  --good-ink: #9a6a10;
+  --miss: #c23b3b;
+
+  /* Raised controls */
+  --thumb: #ffffff;
+  --thumb-shadow: 0 1px 3px rgba(22, 27, 28, 0.14);
+  --knob: #ffffff;
+
+  /* Overlays */
+  --backdrop: rgba(22, 27, 28, 0.42);
+  --dialog-shadow: 0 24px 48px rgba(22, 27, 28, 0.14);
+
+  /* Scrollbar, focus, links */
+  --scroll-thumb: #b9c3c2;
+  --scroll-thumb-hover: #8a9596;
+  --focus: #e0a526;
+  --link: #2f6669;
+  --link-hover: #1f4a4c;
+
+  /* Type */
+  --font-display: Unbounded, sans-serif;
+  --font-ui: Figtree, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-music: 'Noto Music', serif;
+
+  /* Motion */
+  --ease-std: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out-soft: cubic-bezier(0.3, 0.8, 0.3, 1);
+
+  color-scheme: light;
+}
+
+/* Dark: by role. Text on filled accents turns dark ink; raised thumbs are lighter than their track. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ground: #101415;
+    --paper: #191f20;
+    --line: #2f3839;
+    --divider: #262e2f;
+    --grid: #262e2f;
+    --track: #222a2b;
+    --rule: #4a5657;
+    --rule-strong: #3d4849;
+    --spine: #3d4849;
+    --ink: #e8eeed;
+    --muted: #9aa7a7;
+    --faint: #6b7778;
+    --disabled: #7f8b8c;
+    --accent: #8fbfc1;
+    --accent-ink: #b7d8d9;
+    --accent-soft: #1c3031;
+    --accent-ring: #284445;
+    --accent-halo: #1f3a3b;
+    --on-fill: #101415;
+    --on-fill-muted: #1f4446;
+    --gold: #f0b429;
+    --gold-soft: #3a2f14;
+    --gold-ink: #f0c35a;
+    --gold-star: #f0c35a;
+    --ok: #4cc38a;
+    --good: #f0b429;
+    --good-ink: #f0c35a;
+    --miss: #ff6b6b;
+    --thumb: #3a4546;
+    --thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --knob: #191f20;
+    --backdrop: rgba(0, 0, 0, 0.62);
+    --dialog-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+    --scroll-thumb: #3d4849;
+    --scroll-thumb-hover: #5d6a6b;
+    --focus: #f0b429;
+    --link: #8fbfc1;
+    --link-hover: #b7d8d9;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --ground: #101415;
+  --paper: #191f20;
+  --line: #2f3839;
+  --divider: #262e2f;
+  --grid: #262e2f;
+  --track: #222a2b;
+  --rule: #4a5657;
+  --rule-strong: #3d4849;
+  --spine: #3d4849;
+  --ink: #e8eeed;
+  --muted: #9aa7a7;
+  --faint: #6b7778;
+  --disabled: #7f8b8c;
+  --accent: #8fbfc1;
+  --accent-ink: #b7d8d9;
+  --accent-soft: #1c3031;
+  --accent-ring: #284445;
+  --accent-halo: #1f3a3b;
+  --on-fill: #101415;
+  --on-fill-muted: #1f4446;
+  --gold: #f0b429;
+  --gold-soft: #3a2f14;
+  --gold-ink: #f0c35a;
+  --gold-star: #f0c35a;
+  --ok: #4cc38a;
+  --good: #f0b429;
+  --good-ink: #f0c35a;
+  --miss: #ff6b6b;
+  --thumb: #3a4546;
+  --thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --knob: #191f20;
+  --backdrop: rgba(0, 0, 0, 0.62);
+  --dialog-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  --scroll-thumb: #3d4849;
+  --scroll-thumb-hover: #5d6a6b;
+  --focus: #f0b429;
+  --link: #8fbfc1;
+  --link-hover: #b7d8d9;
+  color-scheme: dark;
+}
