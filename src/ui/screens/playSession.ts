@@ -87,6 +87,8 @@ export interface PlaySession {
   closeSheet(): void;
   restart(): void;
   stop(): void;
+  /** End now and go to Results: notes not played yet count as missed. */
+  skip(): void;
 }
 
 export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onIntroDone: () => void, onFinish: (r: JudgeResult, taps: Tap[]) => void): PlaySession {
@@ -455,5 +457,6 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     closeSheet,
     restart,
     stop,
+    skip: finish,
   };
 }

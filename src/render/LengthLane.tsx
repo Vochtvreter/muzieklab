@@ -14,6 +14,8 @@ export interface LengthLaneProps {
   now?: number | null;
   /** Accessible description (an i18n string); defaults to the design's English label. */
   label?: string;
+  /** false for tap-only exercises: presses show as marks, not holds. */
+  hold?: boolean;
 }
 
 const DEFAULT_WIDTH = 342;
@@ -32,6 +34,12 @@ function renderShape(s: LaneShape, key: number): JSX.Element {
     case 'note':
       return <rect key={key} x={r(s.x)} y={r(s.y)} width={r(s.w)} height={r(s.h)} rx={3} style={{ fill: cssVar('laneNote') }} />;
     case 'hold':
+      if (s.tone === 'extra') {
+        return (
+          <rect key={key} x={r(s.x)} y={r(s.y)} width={r(s.w)} height={r(s.h)} rx={2} fill="none" strokeWidth={1.5}
+            style={{ stroke: cssVar('miss') }} />
+        );
+      }
       return <rect key={key} x={r(s.x)} y={r(s.y)} width={r(s.w)} height={r(s.h)} rx={2} style={{ fill: HOLD_FILL[s.tone] }} />;
     case 'short':
       return (
@@ -63,6 +71,7 @@ export function LengthLane(props: LengthLaneProps): JSX.Element {
     taps: props.taps,
     result: props.result,
     now: props.now,
+    hold: props.hold,
     width,
     rowHeight: laneRowHeight(width, props.result !== undefined && props.now == null),
   });

@@ -108,7 +108,7 @@ export const UNITS: Unit[] = [
   ]),
 ];
 
-const ALL_LESSONS: Array<{ unit: Unit; lesson: Lesson; index: number }> = UNITS.flatMap((unit) =>
+export const ALL_LESSONS: Array<{ unit: Unit; lesson: Lesson; index: number }> = UNITS.flatMap((unit) =>
   unit.lessons.map((lesson, index) => ({ unit, lesson, index })),
 );
 

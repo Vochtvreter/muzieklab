@@ -3,7 +3,8 @@ import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type 
 import { defaultProgress } from '../../game/storage';
 import { UNITS } from '../../game/path';
 import { difficultyLevel, lastTimeChips, metersLabel, orList, signed, signedMs, starsText, tempoWordKey } from './format';
-import { continueLesson, tileStates, unitStates } from './lessons';
+import { continueLesson, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
+import { exerciseView } from '../exerciseView';
 import { beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
 import { setupHints, startBlockedKey } from './setupHints';
 import { describeBars } from './notation';
@@ -152,7 +153,8 @@ describe('play maths', () => {
   });
 
   it('scores the starts so far and words the judgement', () => {
-    expect(liveAccuracy([], 0)).toBe(100);
+    expect(liveAccuracy([], 0)).toBeNull();
+    expect(liveAccuracy([], 2)).toBe(0);
     expect(liveAccuracy(['perfect', 'great', 'good', 'miss'], 0)).toBe(58);
     expect(liveAccuracy(['perfect'], 1)).toBe(75);
     expect(pressFeedback({ index: 0, judgement: 'good', offsetMs: 90 })).toEqual({ key: 'judge.goodLate', tone: 'gold' });
@@ -197,5 +199,22 @@ describe('staff text alternative', () => {
       '4/4',
     );
     expect(label).toBe('Rhythm in 4/4. Bar 1: dotted quarter note, eighth note, half rest.');
+  });
+});
+
+describe('lesson preview', () => {
+  it('knows what a lesson adds over the one before', () => {
+    expect(newFeatures('2.3')).toContain('rest:half');
+    expect(newFeatures('1.2')).toContain('note:half');
+  });
+
+  it('shows a bar with what the lesson adds: a half rest in "Half rests"', () => {
+    const p = lessonPreview('2.3')!;
+    const bar = exerciseView(p.run.exercise)!.bars[p.bar];
+    expect(bar.symbols.some((s) => s.kind === 'rest' && s.value === 'half')).toBe(true);
+  });
+
+  it('is the same every visit', () => {
+    expect(lessonPreview('4.1')!.run.exercise.seed).toBe(lessonPreview('4.1')!.run.exercise.seed);
   });
 });

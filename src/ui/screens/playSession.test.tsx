@@ -148,6 +148,18 @@ describe('usePlaySession', () => {
     expect(done.result!.notes[i].hold).toBe('long');
   });
 
+  it('skipping with the pad still held releases that note: cut short, not left open as held right', () => {
+    const { hook, view, done, origin } = setup();
+    const o = origin(0, 0);
+    const first = view.timeline.notes[0];
+    at(o + first.onset);
+    key('keydown');
+    at(o + first.onset + (first.end - first.onset) / 3);
+    act(() => hook.result.current.skip());
+    expect(done.result!.notes[0].hold).toBe('short');
+    expect(done.result!.counts.miss).toBe(view.timeline.notes.length - 1);
+  });
+
   it('judges misses on the heard clock: an on-time press is never shown as a miss first', () => {
     const { hook, view, origin } = setup();
     clock.latency = 0.25; // Bluetooth headphones
