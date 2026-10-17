@@ -1,4 +1,4 @@
-import { Beam, Barline, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Tuplet, Voice } from 'vexflow';
+import { Beam, Barline, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Tuplet, Voice } from 'vexflow/bravura';
 import type { Meter, NotatedBar, NotatedSymbol, NoteValue } from '../core/types';
 
 export type NoteMark = 'perfect' | 'great' | 'good' | 'miss' | 'pending';

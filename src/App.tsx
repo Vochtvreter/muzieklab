@@ -12,7 +12,8 @@ import { SettingsScreen } from './ui/screens/Settings';
 import { Setup } from './ui/screens/Setup';
 import { StoreProvider, useStore } from './ui/store';
 
-const RenderDemo = lazy(() => import('./render/RenderDemo').then((m) => ({ default: m.RenderDemo })));
+/** The notation test page: development builds only, so it is not shipped. */
+const RenderDemo = import.meta.env.DEV ? lazy(() => import('./render/RenderDemo').then((m) => ({ default: m.RenderDemo }))) : null;
 
 /** data-theme on <html> overrides the system scheme (the staff redraws when it changes). */
 function useTheme(theme: 'system' | 'light' | 'dark'): void {
@@ -57,11 +58,14 @@ function Screens(): JSX.Element {
     case '/calibrate':
       return <Calibration />;
     case '/dev/render':
-      return (
-        <Suspense fallback={null}>
-          <RenderDemo />
-        </Suspense>
-      );
+      if (RenderDemo) {
+        return (
+          <Suspense fallback={null}>
+            <RenderDemo />
+          </Suspense>
+        );
+      }
+      return <Home />;
     default:
       return <Home />;
   }
