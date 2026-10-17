@@ -6,7 +6,9 @@ import { Icon } from '../components/Icon';
 const isIOS = (): boolean =>
   typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
-export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; desktop: boolean; onDone(): void }): JSX.Element {
+/** How to play. `hold: false` (tap only, unit 1): only when each note starts counts, so nothing about holding. */
+export function HowToContent({ eyebrow, desktop, hold = true, onDone }: { eyebrow: string; desktop: boolean; hold?: boolean; onDone(): void }): JSX.Element {
+  const k = hold ? 'howto.' : 'howto.tap.';
   return (
     <>
       <div className="sheet-head">
@@ -15,6 +17,7 @@ export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; de
           {t('howto.title')}
         </h2>
       </div>
+      {hold ? (
       <svg width="350" height="74" viewBox="0 0 350 74" role="img" aria-label={t('howto.diagram')} className="howto-diagram">
         <rect x="18" y="34" width="196" height="16" rx="8" className="d-fill" />
         <rect x="230" y="34" width="100" height="16" rx="8" className="d-empty" />
@@ -36,13 +39,33 @@ export function HowToContent({ eyebrow, desktop, onDone }: { eyebrow: string; de
           {t('howto.oneNote')}
         </text>
       </svg>
+      ) : (
+        <svg width="350" height="74" viewBox="0 0 350 74" role="img" aria-label={t('howto.tap.diagram')} className="howto-diagram">
+          <rect x="18" y="34" width="196" height="16" rx="8" className="d-empty" />
+          <rect x="230" y="34" width="100" height="16" rx="8" className="d-empty" />
+          <path d="M18 12v14M12 20l6 6 6-6" fill="none" className="d-ink" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M230 12v14M224 20l6 6 6-6" fill="none" className="d-ink" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <text x="30" y="22" fontSize="13" fontWeight="700" className="d-text">
+            {t('howto.tap.tap')}
+          </text>
+          <text x="242" y="22" fontSize="13" fontWeight="700" className="d-text">
+            {t('howto.tap.tap')}
+          </text>
+          <text x="116" y="68" textAnchor="middle" fontSize="12" className="d-muted">
+            {t('howto.oneNote')}
+          </text>
+          <text x="280" y="68" textAnchor="middle" fontSize="12" className="d-muted">
+            {t('howto.nextNote')}
+          </text>
+        </svg>
+      )}
       <ol className="steps">
         {[1, 2, 3].map((n) => (
           <li key={n}>
             <span className="step-n" aria-hidden="true">
               {n}
             </span>
-            <span>{t('howto.step' + n)}</span>
+            <span>{t(k + 'step' + n)}</span>
           </li>
         ))}
       </ol>

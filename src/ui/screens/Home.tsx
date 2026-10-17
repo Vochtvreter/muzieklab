@@ -8,11 +8,11 @@ import { AppShell } from '../components/AppShell';
 import { LessonTiles, StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
-import { lastTimeChips, metersLabel, seedFromString } from '../lib/format';
-import { continueLesson, lessonNumber, unitStates } from '../lib/lessons';
+import { lastTimeChips, metersLabel } from '../lib/format';
+import { continueLesson, lessonNumber, lessonPreview, unitStates } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link } from '../router';
-import { makeRun, todayIso, useStore } from '../store';
+import { todayIso, useStore } from '../store';
 import { useStartLesson } from './start';
 
 function StreakPill({ days }: { days: number }): JSX.Element {
@@ -24,15 +24,19 @@ function StreakPill({ days }: { days: number }): JSX.Element {
   );
 }
 
-/** One bar of the lesson, as a preview (same seed every visit). */
-function LessonPreview({ lessonId, wide }: { lessonId: string; wide?: boolean }): JSX.Element | null {
-  const run = useMemo(() => makeRun(lessonSettings(lessonId), seedFromString(lessonId), lessonId), [lessonId]);
-  const view = run ? exerciseView(run.exercise) : null;
-  if (!run || !view || view.bars.length === 0) return null;
-  const bar = view.bars.slice(0, 1);
+/**
+ * The lesson as a preview (same every visit): a bar that shows what the lesson adds, e.g. a half rest in "Half rests".
+ * One bar on phones; two from tablet up, where one bar left most of the card empty.
+ */
+function LessonPreview({ lessonId, wide, count = 1 }: { lessonId: string; wide?: boolean; count?: 1 | 2 }): JSX.Element | null {
+  const preview = useMemo(() => lessonPreview(lessonId), [lessonId]);
+  const view = preview ? exerciseView(preview.run.exercise) : null;
+  if (!preview || !view || view.bars.length === 0) return null;
+  const from = Math.max(0, Math.min(preview.bar, view.bars.length - count));
+  const bars = view.bars.slice(from, from + count);
   return (
     <div className={'preview-staff' + (wide ? ' preview-staff--wide' : '')}>
-      <StaffBox bars={bar} meter={run.exercise.meter} barsPerRow={1} label={describeBars(bar, run.exercise.meter.id)} />
+      <StaffBox bars={bars} meter={preview.run.exercise.meter} barsPerRow={bars.length} label={describeBars(bars, preview.run.exercise.meter.id, from + 1)} />
     </div>
   );
 }
@@ -62,7 +66,7 @@ export function Home(): JSX.Element {
       </div>
       {bp === 'desktop' ? (
         <div className="continue-staff continue-staff--wide">
-          <LessonPreview lessonId={cont.lesson.id} wide />
+          <LessonPreview lessonId={cont.lesson.id} wide count={2} />
         </div>
       ) : (
         <div className="continue-staff">
@@ -71,7 +75,7 @@ export function Home(): JSX.Element {
             <span>{t('common.bpm', { value: lessonSettings(cont.lesson.id).tempo })}</span>
           </div>
           <div className="continue-staff-body">
-            <LessonPreview lessonId={cont.lesson.id} />
+            <LessonPreview lessonId={cont.lesson.id} wide={bp === 'tablet'} count={bp === 'tablet' ? 2 : 1} />
           </div>
         </div>
       )}

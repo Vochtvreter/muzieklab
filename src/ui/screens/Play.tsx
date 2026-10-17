@@ -92,17 +92,24 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
   );
   const lane = (
     <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={4} taps={s.taps} result={s.liveResult}
-      now={s.phase === 'running' && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} />
+      now={s.phase === 'running' && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} hold={ex.settings.hold} />
   );
   const laneHead = (
     <div className="lane-head">
-      <span>
-        <b>{t('play.length')}</b> · {t(desktop ? 'play.lengthLegendLong' : 'play.lengthLegend')}
-      </span>
+      {ex.settings.hold ? (
+        <span>
+          <b>{t('play.length')}</b> · {t(desktop ? 'play.lengthLegendLong' : 'play.lengthLegend')}
+        </span>
+      ) : (
+        <span>
+          <b>{t('play.tapTiming')}</b> · {t(desktop ? 'play.tapLegendLong' : 'play.tapLegend')}
+        </span>
+      )}
       <span>{bars > 1 ? t('play.barsRange', { from: 1, to: bars }) : t('play.barsOne', { from: 1 })}</span>
     </div>
   );
 
+  const soFar = liveAccuracy(s.judged, s.extraTaps);
   const beat = s.frame.beat;
   const beatLabel = beat.inBar === null
     ? t('play.beats', { total: ex.meter.beatsPerBar })
@@ -131,7 +138,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
       labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
       maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined}>
       {sheetShown === 'help' ? (
-        <HowToContent eyebrow={t(s.phase === 'intro' ? 'howto.firstTime' : 'howto.paused')} desktop={desktop} onDone={s.closeSheet} />
+        <HowToContent eyebrow={t(s.phase === 'intro' ? 'howto.firstTime' : 'howto.paused')} desktop={desktop} hold={ex.settings.hold} onDone={s.closeSheet} />
       ) : sheetShown === 'ready' ? (
         <ReadyContent context={where} onStart={s.closeSheet}
           detail={t('ready.detail', { bars: t('common.bars', { count: bars }), meter: metersLabel([ex.meter.id]), bpm: ex.tempo })} />
@@ -214,7 +221,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
               </div>
               <div className="card stat">
                 <span className="label">{t('play.soFar')}</span>
-                <span className="stat-mono">{t('common.percent', { value: liveAccuracy(s.judged, s.extraTaps) })}</span>
+                <span className="stat-mono">{soFar === null ? t('play.noScore') : t('common.percent', { value: soFar })}</span>
               </div>
               <div className="card stat">
                 <span className="label" id="dmetro">
@@ -279,6 +286,9 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
           {fbText}
         </div>
         <TapPad ref={s.setPad as (el: HTMLButtonElement | null) => void} progress={s.frame.ring} held={s.frame.held} />
+        <button type="button" className="skip-link" onClick={s.skip} disabled={s.phase === 'intro'}>
+          {t('play.skip')}
+        </button>
       </div>
       {sheet}
     </ExerciseFrame>

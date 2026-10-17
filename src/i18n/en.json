@@ -251,6 +251,11 @@
     "length": "Length",
     "lengthLegend": "gray = note, color = your hold",
     "lengthLegendLong": "gray = how long each note lasts, color = how long you held",
+    "noScore": "–",
+    "skip": "Skip to results",
+    "tapTiming": "Timing",
+    "tapLegend": "gray = note, mark = your tap",
+    "tapLegendLong": "gray = each note, mark = when you tapped",
     "barsRange": "{from, select, other {bars {from}–{to}}}",
     "barsOne": "bar {from}",
     "pad": "Rhythm pad",
@@ -283,6 +288,13 @@
     "computer": "On a computer, any key works as the Rhythm pad. Tap ? at the top to see this again.",
     "desktop": "Any key works as the Rhythm pad. Press ? to see this again.",
     "gotIt": "Got it",
+    "tap": {
+      "diagram": "Tap when each note starts; how long you hold does not count",
+      "tap": "tap",
+      "step1": "Tap the Rhythm pad when a note starts.",
+      "step2": "Only the start counts here: no need to hold the note.",
+      "step3": "On a rest, don't tap."
+    },
     "ios": "No clicks? Turn up the volume and check that the ring/silent switch is not on silent."
   },
   "ready": {
@@ -323,6 +335,9 @@
     "staffLabel": "The exercise with every note colored by judgment. {rhythm}",
     "timing": "Timing and length",
     "timingLegend": "gray = note · color = your hold",
+    "tapTiming": "Timing",
+    "tapTimingLegend": "gray = note · mark = your tap",
+    "extraLegend": "red outline = extra tap",
     "listen": "Listen",
     "playing": "Playing",
     "listenTitle": "Hear the correct rhythm",

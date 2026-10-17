@@ -603,9 +603,13 @@ sourced rule); the values are starting points to tune in playtesting.
 - **Timing and length lane:** the exercise drawn to scale (two bars per row): every note's
   length in gray, the player's hold on top in color, starting where they pressed. Early or
   late presses show as a shifted start; cut-short notes show a dashed outline for the part
-  that was not held; misses show ×.
-- Tendency + steadiness, one-line coaching tip (it names the worst hold problem first,
-  e.g. "You let go of the dotted quarter in bar 2 too early").
+  that was not held; misses show ×; taps that matched no note show as a red outline.
+  In tap-only exercises a press is a short mark where it landed (holding does not count).
+- Tendency + steadiness, one-line coaching tip. When misses and extra taps add up to a
+  quarter or more of the notes, it names that first: timing advice is
+  beside the point when the player lost their place. Otherwise it names the worst hold
+  problem first, e.g. "You let go of the dotted quarter in bar 2 too early", then the
+  tendency (only from 4+ hit notes).
 - Buttons: **Retry** (same exercise) · **Next** (new exercise, same settings) · **Listen**
   (correct playback) · **Settings**.
 

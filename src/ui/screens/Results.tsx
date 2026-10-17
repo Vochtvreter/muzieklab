@@ -131,10 +131,14 @@ export function Results(): JSX.Element | null {
 
         <div className="card results-lane">
           <div className="lane-head lane-head--results">
-            <b>{t('results.timing')}</b>
-            <span>{t('results.timingLegend')}</span>
+            <b>{t(ex.settings.hold ? 'results.timing' : 'results.tapTiming')}</b>
+            <span>
+              {t(ex.settings.hold ? 'results.timingLegend' : 'results.tapTimingLegend')}
+              {result.extraTaps > 0 && ' · ' + t('results.extraLegend')}
+            </span>
           </div>
-          <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={2} taps={last.taps} result={result} label={t('results.laneLabel')} />
+          <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={2} taps={last.taps} result={result} label={t('results.laneLabel')}
+            hold={ex.settings.hold} />
         </div>
 
         {tip && (
