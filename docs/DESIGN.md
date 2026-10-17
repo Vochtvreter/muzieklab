@@ -758,6 +758,20 @@ Chapters 8–9 and flash cards arrive later, with note reading.
 the piano, and a round summary follows. Home's free practice splits into Rhythm and Read notes, and Learn gains
 chapter 8 · Notes on the staff.
 
+Built in v0.3 (ahead of v1.2, whose rhythm chapters 1–7 come next; the Learn tab holds chapter 8 until then):
+- **Pitch engine** (`core/pitch.ts`): staff positions as letter steps (C4 = 28), the 15 key signatures with their major
+  and relative minor, written names and pitch classes.
+- **Rounds** (`core/noteRound.ts`): the seeded generator (allowed positions per range, no immediate repeats, at most two
+  moves the same way, clef runs of 4–6 notes, a new key every 5 notes when mixed, extra signs on a quarter of the notes,
+  weak spots and *Practice missed notes* boosted), judging (names need the written spelling; the piano accepts the
+  sounding key), the score (right without a hint / answered; hints count as not right), weak spots (misses +2, hints and
+  answers over 3 s +1, quick right answers −1; 0–5 per note) and XP: notes × (2 + difficulty / 4) × accuracy, + 5 for 3
+  stars. Mixed input alternates names and piano every 5 notes.
+- **Screens:** Home's free practice is two tiles (Rhythm, Read notes); Read notes setup, Key, Name it (names with the
+  sign row, or the piano; computer keys on desktop; a right answer moves on by itself after 0.7 s, a wrong one waits
+  for Next note), Round done (time per note, needs practice, by sign, New round / Practice missed notes), and Learn
+  (the tab bar becomes Home · Path · Learn · Settings) with chapter 8, its quick check and read status per section.
+
 **v1.4 · Scales** builds on that, reusing the key signatures and the piano. It adds major and minor scales (natural,
 harmonic, melodic) in all 15 keys: the circle of fifths hub, playing on the piano, spelling with ♭ ♮ ♯, and a round
 summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains chapter 9 · Scales.

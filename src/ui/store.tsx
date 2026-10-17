@@ -3,7 +3,24 @@
  * the free-practice settings, the current run (exercise + seed) and the last result.
  */
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react';
-import { DEFAULT_SETTINGS, generateExercise, type Exercise, type JudgeResult, type Settings, type Tap } from '../core/api';
+import {
+  DEFAULT_NOTE_SETTINGS,
+  DEFAULT_SETTINGS,
+  generateExercise,
+  generateRound,
+  noteRoundXp,
+  sanitizeNoteSettings,
+  scoreRound,
+  updateWeak,
+  type Exercise,
+  type JudgeResult,
+  type NoteAnswer,
+  type NoteSettings,
+  type RoundNote,
+  type RoundResult,
+  type Settings,
+  type Tap,
+} from '../core/api';
 import { lessonSettings, recordLessonResult } from '../game/path';
 import { xpForResult } from '../game/xp';
 import {
@@ -69,6 +86,45 @@ export function restoreRun(): Run | null {
   }
 }
 
+/** A Read notes round: its settings and seed, the notes drawn, and the focus notes of *Practice missed notes*. */
+export interface NoteRun {
+  settings: NoteSettings;
+  seed: number;
+  focus: string[];
+  notes: RoundNote[];
+}
+
+/** The current Read notes round, per tab, so a reload on its Play screen starts the same round again. */
+export const NOTE_RUN_KEY = 'muzieklab.noteRun.v1';
+
+export function makeNoteRun(settings: NoteSettings, seed: number, weak: Record<string, number>, focus: string[] = []): NoteRun {
+  return { settings, seed, focus, notes: generateRound(settings, seed, weak, focus) };
+}
+
+function saveNoteRun(run: NoteRun | null): void {
+  try {
+    if (!run) sessionStorage.removeItem(NOTE_RUN_KEY);
+    else sessionStorage.setItem(NOTE_RUN_KEY, JSON.stringify({ settings: run.settings, seed: run.seed, focus: run.focus }));
+  } catch {
+    /* storage blocked: a reload goes back to the setup */
+  }
+}
+
+/** The round saved for this tab, drawn again from its settings and seed (weak spots only change when a round ends). */
+export function restoreNoteRun(weak: Record<string, number>): NoteRun | null {
+  try {
+    const raw = sessionStorage.getItem(NOTE_RUN_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { settings?: unknown; seed?: unknown; focus?: unknown };
+    const settings = sanitizeNoteSettings(v?.settings);
+    if (!settings || typeof v.seed !== 'number') return null;
+    const focus = Array.isArray(v.focus) ? v.focus.filter((x): x is string => typeof x === 'string') : [];
+    return makeNoteRun(settings, v.seed, weak, focus);
+  } catch {
+    return null;
+  }
+}
+
 /** What a finished run earned, for Results and the level-up sheet. */
 export interface Reward {
   xp: number;
@@ -88,6 +144,13 @@ export interface LastResult {
   reward: Reward;
 }
 
+export interface NoteLast {
+  run: NoteRun;
+  answers: NoteAnswer[];
+  result: RoundResult;
+  reward: Reward;
+}
+
 export interface AppState {
   prefs: Prefs;
   progress: Progress;
@@ -95,6 +158,10 @@ export interface AppState {
   settings: Settings;
   run: Run | null;
   last: LastResult | null;
+  /** Read notes: the setup, the round being played and the last finished round. */
+  noteSettings: NoteSettings;
+  noteRun: NoteRun | null;
+  noteLast: NoteLast | null;
 }
 
 export type Action =
@@ -102,7 +169,11 @@ export type Action =
   | { type: 'settings'; settings: Settings }
   | { type: 'start'; run: Run }
   | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string }
-  | { type: 'resetProgress' };
+  | { type: 'resetProgress' }
+  | { type: 'noteSettings'; settings: NoteSettings }
+  | { type: 'noteStart'; run: NoteRun }
+  | { type: 'noteFinish'; answers: NoteAnswer[]; today: string }
+  | { type: 'learnRead'; ids: string[] };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -141,7 +212,31 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward } };
     }
     case 'resetProgress':
-      return { ...state, progress: defaultProgress(), last: null };
+      return { ...state, progress: defaultProgress(), last: null, noteLast: null, noteSettings: { ...DEFAULT_NOTE_SETTINGS } };
+    case 'noteSettings':
+      return { ...state, noteSettings: action.settings, progress: { ...state.progress, notes: { ...state.progress.notes, settings: action.settings } } };
+    case 'noteStart':
+      return { ...state, noteRun: action.run };
+    case 'noteFinish': {
+      const run = state.noteRun;
+      if (!run) return state;
+      const answers = action.answers.slice(0, run.notes.length);
+      const result = scoreRound(run.notes, answers);
+      // Real practice: at least one note answered (a round that only timed out, or was skipped at once, does not count).
+      const practised = answers.some((a) => a.given !== null);
+      let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
+      progress = { ...progress, notes: { ...progress.notes, weak: updateWeak(progress.notes.weak, run.notes, answers) } };
+      const xp = noteRoundXp(run.settings, result);
+      const xpBefore = progress.xp;
+      progress = { ...progress, xp: xpBefore + xp };
+      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest: false };
+      return { ...state, progress, noteLast: { run, answers, result, reward } };
+    }
+    case 'learnRead': {
+      const add = action.ids.filter((id) => !state.progress.learnRead.includes(id));
+      if (add.length === 0) return state;
+      return { ...state, progress: { ...state.progress, learnRead: [...state.progress.learnRead, ...add].sort() } };
+    }
   }
 }
 
@@ -172,8 +267,17 @@ function initialState(): AppState {
   const progress = loadProgress();
   const settings = progress.lastSettings ?? { ...DEFAULT_SETTINGS };
   // A reload on Play picks the exercise up again instead of falling back to Setup.
-  const onPlay = typeof window !== 'undefined' && parseHash(window.location.hash) === '/play';
-  return { prefs, progress, settings: { ...settings, hold: prefs.holdMode === 'hold' }, run: onPlay ? restoreRun() : null, last: null };
+  const route = typeof window !== 'undefined' ? parseHash(window.location.hash) : '/';
+  return {
+    prefs,
+    progress,
+    settings: { ...settings, hold: prefs.holdMode === 'hold' },
+    run: route === '/play' ? restoreRun() : null,
+    last: null,
+    noteSettings: progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS },
+    noteRun: route === '/notes/play' ? restoreNoteRun(progress.notes.weak) : null,
+    noteLast: null,
+  };
 }
 
 interface StoreValue {
@@ -203,6 +307,10 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
     if (first.current) return;
     saveRun(state.run);
   }, [state.run]);
+  useEffect(() => {
+    if (first.current) return;
+    saveNoteRun(state.noteRun);
+  }, [state.noteRun]);
   useEffect(() => {
     first.current = false;
   }, []);

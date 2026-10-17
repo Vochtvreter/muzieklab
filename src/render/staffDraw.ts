@@ -181,7 +181,7 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
  * Gives every element an explicit fill and stroke from the palette. VexFlow writes black (or nothing, which
  * also renders black) for unstyled glyphs; those become ink, or the mark colour of the note they belong to.
  */
-function paintSvg(svg: SVGSVGElement, pal: StaffPalette, colourById: Map<string, string>): void {
+export function paintSvg(svg: SVGSVGElement, pal: StaffPalette, colourById: Map<string, string>): void {
   const own = new Set([...colourById.values()].map((c) => c.toLowerCase()));
   const colourOf = (el: Element): string => {
     const g = el.closest('g.vf-stavenote');

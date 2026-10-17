@@ -1,6 +1,6 @@
-import { DEFAULT_SETTINGS, generateExercise, type JudgeResult, type NoteResult } from '../core/api';
+import { DEFAULT_NOTE_SETTINGS, DEFAULT_SETTINGS, generateExercise, type JudgeResult, type NoteResult } from '../core/api';
 import { defaultProgress, DEFAULT_PREFS } from '../game/storage';
-import { reducer, type AppState } from './store';
+import { makeNoteRun, reducer, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -9,6 +9,9 @@ const state = (): AppState => ({
   settings: DEFAULT_SETTINGS,
   run: { exercise, lessonId: null, daily: null },
   last: null,
+  noteSettings: DEFAULT_NOTE_SETTINGS,
+  noteRun: null,
+  noteLast: null,
 });
 const result = (judgements: NoteResult['judgement'][], accuracy = 80, stars: JudgeResult['stars'] = 2): JudgeResult =>
   ({
@@ -57,5 +60,35 @@ describe('reducer: rewards', () => {
     const run = daily().run!;
     expect(reducer(state(), { type: 'start', run }).progress.lastSettings).toBeNull();
     expect(reducer(state(), { type: 'start', run: { ...run, daily: null } }).progress.lastSettings).toBe(exercise.settings);
+  });
+});
+
+describe('reducer: Read notes', () => {
+  const run = makeNoteRun({ ...DEFAULT_NOTE_SETTINGS, count: 10 }, 5, {});
+  const started = (): AppState => reducer(state(), { type: 'noteStart', run });
+
+  it('scores the round, earns XP, keeps the streak and updates the weak spots', () => {
+    const answers = run.notes.map((_, i) => ({ outcome: i < 8 ? ('right' as const) : ('wrong' as const), ms: 1200, given: { kind: 'piano' as const, pc: 0 } }));
+    const next = reducer(started(), { type: 'noteFinish', answers, today: '2026-10-17' });
+    expect(next.noteLast?.result.accuracy).toBe(80);
+    expect(next.noteLast?.reward.xp).toBeGreaterThan(0);
+    expect(next.progress.xp).toBe(next.noteLast?.reward.xp);
+    expect(next.progress.practiceDays).toEqual(['2026-10-17']);
+    expect(next.noteLast?.reward.streak).toBe(1);
+    expect(Object.keys(next.progress.notes.weak).length).toBeGreaterThan(0);
+  });
+
+  it('does not count a round with no note answered as practice', () => {
+    const answers = run.notes.slice(0, 3).map(() => ({ outcome: 'timeout' as const, ms: 5000, given: null }));
+    const next = reducer(started(), { type: 'noteFinish', answers, today: '2026-10-17' });
+    expect(next.progress.practiceDays).toEqual([]);
+    expect(next.noteLast?.reward).toMatchObject({ xp: 0, streak: null });
+  });
+
+  it('saves the setup with the progress, and Learn sections once', () => {
+    const s = reducer(state(), { type: 'noteSettings', settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G'] } });
+    expect(s.progress.notes.settings?.keys).toEqual(['G']);
+    const r = reducer(reducer(s, { type: 'learnRead', ids: ['8.2', '8.1'] }), { type: 'learnRead', ids: ['8.1'] });
+    expect(r.progress.learnRead).toEqual(['8.1', '8.2']);
   });
 });

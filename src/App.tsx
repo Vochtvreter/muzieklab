@@ -5,6 +5,11 @@ import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { useRoute } from './ui/router';
 import { Calibration } from './ui/screens/Calibration';
 import { Home } from './ui/screens/Home';
+import { LearnHub, LearnNotes } from './ui/screens/Learn';
+import { NotesDone } from './ui/screens/notes/NotesDone';
+import { NotesKey } from './ui/screens/notes/NotesKey';
+import { NotesPlay } from './ui/screens/notes/NotesPlay';
+import { NotesSetup } from './ui/screens/notes/NotesSetup';
 import { PathScreen } from './ui/screens/Path';
 import { Play } from './ui/screens/Play';
 import { Results } from './ui/screens/Results';
@@ -57,6 +62,18 @@ function Screens(): JSX.Element {
       return <SettingsScreen />;
     case '/calibrate':
       return <Calibration />;
+    case '/notes':
+      return <NotesSetup />;
+    case '/notes/key':
+      return <NotesKey />;
+    case '/notes/play':
+      return <NotesPlay />;
+    case '/notes/done':
+      return <NotesDone />;
+    case '/learn':
+      return <LearnHub />;
+    case '/learn/8':
+      return <LearnNotes />;
     case '/dev/render':
       if (RenderDemo) {
         return (

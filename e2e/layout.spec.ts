@@ -20,8 +20,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'home');
       await page.goto('./');
       await expectClickable(page.getByRole('button', { name: 'Continue lesson' }));
-      await expectClickable(page.getByRole('link', { name: 'Start free practice' }));
-      await expectNoOverlap(page.locator('.continue-card'), page.locator('.free-card'));
+      await expectClickable(page.getByRole('link', { name: /^Rhythm/ }));
+      await expectClickable(page.getByRole('link', { name: /^Read notes/ }));
+      await expectNoOverlap(page.locator('.continue-card'), page.locator('.free'));
       await expectNotSqueezed(page.locator('.continue-card'));
       await expectNoSideScroll(page);
     });
@@ -32,7 +33,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('img', { name: 'XP bar: 0 of 100' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: /^Play the daily challenge for / }));
       await expectNoOverlap(page.locator('.continue-card'), page.locator('.daily-card'));
-      await expectNoOverlap(page.locator('.daily-card'), page.locator('.free-card'));
+      await expectNoOverlap(page.locator('.daily-card'), page.locator('.free'));
       await expectNotSqueezed(page.locator('.daily-card'));
       await expectNoSideScroll(page);
     });
@@ -78,6 +79,45 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'calibration');
       await page.goto('./#/calibrate');
       await expectClickable(pad(page));
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: setup, key and start', async ({ page }) => {
+      known(name, 'notes-setup');
+      await page.goto('./#/notes');
+      await expectClickable(page.getByRole('button', { name: /^Start · / }));
+      await page.getByRole('link', { name: /^Key: / }).click();
+      // The last row of keys is reachable above the sticky Use button once the list is scrolled to its end.
+      await page.locator('.nkeys').evaluate((el) => el.scrollTo(0, el.scrollHeight));
+      await expectClickable(page.getByRole('button', { name: /^C♯ major or A♯ minor/ }), { scroll: false });
+      await expectClickable(page.getByRole('button', { name: /^Use / }));
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: name buttons, piano and next', async ({ page }) => {
+      known(name, 'notes-play');
+      await page.goto('./#/notes');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.getByRole('img', { name: /staff in C major/ })).toBeVisible();
+      const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
+      await expect(names).toHaveCount(7);
+      for (let i = 0; i < 7; i++) await expectClickable(names.nth(i));
+      await expectClickable(page.getByRole('radio', { name: 'sharp' }));
+      await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
+      const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+      await expect(keys).toHaveCount(12);
+      for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i));
+      await expectClickable(page.getByRole('button', { name: 'Hint' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('learn: chapter list and chapter 8', async ({ page }) => {
+      known(name, 'learn');
+      await page.goto('./#/learn');
+      await expectClickable(page.getByRole('link', { name: /Key signatures/ }));
+      await page.getByRole('link', { name: /Key signatures/ }).click();
+      await expect(page.getByRole('heading', { name: /Key signatures/ })).toBeInViewport();
+      await expectClickable(page.getByRole('link', { name: 'Practice reading notes' }));
       await expectNoSideScroll(page);
     });
 

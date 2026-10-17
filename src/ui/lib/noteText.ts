@@ -1,0 +1,152 @@
+/**
+ * Read notes wording: note and key names (letters or fixed do, both from the catalog), positions on the staff, hints and
+ * the feedback line (DESIGN.md §3.5). Note names are locale data, so every piece comes from t().
+ */
+import {
+  BOTTOM_LINE,
+  KEYS,
+  MIDDLE_C,
+  keyAlter,
+  keySigns,
+  letterOf,
+  missKind,
+  octaveOf,
+  placeKind,
+  staffOffset,
+  type Alter,
+  type Clef,
+  type Given,
+  type KeyId,
+  type Letter,
+  type RoundNote,
+  type Step,
+} from '../../core/api';
+import { t } from '../../i18n';
+
+export type NameSystem = 'solfege' | 'letters';
+
+const SIGN_KEY: Record<Alter, string> = { [-1]: 'flat', 0: 'natural', 1: 'sharp' };
+export const signKey = (a: Alter): string => SIGN_KEY[a];
+/** ♭ ♮ ♯ */
+export const signGlyph = (a: Alter): string => t('notes.sign.' + SIGN_KEY[a]);
+export const signWord = (a: Alter): string => t('notes.signWord.' + SIGN_KEY[a]);
+
+/** "F♯" (no sign for a natural). */
+export function letterName(letter: Letter, alter: Alter): string {
+  return t('notes.letter.' + letter) + (alter === 0 ? '' : signGlyph(alter));
+}
+/** "fa♯" */
+export function solfegeName(letter: Letter, alter: Alter): string {
+  return t('notes.solfege.' + letter) + (alter === 0 ? '' : signGlyph(alter));
+}
+/** "F♯ (fa♯)" with letters first, or "fa♯ (F♯)" with do re mi, so both systems are learned together. */
+export function fullName(letter: Letter, alter: Alter, system: NameSystem = 'letters'): string {
+  const l = letterName(letter, alter);
+  const s = solfegeName(letter, alter);
+  return system === 'solfege' ? t('notes.name', { main: s, sub: l }) : t('notes.name', { main: l, sub: s });
+}
+/** "F♯5": the written name with its octave (C4 = middle C). */
+export function octaveName(step: Step, alter: Alter): string {
+  return t('notes.withOctave', { name: letterName(letterOf(step), alter), octave: octaveOf(step) });
+}
+/** For screen readers: "F sharp". */
+export function spokenName(letter: Letter, alter: Alter): string {
+  return alter === 0 ? t('notes.letter.' + letter) : t('notes.spoken', { letter: t('notes.letter.' + letter), sign: signWord(alter) });
+}
+
+/** "G major" */
+export function majorName(key: KeyId): string {
+  const m = KEYS[key].major;
+  return t('notes.major', { tonic: letterName(m.letter, m.alter) });
+}
+export function minorName(key: KeyId): string {
+  const m = KEYS[key].minor;
+  return t('notes.minor', { tonic: letterName(m.letter, m.alter) });
+}
+/** "G major · E minor" */
+export const keyPairName = (key: KeyId): string => t('notes.keyPair', { major: majorName(key), minor: minorName(key) });
+
+/** "1 sharp: every F is F♯", "2 sharps: F♯, C♯", "No sharps or flats". */
+export function keySignsText(key: KeyId): string {
+  const signs = keySigns(key);
+  if (signs.length === 0) return t('notes.keyNone');
+  const names = signs.map((s) => letterName(s.letter, s.alter));
+  const msg = signs[0].alter > 0 ? 'notes.keySharps' : 'notes.keyFlats';
+  return t(msg, { count: signs.length, letter: t('notes.letter.' + signs[0].letter), name: names[0], names: names.join(', ') });
+}
+
+/** For screen readers: "2 sharps", "no sharps or flats". */
+export function keySignsAria(key: KeyId): string {
+  const f = KEYS[key].fifths;
+  return t('notes.signsAria', { sharps: Math.max(0, f), flats: Math.max(0, -f) });
+}
+
+/** Where a note sits: "the top line", "the 2nd space", "the first ledger line below", … */
+export function positionText(clef: Clef, step: Step): string {
+  const o = staffOffset(clef, step);
+  if (o >= 0 && o <= 8) return t(o % 2 === 0 ? `notes.play.pos.line${o / 2 + 1}` : `notes.play.pos.space${(o + 1) / 2}`);
+  if (o === -1) return t('notes.play.pos.spaceBelow');
+  if (o === 9) return t('notes.play.pos.spaceAbove');
+  if (o < 0) {
+    const d = -o; // 2: first ledger line, 3: below it, 4: second, 5: below the second
+    const n = Math.min(2, Math.floor(d / 2));
+    return t(d % 2 === 0 ? 'notes.play.pos.ledgerBelow' : 'notes.play.pos.underLedger', { n });
+  }
+  const d = o - 8;
+  const n = Math.min(2, Math.floor(d / 2));
+  return t(d % 2 === 0 ? 'notes.play.pos.ledgerAbove' : 'notes.play.pos.overLedger', { n });
+}
+
+/** Landmarks a hint measures from (§3.5): the outer and middle lines, the clef's line, middle C and the ledger lines. */
+function landmarks(clef: Clef): { step: Step; key: string }[] {
+  const b = BOTTOM_LINE[clef];
+  const common = [
+    { step: b, key: 'bottom' },
+    { step: b + 4, key: 'middle' },
+    { step: b + 8, key: 'top' },
+  ];
+  if (clef === 'treble') {
+    return [...common, { step: b + 2, key: 'gLine' }, { step: MIDDLE_C, key: 'middleC' }, { step: b - 4, key: 'ledgerBelow2' }, { step: b + 10, key: 'ledgerAbove1' }, { step: b + 12, key: 'ledgerAbove2' }];
+  }
+  return [...common, { step: b + 6, key: 'fLine' }, { step: MIDDLE_C, key: 'middleC' }, { step: b + 12, key: 'ledgerAbove2' }, { step: b - 2, key: 'ledgerBelow1' }, { step: b - 4, key: 'ledgerBelow2' }];
+}
+
+/** The hint: the nearest landmark and its name, and, where the key changes the letter, a pointer to the signature. */
+export function hintText(n: RoundNote, system: NameSystem): string {
+  const marks = landmarks(n.clef);
+  let best = marks[0];
+  for (const m of marks) if (Math.abs(m.step - n.step) < Math.abs(best.step - n.step)) best = m;
+  const diff = n.step - best.step;
+  const landmark = t('notes.play.landmark.' + best.key);
+  const name = fullName(letterOf(best.step), 0, system);
+  const text = diff === 0 ? t('notes.play.hintOn', { landmark, name }) : t('notes.play.hintNear', { count: Math.abs(diff), dir: diff > 0 ? 'up' : 'down', landmark, name });
+  if (n.sign !== null) return t('notes.play.hintSign', { text });
+  const k = keyAlter(n.key, letterOf(n.step));
+  return k !== 0 ? t('notes.play.hintKey', { text, signWord: signWord(k) }) : text;
+}
+
+/** The feedback line after an answer: right, or what went wrong and why (§3.5, the canvas wording). */
+export function feedbackText(n: RoundNote, given: Given | null, right: boolean, system: NameSystem): string {
+  const letter = letterOf(n.step);
+  const name = fullName(letter, n.alter, given?.kind === 'piano' ? 'letters' : system);
+  const pos = positionText(n.clef, n.step);
+  const keySign = n.sign === null && n.alter !== 0;
+  if (given === null) return t('notes.play.timeout', { name, pos });
+  if (right) {
+    if (n.sign !== null) return t('notes.play.rightSign', { name, signWord: signWord(n.sign) });
+    if (keySign) return t('notes.play.rightKey', { name, letter: t('notes.letter.' + letter), signWord: signWord(n.alter) });
+    return t('notes.play.right', { name });
+  }
+  const kind = missKind(n, given);
+  const place = t('notes.play.place.' + placeKind(n.clef, n.step));
+  if (given.kind === 'piano') {
+    if (kind === 'keySign') return t('notes.play.pianoKey', { name, pos, letter: t('notes.letter.' + letter), signWord: signWord(n.alter) });
+    if (kind === 'noteSign' && n.sign !== null) return t('notes.play.pianoSign', { name, pos, letter: t('notes.letter.' + letter), signWord: signWord(n.sign) });
+  }
+  if (kind === 'keySign') return t('notes.play.wrongKeySign', { place, key: majorName(n.key), keyName: letterName(letter, n.alter), name });
+  if (kind === 'noteSign' && n.sign !== null) return t('notes.play.wrongNoteSign', { place, signWord: signWord(n.sign), name });
+  if (kind === 'extraSign') return t('notes.play.wrongExtraSign', { place, name });
+  if (n.sign !== null) return t('notes.play.wrongLetterSign', { name, pos, signWord: signWord(n.sign) });
+  if (keySign) return t('notes.play.wrongLetterKey', { name, pos, signWord: signWord(n.alter) });
+  return t('notes.play.wrongLetter', { name, pos });
+}

@@ -1,5 +1,5 @@
 /**
- * Home: streak, level and XP, Continue (the next lesson), the daily challenge and Free practice with last time's settings.
+ * Home: streak, level and XP, Continue (the next lesson), the daily challenge and Free practice (Rhythm, Read notes).
  * Desktop adds the path summary.
  */
 import { useMemo } from 'react';
@@ -15,7 +15,7 @@ import { LessonTiles, StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { DateTile, XpLine } from '../components/Reward';
 import { useBreakpoint, useDocTitle, useToday } from '../hooks';
-import { lastTimeChips, metersLabel } from '../lib/format';
+import { metersLabel } from '../lib/format';
 import { continueLesson, lessonNumber, lessonPreview, unitStates } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link } from '../router';
@@ -57,7 +57,6 @@ export function Home(): JSX.Element {
   const today = useToday(todayIso);
   const days = streak(state.progress.practiceDays, today);
   const cont = continueLesson(state.progress);
-  const last = state.progress.lastSettings;
   const xp = levelInfo(state.progress.xp);
   const daily = useMemo(() => dailyChallenge(today).settings, [today]);
   const dailyDone = state.progress.daily?.day === today ? state.progress.daily : null;
@@ -120,29 +119,32 @@ export function Home(): JSX.Element {
     </section>
   );
 
+  // Free practice: Rhythm and Read notes side by side (v1.3), each opening its own setup.
   const freeCard = (
-    <section aria-labelledby="free-title" className="free-card">
-      <div className="free-row">
-        <span aria-hidden="true" className="free-icon">
-          𝅘𝅥𝅘𝅥𝅮
-        </span>
-        <div className="free-text">
-          <h2 id="free-title">{t('home.freeTitle')}</h2>
-          <div className="muted-text">{t('home.freeText')}</div>
-          {bp === 'desktop' && last && <LastTime chips={lastTimeChips(last)} />}
-        </div>
-        {bp === 'desktop' && (
-          <Link to="/setup" className="btn btn--ink free-btn">
-            {t('home.freeStart')}
-          </Link>
-        )}
-      </div>
-      {bp !== 'desktop' && last && <LastTime chips={lastTimeChips(last)} />}
-      {bp !== 'desktop' && (
-        <Link to="/setup" className="btn btn--ink">
-          {t('home.freeStart')}
+    <section aria-labelledby="free-title" className="free">
+      <h2 id="free-title" className="free-title">
+        {t('home.freeHeading')}
+      </h2>
+      <div className="free-tiles">
+        <Link to="/setup" className="free-tile">
+          <span aria-hidden="true" className="free-tile-icon">
+            𝅘𝅥𝅘𝅥𝅮
+          </span>
+          <span className="free-tile-text">
+            <b>{t('home.rhythmTile')}</b>
+            <span>{t('home.rhythmTileSub')}</span>
+          </span>
         </Link>
-      )}
+        <Link to="/notes" className="free-tile">
+          <span aria-hidden="true" className="free-tile-icon">
+            𝄞
+          </span>
+          <span className="free-tile-text">
+            <b>{t('home.notesTile')}</b>
+            <span>{t('home.notesTileSub')}</span>
+          </span>
+        </Link>
+      </div>
     </section>
   );
 
@@ -194,19 +196,6 @@ export function Home(): JSX.Element {
         {freeCard}
       </div>
     </AppShell>
-  );
-}
-
-function LastTime({ chips }: { chips: string[] }): JSX.Element {
-  return (
-    <div className="last-time">
-      <span className="last-time-label">{t('home.lastTime')}</span>
-      {chips.map((c) => (
-        <span key={c} className="mono-chip">
-          {c}
-        </span>
-      ))}
-    </div>
   );
 }
 

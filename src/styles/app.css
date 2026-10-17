@@ -72,7 +72,7 @@
 .nav--tabs {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   background: var(--paper);
   border-top: 1px solid var(--line);
   padding: 6px 6px calc(8px + env(safe-area-inset-bottom, 0px));
@@ -730,65 +730,64 @@
   color: var(--muted);
 }
 
-.free-card {
+/* Free practice: two tiles, Rhythm and Read notes */
+.free {
   flex: none;
-  background: var(--paper);
-  border-radius: 22px;
-  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
-.free-row {
+.free-title {
+  margin: 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.free-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.free-tile {
+  min-width: 0;
+  min-height: 64px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
-.free-icon {
+.free-tile:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+.free-tile-icon {
   flex: none;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--accent-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 40px;
+  text-align: center;
   font-family: var(--font-music);
-  font-size: 26px;
-  line-height: 1;
+  font-size: 24px;
+  line-height: 36px;
   color: var(--accent);
 }
-.free-text {
-  flex: 1;
+.free-tile-text {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
-.free-text h2 {
-  font-weight: 700;
-  font-size: 17px;
+.free-tile-text b {
+  font-size: 14.5px;
 }
-.last-time {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-.last-time-label {
+.free-tile-text span {
   font-size: 12px;
-  font-weight: 600;
   color: var(--muted);
-  margin-right: 2px;
-}
-.mono-chip {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  font-weight: 600;
-  background: var(--ground);
-  color: var(--ink);
-  border-radius: 8px;
-  padding: 5px 8px;
+  line-height: 1.3;
 }
 
 /* Home · desktop */
@@ -840,34 +839,20 @@
   align-self: flex-start;
   padding: 14px 32px;
 }
-.home-desk-main .free-card {
-  border-radius: 24px;
-  padding: 22px 24px;
+.home-desk-main .free-tile {
+  min-height: 84px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  gap: 14px;
 }
-.home-desk-main .free-row {
-  flex-wrap: wrap;
-  gap: 16px 24px;
-}
-.home-desk-main .free-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+.home-desk-main .free-tile-icon {
   font-size: 28px;
 }
-.home-desk-main .free-text {
-  flex: 1 1 260px;
-  gap: 8px;
+.home-desk-main .free-tile-text b {
+  font-size: 17px;
 }
-.home-desk-main .free-text h2 {
-  font-size: 18px;
-}
-.home-desk-main .free-text .muted-text {
-  font-size: 14px;
-  line-height: 1.4;
-}
-.free-btn {
-  flex: none;
-  padding: 14px 28px;
+.home-desk-main .free-tile-text span {
+  font-size: 13.5px;
 }
 .streak-card {
   padding: 20px;

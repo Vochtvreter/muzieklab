@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type Timeline } from '../../core/api';
 import { defaultProgress } from '../../game/storage';
 import { UNITS } from '../../game/path';
-import { difficultyLevel, lastTimeChips, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
+import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
 import { continueLesson, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
 import { beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
@@ -45,10 +45,8 @@ describe('formatting', () => {
     expect(difficultyLevel(5)).toBe(3);
     expect(difficultyLevel(10)).toBe(5);
   });
-  it('lists meters in order and builds the last-time chips', () => {
+  it('lists meters in order', () => {
     expect(metersLabel(['4/4', '3/4'])).toBe('3/4 · 4/4');
-    const s: Settings = { ...DEFAULT_SETTINGS, meters: ['4/4', '3/4'], bars: 4, tempo: 88 };
-    expect(lastTimeChips(s)).toEqual(['3/4 · 4/4', '4 bars', '88 BPM']);
   });
   it('joins message keys as "a, b or c"', () => {
     expect(orList(['value.quarter'])).toBe('quarter note');
