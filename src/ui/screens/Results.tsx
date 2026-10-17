@@ -95,13 +95,16 @@ export function Results(): JSX.Element | null {
         </div>
 
         <div className="score">
-          <div className="score-stars" role="img" aria-label={result.stars === 4 ? t('stars.allPerfect') : t('stars.of3', { count: result.stars })}>
-            {[1, 2, 3].map((i) => (
-              <span key={i} aria-hidden="true" className={i <= result.stars ? 'is-on' : ''}>
-                ★
-              </span>
-            ))}
-            {/* The hidden 4th star: only shown when earned (§6.3). */}
+          <div className={'score-stars' + (result.stars === 4 ? ' score-stars--bonus' : '')} role="img"
+            aria-label={result.stars === 4 ? t('stars.allPerfect') : t('stars.of3', { count: result.stars })}>
+            <span className="score-stars-row">
+              {[1, 2, 3].map((i) => (
+                <span key={i} aria-hidden="true" className={i <= result.stars ? 'is-on' : ''}>
+                  ★
+                </span>
+              ))}
+            </span>
+            {/* The hidden 4th star: a big star under the three, only shown when earned (§6.3). */}
             {result.stars === 4 && (
               <span aria-hidden="true" className="is-on is-bonus">
                 ★
