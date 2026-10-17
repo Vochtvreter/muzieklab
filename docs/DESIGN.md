@@ -596,7 +596,7 @@ sourced rule); the values are starting points to tune in playtesting.
 - **Stars:** ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% · ★★★★ ≥ 95% with no Good and no Miss (no
   yellow or red noteheads).
 - **Three star slots are shown** (☆☆☆) on the results, the lesson tiles and the Path. The 4th star is a hidden
-  bonus: its slot only appears once it is earned (★★★★).
+  bonus: once earned, the results show the three as a small arc over one big star (tiles and the Path: ★★★★).
 - **Diamond star (all perfect, 100%):** every start Perfect, every hold right, no extra taps.
   It is also hidden until earned; then one diamond star shows in place of the stars. Path totals count three stars
   per lesson (e.g. 79 / 120 ★), so the 4th star and the diamond count as three there.

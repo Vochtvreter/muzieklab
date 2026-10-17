@@ -3,7 +3,7 @@
  * judged staff (in Echo the notation's reveal), the timing and length lane, a tip, and the level-up sheet.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { coachTip, DIAMOND, encodeCode, type Judgement } from '../../core/api';
+import { coachTip, DIAMOND, encodeCode, MAX_STARS, SHOWN_STARS, type Judgement } from '../../core/api';
 import { levelInfo } from '../../game/xp';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
@@ -16,7 +16,7 @@ import { CodeCopy, LevelUpContent } from '../components/Reward';
 import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
-import { starSlots, starsLabel } from '../lib/format';
+import { starsLabel } from '../lib/format';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
 import { useStore, type LastResult } from '../store';
@@ -109,6 +109,7 @@ export function Results(): JSX.Element | null {
   };
 
   const diamond = result.stars === DIAMOND;
+  const fourth = result.stars === MAX_STARS;
   const { reward } = last;
   const echo = ex.settings.mode === 'echo';
   const title = run.daily
@@ -135,19 +136,25 @@ export function Results(): JSX.Element | null {
         </CodeCopy>
 
         <div className="score">
-          {/* A flawless run shows one big diamond star in place of the four (§6.3). */}
-          <div className={'score-stars' + (diamond ? ' score-stars--diamond' : '')} role="img" aria-label={starsLabel(result.stars)}>
+          {/* Three slots; the 4th star turns them into a small arc over one big star; a flawless run shows the diamond instead (§6.3). */}
+          <div className={'score-stars' + (diamond ? ' score-stars--diamond' : fourth ? ' score-stars--bonus' : '')} role="img"
+            aria-label={starsLabel(result.stars)}>
             {diamond ? (
               <span aria-hidden="true" className="diamond-star">
                 ★
               </span>
             ) : (
               <span className="score-stars-row">
-                {Array.from({ length: starSlots(result.stars) }, (_, i) => (
+                {Array.from({ length: SHOWN_STARS }, (_, i) => (
                   <span key={i} aria-hidden="true" className={i < result.stars ? 'is-on' : ''}>
                     ★
                   </span>
                 ))}
+              </span>
+            )}
+            {fourth && (
+              <span aria-hidden="true" className="is-on is-bonus">
+                ★
               </span>
             )}
           </div>
