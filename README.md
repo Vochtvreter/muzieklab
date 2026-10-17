@@ -21,6 +21,12 @@ npm run e2e        # Playwright: layout at every screen size and a full lesson (
 On a computer any key is the tap pad; on a phone, tap the pad on screen. Run
 Settings → Calibrate once per device so the timing scores match what you hear.
 
+## Deploy
+
+Every push to `main` runs the tests, builds and redeploys the site to GitHub Pages
+(`.github/workflows/pages.yml`). To redeploy without a change, run *Deploy to GitHub Pages*
+from the Actions tab.
+
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
