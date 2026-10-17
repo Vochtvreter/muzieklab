@@ -1,10 +1,13 @@
-import type { HoldJudgement, JudgeOptions, JudgeResult, Judgement, Leniency, NoteResult, Tap, TimedNote, Timeline } from './types';
+import { DIAMOND, type HoldJudgement, type JudgeOptions, type JudgeResult, type Judgement, type Leniency, type NoteResult, type Stars, type Tap, type TimedNote, type Timeline } from './types';
 
 /** Press windows in ms (§6.2), before leniency and the fast-passage shrink. */
 export const WINDOWS_MS = { perfect: 35, great: 70, good: 120 } as const;
-export const POINTS: Record<Judgement, number> = { perfect: 100, great: 80, good: 50, miss: 0 };
+/** A note started inside its window is the rhythm right, so it earns most of the points; timing adds the rest (§6.2). */
+export const POINTS: Record<Judgement, number> = { perfect: 100, great: 90, good: 70, miss: 0 };
 export const EXTRA_TAP_POINTS = -25;
 export const HOLD_PENALTY = -20;
+/** Accuracy needed per star (§6.3). Four stars also need no Good and no Miss; a flawless run is the diamond. */
+export const STAR_ACCURACY = { 1: 50, 2: 75, 3: 90, 4: 95 } as const;
 /** Release tolerance in ms (also scaled by leniency) and the "25% of the note" early limit. */
 export const RELEASE_MS = 120;
 export const RELEASE_EARLY_FRACTION = 0.25;
@@ -189,7 +192,18 @@ function summarise(notes: NoteResult[], extraTaps: number): JudgeResult {
   }
   const maxPoints = notes.length * POINTS.perfect;
   const accuracy = maxPoints > 0 ? Math.max(0, Math.min(100, (points / maxPoints) * 100)) : 0;
-  const stars: JudgeResult['stars'] = accuracy >= 95 && counts.miss === 0 ? 3 : accuracy >= 80 ? 2 : accuracy >= 60 ? 1 : 0;
+  const flawless = notes.length > 0 && counts.perfect === notes.length && extraTaps === 0 && holds.short + holds.long === 0;
+  const stars: Stars = flawless
+    ? DIAMOND
+    : accuracy >= STAR_ACCURACY[4] && counts.good + counts.miss === 0
+      ? 4
+      : accuracy >= STAR_ACCURACY[3]
+        ? 3
+        : accuracy >= STAR_ACCURACY[2]
+          ? 2
+          : accuracy >= STAR_ACCURACY[1]
+            ? 1
+            : 0;
   const mean = offsets.length ? offsets.reduce((a, b) => a + b, 0) / offsets.length : 0;
   const sd = offsets.length ? Math.sqrt(offsets.reduce((a, b) => a + (b - mean) ** 2, 0) / offsets.length) : 0;
   return {

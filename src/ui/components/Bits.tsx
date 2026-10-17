@@ -1,11 +1,11 @@
 /** Small shared pieces: lesson tiles, the staff with a safety net, the tap pad, the beat counters (digital, analog). */
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
-import type { Meter, NotatedBar } from '../../core/api';
+import { DIAMOND, type Meter, type NotatedBar } from '../../core/api';
 import { isUnlocked, type Unit } from '../../game/path';
 import type { Progress } from '../../game/storage';
 import { Staff, type NoteMark } from '../../render/Staff';
 import { t } from '../../i18n';
-import { starsText } from '../lib/format';
+import { starsLabel, starsText } from '../lib/format';
 import { lessonStars, tileStates } from '../lib/lessons';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -26,13 +26,13 @@ export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
       {unit.lessons.map((l, i) => {
         const n = lessonStars(progress, l.id);
         const st = states[i];
-        const aria = st === 'current' ? (n ? t('tile.nextStars', { count: n }) : t('tile.next')) : st === 'done' ? t('tile.done', { count: n }) : t('tile.notStarted');
+        const aria = st === 'current' ? (n ? t('tile.nextStars', { stars: starsLabel(n) }) : t('tile.next')) : st === 'done' ? starsLabel(n) : t('tile.notStarted');
         if (onPick && isUnlocked(progress, l.id)) {
           return (
             <button key={l.id} type="button" className={'tile tile--' + st + ' tile--btn'} aria-label={t('tile.play', { id: l.id, state: aria })} onClick={() => onPick(l.id)}>
               <span className="tile-id" aria-hidden="true">{l.id}</span>
               <span className="tile-stars" aria-hidden="true">
-                {starsText(n)}
+                <StarsMark stars={n} />
               </span>
             </button>
           );
@@ -41,13 +41,18 @@ export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
           <span key={l.id} className={'tile tile--' + st}>
             <span className="tile-id">{l.id}</span>
             <span className="tile-stars" aria-label={aria} role="img">
-              {starsText(n)}
+              <StarsMark stars={n} />
             </span>
           </span>
         );
       })}
     </div>
   );
+}
+
+/** A lesson's stars as text, or the one diamond star in their place. */
+export function StarsMark({ stars }: { stars: number }): JSX.Element {
+  return stars === DIAMOND ? <span className="diamond-star">★</span> : <>{starsText(stars)}</>;
 }
 
 interface StaffBoxProps {

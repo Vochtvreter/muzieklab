@@ -1,6 +1,6 @@
 /** Results (DESIGN.md §6.4): stars, accuracy, counts, holds, the judged staff, the timing and length lane, a tip. */
 import { useEffect, useMemo, useState } from 'react';
-import { coachTip, type Judgement } from '../../core/api';
+import { coachTip, DIAMOND, MAX_STARS, type Judgement } from '../../core/api';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
 import { t, tipText } from '../../i18n';
@@ -10,6 +10,7 @@ import { StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { exerciseView } from '../exerciseView';
 import { useDocTitle } from '../hooks';
+import { starsLabel } from '../lib/format';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
 import { useStore } from '../store';
@@ -82,6 +83,7 @@ export function Results(): JSX.Element | null {
     dispatch({ type: 'settings', settings: ex.settings });
   };
 
+  const diamond = result.stars === DIAMOND;
   const countOf = (k: Judgement | 'extra'): number => (k === 'extra' ? result.extraTaps : result.counts[k]);
 
   return (
@@ -95,13 +97,23 @@ export function Results(): JSX.Element | null {
         </div>
 
         <div className="score">
-          <div className="score-stars" role="img" aria-label={t('stars.of3', { count: result.stars })}>
-            {[1, 2, 3].map((i) => (
-              <span key={i} aria-hidden="true" className={i <= result.stars ? 'is-on' : ''}>
+          {/* A flawless run shows one big diamond star in place of the four (§6.3). */}
+          <div className={'score-stars' + (diamond ? ' score-stars--diamond' : '')} role="img" aria-label={starsLabel(result.stars)}>
+            {diamond ? (
+              <span aria-hidden="true" className="diamond-star">
                 ★
               </span>
-            ))}
+            ) : (
+              <span className="score-stars-row">
+                {Array.from({ length: MAX_STARS }, (_, i) => (
+                  <span key={i} aria-hidden="true" className={i < result.stars ? 'is-on' : ''}>
+                    ★
+                  </span>
+                ))}
+              </span>
+            )}
           </div>
+          {diamond && <div className="score-bonus">{t('results.allPerfect')}</div>}
           <div className="score-pct">{t('results.accuracy', { value: Math.round(result.accuracy) })}</div>
           <div className="muted-text score-sub">{t('results.summary', { combo: result.maxCombo })}</div>
         </div>

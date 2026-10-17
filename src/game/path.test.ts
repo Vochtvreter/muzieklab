@@ -158,7 +158,9 @@ describe('unlocking and progress', () => {
     expect(unitStars(p, 7)).toBe(5);
     expect(unitStars(p, 8)).toBe(0);
     expect(unitStars(p, 42)).toBe(0);
-    expect(pathStars(p)).toEqual({ earned: 6, max: 120 });
+    expect(pathStars(p)).toEqual({ earned: 6, max: 160 });
+    // The diamond (all perfect) counts as four.
+    expect(unitStars(progressWith({ '7.1': 5, '7.2': 4 }), 7)).toBe(8);
   });
 
   it('recordLessonResult keeps the best stars and accuracy', () => {
@@ -167,6 +169,9 @@ describe('unlocking and progress', () => {
     expect(p.lessons['1.1']).toEqual({ stars: 2, bestAccuracy: 90 });
     p = recordLessonResult(p, '1.1', 3, 85);
     expect(p.lessons['1.1']).toEqual({ stars: 3, bestAccuracy: 90 });
+    p = recordLessonResult(p, '1.1', 4, 100);
+    p = recordLessonResult(p, '1.1', 3, 95);
+    expect(p.lessons['1.1']).toEqual({ stars: 4, bestAccuracy: 100 });
     expect(empty.lessons).toEqual({});
   });
 });
