@@ -728,6 +728,13 @@ chapter 8 · Notes on the staff.
 harmonic, melodic) in all 15 keys: the circle of fifths hub, playing on the piano, spelling with ♭ ♮ ♯, and a round
 summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains chapter 9 · Scales.
 
+**v1.5 · Progress** adds the Progress tab (the tab bar becomes Home · Path · Learn · Progress · Settings) with
+Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
+appear on Progress and on the level-up sheet.
+
+**v1.6 · Flash cards and listen & write** adds *Test yourself* over all nine Learn chapters (flip or choose from 3),
+started from the Learn tab. It also adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
+
 Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
 Progress, XP and levels.
 
