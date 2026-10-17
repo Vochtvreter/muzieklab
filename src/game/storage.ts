@@ -14,6 +14,8 @@ export interface Prefs {
   seenHowTo: boolean;
   /** Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold'. */
   holdMode: 'hold' | 'tap';
+  /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */
+  metronomeLook: 'digital' | 'analog';
 }
 
 export interface LessonProgress {
@@ -41,6 +43,7 @@ export const DEFAULT_PREFS: Prefs = {
   calibratedAt: null,
   seenHowTo: false,
   holdMode: 'hold',
+  metronomeLook: 'digital',
 };
 
 export function defaultProgress(): Progress {
@@ -98,6 +101,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     calibratedAt: typeof raw.calibratedAt === 'string' ? raw.calibratedAt : null,
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
+    metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
   };
 }
 

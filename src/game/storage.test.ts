@@ -46,7 +46,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true };
+    const prefs = { ...DEFAULT_PREFS, theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
@@ -68,10 +68,11 @@ describe('prefs and progress storage', () => {
   it('repairs invalid fields and keeps the valid ones', () => {
     localStorage.setItem(
       PREFS_KEY,
-      JSON.stringify({ theme: 'purple', leniency: 'relaxed', volumes: { metronome: 3, rhythm: 'x' }, calibrationMs: 41 }),
+      JSON.stringify({ theme: 'purple', leniency: 'relaxed', volumes: { metronome: 3, rhythm: 'x' }, calibrationMs: 41, metronomeLook: 'sundial' }),
     );
     const p = loadPrefs();
     expect(p.theme).toBe('system');
+    expect(p.metronomeLook).toBe('digital');
     expect(p.leniency).toBe('relaxed');
     expect(p.volumes).toEqual({ metronome: 1, rhythm: 0.8, tap: 0.5 });
     expect(p.calibrationMs).toBe(41);

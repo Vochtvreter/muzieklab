@@ -65,5 +65,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
       await expectNoSideScroll(page);
     });
+
+    test('play with the analog metronome: pendulum and the pad', async ({ page }) => {
+      known(name, 'play-analog');
+      await page.goto('./#/settings');
+      await page.getByRole('group', { name: 'Metronome style' }).getByRole('button', { name: 'Analog' }).click();
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Got it' }).click();
+      await expect(page.locator('.beats--analog')).toBeVisible();
+      if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
+      await expectNoSideScroll(page);
+    });
   });
 }

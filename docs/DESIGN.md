@@ -841,7 +841,7 @@ attribute (they default to black and disappear on a dark background).
 | **Path** | Units as a vertical path with lessons, stars and locks. |
 | **Progress** | Charts, skill map, achievements. |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
-| **Settings** | Language (English only in v1; the picker appears once translations exist), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme. |
+| **Settings** | Language (English only in v1; the picker appears once translations exist), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme, metronome style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
 
 ### 9.1 Learn: theory in chapters
 

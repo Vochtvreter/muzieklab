@@ -10,12 +10,12 @@ import { LengthLane } from '../../render/LengthLane';
 import { t, tx } from '../../i18n';
 import { applyAudioPrefs, engine } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
-import { BeatRow, StaffBox, TapPad } from '../components/Bits';
+import { AnalogMetronome, BeatRow, StaffBox, TapPad } from '../components/Bits';
 import { SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { exerciseView, type ExerciseView } from '../exerciseView';
-import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
+import { useBreakpoint, useDocTitle, useLingering, useReducedMotion } from '../hooks';
 import { liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
@@ -39,6 +39,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
+  const still = useReducedMotion();
   const ex = run.exercise;
   const lesson = run.lessonId ? findLesson(run.lessonId) : null;
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
@@ -114,6 +115,9 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
   const beatLabel = beat.inBar === null
     ? t('play.beats', { total: ex.meter.beatsPerBar })
     : t(beat.countIn ? 'play.countIn' : 'play.countingBeat', { beat: beat.inBar + 1, total: ex.meter.beatsPerBar });
+  const analog = state.prefs.metronomeLook === 'analog' && (
+    <AnalogMetronome beats={ex.meter.beatsPerBar} active={beat.inBar} at={s.frame.beats} tempo={ex.tempo} label={beatLabel} still={still} />
+  );
   const fbClass = 'judgement' + (s.feedback ? ' tone-' + s.feedback.tone : '');
   const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : ' ';
 
@@ -207,13 +211,15 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
             <div className="dstats">
               <div className="card stat">
                 <span className="label">{t('play.count')}</span>
-                <div className="dbeats" role="img" aria-label={beatLabel}>
-                  {Array.from({ length: ex.meter.beatsPerBar }, (_, i) => (
-                    <span key={i} aria-hidden="true" className={i === beat.inBar ? 'is-on' : ''}>
-                      {i + 1}
-                    </span>
-                  ))}
-                </div>
+                {analog || (
+                  <div className="dbeats" role="img" aria-label={beatLabel}>
+                    {Array.from({ length: ex.meter.beatsPerBar }, (_, i) => (
+                      <span key={i} aria-hidden="true" className={i === beat.inBar ? 'is-on' : ''}>
+                        {i + 1}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="card stat">
                 <span className="label">{t('play.comboTitle')}</span>
@@ -280,7 +286,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
           {lane}
         </div>
 
-        <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} label={beatLabel} />
+        {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} label={beatLabel} />}
 
         <div aria-live="polite" className={fbClass + ' judgement--phone'}>
           {fbText}

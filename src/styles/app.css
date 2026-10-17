@@ -1467,6 +1467,95 @@ button.lesson-stars:hover {
   opacity: 0;
 }
 
+/*
+ * Analog beat counter (Settings → Metronome style): a pyramid metronome whose rod reaches a side on every beat, and
+ * the beat number with a dot per beat. The rod follows the audio clock every frame, so it has no transition.
+ */
+.beats--analog {
+  height: 64px;
+  align-items: center;
+  gap: 14px;
+}
+/* Tall phones and tablets have room under the staff: a bigger pendulum reads better at arm's length. */
+@media (min-height: 700px) and (max-width: 1099.98px) {
+  .play .beats--analog {
+    height: 84px;
+  }
+}
+.analog {
+  flex: none;
+  height: 100%;
+  width: auto;
+  overflow: visible;
+}
+.analog-body {
+  fill: var(--accent-soft);
+  stroke: var(--accent-soft);
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+.analog-face {
+  fill: var(--paper);
+}
+.analog-scale {
+  stroke: var(--rule);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.analog-base {
+  fill: var(--accent-ring);
+}
+.analog-rod line {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.analog-bob {
+  fill: var(--accent);
+}
+.analog-pivot {
+  fill: var(--accent-ink);
+}
+.analog-end {
+  fill: var(--rule);
+}
+.analog-end.is-on {
+  fill: var(--accent);
+}
+.analog-end.is-down {
+  fill: var(--reward);
+}
+.analog-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+}
+.analog-count b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--accent);
+}
+.beats--analog.is-idle .analog-count b {
+  color: var(--rule);
+}
+.analog-dots {
+  display: flex;
+  gap: 4px;
+}
+.analog-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rule);
+}
+.analog-dots span.is-on {
+  background: var(--accent);
+}
+
 .judgement {
   text-align: center;
   font-family: var(--font-display);
@@ -2250,6 +2339,27 @@ button.lesson-stars:hover {
 .seg--settings {
   flex: none;
   width: 238px;
+}
+/* Settings → Metronome style: the chosen counter ticking at 80 BPM, on the ground colour like a small stage. */
+.look-preview {
+  margin-top: 4px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--ground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 84px;
+}
+.look-preview .beats {
+  align-self: center;
+}
+.look-preview-tempo {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
 }
 /* Below the 390 px board the label and a 238 px control no longer fit on one line: stack them. */
 @media (max-width: 389.98px) {
