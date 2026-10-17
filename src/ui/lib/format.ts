@@ -1,6 +1,6 @@
 /** Small, pure formatting helpers for the screens. Text always comes from the i18n catalog. */
 import { t } from '../../i18n';
-import type { MeterId, Settings } from '../../core/api';
+import { DIAMOND, MAX_STARS, type MeterId, type Settings } from '../../core/api';
 
 /** Tempo word for a BPM (the setup slider label, DESIGN.md §4): a message key under `tempo.`. */
 export function tempoWordKey(bpm: number): string {
@@ -32,10 +32,15 @@ export function signedMs(ms: number): string {
   return t('common.ms', { value: signed(ms) });
 }
 
-/** "★★☆" for 0–3 stars (the hidden 4th, all perfect, shows as three: callers add its own mark). */
+/** "★★☆☆" for 0–4 stars (the diamond, all perfect, is drawn by `StarsMark` in their place). */
 export function starsText(stars: number): string {
-  const n = Math.max(0, Math.min(3, Math.round(stars)));
-  return '★'.repeat(n) + '☆'.repeat(3 - n);
+  const n = Math.max(0, Math.min(MAX_STARS, Math.round(stars)));
+  return '★'.repeat(n) + '☆'.repeat(MAX_STARS - n);
+}
+
+/** "2 of 4 stars", or the diamond: for screen readers. */
+export function starsLabel(stars: number): string {
+  return stars === DIAMOND ? t('stars.diamond') : t('stars.of4', { count: Math.min(MAX_STARS, stars) });
 }
 
 /** Meters in canonical order, joined with " · " (e.g. "3/4 · 4/4"). */

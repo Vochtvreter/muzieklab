@@ -684,6 +684,11 @@
 .tiles--fill .tile {
   background: var(--tile-overlay);
 }
+.tiles--fill .diamond-star {
+  --diamond-hi: var(--diamond-on-fill-hi);
+  --diamond: var(--diamond-on-fill);
+  --diamond-deep: var(--diamond-on-fill-deep);
+}
 .tiles--fill .tile--done .tile-id {
   color: var(--on-fill);
 }
@@ -1118,8 +1123,17 @@ button.lesson-stars:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.unit-stars .star-bonus {
-  margin-left: 2px;
+/* The diamond star (an all-perfect lesson), wherever stars show; it stands in for all four. */
+.diamond-star {
+  display: inline-block;
+  font-size: 1.25em;
+  line-height: 1;
+  letter-spacing: 0;
+  background: linear-gradient(135deg, var(--diamond-hi) 15%, var(--diamond) 50%, var(--diamond-deep) 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 0.12em var(--diamond-glow));
 }
 .unit-sub {
   display: flex;
@@ -2030,21 +2044,9 @@ button.lesson-stars:hover {
 .score-stars .is-on {
   color: var(--reward);
 }
-/* The hidden all-perfect star: the three shrink into an arc over one big star that pops in. */
-.score-stars--bonus .score-stars-row {
-  gap: 8px;
-  font-size: 22px;
-}
-.score-stars--bonus .score-stars-row > :first-child {
-  transform: translateY(15px) rotate(-26deg);
-}
-.score-stars--bonus .score-stars-row > :last-child {
-  transform: translateY(15px) rotate(26deg);
-}
-.score-stars .is-bonus {
-  margin-top: -2px;
+/* The diamond (all perfect): one big star in place of the four, popping in. */
+.score-stars--diamond .diamond-star {
   font-size: 64px;
-  text-shadow: 0 0 0.18em var(--reward-soft);
   animation: star-pop 560ms cubic-bezier(0.2, 1.4, 0.4, 1) 200ms both;
 }
 @keyframes star-pop {
@@ -2056,7 +2058,7 @@ button.lesson-stars:hover {
 .score-bonus {
   font-size: 13px;
   font-weight: 700;
-  color: var(--reward-ink);
+  color: var(--diamond-ink);
 }
 .score-pct {
   font-family: var(--font-display);

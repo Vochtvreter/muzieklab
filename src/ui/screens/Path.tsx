@@ -2,9 +2,10 @@
 import { isUnlocked, lessonSettings, pathStars, UNITS } from '../../game/path';
 import { t, tx } from '../../i18n';
 import { AppShell } from '../components/AppShell';
+import { StarsMark } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
-import { starsText } from '../lib/format';
+import { starsLabel, starsText } from '../lib/format';
 import { continueLesson, lessonNumber, lessonStars, unitStates } from '../lib/lessons';
 import { useStore } from '../store';
 import { useStartLesson } from './start';
@@ -48,13 +49,12 @@ export function PathScreen(): JSX.Element {
                     <div className="unit-stars">
                       {u.lessons.map((l) => {
                         const n = lessonStars(p, l.id);
-                        const label = n === 4 ? t('path.playLessonAllPerfect', { id: l.id }) : t('path.playLesson', { id: l.id, count: n });
+                        const label = t('path.playLesson', { id: l.id, stars: starsLabel(n) });
                         // Unlocked lessons can be played again, e.g. to turn two stars into three.
                         return isUnlocked(p, l.id) ? (
                           <button key={l.id} type="button" className={'lesson-stars' + (n ? ' has-stars' : '')} title={label}
                             aria-label={label} onClick={() => startLesson(l.id)}>
-                            {starsText(n)}
-                            {n === 4 && <span className="star-bonus">✦</span>}
+                            <StarsMark stars={n} />
                           </button>
                         ) : (
                           <span key={l.id} role="img" className="lesson-stars is-locked" aria-label={t('path.lockedLesson', { id: l.id })}>
