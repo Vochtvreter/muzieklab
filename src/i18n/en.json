@@ -282,7 +282,13 @@
     "step3": "On a rest, stay off the pad. On a tie, keep holding.",
     "computer": "On a computer, any key works as the Rhythm pad. Tap ? at the top to see this again.",
     "desktop": "Any key works as the Rhythm pad. Press ? to see this again.",
-    "gotIt": "Got it"
+    "gotIt": "Got it",
+    "ios": "No clicks? Turn up the volume and check that the ring/silent switch is not on silent."
+  },
+  "ready": {
+    "title": "Ready?",
+    "detail": "{bars} in {meter} at {bpm} BPM. The count-in starts when you press Start.",
+    "start": "Start"
   },
   "pause": {
     "title": "Paused",
@@ -293,6 +299,7 @@
     "quitLesson": "Quit lesson",
     "quitPractice": "Quit practice",
     "note": "The count-in plays again when you resume.",
+    "interrupted": "The sound was interrupted. Resume to carry on from this bar.",
     "resume": "Resume",
     "esc": "Esc",
     "question": "?"

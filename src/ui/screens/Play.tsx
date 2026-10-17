@@ -3,7 +3,7 @@
  * lane, the beat counter, the judgement and the big pad. Desktop (≥ 1100 px): the exercise header, a wide staff card,
  * the key-cap pad and four small stat cards; sheets become dialogs.
  */
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, type MouseEvent } from 'react';
 import type { JudgeResult, Tap } from '../../core/api';
 import { findLesson } from '../../game/path';
 import { LengthLane } from '../../render/LengthLane';
@@ -21,7 +21,7 @@ import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
 import { Link, navigate } from '../router';
 import { todayIso, useStore, type Run } from '../store';
-import { HowToContent, PauseContent } from './PlaySheets';
+import { HowToContent, PauseContent, ReadyContent } from './PlaySheets';
 import { usePlaySession } from './playSession';
 
 export function Play(): JSX.Element | null {
@@ -64,7 +64,8 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
       if (e.repeat) return;
       if (e.key === 'Escape') {
         e.preventDefault();
-        s.closeSheet();
+        // Esc may not start audio (it is not a user-activation key), so it does not start or resume from here.
+        if (!s.needsTap) s.closeSheet();
       } else if (e.key === '?' && s.sheet !== 'help') {
         e.preventDefault();
         s.openSheet('help');
@@ -72,7 +73,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [s.sheet, s.closeSheet, s.openSheet]);
+  }, [s.sheet, s.closeSheet, s.openSheet, s.needsTap]);
 
   const bars = ex.bars.length;
   const total = view.timeline.totalSeconds;
@@ -109,9 +110,14 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
   const fbClass = 'judgement' + (s.feedback ? ' tone-' + s.feedback.tone : '');
   const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : ' ';
 
+  // Quit swaps Play for Home in the history, so Back does not walk into the exercise again.
   const quit = (): void => {
     s.stop();
-    navigate('/');
+    navigate('/', { replace: true });
+  };
+  const quitLink = (e: MouseEvent): void => {
+    e.preventDefault();
+    quit();
   };
   const toSettings = (): void => {
     s.stop();
@@ -121,12 +127,16 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
 
   const { shown: sheetShown, closing } = useLingering(s.sheet, 240);
   const sheet = sheetShown && (
-    <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey={sheetShown} labelledBy={sheetShown === 'help' ? 'howto' : 'pausetitle'}
+    <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey={sheetShown}
+      labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
       maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined}>
       {sheetShown === 'help' ? (
         <HowToContent eyebrow={t(s.phase === 'intro' ? 'howto.firstTime' : 'howto.paused')} desktop={desktop} onDone={s.closeSheet} />
+      ) : sheetShown === 'ready' ? (
+        <ReadyContent context={where} onStart={s.closeSheet}
+          detail={t('ready.detail', { bars: t('common.bars', { count: bars }), meter: metersLabel([ex.meter.id]), bpm: ex.tempo })} />
       ) : (
-        <PauseContent context={t('pause.context', { where, bar: curBar + 1, total: bars })} desktop={desktop} lesson={!!lesson}
+        <PauseContent context={t('pause.context', { where, bar: curBar + 1, total: bars })} desktop={desktop} lesson={!!lesson} interrupted={s.interrupted}
           onResume={s.closeSheet} onRestart={s.restart} onHelp={() => s.openSheet('help')} onSettings={toSettings} onQuit={quit} />
       )}
     </Sheet>
@@ -161,7 +171,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
               <Icon name="pause" size={16} />
               {t('play.pause')} <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>
             </button>
-            <Link to="/" className="text-link-btn" onClick={() => s.stop()}>
+            <Link to="/" className="text-link-btn" onClick={quitLink}>
               {t('play.quitShort')}
             </Link>
           </div>
@@ -228,7 +238,7 @@ function PlayRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
       <div className="page play">
         <h1 className="sr-only">{t('play.heading')}</h1>
         <div className="play-top">
-          <Link to="/" aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={() => s.stop()}>
+          <Link to="/" aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('play.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>

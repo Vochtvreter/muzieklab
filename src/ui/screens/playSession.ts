@@ -20,13 +20,24 @@ import {
 import { attachTapInput } from '../../input/tapInput';
 import type { NoteMark } from '../../render/Staff';
 import type { Prefs } from '../../game/storage';
-import { applyAudioPrefs, engine } from '../audio';
+import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import type { ExerciseView } from '../exerciseView';
 import { beatAt, cursorAt, holdProgress, partialResult, pressFeedback, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
 import type { Run } from '../store';
 
 export type Phase = 'intro' | 'running' | 'paused' | 'done';
-export type SheetKind = 'help' | 'pause' | null;
+export type SheetKind = 'help' | 'pause' | 'ready' | null;
+
+/**
+ * Runs that have already played. Coming back to one (Back / Forward after quitting or finishing) must not start it
+ * on its own: there was no tap, so it waits on the Ready sheet. Marked on the first frame, not at mount, so React's
+ * StrictMode double mount in development still auto-starts.
+ */
+const played = new WeakSet<Run>();
+/** Audio states that stop the clock: the browser suspended the context, or iOS interrupted it (a call, Siri). */
+const STOPPED_AUDIO = new Set(['suspended', 'interrupted']);
+/** How long the context may take to start running before Play treats it as stopped (ms). */
+const AUDIO_START_GRACE_MS = 800;
 
 export interface Frame {
   tg: number;
@@ -64,6 +75,13 @@ export interface PlaySession {
   liveResult: JudgeResult;
   judged: Judgement[];
   extraTaps: number;
+  /** The audio stopped (iOS interruption, the browser suspended it): the Pause sheet says so. */
+  interrupted: boolean;
+  /**
+   * The next start must come from a click, tap, Enter or Space: browsers do not count Esc as a gesture that may
+   * start audio. True on the Ready sheet (no tap led here) and after the audio was interrupted.
+   */
+  needsTap: boolean;
   setPad(el: HTMLElement | null): void;
   openSheet(kind: 'help' | 'pause'): void;
   closeSheet(): void;
@@ -77,8 +95,13 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
   const barSec = view.barSeconds;
   const opts: JudgeOptions = { hold: ex.settings.hold, leniency: prefs.leniency };
 
-  const [phase, setPhase] = useState<Phase>(prefs.seenHowTo ? 'running' : 'intro');
-  const [sheet, setSheet] = useState<SheetKind>(prefs.seenHowTo ? null : 'help');
+  // No tap led here (a reload, Back / Forward into Play): wait for one, so the audio may start.
+  const [gated] = useState(() => !!run.needsGesture || played.has(run));
+  const autoStart = prefs.seenHowTo && !gated;
+  const [phase, setPhase] = useState<Phase>(autoStart ? 'running' : 'intro');
+  const [sheet, setSheet] = useState<SheetKind>(!prefs.seenHowTo ? 'help' : gated ? 'ready' : null);
+  const [interrupted, setInterrupted] = useState(false);
+  const segStartedAt = useRef(0);
   const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, cursor: view.timeline.notes.length ? 0 : null, ring: 0, held: false });
   const [marks, setMarks] = useState<Record<number, NoteMark>>({});
   const [feedback, setFeedback] = useState<PlaySession['feedback']>(null);
@@ -144,6 +167,12 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     const s = seg.current;
     if (!s) return;
     const eng = engine();
+    played.add(run);
+    // A stopped context freezes the clock: the count-in would hang in silence. Pause and say why.
+    if (STOPPED_AUDIO.has(eng.audioState()) && performance.now() - segStartedAt.current > AUDIO_START_GRACE_MS) {
+      pauseRef.current('pause', true);
+      return;
+    }
     // The heard clock (what the player hears now), the same clock taps are judged on.
     const tg = globalTime(eng.heardNow());
     const ts = tg - s.fromBar * barSec;
@@ -171,7 +200,7 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
       return;
     }
     raf.current = requestAnimationFrame(tick);
-  }, [view, barSec, meter.beatsPerBar, finish]);
+  }, [view, barSec, meter.beatsPerBar, finish, run]);
 
   const startSegment = useCallback(
     (fromBar: number, countIn: number) => {
@@ -198,6 +227,8 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
         silentCountIn: countIn === 0,
       });
       seg.current = { judge: lj, timeline, firstIndex, fromBar, origin: started.exerciseStart - fromBar * barSec, countInBeats: countInBars * meter.beatsPerBar };
+      segStartedAt.current = performance.now();
+      setInterrupted(false);
       setPhase('running');
       cancelLoop();
       raf.current = requestAnimationFrame(tick);
@@ -217,7 +248,8 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     setCombo(0);
   };
 
-  const pause = useCallback((kind: 'help' | 'pause') => {
+  const pause = useCallback((kind: 'help' | 'pause', audioStopped = false) => {
+    if (audioStopped) setInterrupted(true);
     if (phaseRef.current !== 'running') {
       setSheet(kind);
       return;
@@ -243,6 +275,8 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     setSheet(kind);
     setFrame((f) => ({ ...f, ring: 0, held: false }));
   }, [barSec]);
+  const pauseRef = useRef(pause);
+  pauseRef.current = pause;
 
   const resume = useCallback(() => {
     const bars = ex.bars.length;
@@ -310,9 +344,9 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     setCombo(s.judge.combo());
   }, [barSec]);
 
-  // Start right away unless the first-time sheet is up (its Got it starts the exercise).
+  // Start right away unless a sheet is up first (How to play, Ready): its button starts the exercise.
   useEffect(() => {
-    if (prefs.seenHowTo) startSegment(0, ex.settings.countIn);
+    if (autoStart) startSegment(0, ex.settings.countIn);
     return () => {
       cancelLoop();
       engine().stop();
@@ -342,6 +376,15 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     };
   }, [pause]);
 
+  // The audio stopped under us (iOS call or Siri, the browser suspended it): pause instead of hanging.
+  useEffect(
+    () =>
+      engine().onStateChange((state) => {
+        if (STOPPED_AUDIO.has(state) && phaseRef.current === 'running') pauseRef.current('pause', true);
+      }),
+    [],
+  );
+
   // Keep the screen awake while playing.
   useEffect(() => {
     if (phase !== 'running') return;
@@ -364,8 +407,10 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
   const closeSheet = useCallback(() => {
     const kind = sheet;
     setSheet(null);
+    // Closing a sheet is a tap or a key press: the moment iOS lets the page make sound.
+    unlockAudio();
     if (phaseRef.current === 'intro') {
-      onIntroDone();
+      if (kind === 'help') onIntroDone();
       startSegment(0, ex.settings.countIn);
     } else if (phaseRef.current === 'paused' && kind) {
       resume();
@@ -403,6 +448,8 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     liveResult: partialResult(liveNotes, extras.current.length),
     judged: liveNotes.map((n) => n.judgement),
     extraTaps: extras.current.length,
+    interrupted,
+    needsTap: (gated && phase === 'intro') || interrupted,
     setPad,
     openSheet: pause,
     closeSheet,

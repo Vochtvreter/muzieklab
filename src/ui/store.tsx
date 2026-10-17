@@ -17,11 +17,47 @@ import {
   type Prefs,
   type Progress,
 } from '../game/storage';
+import { parseHash } from './router';
 
 export interface Run {
   exercise: Exercise;
   /** Lesson id ("7.3") or null for free practice. */
   lessonId: string | null;
+  /** Restored after a reload: Play waits for a tap (Ready · Start) before it makes sound. */
+  needsGesture?: boolean;
+}
+
+/** The current run, per tab (sessionStorage), so a reload on Play rebuilds the same exercise. */
+export const RUN_KEY = 'muzieklab.run.v1';
+
+interface StoredRun {
+  settings: Settings;
+  seed: number;
+  lessonId: string | null;
+}
+
+function saveRun(run: Run | null): void {
+  try {
+    if (!run) sessionStorage.removeItem(RUN_KEY);
+    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId } satisfies StoredRun));
+  } catch {
+    /* storage blocked: a reload goes back to Setup, as before */
+  }
+}
+
+/** The run saved for this tab, regenerated from its settings and seed (the generator is deterministic). */
+export function restoreRun(): Run | null {
+  try {
+    const raw = sessionStorage.getItem(RUN_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<StoredRun>;
+    if (!v || typeof v.seed !== 'number' || typeof v.settings !== 'object' || v.settings === null) return null;
+    const lessonId = typeof v.lessonId === 'string' ? v.lessonId : null;
+    const run = makeRun(v.settings as Settings, v.seed, lessonId);
+    return run && { ...run, needsGesture: true };
+  } catch {
+    return null;
+  }
 }
 
 export interface LastResult {
@@ -93,7 +129,9 @@ function initialState(): AppState {
   const prefs = loadPrefs();
   const progress = loadProgress();
   const settings = progress.lastSettings ?? { ...DEFAULT_SETTINGS };
-  return { prefs, progress, settings: { ...settings, hold: prefs.holdMode === 'hold' }, run: null, last: null };
+  // A reload on Play picks the exercise up again instead of falling back to Setup.
+  const onPlay = typeof window !== 'undefined' && parseHash(window.location.hash) === '/play';
+  return { prefs, progress, settings: { ...settings, hold: prefs.holdMode === 'hold' }, run: onPlay ? restoreRun() : null, last: null };
 }
 
 interface StoreValue {
@@ -119,6 +157,10 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
       saveProgress(state.progress);
     }
   }, [state.progress]);
+  useEffect(() => {
+    if (first.current) return;
+    saveRun(state.run);
+  }, [state.run]);
   useEffect(() => {
     first.current = false;
   }, []);

@@ -11,6 +11,7 @@ import { usePlaySession } from './playSession';
  * at the heard time, like eventToAudioTime does.
  */
 const clock = { heard: 0, latency: 0 };
+const audio = { state: 'running', listeners: new Set<(state: string) => void>() };
 const starts: Array<{ countInBars: number; silentCountIn?: boolean; leadIn?: number; meter: { beatsPerBar: number }; tempo: number }> = [];
 vi.mock('../audio', () => {
   const eng = {
@@ -20,6 +21,11 @@ vi.mock('../audio', () => {
     tapDown() {},
     tapUp() {},
     stop() {},
+    audioState: () => audio.state,
+    onStateChange(cb: (state: string) => void) {
+      audio.listeners.add(cb);
+      return () => audio.listeners.delete(cb);
+    },
     start(o: (typeof starts)[number]) {
       starts.push(o);
       // Scheduled from the scheduling clock: the first count-in click is `leadIn` after now().
@@ -51,13 +57,14 @@ const key = (type: 'keydown' | 'keyup'): void => {
   });
 };
 
-function setup(settings: Partial<Settings> = {}) {
+function setup(settings: Partial<Settings> = {}, runExtra: { needsGesture?: boolean } = {}) {
+  audio.state = 'running';
   clock.heard = 0;
   clock.latency = 0;
   starts.length = 0;
   const ex = generateExercise({ ...DEFAULT_SETTINGS, bars: 4, tempo: 80, rests: [], ...settings }, 3);
   const view = exerciseView(ex)!;
-  const run = { exercise: ex, lessonId: null };
+  const run = { exercise: ex, lessonId: null, ...runExtra };
   const prefs = { ...DEFAULT_PREFS, seenHowTo: true };
   const done: { result: JudgeResult | null } = { result: null };
   const hook = renderHook(() =>
@@ -198,5 +205,40 @@ describe('usePlaySession', () => {
     });
     expect(hook.result.current.phase).toBe('paused');
     expect(hook.result.current.sheet).toBe('pause');
+  });
+
+  it('a restored run waits on the Ready sheet, and its Start begins the count-in', () => {
+    const { hook } = setup({}, { needsGesture: true });
+    expect(starts.length).toBe(0);
+    expect(hook.result.current.sheet).toBe('ready');
+    expect(hook.result.current.needsTap).toBe(true);
+    act(() => hook.result.current.closeSheet());
+    expect(starts.length).toBe(1);
+    expect(hook.result.current.phase).toBe('running');
+  });
+
+  it('a run that already played waits on the Ready sheet when Play opens again (Back / Forward)', () => {
+    const ex = generateExercise({ ...DEFAULT_SETTINGS, bars: 2 }, 5);
+    const view = exerciseView(ex)!;
+    const run = { exercise: ex, lessonId: null };
+    const prefs = { ...DEFAULT_PREFS, seenHowTo: true };
+    starts.length = 0;
+    const first = renderHook(() => usePlaySession(run, view, prefs, () => undefined, () => undefined));
+    at(0.1); // first frame
+    first.unmount();
+    const again = renderHook(() => usePlaySession(run, view, prefs, () => undefined, () => undefined));
+    expect(starts.length).toBe(1);
+    expect(again.result.current.sheet).toBe('ready');
+  });
+
+  it('pauses with a note when the audio is interrupted', () => {
+    const { hook } = setup();
+    at(0.1);
+    audio.state = 'interrupted';
+    act(() => audio.listeners.forEach((cb) => cb('interrupted')));
+    expect(hook.result.current.phase).toBe('paused');
+    expect(hook.result.current.interrupted).toBe(true);
+    act(() => hook.result.current.closeSheet());
+    expect(hook.result.current.interrupted).toBe(false);
   });
 });
