@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { pad, VIEWPORTS } from './helpers';
+import { pad, seed, VIEWPORTS } from './helpers';
 
 /**
  * The main loop: Home → lesson 1.1 (quarter notes, 60 BPM, 2 bars, one bar of count-in) → How to play → tap along →
@@ -66,8 +66,10 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
     await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
 
+    // A run with at least one hit note keeps the streak; these taps are untimed, so read what Results counted.
+    const hits = await page.locator('.counts .count-n').evaluateAll((els) => els.slice(0, 3).reduce((s, el) => s + Number(el.textContent), 0));
     await page.goto('./#/');
-    await expect(page.getByText('1-day streak')).toBeVisible();
+    await expect(page.getByText(hits > 0 ? '1-day streak' : 'No streak yet')).toBeVisible();
   });
 }
 
@@ -108,4 +110,21 @@ test('Esc does not start the Ready sheet (browsers do not let Esc start audio); 
   await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('a finished lesson can be played again from Home and from the Path', async ({ page }) => {
+  await seed(page, {
+    progress: { lessons: { '1.1': { stars: 2, bestAccuracy: 85 }, '1.2': { stars: 1, bestAccuracy: 65 } }, practiceDays: [], lastSettings: null },
+    prefs: { seenHowTo: true },
+  });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./');
+  await page.getByRole('button', { name: /^Play lesson 1\.1/ }).click();
+  await expect(page).toHaveURL(/#\/play$/);
+  await expect(page.getByText('Lesson 1.1', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await page.goto('./#/path');
+  await expect(page.getByRole('img', { name: 'Lesson 1.3, locked' })).toBeVisible();
+  await page.getByRole('button', { name: 'Play lesson 1.2: 1 of 3 stars' }).click();
+  await expect(page.getByText('Lesson 1.2', { exact: true })).toBeVisible();
 });
