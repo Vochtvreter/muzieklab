@@ -5,12 +5,7 @@ import { expectClickable, expectNoOverlap, expectNoSideScroll, expectNotSqueezed
  * Known layout bugs from the MVP QA, fixed in the follow-up layout PR. `test.fail` keeps CI green while they are open
  * and turns red the moment one starts passing, so the entry gets removed with its fix.
  */
-const KNOWN: Record<string, string> = {
-  'phone-se/home': 'Continue card squeezed under Free practice',
-  'phone-se/settings': 'Leniency label covered by the segmented control',
-  'phone-landscape/home': 'Continue card squeezed under Free practice',
-  'phone-landscape/play': 'Pad below the fold on a screen that cannot scroll',
-};
+const KNOWN: Record<string, string> = {};
 const known = (vp: string, screen: string): void => {
   const why = KNOWN[`${vp}/${screen}`];
   test.fail(!!why, why);
