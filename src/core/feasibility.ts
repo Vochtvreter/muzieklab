@@ -24,20 +24,21 @@ export function isPlayable(settings: Settings, meter: MeterId): boolean {
 
 const BY_SIZE: NoteValue[] = NOTE_VALUES; // whole … sixteenth, largest first
 
-/** One-step changes that would make the meter playable, largest values first: notes, then rests, then dots. */
+/**
+ * One-step changes that would make the meter playable (at most three): the largest note value that helps, the
+ * largest rest, the dotted value, then further notes and rests. E.g. 3/4 with only half notes:
+ * quarter note, quarter rest or dotted half.
+ */
 function suggestions(settings: Settings, meter: MeterId): string[] {
-  const out: string[] = [];
-  const tryWith = (patch: Partial<Settings>, key: string): void => {
-    if (out.length < 3 && isPlayable({ ...settings, ...patch }, meter)) out.push(key);
-  };
-  for (const v of BY_SIZE) if (!settings.notes.includes(v)) tryWith({ notes: [...settings.notes, v] }, valueKey(v, 0));
-  for (const v of BY_SIZE) if (!settings.rests.includes(v)) tryWith({ rests: [...settings.rests, v] }, restKey(v, 0));
-  if (!settings.dotted) {
-    for (const v of ['half', 'quarter', 'eighth'] as NoteValue[]) {
-      if (settings.notes.includes(v)) tryWith({ dotted: true }, valueKey(v, 1));
-    }
-  }
-  return out;
+  const helps = (patch: Partial<Settings>): boolean => isPlayable({ ...settings, ...patch }, meter);
+  const notes = BY_SIZE.filter((v) => !settings.notes.includes(v) && helps({ notes: [...settings.notes, v] })).map((v) => valueKey(v, 0));
+  const rests = BY_SIZE.filter((v) => !settings.rests.includes(v) && helps({ rests: [...settings.rests, v] })).map((v) => restKey(v, 0));
+  const dotted = settings.dotted
+    ? []
+    : (['half', 'quarter', 'eighth'] as NoteValue[]).filter((v) => settings.notes.includes(v) && helps({ dotted: true })).map((v) => valueKey(v, 1));
+  const firsts = [notes[0], rests[0], dotted[0]].filter((k): k is string => !!k);
+  const rest = [...notes.slice(1), ...rests.slice(1), ...dotted.slice(1)];
+  return [...firsts, ...rest].slice(0, 3);
 }
 
 /** DP feasibility check per meter (§4.1, §5.6). */

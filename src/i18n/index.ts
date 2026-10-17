@@ -65,3 +65,10 @@ export function formatShortDate(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(d);
 }
+
+/** Params whose values are message keys (e.g. an engine's `value: 'value.dottedQuarter'`) translated to text. */
+export function translateParams(params: Record<string, string | number>): MessageParams {
+  const out: MessageParams = {};
+  for (const [k, v] of Object.entries(params)) out[k] = typeof v === 'string' && hasMessage(v) ? t(v) : v;
+  return out;
+}

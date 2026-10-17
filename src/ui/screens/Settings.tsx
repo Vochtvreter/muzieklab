@@ -1,0 +1,213 @@
+/** Settings: sound, timing (calibrate, leniency), playing (input), display (theme), about (version, offline, reset). */
+import { useEffect, useState, type ReactNode } from 'react';
+import type { Leniency } from '../../core/api';
+import type { Prefs } from '../../game/storage';
+import { formatShortDate, t } from '../../i18n';
+import { applyAudioPrefs } from '../audio';
+import { AppShell } from '../components/AppShell';
+import { Segmented, SwitchTrack } from '../components/Controls';
+import { Icon } from '../components/Icon';
+import { useBreakpoint, useDocTitle } from '../hooks';
+import { signedMs } from '../lib/format';
+import { Link } from '../router';
+import { useStore } from '../store';
+import pkg from '../../../package.json';
+
+type VolKey = keyof Prefs['volumes'];
+
+export function SettingsScreen(): JSX.Element {
+  const { state, dispatch } = useStore();
+  const bp = useBreakpoint();
+  const [confirm, setConfirm] = useState(false);
+  const [wiped, setWiped] = useState(false);
+  useDocTitle(t('app.docTitle', { page: t('settings.title') }));
+  const prefs = state.prefs;
+  const set = (patch: Partial<Prefs>): void => dispatch({ type: 'prefs', patch });
+
+  // Sound changes apply to the engine right away (a playing Listen or the next start).
+  useEffect(() => {
+    try {
+      applyAudioPrefs(prefs);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [prefs]);
+
+  const setVol = (k: VolKey, v: number, sw?: 'metronomeOn' | 'tapSoundOn'): void =>
+    set({ volumes: { ...prefs.volumes, [k]: v / 100 }, ...(sw ? { [sw]: true } : {}) });
+
+  const offline = typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller;
+
+  return (
+    <AppShell bp={bp} active="/settings">
+      <div className="page settings no-scrollbar">
+        <div className="settings-head">
+          <h1 className="page-title">{t('settings.title')}</h1>
+        </div>
+        <div className="settings-body">
+          <Section id="sound" title={t('settings.sound')}>
+            <VolumeRow label={t('settings.metronome')} aria={t('settings.metronomeVolume')} value={prefs.volumes.metronome} on={prefs.metronomeOn}
+              onChange={(v) => setVol('metronome', v, 'metronomeOn')} onToggle={() => set({ metronomeOn: !prefs.metronomeOn })} />
+            <VolumeRow label={t('settings.playback')} aria={t('settings.playbackVolume')} value={prefs.volumes.rhythm} on onChange={(v) => setVol('rhythm', v)} />
+            <VolumeRow label={t('settings.tapSound')} aria={t('settings.tapVolume')} value={prefs.volumes.tap} on={prefs.tapSoundOn}
+              onChange={(v) => setVol('tap', v, 'tapSoundOn')} onToggle={() => set({ tapSoundOn: !prefs.tapSoundOn })} />
+          </Section>
+
+          <Section id="timing" title={t('settings.timing')}>
+            <Link to="/calibrate" className="row-link">
+              <span className="row-link-text">
+                <b>{t('settings.calibrate')}</b>
+                <span className="row-sub">
+                  {prefs.calibratedAt ? (
+                    <>
+                      <span className="mono-accent">{signedMs(prefs.calibrationMs)}</span> · {t('settings.calibrated', { date: formatShortDate(prefs.calibratedAt) })}
+                    </>
+                  ) : (
+                    t('settings.notCalibrated')
+                  )}
+                </span>
+              </span>
+              <Icon name="chevron" size={20} className="row-chevron" />
+            </Link>
+            <SegRow label={t('settings.leniency')} group={t('settings.leniencyGroup')} value={prefs.leniency} onChange={(v: Leniency) => set({ leniency: v })}
+              hint={t({ strict: 'settings.hintStrict', normal: 'settings.hintNormal', relaxed: 'settings.hintRelaxed' }[prefs.leniency])}
+              options={[
+                { value: 'strict', label: t('settings.strict') },
+                { value: 'normal', label: t('settings.normal') },
+                { value: 'relaxed', label: t('settings.relaxed') },
+              ]} />
+          </Section>
+
+          <Section id="playing" title={t('settings.playing')}>
+            <SegRow label={t('settings.input')} group={t('settings.inputGroup')} value={prefs.holdMode} onChange={(v: Prefs['holdMode']) => set({ holdMode: v })}
+              hint={t(prefs.holdMode === 'hold' ? 'settings.hintHold' : 'settings.hintTap')}
+              options={[
+                { value: 'hold', label: t('settings.inputHold') },
+                { value: 'tap', label: t('settings.inputTap') },
+              ]} first />
+          </Section>
+
+          <Section id="display" title={t('settings.display')}>
+            <SegRow label={t('settings.theme')} group={t('settings.themeGroup')} value={prefs.theme} onChange={(v: Prefs['theme']) => set({ theme: v })}
+              hint={t({ system: 'settings.hintThemeSystem', light: 'settings.hintThemeLight', dark: 'settings.hintThemeDark' }[prefs.theme])}
+              options={[
+                { value: 'system', label: t('settings.themeSystem') },
+                { value: 'light', label: t('settings.themeLight') },
+                { value: 'dark', label: t('settings.themeDark') },
+              ]} first />
+          </Section>
+
+          <Section id="about" title={t('settings.about')}>
+            <div className="about-row">
+              <span className="about-version">
+                <b>{t('settings.version')}</b>
+                <span className="mono-muted">{pkg.version}</span>
+              </span>
+              <span className={'offline' + (offline ? '' : ' is-off')}>
+                {offline && <Icon name="check" size={16} strokeWidth={2.6} className="tone-good" />}
+                {t(offline ? 'settings.offline' : 'settings.online')}
+              </span>
+            </div>
+            <div className="reset-row">
+              {!confirm && !wiped && (
+                <button type="button" className="reset-btn" onClick={() => setConfirm(true)}>
+                  <Icon name="trash" size={18} />
+                  <span>{t('settings.reset')}</span>
+                </button>
+              )}
+              {confirm && (
+                <div className="reset-confirm m-in" role="alertdialog" aria-labelledby="reset-q" aria-describedby="reset-d">
+                  <p className="reset-text">
+                    <b id="reset-q">{t('settings.resetQuestion')}</b>
+                    <span id="reset-d">{t('settings.resetDetail')}</span>
+                  </p>
+                  <button type="button" className="small-btn" autoFocus onClick={() => setConfirm(false)}>
+                    {t('common.cancel')}
+                  </button>
+                  <button type="button" className="small-btn small-btn--danger" onClick={() => {
+                    dispatch({ type: 'resetProgress' });
+                    setConfirm(false);
+                    setWiped(true);
+                  }}>
+                    {t('settings.resetConfirm')}
+                  </button>
+                </div>
+              )}
+              {wiped && (
+                <div className="reset-done m-in" role="status">
+                  <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
+                  {t('settings.resetDone')}
+                </div>
+              )}
+            </div>
+          </Section>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+function Section({ id, title, children }: { id: string; title: string; children: ReactNode }): JSX.Element {
+  return (
+    <section aria-labelledby={'h-' + id} className="set-section">
+      <h2 id={'h-' + id} className="label">
+        {title}
+      </h2>
+      <div className="set-card">{children}</div>
+    </section>
+  );
+}
+
+interface VolumeRowProps {
+  label: string;
+  aria: string;
+  value: number;
+  on: boolean;
+  onChange(v: number): void;
+  onToggle?(): void;
+}
+
+function VolumeRow({ label, aria, value, on, onChange, onToggle }: VolumeRowProps): JSX.Element {
+  const pct = Math.round(value * 100);
+  return (
+    <div className="vol-row">
+      <b className="vol-label">{label}</b>
+      <div className={'vol-slider m-ease' + (on ? '' : ' is-dim')}>
+        <input type="range" min={0} max={100} step={5} value={pct} aria-label={aria} aria-valuetext={t('common.percent', { value: pct })}
+          onChange={(e) => onChange(Number(e.target.value))} />
+        <span className="vol-value">{t('common.percent', { value: pct })}</span>
+      </div>
+      {onToggle ? (
+        <button type="button" role="switch" aria-checked={on} aria-label={label} className="vol-switch" onClick={onToggle}>
+          <SwitchTrack on={on} />
+        </button>
+      ) : (
+        <span aria-hidden="true" className="vol-switch" />
+      )}
+    </div>
+  );
+}
+
+interface SegRowProps<T extends string> {
+  label: string;
+  group: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange(v: T): void;
+  hint: string;
+  first?: boolean;
+}
+
+function SegRow<T extends string>({ label, group, value, options, onChange, hint, first }: SegRowProps<T>): JSX.Element {
+  return (
+    <div className={'seg-row' + (first ? ' is-first' : '')}>
+      <div className="seg-row-line">
+        <b className="seg-row-label">{label}</b>
+        <Segmented label={group} value={value} options={options} onChange={onChange} className="seg--settings" />
+      </div>
+      <span aria-live="polite" className="row-sub">
+        {hint}
+      </span>
+    </div>
+  );
+}

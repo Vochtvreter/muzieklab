@@ -5,11 +5,13 @@ import { checkSettings } from './feasibility';
 import { Tree } from './cells';
 import { Rng } from './rng';
 import { generateBar, type GenContext } from './bar';
-import { baseOf, formString, pickForm, sameBar, vary } from './phrase';
+import { baseOf, formString, pickForm, randomOp, sameBar, vary } from './phrase';
 import { valueForTicks, VALUE_TICKS } from './values';
 import { rateDifficulty } from './difficulty';
 
-const ATTEMPTS = 40;
+/** Whole-exercise attempts (§5.5); after GOOD_ENOUGH_AFTER attempts a single soft miss is accepted. */
+const ATTEMPTS = 24;
+const GOOD_ENOUGH_AFTER = 8;
 
 /** Clamp to the ranges of §4 and fall back to a quarter note when nothing is playable (never throws). */
 export function normaliseSettings(settings: Settings): Settings {
@@ -111,10 +113,72 @@ function addBarTies(bars: Bar[], rng: Rng): void {
   }
 }
 
+const missingCount = (meter: Meter, bars: Bar[], required: Set<string>): number => {
+  const present = presentAtoms(meter, bars);
+  let k = 0;
+  for (const a of required) if (!present.has(a)) k++;
+  return k;
+};
+
+/**
+ * Coverage repair: when a required value is still missing, try variation operations on one of the distinct bars
+ * (every occurrence changes together, so the form stays intact). Keeps the opening note and the cadence.
+ */
+function repairCoverage(ctx: GenContext, bars: Bar[], required: Set<string>): void {
+  const { meter, rng } = ctx;
+  let missing = missingCount(meter, bars, required);
+  for (let t = 0; t < 24 && missing > 0; t++) {
+    const target = rng.pick([...new Set(bars)]);
+    const out = randomOp(ctx, target, rng);
+    if (!out) continue;
+    if (bars[0] === target && (out.events[0].kind !== 'note' || out.events[0].start !== 0)) continue;
+    if (bars[bars.length - 1] === target && !cadenceOk(meter, [out])) continue;
+    const trial = bars.map((b) => (b === target ? out : b));
+    const m = missingCount(meter, trial, required);
+    if (m >= missing) continue;
+    trial.forEach((b, i) => (bars[i] = b));
+    missing = m;
+  }
+}
+
 interface Candidate {
   bars: Bar[];
-  form: string;
+  groups: string[][];
   penalty: number;
+}
+
+const allRest = (bar: Bar): boolean => bar.events.every((e) => e.kind === 'rest');
+const leadingRest = (bar: Bar): number => {
+  let t = 0;
+  for (const e of bar.events) {
+    if (e.kind !== 'rest') break;
+    t += e.duration;
+  }
+  return t;
+};
+const trailingRest = (bar: Bar): number => leadingRest({ events: bar.events.slice().reverse() });
+
+/**
+ * Last resort for "no more than one full bar of continuous rest" (§5.5), when no attempt managed it:
+ * a bar that extends a too-long silence is replaced by the opening bar (which starts with a note).
+ */
+function breakLongRests(meter: Meter, c: Candidate): void {
+  const tokens = c.groups.flat();
+  for (let pass = 0; pass < c.bars.length && longestRest(c.bars) > meter.barTicks; pass++) {
+    for (let i = 1; i < c.bars.length; i++) {
+      const prev = c.bars[i - 1];
+      const next = c.bars[i + 1];
+      const silentLink = allRest(c.bars[i]) && (allRest(prev) || trailingRest(prev) > 0 || (next !== undefined && leadingRest(next) > 0));
+      if (silentLink || trailingRest(prev) + leadingRest(c.bars[i]) > meter.barTicks) {
+        c.bars[i] = { events: c.bars[0].events.map((e) => ({ ...e })) };
+        if (next && trailingRest(c.bars[i]) > 0) delete next.events[0].tieFromPrev;
+        tokens[i] = tokens[0];
+        break;
+      }
+    }
+  }
+  let k = 0;
+  c.groups = c.groups.map((g) => g.map(() => tokens[k++]));
 }
 
 function buildCandidate(ctx: GenContext, n: number, required: Set<string>): Candidate {
@@ -125,6 +189,14 @@ function buildCandidate(ctx: GenContext, n: number, required: Set<string>): Cand
   const base = new Map<string, Bar>();
   const variant = new Map<string, Bar>();
   let penalty = 0;
+  // Coverage steering: prefer bars that bring in a required value not used yet.
+  const covered = new Set<string>();
+  const countNew = (b: Bar): number => {
+    let k = 0;
+    for (const a of presentAtoms(meter, [b])) if (required.has(a) && !covered.has(a)) k++;
+    return k;
+  };
+  const note = (b: Bar): void => presentAtoms(meter, [b]).forEach((a) => covered.add(a));
 
   const makeBase = (letter: string): Bar => {
     const first = tokens[0] === letter;
@@ -134,9 +206,11 @@ function buildCandidate(ctx: GenContext, n: number, required: Set<string>): Cand
       ctx,
       first,
       (b) => (!cadence || cadenceOk(meter, [b])) && !others.some((o) => sameBar(o, b)),
+      (b) => countNew(b),
     );
     if (!ok) penalty += cadence ? 5 : 1;
     base.set(letter, bar);
+    note(bar);
     return bar;
   };
 
@@ -149,9 +223,12 @@ function buildCandidate(ctx: GenContext, n: number, required: Set<string>): Cand
       const needCadence = token === lastToken;
       v = vary(ctx, b, rng, (x) => !needCadence || cadenceOk(meter, [x])) ?? b;
       variant.set(token, v);
+      note(v);
     }
     return v;
   });
+
+  if (n >= 2) repairCoverage(ctx, bars, required);
 
   // Rules that look at the whole exercise (§5.5); the history-hash rule is the caller's business.
   tokens.forEach((t, i) => {
@@ -160,7 +237,7 @@ function buildCandidate(ctx: GenContext, n: number, required: Set<string>): Cand
   const out = bars.map((b) => ({ events: b.events.map((e): RhythmEvent => ({ ...e })) }));
   if (s.ties) addBarTies(out, rng);
   if (!cadenceOk(meter, out)) penalty += 5;
-  if (longestRest(out) > meter.barTicks) penalty += 3;
+  if (longestRest(out) > meter.barTicks) penalty += 10;
   if (n >= 2) {
     const present = presentAtoms(meter, out);
     for (const a of required) if (!present.has(a)) penalty += 1;
@@ -168,7 +245,7 @@ function buildCandidate(ctx: GenContext, n: number, required: Set<string>): Cand
   const d = relativeDensity(meter, s, out);
   const [lo, hi] = DENSITY_RANGE[s.density];
   if (d !== null && (d < lo || d > hi)) penalty += 1;
-  return { bars: out, form: formString(groups), penalty };
+  return { bars: out, groups, penalty };
 }
 
 /** Seeded, deterministic exercise generator (§5.3–5.5). */
@@ -186,16 +263,17 @@ export function generateExercise(settings: Settings, seed: number): Exercise {
   for (let i = 0; i < ATTEMPTS; i++) {
     const c = buildCandidate(ctx, s.bars, required);
     if (!best || c.penalty < best.penalty) best = c;
-    if (c.penalty === 0) break;
+    if (c.penalty === 0 || (c.penalty <= 1 && i >= GOOD_ENOUGH_AFTER)) break;
   }
   const chosen = best as Candidate;
+  if (longestRest(chosen.bars) > meter.barTicks) breakLongRests(meter, chosen);
   return {
     seed,
     settings: s,
     meter,
     tempo: s.tempo,
     bars: chosen.bars,
-    form: chosen.form,
+    form: formString(chosen.groups),
     difficulty: rateDifficulty(meter, chosen.bars, s.tempo),
   };
 }

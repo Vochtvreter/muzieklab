@@ -1,0 +1,390 @@
+/**
+ * The running exercise: audio, count-in, tap input and live judging (DESIGN.md §3.1, §6).
+ * Time `tg` is seconds on the exercise clock (0 = first beat after the count-in). After a pause, play resumes at the
+ * start of the paused bar: a fresh segment (sliced timeline + live judge) starts after a new count-in, and the
+ * final result is judged again over the whole run from all kept taps.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  createLiveJudge,
+  judge,
+  type Judgement,
+  type JudgeOptions,
+  type JudgeResult,
+  type LiveJudge,
+  type NoteResult,
+  type Tap,
+  type Timeline,
+  type TimedNote,
+} from '../../core/api';
+import { attachTapInput } from '../../input/tapInput';
+import type { NoteMark } from '../../render/Staff';
+import type { Prefs } from '../../game/storage';
+import { applyAudioPrefs, engine } from '../audio';
+import type { ExerciseView } from '../exerciseView';
+import { beatAt, cursorAt, holdProgress, partialResult, pressFeedback, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
+import type { Run } from '../store';
+
+export type Phase = 'intro' | 'running' | 'paused' | 'done';
+export type SheetKind = 'help' | 'pause' | null;
+
+export interface Frame {
+  tg: number;
+  beat: BeatState;
+  cursor: number | null;
+  ring: number;
+  held: boolean;
+}
+
+interface Segment {
+  judge: LiveJudge;
+  timeline: Timeline;
+  firstIndex: number;
+  fromBar: number;
+  /** Audio time of tg = 0. */
+  origin: number;
+  countInBeats: number;
+}
+
+const LEAD_IN_S = 0.4;
+/** Presses this long before the first beat (during the count-in) are ignored, not counted as extra taps. */
+const EARLY_IGNORE_S = 0.25;
+/** After the last beat, wait this long for the last release before finishing. */
+const END_GRACE_S = 0.35;
+const END_HARD_S = 1.5;
+
+export interface PlaySession {
+  phase: Phase;
+  sheet: SheetKind;
+  frame: Frame;
+  marks: Record<number, NoteMark>;
+  feedback: { key: string; tone: 'good' | 'gold' | 'miss' | 'muted' } | null;
+  combo: number;
+  taps: Tap[];
+  liveResult: JudgeResult;
+  judged: Judgement[];
+  extraTaps: number;
+  setPad(el: HTMLElement | null): void;
+  openSheet(kind: 'help' | 'pause'): void;
+  closeSheet(): void;
+  restart(): void;
+  stop(): void;
+}
+
+export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onIntroDone: () => void, onFinish: (r: JudgeResult, taps: Tap[]) => void): PlaySession {
+  const ex = run.exercise;
+  const meter = ex.meter;
+  const barSec = view.barSeconds;
+  const opts: JudgeOptions = { hold: ex.settings.hold, leniency: prefs.leniency };
+
+  const [phase, setPhase] = useState<Phase>(prefs.seenHowTo ? 'running' : 'intro');
+  const [sheet, setSheet] = useState<SheetKind>(prefs.seenHowTo ? null : 'help');
+  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, cursor: view.timeline.notes.length ? 0 : null, ring: 0, held: false });
+  const [marks, setMarks] = useState<Record<number, NoteMark>>({});
+  const [feedback, setFeedback] = useState<PlaySession['feedback']>(null);
+  const [combo, setCombo] = useState(0);
+
+  const seg = useRef<Segment | null>(null);
+  const taps = useRef<Tap[]>([]);
+  const extras = useRef<Tap[]>([]);
+  const live = useRef(new Map<number, NoteResult>());
+  const current = useRef<{ tap: Tap; note: TimedNote | null } | null>(null);
+  const ignoredPress = useRef(false);
+  const everPaused = useRef(false);
+  const pausedAt = useRef(0);
+  const raf = useRef<number | null>(null);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const [pad, setPadState] = useState<HTMLElement | null>(null);
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+  const finishRef = useRef(onFinish);
+  finishRef.current = onFinish;
+
+  const rebuildMarks = (): void => {
+    const m: Record<number, NoteMark> = {};
+    for (const [i, r] of live.current) m[i] = r.judgement;
+    setMarks(m);
+  };
+
+  const cancelLoop = (): void => {
+    if (raf.current !== null) cancelAnimationFrame(raf.current);
+    raf.current = null;
+  };
+
+  const globalTime = (audioTime: number): number => audioTime - (seg.current?.origin ?? 0);
+
+  const finish = useCallback(() => {
+    const s = seg.current;
+    if (!s) return;
+    cancelLoop();
+    engine().stop();
+    engine().tapUp();
+    const end = view.timeline.totalSeconds;
+    for (const tp of taps.current) if (tp.up === null) tp.up = Math.max(tp.down, end);
+    let result: JudgeResult;
+    try {
+      result = everPaused.current ? judge(view.timeline, taps.current, opts) : s.judge.finish();
+    } catch (e) {
+      console.error('judging failed', e);
+      return;
+    }
+    seg.current = null;
+    setPhase('done');
+    finishRef.current(result, taps.current.map((tp) => ({ ...tp })));
+  }, [view, opts.hold, opts.leniency]);
+
+  const tick = useCallback(() => {
+    const s = seg.current;
+    if (!s) return;
+    const eng = engine();
+    const tg = globalTime(eng.now());
+    const ts = tg - s.fromBar * barSec;
+    // Notes whose window passed without a press: missed (shown live).
+    let missed = false;
+    for (const i of s.judge.missedUntil(ts)) {
+      const gi = i + s.firstIndex;
+      if (live.current.has(gi)) continue;
+      live.current.set(gi, { index: gi, judgement: 'miss', offsetMs: null, hold: null, releaseOffsetMs: null, tap: null });
+      missed = true;
+    }
+    if (missed) {
+      rebuildMarks();
+      setFeedback({ key: 'judge.miss', tone: 'miss' });
+      setCombo(s.judge.combo());
+    }
+    const beat = beatAt(ts, view.timeline.beatSeconds, meter.beatsPerBar, s.countInBeats, s.timeline.totalSeconds);
+    const cursor = ts < 0 ? (s.timeline.notes.length ? s.firstIndex : null) : cursorAt(view.timeline.notes, tg, view.timeline.totalSeconds);
+    const cur = current.current;
+    setFrame({ tg, beat, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current });
+    const over = ts - s.timeline.totalSeconds;
+    if ((over > END_GRACE_S && !cur) || over > END_HARD_S) {
+      finish();
+      return;
+    }
+    raf.current = requestAnimationFrame(tick);
+  }, [view, barSec, meter.beatsPerBar, finish]);
+
+  const startSegment = useCallback(
+    (fromBar: number, countInBars: number) => {
+      const eng = engine();
+      applyAudioPrefs(prefsRef.current, eng);
+      const { timeline, firstIndex } = sliceTimeline(view.timeline, fromBar, meter.barTicks, barSec);
+      let lj: LiveJudge;
+      try {
+        lj = createLiveJudge(timeline, opts);
+      } catch (e) {
+        console.error('createLiveJudge failed', e);
+        return;
+      }
+      const started = eng.start({
+        timeline,
+        meter,
+        tempo: ex.tempo,
+        countInBars,
+        metronome: ex.settings.metronome,
+        playRhythm: false,
+        leadIn: LEAD_IN_S,
+      });
+      seg.current = { judge: lj, timeline, firstIndex, fromBar, origin: started.exerciseStart - fromBar * barSec, countInBeats: countInBars * meter.beatsPerBar };
+      setPhase('running');
+      cancelLoop();
+      raf.current = requestAnimationFrame(tick);
+      },
+    [view, meter, barSec, ex, tick, opts.hold, opts.leniency],
+  );
+
+  const resetRun = (): void => {
+    taps.current = [];
+    extras.current = [];
+    live.current = new Map();
+    current.current = null;
+    ignoredPress.current = false;
+    everPaused.current = false;
+    setMarks({});
+    setFeedback(null);
+    setCombo(0);
+  };
+
+  const pause = useCallback((kind: 'help' | 'pause') => {
+    if (phaseRef.current !== 'running') {
+      setSheet(kind);
+      return;
+    }
+    const eng = engine();
+    const tg = globalTime(eng.now());
+    cancelLoop();
+    eng.stop();
+    eng.tapUp();
+    const cur = current.current;
+    if (cur && seg.current) {
+      cur.tap.up = Math.max(cur.tap.down, tg);
+      seg.current.judge.release(tg - seg.current.fromBar * barSec);
+    }
+    current.current = null;
+    ignoredPress.current = false;
+    pausedAt.current = tg;
+    setPhase('paused');
+    setSheet(kind);
+    setFrame((f) => ({ ...f, ring: 0, held: false }));
+  }, [barSec]);
+
+  const resume = useCallback(() => {
+    const bars = ex.bars.length;
+    const b = Math.max(0, Math.min(bars - 1, Math.floor(Math.max(0, pausedAt.current) / barSec)));
+    if (b === 0) {
+      resetRun();
+      startSegment(0, Math.max(1, ex.settings.countIn));
+      return;
+    }
+    const cut = b * barSec;
+    taps.current = tapsBeforeBar(taps.current, b, barSec, pausedAt.current);
+    extras.current = extras.current.filter((tp) => tp.down < cut);
+    for (const [gi] of live.current) {
+      if ((view.timeline.notes[gi]?.bar ?? 0) >= b) live.current.delete(gi);
+    }
+    // The kept NoteResults must point at the kept (possibly shortened) taps.
+    const byDown = new Map(taps.current.map((tp) => [tp.down, tp]));
+    for (const r of live.current.values()) if (r.tap) r.tap = byDown.get(r.tap.down) ?? r.tap;
+    everPaused.current = true;
+    rebuildMarks();
+    setFeedback(null);
+    setCombo(0);
+    startSegment(b, Math.max(1, ex.settings.countIn));
+  }, [ex, barSec, view, startSegment]);
+
+  const down = useCallback((timeStamp: number) => {
+    const s = seg.current;
+    if (!s || phaseRef.current !== 'running') return;
+    const eng = engine();
+    eng.tapDown();
+    const tg = globalTime(eng.eventToAudioTime(timeStamp));
+    const ts = tg - s.fromBar * barSec;
+    if (ts < -EARLY_IGNORE_S) {
+      ignoredPress.current = true;
+      return;
+    }
+    const tap: Tap = { down: tg, up: null };
+    taps.current.push(tap);
+    const p = s.judge.press(ts);
+    let note: TimedNote | null = null;
+    if (p.index !== null && p.judgement !== 'extra') {
+      const gi = p.index + s.firstIndex;
+      note = view.timeline.notes[gi] ?? null;
+      live.current.set(gi, { index: gi, judgement: p.judgement, offsetMs: p.offsetMs, hold: null, releaseOffsetMs: null, tap });
+      rebuildMarks();
+    } else {
+      extras.current.push(tap);
+    }
+    current.current = { tap, note };
+    setFeedback(pressFeedback(p));
+    setCombo(s.judge.combo());
+  }, [barSec, view]);
+
+  const up = useCallback((timeStamp: number) => {
+    const eng = engine();
+    eng.tapUp();
+    ignoredPress.current = false;
+    const s = seg.current;
+    const cur = current.current;
+    current.current = null;
+    if (!s || !cur) return;
+    const tg = globalTime(eng.eventToAudioTime(timeStamp));
+    cur.tap.up = Math.max(cur.tap.down, tg);
+    s.judge.release(tg - s.fromBar * barSec);
+    setCombo(s.judge.combo());
+  }, [barSec]);
+
+  // Start right away unless the first-time sheet is up (its Got it starts the exercise).
+  useEffect(() => {
+    if (prefs.seenHowTo) startSegment(0, ex.settings.countIn);
+    return () => {
+      cancelLoop();
+      engine().stop();
+      engine().tapUp();
+    };
+  }, [run]);
+
+  // Tap input only while the exercise runs with no sheet open, so keys never double as taps in a dialog.
+  useEffect(() => {
+    if (phase !== 'running' || sheet !== null) return;
+    return attachTapInput(pad, { down, up, pause: () => pause('pause'), help: () => pause('help') });
+  }, [phase, sheet, pad, down, up, pause]);
+
+  // Leaving the tab pauses (the input module releases held keys too).
+  useEffect(() => {
+    const onVis = (): void => {
+      if (document.visibilityState === 'hidden' && phaseRef.current === 'running') pause('pause');
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [pause]);
+
+  // Keep the screen awake while playing.
+  useEffect(() => {
+    if (phase !== 'running') return;
+    const nav = navigator as Navigator & { wakeLock?: { request(type: 'screen'): Promise<{ release(): Promise<void> }> } };
+    let lock: { release(): Promise<void> } | null = null;
+    let cancelled = false;
+    nav.wakeLock
+      ?.request('screen')
+      .then((l) => {
+        if (cancelled) void l.release().catch(() => undefined);
+        else lock = l;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      void lock?.release().catch(() => undefined);
+    };
+  }, [phase]);
+
+  const closeSheet = useCallback(() => {
+    const kind = sheet;
+    setSheet(null);
+    if (phaseRef.current === 'intro') {
+      onIntroDone();
+      startSegment(0, ex.settings.countIn);
+    } else if (phaseRef.current === 'paused' && kind) {
+      resume();
+    }
+  }, [sheet, onIntroDone, startSegment, ex.settings.countIn, resume]);
+
+  const restart = useCallback(() => {
+    setSheet(null);
+    cancelLoop();
+    engine().stop();
+    resetRun();
+    startSegment(0, ex.settings.countIn);
+  }, [startSegment, ex.settings.countIn]);
+
+  const stop = useCallback(() => {
+    cancelLoop();
+    engine().stop();
+    engine().tapUp();
+    seg.current = null;
+  }, []);
+
+  const setPad = useCallback((el: HTMLElement | null) => {
+    setPadState(el);
+  }, []);
+
+  const liveNotes = [...live.current.values()];
+  return {
+    phase,
+    sheet,
+    frame,
+    marks,
+    feedback,
+    combo,
+    taps: taps.current,
+    liveResult: partialResult(liveNotes, extras.current.length),
+    judged: liveNotes.map((n) => n.judgement),
+    extraTaps: extras.current.length,
+    setPad,
+    openSheet: pause,
+    closeSheet,
+    restart,
+    stop,
+  };
+}

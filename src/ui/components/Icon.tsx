@@ -1,0 +1,109 @@
+/** Line icons from the MVP canvas (24 × 24, currentColor). Always decorative: the control carries the label. */
+import type { CSSProperties } from 'react';
+
+const PATHS = {
+  home: <path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" />,
+  path: (
+    <>
+      <circle cx="6" cy="5" r="2" />
+      <circle cx="18" cy="19" r="2" />
+      <path d="M6 7v2a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4" />
+    </>
+  ),
+  sliders: (
+    <>
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
+    </>
+  ),
+  back: <path d="M15 5l-7 7 7 7" />,
+  chevron: <path d="M9 5l7 7-7 7" />,
+  chevronSmall: <path d="M9 6l6 6-6 6" />,
+  close: <path d="M6 6l12 12M18 6L6 18" />,
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6" />
+      <path d="M12 17h.01" />
+    </>
+  ),
+  restart: (
+    <>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+      <path d="M4.5 4.5v4h4" />
+    </>
+  ),
+  quit: (
+    <>
+      <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
+      <path d="M9 8l-4 4 4 4" />
+      <path d="M5 12h10" />
+    </>
+  ),
+  metronome: (
+    <>
+      <path d="M9.5 3h5l4 18h-13z" />
+      <path d="M12 16l5-9" />
+      <path d="M7.5 16h9" />
+    </>
+  ),
+  check: <path d="M5 12.5l4.5 4.5L19 7" />,
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  trash: <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />,
+  speaker: (
+    <>
+      <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+      <path d="M15.5 9a4 4 0 0 1 0 6" />
+      <path d="M18.5 6.5a7.5 7.5 0 0 1 0 11" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+} as const;
+
+const FILLED = {
+  pause: (
+    <>
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </>
+  ),
+  play: <path d="M8 5.5v13l11-6.5z" />,
+  stop: <rect x="6.5" y="6.5" width="11" height="11" rx="2" />,
+} as const;
+
+export type IconName = keyof typeof PATHS | keyof typeof FILLED;
+
+interface IconProps {
+  name: IconName;
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+  style?: CSSProperties;
+}
+
+export function Icon({ name, size = 24, strokeWidth = 2, className, style }: IconProps): JSX.Element {
+  if (name in FILLED) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className} style={style}>
+        {FILLED[name as keyof typeof FILLED]}
+      </svg>
+    );
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} style={style}>
+      {PATHS[name as keyof typeof PATHS]}
+    </svg>
+  );
+}

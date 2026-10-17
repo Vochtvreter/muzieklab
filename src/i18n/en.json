@@ -188,7 +188,9 @@
     "dottedEighth": "dotted eighth note",
     "tripletEighth": "triplet eighth note",
     "sixteenth": "sixteenth note",
-    "tripletSixteenth": "triplet sixteenth note"
+    "tripletSixteenth": "triplet sixteenth note",
+    "tiedNote": "tied note",
+    "note": "note"
   },
   "rest": {
     "whole": "whole rest",
@@ -205,7 +207,7 @@
     "tied": "{name}, tied",
     "triplet": "{name}",
     "wholeBarRest": "whole-bar rest",
-    "bar": "Bar {n}: {items}",
+    "bar": "Bar {n}: {items}.",
     "label": "Rhythm in {meter}. {bars}",
     "empty": "Empty staff"
   },
@@ -319,7 +321,8 @@
     "listenTitle": "Hear the correct rhythm",
     "settings": "Practice settings",
     "retry": "Retry",
-    "next": "Next exercise"
+    "next": "Next exercise",
+    "laneLabel": "Note lengths compared with how long each note was held"
   },
   "settings": {
     "title": "Settings",
@@ -413,5 +416,16 @@
     "quarter": "Quarter rest",
     "eighth": "Eighth rest",
     "sixteenth": "Sixteenth rest"
+  },
+  "tip": {
+    "cutShort": "You let go of the {value} in bar {bar} too early. Hold it longer and lift on {liftPart, select, count.beat {“{liftBeat}”} count.and {the “&” after {liftBeat}} count.e {the “e” after {liftBeat}} count.a {the “a” after {liftBeat}} count.trip {the second triplet note of {liftBeat}} other {beat {liftBeat}}}.",
+    "heldLong": "You held the {value} in bar {bar} too long. Lift on {liftPart, select, count.beat {“{liftBeat}”} count.and {the “&” after {liftBeat}} count.e {the “e” after {liftBeat}} count.a {the “a” after {liftBeat}} count.trip {the second triplet note of {liftBeat}} other {beat {liftBeat}}}.",
+    "rushing": "You were rushing: on average {ms} ms early. Wait for each note.",
+    "dragging": "You were dragging: on average {ms} ms late. Press a little sooner.",
+    "missed": "{count, plural, one {You missed # note} other {You missed # notes}}, most in bar {bar}. Read one beat ahead.",
+    "extraTaps": "{count, plural, one {# extra tap} other {# extra taps}} cost points. Stay off the pad on rests.",
+    "unsteady": "Your timing wandered by about {ms} ms. Count along quietly to stay steady.",
+    "perfect": "Every note perfect. Try a faster tempo or more bars.",
+    "good": "Nicely done. Keep the beat steady and try the next one."
   }
 }

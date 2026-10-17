@@ -3,6 +3,7 @@ import type { Bar, Meter, RhythmEvent, Settings } from './types';
 import type { NodeKind, NodeOption } from './cells';
 import { Tree, optionsFor, rootKind } from './cells';
 import type { Rng } from './rng';
+import { groupRests } from './rests';
 
 const DENSITY: Record<Settings['density'], { fill: number; split: number }> = {
   sparse: { fill: 2.2, split: 0.45 },
@@ -19,11 +20,14 @@ export interface GenContext {
   rng: Rng;
 }
 
-function optionWeight(ctx: GenContext, opt: NodeOption): number {
+function optionWeight(ctx: GenContext, opt: NodeOption, start: number): number {
   const d = DENSITY[ctx.settings.density];
-  if (opt.type === 'fill') return opt.weight * d.fill;
-  if (opt.type === 'split') return opt.weight * d.split;
-  return opt.weight;
+  let w = opt.type === 'fill' ? opt.weight * d.fill : opt.type === 'split' ? opt.weight * d.split : opt.weight;
+  // A value that is on only as a rest is placed about as often as the rest amount says, not as often as a note.
+  for (const p of opt.parts) {
+    if ('leaf' in p && !ctx.tree.noteOk(p.leaf)) w *= Math.min(1, 2 * restChance(ctx, start + p.offset));
+  }
+  return w;
 }
 
 /** Probability that a leaf becomes a rest: lower on strong positions (weight ≥ 3). */
@@ -36,7 +40,7 @@ function restChance(ctx: GenContext, start: number): number {
 export function generateNode(ctx: GenContext, kind: NodeKind, start: number, firstNote: boolean, out: RhythmEvent[]): void {
   const opts = optionsFor(kind).filter((o) => ctx.tree.optionOk(o, start, firstNote));
   if (!opts.length) throw new Error('unfillable node ' + kind + '@' + start);
-  const opt = opts[Math.max(0, ctx.rng.weighted(opts.map((o) => optionWeight(ctx, o))))];
+  const opt = opts[Math.max(0, ctx.rng.weighted(opts.map((o) => optionWeight(ctx, o, start))))];
   opt.parts.forEach((p, i) => {
     const at = start + p.offset;
     const fn = firstNote && i === 0;
@@ -59,7 +63,7 @@ function normalise(meter: Meter, settings: Settings, events: RhythmEvent[]): Bar
     if (!settings.rests.includes('whole')) return null;
     return { events: [{ start: 0, duration: meter.barTicks, kind: 'rest' }] };
   }
-  return { events };
+  return { events: groupRests(meter, settings, events) };
 }
 
 export function generateRawBar(ctx: GenContext, first: boolean): Bar | null {
@@ -77,22 +81,31 @@ export function regenerateBeat(ctx: GenContext, bar: Bar, beatStart: number): Ba
 }
 
 /**
- * Bar generation with bar-level rejection (§5.5): retries until `accept` holds.
+ * Bar generation with bar-level rejection (§5.5): retries until `accept` holds. With `score`, keeps drawing until
+ * `pool` accepted bars are found and returns the best one (used to steer towards values not used yet).
  * Returns the last attempt with ok=false when no attempt passes.
  */
 export function generateBar(
   ctx: GenContext,
   first: boolean,
   accept: (bar: Bar) => boolean,
+  score?: (bar: Bar) => number,
   tries = 30,
+  pool = 4,
 ): { bar: Bar; ok: boolean } {
   let last: Bar | null = null;
-  for (let i = 0; i < tries; i++) {
+  let best: { bar: Bar; score: number } | null = null;
+  let found = 0;
+  for (let i = 0; i < tries && found < (score ? pool : 1); i++) {
     const bar = generateRawBar(ctx, first);
     if (!bar) continue;
     last = bar;
-    if (accept(bar)) return { bar, ok: true };
+    if (!accept(bar)) continue;
+    found++;
+    const sc = score ? score(bar) : 0;
+    if (!best || sc > best.score) best = { bar, score: sc };
   }
+  if (best) return { bar: best.bar, ok: true };
   if (!last) {
     // Only reachable when every attempt was silent with the whole rest off: force a note at the start.
     const events: RhythmEvent[] = [];
@@ -101,5 +114,3 @@ export function generateBar(
   }
   return { bar: last, ok: false };
 }
-
-export { Tree };

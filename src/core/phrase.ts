@@ -163,6 +163,11 @@ const cellSwap: Op = (ctx, bar) => {
 
 const OPS: Op[] = [diminution, augmentation, restSubstitution, cellSwap];
 
+/** One random variation operation; null when it does not apply. */
+export function randomOp(ctx: GenContext, bar: Bar, rng: Rng): Bar | null {
+  return rng.pick(OPS)(ctx, bar);
+}
+
 /** A variation a' of a bar, made with one operation (tried in random order); null when none changes the bar. */
 export function vary(ctx: GenContext, bar: Bar, rng: Rng, accept: (b: Bar) => boolean): Bar | null {
   for (const op of rng.shuffle(OPS)) {

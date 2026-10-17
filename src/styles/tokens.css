@@ -1,65 +1,56 @@
 /*
- * Design tokens (DESIGN.md §9). Light values come from the MVP canvas; dark values follow the
- * canvas dark generator's colour-role map (scratchpad vf/gen_dark.py, MAP / TEXT_ON_FILL / SNIPPETS).
- * The theme follows the device (prefers-color-scheme) unless Settings forces data-theme="light|dark".
+ * Design tokens (DESIGN.md §9). Light values come from the MVP canvas; dark values follow the canvas dark
+ * generator's colour-role map (vf/gen_dark.py: MAP, TEXT_ON_FILL, SNIPPETS). Text on a filled accent
+ * (--on-fill) turns dark ink in dark, because those fills turn light.
+ * The theme follows the device unless Settings sets data-theme="light" | "dark" on <html>.
  */
 :root {
   /* Surfaces and lines */
   --ground: #eef1f0;
   --paper: #ffffff;
   --line: #d8dfde;
-  --divider: #e7eceb; /* hairlines inside cards */
-  --grid: #e3e8e7; /* beat grid lines, empty bars in diagrams */
-  --track: #dde4e3; /* segmented track, disabled fill, gray note lengths */
-  --rule: #b9c3c2; /* inactive beat numbers, bar lines, empty stars */
-  --rule-strong: #c9d2d1; /* switch track off, spine, greyed chip border */
-  --spine: #c9d2d1;
-
+  --divider: #e7eceb;
+  --grid: #e3e8e7;
+  --track: #dde4e3;
+  --rule: #b9c3c2;
+  --rule-strong: #c9d2d1;
   /* Text */
   --ink: #161b1c;
   --muted: #5a6667;
-  --faint: #8a9596; /* the quiet ? icon, chevrons */
+  --faint: #8a9596;
   --disabled: #6b7778;
-
   /* Slate accent */
   --accent: #2f6669;
-  --accent-ink: #1f4a4c; /* text in slate tints */
-  --accent-soft: #dfeaea; /* pill, pad, chosen chip */
-  --accent-ring: #b5cfcf; /* pad ring track */
-  --accent-halo: #d3e3e3; /* current path node halo */
-  --on-fill: #ffffff; /* text on a filled accent or ink */
+  --accent-ink: #1f4a4c;
+  --accent-soft: #dfeaea;
+  --accent-ring: #b5cfcf;
+  --accent-halo: #d3e3e3;
+  --on-fill: #ffffff;
   --on-fill-muted: #cfe2e2;
   --tile-overlay: rgba(255, 255, 255, 0.1);
-
-  /* Rewards */
-  --gold: #e0a526;
-  --gold-soft: #f8edd2;
-  --gold-ink: #8a6412;
-  --gold-star: #c48a12;
-
-  /* Feedback */
-  --hit: #1f8a5b; /* perfect / great / held right */
-  --early: #b7791f; /* good (early / late), cut-short outline */
-  --early-ink: #9a6a10; /* "GOOD · LATE" text */
+  /* Rewards (stars, streak) */
+  --reward: #e0a526;
+  --reward-soft: #f8edd2;
+  --reward-ink: #8a6412;
+  --reward-star: #c48a12;
+  /* Feedback. Names read by src/render/theme.ts: --good = perfect/great, --gold = good (early/late) */
+  --good: #1f8a5b;
+  --gold: #b7791f;
+  --gold-ink: #9a6a10;
   --miss: #c23b3b;
-
-  /* Notation and length lane (names read by src/render/theme.ts) */
-  --good: var(--hit); /* render: perfect / great */
-  --slate: var(--accent);
+  /* Notation and length lane (render/theme.ts) */
+  --slate: #2f6669;
   --staff: #9aa5a5;
   --lane-note: #dde4e3;
   --lane-grid: #e3e8e7;
   --lane-bar: #b9c3c2;
-
-  /* Raised controls */
+  /* Raised controls: a raised thumb is lighter than its track in dark */
   --thumb: #ffffff;
   --thumb-shadow: 0 1px 3px rgba(22, 27, 28, 0.14);
   --knob: #ffffff;
-
   /* Overlays */
   --backdrop: rgba(22, 27, 28, 0.42);
   --dialog-shadow: 0 24px 48px rgba(22, 27, 28, 0.14);
-
   /* Scrollbar, focus, links */
   --scroll-thumb: #b9c3c2;
   --scroll-thumb-hover: #8a9596;
@@ -80,7 +71,6 @@
   color-scheme: light;
 }
 
-/* Dark: by role. Text on filled accents turns dark ink; raised thumbs are lighter than their track. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --ground: #101415;
@@ -91,7 +81,6 @@
     --track: #222a2b;
     --rule: #4a5657;
     --rule-strong: #3d4849;
-    --spine: #3d4849;
     --ink: #e8eeed;
     --muted: #9aa7a7;
     --faint: #6b7778;
@@ -103,15 +92,17 @@
     --accent-halo: #1f3a3b;
     --on-fill: #101415;
     --on-fill-muted: #1f4446;
+    --tile-overlay: rgba(255, 255, 255, 0.1);
+    --reward: #f0b429;
+    --reward-soft: #3a2f14;
+    --reward-ink: #f0c35a;
+    --reward-star: #f0c35a;
+    --good: #4cc38a;
     --gold: #f0b429;
-    --gold-soft: #3a2f14;
     --gold-ink: #f0c35a;
-    --gold-star: #f0c35a;
-    --hit: #4cc38a;
-    --early: #f0b429;
-    --early-ink: #f0c35a;
     --miss: #ff6b6b;
-    --staff: #6b7778;
+    --slate: #8fbfc1;
+    --staff: #5d6a6b;
     --lane-note: #222a2b;
     --lane-grid: #262e2f;
     --lane-bar: #4a5657;
@@ -138,7 +129,6 @@
   --track: #222a2b;
   --rule: #4a5657;
   --rule-strong: #3d4849;
-  --spine: #3d4849;
   --ink: #e8eeed;
   --muted: #9aa7a7;
   --faint: #6b7778;
@@ -150,15 +140,17 @@
   --accent-halo: #1f3a3b;
   --on-fill: #101415;
   --on-fill-muted: #1f4446;
+  --tile-overlay: rgba(255, 255, 255, 0.1);
+  --reward: #f0b429;
+  --reward-soft: #3a2f14;
+  --reward-ink: #f0c35a;
+  --reward-star: #f0c35a;
+  --good: #4cc38a;
   --gold: #f0b429;
-  --gold-soft: #3a2f14;
   --gold-ink: #f0c35a;
-  --gold-star: #f0c35a;
-  --hit: #4cc38a;
-  --early: #f0b429;
-  --early-ink: #f0c35a;
   --miss: #ff6b6b;
-  --staff: #6b7778;
+  --slate: #8fbfc1;
+  --staff: #5d6a6b;
   --lane-note: #222a2b;
   --lane-grid: #262e2f;
   --lane-bar: #4a5657;
