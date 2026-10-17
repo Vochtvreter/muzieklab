@@ -32,9 +32,10 @@ describe('formatting', () => {
     expect(signedMs(38)).toBe('+38 ms');
   });
   it('draws stars and the difficulty meter', () => {
-    expect(starsText(2)).toBe('★★☆');
-    expect(starsText(0)).toBe('☆☆☆');
-    expect(starsText(4)).toBe('★★★');
+    expect(starsText(2)).toBe('★★☆☆');
+    expect(starsText(0)).toBe('☆☆☆☆');
+    expect(starsText(4)).toBe('★★★★');
+    expect(starsText(5)).toBe('★★★★');
     expect(difficultyLevel(0)).toBe(1);
     expect(difficultyLevel(5)).toBe(3);
     expect(difficultyLevel(10)).toBe(5);

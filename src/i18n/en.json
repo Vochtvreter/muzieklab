@@ -24,8 +24,8 @@
   },
   "stars": {
     "label": "{count} of {total} stars",
-    "of3": "{count} of 3 stars",
-    "allPerfect": "3 of 3 stars, plus the all-perfect star"
+    "of4": "{count} of 4 stars",
+    "diamond": "Diamond star, all perfect"
   },
   "streak": {
     "pill": "{count, plural, =0 {No streak yet} one {#-day streak} other {#-day streak}}",
@@ -49,9 +49,8 @@
     "unitStars": "{count} ★"
   },
   "tile": {
-    "done": "{count} of 3 stars",
     "next": "next lesson, no stars yet",
-    "nextStars": "next lesson, {count} of 3 stars",
+    "nextStars": "next lesson, {stars}",
     "notStarted": "not started",
     "play": "Play lesson {id}, {state}"
   },
@@ -63,10 +62,7 @@
     "next": "Next: lesson {lesson} · {title} · {bpm} BPM",
     "unlocks": "Unlocks with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
-    "lessonStars": "Lesson {id}: {count} of 3 stars",
-    "lessonAllPerfect": "Lesson {id}: 3 of 3 stars, all perfect",
-    "playLesson": "Play lesson {id}: {count} of 3 stars",
-    "playLessonAllPerfect": "Play lesson {id}: 3 of 3 stars, all perfect",
+    "playLesson": "Play lesson {id}: {stars}",
     "lockedLesson": "Lesson {id}, locked",
     "u1": {
       "title": "Quarter and half notes",
@@ -329,7 +325,7 @@
     "backHome": "Back to home",
     "accuracy": "{value}%",
     "summary": "accuracy · max combo {combo}",
-    "allPerfect": "All perfect! Bonus star",
+    "allPerfect": "All perfect! Diamond star",
     "perfect": "Perfect",
     "great": "Great",
     "good": "Good",

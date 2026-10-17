@@ -50,12 +50,17 @@ describe('prefs and progress storage', () => {
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
-      lessons: { '1.1': { stars: 3, bestAccuracy: 97 }, '1.2': { stars: 1, bestAccuracy: 61.5 }, '1.3': { stars: 4, bestAccuracy: 100 } },
+      lessons: { '1.1': { stars: 3, bestAccuracy: 97 }, '1.2': { stars: 1, bestAccuracy: 61.5 }, '1.3': { stars: 4, bestAccuracy: 98 }, '1.4': { stars: 5, bestAccuracy: 100 } },
       practiceDays: ['2026-10-16', '2026-10-17'],
       lastSettings: { ...DEFAULT_SETTINGS, meters: ['3/4', '4/4'], tempo: 88 },
     };
     saveProgress(progress);
     expect(loadProgress()).toEqual(progress);
+  });
+
+  it('reads an all-perfect 4 saved before the diamond as the diamond', () => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ lessons: { '1.1': { stars: 4, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 } } }));
+    expect(loadProgress().lessons).toEqual({ '1.1': { stars: 5, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 } });
   });
 
   it('survives corrupt JSON', () => {

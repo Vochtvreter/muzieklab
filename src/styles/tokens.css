@@ -33,6 +33,15 @@
   --reward-soft: #f8edd2;
   --reward-ink: #8a6412;
   --reward-star: #c48a12;
+  --diamond: #4cbfe3;
+  --diamond-hi: #d9f6ff;
+  --diamond-deep: #2576bd;
+  --diamond-glow: rgba(76, 191, 227, 0.5);
+  --diamond-ink: #1d6a96;
+  /* On the accent fill (Continue card), which turns light in dark mode. */
+  --diamond-on-fill-hi: #d9f6ff;
+  --diamond-on-fill: #4cbfe3;
+  --diamond-on-fill-deep: #2576bd;
   /* Feedback. Names read by src/render/theme.ts: --good = perfect/great, --gold = good (early/late) */
   --good: #1f8a5b;
   --gold: #b7791f;
@@ -97,6 +106,25 @@
     --reward-soft: #3a2f14;
     --reward-ink: #f0c35a;
     --reward-star: #f0c35a;
+  --diamond: #7fd8f2;
+  --diamond-hi: #f2fdff;
+  --diamond-deep: #4a9fe0;
+  --diamond-glow: rgba(127, 216, 242, 0.45);
+  --diamond-ink: #8fdcf5;
+  --diamond-on-fill-hi: #7fd8f2;
+  --diamond-on-fill: #1f8fc2;
+  --diamond-on-fill-deep: #0f4f8a;
+    --diamond: #7fd8f2;
+    --diamond-hi: #f2fdff;
+    --diamond-deep: #4a9fe0;
+    --diamond-glow: rgba(127, 216, 242, 0.45);
+    --diamond-ink: #8fdcf5;
+  --diamond-on-fill-hi: #7fd8f2;
+  --diamond-on-fill: #1f8fc2;
+  --diamond-on-fill-deep: #0f4f8a;
+    --diamond-on-fill-hi: #7fd8f2;
+    --diamond-on-fill: #1f8fc2;
+    --diamond-on-fill-deep: #0f4f8a;
     --good: #4cc38a;
     --gold: #f0b429;
     --gold-ink: #f0c35a;

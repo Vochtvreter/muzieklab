@@ -1,5 +1,5 @@
 import type { Leniency, MeterId, NoteValue, Settings, Stars } from '../core/types';
-import { METER_IDS, NOTE_VALUES } from '../core/types';
+import { DIAMOND, METER_IDS, NOTE_VALUES } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import type { Volumes } from '../audio/engine';
 
@@ -131,7 +131,10 @@ export function sanitizeProgress(raw: unknown): Progress {
   if (isObj(raw.lessons)) {
     for (const [id, l] of Object.entries(raw.lessons)) {
       if (!isObj(l)) continue;
-      lessons[id] = { stars: oneOf(l.stars, [0, 1, 2, 3, 4] as const, 0), bestAccuracy: num(l.bestAccuracy, 0, 0, 100) };
+      const bestAccuracy = num(l.bestAccuracy, 0, 0, 100);
+      const stars = oneOf(l.stars, [0, 1, 2, 3, 4, DIAMOND] as const, 0);
+      // Saved before the diamond, 4 meant all perfect. Now a 100% best is always the diamond, so 4 with 100% is that.
+      lessons[id] = { stars: stars === 4 && bestAccuracy >= 100 ? DIAMOND : stars, bestAccuracy };
     }
   }
   const days = Array.isArray(raw.practiceDays)
