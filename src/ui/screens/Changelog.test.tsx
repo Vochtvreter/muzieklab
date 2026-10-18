@@ -13,8 +13,8 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Release notes' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 18 · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Learn on big screens' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 18 · 2 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
 
@@ -36,7 +36,7 @@ describe("What's new", () => {
   it('Fixes keeps only releases with fixes, and only their fixes', () => {
     render(<Changelog />);
     fireEvent.click(screen.getByRole('button', { name: 'Fixes' }));
-    expect(screen.queryByRole('heading', { name: 'Release notes' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Learn on big screens' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^0\.3\.0/ })).toBeNull();
     expect(release('0.3.1').textContent).toContain('Oct 18 · 2 fixed');
     expect(release('0.2.1').textContent).toContain('Oct 17 · 1 fixed');

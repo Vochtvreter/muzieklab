@@ -154,10 +154,31 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('learn: chapter list and chapter 8', async ({ page }) => {
       known(name, 'learn');
+      const { width } = VIEWPORTS[name];
+      const layout = width >= 1100 ? 'desktop' : width >= 700 ? 'tablet' : 'phone';
       await page.goto('./#/learn');
       await expectClickable(page.getByRole('link', { name: /Key signatures/ }));
+      // Tablet and desktop use the width: the chapter's sections sit in two columns, read down.
+      const [first, fifth] = [await page.getByRole('link', { name: /^8\.1/ }).boundingBox(), await page.getByRole('link', { name: /^8\.5/ }).boundingBox()];
+      expect(fifth!.y === first!.y, 'sections in two columns').toBe(layout !== 'phone');
+      await expectNoSideScroll(page);
+
       await page.getByRole('link', { name: /Key signatures/ }).click();
       await expect(page.getByRole('heading', { name: /Key signatures/ })).toBeInViewport();
+      // Jumping to a section: section chips on tablet, the chapter sidebar on desktop, the chapter list on phone.
+      const jump = page.getByRole('navigation', { name: 'Sections' });
+      await expect(jump).toHaveCount(layout === 'phone' ? 0 : 1);
+      if (layout === 'desktop') await expectNoOverlap(page.locator('.learn-side'), page.locator('.learn-main'));
+      if (layout !== 'phone') {
+        await expectClickable(jump.getByRole('link', { name: /Treble clef/ }));
+        await jump.getByRole('link', { name: /Treble clef/ }).click();
+        await expect(page.getByRole('heading', { name: /8\.2\s*Treble clef/ })).toBeInViewport();
+      }
+      if (layout === 'desktop') {
+        await expectClickable(jump.getByRole('link', { name: 'Quick check' }));
+        await jump.getByRole('link', { name: 'Quick check' }).click();
+        await expect(page.getByRole('button', { name: 'B', exact: true })).toBeInViewport();
+      }
       await expectClickable(page.getByRole('link', { name: 'Practice reading notes' }));
       await expectNoSideScroll(page);
     });

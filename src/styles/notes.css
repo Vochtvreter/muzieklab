@@ -950,8 +950,21 @@
   padding: 0 4px;
 }
 
-.learn-chapter {
+.learn-chapter,
+.learn-main {
   gap: 18px;
+}
+.learn-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.learn-crumb {
+  color: inherit;
+  text-decoration: none;
+}
+.learn-crumb:hover {
+  color: var(--accent-ink);
 }
 .learn-intro {
   display: flex;
@@ -1168,6 +1181,145 @@
   .key-summary {
     font-size: 14px;
   }
+}
+/*
+ * Learn on tablet and desktop (≥ 700 px): the page uses the full width, with side margins that grow past the content
+ * width. The chapter list puts its sections in two columns, read down. A chapter page gets the big chapter number;
+ * desktop adds the chapter sidebar (DESIGN.md §9.1, canvas: chapter 8 at 834 and 1280 px).
+ */
+@media (min-width: 700px) {
+  .learn--wide {
+    --px: max(40px, calc((100% - 960px) / 2));
+    gap: 14px;
+  }
+  .learn--wide .chapter-card {
+    border-radius: 20px;
+  }
+  .learn--wide .chapter-row {
+    padding: 14px 16px;
+    gap: 14px;
+  }
+  .learn--wide .chapter-n {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+  .learn--wide .chapter-text b {
+    font-size: 17px;
+  }
+  .learn--wide .chapter-text span {
+    font-size: 13.5px;
+  }
+  .learn--wide .chapter-sections {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(var(--rows), auto);
+    grid-auto-flow: column;
+    column-gap: 28px;
+    padding: 0 16px 8px 74px;
+  }
+
+  .learn-chapter--wide {
+    --px: max(40px, calc((100% - 1160px) / 2));
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 40px;
+  }
+  .learn-chapter--wide .learn-main {
+    flex: 1 1 0;
+    gap: 20px;
+  }
+  .learn-chapter--wide .learn-intro {
+    gap: 12px;
+  }
+  .learn-chapter--wide .learn-title {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    font-size: 34px;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .learn-chapter--wide .learn-title span {
+    font-weight: 700;
+    font-size: 60px;
+    line-height: 0.85;
+  }
+  .learn-chapter--wide .learn-intro p {
+    max-width: 700px;
+    font-size: 17px;
+    line-height: 1.55;
+  }
+  /* A staff on its own keeps a readable size instead of stretching across the section. */
+  .learn-chapter--wide .learn-section > .pitch-staff {
+    width: 100%;
+    max-width: 520px;
+  }
+  .learn-chapter--wide .learn-check {
+    padding: 20px 22px;
+  }
+  .learn-chapter--wide .learn-answers {
+    max-width: 520px;
+  }
+  .learn-chapter--wide .learn-end {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  .learn-chapter--wide .learn-end .btn {
+    flex: 1;
+  }
+}
+.learn-side {
+  flex: none;
+  width: 240px;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.learn-side-chapter {
+  background: var(--accent-soft);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.learn-side-title {
+  display: flex;
+  gap: 10px;
+  padding: 2px 0 4px;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+.learn-side-n {
+  width: 14px;
+  font-family: var(--font-mono);
+}
+.learn-side-chapter a {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding-left: 24px;
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.learn-side-chapter a:hover {
+  text-decoration: underline;
+}
+/* A tablet in landscape gets this sidebar too: touch-sized rows. */
+@media (pointer: coarse) {
+  .learn-side-chapter a {
+    min-height: 44px;
+  }
+}
+.learn-side-later {
+  padding: 4px 10px 0;
+  font-size: 13px;
 }
 /* Phones under the 390 px board: smaller name buttons and labels so seven still fit. */
 @media (max-width: 389.98px) {

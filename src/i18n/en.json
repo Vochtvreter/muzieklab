@@ -818,6 +818,8 @@
     },
     "laterNote": "Chapters 1–7 on rhythm are on their way.",
     "chapterOf": "Learn · chapter {n} of 9",
+    "chapterN": "chapter {n} of 9",
+    "chaptersHead": "Chapters",
     "back": "Back to Learn",
     "jump": "Sections",
     "practice": "Practice reading notes",
@@ -906,6 +908,12 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_3_3": {
+      "title": "Learn on big screens",
+      "try": "Open Learn",
+      "chapter": "Learn chapters use the width of a tablet or computer: a big chapter title, examples side by side, and on a computer a chapter list on the left to jump to any section.",
+      "list": "The Learn tab lists a chapter's sections in two columns on a tablet or computer."
+    },
     "v0_3_2": {
       "title": "Release notes",
       "whatsNew": "What's new, in Settings → About: every release and what changed in it."
