@@ -71,6 +71,7 @@
     "replayButton": "Nog een keer",
     "previewMeta": "{meter} · {bars}",
     "pathEyebrow": "Leerpad",
+    "pathUnitOf": "Hoofdstuk {unit} van {total}",
     "pathView": "Bekijk leerpad →",
     "pathLocked": "2 sterren op elke les van hoofdstuk {unit}",
     "unitStars": "{count} ★",
@@ -1540,6 +1541,10 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_6_2": {
+      "title": "Indeling op de computer",
+      "desktop": "Op een computer staan de tabbladen nu in een balk bovenaan, en Start toont je reeks, niveau, de dagelijkse uitdaging en het leerpad naast Verder en de oefentegels."
+    },
     "v0_6_1": {
       "title": "Taalkeuze",
       "language": "Bij Instellingen → Taal schuift de markering nu naar de nieuwe taal, net als bij de andere keuzes."

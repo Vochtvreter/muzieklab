@@ -71,6 +71,7 @@
     "replayButton": "Play again",
     "previewMeta": "{meter} · {bars}",
     "pathEyebrow": "Learning path",
+    "pathUnitOf": "Unit {unit} of {total}",
     "pathView": "View path →",
     "pathLocked": "2 stars on every unit {unit} lesson",
     "unitStars": "{count} ★",
@@ -1540,6 +1541,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_6_2": {
+      "title": "Desktop layout",
+      "desktop": "On a computer, the tabs now sit in a header across the top, and Home shows your streak, level, the daily challenge and the path beside Continue and the practice tiles."
+    },
     "v0_6_1": {
       "title": "Language switch",
       "language": "In Settings → Language, the highlight now slides to the new language, like the other choices."
