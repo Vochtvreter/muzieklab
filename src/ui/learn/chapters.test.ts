@@ -3,7 +3,7 @@ import { DEFAULT_NOTE_SETTINGS, DEFAULT_SETTINGS, LETTERS, PPQ, checkSettings, g
 import { UNITS } from '../../game/path';
 import { parseBars } from '../../render/notationText';
 import { hasMessage } from '../../i18n';
-import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, parsePitch, sectionKey, type Block, type Section } from './chapters';
+import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, parsePitch, sectionKey, type Block, type Quiz, type Section } from './chapters';
 
 /** Every text key a block uses, relative to its section. */
 function blockKeys(b: Block): string[] {
@@ -69,18 +69,23 @@ describe('Learn chapters', () => {
     }
     for (const s of sections) {
       need(sectionKey(s.id, 'title'));
+      ['question', 'right', 'wrong'].forEach((k) => need(sectionKey(s.id, 'check.' + k)));
+      s.check.answers.forEach((a) => 'text' in a && need(sectionKey(s.id, 'check.' + a.text)));
       if (s.practice) need(sectionKey(s.id, 'practice'));
       s.blocks.flatMap(blockKeys).forEach((k) => need(sectionKey(s.id, k)));
     }
     expect(missing).toEqual([]);
   });
 
-  it('have a quick check with one right answer among real note names', () => {
-    for (const c of CHAPTERS) {
-      expect(c.quiz.answers.length).toBeGreaterThanOrEqual(2);
-      expect(c.quiz.right).toBeGreaterThanOrEqual(0);
-      expect(c.quiz.right).toBeLessThan(c.quiz.answers.length);
-      c.quiz.answers.forEach((a) => 'note' in a && expect(parseNoteName(a.note), a.note).not.toBeNull());
+  it('have a quick check per chapter and per section, each with one right answer among real note names', () => {
+    const quizzes: [string, Quiz][] = [...CHAPTERS.map((c): [string, Quiz] => [`chapter ${c.n}`, c.quiz]), ...sections.map((s): [string, Quiz] => [s.id, s.check])];
+    for (const [where, quiz] of quizzes) {
+      expect(quiz.answers.length, where).toBeGreaterThanOrEqual(2);
+      expect(quiz.right, where).toBeGreaterThanOrEqual(0);
+      expect(quiz.right, where).toBeLessThan(quiz.answers.length);
+      quiz.answers.forEach((a) => 'note' in a && expect(parseNoteName(a.note), `${where} ${a.note}`).not.toBeNull());
+      const names = quiz.answers.map((a) => ('note' in a ? a.note : a.text));
+      expect(new Set(names).size, where).toBe(names.length);
     }
   });
 

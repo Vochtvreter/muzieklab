@@ -40,7 +40,7 @@ describe("What's new", () => {
   it('Fixes keeps only releases with fixes, and only their fixes', () => {
     render(<Changelog />);
     fireEvent.click(screen.getByRole('button', { name: 'Fixes' }));
-    expect(screen.queryByRole('heading', { name: 'A full course, from the first beat' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'A quick check after every section' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^0\.3\.0/ })).toBeNull();
     expect(release('0.3.1').textContent).toContain('Oct 18 · 2 fixed');
     expect(release('0.2.1').textContent).toContain('Oct 17 · 1 fixed');

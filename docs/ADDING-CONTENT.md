@@ -17,7 +17,8 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
    - `builds` and `units` in the data give the line under the intro ("Builds on chapters 1 and 2 · Path units 2, 3,
      5"); units must exist in `UNITS`;
    - `ch{n}.intro`, and `ch{n}.quiz.question`, `.right`, `.wrong` for the quick check;
-   - `ch{n}.s{k}.title` for every section, `.practice` for its practice link, and every key its blocks name.
+   - `ch{n}.s{k}.title` for every section, `.check.question`, `.right` and `.wrong` for its quick check, `.practice` for
+     its practice link, and every key its blocks name.
    Keys inside a section are relative: in section 9.3, `{ kind: 'text', text: 'point1' }` reads `learn.ch9.s3.point1`.
    Every other catalog (`nl.json`) needs the same keys; `src/i18n/i18n.test.ts` fails on one that is missing.
 3. **Run `npm test`.** `src/ui/learn/chapters.test.ts` fails on a missing text, a note or rhythm that does not parse,
@@ -55,8 +56,11 @@ A new kind of block (counting under the notes, for example) is a case in the `Bl
   player's own (answer with, notes per round and the timer stay). `practice: { rhythm: { meters: ['3/4'] } }` opens
   rhythm Free practice the same way.
 - The chapter's `practice: 'notes' | 'rhythm'` picks the big button at the end.
-- `quiz: { answers: [{ note: 'G' }, { note: 'Gb' }, { text: 'a3' }], right: 1 }`: answers are note names or text
-  keys under `ch{n}.quiz`.
+- `quiz: { answers: [{ note: 'G' }, { note: 'Gb' }, { text: 'a3' }], right: 1 }`: the chapter's quick check at the
+  end of the page. Answers are note names or text keys under `ch{n}.quiz`; a wrong pick shows the right answer.
+- `check: { answers: […], right: 0 }` on every section: its own quick check, the same way with text keys under
+  `ch{n}.s{k}.check`. Answering it right marks the section read, so ask about what the section itself explains. A wrong
+  pick does not show the right answer: `.wrong` is a hint that sends the player back to the section, and they try again.
 
 ### Moving or renumbering sections
 
