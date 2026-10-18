@@ -20,13 +20,13 @@ can practise. What it cannot practise yet (the upbeat, 6/8, scales) waits for th
 
 | Chapter | Sections | Practice | State |
 |---|---|---|---|
-| **1 · Pulse and meter** | 1.1 The beat and tempo · 1.2 Bars and time signatures · 1.3 Strong and weak beats · 1.4 The upbeat | Rhythm; Path 1, 3, 5 | **built** (0.4.0) without 1.4 |
-| **2 · Note values** | 2.1 Reading the shape · 2.2 The note tree | Rhythm; Path 1, 3, 4, 8 | **built** (0.4.0) |
-| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly | Rhythm; Path 2, 3, 5 | **built** (0.4.0) |
-| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | Rhythm; Path 4, 5, 8 | **built** (0.4.0) |
-| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes · 5.3 Dotted eighth + sixteenth | Rhythm; Path 6, 7, 10 | **built** (0.4.0) |
-| **6 · Off the beat** | 6.1 Syncopation | Rhythm; Path 9 | **built** (0.4.0) |
-| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight | Rhythm (triplets); Path 11, 12 | **built** (0.4.0) without 7.2; 6/8 later |
+| **1 · Pulse and meter** | 1.1 The beat and tempo · 1.2 Bars and time signatures · 1.3 Strong and weak beats · 1.4 The upbeat | Rhythm; Path 1, 3, 5 | **built** (0.5.0) without 1.4 |
+| **2 · Note values** | 2.1 Reading the shape · 2.2 The note tree | Rhythm; Path 1, 3, 4, 8 | **built** (0.5.0) |
+| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly | Rhythm; Path 2, 3, 5 | **built** (0.5.0) |
+| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | Rhythm; Path 4, 5, 8 | **built** (0.5.0) |
+| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes · 5.3 Dotted eighth + sixteenth | Rhythm; Path 6, 7, 10 | **built** (0.5.0) |
+| **6 · Off the beat** | 6.1 Syncopation | Rhythm; Path 9 | **built** (0.5.0) |
+| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight | Rhythm (triplets); Path 11, 12 | **built** (0.5.0) without 7.2; 6/8 later |
 | **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef · 8.3 Bass clef · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes | Read notes: clefs, range, note names | **built** (0.3.4) |
 | **9 · Sharps, flats and naturals** | 9.1 The piano octave · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural · 9.4 A sign lasts for the bar | Read notes: piano, extra signs | **built** (0.3.4) |
 | **10 · Key signatures** | 10.1 The key signature · 10.2 The order of sharps and flats · 10.3 Naming the key · 10.4 Major and minor | Read notes: keys, mix keys | **built** (0.3.4) |
@@ -34,7 +34,7 @@ can practise. What it cannot practise yet (the upbeat, 6/8, scales) waits for th
 
 Chapters 8–10 were one chapter 8 with seven sections until 0.3.4; the old chapter 9 · Scales is now chapter 11.
 
-**Built in 0.4.0: chapters 1–7.** Left out because the game cannot practise them yet: **1.4 The upbeat** (exercises
+**Built in 0.5.0: chapters 1–7, in English and Dutch.** Left out because the game cannot practise them yet: **1.4 The upbeat** (exercises
 always start on beat 1) and **7.2 Six-eight** (no 6/8). They come with the feature, as section 1.4 and 7.2. Built
 differently from the plan:
 

@@ -3,8 +3,11 @@ import { DIAMOND, METER_IDS, MODES, NOTE_VALUES } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { MAX_WEAK, parseNoteId, sanitizeNoteSettings, type NoteSettings, type WeakSpots } from '../core/noteRound';
 import type { Volumes } from '../audio/engine';
+import { isLocale } from '../i18n';
 
 export interface Prefs {
+  /** Settings → Language: a locale code ("en", "nl"), or 'system' to follow the device's languages. */
+  language: string;
   theme: 'system' | 'light' | 'dark';
   volumes: Volumes;
   metronomeOn: boolean;
@@ -57,6 +60,7 @@ export const PREFS_KEY = 'muzieklab.prefs.v1';
 export const PROGRESS_KEY = 'muzieklab.progress.v1';
 
 export const DEFAULT_PREFS: Prefs = {
+  language: 'system',
   theme: 'system',
   volumes: { metronome: 0.7, rhythm: 0.8, tap: 0.5 },
   metronomeOn: true,
@@ -131,6 +135,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
   if (!isObj(raw)) return { ...d, volumes: { ...d.volumes } };
   const v = isObj(raw.volumes) ? raw.volumes : {};
   return {
+    language: raw.language === 'system' || isLocale(raw.language) ? raw.language : d.language,
     theme: oneOf(raw.theme, ['system', 'light', 'dark'] as const, d.theme),
     volumes: {
       metronome: num(v.metronome, d.volumes.metronome, 0, 1),

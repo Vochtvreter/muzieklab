@@ -1,16 +1,59 @@
 /**
  * Message lookup (DESIGN.md §11). Every user-facing string, including aria labels, goes through t().
- * v1 ships English only; another locale is a new JSON catalog plus a setLocale() call.
+ *
+ * Every `<code>.json` in this folder is a locale, found at build time: adding a language is one new catalog with the
+ * same keys as en.json (its own name under `meta.name`), and Settings → Language lists it. Missing keys fall back to
+ * English; i18n.test.ts checks that every catalog has every key and uses only the params English has.
  */
-import en from './en.json';
 import { formatMessage, type MessageParams } from './format';
 
 export type { MessageParams } from './format';
 
 type Catalog = { [key: string]: string | Catalog };
 
-const catalogs: Record<string, Catalog> = { en: en as Catalog };
-let locale = 'en';
+/** The fallback catalog: always complete, and the one that is shown when nothing else matches. */
+export const DEFAULT_LOCALE = 'en';
+
+const files = import.meta.glob<Catalog>('./*.json', { eager: true, import: 'default' });
+const catalogs: Record<string, Catalog> = {};
+for (const [path, catalog] of Object.entries(files)) catalogs[path.slice(2, -'.json'.length)] = catalog;
+
+export interface LocaleInfo {
+  /** BCP 47 code, the catalog's file name: "en", "nl". */
+  code: string;
+  /** The language's name in that language ("Nederlands"), as the picker shows it. */
+  name: string;
+}
+
+/** Every available locale, English first, then by code. */
+export const LOCALES: LocaleInfo[] = Object.keys(catalogs)
+  .sort((a, b) => (a === DEFAULT_LOCALE ? -1 : b === DEFAULT_LOCALE ? 1 : a.localeCompare(b)))
+  .map((code) => ({ code, name: lookup('meta.name', catalogs[code]) ?? code }));
+
+export const isLocale = (code: unknown): code is string => typeof code === 'string' && Object.hasOwn(catalogs, code);
+
+/**
+ * The locale to show: the chosen one, else the first of the device's languages we have ("nl-BE" matches "nl"),
+ * else English.
+ */
+export function resolveLocale(choice: string, preferred: readonly string[] = deviceLanguages()): string {
+  if (isLocale(choice)) return choice;
+  for (const tag of preferred) {
+    const lower = tag.toLowerCase();
+    const exact = Object.keys(catalogs).find((c) => c.toLowerCase() === lower);
+    if (exact) return exact;
+    const base = lower.split('-')[0];
+    if (isLocale(base)) return base;
+  }
+  return DEFAULT_LOCALE;
+}
+
+function deviceLanguages(): readonly string[] {
+  if (typeof navigator === 'undefined') return [];
+  return navigator.languages?.length ? navigator.languages : navigator.language ? [navigator.language] : [];
+}
+
+let locale = DEFAULT_LOCALE;
 const warned = new Set<string>();
 
 export function getLocale(): string {
@@ -35,12 +78,12 @@ function lookup(key: string, cat: Catalog | undefined): string | undefined {
 
 /** True when `key` names a message in the active catalog (or English). */
 export function hasMessage(key: string): boolean {
-  return lookup(key, catalogs[locale]) !== undefined || lookup(key, catalogs.en) !== undefined;
+  return lookup(key, catalogs[locale]) !== undefined || lookup(key, catalogs[DEFAULT_LOCALE]) !== undefined;
 }
 
 /** Translate `key` with ICU-style params. Falls back to English, then to the key itself. */
 export function t(key: string, params?: MessageParams): string {
-  const msg = lookup(key, catalogs[locale]) ?? lookup(key, catalogs.en);
+  const msg = lookup(key, catalogs[locale]) ?? lookup(key, catalogs[DEFAULT_LOCALE]);
   if (msg === undefined) {
     if (!warned.has(key) && typeof console !== 'undefined') {
       warned.add(key);

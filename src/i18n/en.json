@@ -1,4 +1,7 @@
 {
+  "meta": {
+    "name": "English"
+  },
   "app": {
     "name": "Muzieklab",
     "docTitle": "{page} · Muzieklab"
@@ -430,6 +433,9 @@
   },
   "settings": {
     "title": "Settings",
+    "language": "Language",
+    "languageGroup": "App language",
+    "hintLanguage": "Every text, note names and counting, and how dates and numbers are written.",
     "sound": "Sound",
     "metronome": "Metronome",
     "metronomeVolume": "Metronome volume",
@@ -571,6 +577,11 @@
       "sharp": "♯"
     },
     "signWord": {
+      "flat": "flat",
+      "natural": "natural",
+      "sharp": "sharp"
+    },
+    "signButton": {
       "flat": "flat",
       "natural": "natural",
       "sharp": "sharp"
@@ -1328,12 +1339,18 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
-    "v0_4_0": {
+    "v0_5_0": {
       "title": "A full course, from the first beat",
       "try": "Start chapter 1",
       "chapters": "Learn now starts at the beginning: seven new chapters on rhythm, from pulse and meter, note values and rests to eighths and sixteenths, ties, dotted notes, syncopation and triplets. With chapters 8–10 on reading notes they cover everything you can practise in the game.",
       "counting": "Every rhythm in Learn shows how to count it under the notes, with held and silent counts in grey brackets.",
       "practice": "Each section ends with a practice link that opens Free practice set up for it, and every chapter has a quick check."
+    },
+    "v0_4_0": {
+      "title": "Dutch",
+      "try": "Open Settings",
+      "dutch": "Muzieklab speaks Dutch: every screen, the Learn chapters, coaching tips, note names and counting (“1 en 2 en”).",
+      "language": "Settings → Language switches between English and Nederlands. The first time, Muzieklab follows your device’s language."
     },
     "v0_3_4": {
       "title": "Three chapters on reading notes",

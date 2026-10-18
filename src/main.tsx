@@ -1,9 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import { setLocale } from './i18n';
+import { loadPrefs } from './game/storage';
+import { resolveLocale, setLocale } from './i18n';
 // Fonts are bundled (no Google Fonts request), so they work offline: Latin and Latin Extended (for Dutch and other
-// European languages later), plus the music symbols the chips and pad use.
+// European languages such as Dutch), plus the music symbols the chips and pad use.
 import '@fontsource/figtree/latin-400.css';
 import '@fontsource/figtree/latin-ext-400.css';
 import '@fontsource/figtree/latin-500.css';
@@ -28,7 +29,8 @@ import './styles/base.css';
 import './styles/app.css';
 import './styles/notes.css';
 
-setLocale('en');
+// The saved language, or the device's: set before the first paint so nothing flashes in English.
+setLocale(resolveLocale(loadPrefs().language));
 
 const root = document.getElementById('root');
 if (root) {

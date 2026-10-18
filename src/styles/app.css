@@ -2401,6 +2401,20 @@ button.lesson-stars:hover {
   font-weight: 600;
   color: var(--muted);
 }
+/* Settings → Language with more than three languages: a drop-down list as wide as the segmented controls. */
+.lang-select {
+  flex: none;
+  width: 238px;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--track);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
 /* Below the 390 px board the label and a 238 px control no longer fit on one line: stack them. */
 @media (max-width: 389.98px) {
   .seg-row-line {
@@ -2408,7 +2422,8 @@ button.lesson-stars:hover {
     align-items: stretch;
     gap: 8px;
   }
-  .seg--settings {
+  .seg--settings,
+  .lang-select {
     width: auto;
   }
 }

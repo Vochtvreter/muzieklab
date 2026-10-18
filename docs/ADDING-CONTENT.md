@@ -19,6 +19,7 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
    - `ch{n}.intro`, and `ch{n}.quiz.question`, `.right`, `.wrong` for the quick check;
    - `ch{n}.s{k}.title` for every section, `.practice` for its practice link, and every key its blocks name.
    Keys inside a section are relative: in section 9.3, `{ kind: 'text', text: 'point1' }` reads `learn.ch9.s3.point1`.
+   Every other catalog (`nl.json`) needs the same keys; `src/i18n/i18n.test.ts` fails on one that is missing.
 3. **Run `npm test`.** `src/ui/learn/chapters.test.ts` fails on a missing text, a note or rhythm that does not parse,
    a bar that is not full, a quick check without a right answer, or a practice preset that cannot be played.
    `npm run e2e` then checks that every chapter fits at every screen size.

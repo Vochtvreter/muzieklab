@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { setLocale } from '../../i18n';
 import { RELEASES } from '../lib/changelog';
 import { Changelog } from './Changelog';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setLocale('en');
+});
 
 const release = (version: string): HTMLElement => screen.getByRole('button', { name: new RegExp('^' + version.replace(/\./g, '\\.')) });
 const readNotes = RELEASES.find((r) => r.version === '0.3.0')!;
@@ -41,5 +45,14 @@ describe("What's new", () => {
     expect(release('0.3.1').textContent).toContain('Oct 18 · 2 fixed');
     expect(release('0.2.1').textContent).toContain('Oct 17 · 1 fixed');
     expect(release('0.1.0').textContent).toContain('Oct 17 · 1 fixed');
+  });
+
+  it('reads in Dutch, with Dutch dates', () => {
+    setLocale('nl');
+    render(<Changelog />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Een volledige cursus, vanaf de eerste tel' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('18 okt · 3 nieuw')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
 });

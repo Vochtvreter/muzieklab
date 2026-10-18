@@ -1,11 +1,11 @@
 /**
- * Settings: sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about (what's new,
- * version, offline, reset).
+ * Settings: language, sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about
+ * (what's new, version, offline, reset).
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Leniency } from '../../core/api';
 import type { Prefs } from '../../game/storage';
-import { formatShortDate, t } from '../../i18n';
+import { formatShortDate, getLocale, LOCALES, t } from '../../i18n';
 import { applyAudioPrefs } from '../audio';
 import { AppShell } from '../components/AppShell';
 import { AnalogMetronome, BeatRow } from '../components/Bits';
@@ -50,6 +50,10 @@ export function SettingsScreen(): JSX.Element {
           <h1 className="page-title">{t('settings.title')}</h1>
         </div>
         <div className="settings-body">
+          <Section id="language" title={t('settings.language')}>
+            <LanguageRow onChange={(code) => set({ language: code })} />
+          </Section>
+
           <Section id="sound" title={t('settings.sound')}>
             <VolumeRow label={t('settings.metronome')} aria={t('settings.metronomeVolume')} value={prefs.volumes.metronome} on={prefs.metronomeOn}
               onChange={(v) => setVol('metronome', v, 'metronomeOn')} onToggle={() => set({ metronomeOn: !prefs.metronomeOn })} />
@@ -232,6 +236,37 @@ function SegRow<T extends string>({ label, group, value, options, onChange, hint
         {hint}
       </span>
       {children}
+    </div>
+  );
+}
+
+/** Up to three languages fit the segmented control; with more, the row becomes a drop-down list. */
+const SEGMENTED_LOCALES = 3;
+
+/** Settings → Language: every catalog in src/i18n, each named in its own language. Shows the language in use. */
+function LanguageRow({ onChange }: { onChange(code: string): void }): JSX.Element {
+  const value = getLocale();
+  if (LOCALES.length <= SEGMENTED_LOCALES) {
+    return (
+      <SegRow label={t('settings.language')} group={t('settings.languageGroup')} value={value} onChange={onChange} hint={t('settings.hintLanguage')}
+        options={LOCALES.map((l) => ({ value: l.code, label: l.name }))} first />
+    );
+  }
+  return (
+    <div className="seg-row is-first">
+      <div className="seg-row-line">
+        <label htmlFor="language" className="seg-row-label">
+          <b>{t('settings.language')}</b>
+        </label>
+        <select id="language" className="lang-select" value={value} onChange={(e) => onChange(e.target.value)}>
+          {LOCALES.map((l) => (
+            <option key={l.code} value={l.code} lang={l.code}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <span className="row-sub">{t('settings.hintLanguage')}</span>
     </div>
   );
 }

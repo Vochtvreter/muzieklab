@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import en from './en.json';
 import { formatMessage } from './format';
-import { hasMessage, t, tipText, translateParams, tx } from './index';
+import { getLocale, hasMessage, isLocale, LOCALES, resolveLocale, setLocale, t, tipText, translateParams, tx } from './index';
+import { orList } from '../ui/lib/format';
+import { majorName, spokenName } from '../ui/lib/noteText';
 
 describe('formatMessage', () => {
   it('fills variables and leaves plain text alone', () => {
@@ -89,5 +91,129 @@ describe('t()', () => {
       for (let l = 1; l <= 5; l++) expect(hasMessage(`path.u${u}.l${l}`)).toBe(true);
     }
     expect(path).toBeDefined();
+  });
+});
+
+type Tree = { [key: string]: string | Tree };
+const catalogs = import.meta.glob<Tree>('./*.json', { eager: true, import: 'default' });
+
+function flatten(tree: Tree, prefix = ''): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [k, v] of Object.entries(tree)) {
+    if (typeof v === 'string') out.set(prefix + k, v);
+    else for (const [kk, vv] of flatten(v, prefix + k + '.')) out.set(kk, vv);
+  }
+  return out;
+}
+
+/** Index of the `}` closing the `{` at `from`; throws when there is none. */
+function closing(s: string, from: number): number {
+  let depth = 0;
+  for (let i = from; i < s.length; i++) {
+    if (s[i] === '{') depth++;
+    else if (s[i] === '}' && --depth === 0) return i;
+  }
+  throw new Error('unbalanced { in: ' + s);
+}
+
+/** The argument names a message uses, inside plural and select branches too; throws on an unbalanced brace. */
+function argNames(msg: string, into = new Set<string>()): Set<string> {
+  for (let i = 0; i < msg.length; i++) {
+    if (msg[i] === '}') throw new Error('unbalanced } in: ' + msg);
+    if (msg[i] !== '{') continue;
+    const end = closing(msg, i);
+    const body = msg.slice(i + 1, end);
+    const parts = body.split(',');
+    into.add(parts[0].trim());
+    if (parts.length >= 3) {
+      // `name, plural|select, key {branch} key {branch}`: each branch is a message of its own.
+      const branches = parts.slice(2).join(',');
+      for (let j = branches.indexOf('{'); j >= 0; j = branches.indexOf('{', closing(branches, j))) {
+        argNames(branches.slice(j + 1, closing(branches, j)), into);
+      }
+    }
+    i = end;
+  }
+  return into;
+}
+
+describe('locales', () => {
+  const english = flatten(en as Tree);
+
+  it('finds every catalog in src/i18n, each named in its own language', () => {
+    expect(LOCALES.map((l) => l.code)).toEqual(expect.arrayContaining(['en', 'nl']));
+    expect(LOCALES[0]).toEqual({ code: 'en', name: 'English' });
+    expect(LOCALES.find((l) => l.code === 'nl')?.name).toBe('Nederlands');
+  });
+
+  for (const [path, catalog] of Object.entries(catalogs)) {
+    const code = path.slice(2, -'.json'.length);
+    if (code === 'en') continue;
+    const messages = flatten(catalog);
+
+    it(`${code}: has every key English has, and no others`, () => {
+      expect([...english.keys()].filter((k) => !messages.has(k)), 'missing').toEqual([]);
+      expect([...messages.keys()].filter((k) => !english.has(k)), 'not in English').toEqual([]);
+    });
+
+    it(`${code}: uses only the params English passes, with balanced braces`, () => {
+      const wrong: string[] = [];
+      for (const [key, msg] of messages) {
+        const known = argNames(english.get(key) ?? '');
+        for (const name of argNames(msg)) if (!known.has(name)) wrong.push(`${key}: {${name}}`);
+      }
+      expect(wrong).toEqual([]);
+    });
+  }
+
+  it('resolves the chosen language, else the device language, else English', () => {
+    expect(resolveLocale('nl', ['en-US'])).toBe('nl');
+    expect(resolveLocale('system', ['nl-BE', 'en'])).toBe('nl');
+    expect(resolveLocale('system', ['fr-FR', 'nl'])).toBe('nl');
+    expect(resolveLocale('system', ['fr-FR'])).toBe('en');
+    expect(resolveLocale('system', [])).toBe('en');
+    expect(resolveLocale('xx', ['NL'])).toBe('nl');
+    expect(isLocale('nl')).toBe(true);
+    expect(isLocale('system')).toBe(false);
+  });
+});
+
+describe('Dutch', () => {
+  afterEach(() => setLocale('en'));
+
+  it('switches the catalog, plurals and the lang attribute', () => {
+    setLocale('nl');
+    expect(getLocale()).toBe('nl');
+    expect(t('nav.settings')).toBe('Instellingen');
+    expect(t('common.bars', { count: 1 })).toBe('1 maat');
+    expect(t('common.bars', { count: 4 })).toBe('4 maten');
+    expect(t('streak.pill', { count: 0 })).toBe('Nog geen reeks');
+    expect(orList(['value.quarter', 'rest.quarter', 'value.dottedHalf'])).toBe('kwartnoot, kwartrust of gepunteerde halve');
+  });
+
+  it('names sharps and flats the Dutch way for screen readers', () => {
+    setLocale('nl');
+    expect(spokenName('F', 1)).toBe('fis');
+    expect(spokenName('B', -1)).toBe('bes');
+    expect(spokenName('E', -1)).toBe('es');
+    expect(spokenName('A', -1)).toBe('as');
+    expect(spokenName('C', 0)).toBe('C');
+    expect(majorName('G')).toBe('G majeur');
+  });
+
+  it('counts “1 en 2 en” in coaching tips', () => {
+    setLocale('nl');
+    const tip = tipText({
+      key: 'tip.cutShort',
+      params: { value: 'value.dottedQuarter', bar: 2, beat: 1, liftBeat: 2, liftPart: 'count.and', count: 1 },
+    });
+    expect(tip).toBe('Je liet de gepunteerde kwartnoot in maat 2 te vroeg los. Houd hem vast tot en met “2” en laat los op “en”.');
+  });
+
+  it('falls back to English for a key a catalog lacks', () => {
+    setLocale('nl');
+    expect(hasMessage('nope.not.here')).toBe(false);
+    setLocale('xx');
+    expect(getLocale()).toBe('nl');
   });
 });
