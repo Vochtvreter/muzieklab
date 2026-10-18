@@ -1,6 +1,6 @@
-/** Routes and app-wide effects (theme, lang). */
+/** Routes and app-wide effects (theme, language). */
 import { lazy, Suspense, useEffect } from 'react';
-import { setLocale, t } from './i18n';
+import { resolveLocale, setLocale, t } from './i18n';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { useRoute } from './ui/router';
 import { Calibration } from './ui/screens/Calibration';
@@ -45,9 +45,17 @@ function useTheme(theme: 'system' | 'light' | 'dark'): void {
 }
 
 function Screens(): JSX.Element {
-  const route = useRoute();
   const { state } = useStore();
   useTheme(state.prefs.theme);
+  // t() reads module state: switch the catalog before the screens render, and remount them on a change so text kept
+  // in state or memos is redone in the new language.
+  const locale = resolveLocale(state.prefs.language);
+  setLocale(locale);
+  return <Route key={locale} />;
+}
+
+function Route(): JSX.Element {
+  const route = useRoute();
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [route]);
@@ -107,7 +115,6 @@ function Crash(): JSX.Element {
 }
 
 export function App(): JSX.Element {
-  useEffect(() => setLocale('en'), []);
   return (
     <ErrorBoundary fallback={<Crash />}>
       <StoreProvider>

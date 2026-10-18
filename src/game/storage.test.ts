@@ -48,7 +48,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const };
+    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
@@ -79,6 +79,15 @@ describe('prefs and progress storage', () => {
   it('reads an all-perfect 4 saved before the diamond as the diamond', () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ lessons: { '1.1': { stars: 4, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 } } }));
     expect(loadProgress().lessons).toEqual({ '1.1': { stars: 5, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 } });
+  });
+
+  it('keeps a known language or system, and falls back to system for an unknown one', () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ language: 'nl' }));
+    expect(loadPrefs().language).toBe('nl');
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ language: 'xx' }));
+    expect(loadPrefs().language).toBe('system');
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ language: 7 }));
+    expect(loadPrefs().language).toBe('system');
   });
 
   it('survives corrupt JSON', () => {

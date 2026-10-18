@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { t } from '../i18n';
 import type { JudgeResult, Tap, Timeline } from '../core/types';
 import { layoutLane, laneRowHeight, type LaneShape } from './lane';
 import { cssVar, useElementWidth } from './theme';
@@ -12,14 +13,13 @@ export interface LengthLaneProps {
   result?: JudgeResult; // when present: colour by judgement, dashed cut-short parts, × for misses
   /** Current play position in seconds (live), draws the playhead. */
   now?: number | null;
-  /** Accessible description (an i18n string); defaults to the design's English label. */
+  /** Accessible description (an i18n string); defaults to results.laneLabel. */
   label?: string;
   /** false for tap-only exercises: presses show as marks, not holds. */
   hold?: boolean;
 }
 
 const DEFAULT_WIDTH = 342;
-const DEFAULT_LABEL = 'Note lengths compared with how long each note was held';
 
 const HOLD_FILL = { hit: cssVar('hit'), early: cssVar('early'), live: cssVar('slate') } as const;
 
@@ -78,7 +78,7 @@ export function LengthLane(props: LengthLaneProps): JSX.Element {
   return (
     <div ref={hostRef} style={{ width: '100%', minWidth: 0 }}>
       <svg width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`} role="img"
-        aria-label={props.label ?? DEFAULT_LABEL} style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
+        aria-label={props.label ?? t('results.laneLabel')} style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
         {layout.shapes.map(renderShape)}
       </svg>
     </div>

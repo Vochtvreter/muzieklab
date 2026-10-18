@@ -1,4 +1,7 @@
 {
+  "meta": {
+    "name": "English"
+  },
   "app": {
     "name": "Muzieklab",
     "docTitle": "{page} · Muzieklab"
@@ -430,6 +433,9 @@
   },
   "settings": {
     "title": "Settings",
+    "language": "Language",
+    "languageGroup": "App language",
+    "hintLanguage": "Every text, note names and counting, and how dates and numbers are written.",
     "sound": "Sound",
     "metronome": "Metronome",
     "metronomeVolume": "Metronome volume",
@@ -571,6 +577,11 @@
       "sharp": "♯"
     },
     "signWord": {
+      "flat": "flat",
+      "natural": "natural",
+      "sharp": "sharp"
+    },
+    "signButton": {
       "flat": "flat",
       "natural": "natural",
       "sharp": "sharp"
@@ -978,6 +989,12 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_4_0": {
+      "title": "Dutch",
+      "try": "Open Settings",
+      "dutch": "Muzieklab speaks Dutch: every screen, the Learn chapters, coaching tips, note names and counting (“1 en 2 en”).",
+      "language": "Settings → Language switches between English and Nederlands. The first time, Muzieklab follows your device’s language."
+    },
     "v0_3_4": {
       "title": "Three chapters on reading notes",
       "try": "Open Learn",
