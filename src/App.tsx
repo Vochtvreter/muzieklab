@@ -6,7 +6,8 @@ import { useRoute } from './ui/router';
 import { Calibration } from './ui/screens/Calibration';
 import { Changelog } from './ui/screens/Changelog';
 import { Home } from './ui/screens/Home';
-import { LearnHub, LearnNotes } from './ui/screens/Learn';
+import { findChapter } from './ui/learn/chapters';
+import { LearnChapter, LearnHub } from './ui/screens/Learn';
 import { NotesDone } from './ui/screens/notes/NotesDone';
 import { NotesKey } from './ui/screens/notes/NotesKey';
 import { NotesPlay } from './ui/screens/notes/NotesPlay';
@@ -58,6 +59,10 @@ function Route(): JSX.Element {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [route]);
+  if (route.startsWith('/learn/')) {
+    const chapter = findChapter(Number(route.slice('/learn/'.length)));
+    return chapter ? <LearnChapter key={chapter.n} chapter={chapter} /> : <LearnHub />;
+  }
   switch (route) {
     case '/path':
       return <PathScreen />;
@@ -83,8 +88,6 @@ function Route(): JSX.Element {
       return <NotesDone />;
     case '/learn':
       return <LearnHub />;
-    case '/learn/8':
-      return <LearnNotes />;
     case '/dev/render':
       if (RenderDemo) {
         return (

@@ -824,17 +824,28 @@
     "chapters": {
       "8": {
         "title": "Noten op de balk",
-        "sub": "Sleutels, hulplijnen, de piano, voortekens"
+        "sub": "Sleutels, hulplijnen, notennamen"
+      },
+      "9": {
+        "title": "Kruisen, mollen en herstellingstekens",
+        "sub": "De piano, halve toonafstanden, ♯ ♭ ♮"
+      },
+      "10": {
+        "title": "Voortekening",
+        "sub": "Kruisen en mollen voor het hele stuk"
       }
     },
     "laterNote": "Hoofdstuk 1–7 over ritme komen eraan.",
-    "chapterOf": "Leren · hoofdstuk {n} van 9",
-    "chapterN": "hoofdstuk {n} van 9",
+    "chapterOf": "Leren · hoofdstuk {n} van {total}",
+    "chapterN": "hoofdstuk {n} van {total}",
     "chaptersHead": "Hoofdstukken",
     "back": "Terug naar Leren",
     "jump": "Delen",
     "practice": "Oefen noten lezen",
+    "practiceRhythm": "Oefen ritme",
     "all": "Terug naar alle hoofdstukken",
+    "prev": "Vorige",
+    "next": "Volgende",
     "check": "Snelle check",
     "ch8": {
       "intro": "Ritme vertelt je wanneer en hoe lang. Toonhoogte vertelt je welke noot: hoe hoger een noot op de balk staat, hoe hoger hij klinkt. De sleutel aan het begin vertelt je welke noot waar staat.",
@@ -844,7 +855,8 @@
         "trebleTitle": "Vioolsleutel (G-sleutel)",
         "trebleText": "De krul draait om de 2e lijn: die lijn is G, de G boven de centrale C.",
         "bassTitle": "Bassleutel (F-sleutel)",
-        "bassText": "De twee puntjes staan om de 4e lijn: die lijn is F, de F onder de centrale C."
+        "bassText": "De twee puntjes staan om de 4e lijn: die lijn is F, de F onder de centrale C.",
+        "landmarks": "Drie herkenningsnoten zijn het waard om uit je hoofd te kennen: de G die de vioolsleutel aangeeft, de F die de bassleutel aangeeft, en de centrale C daartussen. Lees elke andere noot door vanaf de dichtstbijzijnde herkenningsnoot omhoog of omlaag te tellen."
       },
       "s2": {
         "title": "Vioolsleutel",
@@ -852,7 +864,8 @@
         "spaces": "Tussenruimtes, van onder naar boven",
         "linesAlt": "Notenbalk met vioolsleutel en noten op de vijf lijnen: {names}",
         "spacesAlt": "Notenbalk met vioolsleutel en noten in de vier tussenruimtes: {names}",
-        "aid": "Om te onthouden: de lijnen zijn E G B D F, de tussenruimtes spellen “FACE”."
+        "aid": "Om te onthouden: de lijnen zijn E G B D F, de tussenruimtes spellen “FACE”.",
+        "practice": "Oefen de vioolsleutel"
       },
       "s3": {
         "title": "Bassleutel",
@@ -860,45 +873,102 @@
         "spaces": "Tussenruimtes, van onder naar boven",
         "linesAlt": "Notenbalk met bassleutel en noten op de vijf lijnen: {names}",
         "spacesAlt": "Notenbalk met bassleutel en noten in de vier tussenruimtes: {names}",
-        "aid": "Om te onthouden: de lijnen zijn G B D F A, de tussenruimtes A C E G."
+        "aid": "Om te onthouden: de lijnen zijn G B D F A, de tussenruimtes A C E G.",
+        "practice": "Oefen de bassleutel"
       },
       "s4": {
         "title": "De centrale C en hulplijnen",
         "text": "Noten boven of onder de balk krijgen korte extra lijntjes: hulplijnen. De centrale C staat op één hulplijn: net onder de balk met vioolsleutel, of net boven de balk met bassleutel. Het is dezelfde noot.",
         "trebleAlt": "Centrale C op één hulplijn onder de balk met vioolsleutel",
         "bassAlt": "Centrale C op één hulplijn boven de balk met bassleutel",
-        "ledgerAlt": "Notenbalk met vioolsleutel, met A3, B3 en C4 onder de balk en A5, B5 en C6 erboven, op hulplijnen"
+        "ledgerAlt": "Notenbalk met vioolsleutel, met A3, B3 en C4 onder de balk en A5, B5 en C6 erboven, op hulplijnen",
+        "range": "Bij Noten lezen voegt de instelling Bereik de noten op één of twee hulplijnen toe.",
+        "practice": "Oefen met hulplijnen"
       },
       "s5": {
         "title": "Twee manieren om noten te noemen",
         "text": "Letternamen en do re mi noemen dezelfde noten. Hier is “do” altijd C (vaste do).",
-        "ti": "In Engelstalige lessen hoor je soms “ti” in plaats van “si”; het is dezelfde noot."
-      },
-      "s6": {
-        "title": "Het pianooctaaf",
-        "text": "Een octaaf heeft 7 witte en 5 zwarte toetsen. De zwarte toetsen staan in groepjes van twee en drie. C is de witte toets net links van het groepje van twee.",
-        "pianoAlt": "Eén pianooctaaf: witte toetsen C D E F G A B, en vijf zwarte toetsen in een groepje van twee en een groepje van drie",
-        "point1": "Een kruis ♯ verhoogt een noot naar de eerstvolgende toets rechts; een mol ♭ verlaagt hem naar de eerstvolgende toets links.",
-        "point2": "Zo heeft elke zwarte toets twee namen: de toets rechts van F is F♯ (fis), en ook G♭ (ges)."
-      },
-      "s7": {
-        "title": "Voortekening",
-        "gAlt": "Notenbalk met vioolsleutel in G majeur: één kruis op de bovenste lijn. Een lage F, een G en een hoge F; beide F’s zijn fis",
-        "text2": "In G majeur staat het kruis op de bovenste lijn, maar de lage F in de onderste tussenruimte is ook een F♯.",
-        "text3": "Kruisen komen er altijd in dezelfde volgorde bij, en mollen in de omgekeerde volgorde:",
-        "sharpsAlt": "Notenbalk met vioolsleutel en alle zeven kruisen: F, C, G, D, A, E, B",
-        "flatsAlt": "Notenbalk met vioolsleutel en alle zeven mollen: B, E, A, D, G, C, F",
-        "point1": "Toonsoort bij kruisen: ga één toets omhoog vanaf het laatste kruis. Laatste kruis F♯ → G majeur.",
-        "point2": "Bij mollen: de op één na laatste mol noemt de toonsoort. B♭ E♭ → B♭ majeur. Eén mol is F majeur.",
-        "point3": "Elke voortekening hoort bij een majeur- en een mineurtoonsoort: G majeur en E mineur delen F♯. De noten lees je hetzelfde.",
-        "text4": "Een teken voor een noot gaat boven de voortekening, maar alleen tot de volgende maatstreep:",
-        "barAlt": "Notenbalk met vioolsleutel in G majeur met drie maten: fis, dan F met een herstellingsteken, dan weer fis in de volgende maat",
-        "text1": "De kruisen of mollen direct na de sleutel zijn de voortekening. Ze gelden voor elke noot op die lijn of in die tussenruimte, in elk octaaf, het hele stuk lang. Voor die noten staat geen teken."
+        "ti": "In Engelstalige lessen hoor je soms “ti” in plaats van “si”; het is dezelfde noot.",
+        "game": "Tijdens het spelen kun je de naamknoppen wisselen tussen do re mi en letters; het spel onthoudt je keuze.",
+        "practice": "Oefen beide sleutels"
       },
       "quiz": {
         "question": "Welke noot staat op de middelste lijn van de balk met vioolsleutel?",
         "right": "Goed. De lijnen bij de vioolsleutel zijn E G B D F, dus de middelste (3e) lijn is B.",
         "wrong": "Niet helemaal. De lijnen bij de vioolsleutel zijn van onder E G B D F, dus de middelste (3e) lijn is B."
+      }
+    },
+    "ch9": {
+      "intro": "De zwarte toetsen van de piano zitten tussen de witte. Dit hoofdstuk geeft ze een naam: halve en hele toonafstanden, het kruis, de mol en het herstellingsteken, en hoe lang een teken voor een noot geldt.",
+      "s1": {
+        "title": "Het pianooctaaf",
+        "text": "Een octaaf heeft 7 witte en 5 zwarte toetsen. De zwarte toetsen staan in groepjes van twee en drie. C is de witte toets net links van het groepje van twee.",
+        "pianoAlt": "Eén pianooctaaf: witte toetsen C D E F G A B, en vijf zwarte toetsen in een groepje van twee en een groepje van drie",
+        "game": "Bij Noten lezen kun je op deze piano antwoorden in plaats van met namen.",
+        "practice": "Oefen op de piano"
+      },
+      "s2": {
+        "title": "Halve en hele toonafstanden",
+        "text": "Een halve toonafstand is de eerstvolgende toets, zwart of wit. Tussen E en F, en tussen B en C, zit geen zwarte toets, dus die witte toetsen liggen een halve toon uit elkaar. Een hele toonafstand is twee halve: C naar D, of E naar F♯.",
+        "pianoAlt": "Eén pianooctaaf met E en F, en B en C, gemarkeerd: witte toetsen een halve toon uit elkaar"
+      },
+      "s3": {
+        "title": "Kruis, mol en herstellingsteken",
+        "point1": "Een kruis ♯ verhoogt een noot een halve toon: naar de eerstvolgende toets rechts.",
+        "point2": "Een mol ♭ verlaagt een noot een halve toon: naar de eerstvolgende toets links.",
+        "point3": "Een herstellingsteken ♮ heft een kruis of mol op: weer de gewone witte toets.",
+        "text": "Zo heeft elke zwarte toets twee namen: de toets rechts van F is F♯ (fis), en ook G♭ (ges). Een teken kan ook op een witte toets uitkomen: E♯ is de toets F, en C♭ is de toets B.",
+        "staffAlt": "Notenbalk met vioolsleutel met fis, dan bes",
+        "practice": "Oefen met extra kruisen"
+      },
+      "s4": {
+        "title": "Een teken geldt de hele maat",
+        "text": "Een teken voor een noot geldt ook voor de noten daarna op dezelfde lijn of in dezelfde tussenruimte, tot de maatstreep. Het telt alleen in dat octaaf: een F een octaaf hoger heeft een eigen teken nodig.",
+        "staffAlt": "Notenbalk met vioolsleutel in C majeur met twee maten: fis, dan een gewone F in de volgende maat",
+        "after": "De maatstreep beëindigt het teken, dus de F in de volgende maat is weer een gewone F.",
+        "game": "Noten lezen zet één noot in elke maat, dus elk teken dat je nodig hebt staat voor de eigen noot.",
+        "practice": "Oefen met kruisen en mollen"
+      },
+      "quiz": {
+        "question": "Welke andere naam heeft de zwarte toets F♯?",
+        "right": "Goed. F♯ ligt een halve toon boven F, en diezelfde toets ligt een halve toon onder G: G♭.",
+        "wrong": "Niet helemaal. F♯ ligt een halve toon boven F, en diezelfde toets ligt een halve toon onder G: G♭."
+      }
+    },
+    "ch10": {
+      "intro": "Als een stuk steeds dezelfde kruisen of mollen gebruikt, worden ze één keer geschreven, aan het begin van elke notenbalk. Dit hoofdstuk laat zien hoe je ze leest en hoe ze de toonsoort noemen.",
+      "s1": {
+        "title": "De voortekening",
+        "text1": "De kruisen of mollen direct na de sleutel zijn de voortekening. Ze gelden voor elke noot op die lijn of in die tussenruimte, in elk octaaf, het hele stuk lang. Voor die noten staat geen teken.",
+        "gAlt": "Notenbalk met vioolsleutel in G majeur: één kruis op de bovenste lijn. Een lage F, een G en een hoge F; beide F’s zijn fis",
+        "text2": "In G majeur staat het kruis op de bovenste lijn, maar de lage F in de onderste tussenruimte is ook een F♯.",
+        "text4": "Een teken voor een noot gaat boven de voortekening, maar alleen tot de volgende maatstreep:",
+        "barAlt": "Notenbalk met vioolsleutel in G majeur met drie maten: fis, dan F met een herstellingsteken, dan weer fis in de volgende maat",
+        "practice": "Oefen in G majeur"
+      },
+      "s2": {
+        "title": "De volgorde van kruisen en mollen",
+        "text3": "Kruisen komen er altijd in dezelfde volgorde bij, en mollen in de omgekeerde volgorde:",
+        "sharpsAlt": "Notenbalk met vioolsleutel en alle zeven kruisen: F, C, G, D, A, E, B",
+        "flatsAlt": "Notenbalk met vioolsleutel en alle zeven mollen: B, E, A, D, G, C, F",
+        "start": "Begin met de toonsoorten tot drie tekens: G, D en A majeur met kruisen, F, B♭ en E♭ majeur met mollen. Voeg daarna de rest toe.",
+        "practice": "Oefen D majeur en B♭ majeur"
+      },
+      "s3": {
+        "title": "De toonsoort benoemen",
+        "point1": "Toonsoort bij kruisen: ga één toets omhoog vanaf het laatste kruis. Laatste kruis F♯ → G majeur.",
+        "point2": "Bij mollen: de op één na laatste mol noemt de toonsoort. B♭ E♭ → B♭ majeur. Eén mol is F majeur.",
+        "practice": "Oefen toonsoorten tot drie tekens"
+      },
+      "s4": {
+        "title": "Majeur en mineur",
+        "point3": "Elke voortekening hoort bij een majeur- en een mineurtoonsoort: G majeur en E mineur delen F♯. De noten lees je hetzelfde.",
+        "game": "Het scherm Toonsoort bij Noten lezen toont beide namen voor elke voortekening."
+      },
+      "quiz": {
+        "question": "Het laatste kruis is C♯. Welke majeurtoonsoort is het?",
+        "right": "Goed. Eén toets omhoog vanaf het laatste kruis: C♯ → D majeur.",
+        "wrong": "Niet helemaal. Ga één toets omhoog vanaf het laatste kruis: C♯ → D majeur."
       }
     }
   },
@@ -924,6 +994,13 @@
       "try": "Open Instellingen",
       "dutch": "Muzieklab spreekt Nederlands: elk scherm, de hoofdstukken bij Leren, de tips, de notennamen en het tellen (“1 en 2 en”).",
       "language": "Instellingen → Taal wisselt tussen English en Nederlands. De eerste keer volgt Muzieklab de taal van je apparaat."
+    },
+    "v0_3_4": {
+      "title": "Drie hoofdstukken over noten lezen",
+      "try": "Open Leren",
+      "split": "Noten op de balk bestaat nu uit drie korte hoofdstukken: 8 · Noten op de balk, 9 · Kruisen, mollen en herstellingstekens, en 10 · Voortekening. Delen die je al las, blijven gelezen.",
+      "practice": "De meeste delen eindigen met een oefenlink die Noten lezen opent, ingesteld voor dat deel: één sleutel, hulplijnen, de piano, extra tekens of een toonsoort.",
+      "steps": "Nieuw: herkenningsnoten om vanaf te lezen, halve en hele toonafstanden, en de regel dat een teken voor een noot alleen geldt in het eigen octaaf, tot de maatstreep."
     },
     "v0_3_3": {
       "title": "Leren op grote schermen",

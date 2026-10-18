@@ -23,7 +23,7 @@ checked page by page.
 | Barlines divide music into bars (measures); a thin line followed by a thick one ends a piece | Verified | [Wiki-Bar] |
 | At 60 BPM there is one beat per second | Verified (definition of BPM) | — |
 
-## Reading notes and keys (chapter 8, Read notes mode)
+## Reading notes and keys (chapters 8–10, Read notes mode)
 
 | Claim | Status | Source |
 |---|---|---|
@@ -32,12 +32,16 @@ checked page by page.
 | Middle C (C4) sits on one ledger line below the treble staff and one above the bass staff | Verified | [MTN-Staff] |
 | Ledger lines extend the staff for notes above or below it | Verified | [MTN-Staff] |
 | Treble lines E G B D F, spaces F A C E; bass lines G B D F A, spaces A C E G | Verified | [Dummies-Staff], [MTP-Mnemonics] |
+| Read from landmark notes (treble G, bass F, middle C) by step; memory aids as a help that is dropped later | Convention: common piano teaching; little research on how notation reading is learned | [Pianodao-Mnemonics], [Musicnotes-Read] |
 | Memory aids ("Every Good Boy Does Fine", "FACE", "Good Boys Do Fine Always", "All Cows Eat Grass") | Convention: many variants exist; shown as optional aids | [MTP-Mnemonics] |
 | Fixed do: do re mi fa sol la si are the note names C D E F G A B | Verified | [Wiki-Solfege] |
 | "ti" replaced "si" in English use (Sarah Glover, 19th century) | Verified | [Wiki-Solfege] |
 | An octave on the piano has 7 white and 5 black keys; black keys are the sharps/flats (C♯/D♭, D♯/E♭, F♯/G♭, G♯/A♭, A♯/B♭) | Verified | [Wiki-Keyboard] |
 | Black keys come in groups of two and three; C is the white key just left of the group of two | Verified (standard piano teaching) | [KeyNotes-Layout] |
 | A sharp raises a note to the very next key on the right, a flat lowers it to the next key on the left | Verified (a semitone; follows from the keyboard layout) | [Wiki-Keyboard] |
+| E–F and B–C are half steps with no black key between them; a whole step is two half steps | Verified | [Wiki-Major], [Wiki-Keyboard] |
+| Half and whole steps are taught before or with sharps, flats and naturals | Convention: Flemish AMV course, Amphion A, RCM level 1 | [Wilrijk-AMV], [Amphion-A], [RCM-LO] |
+| A sign can land on a white key: E♯ sounds as F, C♭ as B | Verified (follows from the keyboard layout: the next key right of E is F, left of C is B) | [Wiki-Keyboard] |
 | "On the staff" = 11 positions per clef (5 lines, 4 spaces, the space just outside each end) | Design choice for the Range setting | — |
 | Computer-keyboard piano layout A S D F G H J / W E T Y U | Convention used by many music apps; a design choice | — |
 | A key signature applies to every note on its line or space, in every octave, for the rest of the piece | Verified | [Wiki-KeySig] |
@@ -46,10 +50,12 @@ checked page by page.
 | Sharp keys: the major key is a semitone above the last sharp (F♯ → G major). Flat keys: the second-to-last flat names the major key (B♭ E♭ → B♭ major); one flat is F major | Verified | [MT21C-KeySig] |
 | Each major key shares its key signature with its relative minor (G major / E minor) | Verified | [Wiki-KeySig], [MT21C-KeySig] |
 | An accidental applies to its note and to later notes on the same position until the bar line; a natural cancels a sharp or flat | Verified | [Wiki-Accidental] |
+| An accidental holds only in its own octave: the same letter an octave away needs its own sign | Convention: modern practice and the Dutch and Flemish courses; some older notation applied it across octaves | [Amphion-A], [Wilrijk-AMV], [Wiki-Accidental] |
+| Start with key signatures of up to three sharps or flats | Convention: HaFaBra A reads up to 3♯ / 3♭, ABRSM grades 1–3 reach 4 | [LKCA-Blaas], [ABRSM-Outline] |
 | One whole note per bar in Read notes, so an accidental never carries to the next note | Design choice (follows from the rule above) | — |
 | Mix keys: a new key every 5 notes, announced first | Design choice | — |
 
-## Scales (chapter 9, Scales mode)
+## Scales (chapter 11, Scales mode)
 
 | Claim | Status | Source |
 |---|---|---|
@@ -150,6 +156,13 @@ checked page by page.
 - **[Wiki-Subtonic]** "Subtonic". Wikipedia. https://en.wikipedia.org/wiki/Subtonic
 - **[Wiki-Dominant]** "Dominant (music)". Wikipedia. https://en.wikipedia.org/wiki/Dominant_(music)
 - **[Wiki-Accidental]** "Accidental (music)". Wikipedia. https://en.wikipedia.org/wiki/Accidental_(music)
+- **[Amphion-A]** Amphion, *Theorieboek A* (HaFaBra A). https://www.amphion.nl/site/assets/files/9088/theorieboek_a.pdf
+- **[Wilrijk-AMV]** Academie Wilrijk, *Theorie in een notendop* (AMV for adults, 2010). http://amapledoesntvoice.weebly.com/uploads/5/2/5/4/5254538/amv_volw_theoriecursus_vs_2010.pdf
+- **[LKCA-Blaas]** LKCA, *Raamleerplan blaasinstrumenten* (2016). https://www.lkca.nl/~/media/downloads/publicaties/raamleerplannen/raamleerplan_blaasinstrumenten.pdf
+- **[ABRSM-Outline]** ABRSM, Music Theory syllabus outline, grades 1–5 (from 2020). https://www.abrsm.org/sites/default/files/2023-09/music-theory-syllabus-outline-grades-1-5-from-2020.pdf
+- **[RCM-LO]** RCM, learning objectives Prep to Level 4. https://admin.rcmusic.com/sites/default/files/digital-learning/theory/learning-objectives-prep-to-4.pdf
+- **[Pianodao-Mnemonics]** Pianodao, "Who really needs mnemonics?". https://pianodao.com/2026/04/29/who-really-needs-mnemonics/
+- **[Musicnotes-Read]** Musicnotes, "5 ways to learn how to read music at the piano". https://www.musicnotes.com/blog/5-ways-to-learn-how-to-read-music-at-the-piano
 - **[Wiki-Dotted]** "Dotted note". Wikipedia. https://en.wikipedia.org/wiki/Dotted_note
 - **[Wiki-Beat]** "Beat (music)". Wikipedia. https://en.wikipedia.org/wiki/Beat_(music)
 - **[Wiki-Bar]** "Bar (music)". Wikipedia. https://en.wikipedia.org/wiki/Bar_(music)

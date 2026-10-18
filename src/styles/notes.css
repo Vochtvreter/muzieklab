@@ -1177,6 +1177,46 @@
   gap: 6px;
   padding-bottom: 8px;
 }
+/* "Practice the treble clef →" at the end of a section. */
+.learn-practice {
+  align-self: flex-start;
+  min-height: 44px;
+  font-size: 14px;
+}
+/* Half steps on the piano diagram: E–F and B–C. */
+.piano-white.is-marked {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+/* Previous / next chapter cards. */
+.learn-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.learn-nav-link {
+  min-height: 64px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.learn-nav-link b {
+  font-size: 14px;
+}
+.learn-nav-link:hover b {
+  color: var(--accent-ink);
+}
+.learn-nav-link--next {
+  grid-column: 2;
+  text-align: right;
+}
 
 @media (min-width: 700px) {
   .learn-pair--staves,
@@ -1310,7 +1350,7 @@
   color: var(--accent-ink);
 }
 .learn-side-n {
-  width: 14px;
+  width: 18px;
   font-family: var(--font-mono);
 }
 .learn-side-chapter a {
@@ -1333,6 +1373,29 @@
 .learn-side-later {
   padding: 4px 10px 0;
   font-size: 13px;
+}
+/* The other chapters, closed. */
+.learn-side-other {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 12px;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.learn-side-other:hover {
+  color: var(--accent-ink);
+}
+.learn-side-other .learn-side-n {
+  color: var(--muted);
+}
+@media (pointer: coarse) {
+  .learn-side-other {
+    min-height: 44px;
+  }
 }
 /* Phones under the 390 px board: smaller name buttons and labels so seven still fit. */
 @media (max-width: 389.98px) {
