@@ -1540,6 +1540,10 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_6_1": {
+      "title": "Taalkeuze",
+      "language": "Bij Instellingen → Taal schuift de markering nu naar de nieuwe taal, net als bij de andere keuzes."
+    },
     "v0_6_0": {
       "title": "Een snelle check na elk deel",
       "try": "Probeer hoofdstuk 1",
