@@ -57,15 +57,25 @@ test('learn: the Key screen links to key signatures; the quick check answers', a
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/notes/key');
   await page.getByRole('link', { name: 'What is a key?' }).click();
-  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.7$/);
-  await expect(page.getByRole('heading', { name: /8\.7\s*Key signatures/ })).toBeInViewport();
-  await page.getByRole('button', { name: 'B', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText(/^Right\. The treble lines are E G B D F/);
+  await expect(page).toHaveURL(/#\/learn\/10\?s=10\.1$/);
+  await expect(page.getByRole('heading', { name: /10\.1\s*The key signature/ })).toBeInViewport();
+  await page.getByRole('button', { name: 'D', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText(/^Right\. One key up from the last sharp/);
 
   // Reading to the end marks the sections seen; the Learn tab shows it.
   await page.locator('.learn-chapter').evaluate((el) => el.scrollTo(0, el.scrollHeight));
   await page.getByRole('link', { name: 'Back to all chapters' }).click();
   await expect(page.getByRole('heading', { name: 'Learn' })).toBeVisible();
+  await page.getByRole('button', { name: /^10\s*Key signatures/ }).click();
   await expect(page.getByText('✓ read').first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Learn' })).toHaveAttribute('aria-current', 'page');
+});
+
+test('learn: a practice link opens Read notes set up for its section', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/learn/8?s=8.3');
+  await page.getByRole('link', { name: 'Practice the bass clef →' }).click();
+  await expect(page).toHaveURL(/#\/notes$/);
+  await expect(page.getByRole('button', { name: /Treble/ })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: /Bass/ })).toHaveAttribute('aria-pressed', 'true');
 });

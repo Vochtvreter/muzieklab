@@ -190,8 +190,8 @@ notes read the same.
 - With **Extra sharps and flats** on, a note can also carry a sign that changes the key
   signature's note: ♯ or ♭, or ♮ to cancel it (F♮ in G major). Alterations that would
   need a double sharp or double flat are left out.
-- The Learn chapter 8.7 *Key signatures* explains all of this, linked from the Key screen
-  ("What is a key?").
+- Learn chapter 9 *Sharps, flats and naturals* and chapter 10 *Key signatures* explain all of this; the Key screen
+  ("What is a key?") links to 10.1.
 
 **Settings** (Read notes setup screen)
 
@@ -249,7 +249,7 @@ Learn and practice major and minor scales in all 15 keys.
 
 A quick theory check on any **chapters the player chooses**, opened from the Learn tab.
 
-- **Setup:** tick chapters (1–8; chapters marked *later* have no cards yet; a "Chapters I
+- **Setup:** tick chapters (1–10; chapters marked *later* have no cards yet; a "Chapters I
   read" shortcut selects the read ones), card types (*symbols*: "which rest is this?";
   *facts and rules*: "how long is a dotted quarter?"; *staff reading*: name a note or a
   staff line), 10 / 20 / 30 cards, and **Flip** or **Choice** (three options).
@@ -752,11 +752,11 @@ change in the app:
 - Results tips link to the matching section.
 - Every section ends with a practice link.
 
-Chapters 8–9 and flash cards arrive later, with note reading.
+Chapters 8–11 and flash cards arrive later, with note reading.
 
 **v1.3 · Read notes** adds naming notes in treble and bass clef, in any of the 15 keys. You answer with names or on
 the piano, and a round summary follows. Home's free practice splits into Rhythm and Read notes, and Learn gains
-chapter 8 · Notes on the staff.
+chapter 8 · Notes on the staff (since 0.3.4 chapters 8–10, see §9.1).
 
 Built in v0.3 (ahead of v1.2, whose rhythm chapters 1–7 come next; the Learn tab holds chapter 8 until then):
 - **Pitch engine** (`core/pitch.ts`): staff positions as letter steps (C4 = 28), the 15 key signatures with their major
@@ -774,13 +774,13 @@ Built in v0.3 (ahead of v1.2, whose rhythm chapters 1–7 come next; the Learn t
 
 **v1.4 · Scales** builds on that, reusing the key signatures and the piano. It adds major and minor scales (natural,
 harmonic, melodic) in all 15 keys: the circle of fifths hub, playing on the piano, spelling with ♭ ♮ ♯, and a round
-summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains chapter 9 · Scales.
+summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains chapter 11 · Scales.
 
 **v1.5 · Progress** adds the Progress tab (the tab bar becomes Home · Path · Learn · Progress · Settings) with
 Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
 appear on Progress and on the level-up sheet.
 
-**v1.6 · Flash cards and listen & write** adds *Test yourself* over all nine Learn chapters (flip or choose from 3),
+**v1.6 · Flash cards and listen & write** adds *Test yourself* over all eleven Learn chapters (flip or choose from 3),
 started from the Learn tab. It also adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
 
 Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
@@ -889,30 +889,41 @@ attribute (they default to black and disappear on a dark background).
 
 ### 9.1 Learn: theory in chapters
 
-The theory is split into seven chapters in teaching order. Each chapter only relies on
-earlier chapters, and each section matches a setting in Free practice. Every section has a
-short explanation, rendered notation with the counting under the notes (held or silent
-counts in grey brackets), key facts, and a *Practise* link that opens Free practice with
-the matching preset. Chapter headers show which Learning Path units use them.
+The theory is split into eleven chapters in teaching order: seven on rhythm, three on reading notes and one on scales.
+Each chapter only relies on earlier chapters, and each setting the player can practise is explained in a section
+(the full map is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md) §5). Every section has a short explanation, rendered
+notation (with the counting under the notes in the rhythm chapters; held or silent counts in grey brackets), key facts,
+an *In the game* tip where one helps, and a *Practice* link that opens Free practice or Read notes with the matching
+preset. Chapter headers show which Learning Path units use them. The contents follow the research in
+`LEARN-CHAPTERS.md`, which compares them with Flemish and Dutch courses (*Allemaal nootjes*, AMV, HaFaBra) and with
+ABRSM, Trinity, RCM and Kodály.
 
-| Chapter | Sections | Path units |
+| Chapter | Sections | Practice |
 |---|---|---|
-| **1 · Pulse and meter** | 1.1 The beat and tempo (BPM, tempo words) · 1.2 Bars and time signatures (barlines, final barline, 2/4 3/4 4/4) · 1.3 Strong and weak beats | 1, 3, 5 |
-| **2 · Note values** | 2.1 Reading the shape (head, stem, flags; beats) · 2.2 The note tree | 1, 3, 4, 8 |
-| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly (centred whole-bar rest, half-rest placement, dotted rests, no ties) | 2, 3, 5 |
-| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | 4, 8 |
-| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes (a dot as a shortcut for a tie) | 6, 7, 10 |
-| **6 · Off the beat** | 6.1 Syncopation · 6.2 Triplets | 9, 11 |
-| **7 · Compound meter** *(later)* | 7.1 Six-eight | 12 |
-| **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) · 8.6 The piano octave (groups of 2 and 3 black keys, sharps and flats) · 8.7 Key signatures (order of sharps F C G D A E B and flats B E A D G C F, naming the key, relative minor, a sign lasts until the bar line) | Read notes |
-| **9 · Scales** | 9.1 Half steps and whole steps · 9.2 The major scale (W W H W W W H) · 9.3 Major scales in every key (each letter once; the scale's signs = its key signature) · 9.4 The circle of fifths (15 key signatures, 12 sounding keys) · 9.5 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 9.6 Scale degrees (tonic … leading tone; fixed do in this app) | Scales |
+| **1 · Pulse and meter** | 1.1 The beat and tempo (BPM, tempo words, ♩ = 80) · 1.2 Bars and time signatures (barlines, final barline, 2/4 3/4 4/4, C = common time) · 1.3 Strong and weak beats · 1.4 The upbeat (no practice yet) | Path units 1, 3, 5 |
+| **2 · Note values** | 2.1 Reading the shape (from the quarter: half, whole, then eighth and sixteenth) · 2.2 The note tree | Path units 1, 3, 4, 8 |
+| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly (centred whole-bar rest in any meter, half-rest placement, dotted rests, no ties) | Path units 2, 3, 5 |
+| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & (and the eighth rest) · 4.2 Sixteenths: 1 e & a (and eighth + two sixteenths) · 4.3 Beams show the beat | Path units 4, 5, 8 |
+| **5 · Making notes longer** | 5.1 Ties (not slurs) · 5.2 Dotted notes (a dot as a shortcut for a tie) · 5.3 Dotted eighth + sixteenth | Path units 6, 7, 10 |
+| **6 · Off the beat** | 6.1 Syncopation (eighth–quarter–eighth, quarter–half–quarter) | Path unit 9 |
+| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight (counted in two; *later*, no practice until 6/8 is playable) | Path units 11, 12 |
+| **8 · Notes on the staff** | 8.1 The staff and two clefs (landmark notes) · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) | Read notes: clefs, range |
+| **9 · Sharps, flats and naturals** | 9.1 The piano octave (groups of 2 and 3 black keys) · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural (two names for a black key; E♯ = F, C♭ = B) · 9.4 A sign lasts for the bar (same line or space, same octave) | Read notes: piano, extra signs |
+| **10 · Key signatures** | 10.1 The key signature (every octave; a sign next to a note wins until the bar line) · 10.2 The order of sharps F C G D A E B and flats B E A D G C F (start with up to three signs) · 10.3 Naming the key · 10.4 Major and minor (relative minor) | Read notes: keys, mix keys |
+| **11 · Scales** *(later)* | 11.1 The major scale (W W H W W W H) · 11.2 Major scales in every key (each letter once; the scale's signs = its key signature) · 11.3 The circle of fifths (15 key signatures, 12 sounding keys) · 11.4 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 11.5 Scale degrees and intervals (tonic … leading tone, intervals by number, the tonic triad; fixed do in this app) | Scales |
+
+Chapters 8–10 are built (0.3.4); they were one chapter 8 with seven sections before, and the canvas still draws that
+version. Chapters 1–7 are drawn on the canvas (v1.2 and v1.7), but 1.4, 5.3 and the new chapter 7 (triplets moved there
+from chapter 6) still need boards.
 
 Why this order: pulse and meter come first because every later rule refers to beats and
 strong positions. Note values come before rests because each rest is defined by its note.
 Dividing the beat (and its counting syllables) comes before ties and dots, because a dotted
 quarter + eighth can only be counted once "&" is known. Ties come before dots so the dot can
 be explained as a tie. Syncopation needs strong and weak beats, ties and eighths, so it
-comes late. Compound meter changes what the time signature means, so it is last.
+comes late. Triplets and compound meter both split a beat in three, so they share the last
+rhythm chapter. Reading notes follows the courses: clefs and names, then half steps and signs, then key signatures, and
+scales last.
 
 **Each chapter is its own page**, never one long page with everything. A chapter page has:
 its number and title, what it builds on and which Path units use it, its sections, a quick
@@ -920,7 +931,7 @@ check question, and previous / next chapter links. Sources are not shown to the 
 they live in `THEORY-SOURCES.md`, where every claim on the page is checked. On
 mobile the Learn tab lists the chapters as cards that expand into their sections, with read
 status; on desktop a sidebar lists all chapters, with the open chapter's sections nested
-under it. The design canvas shows chapter 2 (mobile) and chapter 5 (desktop) as examples.
+under it. The canvas draws chapters 1–7 (v1.2 and v1.7), the old chapter 8 (v1.3) and scales (v1.4, still numbered 9).
 On tablet (≥ 700 px) and desktop (≥ 1100 px) a chapter page keeps one column of
 sections in reading order, each filling the width. Inside a section, related parts sit side
 by side (lines | spaces, example | rule, text | keyboard) and stack again on narrow screens,
@@ -982,10 +993,12 @@ src/
     tapInput.ts         # keyboard + pointer -> timestamped taps
   render/
     vexflowStaff.tsx    # NotatedSymbol[] -> SVG, cursor, colouring
+    notationText.ts     # rhythm written as text ('q [8 8] h') -> NotatedBar[]
   game/
     xp.ts  path.ts  achievements.ts  skills.ts  storage.ts
   ui/
-    screens/ Home, Setup, Play, Dictation, Results, Path, Progress, Settings
+    screens/ Home, Setup, Play, Dictation, Results, Path, Progress, Settings, Learn
+    learn/ chapters.ts  # the Learn chapters as data (docs/ADDING-CONTENT.md); Blocks.tsx draws them
     components/ ...
   i18n/ en.json         # every user-facing string; other locales added later
 ```
@@ -1071,4 +1084,5 @@ without code changes:
 
 The music theory and notation rules in this document and in the app's Learn pages are
 checked against published sources. The claim-by-claim list, with what was corrected, is in
-[`THEORY-SOURCES.md`](THEORY-SOURCES.md).
+[`THEORY-SOURCES.md`](THEORY-SOURCES.md). What the chapters should contain, compared with Dutch, Flemish and international courses, is in
+[`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md).

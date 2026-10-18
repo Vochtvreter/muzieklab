@@ -1,0 +1,108 @@
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_NOTE_SETTINGS, DEFAULT_SETTINGS, LETTERS, checkSettings, getMeter, sanitizeNoteSettings } from '../../core/api';
+import { parseBars } from '../../render/notationText';
+import { hasMessage } from '../../i18n';
+import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, parsePitch, sectionKey, type Block, type Section } from './chapters';
+
+/** Every text key a block uses, relative to its section. */
+function blockKeys(b: Block): string[] {
+  switch (b.kind) {
+    case 'text':
+    case 'tip':
+      return [b.text];
+    case 'list':
+      return b.items;
+    case 'tiles':
+      return b.tiles.flatMap((x) => [x.title, x.text]);
+    case 'staff':
+      return [b.alt, ...(b.title ? [b.title] : [])];
+    case 'rhythm':
+    case 'piano':
+      return [b.alt];
+    case 'noteNames':
+      return [];
+    case 'pair':
+      return b.columns.flat().flatMap(blockKeys);
+  }
+}
+
+const allBlocks = (blocks: Block[]): Block[] => blocks.flatMap((b) => (b.kind === 'pair' ? [b, ...allBlocks(b.columns.flat())] : [b]));
+const sections: Section[] = CHAPTERS.flatMap((c) => c.sections);
+
+describe('Learn chapters', () => {
+  it('are numbered in order, with sections n.1, n.2, … and room in the plan', () => {
+    CHAPTERS.forEach((c, i) => {
+      if (i > 0) expect(c.n).toBeGreaterThan(CHAPTERS[i - 1].n);
+      expect(c.sections.length).toBeGreaterThan(0);
+      expect(c.sections.map((s) => s.id)).toEqual(c.sections.map((_, k) => `${c.n}.${k + 1}`));
+    });
+    expect(Math.max(...CHAPTERS.map((c) => c.n))).toBeLessThanOrEqual(PLANNED_CHAPTERS);
+  });
+
+  it('have every text they use in the catalog', () => {
+    const missing: string[] = [];
+    const need = (key: string): void => {
+      if (!hasMessage(key)) missing.push(key);
+    };
+    for (const c of CHAPTERS) {
+      ['title', 'sub'].forEach((k) => need(`learn.chapters.${c.n}.${k}`));
+      ['intro', 'quiz.question', 'quiz.right', 'quiz.wrong'].forEach((k) => need(`learn.ch${c.n}.${k}`));
+      c.quiz.answers.forEach((a) => 'text' in a && need(`learn.ch${c.n}.quiz.${a.text}`));
+    }
+    for (const s of sections) {
+      need(sectionKey(s.id, 'title'));
+      if (s.practice) need(sectionKey(s.id, 'practice'));
+      s.blocks.flatMap(blockKeys).forEach((k) => need(sectionKey(s.id, k)));
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('have a quick check with one right answer among real note names', () => {
+    for (const c of CHAPTERS) {
+      expect(c.quiz.answers.length).toBeGreaterThanOrEqual(2);
+      expect(c.quiz.right).toBeGreaterThanOrEqual(0);
+      expect(c.quiz.right).toBeLessThan(c.quiz.answers.length);
+      c.quiz.answers.forEach((a) => 'note' in a && expect(parseNoteName(a.note), a.note).not.toBeNull());
+    }
+  });
+
+  it('write notes, rhythms and piano keys that parse', () => {
+    for (const s of sections) {
+      for (const b of allBlocks(s.blocks)) {
+        if (b.kind === 'staff') b.notes.split(/\s+/).filter(Boolean).forEach((n) => expect(parsePitch(n), `${s.id} ${n}`).not.toBeNull());
+        if (b.kind === 'piano') (b.marked ?? []).forEach((L) => expect(LETTERS as readonly string[]).toContain(L));
+        if (b.kind === 'rhythm') {
+          const meter = getMeter(b.meter);
+          // Each bar is exactly full.
+          for (const bar of parseBars(meter, b.bars)) {
+            expect(bar.symbols.reduce((sum, x) => sum + x.duration, 0), s.id).toBeCloseTo(meter.barTicks);
+          }
+        }
+      }
+    }
+  });
+
+  it('link to practice that can be played as set up', () => {
+    for (const s of sections) {
+      if (!s.practice) continue;
+      if ('notes' in s.practice) {
+        const settings = { ...DEFAULT_NOTE_SETTINGS, ...s.practice.notes };
+        expect(sanitizeNoteSettings(settings), s.id).toEqual(settings);
+        if (settings.mixKeys) expect(settings.keys.length, s.id).toBeGreaterThan(1);
+      } else {
+        const settings = { ...DEFAULT_SETTINGS, ...s.practice.rhythm };
+        expect(checkSettings(settings).playable.length, s.id).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+describe('parsePitch', () => {
+  it('reads letter, sign and octave as a staff step (C4 = 28)', () => {
+    expect(parsePitch('C4')).toEqual({ step: 28, sign: null });
+    expect(parsePitch('F#4')).toEqual({ step: 31, sign: 1 });
+    expect(parsePitch('Bb4')).toEqual({ step: 34, sign: -1 });
+    expect(parsePitch('Fn5')).toEqual({ step: 38, sign: 0 });
+    expect(parsePitch('H4')).toBeNull();
+  });
+});

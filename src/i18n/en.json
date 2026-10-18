@@ -813,17 +813,28 @@
     "chapters": {
       "8": {
         "title": "Notes on the staff",
-        "sub": "Clefs, ledger lines, the piano, key signatures"
+        "sub": "Clefs, ledger lines, note names"
+      },
+      "9": {
+        "title": "Sharps, flats and naturals",
+        "sub": "The piano, half steps, ♯ ♭ ♮"
+      },
+      "10": {
+        "title": "Key signatures",
+        "sub": "Sharps and flats for the whole piece"
       }
     },
     "laterNote": "Chapters 1–7 on rhythm are on their way.",
-    "chapterOf": "Learn · chapter {n} of 9",
-    "chapterN": "chapter {n} of 9",
+    "chapterOf": "Learn · chapter {n} of {total}",
+    "chapterN": "chapter {n} of {total}",
     "chaptersHead": "Chapters",
     "back": "Back to Learn",
     "jump": "Sections",
     "practice": "Practice reading notes",
+    "practiceRhythm": "Practice rhythm",
     "all": "Back to all chapters",
+    "prev": "Previous",
+    "next": "Next",
     "check": "Quick check",
     "ch8": {
       "intro": "Rhythm tells you when and how long. Pitch tells you which note: the higher a note sits on the staff, the higher it sounds. The clef at the start tells you which note is where.",
@@ -833,7 +844,8 @@
         "trebleTitle": "Treble clef (G clef)",
         "trebleText": "Its curl wraps the 2nd line: that line is G, the G above middle C.",
         "bassTitle": "Bass clef (F clef)",
-        "bassText": "Its two dots sit around the 4th line: that line is F, the F below middle C."
+        "bassText": "Its two dots sit around the 4th line: that line is F, the F below middle C.",
+        "landmarks": "Three landmark notes are worth knowing by heart: the G that the treble clef marks, the F that the bass clef marks, and middle C between them. Read any other note by stepping up or down from the nearest landmark."
       },
       "s2": {
         "title": "Treble clef",
@@ -841,7 +853,8 @@
         "spaces": "Spaces, bottom to top",
         "linesAlt": "Treble staff with notes on the five lines: {names}",
         "spacesAlt": "Treble staff with notes in the four spaces: {names}",
-        "aid": "Memory aid: lines “Every Good Boy Does Fine”, spaces spell “FACE”."
+        "aid": "Memory aid: lines “Every Good Boy Does Fine”, spaces spell “FACE”.",
+        "practice": "Practice the treble clef"
       },
       "s3": {
         "title": "Bass clef",
@@ -849,45 +862,102 @@
         "spaces": "Spaces, bottom to top",
         "linesAlt": "Bass staff with notes on the five lines: {names}",
         "spacesAlt": "Bass staff with notes in the four spaces: {names}",
-        "aid": "Memory aid: lines “Good Boys Do Fine Always”, spaces “All Cows Eat Grass”."
+        "aid": "Memory aid: lines “Good Boys Do Fine Always”, spaces “All Cows Eat Grass”.",
+        "practice": "Practice the bass clef"
       },
       "s4": {
         "title": "Middle C and ledger lines",
         "text": "Notes above or below the staff get short extra lines called ledger lines. Middle C sits on one ledger line: just below the treble staff, or just above the bass staff. It is the same note.",
         "trebleAlt": "Middle C on one ledger line below the treble staff",
         "bassAlt": "Middle C on one ledger line above the bass staff",
-        "ledgerAlt": "Treble staff with A3, B3 and C4 below the staff and A5, B5 and C6 above it, on ledger lines"
+        "ledgerAlt": "Treble staff with A3, B3 and C4 below the staff and A5, B5 and C6 above it, on ledger lines",
+        "range": "In Read notes, the Range setting adds the notes on one or two ledger lines.",
+        "practice": "Practice with ledger lines"
       },
       "s5": {
         "title": "Two ways to name notes",
         "text": "Letter names and do re mi name the same notes. Here “do” is always C (fixed do).",
-        "ti": "Some English-speaking teachers say “ti” instead of “si”; it is the same note."
-      },
-      "s6": {
-        "title": "The piano octave",
-        "text": "An octave has 7 white keys and 5 black keys. The black keys come in groups of two and three. C is the white key just left of the group of two.",
-        "pianoAlt": "One piano octave: white keys C D E F G A B, and five black keys in a group of two and a group of three",
-        "point1": "A sharp ♯ raises a note to the very next key on the right; a flat ♭ lowers it to the next key on the left.",
-        "point2": "So each black key has two names: the key right of F is F♯, and also G♭."
-      },
-      "s7": {
-        "title": "Key signatures",
-        "gAlt": "Treble staff in G major: one sharp on the top line. A low F, a G and a high F; both Fs are F sharp",
-        "text2": "In G major the sharp sits on the top line, but the low F in the bottom space is F♯ too.",
-        "text3": "Sharps are always added in the same order, and flats in the reverse order:",
-        "sharpsAlt": "Treble staff with all seven sharps: F, C, G, D, A, E, B",
-        "flatsAlt": "Treble staff with all seven flats: B, E, A, D, G, C, F",
-        "point1": "Name the key from sharps: go one key up from the last sharp. Last sharp F♯ → G major.",
-        "point2": "From flats: the second-to-last flat names the key. B♭ E♭ → B♭ major. One flat is F major.",
-        "point3": "Each key signature belongs to a major key and a minor key: G major and E minor share F♯. The notes read the same.",
-        "text4": "A sign next to a note wins over the key signature, but only until the next bar line:",
-        "barAlt": "Treble staff in G major with three bars: F sharp, then F with a natural sign, then F sharp again in the next bar",
-        "text1": "The sharps or flats right after the clef are the key signature. They apply to every note on that line or space, in every octave, for the whole piece. No sign is written next to those notes."
+        "ti": "Some English-speaking teachers say “ti” instead of “si”; it is the same note.",
+        "game": "While you play, switch the name buttons between do re mi and letters; the game remembers your choice.",
+        "practice": "Practice both clefs"
       },
       "quiz": {
         "question": "Which note is on the middle line of the treble staff?",
         "right": "Right. The treble lines are E G B D F, so the middle (3rd) line is B.",
         "wrong": "Not quite. The treble lines are E G B D F from the bottom, so the middle (3rd) line is B."
+      }
+    },
+    "ch9": {
+      "intro": "The black keys of the piano sit between the white ones. This chapter names them: half and whole steps, the sharp, the flat and the natural, and how long a sign next to a note lasts.",
+      "s1": {
+        "title": "The piano octave",
+        "text": "An octave has 7 white keys and 5 black keys. The black keys come in groups of two and three. C is the white key just left of the group of two.",
+        "pianoAlt": "One piano octave: white keys C D E F G A B, and five black keys in a group of two and a group of three",
+        "game": "In Read notes you can answer on this piano instead of with names.",
+        "practice": "Practice on the piano"
+      },
+      "s2": {
+        "title": "Half steps and whole steps",
+        "text": "A half step is the very next key, black or white. Between E and F, and between B and C, there is no black key, so those white keys are a half step apart. A whole step is two half steps: C to D, or E to F♯.",
+        "pianoAlt": "One piano octave with E and F, and B and C, marked: white keys a half step apart"
+      },
+      "s3": {
+        "title": "Sharp, flat and natural",
+        "point1": "A sharp ♯ raises a note a half step: to the very next key on the right.",
+        "point2": "A flat ♭ lowers a note a half step: to the next key on the left.",
+        "point3": "A natural ♮ cancels a sharp or flat: the plain white key again.",
+        "text": "So each black key has two names: the key right of F is F♯, and also G♭. A sign can also land on a white key: E♯ is the key F, and C♭ is the key B.",
+        "staffAlt": "Treble staff with F sharp, then B flat",
+        "practice": "Practice with extra sharps"
+      },
+      "s4": {
+        "title": "A sign lasts for the bar",
+        "text": "A sign next to a note also holds for the notes after it on the same line or space, until the bar line. It only counts in that octave: an F an octave higher needs its own sign.",
+        "staffAlt": "Treble staff in C major with two bars: F sharp, then a plain F in the next bar",
+        "after": "The bar line ends the sign, so the F in the next bar is a plain F again.",
+        "game": "Read notes puts one note in each bar, so every sign you need is written next to its note.",
+        "practice": "Practice with sharps and flats"
+      },
+      "quiz": {
+        "question": "Which other name does the black key F♯ have?",
+        "right": "Right. F♯ is a half step above F, and that same key is a half step below G: G♭.",
+        "wrong": "Not quite. F♯ is a half step above F, and that same key is a half step below G: G♭."
+      }
+    },
+    "ch10": {
+      "intro": "When a piece uses the same sharps or flats all the time, they are written once, at the start of every staff. This chapter shows how to read them and how they name the key.",
+      "s1": {
+        "title": "The key signature",
+        "text1": "The sharps or flats right after the clef are the key signature. They apply to every note on that line or space, in every octave, for the whole piece. No sign is written next to those notes.",
+        "gAlt": "Treble staff in G major: one sharp on the top line. A low F, a G and a high F; both Fs are F sharp",
+        "text2": "In G major the sharp sits on the top line, but the low F in the bottom space is F♯ too.",
+        "text4": "A sign next to a note wins over the key signature, but only until the next bar line:",
+        "barAlt": "Treble staff in G major with three bars: F sharp, then F with a natural sign, then F sharp again in the next bar",
+        "practice": "Practice in G major"
+      },
+      "s2": {
+        "title": "The order of sharps and flats",
+        "text3": "Sharps are always added in the same order, and flats in the reverse order:",
+        "sharpsAlt": "Treble staff with all seven sharps: F, C, G, D, A, E, B",
+        "flatsAlt": "Treble staff with all seven flats: B, E, A, D, G, C, F",
+        "start": "Start with the keys of up to three signs: G, D and A major with sharps, F, B♭ and E♭ major with flats. Then add the rest.",
+        "practice": "Practice D major and B♭ major"
+      },
+      "s3": {
+        "title": "Naming the key",
+        "point1": "Name the key from sharps: go one key up from the last sharp. Last sharp F♯ → G major.",
+        "point2": "From flats: the second-to-last flat names the key. B♭ E♭ → B♭ major. One flat is F major.",
+        "practice": "Practice keys up to three signs"
+      },
+      "s4": {
+        "title": "Major and minor",
+        "point3": "Each key signature belongs to a major key and a minor key: G major and E minor share F♯. The notes read the same.",
+        "game": "The Key screen in Read notes shows both names for each key signature."
+      },
+      "quiz": {
+        "question": "The last sharp is C♯. Which major key is it?",
+        "right": "Right. One key up from the last sharp: C♯ → D major.",
+        "wrong": "Not quite. Go one key up from the last sharp: C♯ → D major."
       }
     }
   },
@@ -908,6 +978,13 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_3_4": {
+      "title": "Three chapters on reading notes",
+      "try": "Open Learn",
+      "split": "Notes on the staff is now three short chapters: 8 · Notes on the staff, 9 · Sharps, flats and naturals, and 10 · Key signatures. Sections you already read stay read.",
+      "practice": "Most sections end with a practice link that opens Read notes set up for that section: one clef, ledger lines, the piano, extra signs or a key.",
+      "steps": "New: landmark notes to read from, half and whole steps, and the rule that a sign next to a note only lasts for its own octave until the bar line."
+    },
     "v0_3_3": {
       "title": "Learn on big screens",
       "try": "Open Learn",

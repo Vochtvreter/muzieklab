@@ -1,6 +1,6 @@
 /**
  * A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/settings, #/calibrate, #/changelog, Read notes (#/notes, #/notes/key,
- * #/notes/play, #/notes/done), Learn (#/learn, #/learn/8), and #/dev/render. A `?s=8.7` query names a Learn section.
+ * #/notes/play, #/notes/done), Learn (#/learn and a chapter, #/learn/8), and #/dev/render. A `?s=10.2` query names a Learn section.
  */
 import { useSyncExternalStore, type AnchorHTMLAttributes } from 'react';
 
@@ -18,7 +18,7 @@ export type Route =
   | '/notes/play'
   | '/notes/done'
   | '/learn'
-  | '/learn/8'
+  | `/learn/${number}`
   | '/dev/render';
 
 const ROUTES: Route[] = [
@@ -35,7 +35,6 @@ const ROUTES: Route[] = [
   '/notes/play',
   '/notes/done',
   '/learn',
-  '/learn/8',
   '/dev/render',
 ];
 
@@ -43,10 +42,11 @@ const ROUTES: Route[] = [
 export function parseHash(hash: string): Route {
   const path = hash.replace(/^#/, '').split('?')[0] || '/';
   const clean = path.length > 1 ? path.replace(/\/+$/, '') : path;
+  if (/^\/learn\/\d+$/.test(clean)) return clean as Route;
   return (ROUTES as string[]).includes(clean) ? (clean as Route) : '/';
 }
 
-/** The query part of a hash ('#/learn/8?s=8.7' -> s=8.7). */
+/** The query part of a hash ('#/learn/10?s=10.2' -> s=10.2). */
 export function hashQuery(hash: string): URLSearchParams {
   const i = hash.indexOf('?');
   return new URLSearchParams(i < 0 ? '' : hash.slice(i + 1));

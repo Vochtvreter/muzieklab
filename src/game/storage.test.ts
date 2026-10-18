@@ -71,6 +71,11 @@ describe('prefs and progress storage', () => {
     expect(loadProgress().learnRead).toEqual(['8.1']);
   });
 
+  it('moves the old chapter 8 sections 8.6 and 8.7 to chapters 9 and 10', () => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ learnRead: ['8.1', '8.6', '8.7', '9.1'] }));
+    expect(loadProgress().learnRead).toEqual(['8.1', '9.1', '10.1', '10.2', '10.3', '10.4']);
+  });
+
   it('reads an all-perfect 4 saved before the diamond as the diamond', () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ lessons: { '1.1': { stars: 4, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 } } }));
     expect(loadProgress().lessons).toEqual({ '1.1': { stars: 5, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 } });
