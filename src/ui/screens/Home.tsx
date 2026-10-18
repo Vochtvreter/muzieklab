@@ -112,21 +112,15 @@ export function Home(): JSX.Element {
           {tx(cont.lesson.title)}
         </h2>
       </div>
-      {bp === 'desktop' ? (
-        <div className="continue-staff continue-staff--wide">
-          <LessonPreview lessonId={cont.lesson.id} wide count={2} />
+      <div className={'continue-staff' + (bp === 'desktop' ? ' continue-staff--wide' : '')}>
+        <div className="continue-meta">
+          <span>{t('home.previewMeta', { meter: metersLabel(lessonSettings(cont.lesson.id).meters), bars: t('common.bars', { count: lessonSettings(cont.lesson.id).bars }) })}</span>
+          <span>{t('common.bpm', { value: lessonSettings(cont.lesson.id).tempo })}</span>
         </div>
-      ) : (
-        <div className="continue-staff">
-          <div className="continue-meta">
-            <span>{t('home.previewMeta', { meter: metersLabel(lessonSettings(cont.lesson.id).meters), bars: t('common.bars', { count: lessonSettings(cont.lesson.id).bars }) })}</span>
-            <span>{t('common.bpm', { value: lessonSettings(cont.lesson.id).tempo })}</span>
-          </div>
-          <div className="continue-staff-body">
-            <LessonPreview lessonId={cont.lesson.id} wide={bp === 'tablet'} count={bp === 'tablet' ? 2 : 1} />
-          </div>
+        <div className="continue-staff-body">
+          <LessonPreview lessonId={cont.lesson.id} wide={bp !== 'phone'} count={bp === 'phone' ? 1 : 2} />
         </div>
-      )}
+      </div>
       {bp !== 'desktop' && <LessonTiles unit={cont.unit} progress={state.progress} currentId={cont.lesson.id} onFill onPick={startLesson} />}
       <button type="button" className="btn btn--on-fill continue-btn" onClick={() => startLesson(cont.lesson.id)}>
         {t(cont.done ? 'home.replayButton' : 'home.continueButton')}
@@ -185,7 +179,10 @@ export function Home(): JSX.Element {
                 <div className="xp-bar" role="img" aria-label={t('xp.bar', { into: xp.into, span: xp.span })}>
                   <div style={{ width: (xp.span > 0 ? Math.min(1, xp.into / xp.span) : 0) * 100 + '%' }} />
                 </div>
-                <span className="mono-muted">{t('xp.ofSpan', { into: xp.into, span: xp.span })}</span>
+                <span className="level-block-foot">
+                  <span className="mono-muted">{t('xp.ofSpan', { into: xp.into, span: xp.span })}</span>
+                  <span className="xp-next">{t('xp.toNext', { count: xp.span - xp.into, next: xp.level + 1 })}</span>
+                </span>
               </section>
             </div>
             {dailyCard}

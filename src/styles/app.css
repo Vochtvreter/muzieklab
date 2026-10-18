@@ -815,9 +815,7 @@
 }
 .continue-staff--wide {
   border-radius: 16px;
-  padding: 18px 24px;
-  align-items: center;
-  justify-content: center;
+  padding: 14px 18px 18px;
 }
 .home-desk-main .continue-btn {
   align-self: flex-start;
@@ -915,6 +913,15 @@
 }
 .level-block-head .muted-text {
   font-size: 14px;
+}
+.level-block-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.level-block-foot .xp-next {
+  align-self: auto;
 }
 .path-card {
   flex: 1;

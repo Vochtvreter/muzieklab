@@ -806,13 +806,20 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   columns, so the pad or the answer buttons stay in view next to the notation.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
-- On tablet and desktop, the mobile bottom tab bar becomes a top header with the same five
-  items (Home · Path · Learn · Progress · Settings). The active item has the soft slate pill and
-  `aria-current="page"`. On desktop the items follow the brand, as words only; there is no sidebar.
-- Desktop Home has two columns (App design canvas, Desktop · Home): streak and level, the daily challenge
-  and the learning path on the left; Continue and the practice tiles on the right.
+- On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
+  tab bar of that release (Home · Path · Settings in the MVP, + Learn from v1.2, + Progress from
+  v1.5). The active item has the soft slate pill and `aria-current="page"`. Tablet keeps the icon
+  with each word and puts the items on the right; desktop puts them right after the brand, as words
+  only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile)
+  marks that tab as current.
+- Desktop Home has two columns (App design canvas, Desktop · Home): streak and level (with the XP to
+  the next level), the daily challenge and the learning path (unit N of M, a bar of all units, the
+  lesson tiles) on the left; Continue (with the meter, bars and tempo over the staff) and the Free
+  practice tiles on the right.
+- A Learn chapter on desktop has the top header, a chapter list on the left and the chapter's
+  sections as cards on the right (App design canvas, Desktop · chapter 5 page).
 - Exercise screens swap that header for the exercise header: title, progress, and
-  Pause / Quit.
+  Pause / Quit. It has its own spacing (20 px × 40 px) and is not the tab header.
 - Large screens show the same content and data as mobile, laid out side by side. They add no
   extra features.
 

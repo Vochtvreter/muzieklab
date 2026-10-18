@@ -180,8 +180,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const layout = width >= 1100 ? 'desktop' : width >= 700 ? 'tablet' : 'phone';
       await page.goto('./#/learn');
       // Chapter 1 starts open. Tablet and desktop use the width: its sections sit in two columns, read down.
-      const [first, third] = [await page.getByRole('link', { name: /^1\.1/ }).boundingBox(), await page.getByRole('link', { name: /^1\.3/ }).boundingBox()];
-      expect(third!.y === first!.y, 'sections in two columns').toBe(layout !== 'phone');
+      // Measured together, after the web fonts: a font that loads between two measurements moves the list.
+      await page.getByRole('link', { name: /^1\.3/ }).waitFor();
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const [first, third] = await page.evaluate(() =>
+        ['1.1', '1.3'].map((id) => [...document.querySelectorAll('a')].find((el) => el.textContent?.trim().startsWith(id))!.getBoundingClientRect().y),
+      );
+      expect(third === first, 'sections in two columns').toBe(layout !== 'phone');
       // Opening chapter 10 closes chapter 1.
       const ch10 = page.getByRole('button', { name: /^10\s*Key signatures/ });
       await expectClickable(ch10);

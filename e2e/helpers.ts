@@ -21,15 +21,18 @@ export async function expectClickable(el: Locator, opts: { scroll?: boolean } = 
   if (opts.scroll !== false) await el.scrollIntoViewIfNeeded();
   // Web fonts that load late reflow the page; measure after them, and measure and hit-test in one step.
   await el.evaluate(() => document.fonts.ready.then(() => undefined));
+  // Scrolled again on every try: a box still opening (an accordion) can move the element after the first scroll.
+  const rescroll = opts.scroll !== false;
   const probe = (): Promise<string> =>
-    el.evaluate((node) => {
+    el.evaluate((node, again) => {
+      if (again) node.scrollIntoView({ block: 'nearest' });
       const r = node.getBoundingClientRect();
       const x = r.left + r.width / 2;
       const y = r.top + r.height / 2;
       if (x < 0 || x > window.innerWidth || y < 0 || y > window.innerHeight) return 'centre is off screen';
       const top = document.elementFromPoint(x, y);
       return top && (node === top || node.contains(top)) ? 'ok' : 'covered by ' + (top ? top.tagName.toLowerCase() + '.' + top.className : 'nothing');
-    });
+    }, rescroll);
   await expect.poll(probe, { message: 'the element is on screen and nothing covers it', timeout: 3000 }).toBe('ok');
 }
 
