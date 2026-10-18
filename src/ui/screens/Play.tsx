@@ -16,7 +16,7 @@ import { SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { exerciseView, type ExerciseView } from '../exerciseView';
-import { useBreakpoint, useDocTitle, useLingering, useReducedMotion } from '../hooks';
+import { useBreakpoint, useDocTitle, useKeyboardHints, useLingering, useReducedMotion } from '../hooks';
 import { liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
@@ -75,6 +75,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
+  const keys = useKeyboardHints(bp);
   const still = useReducedMotion();
   const ex = run.exercise;
   const lesson = run.lessonId ? findLesson(run.lessonId) : null;
@@ -188,13 +189,13 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
       maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined}>
       {sheetShown === 'help' ? (
-        <HowToContent eyebrow={t(echo ? 'howto.echo.eyebrow' : s.phase === 'intro' ? 'howto.firstTime' : 'howto.paused')} desktop={desktop} hold={ex.settings.hold} echo={!!echo}
+        <HowToContent eyebrow={t(echo ? 'howto.echo.eyebrow' : s.phase === 'intro' ? 'howto.firstTime' : 'howto.paused')} desktop={keys} hold={ex.settings.hold} echo={!!echo}
           onDone={s.closeSheet} />
       ) : sheetShown === 'ready' ? (
         <ReadyContent context={where} onStart={s.closeSheet}
           detail={t('ready.detail', { bars: t('common.bars', { count: bars }), meter: metersLabel([ex.meter.id]), bpm: ex.tempo })} />
       ) : (
-        <PauseContent context={t('pause.context', { where, bar: curBar + 1, total: bars })} desktop={desktop} lesson={!!lesson} interrupted={s.interrupted}
+        <PauseContent context={t('pause.context', { where, bar: curBar + 1, total: bars })} desktop={keys} lesson={!!lesson} interrupted={s.interrupted}
           onResume={s.closeSheet} onRestart={s.restart} onHelp={() => s.openSheet('help')} onSettings={toSettings} onQuit={quit} />
       )}
     </Sheet>
@@ -227,7 +228,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
             </button>
             <button type="button" className="btn-outline" aria-haspopup="dialog" aria-keyshortcuts="Escape" title={t('play.pauseTitle')} onClick={() => s.openSheet('pause')}>
               <Icon name="pause" size={16} />
-              {t('play.pause')} <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>
+              {t('play.pause')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
             </button>
             <Link to="/" className="text-link-btn" onClick={quitLink}>
               {t('play.quitShort')}
