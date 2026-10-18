@@ -906,6 +906,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_3_1": {
+      "title": "Release notes",
+      "whatsNew": "What's new, in Settings → About: every release and what changed in it."
+    },
     "v0_3_0": {
       "title": "Read notes",
       "try": "Try Read notes",

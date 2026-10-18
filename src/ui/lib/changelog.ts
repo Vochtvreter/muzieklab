@@ -17,13 +17,19 @@ export interface Release {
   date: string;
   title: string;
   changes: Change[];
-  /** A link to try the release's main feature, shown while it is the latest release. */
+  /** A link to try the release's main feature: on the latest card, and in the release's panel once it is older. */
   action?: { to: Route; label: string };
 }
 
 export const KINDS: ChangeKind[] = ['new', 'better', 'fix'];
 
 export const RELEASES: Release[] = [
+  {
+    version: '0.3.1',
+    date: '2026-10-18',
+    title: 'changelog.v0_3_1.title',
+    changes: [{ kind: 'better', text: 'changelog.v0_3_1.whatsNew' }],
+  },
   {
     version: '0.3.0',
     date: '2026-10-18',

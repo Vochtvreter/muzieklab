@@ -2773,6 +2773,20 @@ button.lesson-stars:hover {
   background: var(--good-soft);
   color: var(--good-ink);
 }
+.cl-try-inline {
+  margin: 0 14px 8px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.cl-try-inline:hover {
+  color: var(--accent-ink);
+}
 .cl-footer {
   margin: 0;
   padding: 0 2px;

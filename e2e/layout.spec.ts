@@ -75,7 +75,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test("settings: what's new, the latest release and an earlier one", async ({ page }) => {
+    test("settings: what's new, the latest release and the earlier ones", async ({ page }) => {
       known(name, 'changelog');
       await page.goto('./#/settings');
       await page.getByRole('link', { name: /^What's new/ }).click();

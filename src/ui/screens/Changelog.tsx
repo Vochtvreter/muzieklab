@@ -126,6 +126,12 @@ export function Changelog(): JSX.Element {
                             </li>
                           ))}
                         </ul>
+                        {r.action && (
+                          <Link to={r.action.to} className="cl-try-inline">
+                            {t(r.action.label)}
+                            <Icon name="chevron" size={16} strokeWidth={2.2} />
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </li>
