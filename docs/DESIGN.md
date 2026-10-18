@@ -1071,4 +1071,5 @@ without code changes:
 
 The music theory and notation rules in this document and in the app's Learn pages are
 checked against published sources. The claim-by-claim list, with what was corrected, is in
-[`THEORY-SOURCES.md`](THEORY-SOURCES.md).
+[`THEORY-SOURCES.md`](THEORY-SOURCES.md). What chapters 1–7 should contain, compared with Dutch, Flemish and international courses, is in
+[`RHYTHM-CHAPTERS.md`](RHYTHM-CHAPTERS.md).
