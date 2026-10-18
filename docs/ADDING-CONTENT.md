@@ -14,6 +14,8 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
    desktop sidebar, previous / next and the read status all follow from the data.
 2. **Text:** in `src/i18n/en.json`, under `learn`:
    - `chapters.{n}.title` and `.sub`: the name and the line under it in the chapter list;
+   - `builds` and `units` in the data give the line under the intro ("Builds on chapters 1 and 2 · Path units 2, 3,
+     5"); units must exist in `UNITS`;
    - `ch{n}.intro`, and `ch{n}.quiz.question`, `.right`, `.wrong` for the quick check;
    - `ch{n}.s{k}.title` for every section, `.practice` for its practice link, and every key its blocks name.
    Keys inside a section are relative: in section 9.3, `{ kind: 'text', text: 'point1' }` reads `learn.ch9.s3.point1`.
@@ -30,7 +32,13 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
 | `{ kind: 'list', items }` | a bulleted list |
 | `{ kind: 'tiles', tiles: [{ glyph, title, text }] }` | cards with a music glyph (the two clefs) |
 | `{ kind: 'staff', clef, keyId?, notes, labels?, title?, value?, slots?, room?, alt }` | a five-line staff, one whole note per bar. `notes: 'E4 G4 F#4 Bb4 Fn5'` (letter, sign `#` `b` `n`, octave; C4 = middle C). `labels: 'name'` writes the names under the notes. `slots: 0` draws only the clef and key signature, with `value` beside it. |
-| `{ kind: 'rhythm', meter, bars, alt }` | the one-line rhythm staff. `bars: ['q [8 8] h', 'q. 8 q qr']`; the tokens are in `src/render/notationText.ts` (`w h q 8 16`, `.` dot, `r` rest, `~` tie, `t` triplet, `W` whole-bar rest, `[ ]` beam). |
+| `{ kind: 'rhythm', meter, bars, title?, value?, verdict?, common?, alt }` | the one-line rhythm staff with the counting under the notes. `bars: ['q [8 8] h', 'q. 8 q qr']`; the tokens are in `src/render/notationText.ts` (`w h q 8 16`, `.` dot, `r` rest, `~` tie, `t` triplet, `W` whole-bar rest, `[ ]` beam). The counts come from the rhythm (`src/render/counting.ts`). `verdict: 'write' \| 'avoid'` adds a green or red label, `common: true` draws 4/4 as C. |
+| `{ kind: 'table', rows: [{ glyph?, title, text?, value? }] }` | rows of a name, a line under it and a value on the right (tempo words, the rests) |
+| `{ kind: 'beatGrid', rows: [{ title, beat }], alt }` | one beat divided several ways, each row's counts in one grid: `beat: '[8. 16]'` reads 1 (&) a |
+| `{ kind: 'timeSig', meter, top, bottom }` | a big time signature beside what its two numbers mean |
+| `{ kind: 'accents', meters }` | strong, medium and weak beats per meter, from the engine's metric weights |
+| `{ kind: 'pulse', tempos, alt }` | four seconds of beats at each tempo |
+| `{ kind: 'noteTree' }` | the note tree, one bar of 4/4 per value, with a Notes \| Rests switch |
 | `{ kind: 'piano', marked?, alt }` | one piano octave; `marked: ['E', 'F']` tints white keys |
 | `{ kind: 'noteNames' }` | C–B with do re mi |
 | `{ kind: 'pair', variant?, columns }` | columns side by side on tablet and desktop, stacked on phones (`'staves'` or `'text'`) |

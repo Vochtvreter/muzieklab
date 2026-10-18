@@ -811,6 +811,34 @@
     },
     "read": "✓ read",
     "chapters": {
+      "1": {
+        "title": "Pulse and meter",
+        "sub": "Beat, tempo, bars, time signatures"
+      },
+      "2": {
+        "title": "Note values",
+        "sub": "Whole to sixteenth, and the note tree"
+      },
+      "3": {
+        "title": "Rests",
+        "sub": "Silence that still counts"
+      },
+      "4": {
+        "title": "Dividing the beat",
+        "sub": "Eighths, sixteenths, beams"
+      },
+      "5": {
+        "title": "Making notes longer",
+        "sub": "Ties and dotted notes"
+      },
+      "6": {
+        "title": "Off the beat",
+        "sub": "Syncopation"
+      },
+      "7": {
+        "title": "Beats in three",
+        "sub": "Triplets"
+      },
       "8": {
         "title": "Notes on the staff",
         "sub": "Clefs, ledger lines, note names"
@@ -824,7 +852,7 @@
         "sub": "Sharps and flats for the whole piece"
       }
     },
-    "laterNote": "Chapters 1–7 on rhythm are on their way.",
+    "laterNote": "Chapter 11 on scales comes with the Scales mode.",
     "chapterOf": "Learn · chapter {n} of {total}",
     "chapterN": "chapter {n} of {total}",
     "chaptersHead": "Chapters",
@@ -836,6 +864,328 @@
     "prev": "Previous",
     "next": "Next",
     "check": "Quick check",
+    "ch1": {
+      "intro": "Music moves on a steady pulse. This chapter shows how fast that pulse goes, how it is grouped into bars, and why some beats feel stronger than others. Every later chapter counts in these beats.",
+      "s1": {
+        "title": "The beat and tempo",
+        "text": "The beat is the steady pulse you would tap your foot to. Tempo is how fast the beats come, counted in beats per minute (BPM). At 60 BPM there is one beat every second; at 120 BPM there are two.",
+        "pulseAlt": "Four seconds of beats: 4 beats at 60 BPM, 8 beats at 120 BPM",
+        "words": "Written music often gives the tempo as an Italian word. Each word covers a range, not one exact number, and books and composers use them a little differently:",
+        "largo": "Largo",
+        "largoText": "slow and broad",
+        "largoBpm": "40–60",
+        "adagio": "Adagio",
+        "adagioText": "slow",
+        "adagioBpm": "66–76",
+        "andante": "Andante",
+        "andanteText": "at a walking pace",
+        "andanteBpm": "76–108",
+        "moderato": "Moderato",
+        "moderatoText": "moderate",
+        "moderatoBpm": "108–120",
+        "allegro": "Allegro",
+        "allegroText": "fast",
+        "allegroBpm": "120–156",
+        "presto": "Presto",
+        "prestoText": "very fast",
+        "prestoBpm": "168–200",
+        "mark": "Sometimes the exact tempo is written as a metronome mark: ♩ = 80 means 80 quarter-note beats per minute. The Tempo setting in Practice works the same way.",
+        "game": "In the game: the count-in clicks one bar of beats at the exercise’s tempo, so you feel the pulse before the first note. In Echo mode you hear a rhythm first and tap it back without the notation.",
+        "practice": "Practice at a steady tempo"
+      },
+      "s2": {
+        "title": "Bars and time signatures",
+        "text": "Beats are grouped into bars (also called measures). A barline closes each bar. A thin line followed by a thick one, the final barline, ends the piece. The counts under the notes show which beat each note starts on; a count in grey brackets is held through.",
+        "barsAlt": "Two bars of 4/4: four quarter notes counted 1 2 3 4, a barline, two half notes counted 1 (2) 3 (4), then the final barline",
+        "sig": "The time signature at the start says how the bars are built.",
+        "top": "Top number: how many beats in each bar. Here 3.",
+        "bottom": "Bottom number: which note gets one beat. 4 means a quarter note.",
+        "two": "2/4: two quarter-note beats per bar",
+        "twoAlt": "Two bars of 2/4: two quarter notes counted 1 2, then a half note counted 1 (2)",
+        "three": "3/4: three quarter-note beats per bar. The waltz is in 3/4.",
+        "threeAlt": "Two bars of 3/4: three quarter notes counted 1 2 3, then a half note and a quarter counted 1 (2) 3",
+        "four": "4/4: four quarter-note beats per bar",
+        "fourAlt": "A bar of 4/4: four quarter notes counted 1 2 3 4",
+        "common": "C is common time: another way to write 4/4",
+        "commonAlt": "A bar in common time, written C: two quarter notes and a half note, counted 1 2 3 (4)",
+        "simple": "This is how 2/4, 3/4 and 4/4 work, the time signatures the game uses. Some others, such as 6/8, count differently.",
+        "practice": "Practice in 2/4, 3/4 and 4/4"
+      },
+      "s3": {
+        "title": "Strong and weak beats",
+        "text": "The beats in a bar are not equal. Beat 1, the downbeat, is the strongest. Each time signature has its own pattern of strong and weak beats:",
+        "middle": "In 4/4, beat 3 is medium-strong: weaker than beat 1, stronger than beats 2 and 4. It marks the middle of the bar, which later chapters keep visible when they write rests, beams and ties.",
+        "game": "In the game: set the metronome to Beat 1 under More options, and it clicks only on the downbeat. You keep the other beats yourself.",
+        "practice": "Practice feeling beat 1"
+      },
+      "quiz": {
+        "question": "How many beats does a bar of 3/4 have?",
+        "a1": "2",
+        "a2": "3",
+        "a3": "4",
+        "right": "Right. The top number counts the beats in each bar, so 3/4 has 3. The bottom 4 says each beat is a quarter note.",
+        "wrong": "Not quite. The top number counts the beats in each bar, so 3/4 has 3. The bottom 4 only says which note gets the beat: a quarter note."
+      }
+    },
+    "ch2": {
+      "intro": "A note’s shape tells you how long it lasts. Start from the beat, the quarter note of chapter 1: every other value is a double or a half of the one next to it.",
+      "s1": {
+        "title": "Reading the shape",
+        "text": "Look at three things: is the note head filled or open, does it have a stem, and how many flags or beams does it have?",
+        "filledTitle": "Filled head + stem",
+        "filledText": "A quarter note: one beat in 2/4, 3/4 and 4/4.",
+        "openTitle": "Open head",
+        "openText": "Longer notes. With a stem a half note (2 beats), without one a whole note (4 beats).",
+        "flagsTitle": "Flags",
+        "flagsText": "Each flag halves the note. One flag: an eighth (½ beat). Two: a sixteenth (¼ beat).",
+        "beamsTitle": "Beams",
+        "beamsText": "Flags become thick lines that join notes, one group per beat (chapter 4).",
+        "staffAlt": "Two bars of 4/4: two quarter notes and a half note counted 1 2 3 (4), then a whole note counted 1 (2 3 4)",
+        "game": "In the game: press as a note starts and hold for its whole length. A half note lasts two clicks, a whole note four.",
+        "practice": "Practice whole, half and quarter notes"
+      },
+      "s2": {
+        "title": "The note tree",
+        "text": "The note tree sums it up. Each row fills one bar of 4/4, and each row has twice as many notes as the one above it:",
+        "after": "Every note value has a rest of the same length. Switch the tree to Rests to see them; chapter 3 explains them."
+      },
+      "quiz": {
+        "question": "How many eighth notes fit in one half note?",
+        "a1": "2",
+        "a2": "4",
+        "a3": "8",
+        "right": "Right. A half note is 2 beats, and each beat holds 2 eighths: 2 × 2 = 4.",
+        "wrong": "Not quite. A half note is 2 beats, and each beat holds 2 eighths, so 4 fit."
+      }
+    },
+    "ch3": {
+      "intro": "A rest is a silence that still takes up time. Every note value from chapter 2 has a rest of the same length, so you keep counting through a rest just as you count through a note.",
+      "s1": {
+        "title": "The five rests",
+        "text": "Each rest lasts exactly as long as the note of the same name. With the quarter note as the beat, as in 2/4, 3/4 and 4/4:",
+        "whole": "Whole rest",
+        "wholeBeats": "4 beats",
+        "half": "Half rest",
+        "halfBeats": "2 beats",
+        "quarter": "Quarter rest",
+        "quarterBeats": "1 beat",
+        "eighth": "Eighth rest",
+        "eighthBeats": "½ beat",
+        "sixteenth": "Sixteenth rest",
+        "sixteenthBeats": "¼ beat",
+        "place": "The whole rest and the half rest are the same small block, so its place tells them apart. On a five-line staff the whole rest hangs down from line 4 and the half rest sits on line 3. On the one-line staff of the game, the whole rest hangs below the line and the half rest sits on it:",
+        "placeAlt": "Two bars of 4/4 on the one-line staff: a whole rest hanging below the line, counted (1 2 3 4), then a half rest sitting on the line, counted (1 2), and a half note counted 3 (4)",
+        "count": "Keep counting through every rest. Silent counts are shown in grey brackets:",
+        "countAlt": "A bar of 4/4: quarter on 1, quarter rest on (2), quarter on 3, quarter rest on (4); then a half rest on (1 2) and a half note on 3 (4)",
+        "game": "In the game: let go when a note ends and stay off through the rest. With Hold notes for their length on, as in the Learning Path from unit 2, the moment you let go is judged too.",
+        "practice": "Practice rests"
+      },
+      "s2": {
+        "title": "Writing rests correctly",
+        "text": "Rests are written so that the beats of the bar stay easy to see. These four rules come up most often.",
+        "silentTitle": "A silent bar gets one centred whole rest",
+        "silentAlt": "Two bars of 3/4: a half note and a quarter counted 1 (2) 3, then an empty bar with one whole rest in the middle, counted (1 2 3)",
+        "silent": "When a bar is completely empty, write one whole rest in the middle of the bar, whatever the time signature. In 2/4 and 3/4 it simply means “rest for the whole bar”, not 4 beats.",
+        "beat3": "In 4/4 a half rest may start on beat 1 or on beat 3. Silence on beats 2 and 3 is written as two quarter rests, so the middle of the bar stays visible (chapter 1.3).",
+        "writeAlt": "Correct: a half rest on (1 2) and quarters on 3 and 4; then a quarter on 1, quarter rests on (2) and (3), and a quarter on 4",
+        "avoidAlt": "Avoid: a quarter on 1, a half rest on beats 2 and 3 that hides beat 3, and a quarter on 4",
+        "dotted": "A dot adds half the value to a rest, just as it does to a note (chapter 5). In 2/4, 3/4 and 4/4 a dotted rest is only used when it is shorter than one beat, like a dotted eighth rest (¾ beat). A longer silence is written as separate rests that show the beats:",
+        "dottedAlt": "A bar of 4/4: a dotted eighth rest, a sixteenth on the a of beat 1, a quarter on 2, a quarter rest on (3), an eighth rest on (4) and an eighth on its &",
+        "noTie": "Rests are never tied. A tie joins two notes into one sound; silence needs no joining, and rests in a row simply add up.",
+        "practice": "Practice reading rests"
+      },
+      "quiz": {
+        "question": "A bar of 3/4 is completely silent. How do you write it?",
+        "a1": "One whole rest, centred",
+        "a2": "A dotted half rest",
+        "a3": "Three quarter rests",
+        "right": "Right. A completely empty bar gets one whole rest in the middle, in any time signature. In 3/4 it lasts the 3 beats of the bar.",
+        "wrong": "Not quite. A completely empty bar gets one whole rest in the middle, in any time signature. In 3/4 it lasts the 3 beats of the bar."
+      }
+    },
+    "ch4": {
+      "intro": "A beat can be split into smaller, equal parts. This chapter shows how eighths and sixteenths fit into one quarter-note beat, how to count them, and how beams keep the beats easy to see.",
+      "s1": {
+        "title": "Eighths: 1 & 2 &",
+        "text": "An eighth note lasts half a beat, so two eighths fill one quarter-note beat. Count the beat number on the first eighth and “&” (say “and”) on the second, exactly halfway to the next beat.",
+        "staffAlt": "A bar of 4/4: four eighths counted 1 & 2 &, then quarter notes on 3 and 4",
+        "rest": "An eighth rest fills half a beat in the same way. Count it too, silently:",
+        "restAlt": "A bar of 4/4: a quarter on 1, an eighth on 2 and an eighth rest on its (&), an eighth rest on (3) and an eighth on its &, a quarter on 4",
+        "practice": "Practice eighths"
+      },
+      "s2": {
+        "title": "Sixteenths: 1 e & a",
+        "text": "A sixteenth lasts a quarter of a beat, so four fill one beat. Count “1 e & a” (say “one ee and uh”). The number and the “&” stay where they were; “e” and “a” fall in between.",
+        "quarter": "Quarter",
+        "eighths": "2 eighths",
+        "sixteenths": "4 sixteenths",
+        "gridAlt": "One beat, divided: one quarter counted 1; two eighths counted 1 &; four sixteenths counted 1 e & a",
+        "mixed": "Eighths and sixteenths also mix inside one beat. An eighth and two sixteenths is counted “1 & a”; two sixteenths and an eighth “1 e &”.",
+        "eighthTwo": "8th + 2 16ths",
+        "twoEighth": "2 16ths + 8th",
+        "mixedAlt": "One beat: an eighth and two sixteenths counted 1 & a; two sixteenths and an eighth counted 1 e &",
+        "staffAlt": "A bar of 4/4: four sixteenths counted 1 e & a, two eighths on 2 &, an eighth and two sixteenths counted 3 & a, a quarter on 4",
+        "practice": "Practice sixteenths"
+      },
+      "s3": {
+        "title": "Beams show the beat",
+        "text": "In 2/4, 3/4 and 4/4, eighths and sixteenths are beamed one beat at a time, so you can see where every beat starts. In 4/4 there is one more rule: the middle of the bar, beat 3, must stay visible.",
+        "perBeat": "One beam per beat: the usual way",
+        "perBeatAlt": "Correct: a quarter on 1, eighths on 2 & under one beam, eighths on 3 & under another, a quarter on 4",
+        "half": "Four eighths on beats 1–2 or 3–4: also fine",
+        "halfAlt": "Also correct: four eighths on beats 1 and 2 under one beam, then quarters on 3 and 4",
+        "middle": "One beam across beats 2–3: never",
+        "middleAlt": "Avoid: a quarter on 1, four eighths on beats 2 and 3 under one beam that hides the middle of the bar, a quarter on 4",
+        "never": "That last beam hides beat 3, the middle of the bar. Write it as in the first example.",
+        "sixteenths": "Sixteenths",
+        "sixteenthsText": "Beamed per beat, in groups that add up to one beat.",
+        "quarters": "Quarters",
+        "quartersText": "Never beamed: they have no flag to join.",
+        "game": "In the game every beam covers one beat, so each beam starts on a beat.",
+        "practice": "Practice eighths and sixteenths"
+      },
+      "quiz": {
+        "question": "In 4/4, four eighths should never share one beam over…",
+        "a1": "Beats 1–2",
+        "a2": "Beats 2–3",
+        "a3": "Beats 3–4",
+        "right": "Right. A beam over beats 2 and 3 hides the middle of the bar. Beats 1–2 or 3–4 may share a beam, though one beam per beat is the usual way.",
+        "wrong": "Not quite. Beats 1–2 and 3–4 may share a beam. A beam over beats 2 and 3 hides the middle of the bar, so it is never used."
+      }
+    },
+    "ch5": {
+      "intro": "So far every note lasted exactly its own value. This chapter shows two ways to make a note last longer: a tie, and a dot. Ties come first, because a dot is a shortcut for a tie.",
+      "s1": {
+        "title": "Ties",
+        "text": "A curved line between two notes of the same pitch joins them into one long sound. Ties let a note last across a barline:",
+        "barAlt": "Two bars of 4/4: quarters on 1 2 3 4, the last one tied over the barline to a quarter on (1), then a quarter on 2 and a half note on 3 (4)",
+        "middle": "In 4/4 ties also keep beat 3 visible: a note that would cross the middle of the bar is written as two tied notes.",
+        "middleAlt": "A bar of 4/4: a quarter on 1, a quarter on 2 tied to a quarter on (3), a quarter on 4",
+        "slur": "A curve between two different notes is a slur, not a tie: both notes are played, smoothly connected. On the one-line rhythm staff every curve is a tie.",
+        "game": "In the game: press on the first note of a tie and keep holding through the second. Don’t press again on the tied note.",
+        "practice": "Practice ties"
+      },
+      "s2": {
+        "title": "Dotted notes",
+        "text": "A dot after a note adds half of that note’s value:",
+        "dottedHalf": "Dotted half",
+        "dottedHalfBeats": "2 + 1 = 3 beats",
+        "dottedQuarter": "Dotted quarter",
+        "dottedQuarterBeats": "1 + ½ = 1½ beats",
+        "dottedEighth": "Dotted eighth",
+        "dottedEighthBeats": "½ + ¼ = ¾ beat",
+        "tied": "A quarter tied to an eighth…",
+        "tiedAlt": "A bar of 2/4: a quarter on 1 tied to an eighth on (2), then an eighth on &",
+        "dotted": "…sounds the same as a dotted quarter",
+        "dottedAlt": "A bar of 2/4: a dotted quarter on 1, held through (2), then an eighth on &",
+        "count": "So a dot works like a tie: press once and hold through the extra time. A dotted half fills a bar of 3/4. A dotted quarter and an eighth is counted “1 (2) &”: hold through beat 2 and play the eighth on its “&”.",
+        "countAlt": "Two bars of 4/4: a dotted half counted 1 (2 3) and a quarter on 4; then a dotted quarter on 1 (2), an eighth on &, and a half note on 3 (4)",
+        "practice": "Practice dotted notes"
+      },
+      "s3": {
+        "title": "Dotted eighth and sixteenth",
+        "text": "The same idea inside one beat: a dotted eighth lasts ¾ of the beat and the sixteenth after it the last ¼. Count “1 (&) a”: hold through the “&”, play again on the “a”. Turned around, a sixteenth and a dotted eighth is “1 e (&)”.",
+        "eighths": "2 eighths",
+        "dottedSixteenth": "Dotted 8th + 16th",
+        "sixteenthDotted": "16th + dotted 8th",
+        "sixteenths": "4 sixteenths",
+        "gridAlt": "One beat, divided: two eighths counted 1 &; a dotted eighth and a sixteenth counted 1 (&) a; a sixteenth and a dotted eighth counted 1 e (&); four sixteenths counted 1 e & a",
+        "staffAlt": "A bar of 4/4: a dotted eighth and a sixteenth on beat 1 and again on beat 2, counted 1 (&) a 2 (&) a, then quarters on 3 and 4",
+        "practice": "Practice dotted eighths"
+      },
+      "quiz": {
+        "question": "Which sounds exactly the same as a dotted quarter note?",
+        "a1": "A quarter tied to an eighth",
+        "a2": "A quarter tied to a quarter",
+        "a3": "A half note",
+        "right": "Right. The dot adds half of a quarter (an eighth), so 1 + ½ = 1½ beats, the same as a quarter tied to an eighth.",
+        "wrong": "Not quite. The dot adds half of a quarter, which is an eighth: 1 + ½ = 1½ beats. That is a quarter tied to an eighth."
+      }
+    },
+    "ch6": {
+      "intro": "So far most notes started on a beat. Syncopation moves the weight off the beat: a note starts between the beats, or on a weak beat, and is held through the stronger beat after it.",
+      "s1": {
+        "title": "Syncopation",
+        "text": "In syncopation a note starts on a weak beat or an “&” and is held over a stronger beat, so that beat gets no new note. The most common figure is an eighth, a quarter and an eighth:",
+        "eqe": "Eighth, quarter, eighth",
+        "eqeAlt": "A bar of 4/4: an eighth on 1, a quarter on & held through (2), an eighth on &, quarters on 3 and 4",
+        "qhq": "The same over a whole bar: quarter, half, quarter puts the half note on beat 2, held over beat 3. In 4/4 that half note hides the middle of the bar, so it is often written as two tied quarters. Both sound the same:",
+        "qhqPlain": "Quarter, half, quarter",
+        "qhqPlainAlt": "A bar of 4/4: a quarter on 1, a half note on 2 held through (3), a quarter on 4",
+        "qhqTied": "Written with a tie",
+        "qhqTiedAlt": "A bar of 4/4: a quarter on 1, a quarter on 2 tied to a quarter on (3), a quarter on 4",
+        "game": "The game writes it the second way, with the tie, so beat 3 stays visible. Turn on Ties in Practice to get syncopation.",
+        "tip": "In the game: press on the “&” or the weak beat and keep holding through the next beat. A count in grey brackets gets no new press.",
+        "practice": "Practice syncopation"
+      },
+      "quiz": {
+        "question": "Eighth, quarter, eighth, starting on beat 1. Where does the quarter note start?",
+        "a1": "On beat 2",
+        "a2": "On the “&” of beat 1",
+        "a3": "On the “&” of beat 2",
+        "right": "Right. The first eighth lasts half a beat, so the quarter starts on the “&” and is held through beat 2. Beat 2 gets no new note: that is syncopation.",
+        "wrong": "Not quite. The first eighth lasts half a beat, so the quarter starts on the “&” of beat 1 and is held through beat 2."
+      }
+    },
+    "ch7": {
+      "intro": "In 2/4, 3/4 and 4/4 a beat splits in two or in four. A triplet splits it in three.",
+      "s1": {
+        "title": "Triplets",
+        "text": "A triplet fits three equal notes into the time of two. Three triplet eighths take one beat, the same time as two ordinary eighths. A 3 over the group marks it, sometimes with a bracket. Count “1 trip let”.",
+        "eighths": "2 eighths",
+        "triplet": "Triplet",
+        "gridAlt": "One beat, divided: two eighths counted 1 &; three triplet eighths counted 1 trip let",
+        "staffAlt": "A bar of 4/4: triplet eighths marked 3, counted 1 trip let, a quarter on 2, triplet eighths counted 3 trip let, a quarter on 4",
+        "compare": "Keep the beat steady: the triplet’s three notes are each a little shorter than an eighth, and the next beat comes at the same time as always.",
+        "game": "In the game: turn on Triplets under Extras in Practice. Triplets are made of eighths, so keep eighth notes on too.",
+        "practice": "Practice triplets"
+      },
+      "quiz": {
+        "question": "Three triplet eighths take the same time as…",
+        "a1": "One eighth",
+        "a2": "Two eighths",
+        "a3": "Three eighths",
+        "right": "Right. A triplet fits three notes into the time of two: three triplet eighths take one beat, like two eighths.",
+        "wrong": "Not quite. A triplet fits three notes into the time of two: three triplet eighths take one beat, like two eighths."
+      }
+    },
+    "write": "Write",
+    "avoid": "Avoid",
+    "meta": {
+      "start": "Start here",
+      "builds": "{count, plural, one {Builds on chapter {list}} other {Builds on chapters {list}}}",
+      "units": "{count, plural, one {Path unit {list}} other {Path units {list}}}",
+      "and": " and "
+    },
+    "accent": {
+      "strong": "strong",
+      "medium": "medium",
+      "weak": "weak",
+      "beat": "beat {n} {level}",
+      "alt": "{meter}: {beats}"
+    },
+    "pulse": {
+      "bpm": "{bpm} BPM",
+      "time": "time",
+      "sec": "{s} s"
+    },
+    "grid": {
+      "beat": "One beat"
+    },
+    "tree": {
+      "label": "Show notes or rests",
+      "notes": "Notes",
+      "rests": "Rests",
+      "bar": "Each row is one bar of 4/4.",
+      "alt": "{count, plural, one {One {name} fills} other {# {name}s fill}} a bar of 4/4",
+      "len": {
+        "whole": "4 beats",
+        "half": "2 beats",
+        "quarter": "1 beat",
+        "eighth": "½ beat",
+        "sixteenth": "¼ beat"
+      }
+    },
     "ch8": {
       "intro": "Rhythm tells you when and how long. Pitch tells you which note: the higher a note sits on the staff, the higher it sounds. The clef at the start tells you which note is where.",
       "s1": {
@@ -978,6 +1328,13 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_4_0": {
+      "title": "A full course, from the first beat",
+      "try": "Start chapter 1",
+      "chapters": "Learn now starts at the beginning: seven new chapters on rhythm, from pulse and meter, note values and rests to eighths and sixteenths, ties, dotted notes, syncopation and triplets. With chapters 8–10 on reading notes they cover everything you can practise in the game.",
+      "counting": "Every rhythm in Learn shows how to count it under the notes, with held and silent counts in grey brackets.",
+      "practice": "Each section ends with a practice link that opens Free practice set up for it, and every chapter has a quick check."
+    },
     "v0_3_4": {
       "title": "Three chapters on reading notes",
       "try": "Open Learn",

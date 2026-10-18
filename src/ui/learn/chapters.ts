@@ -47,8 +47,32 @@ export type Block =
       value?: string;
       alt: string;
     }
-  /** A rhythm on the one-line staff (for the rhythm chapters). */
-  | { kind: 'rhythm'; meter: MeterId; bars: RhythmText[]; alt: string }
+  /**
+   * A rhythm on the one-line staff, with the counting under the notes (held and silent counts grey, in brackets).
+   * `title` and `value` give it a header line; `verdict` a "Write" or "Avoid" label; `common` draws 4/4 as C.
+   */
+  | {
+      kind: 'rhythm';
+      meter: MeterId;
+      bars: RhythmText[];
+      alt: string;
+      title?: string;
+      value?: string;
+      verdict?: 'write' | 'avoid';
+      common?: boolean;
+    }
+  /** Rows of a name, a line of text and a value on the right, with an optional music glyph (tempo words, rests). */
+  | { kind: 'table'; rows: { glyph?: string; title: string; text?: string; value?: string }[] }
+  /** Strong, medium and weak beats of each meter, as bars of different heights. */
+  | { kind: 'accents'; meters: MeterId[] }
+  /** Four seconds of beats at each tempo, as dots on a time line. */
+  | { kind: 'pulse'; tempos: number[]; alt: string }
+  /** A big time signature with what its top and bottom number mean. */
+  | { kind: 'timeSig'; meter: MeterId; top: string; bottom: string }
+  /** One beat, divided in several ways: each row's rhythm fills one beat and shows its counts in a shared grid. */
+  | { kind: 'beatGrid'; rows: { title: string; beat: RhythmText }[]; alt: string }
+  /** The note tree: one 4/4 bar per value, whole to sixteenth, with a Notes | Rests switch. */
+  | { kind: 'noteTree' }
   /** One piano octave C–B; `marked` white keys are tinted. */
   | { kind: 'piano'; marked?: string[]; alt: string }
   /** The seven letter names with do re mi under them. */
@@ -72,6 +96,10 @@ export type Answer = { note: string } | { text: string };
 
 export interface Chapter {
   n: number;
+  /** "Builds on chapters 1 and 2" in the header; none on a chapter that starts from nothing. */
+  builds?: number[];
+  /** Learning Path units that practise the chapter, for the header. */
+  units?: number[];
   sections: Section[];
   quiz: { answers: Answer[]; right: number };
   /** The big button at the end: Read notes or rhythm Free practice. */
@@ -83,7 +111,326 @@ export const PLANNED_CHAPTERS = 11;
 
 const C_ONLY: Partial<NoteSettings> = { keys: ['C'], mixKeys: false, extras: 'none' };
 
+/**
+ * Every rhythm practice link spells out all musical settings, so nothing from the player's last setup leaks in;
+ * tempo, bars, mode and the metronome stay theirs.
+ */
+const RHYTHM: Partial<Settings> = { meters: ['4/4'], notes: ['half', 'quarter'], rests: ['quarter'], dotted: false, ties: false, triplets: false };
+
 export const CHAPTERS: Chapter[] = [
+  {
+    n: 1,
+    units: [1, 3, 5],
+    practice: 'rhythm',
+    sections: [
+      {
+        id: '1.1',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'pulse', tempos: [60, 120], alt: 'pulseAlt' },
+          { kind: 'text', text: 'words' },
+          {
+            kind: 'table',
+            rows: [
+              { title: 'largo', text: 'largoText', value: 'largoBpm' },
+              { title: 'adagio', text: 'adagioText', value: 'adagioBpm' },
+              { title: 'andante', text: 'andanteText', value: 'andanteBpm' },
+              { title: 'moderato', text: 'moderatoText', value: 'moderatoBpm' },
+              { title: 'allegro', text: 'allegroText', value: 'allegroBpm' },
+              { title: 'presto', text: 'prestoText', value: 'prestoBpm' },
+            ],
+          },
+          { kind: 'text', text: 'mark' },
+          { kind: 'tip', text: 'game' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['quarter'], rests: [] } },
+      },
+      {
+        id: '1.2',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'rhythm', meter: '4/4', bars: ['q q q q', 'h h'], alt: 'barsAlt' },
+          { kind: 'text', text: 'sig' },
+          { kind: 'timeSig', meter: '3/4', top: 'top', bottom: 'bottom' },
+          { kind: 'rhythm', meter: '2/4', bars: ['q q', 'h'], title: 'two', alt: 'twoAlt' },
+          { kind: 'rhythm', meter: '3/4', bars: ['q q q', 'h q'], title: 'three', alt: 'threeAlt' },
+          { kind: 'rhythm', meter: '4/4', bars: ['q q q q'], title: 'four', alt: 'fourAlt' },
+          { kind: 'rhythm', meter: '4/4', common: true, bars: ['q q h'], title: 'common', alt: 'commonAlt' },
+          { kind: 'tip', text: 'simple' },
+        ],
+        practice: { rhythm: { ...RHYTHM, meters: ['2/4', '3/4', '4/4'] } },
+      },
+      {
+        id: '1.3',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'accents', meters: ['2/4', '3/4', '4/4'] },
+          { kind: 'text', text: 'middle' },
+          { kind: 'tip', text: 'game' },
+        ],
+        practice: { rhythm: { ...RHYTHM, meters: ['3/4', '4/4'], metronome: 'accent' } },
+      },
+    ],
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
+  },
+  {
+    n: 2,
+    builds: [1],
+    units: [1, 3, 4, 8],
+    practice: 'rhythm',
+    sections: [
+      {
+        id: '2.1',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          {
+            kind: 'tiles',
+            tiles: [
+              { glyph: '𝅘𝅥', title: 'filledTitle', text: 'filledText' },
+              { glyph: '𝅗𝅥 𝅝', title: 'openTitle', text: 'openText' },
+              { glyph: '𝅘𝅥𝅮 𝅘𝅥𝅯', title: 'flagsTitle', text: 'flagsText' },
+              { glyph: '♫', title: 'beamsTitle', text: 'beamsText' },
+            ],
+          },
+          { kind: 'rhythm', meter: '4/4', bars: ['q q h', 'w'], alt: 'staffAlt' },
+          { kind: 'tip', text: 'game' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['whole', 'half', 'quarter'], rests: [] } },
+      },
+      {
+        id: '2.2',
+        blocks: [{ kind: 'text', text: 'text' }, { kind: 'noteTree' }, { kind: 'text', text: 'after' }],
+      },
+    ],
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
+  },
+  {
+    n: 3,
+    builds: [2],
+    units: [2, 3, 5],
+    practice: 'rhythm',
+    sections: [
+      {
+        id: '3.1',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          {
+            kind: 'table',
+            rows: [
+              { glyph: '𝄻', title: 'whole', value: 'wholeBeats' },
+              { glyph: '𝄼', title: 'half', value: 'halfBeats' },
+              { glyph: '𝄽', title: 'quarter', value: 'quarterBeats' },
+              { glyph: '𝄾', title: 'eighth', value: 'eighthBeats' },
+              { glyph: '𝄿', title: 'sixteenth', value: 'sixteenthBeats' },
+            ],
+          },
+          { kind: 'text', text: 'place' },
+          { kind: 'rhythm', meter: '4/4', bars: ['W', 'hr h'], alt: 'placeAlt' },
+          { kind: 'text', text: 'count' },
+          { kind: 'rhythm', meter: '4/4', bars: ['q qr q qr', 'hr h'], alt: 'countAlt' },
+          { kind: 'tip', text: 'game' },
+        ],
+        practice: { rhythm: { ...RHYTHM, rests: ['half', 'quarter'] } },
+      },
+      {
+        id: '3.2',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'rhythm', meter: '3/4', bars: ['h q', 'W'], title: 'silentTitle', alt: 'silentAlt' },
+          { kind: 'text', text: 'silent' },
+          { kind: 'text', text: 'beat3' },
+          { kind: 'rhythm', meter: '4/4', verdict: 'write', bars: ['hr q q', 'q qr qr q'], alt: 'writeAlt' },
+          { kind: 'rhythm', meter: '4/4', verdict: 'avoid', bars: ['q hr q'], alt: 'avoidAlt' },
+          { kind: 'text', text: 'dotted' },
+          { kind: 'rhythm', meter: '4/4', bars: ['8.r 16 q qr 8r 8'], alt: 'dottedAlt' },
+          { kind: 'text', text: 'noTie' },
+        ],
+        practice: { rhythm: { ...RHYTHM, meters: ['2/4', '3/4', '4/4'], rests: ['whole', 'half', 'quarter'] } },
+      },
+    ],
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
+  },
+  {
+    n: 4,
+    builds: [1, 2, 3],
+    units: [4, 5, 8],
+    practice: 'rhythm',
+    sections: [
+      {
+        id: '4.1',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'rhythm', meter: '4/4', bars: ['[8 8] [8 8] q q'], alt: 'staffAlt' },
+          { kind: 'text', text: 'rest' },
+          { kind: 'rhythm', meter: '4/4', bars: ['q 8 8r 8r 8 q'], alt: 'restAlt' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'] } },
+      },
+      {
+        id: '4.2',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          {
+            kind: 'beatGrid',
+            rows: [
+              { title: 'quarter', beat: 'q' },
+              { title: 'eighths', beat: '[8 8]' },
+              { title: 'sixteenths', beat: '[16 16 16 16]' },
+            ],
+            alt: 'gridAlt',
+          },
+          { kind: 'text', text: 'mixed' },
+          {
+            kind: 'beatGrid',
+            rows: [
+              { title: 'eighthTwo', beat: '[8 16 16]' },
+              { title: 'twoEighth', beat: '[16 16 8]' },
+            ],
+            alt: 'mixedAlt',
+          },
+          { kind: 'rhythm', meter: '4/4', bars: ['[16 16 16 16] [8 8] [8 16 16] q'], alt: 'staffAlt' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'] } },
+      },
+      {
+        id: '4.3',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'rhythm', meter: '4/4', verdict: 'write', title: 'perBeat', bars: ['q [8 8] [8 8] q'], alt: 'perBeatAlt' },
+          { kind: 'rhythm', meter: '4/4', verdict: 'write', title: 'half', bars: ['[8 8 8 8] q q'], alt: 'halfAlt' },
+          { kind: 'rhythm', meter: '4/4', verdict: 'avoid', title: 'middle', bars: ['q [8 8 8 8] q'], alt: 'middleAlt' },
+          { kind: 'text', text: 'never' },
+          {
+            kind: 'table',
+            rows: [
+              { title: 'sixteenths', text: 'sixteenthsText' },
+              { title: 'quarters', text: 'quartersText' },
+            ],
+          },
+          { kind: 'tip', text: 'game' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth', 'sixteenth'], rests: ['quarter', 'eighth'] } },
+      },
+    ],
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
+  },
+  {
+    n: 5,
+    builds: [2, 4],
+    units: [6, 7],
+    practice: 'rhythm',
+    sections: [
+      {
+        id: '5.1',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'rhythm', meter: '4/4', bars: ['q q q q~', 'q q h'], alt: 'barAlt' },
+          { kind: 'text', text: 'middle' },
+          { kind: 'rhythm', meter: '4/4', bars: ['q q~ q q'], alt: 'middleAlt' },
+          { kind: 'text', text: 'slur' },
+          { kind: 'tip', text: 'game' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], ties: true } },
+      },
+      {
+        id: '5.2',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          {
+            kind: 'table',
+            rows: [
+              { glyph: '𝅗𝅥.', title: 'dottedHalf', value: 'dottedHalfBeats' },
+              { glyph: '𝅘𝅥.', title: 'dottedQuarter', value: 'dottedQuarterBeats' },
+              { glyph: '𝅘𝅥𝅮.', title: 'dottedEighth', value: 'dottedEighthBeats' },
+            ],
+          },
+          {
+            kind: 'pair',
+            variant: 'staves',
+            columns: [
+              [{ kind: 'rhythm', meter: '2/4', title: 'tied', bars: ['q~ 8 8'], alt: 'tiedAlt' }],
+              [{ kind: 'rhythm', meter: '2/4', title: 'dotted', bars: ['q. 8'], alt: 'dottedAlt' }],
+            ],
+          },
+          { kind: 'text', text: 'count' },
+          { kind: 'rhythm', meter: '4/4', bars: ['h. q', 'q. 8 h'], alt: 'countAlt' },
+        ],
+        practice: { rhythm: { ...RHYTHM, meters: ['3/4', '4/4'], notes: ['half', 'quarter', 'eighth'], dotted: true } },
+      },
+      {
+        id: '5.3',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          {
+            kind: 'beatGrid',
+            rows: [
+              { title: 'eighths', beat: '[8 8]' },
+              { title: 'dottedSixteenth', beat: '[8. 16]' },
+              { title: 'sixteenthDotted', beat: '[16 8.]' },
+              { title: 'sixteenths', beat: '[16 16 16 16]' },
+            ],
+            alt: 'gridAlt',
+          },
+          { kind: 'rhythm', meter: '4/4', bars: ['[8. 16] [8. 16] q q'], alt: 'staffAlt' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'], dotted: true } },
+      },
+    ],
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
+  },
+  {
+    n: 6,
+    builds: [1, 4, 5],
+    practice: 'rhythm',
+    sections: [
+      {
+        id: '6.1',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'rhythm', meter: '4/4', title: 'eqe', bars: ['8 q 8 q q'], alt: 'eqeAlt' },
+          { kind: 'text', text: 'qhq' },
+          {
+            kind: 'pair',
+            variant: 'staves',
+            columns: [
+              [{ kind: 'rhythm', meter: '4/4', title: 'qhqPlain', bars: ['q h q'], alt: 'qhqPlainAlt' }],
+              [{ kind: 'rhythm', meter: '4/4', title: 'qhqTied', bars: ['q q~ q q'], alt: 'qhqTiedAlt' }],
+            ],
+          },
+          { kind: 'text', text: 'game' },
+          { kind: 'tip', text: 'tip' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], ties: true } },
+      },
+    ],
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
+  },
+  {
+    n: 7,
+    builds: [4],
+    practice: 'rhythm',
+    sections: [
+      {
+        id: '7.1',
+        blocks: [
+          { kind: 'text', text: 'text' },
+          {
+            kind: 'beatGrid',
+            rows: [
+              { title: 'eighths', beat: '[8 8]' },
+              { title: 'triplet', beat: '[8t 8t 8t]' },
+            ],
+            alt: 'gridAlt',
+          },
+          { kind: 'rhythm', meter: '4/4', bars: ['[8t 8t 8t] q [8t 8t 8t] q'], alt: 'staffAlt' },
+          { kind: 'text', text: 'compare' },
+          { kind: 'tip', text: 'game' },
+        ],
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], triplets: true } },
+      },
+    ],
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
+  },
   {
     n: 8,
     practice: 'notes',

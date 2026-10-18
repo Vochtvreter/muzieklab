@@ -15,23 +15,39 @@ only partly readable, **U** not confirmed. Claims that go into a chapter still g
 ### 1.1 The chapters
 
 Eleven chapters: seven on rhythm, three on reading notes, one on scales. Every setting a player can practise has a
-section that explains it (§5).
+section that explains it (§5). Chapters 1–10 are built: together they are the beginner course up to everything the game
+can practise. What it cannot practise yet (the upbeat, 6/8, scales) waits for the feature that plays it.
 
 | Chapter | Sections | Practice | State |
 |---|---|---|---|
-| **1 · Pulse and meter** | 1.1 The beat and tempo · 1.2 Bars and time signatures · 1.3 Strong and weak beats · 1.4 The upbeat | Rhythm; Path 1, 3, 5 | planned (v1.2 / v1.7) |
-| **2 · Note values** | 2.1 Reading the shape · 2.2 The note tree | Rhythm; Path 1, 3, 4, 8 | planned (v1.2) |
-| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly | Rhythm; Path 2, 3, 5 | planned (v1.7) |
-| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | Rhythm; Path 4, 5, 8 | planned (v1.7) |
-| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes · 5.3 Dotted eighth + sixteenth | Rhythm; Path 6, 7, 10 | planned (v1.2) |
-| **6 · Off the beat** | 6.1 Syncopation | Rhythm; Path 9 | planned (v1.7) |
-| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight | Rhythm (triplets); Path 11, 12 | planned (v1.7); 6/8 later |
+| **1 · Pulse and meter** | 1.1 The beat and tempo · 1.2 Bars and time signatures · 1.3 Strong and weak beats · 1.4 The upbeat | Rhythm; Path 1, 3, 5 | **built** (0.4.0) without 1.4 |
+| **2 · Note values** | 2.1 Reading the shape · 2.2 The note tree | Rhythm; Path 1, 3, 4, 8 | **built** (0.4.0) |
+| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly | Rhythm; Path 2, 3, 5 | **built** (0.4.0) |
+| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | Rhythm; Path 4, 5, 8 | **built** (0.4.0) |
+| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes · 5.3 Dotted eighth + sixteenth | Rhythm; Path 6, 7, 10 | **built** (0.4.0) |
+| **6 · Off the beat** | 6.1 Syncopation | Rhythm; Path 9 | **built** (0.4.0) |
+| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight | Rhythm (triplets); Path 11, 12 | **built** (0.4.0) without 7.2; 6/8 later |
 | **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef · 8.3 Bass clef · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes | Read notes: clefs, range, note names | **built** (0.3.4) |
 | **9 · Sharps, flats and naturals** | 9.1 The piano octave · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural · 9.4 A sign lasts for the bar | Read notes: piano, extra signs | **built** (0.3.4) |
 | **10 · Key signatures** | 10.1 The key signature · 10.2 The order of sharps and flats · 10.3 Naming the key · 10.4 Major and minor | Read notes: keys, mix keys | **built** (0.3.4) |
 | **11 · Scales** | 11.1 The major scale · 11.2 Major scales in every key · 11.3 The circle of fifths · 11.4 Minor scales · 11.5 Scale degrees and intervals | Scales (v1.4) | later |
 
 Chapters 8–10 were one chapter 8 with seven sections until 0.3.4; the old chapter 9 · Scales is now chapter 11.
+
+**Built in 0.4.0: chapters 1–7.** Left out because the game cannot practise them yet: **1.4 The upbeat** (exercises
+always start on beat 1) and **7.2 Six-eight** (no 6/8). They come with the feature, as section 1.4 and 7.2. Built
+differently from the plan:
+
+- **Counting under the notes** is drawn from the rhythm, not typed in (`render/counting.ts`): each beat is counted as
+  finely as its notes need, the beat and its "&" always, "e", "a", "trip" and "let" only where something starts.
+  Held and silent counts are grey, in brackets. So the dotted eighth + sixteenth reads "1 (&) a", not "1 (e &) a", and
+  an eighth with two sixteenths "1 & a", as on the chapter 4 board.
+- **6.1** has no notation style setting to point to: the game always writes quarter–half–quarter in 4/4 with a tie
+  (strict spelling), and the section says so.
+- **The quick checks of chapters 1–6** are the boards'; chapter 7's asks about triplets ("three triplet eighths take
+  the same time as…"), since 6/8 is not in it.
+- Path units 9–11 are not built, so chapters 5–7 list only the units that exist (the header line is checked against
+  `UNITS`).
 
 ### 1.2 Rhythm (chapters 1–7)
 
@@ -87,7 +103,9 @@ syllables Dutch and Flemish players expect (§6).
 - The blurb promises that "alle muzikale onderwerpen worden progressief en volgens het leerplan behandeld", with "geen
   extremen in … ritmiek" (V). The author's site shows a child singing "Sol mi!", which suggests a song-first, Kodály-style
   start (V for the picture, U for the reading).
-- **No table of contents, sample page or lesson list is online.** We did not reconstruct one. To align lesson by lesson,
+- **No table of contents, sample page or lesson list is online** (checked again on 2026-10-18: the publisher, shops,
+  the author's site and library catalogues give only the blurb; deel 1 has 44 pages and, for the teacher, "meer dan 400
+  originele lessen, gestructureerd volgens lesonderwerp"). We did not reconstruct one. To align lesson by lesson,
   the books themselves are needed (deel 1–2 cover our chapters 1–6), or the author can be asked
   (koen-dewolf.be/contact).
 

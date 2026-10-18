@@ -913,8 +913,10 @@ ABRSM, Trinity, RCM and Kodály.
 | **11 · Scales** *(later)* | 11.1 The major scale (W W H W W W H) · 11.2 Major scales in every key (each letter once; the scale's signs = its key signature) · 11.3 The circle of fifths (15 key signatures, 12 sounding keys) · 11.4 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 11.5 Scale degrees and intervals (tonic … leading tone, intervals by number, the tonic triad; fixed do in this app) | Scales |
 
 Chapters 8–10 are built (0.3.4); they were one chapter 8 with seven sections before, and the canvas still draws that
-version. Chapters 1–7 are drawn on the canvas (v1.2 and v1.7), but 1.4, 5.3 and the new chapter 7 (triplets moved there
-from chapter 6) still need boards.
+version. Chapters 1–7 are built (0.4.0) from the canvas (v1.2 and v1.7), without 1.4 and 7.2, which wait until the game
+can play an upbeat and 6/8. On the canvas, 5.3 and the new chapter 7 (triplets moved there from chapter 6) still need
+boards, and the desktop boards of chapters 1–7 still draw the 640 px column that chapter 8 replaced with the full width
+in 0.3.3: the built chapters use the full width, with diagrams up to 640 px and each rhythm as wide as its notes need.
 
 Why this order: pulse and meter come first because every later rule refers to beats and
 strong positions. Note values come before rests because each rest is defined by its note.

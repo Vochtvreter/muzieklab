@@ -13,6 +13,8 @@ export const TOKENS = {
   early: ['--gold', '#b7791f'],
   miss: ['--miss', '#d64545'],
   slate: ['--slate', '#2f6669'],
+  /** Held and silent counts under the notes. */
+  muted: ['--muted', '#5a6667'],
   laneNote: ['--lane-note', '#dde4e3'],
   laneGrid: ['--lane-grid', '#e3e8e7'],
   laneBar: ['--lane-bar', '#b9c3c2'],

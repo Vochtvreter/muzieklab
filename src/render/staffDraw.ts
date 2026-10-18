@@ -1,5 +1,6 @@
-import { Beam, Barline, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Tuplet, Voice } from 'vexflow/bravura';
+import { Beam, Barline, Dot, Formatter, GhostNote, Renderer, Stave, StaveNote, StaveTie, Tuplet, Voice } from 'vexflow/bravura';
 import type { Meter, NotatedBar, NotatedSymbol, NoteValue } from '../core/types';
+import { countBar, countText, type CountMark } from './counting';
 
 export type NoteMark = 'perfect' | 'great' | 'good' | 'miss' | 'pending';
 
@@ -22,6 +23,10 @@ export interface DrawStaffOptions {
   barsPerRow: number;
   width: number;
   palette: StaffPalette;
+  /** The time signature as drawn, when not the meter's numbers: 'C' for common time. */
+  timeSig?: string;
+  /** Counting under the notes (Learn): the word for each count, and the colour of held and silent counts. */
+  counts?: { text(mark: CountMark): string; held: string };
 }
 
 // Layout constants from the design's notation images (vf/render2.js).
@@ -30,6 +35,10 @@ const TS_EXTRA = 34; // extra width of the first bar of every row (time signatur
 const CURSOR_TOP = 8;
 const CURSOR_PAD = 7;
 const VF_STAFF_GRAY = '#999999';
+const COUNT_H = 18; // extra row height for the counts under the notes
+const COUNT_Y = 36; // baseline of the counts below the staff line
+const COUNT_TOP = 12;
+const COUNT_GAP = 24; // least room between a held count and the counts beside it
 
 const DURATION: Record<NoteValue, string> = { whole: 'w', half: 'h', quarter: 'q', eighth: '8', sixteenth: '16' };
 
@@ -84,8 +93,10 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
 
   const per = Math.max(1, Math.min(o.barsPerRow, bars.length));
   const rows = Math.ceil(bars.length / per);
-  const top = o.cursorSpace ? CURSOR_TOP : 0;
-  const height = rows * ROW_H + top - 6;
+  // Learn staves (with counts) keep room above for a triplet's 3.
+  const top = o.cursorSpace ? CURSOR_TOP : o.counts ? COUNT_TOP : 0;
+  const rowH = ROW_H + (o.counts ? COUNT_H : 0);
+  const height = rows * rowH + top - 6;
 
   const renderer = new Renderer(host as HTMLDivElement, Renderer.Backends.SVG);
   renderer.resize(width, height);
@@ -97,15 +108,16 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
   let tieFrom: { note: StaveNote; row: number } | null = null;
   let colourOnset = -1; // onset index whose colour tied continuations inherit
   const ties: StaveTie[] = [];
+  const counts: { x: number; y: number; text: string; held: boolean }[] = [];
 
   bars.forEach((bar, i) => {
     const row = Math.floor(i / per);
     const col = i % per;
     const x = col === 0 ? 0 : TS_EXTRA + barW * col;
     const w = col === 0 ? barW + TS_EXTRA : barW;
-    const stave = new Stave(x, top + row * ROW_H, w, { space_above_staff_ln: 2, space_below_staff_ln: 2 });
+    const stave = new Stave(x, top + row * rowH, w, { space_above_staff_ln: 2, space_below_staff_ln: 2 });
     stave.setConfigForLines([0, 1, 2, 3, 4].map((l) => ({ visible: l === 2 })));
-    if (i === 0) stave.addTimeSignature(meter.id);
+    if (i === 0) stave.addTimeSignature(o.timeSig ?? meter.id);
     if (i === bars.length - 1) stave.setEndBarType(Barline.type.END);
     stave.setContext(ctx).draw();
 
@@ -150,6 +162,9 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
     );
     const voice = new Voice({ num_beats: meter.beatsPerBar, beat_value: 4 }).setMode(Voice.Mode.SOFT);
     voice.addTickables(notes);
+    // With counts, an invisible sixteenth closes the bar, so the last note leaves room for its held counts.
+    const close = o.counts ? new GhostNote({ duration: '16' }) : null;
+    if (close) voice.addTickables([close]);
     // Beams are made before drawing so the beamed notes drop their flags.
     const beams = groupBy(pairs, (p) => p.sym.beamGroup)
       .map((g) => g.filter((p) => beamable(p.sym)))
@@ -160,6 +175,7 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
     voice.draw(ctx, stave);
     beams.forEach((b) => b.setContext(ctx).draw());
     tuplets.forEach((t) => t.setContext(ctx).draw());
+    if (o.counts) counts.push(...placeCounts(bar, meter, notes, stave.getX() + stave.getWidth() - 14, stave, o.counts.text));
   });
   ties.forEach((t) => t.setContext(ctx).draw());
 
@@ -167,6 +183,7 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
   if (!svg) return { width, height };
   paintSvg(svg, pal, colourById);
   if (cursorNote) addCursor(svg, cursorNote, pal.cursor);
+  if (o.counts) addCounts(svg, counts, pal.ink, o.counts.held);
 
   svg.removeAttribute('style');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -199,6 +216,51 @@ export function paintSvg(svg: SVGSVGElement, pal: StaffPalette, colourById: Map<
       el.setAttribute('stroke', stroke === VF_STAFF_GRAY ? pal.staff : colourOf(el));
     }
   });
+}
+
+/** Centre of a note head or rest. */
+const centreX = (note: StaveNote): number => (note.getNoteHeadBeginX() + note.getNoteHeadEndX()) / 2;
+
+/**
+ * Where each count of a bar goes: under the symbol it starts on, or, for a count inside a symbol (a held beat, the
+ * beats of a whole-bar rest), as far along towards the next symbol, or the end of the bar, as it is in time.
+ */
+function placeCounts(bar: NotatedBar, meter: Meter, notes: StaveNote[], end: number, stave: Stave, text: (m: CountMark) => string) {
+  const y = stave.getYForLine(2) + COUNT_Y;
+  const syms = bar.symbols;
+  const marks = countBar(meter, syms);
+  const texts = countText(marks, text);
+  const xs = marks.map((m) => {
+    const s = syms[m.symbol];
+    const x0 = s.wholeBarRest ? stave.getNoteStartX() + 14 : centreX(notes[m.symbol]);
+    const x1 = m.symbol + 1 < syms.length ? centreX(notes[m.symbol + 1]) : end;
+    return s.start === m.tick && !s.wholeBarRest ? x0 : x0 + ((x1 - x0) * (m.tick - s.start)) / s.duration;
+  });
+  // VexFlow spacing is not proportional to time: keep a held count clear of its neighbours, between them.
+  marks.forEach((m, i) => {
+    if (!m.held || i === 0) return;
+    const lo = xs[i - 1];
+    const hi = i + 1 < xs.length ? xs[i + 1] : end;
+    const gap = Math.min(COUNT_GAP, (hi - lo) / 2);
+    xs[i] = Math.max(lo + gap, Math.min(xs[i], hi - gap));
+  });
+  return marks.map((m, i) => ({ x: xs[i], y, held: m.held, text: texts[i] }));
+}
+
+function addCounts(svg: SVGSVGElement, counts: { x: number; y: number; text: string; held: boolean }[], ink: string, held: string): void {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'staff-counts');
+  g.setAttribute('stroke', 'none');
+  for (const c of counts) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    el.setAttribute('x', c.x.toFixed(1));
+    el.setAttribute('y', c.y.toFixed(1));
+    el.setAttribute('text-anchor', 'middle');
+    el.setAttribute('fill', c.held ? held : ink);
+    el.textContent = c.text;
+    g.appendChild(el);
+  }
+  svg.appendChild(g);
 }
 
 function addCursor(svg: SVGSVGElement, note: StaveNote, colour: string): void {

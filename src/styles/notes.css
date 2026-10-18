@@ -1153,6 +1153,17 @@
   font-size: 18px;
   font-weight: 700;
 }
+.learn-answers--long,
+.learn-chapter--wide .learn-answers--long {
+  grid-template-columns: 1fr;
+}
+.learn-answers--long .learn-answer {
+  height: auto;
+  min-height: 52px;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
 .learn-check .nfeedback {
   justify-content: flex-start;
   text-align: left;
@@ -1175,6 +1186,250 @@
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent-ink);
+}
+/* The counts under a Learn rhythm (DESIGN.md §9.1): held and silent counts are grey, in brackets. */
+.staff-counts {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+/* "Write" / "Avoid" over an example (chapter 3.2, 4.3). */
+.learn-verdict {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.learn-verdict.is-write {
+  color: var(--good-ink);
+  background: var(--good-soft);
+}
+.learn-verdict.is-avoid {
+  color: var(--miss-ink);
+  background: var(--miss-soft);
+}
+/* Rows of name, text and value: tempo words, the rests, dotted values. */
+.learn-table,
+.learn-accents {
+  background: var(--ground);
+  border-radius: 14px;
+  padding: 4px 14px;
+  display: flex;
+  flex-direction: column;
+}
+.learn-table-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.learn-table-row + .learn-table-row,
+.learn-accent-row + .learn-accent-row {
+  border-top: 1px solid var(--track);
+}
+.learn-table-glyph {
+  flex: none;
+  width: 30px;
+  font-family: var(--font-music);
+  font-size: 24px;
+  line-height: 34px;
+  text-align: center;
+}
+.learn-table-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.learn-table-text b {
+  font-size: 14.5px;
+}
+.learn-table-text span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.learn-table-value {
+  flex: none;
+  font-size: 13px;
+  text-align: right;
+}
+/* Strong, medium and weak beats (chapter 1.3): the height of a bar shows the weight. */
+.learn-accent-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+.learn-accent-beats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+.learn-accent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  line-height: 1.25;
+  color: var(--muted);
+}
+.learn-accent > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+.learn-accent-bar {
+  display: block;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--rule-strong);
+}
+.learn-accent.is-strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+.learn-accent.is-strong .learn-accent-bar {
+  height: 40px;
+  background: var(--accent);
+}
+.learn-accent.is-medium {
+  color: var(--ink);
+  font-weight: 600;
+}
+.learn-accent.is-medium .learn-accent-bar {
+  height: 26px;
+  background: var(--accent);
+  opacity: 0.55;
+}
+/* Beats per second at two tempos (chapter 1.1). */
+.learn-pulse,
+.learn-grid,
+.learn-timesig {
+  background: var(--ground);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.learn-pulse,
+.learn-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.learn-pulse-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.learn-pulse-track {
+  position: relative;
+  height: 14px;
+}
+.learn-pulse-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--rule);
+}
+.learn-pulse-dot {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.learn-pulse-axis .learn-pulse-track::before {
+  display: none;
+}
+.learn-pulse-axis .learn-pulse-track span {
+  position: absolute;
+  top: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--muted);
+}
+/* A big time signature beside what its numbers mean (chapter 1.2). */
+.learn-timesig {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.learn-timesig-num {
+  flex: none;
+  width: 32px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+.learn-timesig-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+/* One beat, divided: 12 columns hold halves, thirds and quarters (chapters 4.2, 5.3, 7.1). */
+.learn-grid-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.learn-grid-title {
+  font-size: 13px;
+  color: var(--muted);
+}
+.learn-grid-cells {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 3px;
+}
+.learn-grid-cell {
+  min-width: 0;
+  padding: 6px 0;
+  border-radius: 8px;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+.learn-grid-cell.is-held {
+  color: var(--muted);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+/* The note tree (chapter 2.2). */
+.learn-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.learn-tree-row + .learn-tree-row {
+  border-top: 1px solid var(--divider);
+  padding-top: 8px;
+}
+.learn-tree-name {
+  display: inline-block;
+}
+.learn-tree-name::first-letter {
+  text-transform: uppercase;
 }
 /* Previous / next chapter cards. */
 .learn-nav {
@@ -1213,6 +1468,15 @@
   }
   .learn-section {
     padding: 20px 22px;
+  }
+  /* Diagrams keep a readable width on the full-width chapter page. */
+  .learn-tree,
+  .learn-table,
+  .learn-accents,
+  .learn-pulse,
+  .learn-grid,
+  .learn-timesig {
+    max-width: 640px;
   }
   .learn-title {
     font-size: 28px;
