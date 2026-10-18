@@ -79,3 +79,13 @@ test('learn: a practice link opens Read notes set up for its section', async ({ 
   await expect(page.getByRole('button', { name: /Treble/ })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: /Bass/ })).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('learn: a rhythm practice link opens Free practice set up for its section', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/learn/7');
+  await page.getByRole('link', { name: 'Practice triplets →' }).click();
+  await expect(page).toHaveURL(/#\/setup$/);
+  await expect(page.getByRole('button', { name: 'Triplets', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Dotted', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'Ties', exact: true })).toHaveAttribute('aria-pressed', 'false');
+});

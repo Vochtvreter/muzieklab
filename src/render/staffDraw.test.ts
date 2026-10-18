@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { DEMO_44, DEMO_BARS_44, DEMO_LESSON } from './demoFixtures';
+import { getMeter } from '../core/api';
+import { plainSyllable } from './counting';
+import { parseBars } from './notationText';
 import { drawStaff, type StaffPalette } from './staffDraw';
 
 const DARK: StaffPalette = { ink: '#e8eeed', staff: '#5d6a6b', hit: '#4cc38a', early: '#f0b429', miss: '#ff6b6b', cursor: '#8fbfc1' };
@@ -48,5 +51,18 @@ describe('drawStaff', () => {
     const { svg } = draw();
     expect(svg.querySelectorAll('.vf-stavetie').length).toBe(3); // one within a bar, one split across rows
     expect(svg.querySelectorAll('.vf-beam').length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('writes the counts under the notes, held and silent ones grey, in a taller row', () => {
+    const meter = getMeter('4/4');
+    const bars = parseBars(meter, ['q. 8 h', 'qr [8 8] h']);
+    const plain = draw({ bars, meter });
+    const counted = draw({ bars, meter, counts: { text: plainSyllable, held: DARK.staff } });
+    expect(counted.size.height).toBeGreaterThan(plain.size.height);
+    const texts = [...counted.svg.querySelectorAll('.staff-counts text')];
+    expect(texts.map((t) => t.textContent)).toEqual(['1', '(2)', '&', '3', '(4)', '(1)', '2', '&', '3', '(4)']);
+    expect(texts.map((t) => t.getAttribute('fill'))).toEqual([DARK.ink, DARK.staff, DARK.ink, DARK.ink, DARK.staff, DARK.staff, DARK.ink, DARK.ink, DARK.ink, DARK.staff]);
+    const xs = texts.slice(0, 5).map((t) => Number(t.getAttribute('x')));
+    expect(xs).toEqual([...xs].sort((a, b) => a - b));
   });
 });

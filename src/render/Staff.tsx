@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { Meter, NotatedBar } from '../core/types';
+import type { CountMark } from './counting';
 import { drawStaff, type NoteMark } from './staffDraw';
 import { readToken, useElementWidth, useThemeVersion } from './theme';
 
@@ -16,11 +17,15 @@ export interface StaffProps {
   barsPerRow: number;
   /** Accessible description, e.g. "quarter, quarter, half". */
   label: string;
+  /** Counting under the notes (Learn): the word for each count. */
+  countText?: (mark: CountMark) => string;
+  /** The time signature as drawn, when not the meter's numbers: 'C' for common time. */
+  timeSig?: string;
 }
 
 /** VexFlow staff (one-line percussion staff), coloured from the theme tokens (§3.1, §9 notation colour rule). */
 export function Staff(props: StaffProps): JSX.Element {
-  const { bars, meter, marks, cursor, barsPerRow, label } = props;
+  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(hostRef);
   const themeVersion = useThemeVersion();
@@ -37,6 +42,8 @@ export function Staff(props: StaffProps): JSX.Element {
       cursorSpace: cursor !== undefined,
       barsPerRow,
       width,
+      timeSig,
+      counts: countText && { text: countText, held: readToken(el, 'muted') },
       palette: {
         ink: readToken(el, 'ink'),
         staff: readToken(el, 'staff'),
@@ -46,7 +53,7 @@ export function Staff(props: StaffProps): JSX.Element {
         cursor: readToken(el, 'slate'),
       },
     });
-  }, [bars, meter, marks, cursor, barsPerRow, width, themeVersion]);
+  }, [bars, meter, marks, cursor, barsPerRow, width, themeVersion, countText, timeSig]);
 
   return <div ref={hostRef} role="img" aria-label={label} style={{ width: '100%', minWidth: 0 }} />;
 }

@@ -22,6 +22,9 @@ checked page by page.
 | The downbeat (beat 1) is the strongest; in 4/4 beats 2 and 4 are weak | Verified | [Wiki-Beat], [OMT] |
 | Barlines divide music into bars (measures); a thin line followed by a thick one ends a piece | Verified | [Wiki-Bar] |
 | At 60 BPM there is one beat per second | Verified (definition of BPM) | — |
+| A metronome mark (♩ = 80) gives the tempo in beats per minute of the note shown | Verified | [Wiki-Tempo] |
+| C (common time) is another way to write 4/4 | Verified | [Wiki-TimeSig] |
+| "Beat 1" metronome: clicks only on the downbeat, the player keeps the other beats | Design choice (the existing Accent setting) | — |
 
 ## Reading notes and keys (chapters 8–10, Read notes mode)
 
@@ -89,6 +92,8 @@ checked page by page.
 | In 4/4 a two-beat rest only on beat 1 or 3; on beat 2 use two quarter rests | Verified | [MMT-Rests] |
 | In simple meters, dotted rests only when shorter than one beat | **Corrected**: was "dotted rests avoided in simple meters" | [MMT-Rests], [Wiki-Rest] |
 | Rests are not tied | Verified (a tie joins two notes of the same pitch) | [OMT] |
+| On the one-line staff the whole rest hangs below the line and the half rest sits on it | Design choice of the renderer, drawn so the hang / sit difference of the five-line staff stays visible | — |
+| The note tree: each row one bar of 4/4, each value half the one above | Verified | [OMT] |
 
 ## Meter, beaming, ties
 
@@ -105,6 +110,7 @@ checked page by page.
 | Play-screen exercise had a dotted quarter on beat 2 of 4/4, crossing beat 3 | **Corrected**: exercise now starts with dotted quarter on beat 1 | [MMT-Beam] |
 | Quarter–half–quarter syncopation spelled with a tie by default | **Corrected**: default changed from "common" to "strict"; the simplified spelling is a teacher option | [MMT-Beam] |
 | A tie joins two notes of the same pitch into one sound; tap only the first | Verified | [OMT] |
+| A slur joins different notes, which are played "without separation"; on the one-line staff every curve is a tie | Verified; the second half follows from a one-line staff having one pitch | [Wiki-Slur] |
 
 ## Counting, syncopation, triplets
 
@@ -115,6 +121,8 @@ checked page by page.
 | This is one counting system; Dutch teaching often uses "1 en 2 en" | Convention: the Learn page says teachers may use other syllables; syllables become a setting | open question in DESIGN §13 |
 | Syncopation = a note on a weak position followed by silence or a held note on a stronger position | Verified | [LHL], [Huron] *standard references*, as summarised in [Frontiers-2024] |
 | Triplet = three equal notes in the time of two of the same value; "1-trip-let" | Verified (definition); syllable is a common convention | [OMT] |
+| Eighth–quarter–eighth and quarter–half–quarter as the first syncopations | Convention: the figures Trinity grade 2 names; the generator's syncopation cells | [Trinity-Theory] |
+| Counting under the notes: the beat and its "&" always, "e", "a", "trip", "let" where a note or rest starts; held and silent counts in brackets, so dotted eighth + sixteenth is "1 (&) a" and eighth + two sixteenths "1 & a" | Convention: brackets for held counts are common in teaching material and on the canvas boards; which held syllables to show varies by teacher | — |
 
 ## Tempo
 
@@ -177,6 +185,10 @@ checked page by page.
 - **[Fitch-Rosenfeld]** Fitch, W. T., & Rosenfeld, A. J. (2007). Perception and production of syncopated rhythms. *Music Perception*, 25(1), 43–58.
 - **[Huron]** Huron, D. (2006). *Sweet Anticipation: Music and the Psychology of Expectation*. Cambridge, MA: MIT Press.
 - **[Frontiers-2024]** "Syncopation as structure bootstrapping: the role of asymmetry in rhythm and language". *Frontiers in Psychology* (2024). https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2024.1304485/full
+- **[Wiki-Tempo]** "Tempo". Wikipedia. https://en.wikipedia.org/wiki/Tempo
+- **[Wiki-TimeSig]** "Time signature". Wikipedia. https://en.wikipedia.org/wiki/Time_signature
+- **[Wiki-Slur]** "Slur (music)". Wikipedia. https://en.wikipedia.org/wiki/Slur_(music)
+- **[Trinity-Theory]** Trinity College London, Theory of Music syllabus. https://www.trinitycollege.com/resource/?id=2886
 - **[Ewell-Tempo]** Ewell, P., & Schmidt-Jones, C. *Music Fundamentals*, "Tempo". https://human.libretexts.org/Bookshelves/Music/Music_Theory/Music_Fundamentals_(Ewell_and_Schmidt-Jones)/02%3A_Rhythm_and_Meter/2.11%3A_Tempo
 - **[HMT-Metronome]** Hello Music Theory, "Online Metronome" (tempo marking table). https://new.hellomusictheory.com/resources/metronome/
 - **[Repp-2005]** Repp, B. H. (2005). Sensorimotor synchronization: A review of the tapping literature. *Psychonomic Bulletin & Review*, 12(6), 969–992. https://doi.org/10.3758/BF03206433

@@ -169,19 +169,19 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('learn: chapter list and chapters 8–10', async ({ page }) => {
+    test('learn: chapter list and chapters 9–10', async ({ page }) => {
       known(name, 'learn');
       const { width } = VIEWPORTS[name];
       const layout = width >= 1100 ? 'desktop' : width >= 700 ? 'tablet' : 'phone';
       await page.goto('./#/learn');
-      // Chapter 8 starts open. Tablet and desktop use the width: its sections sit in two columns, read down.
-      const [first, fourth] = [await page.getByRole('link', { name: /^8\.1/ }).boundingBox(), await page.getByRole('link', { name: /^8\.4/ }).boundingBox()];
-      expect(fourth!.y === first!.y, 'sections in two columns').toBe(layout !== 'phone');
-      // Opening chapter 10 closes chapter 8.
+      // Chapter 1 starts open. Tablet and desktop use the width: its sections sit in two columns, read down.
+      const [first, third] = [await page.getByRole('link', { name: /^1\.1/ }).boundingBox(), await page.getByRole('link', { name: /^1\.3/ }).boundingBox()];
+      expect(third!.y === first!.y, 'sections in two columns').toBe(layout !== 'phone');
+      // Opening chapter 10 closes chapter 1.
       const ch10 = page.getByRole('button', { name: /^10\s*Key signatures/ });
       await expectClickable(ch10);
       await ch10.click();
-      await expect(page.getByRole('button', { name: /^8\s*Notes on the staff/ })).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.getByRole('button', { name: /^1\s*Pulse and meter/ })).toHaveAttribute('aria-expanded', 'false');
       await expectClickable(page.getByRole('link', { name: /^10\.2/ }));
       await expectNoSideScroll(page);
 
@@ -212,6 +212,35 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { level: 1, name: /Sharps, flats and naturals/ })).toBeVisible();
       await expectClickable(page.getByRole('link', { name: 'Practice on the piano →' }));
       await expectClickable(page.getByRole('link', { name: /Next\s*10 · Key signatures/ }));
+      await expectNoSideScroll(page);
+    });
+
+    test('learn: rhythm chapters count under the notes, the note tree switches, words answer the quick check', async ({ page }) => {
+      known(name, 'learn-rhythm');
+      await page.goto('./#/learn/1');
+      await expect(page.getByRole('heading', { level: 1, name: /Pulse and meter/ })).toBeVisible();
+      await expect(page.getByText('Start here · Path units 1, 3, 5')).toBeVisible();
+      // 1.2: two bars of 4/4 counted 1 2 3 4 | 1 (2) 3 (4).
+      const bars = page.getByRole('img', { name: /^Two bars of 4\/4: four quarter notes/ });
+      await expect(bars.locator('.staff-counts text')).toHaveText(['1', '2', '3', '4', '1', '(2)', '3', '(4)']);
+      await expectClickable(page.getByRole('link', { name: 'Practice feeling beat 1 →' }));
+      await expectNoSideScroll(page);
+
+      await page.goto('./#/learn/2?s=2.2');
+      const tree = page.locator('.learn-tree');
+      await expect(tree.getByText(/^sixteenth note$/i)).toBeVisible();
+      await expectClickable(tree.getByRole('button', { name: 'Rests' }));
+      await tree.getByRole('button', { name: 'Rests' }).click();
+      await expect(tree.getByText(/^sixteenth rest$/i)).toBeVisible();
+      await expectNoSideScroll(page);
+
+      // Answers in words get a row each and stay clickable.
+      await page.goto('./#/learn/5?s=check');
+      const right = page.getByRole('button', { name: 'A quarter tied to an eighth' });
+      await expectClickable(right);
+      await right.click();
+      await expect(page.getByRole('status')).toContainText('Right.');
+      await expectClickable(page.getByRole('link', { name: /Next\s*6 · Off the beat/ }));
       await expectNoSideScroll(page);
     });
 
@@ -272,6 +301,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/notes', 'Noten lezen', 'Start · '],
       ['#/notes/key', 'Toonsoort', 'Kies '],
       ['#/learn', 'Leren', ''],
+      ['#/learn/1', 'Puls en maat', ''],
+      ['#/learn/2', 'Notenwaarden', 'Rusten'],
+      ['#/learn/3', 'Rusten', 'Eén hele rust, in het midden'],
+      ['#/learn/4', 'De tel verdelen', ''],
+      ['#/learn/5', 'Noten langer maken', 'Een kwartnoot overgebonden naar een achtste'],
+      ['#/learn/6', 'Naast de tel', ''],
+      ['#/learn/7', 'Tellen in drieën', 'Twee achtsten'],
       ['#/learn/8', 'Noten op de balk', ''],
       ['#/learn/9', 'Kruisen, mollen en herstellingstekens', ''],
       ['#/learn/10', 'Voortekening', ''],

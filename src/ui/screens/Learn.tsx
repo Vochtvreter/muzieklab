@@ -141,6 +141,19 @@ function PracticeLink({ section }: { section: Section }): JSX.Element {
   );
 }
 
+/** "1, 4 and 5". */
+const listText = (items: number[]): string =>
+  items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + t('learn.meta.and') + items[items.length - 1];
+
+/** The line under the intro: "Builds on chapters 1 and 2 · Path units 2, 3, 5"; the first chapter says "Start here". */
+function chapterMeta(c: Chapter): string {
+  const parts: string[] = [];
+  if (c.builds?.length) parts.push(t('learn.meta.builds', { count: c.builds.length, list: listText(c.builds) }));
+  else if (c === CHAPTERS[0]) parts.push(t('learn.meta.start'));
+  if (c.units?.length) parts.push(t('learn.meta.units', { count: c.units.length, list: c.units.join(', ') }));
+  return parts.join(' · ');
+}
+
 function answerText(n: number, a: Answer): string {
   if ('text' in a) return t(`learn.ch${n}.quiz.${a.text}`);
   const name = parseNoteName(a.note)!;
@@ -150,15 +163,18 @@ function answerText(n: number, a: Answer): string {
 function QuickCheck({ chapter }: { chapter: Chapter }): JSX.Element {
   const [pick, setPick] = useState<number | null>(null);
   const { n, quiz } = chapter;
+  const texts = quiz.answers.map((a) => answerText(n, a));
+  // Note names and numbers sit in a row; answers in words get a row each.
+  const long = texts.some((x) => x.length > 4);
   return (
     <section id={anchor('check')} className="card learn-check" aria-labelledby="quiz-q">
       <span className="eyebrow">{t('learn.check')}</span>
       <b id="quiz-q">{t(`learn.ch${n}.quiz.question`)}</b>
-      <div className="learn-answers">
-        {quiz.answers.map((a, i) => (
+      <div className={'learn-answers' + (long ? ' learn-answers--long' : '')}>
+        {texts.map((text, i) => (
           <button key={i} type="button" aria-pressed={pick === i}
             className={'name-btn learn-answer' + (pick !== null && i === quiz.right ? ' is-right' : pick === i ? ' is-wrong' : '')} onClick={() => setPick(i)}>
-            {answerText(n, a)}
+            {text}
           </button>
         ))}
       </div>
@@ -208,6 +224,7 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
 
   const wide = bp !== 'phone';
   const counter = { n, total: PLANNED_CHAPTERS };
+  const meta = chapterMeta(chapter);
   const sectionLinks = (className?: string): ReactNode =>
     ids.map((id) => (
       <Link key={id} to={route} query={'s=' + id} onClick={jumpTo(id)} className={className}>
@@ -264,6 +281,7 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
               <span>{n}</span> {title}
             </h1>
             <p>{t(`learn.ch${n}.intro`)}</p>
+            {meta && <span className="muted-text">{meta}</span>}
           </div>
           {bp === 'tablet' && (
             <nav aria-label={t('learn.jump')} className="learn-chips">
