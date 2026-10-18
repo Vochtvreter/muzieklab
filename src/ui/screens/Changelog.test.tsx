@@ -20,7 +20,10 @@ describe("What's new", () => {
 
   it('opens one earlier release at a time; an opened release keeps its Try link', () => {
     render(<Changelog />);
+    expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(release('0.3.0'));
     expect(release('0.3.0').getAttribute('aria-expanded')).toBe('true');
+    expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('false');
     expect(release('0.3.0').textContent).toContain('Oct 18 · 4 new · 1 better');
     expect(screen.getByRole('link', { name: 'Try Read notes' }).getAttribute('href')).toBe('#' + readNotes.action!.to);
     fireEvent.click(release('0.2.0'));
@@ -35,6 +38,7 @@ describe("What's new", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Fixes' }));
     expect(screen.queryByRole('heading', { name: 'Release notes' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^0\.3\.0/ })).toBeNull();
+    expect(release('0.3.1').textContent).toContain('Oct 18 · 2 fixed');
     expect(release('0.2.1').textContent).toContain('Oct 17 · 1 fixed');
     expect(release('0.1.0').textContent).toContain('Oct 17 · 1 fixed');
   });

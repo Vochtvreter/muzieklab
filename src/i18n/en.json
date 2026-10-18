@@ -906,9 +906,14 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
-    "v0_3_1": {
+    "v0_3_2": {
       "title": "Release notes",
       "whatsNew": "What's new, in Settings → About: every release and what changed in it."
+    },
+    "v0_3_1": {
+      "title": "Calibrate on its side",
+      "calibrate": "Calibrate fits a phone held sideways: the timing plot on the left, the pad on the right.",
+      "touch": "A tablet held sideways keeps the wide layout, but without keyboard hints."
     },
     "v0_3_0": {
       "title": "Read notes",
