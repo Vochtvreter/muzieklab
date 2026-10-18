@@ -1,4 +1,7 @@
-/** Settings: sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about (version, offline, reset). */
+/**
+ * Settings: sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about (what's new,
+ * version, offline, reset).
+ */
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Leniency } from '../../core/api';
 import type { Prefs } from '../../game/storage';
@@ -9,6 +12,7 @@ import { AnalogMetronome, BeatRow } from '../components/Bits';
 import { Segmented, SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle, useReducedMotion } from '../hooks';
+import { RELEASES } from '../lib/changelog';
 import { signedMs } from '../lib/format';
 import { Link } from '../router';
 import { useStore } from '../store';
@@ -108,6 +112,13 @@ export function SettingsScreen(): JSX.Element {
           </Section>
 
           <Section id="about" title={t('settings.about')}>
+            <Link to="/changelog" className="row-link">
+              <span className="row-link-text">
+                <b>{t('changelog.title')}</b>
+                <span className="row-sub">{t('common.join', { a: t(RELEASES[0].title), b: formatShortDate(RELEASES[0].date) })}</span>
+              </span>
+              <Icon name="chevron" size={20} className="row-chevron" />
+            </Link>
             <div className="about-row">
               <span className="about-version">
                 <b>{t('settings.version')}</b>

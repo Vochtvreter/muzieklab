@@ -4,6 +4,7 @@ import { setLocale, t } from './i18n';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { useRoute } from './ui/router';
 import { Calibration } from './ui/screens/Calibration';
+import { Changelog } from './ui/screens/Changelog';
 import { Home } from './ui/screens/Home';
 import { LearnHub, LearnNotes } from './ui/screens/Learn';
 import { NotesDone } from './ui/screens/notes/NotesDone';
@@ -62,6 +63,8 @@ function Screens(): JSX.Element {
       return <SettingsScreen />;
     case '/calibrate':
       return <Calibration />;
+    case '/changelog':
+      return <Changelog />;
     case '/notes':
       return <NotesSetup />;
     case '/notes/key':

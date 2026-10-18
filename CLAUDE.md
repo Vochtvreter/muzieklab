@@ -22,6 +22,10 @@ The version lives in `package.json` (Settings → About shows it) and follows ma
 as the change; `npm version <patch|minor|major> --no-git-tag-version` updates `package.json` and `package-lock.json`
 together.
 
-- **Patch** (0.3.0 → 0.3.1): bug fixes and tweaks.
+- **Patch** (0.3.0 → 0.3.1): bug fixes, small fixes and tweaks.
 - **Minor** (0.3.1 → 0.4.0): new features.
 - **Major** (0.x.y → 1.0.0): only for a major release or an overhaul.
+
+Every version bump adds its release at the top of `src/ui/lib/changelog.ts`, with its text under `changelog` in
+`src/i18n/en.json`; Settings → What's new shows it. A unit test fails when the newest entry is not the version in
+`package.json`.
