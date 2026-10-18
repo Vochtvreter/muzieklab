@@ -6,7 +6,7 @@ import { useRoute } from './ui/router';
 import { Calibration } from './ui/screens/Calibration';
 import { Changelog } from './ui/screens/Changelog';
 import { Home } from './ui/screens/Home';
-import { LearnHub, LearnNotes } from './ui/screens/Learn';
+import { LearnChapter, LearnHub } from './ui/screens/Learn';
 import { NotesDone } from './ui/screens/notes/NotesDone';
 import { NotesKey } from './ui/screens/notes/NotesKey';
 import { NotesPlay } from './ui/screens/notes/NotesPlay';
@@ -76,7 +76,11 @@ function Screens(): JSX.Element {
     case '/learn':
       return <LearnHub />;
     case '/learn/8':
-      return <LearnNotes />;
+      return <LearnChapter key={8} n={8} />;
+    case '/learn/9':
+      return <LearnChapter key={9} n={9} />;
+    case '/learn/10':
+      return <LearnChapter key={10} n={10} />;
     case '/dev/render':
       if (RenderDemo) {
         return (

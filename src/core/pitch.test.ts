@@ -48,7 +48,7 @@ describe('key signatures', () => {
     expect(keySigns('C')).toEqual([]);
   });
 
-  it('names the major key a half step above the last sharp, and by the second-to-last flat (§8.7)', () => {
+  it('names the major key a half step above the last sharp, and by the second-to-last flat (Learn 10.3)', () => {
     for (const id of KEY_ORDER) {
       const key = KEYS[id];
       const signs = keySigns(id);

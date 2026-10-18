@@ -90,6 +90,9 @@ export function isEmptyProgress(p: Progress): boolean {
   );
 }
 
+/** Learn sections that moved when chapter 8 split into chapters 8–10 (0.3.4): the piano, and key signatures. */
+const MOVED_SECTIONS: Record<string, string[]> = { '8.6': ['9.1'], '8.7': ['10.1', '10.2', '10.3', '10.4'] };
+
 // --- validation helpers: keep what is valid, fall back to the default for the rest ----------
 
 type Obj = Record<string, unknown>;
@@ -202,7 +205,7 @@ export function sanitizeProgress(raw: unknown): Progress {
     dailyBest: num(raw.dailyBest, 0, 0, 100),
     notes: sanitizeNotes(raw.notes),
     learnRead: Array.isArray(raw.learnRead)
-      ? [...new Set(raw.learnRead.filter((x): x is string => typeof x === 'string' && /^\d{1,2}\.\d{1,2}$/.test(x)))]
+      ? [...new Set(raw.learnRead.filter((x): x is string => typeof x === 'string' && /^\d{1,2}\.\d{1,2}$/.test(x)).flatMap((x) => MOVED_SECTIONS[x] ?? [x]))]
       : [],
   };
 }

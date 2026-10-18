@@ -1,17 +1,39 @@
-# Learn chapters 1–7: research and proposal
+# Learn chapters: research and plan
 
-What the rhythm chapters (DESIGN.md §9.1, built in v1.2 and v1.7 on the canvas) should contain, checked against the
-Learning Path lessons (`src/game/path.ts`), the boards on the MVP and release canvas, and real courses: Koen De Wolf's
+What the Learn chapters (DESIGN.md §9.1) should contain, checked against the Learning Path lessons
+(`src/game/path.ts`), the practice settings, the boards on the MVP and release canvas, and real courses: Koen De Wolf's
 *Allemaal nootjes*, Flemish academy courses (AMV / MCV), the Dutch HaFaBra A–C exams, ABRSM, Trinity, RCM, Kodály and
 Open Music Theory.
 
 Researched on 2026-10-18. Source labels as in `THEORY-SOURCES.md`: **V** read directly, **S** from a summary or a page
-only partly readable, **U** not confirmed. Nothing here is in the app yet; claims that go into a chapter still get their
-row in `THEORY-SOURCES.md`.
+only partly readable, **U** not confirmed. Claims that go into a chapter still get their row in `THEORY-SOURCES.md`.
 
 ---
 
 ## 1. Summary
+
+### 1.1 The chapters
+
+Eleven chapters: seven on rhythm, three on reading notes, one on scales. Every setting a player can practise has a
+section that explains it (§5).
+
+| Chapter | Sections | Practice | State |
+|---|---|---|---|
+| **1 · Pulse and meter** | 1.1 The beat and tempo · 1.2 Bars and time signatures · 1.3 Strong and weak beats · 1.4 The upbeat | Rhythm; Path 1, 3, 5 | planned (v1.2 / v1.7) |
+| **2 · Note values** | 2.1 Reading the shape · 2.2 The note tree | Rhythm; Path 1, 3, 4, 8 | planned (v1.2) |
+| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly | Rhythm; Path 2, 3, 5 | planned (v1.7) |
+| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | Rhythm; Path 4, 5, 8 | planned (v1.7) |
+| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes · 5.3 Dotted eighth + sixteenth | Rhythm; Path 6, 7, 10 | planned (v1.2) |
+| **6 · Off the beat** | 6.1 Syncopation | Rhythm; Path 9 | planned (v1.7) |
+| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight | Rhythm (triplets); Path 11, 12 | planned (v1.7); 6/8 later |
+| **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef · 8.3 Bass clef · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes | Read notes: clefs, range, note names | **built** (0.3.4) |
+| **9 · Sharps, flats and naturals** | 9.1 The piano octave · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural · 9.4 A sign lasts for the bar | Read notes: piano, extra signs | **built** (0.3.4) |
+| **10 · Key signatures** | 10.1 The key signature · 10.2 The order of sharps and flats · 10.3 Naming the key · 10.4 Major and minor | Read notes: keys, mix keys | **built** (0.3.4) |
+| **11 · Scales** | 11.1 The major scale · 11.2 Major scales in every key · 11.3 The circle of fifths · 11.4 Minor scales · 11.5 Scale degrees and intervals | Scales (v1.4) | later |
+
+Chapters 8–10 were one chapter 8 with seven sections until 0.3.4; the old chapter 9 · Scales is now chapter 11.
+
+### 1.2 Rhythm (chapters 1–7)
 
 The current plan holds up. Every course puts pulse and meter, note values and rests first, then the divided beat, then
 ties and dots, and leaves syncopation, triplets and compound meter for last. What the courses add, and the boards lack:
@@ -29,8 +51,26 @@ ties and dots, and leaves syncopation, triplets and compound meter for last. Wha
 7. **Chapter 2 should start from the beat note** (the quarter) and end with the note tree as a summary, not open with the
    whole note. That is the order Path unit 1 already uses.
 
+### 1.3 Reading notes (chapters 8–11)
+
+Every course reads clefs and note names first, then ledger lines, then half and whole steps with ♯ ♭ ♮, then the major
+scale with its key signature, adding keys a few at a time (§2.6). The old chapter 8 put all of that, and all 15 key
+signatures, in one chapter of seven sections. Read notes already practises every key and extra signs, so the plan keeps
+key signatures before scales but splits the chapter in three, each as short as the rhythm chapters:
+
+1. **Chapter 8 · Notes on the staff** keeps 8.1–8.5, and adds the *landmark notes* (treble G, bass F, middle C) that
+   piano methods read from, step by step, with the memory aids as an extra.
+2. **Chapter 9 · Sharps, flats and naturals** (new): the piano, then **half and whole steps** (moved forward from Scales,
+   as in the Flemish course, Amphion and RCM level 1), then ♯ ♭ ♮ with both names of a black key, then the accidental
+   rule.
+3. **The accidental rule was incomplete.** "Until the bar line" holds only for the same line or space, in the same
+   octave; a sign in another octave needs its own sign (Amphion, Wilrijk course, ABRSM; V). Now 9.4.
+4. **Chapter 10 · Key signatures** (new) takes the rest of the old 8.7, and suggests starting with keys of up to three
+   signs, the range of HaFaBra A and ABRSM grades 1–3.
+5. **Chapter 11 · Scales** (was 9) gains intervals by number and the tonic triad, which every entry-level course has.
+
 Two things the research could not settle: the lesson order inside *Allemaal nootjes* (§2.1), and which counting
-syllables Dutch and Flemish players expect (§4).
+syllables Dutch and Flemish players expect (§6).
 
 ---
 
@@ -109,7 +149,7 @@ The sources disagree on triplets (percussion: A, wind: B).
 | Repeat signs, fermata, metronome mark | G1 | G1–G2 | L1–L2 | – | – | – |
 
 Sources: ABRSM theory specification 2023, Trinity theory syllabus, RCM learning objectives and 2016 syllabus, *Kodály
-Today* and the grade 4–5 volumes, Open Music Theory 2e, musictheory.net lesson list (all V). Details in §6.
+Today* and the grade 4–5 volumes, Open Music Theory 2e, musictheory.net lesson list (all V). Details in §8.
 
 ### 2.5 What teaching research says
 
@@ -128,9 +168,46 @@ Today* and the grade 4–5 volumes, Open Music Theory 2e, musictheory.net lesson
 - **Dotted quarter + eighth** is hard because it combines a lengthened and a divided beat; it should follow secure
   eighths (S, Dalby via MRA). The Path already does this (unit 4 before unit 7).
 
+### 2.6 Reading notes: what the courses teach
+
+| Topic | Flanders (AMV) | Netherlands (HaFaBra A / Amphion) | ABRSM | RCM | Chapter |
+|---|---|---|---|---|---|
+| Treble clef | year 1, "lage si tot hoge re" (S) | A, the player's own clef (V) | G1 | Prep | 8.2 |
+| Bass clef | by year 3 (S) | A, own clef (V) | G1 | Prep | 8.3 |
+| Middle C, ledger lines | "centrale do" on a ledger line (V) | A (V) | G1 middle C; G2 two lines | Prep one, L1 two | 8.4 |
+| Note names | do re mi fa sol la si (V) | c d e f g a b; fis, bes (V) | letters | letters | 8.5 |
+| Half and whole steps | with the piano, before signs (V) | A, with the scale (V) | G1 | L1 | 9.2 |
+| ♯ ♭ ♮ | with half steps (V) | A: "kruis, mol en herstellingsteken" (V) | G1 | L1 | 9.3 |
+| One sign for the bar | "voor heel de maat", that pitch (V) | that pitch, one bar, on over a tie (V) | G1 | L1 | 9.4 |
+| Enharmonic names | yes (V) | A simple ones, B all (V) | G4 | – | 9.3 |
+| Key signatures | order of sharps and flats, circle of fifths (V) | A up to 3♯ / 3♭ (V) | G1 C G D F; G2 + A B♭ E♭; G3 up to 4 | L1 G, F | 10 |
+| Relative minor | with minor scales (V) | B (V) | G2 | L2 | 10.4, 11.4 |
+| Major scale | after intervals (V) | A, up to 3♯ / 3♭ (V) | G1 | L1 | 11.1 |
+| Intervals by number, tonic triad | intervals before key signatures (V) | A (V) | G1 | L1 | 11.5 |
+| Double sharps and flats | yes (V) | B (V) | G4 | – | – |
+
+Sources: Wilrijk academy, *Theorie in een notendop* (AMV for adults, V); SLAC / Leuven entrance tests (S); LKCA
+*Raamleerplan blaasinstrumenten* (V); Amphion *theorieboek A* (V); ABRSM syllabus outline from 2020 (V); RCM learning
+objectives (V). Details in §8.
+
+What this means for the chapters:
+
+- **Read from landmarks.** Piano methods teach a few landmark notes (treble G, bass F, middle C) and read the rest by
+  step and skip; memory aids help at first and are dropped once naming is quick (Pianodao, Musicnotes; V). Research on
+  how children learn notation is thin (Gudmundsdottir 2010, S), so this is a teaching convention.
+- **One clef first?** Leuven starts with treble only, the Dutch exams with the player's own clef, ABRSM with both. Read
+  notes lets the player choose; chapter 8 shows both and the practice links offer one at a time.
+- **Half steps before signs.** Every course explains half and whole steps before (or with) ♯ ♭ ♮, so 9.2 comes before
+  9.3, and Scales (11) builds on it.
+- **Keys a few at a time.** Courses go from C, G, F and D up to three or four signs before all fifteen. The game offers
+  all fifteen from the start, so chapter 10 explains them all but suggests the small keys first.
+- **Names.** Flanders names notes do re mi … si (fixed do, si = B) and keys "si b groot", "la klein"; the Netherlands
+  uses letters with -is / -es (fis, cis, bes, es, as), and B natural is **B**, not the German H (nl.wikipedia *Stamtoon*,
+  Amphion; V). The app's default, do re mi, suits Flanders; letters suit the Netherlands.
+
 ---
 
-## 3. Proposed chapters 1–7
+## 3. Proposed rhythm chapters (1–7)
 
 Each row keeps the canvas's chapter page layout: intro, sections with counted notation, an *In the game* tip, a
 *Practice* link, a quick check, previous / next. **New** marks content the boards do not have yet; it needs a board
@@ -140,7 +217,7 @@ before it is built (CLAUDE.md, *Designs first*).
 
 | Section | Content | Notes |
 |---|---|---|
-| 1.1 The beat and tempo | Beat = the pulse you tap your foot to; BPM; tempo words table. **New:** the metronome mark ♩ = 80, as on the Practice setup. | As on the board. Metronome mark: ABRSM G1, Trinity G2. |
+| 1.1 The beat and tempo | Beat = the pulse you tap your foot to; BPM; tempo words table. **New:** the metronome mark ♩ = 80, as on the Practice setup. *In the game:* the count-in, the metronome setting, and Echo (listen, then tap it back without the notation). | As on the board. Metronome mark: ABRSM G1, Trinity G2. |
 | 1.2 Bars and time signatures | Bar, barline, final barline; top number = beats, bottom = beat note; 2/4, 3/4, 4/4 counted. **New:** C means 4/4 (common time). | C: ABRSM G1, RCM L1, HaFaBra A booklets. Cut time ¢ waits for 2/2 support (HaFaBra B, ABRSM G2). |
 | 1.3 Strong and weak beats | S W / S W W / S W M W. | As on the board (*maataccent*, *zwaar-licht* in HaFaBra A). |
 | **1.4 The upbeat** (new) | A piece can start before beat 1: the notes before the first full bar are the upbeat, counted from the end of the bar ("4 \| 1 2 3 4"). The last bar is usually short by the same amount. No practice link yet. | Every course: HaFaBra A, Flemish year 1, ABRSM G3, RCM L3. The game's exercises always start on beat 1, so it explains without practice, as chapter 7 does on the board. |
@@ -190,7 +267,7 @@ Quick check (board): a dotted quarter sounds like a **quarter tied to an eighth*
 
 | Section | Content | Notes |
 |---|---|---|
-| 6.1 Syncopation | A note starts on a weak beat or an "&" and holds over a stronger one. Start with the two figures Trinity G2 names: eighth–quarter–eighth ("1 & (2) &") and quarter–half–quarter. Show that the same sound can be written with a tie. | As on the board, narrowed to the common figures first. |
+| 6.1 Syncopation | A note starts on a weak beat or an "&" and holds over a stronger one. Start with the two figures Trinity G2 names: eighth–quarter–eighth ("1 & (2) &") and quarter–half–quarter. Show that the same sound can be written with a tie. *In the game:* the notation style setting (strict writes quarter–half–quarter with a tie). | As on the board, narrowed to the common figures first. |
 
 Triplets move to chapter 7. Quick check (board): eighth, quarter, eighth from beat 1: the quarter starts **on the "&" of
 beat 1**.
@@ -210,9 +287,83 @@ Repeat signs, first and second endings, fermata, dynamics and D.C. / Fine are gr
 not rhythm and the game cannot play them. They fit a later chapter on reading a score, or flash cards. The double dot,
 duplets, 2/2, 3/8, 9/8 and 12/8 are HaFaBra B or ABRSM G2–G3 and stay out of the first seven chapters.
 
+## 4. Proposed note-reading chapters (8–11)
+
+Chapters 8–10 are built (0.3.4). Each section ends with a practice link into Read notes with the matching setting; the
+canvas still draws the old seven-section chapter 8 and needs new boards for 9 and 10.
+
+### Chapter 8 · Notes on the staff — Read notes: clefs, range, note names
+
+| Section | Content | Practice |
+|---|---|---|
+| 8.1 The staff and two clefs | Five lines, four spaces, each step up the next letter. Treble clef marks G, bass clef marks F. **New:** three landmarks (treble G, bass F, middle C) and reading the rest by step from them. | – |
+| 8.2 Treble clef | Lines E G B D F, spaces F A C E; the memory aid as an extra. | treble only, on the staff |
+| 8.3 Bass clef | Lines G B D F A, spaces A C E G; memory aid. | bass only, on the staff |
+| 8.4 Middle C and ledger lines | Ledger lines; middle C on one ledger line in both clefs. **New:** the Range setting (on the staff, one or two ledger lines). | both clefs, two ledger lines |
+| 8.5 Two ways to name notes | Letters and do re mi name the same notes; fixed do; ti / si. **New:** the Note names setting picks which the game uses. | both clefs |
+
+Quick check (kept): "Which note is on the middle line of the treble staff?" G / **B** / D.
+
+### Chapter 9 · Sharps, flats and naturals — Read notes: piano, extra signs (new)
+
+| Section | Content | Practice |
+|---|---|---|
+| 9.1 The piano octave | 7 white and 5 black keys, groups of two and three, C left of the two (was 8.6). *In the game:* answer on the piano. | piano input |
+| 9.2 Half steps and whole steps | A half step is the very next key, black or white; E–F and B–C have no black key between them; a whole step is two half steps (moved forward from Scales). | – |
+| 9.3 Sharp, flat and natural | ♯ raises a note a half step, ♭ lowers it, ♮ cancels a sign; a black key has two names (F♯ = G♭), and a sign can land on a white key (E♯ = F, C♭ = B). | extra sharps |
+| 9.4 A sign lasts for the bar | A sign next to a note also holds for later notes on the same line or space in that bar, in that octave only; the bar line ends it. *In the game:* one note per bar, so every sign is shown. | extra sharps and flats |
+
+Quick check: "Which other name does the black key F♯ have?" G / **G♭** / F♭.
+
+### Chapter 10 · Key signatures — Read notes: keys, mix keys (new)
+
+| Section | Content | Practice |
+|---|---|---|
+| 10.1 The key signature | The signs after the clef hold for every note of that letter, in every octave, for the whole piece; G major example (was 8.7). | G major |
+| 10.2 The order of sharps and flats | F C G D A E B, flats in reverse; start with keys of up to three signs, as the courses do. | D major and B♭ major |
+| 10.3 Naming the key | Last sharp + a half step; second-to-last flat; one flat is F major. | mix keys up to three signs |
+| 10.4 Major and minor | Each key signature belongs to a major and a minor key (G major / E minor); the notes read the same. *In the game:* the Key screen shows both. | – |
+
+Quick check: "The last sharp is C♯. Which major key is it?" C / **D** / C♯.
+
+### Chapter 11 · Scales — Scales (later, v1.4; was chapter 9)
+
+11.1 The major scale (W W H W W W H, building on 9.2) · 11.2 Major scales in every key (each letter once) · 11.3 The
+circle of fifths · 11.4 Minor scales (natural, harmonic, melodic; relative minor) · **11.5 Scale degrees and intervals**
+(new: degree names, intervals by number from the tonic, the tonic triad; ABRSM G1, RCM L1, HaFaBra A).
+
 ---
 
-## 4. Counting syllables
+## 5. Every practice setting, and where it is explained
+
+| Practice | Setting | Section | Learning Path |
+|---|---|---|---|
+| Rhythm | Time signatures 2/4, 3/4, 4/4 | 1.2, 1.3 | units 1, 3, 5 |
+| | Note values whole … sixteenth | 2.1, 2.2, 4.1, 4.2 | units 1, 3, 4, 8 |
+| | Rests | 3.1, 3.2 | units 2, 3, 5 |
+| | Ties | 5.1 | unit 6 |
+| | Dotted notes | 5.2, 5.3 | unit 7; **unit 10 missing** |
+| | Triplets | 7.1 | **unit 11 missing** |
+| | (syncopation, from ties and eighths) | 6.1 | **unit 9 missing** |
+| | Tempo, metronome, count-in | 1.1 | every unit |
+| | Hold notes for their length | 3.1 tip | from unit 2 |
+| | Echo | 1.1 tip | – |
+| | Notation style (Settings) | 6.1 tip | – |
+| Read notes | Clefs | 8.1–8.3 | – |
+| | Range | 8.4 | – |
+| | Note names (Settings) | 8.5 | – |
+| | Answer with names or piano | 8.5, 9.1 | – |
+| | Extra sharps and flats | 9.3, 9.4 | – |
+| | Key, mix keys | 10.1–10.4 | – |
+| Scales (later) | – | 11 | – |
+
+Everything the game can practise now has a section. The Learning Path is behind: Path units 9 (syncopation), 10 (dotted
+eighth + sixteenth) and 11 (triplets) are designed (DESIGN.md §8.2) and playable in free practice, but not built yet,
+and Read notes has no Path units at all.
+
+---
+
+## 6. Counting syllables
 
 | Where | Eighths | Sixteenths | Triplets | Source |
 |---|---|---|---|---|
@@ -226,7 +377,7 @@ Recommendation: keep "1 & / 1 e & a / 1 trip let" in English. For the Dutch tran
 the second option, since Flemish beginners and Dutch primary schools use it. This also answers open question 2 in §13:
 there is no single Dutch standard, but numbers dominate in the Netherlands and ritmetaal in the first Flemish year.
 
-## 5. Dutch terms for the later translation
+## 7. Dutch terms for the later translation
 
 | English | Dutch | Notes |
 |---|---|---|
@@ -241,6 +392,16 @@ there is no single Dutch standard, but numbers dominate in the Netherlands and r
 | dot, dotted | punt / stip; gepunteerd (NL also gepuncteerd) | |
 | syncopation, triplet | syncope, triool | |
 | duple / triple division | tweedelig (binair) / driedelig (ternair) | |
+| staff, ledger line | notenbalk, hulplijn | |
+| treble clef, bass clef | solsleutel / vioolsleutel, fasleutel / bassleutel | G-sleutel, F-sleutel |
+| middle C | centrale do (Flanders), centrale c | |
+| sharp, flat, natural | kruis, mol, herstellingsteken | NL also verhogingsteken, verlagingsteken |
+| accidental | toevallig voorteken (NL), wijzigingsteken (Flanders) | |
+| key signature | voortekening (Flanders), vaste voortekens (NL) | |
+| F♯, B♭ (names) | fa kruis / fa # (Flanders); fis, bes (NL) | NL: B natural is B, not H |
+| G major, E minor | sol groot, mi klein (Flanders); G groot, e klein (NL) | |
+| half step, whole step | halve toon, hele toon (halve / hele toonafstand) | |
+| interval, third, fifth | interval, terts, kwint | rein, groot, klein |
 
 **Warning:** Dutch *enkelvoudige / samengestelde maatsoort* is not English simple / compound. *Samengesteld* means built
 from several accent groups, so Dutch booklets call 4/4 "samengesteld, tweedelig" (V, HaFaBra A booklet,
@@ -249,7 +410,7 @@ Dutch title should not be "Samengestelde maatsoort".
 
 ---
 
-## 6. Sources
+## 8. Sources
 
 Allemaal nootjes and Flanders
 - Koen De Wolf, publicaties and audio: https://www.koen-dewolf.be/publicaties/, https://www.koen-dewolf.be/listen-or-download/
@@ -284,3 +445,11 @@ International and research
 - Telesco, "Teaching 3/8 as a Prelude to Teaching 6/8": https://journals.ou.edu/jmtp/ojs/ejournal/article/download/904/1795/1815
 - Janssen (2017), counting systems study: https://krex.k-state.edu/server/api/core/bitstreams/d26c8c6b-8236-4480-b9ee-a2f16456fe4d/content
 - Dotted rhythms (S): https://mramusicplace.net/2016/04/21/why-are-dotted-rhythms-such-a-problem/
+
+Reading notes
+- Wilrijk academy, *Theorie in een notendop* (AMV for adults, 2010): http://amapledoesntvoice.weebly.com/uploads/5/2/5/4/5254538/amv_volw_theoriecursus_vs_2010.pdf
+- SLAC / Conservatorium Leuven, AMV entrance-test leerstof (S): https://docplayer.nl/36849222-Leerstof-amv-l1-slac-conservatorium-leuven-toelatingsproef-naar-l2-i-j-i-i-i-i-a.html
+- ABRSM theory syllabus outline, grades 1–5 (from 2020): https://www.abrsm.org/sites/default/files/2023-09/music-theory-syllabus-outline-grades-1-5-from-2020.pdf
+- Stamtoon (Dutch note names): https://nl.wikipedia.org/wiki/Stamtoon
+- Landmark notes and memory aids: https://pianodao.com/2026/04/29/who-really-needs-mnemonics/, https://www.musicnotes.com/blog/5-ways-to-learn-how-to-read-music-at-the-piano
+- Gudmundsdottir (2010), music reading research (S): https://helgarut.hi.is/wp-content/uploads/2015/09/Advances-in-Music-Reading-Research-2010-Gudmundsdottir.pdf

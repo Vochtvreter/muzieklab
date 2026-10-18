@@ -152,34 +152,49 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('learn: chapter list and chapter 8', async ({ page }) => {
+    test('learn: chapter list and chapters 8–10', async ({ page }) => {
       known(name, 'learn');
       const { width } = VIEWPORTS[name];
       const layout = width >= 1100 ? 'desktop' : width >= 700 ? 'tablet' : 'phone';
       await page.goto('./#/learn');
-      await expectClickable(page.getByRole('link', { name: /Key signatures/ }));
-      // Tablet and desktop use the width: the chapter's sections sit in two columns, read down.
-      const [first, fifth] = [await page.getByRole('link', { name: /^8\.1/ }).boundingBox(), await page.getByRole('link', { name: /^8\.5/ }).boundingBox()];
-      expect(fifth!.y === first!.y, 'sections in two columns').toBe(layout !== 'phone');
+      // Chapter 8 starts open. Tablet and desktop use the width: its sections sit in two columns, read down.
+      const [first, fourth] = [await page.getByRole('link', { name: /^8\.1/ }).boundingBox(), await page.getByRole('link', { name: /^8\.4/ }).boundingBox()];
+      expect(fourth!.y === first!.y, 'sections in two columns').toBe(layout !== 'phone');
+      // Opening chapter 10 closes chapter 8.
+      const ch10 = page.getByRole('button', { name: /^10\s*Key signatures/ });
+      await expectClickable(ch10);
+      await ch10.click();
+      await expect(page.getByRole('button', { name: /^8\s*Notes on the staff/ })).toHaveAttribute('aria-expanded', 'false');
+      await expectClickable(page.getByRole('link', { name: /^10\.2/ }));
       await expectNoSideScroll(page);
 
-      await page.getByRole('link', { name: /Key signatures/ }).click();
-      await expect(page.getByRole('heading', { name: /Key signatures/ })).toBeInViewport();
+      await page.getByRole('link', { name: /^10\.2/ }).click();
+      await expect(page.getByRole('heading', { name: /10\.2\s*The order of sharps and flats/ })).toBeInViewport();
       // Jumping to a section: section chips on tablet, the chapter sidebar on desktop, the chapter list on phone.
       const jump = page.getByRole('navigation', { name: 'Sections' });
       await expect(jump).toHaveCount(layout === 'phone' ? 0 : 1);
       if (layout === 'desktop') await expectNoOverlap(page.locator('.learn-side'), page.locator('.learn-main'));
       if (layout !== 'phone') {
-        await expectClickable(jump.getByRole('link', { name: /Treble clef/ }));
-        await jump.getByRole('link', { name: /Treble clef/ }).click();
-        await expect(page.getByRole('heading', { name: /8\.2\s*Treble clef/ })).toBeInViewport();
+        await expectClickable(jump.getByRole('link', { name: /Naming the key/ }));
+        await jump.getByRole('link', { name: /Naming the key/ }).click();
+        await expect(page.getByRole('heading', { name: /10\.3\s*Naming the key/ })).toBeInViewport();
       }
       if (layout === 'desktop') {
         await expectClickable(jump.getByRole('link', { name: 'Quick check' }));
         await jump.getByRole('link', { name: 'Quick check' }).click();
-        await expect(page.getByRole('button', { name: 'B', exact: true })).toBeInViewport();
+        await expect(page.getByRole('button', { name: 'D', exact: true })).toBeInViewport();
+        await expectClickable(page.locator('.learn-side').getByRole('link', { name: /Notes on the staff/ }));
       }
+      await expectClickable(page.getByRole('link', { name: 'Practice keys up to three signs →' }));
+      await expectClickable(page.getByRole('link', { name: /Previous\s*9 · Sharps, flats and naturals/ }));
       await expectClickable(page.getByRole('link', { name: 'Practice reading notes' }));
+      await expectNoSideScroll(page);
+
+      // The piano diagrams of chapter 9 fit beside their text.
+      await page.getByRole('link', { name: /Previous\s*9 · Sharps, flats and naturals/ }).click();
+      await expect(page.getByRole('heading', { level: 1, name: /Sharps, flats and naturals/ })).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: 'Practice on the piano →' }));
+      await expectClickable(page.getByRole('link', { name: /Next\s*10 · Key signatures/ }));
       await expectNoSideScroll(page);
     });
 

@@ -72,7 +72,7 @@ export function NotesKey(): JSX.Element {
             <Icon name="back" />
           </Link>
           <h1 className="screen-title">{t('notes.keys.title')}</h1>
-          <Link to="/learn/8" query="s=8.7" className="text-btn text-btn--link">
+          <Link to="/learn/10" query="s=10.1" className="text-btn text-btn--link">
             {t('notes.keys.what')}
           </Link>
         </div>

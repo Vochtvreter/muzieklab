@@ -88,7 +88,7 @@ export const KEYS: Record<KeyId, KeySig> = {
 export const KEY_ORDER: readonly KeyId[] = ['C', 'G', 'F', 'D', 'Bb', 'A', 'Eb', 'E', 'Ab', 'B', 'Db', 'F#', 'Gb', 'C#', 'Cb'];
 export const KEY_IDS: readonly KeyId[] = KEY_ORDER;
 
-/** Sharps are added F C G D A E B; flats B E A D G C F (§8.7). */
+/** Sharps are added F C G D A E B; flats B E A D G C F (Learn 10.2). */
 export const SHARP_ORDER: readonly Letter[] = ['F', 'C', 'G', 'D', 'A', 'E', 'B'];
 export const FLAT_ORDER: readonly Letter[] = ['B', 'E', 'A', 'D', 'G', 'C', 'F'];
 
