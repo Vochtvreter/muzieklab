@@ -2991,6 +2991,74 @@ button.lesson-stars:hover {
   gap: 10px;
 }
 
+/* Phone landscape: the intro and the plot on the left, the pad (or the result) on the right, so both stay in view. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .frame--cal .frame-column {
+    max-width: 1000px;
+  }
+  .cal {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 8px 20px;
+    padding: max(10px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
+  .cal > .screen-head {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .cal-intro {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .cal-intro p {
+    font-size: 13.5px;
+    line-height: 1.4;
+  }
+  .cal-intro .muted-text {
+    font-size: 12px;
+  }
+  .cal-card {
+    grid-column: 1;
+    grid-row: 3 / -1;
+    align-self: start;
+    padding: 12px 14px 8px;
+    gap: 8px;
+  }
+  .judgement--cal {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    margin-top: 0;
+  }
+  .cal .pad {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    min-height: 0;
+    height: 100%;
+  }
+  .cal .pad-ring {
+    width: min(150px, 60%);
+    height: auto;
+    max-height: 70%;
+  }
+  .cal-anykey {
+    grid-column: 2;
+    grid-row: 4;
+  }
+  .cal-result {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    align-self: center;
+    margin-top: 0;
+    padding: 14px;
+  }
+  .cal-actions {
+    grid-column: 2;
+    grid-row: 4;
+  }
+}
+
 /* ---------- Crash screen ---------- */
 .crash {
   min-height: 100dvh;

@@ -12,7 +12,7 @@ import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
-import { useBreakpoint, useDocTitle } from '../../hooks';
+import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
 import { feedbackText, hintText, keySignsText, majorName, positionText, letterName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
@@ -53,6 +53,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
+  const keys = useKeyboardHints(bp);
   useDocTitle(t('app.docTitle', { page: t('notes.play.docTitle') }));
   const notes = run.notes;
   const total = notes.length;
@@ -269,11 +270,11 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   );
   const inputs =
     mode === 'piano' ? (
-      <Piano labels={state.prefs.pianoLabels} marks={keyMarks} onPick={(pc) => answer({ kind: 'piano', pc })} kbd={desktop} />
+      <Piano labels={state.prefs.pianoLabels} marks={keyMarks} onPick={(pc) => answer({ kind: 'piano', pc })} kbd={keys} />
     ) : (
       <>
-        <SignRow value={sign} onChange={setSign} disabled={done} kbd={desktop} />
-        <NameButtons system={system} sign={sign} marks={nameMarks} onPick={(L) => answer({ kind: 'name', letter: L, alter: sign })} kbd={desktop} />
+        <SignRow value={sign} onChange={setSign} disabled={done} kbd={keys} />
+        <NameButtons system={system} sign={sign} marks={nameMarks} onPick={(L) => answer({ kind: 'name', letter: L, alter: sign })} kbd={keys} />
       </>
     );
   const feedbackBox = (
@@ -288,7 +289,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       </button>
       <button type="button" className={'btn ' + (done ? 'btn--accent' : 'btn--blocked')} disabled={!done} onClick={next}>
         {t(i + 1 >= total ? 'notes.play.finish' : 'notes.play.next')}
-        {desktop && <kbd className="kbd kbd--bare">↵</kbd>}
+        {keys && <kbd className="kbd kbd--bare">↵</kbd>}
       </button>
     </div>
   );
@@ -320,7 +321,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
           </div>
           <div className="dplay-actions">
             <Link to="/notes" className="text-link-btn" aria-keyshortcuts="Escape" onClick={quitLink}>
-              {t('notes.play.quit')} <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>
+              {t('notes.play.quit')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
             </Link>
           </div>
         </header>
@@ -334,7 +335,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
             <section className="card nanswer" aria-label={ask}>
               <div className="nanswer-head">
                 {modeSeg}
-                <span className="muted-text">{t(mode === 'piano' ? 'notes.play.kbdPiano' : 'notes.play.kbdNames')}</span>
+                {keys && <span className="muted-text">{t(mode === 'piano' ? 'notes.play.kbdPiano' : 'notes.play.kbdNames')}</span>}
               </div>
               {labelsSeg}
               {inputs}

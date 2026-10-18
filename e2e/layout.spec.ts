@@ -81,15 +81,45 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('link', { name: /^What's new/ }).click();
       await expect(page.getByRole('heading', { level: 1, name: "What's new" })).toBeVisible();
       await expectNotSqueezed(page.locator('.cl-latest'));
-      await expectClickable(page.getByRole('link', { name: 'Try Read notes' }));
       await expectClickable(page.getByRole('button', { name: /^0\.1\.0/ }));
+      await page.getByRole('button', { name: /^0\.3\.0/ }).click();
+      await expectClickable(page.getByRole('link', { name: 'Try Read notes' }));
       await expectNoSideScroll(page);
     });
 
-    test('calibration: pad', async ({ page }) => {
+    test('calibration: pad and the timing plot without scrolling', async ({ page }) => {
       known(name, 'calibration');
       await page.goto('./#/calibrate');
-      await expectClickable(pad(page));
+      await expectClickable(pad(page), { scroll: false });
+      await expect(page.getByRole('img', { name: /taps? measured/ })).toBeInViewport();
+      await expectNoSideScroll(page);
+    });
+
+    test('results: retry and next', async ({ page }) => {
+      known(name, 'results');
+      // Desktop Play has no Skip link: finish on a phone-sized window, then show Results at this size.
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Got it' }).click();
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Copy' }));
+      await expectClickable(page.getByRole('button', { name: 'Retry' }));
+      await expectClickable(page.getByRole('button', { name: 'Next exercise' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: round done', async ({ page }) => {
+      known(name, 'notes-done');
+      await page.goto('./#/notes');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await page.getByRole('group', { name: 'Note names' }).getByRole('button').first().click();
+      await page.getByRole('button', { name: 'Skip to summary' }).click();
+      await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'New round' }));
+      await expectClickable(page.getByRole('link', { name: 'Change setup' }));
       await expectNoSideScroll(page);
     });
 
@@ -156,3 +186,21 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     });
   });
 }
+
+test('a touch screen at desktop width (tablet in landscape) gets the desktop layout without keyboard hints', async ({ browser }) => {
+  for (const hasTouch of [true, false]) {
+    const page = await browser.newPage({ viewport: VIEWPORTS['tablet-landscape'], hasTouch });
+    await page.goto('./');
+    await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+    await expect(page.getByText(hasTouch ? /^On a computer, any key works/ : /^Any key works/)).toBeVisible();
+    await page.getByRole('button', { name: 'Got it' }).click();
+    await expect(page.locator('.dplay')).toBeVisible();
+    await expect(page.locator('.dplay-head kbd')).toHaveCount(hasTouch ? 0 : 1);
+    await page.goto('./#/notes');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    await expect(page.locator('.nplay-desk')).toBeVisible();
+    if (hasTouch) await expect(page.locator('.nplay-desk kbd')).toHaveCount(0);
+    else await expect(page.locator('.nplay-desk kbd').first()).toBeVisible();
+    await page.close();
+  }
+});
