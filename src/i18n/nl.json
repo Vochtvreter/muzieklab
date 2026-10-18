@@ -535,7 +535,7 @@
     "sixteenth": "Zestiende rust"
   },
   "tip": {
-    "cutShort": "Je liet de {value} in maat {bar} te vroeg los. {liftPartKey, select, count.beat {Houd hem vast tot “{liftPart}” en laat daar los.} other {Houd hem vast tot en met “{liftBeat}” en laat los op “{liftPart}”.}}",
+    "cutShort": "Je liet de {value} in maat {bar} te vroeg los. {liftPartKey, select, count.beat {Houd hem vast tot vlak voor “{liftPart}”.} other {Houd hem vast tot en met “{liftBeat}”, tot vlak voor “{liftPart}”.}}",
     "heldLong": "Je hield de {value} in maat {bar} te lang vast. {liftPartKey, select, count.beat {Laat los op “{liftPart}”.} other {Laat los op “{liftPart}” na “{liftBeat}”.}}",
     "rushing": "Je jaagde: gemiddeld {ms} ms te vroeg. Wacht op elke noot.",
     "dragging": "Je sleepte: gemiddeld {ms} ms te laat. Druk iets eerder.",
@@ -1541,6 +1541,11 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_6_3": {
+      "title": "Eerlijker vasthouden",
+      "lift": "Hoe lang je een noot vasthoudt, wordt beoordeeld zoals mensen spelen, niet als een machine: je mag loslaten vanaf de helft van een noot, zodat je tijd hebt om op te tillen en de volgende in te drukken. Voor een rust telt het loslaten nog steeds, met wat meer ruimte aan beide kanten.",
+      "cost": "Wie maar net te vroeg of te laat loslaat, verliest nu een punt of twee in plaats van 20. Een reeks perfecte aanslagen zakt dus niet meer naar twee sterren door een paar milliseconden."
+    },
     "v0_6_2": {
       "title": "Indeling op de computer",
       "desktop": "Op een computer staan de tabbladen nu in een balk bovenaan, en Start toont je reeks, niveau, de dagelijkse uitdaging en het leerpad naast Verder en de oefentegels."

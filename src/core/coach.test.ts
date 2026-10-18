@@ -15,7 +15,7 @@ describe('coachTip', () => {
   it('names the worst hold problem first: the dotted quarter in bar 2', () => {
     const taps = perfectTaps(tl);
     taps[4] = { down: tl.notes[4].onset, up: tl.notes[4].onset + 0.6 }; // dotted quarter (1.5 s) let go after 0.6 s
-    taps[0] = { down: 0, up: 0.7 }; // a smaller cut on a quarter
+    taps[0] = { down: 0, up: 0.45 }; // a smaller cut on a quarter
     taps.forEach((t) => (t.down -= 0.06)); // also rushing, but holds come first
     const tip = coachTip(judge(tl, taps, opts), tl, ex);
     expect(tip).toEqual({
@@ -28,7 +28,7 @@ describe('coachTip', () => {
     const ex2 = makeExercise('4/4', [[[96, 'n'], [48, 'r'], [48, 'n']]]);
     const tl2 = buildTimeline(ex2);
     const taps = perfectTaps(tl2);
-    taps[0] = { down: 0, up: tl2.notes[0].end + 0.5 };
+    taps[0] = { down: 0, up: tl2.notes[0].end + 0.7 }; // half a beat (500 ms) late is still right
     expect(coachTip(judge(tl2, taps, opts), tl2, ex2)).toMatchObject({ key: 'tip.heldLong', params: { value: 'value.half', bar: 1, liftBeat: 3, liftPart: 'count.beat' } });
   });
 

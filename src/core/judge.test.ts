@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import type { JudgeOptions, Tap, Timeline } from './types';
-import { createLiveJudge, judge, judgeRelease, noteWindows } from './judge';
+import { createLiveJudge, judge, judgeHold, judgeRelease, noteWindows } from './judge';
 import { buildTimeline } from './timeline';
 import { generateExercise } from './generator';
 import { makeExercise, perfectTaps, seedArb, settingsArb } from './test-helpers';
@@ -75,26 +75,66 @@ describe('judge', () => {
     const tl = quarters();
     const [n0, , n2] = tl.notes; // n0 is followed by a note, n2 by a rest
     expect(n0.next).toBe('note');
-    expect(judgeRelease(n0, n0.end - 0.3, 'normal')).toBe('short'); // earlier than end − max(25%, 120 ms)
-    expect(judgeRelease(n0, n0.end - 0.2, 'normal')).toBe('right');
+    // Before a note, lifting from half the note (here 500 ms) before the next press is right.
+    expect(judgeRelease(n0, n0.end - 0.55, 'normal')).toBe('short');
+    expect(judgeRelease(n0, n0.end - 0.45, 'normal')).toBe('right');
+    expect(judgeRelease(n0, n0.end - 0.45, 'strict')).toBe('short'); // 375 ms when strict
     expect(judgeRelease(n0, n0.end + 0.5, 'normal')).toBe('right'); // a note follows: never "too long"
-    expect(judgeRelease(n2, n2.end + 0.1, 'normal')).toBe('right');
-    expect(judgeRelease(n2, n2.end + 0.15, 'normal')).toBe('long');
-    expect(judgeRelease(n2, n2.end + 0.15, 'relaxed')).toBe('right');
+    expect(judgeRelease(n0, null, 'normal')).toBe('right');
+    // Before a rest, ±max(25% of the note, 150 ms).
+    expect(judgeRelease(n2, n2.end - 0.2, 'normal')).toBe('right');
+    expect(judgeRelease(n2, n2.end - 0.3, 'normal')).toBe('short');
+    expect(judgeRelease(n2, n2.end + 0.2, 'normal')).toBe('right');
+    expect(judgeRelease(n2, n2.end + 0.3, 'normal')).toBe('long');
+    expect(judgeRelease(n2, n2.end + 0.3, 'relaxed')).toBe('right');
     expect(judgeRelease(n2, null, 'normal')).toBe('long');
+  });
+
+  it('allows lifting at least 200 ms before the next note, and at most a beat', () => {
+    // Eighths at 100 BPM (300 ms): half the note would leave 150 ms to lift and press again.
+    const eighths = buildTimeline(makeExercise('2/4', [[[24, 'n'], [24, 'n'], [48, 'n']]], {}, 100));
+    const e = eighths.notes[0];
+    expect(judgeRelease(e, e.end - 0.19, 'normal')).toBe('right');
+    expect(judgeRelease(e, e.end - 0.21, 'normal')).toBe('short');
+    // A whole note at 60 BPM before another note: one beat, not half the note.
+    const whole = buildTimeline(makeExercise('4/4', [[[192, 'n']], [[192, 'n']]], {}, 60)).notes[0];
+    expect(judgeRelease(whole, whole.end - 0.9, 'normal')).toBe('right');
+    expect(judgeRelease(whole, whole.end - 1.1, 'normal')).toBe('short');
+    // A note too short to judge: any hold is right.
+    const sixteenths = buildTimeline(makeExercise('2/4', [[[12, 'n'], [12, 'n'], [24, 'n'], [48, 'n']]], {}, 120));
+    expect(judgeRelease(sixteenths.notes[0], sixteenths.notes[0].onset + 0.001, 'normal')).toBe('right');
+  });
+
+  it('a hold that only just misses costs little; a clearly wrong one the full 20 points', () => {
+    const n0 = quarters().notes[0]; // early limit at 0.5 s; the full cost a further 250 ms out
+    expect(judgeHold(n0, 0.49, 'normal')).toEqual({ hold: 'short', points: -1 });
+    expect(judgeHold(n0, 0.375, 'normal')).toEqual({ hold: 'short', points: -10 });
+    expect(judgeHold(n0, 0.1, 'normal')).toEqual({ hold: 'short', points: -20 });
+    const n2 = quarters().notes[2]; // late limit 250 ms after the end
+    expect(judgeHold(n2, n2.end + 0.3, 'normal')).toEqual({ hold: 'long', points: -4 });
+    expect(judgeHold(n2, null, 'normal')).toEqual({ hold: 'long', points: -20 });
   });
 
   it('scores hold problems and breaks the combo on them', () => {
     const tl = quarters();
     const taps = perfectTaps(tl);
-    taps[1] = { down: 1, up: 1.3 }; // cut short
+    taps[1] = { down: 1, up: 1.3 }; // cut short: 200 ms past the limit at 1.5 s
     const r = judge(tl, taps, NORMAL);
     expect(r.notes[1].hold).toBe('short');
     expect(r.notes[1].releaseOffsetMs).toBeCloseTo(-700);
-    expect(r.points).toBe(300 - 20);
+    expect(r.points).toBe(300 - 16);
     expect(r.holds).toEqual({ right: 2, short: 1, long: 0 });
     expect(r.maxCombo).toBe(1);
     expect(r.combo).toBe(1);
+  });
+
+  it('gives a run like a player lifting to press again the full score (the 85% report)', () => {
+    // Four quarters at 80 BPM, each held 450–510 ms of 750: all right now, where 25% of the note cost 60 points.
+    const tl = buildTimeline(makeExercise('4/4', [[[48, 'n'], [48, 'n'], [48, 'n'], [48, 'n']]], {}, 80));
+    const held = [0.45, 0.51, 0.45, 0.75];
+    const r = judge(tl, tl.notes.map((n, i) => ({ down: n.onset, up: n.onset + held[i] })), NORMAL);
+    expect(r.holds.right).toBe(4);
+    expect(r.accuracy).toBe(100);
   });
 
   it('reports misses, stars and tendency', () => {

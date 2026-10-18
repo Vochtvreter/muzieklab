@@ -581,14 +581,29 @@ and dots) stops sounding.
 
 | Hold judgment | Rule (default) | Points |
 |---|---|---|
-| Held right | released between `end − max(25% of the note, 120 ms)` and `end + 120 ms` | ±0 |
-| Cut short | released earlier than that | −20 |
-| Held too long | released more than 120 ms after `end` (only possible before a rest, or at the end) | −20 |
+| Held right, next note follows | released after `end − max(min(50% of the note, 1 beat), 200 ms)` | ±0 |
+| Held right, before a rest or the end | released between `end − max(25% of the note, 150 ms)` and `end + max(min(25% of the note, ½ beat), 150 ms)` | ±0 |
+| Cut short | released earlier than that | −1 … −20 |
+| Held too long | released later than that (only possible before a rest, or at the end) | −1 … −20 |
 
 When the next note follows directly, the player must lift to press again, so "held too
-long" cannot happen there; any release between the early limit and the next press is
-right. Release windows are deliberately looser than press windows (a design choice, not a
-sourced rule); the values are starting points to tune in playtesting.
+long" cannot happen there. Every note in the game is a repeated note on the same key, and
+players lift well before the next one: expert pianists hold repeated notes for about 60 % of
+the time to the next note (Bresin & Battel 2000), and lifting and pressing again takes about
+100–200 ms however fast the music is. So a release from halfway through the note counts as
+right; that still catches a half note held like a quarter. The 200 ms floor leaves room to
+lift on short notes (a note shorter than that cannot be cut short), and the one-beat cap keeps
+long notes held. Before a rest the release is where the sound stops, so it is judged both
+ways; going late, never more than half a beat into the rest.
+
+A wrong hold costs in proportion to how far out it is: 1 point just past the limit, rising
+to the full −20 a further quarter of the note out. Leniency scales every limit (×0.75 strict,
+×1.5 relaxed). The first rule (`end − max(25% of the note, 120 ms)` before a note, a flat −20)
+was calibrated like a machine: in a simulation of human players from beginner to professional
+(press spread σ ≈ 50 down to 13 ms, lifting 100–170 ms plus a share of the note before the
+next press), even professionals had a third of their eighth-note holds cut short, and an
+amateur playing default exercises reached three stars in 12 % of runs. With these rules that
+is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 
 ### 6.3 Scores
 
