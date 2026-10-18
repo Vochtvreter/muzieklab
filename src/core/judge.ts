@@ -1,16 +1,22 @@
-import { DIAMOND, type HoldJudgement, type JudgeOptions, type JudgeResult, type Judgement, type Leniency, type NoteResult, type Stars, type Tap, type TimedNote, type Timeline } from './types';
+import { DIAMOND, PPQ, type HoldJudgement, type JudgeOptions, type JudgeResult, type Judgement, type Leniency, type NoteResult, type Stars, type Tap, type TimedNote, type Timeline } from './types';
 
 /** Press windows in ms (§6.2), before leniency and the fast-passage shrink. */
 export const WINDOWS_MS = { perfect: 35, great: 70, good: 120 } as const;
 /** A note started inside its window is the rhythm right, so it earns most of the points; timing adds the rest (§6.2). */
 export const POINTS: Record<Judgement, number> = { perfect: 100, great: 90, good: 70, miss: 0 };
 export const EXTRA_TAP_POINTS = -25;
+/** Most a wrong hold costs. One that only just misses costs 1; the full cost is reached a further quarter of the note out. */
 export const HOLD_PENALTY = -20;
+export const HOLD_PENALTY_SPAN = 0.25;
 /** Accuracy needed per star (§6.3). Four stars also need no Good and no Miss; a flawless run is the diamond. */
 export const STAR_ACCURACY = { 1: 50, 2: 75, 3: 90, 4: 95 } as const;
-/** Release tolerance in ms (also scaled by leniency) and the "25% of the note" early limit. */
-export const RELEASE_MS = 120;
-export const RELEASE_EARLY_FRACTION = 0.25;
+/**
+ * Hold limits (§6.2), scaled by leniency. Before a note the finger has to lift to press again: letting go from half the
+ * note (at most a beat, at least 200 ms) before the next one is right, as players lift that early on repeated notes.
+ * Before a rest or the end the release ends the sound: right within 25% of the note (at least 150 ms) early, and within
+ * 150 ms or up to 25% of the note (at most half a beat) late.
+ */
+export const HOLD = { liftFraction: 0.5, liftMs: 200, releaseFraction: 0.25, releaseMs: 150 } as const;
 export const LENIENCY: Record<Leniency, number> = { strict: 0.75, normal: 1, relaxed: 1.5 };
 /** Tendency thresholds (§6.3): a small early average is normal anticipation. */
 export const RUSHING_MS = -40;
@@ -37,16 +43,34 @@ export function noteWindows(timeline: Timeline, leniency: Leniency): Windows[] {
   });
 }
 
-/** Release judgement (§6.2). `up` null = never released. */
-export function judgeRelease(note: TimedNote, up: number | null, leniency: Leniency): HoldJudgement {
-  const tol = (RELEASE_MS * LENIENCY[leniency]) / 1000;
-  if (up === null) return note.next === 'note' ? 'right' : 'long';
-  const early = note.end - Math.max(RELEASE_EARLY_FRACTION * (note.end - note.onset), tol);
-  if (up < early) return 'short';
-  // With a note right after, the player must lift to press again, so "too long" cannot happen.
-  if (note.next !== 'note' && up > note.end + tol) return 'long';
-  return 'right';
+export interface HoldVerdict {
+  hold: HoldJudgement;
+  points: number; // 0 when right, else HOLD_PENALTY … −1
 }
+
+const HELD_RIGHT: HoldVerdict = { hold: 'right', points: 0 };
+
+/** Release judgement and its cost (§6.2). `up` null = never released. */
+export function judgeHold(note: TimedNote, up: number | null, leniency: Leniency): HoldVerdict {
+  const f = LENIENCY[leniency];
+  const d = note.end - note.onset;
+  const beat = (d / note.durationTicks) * PPQ;
+  const cost = (excess: number): number => Math.min(-1, Math.round(HOLD_PENALTY * Math.min(1, excess / (HOLD_PENALTY_SPAN * d))));
+  if (note.next === 'note') {
+    // The player must lift to press again, so "too long" cannot happen.
+    if (up === null) return HELD_RIGHT;
+    const early = note.end - Math.min(d, f * Math.max(Math.min(HOLD.liftFraction * d, beat), HOLD.liftMs / 1000));
+    return up < early ? { hold: 'short', points: cost(early - up) } : HELD_RIGHT;
+  }
+  if (up === null) return { hold: 'long', points: HOLD_PENALTY };
+  const early = note.end - f * Math.max(HOLD.releaseFraction * d, HOLD.releaseMs / 1000);
+  const late = note.end + f * Math.max(Math.min(HOLD.releaseFraction * d, beat / 2), HOLD.releaseMs / 1000);
+  if (up < early) return { hold: 'short', points: cost(early - up) };
+  if (up > late) return { hold: 'long', points: cost(up - late) };
+  return HELD_RIGHT;
+}
+
+export const judgeRelease = (note: TimedNote, up: number | null, leniency: Leniency): HoldJudgement => judgeHold(note, up, leniency).hold;
 
 export interface LivePress {
   index: number | null; // matched note, or null for an extra tap
@@ -159,7 +183,8 @@ class Session {
   finish(): JudgeResult {
     const notes = this.timeline.notes.map((_, i) => this.noteResult(i, true) as NoteResult);
     const extraTaps = this.tapNote.filter((n) => n === null).length;
-    return summarise(notes, extraTaps);
+    const holdPoints = notes.map((r) => (r.hold && r.tap ? judgeHold(this.timeline.notes[r.index], r.tap.up, this.opts.leniency).points : 0));
+    return summarise(notes, extraTaps, holdPoints);
   }
 }
 
@@ -172,24 +197,21 @@ function pressJudgement(dist: number, w: Windows): Judgement {
 const keepsCombo = (r: NoteResult): boolean =>
   (r.judgement === 'perfect' || r.judgement === 'great') && (r.hold === null || r.hold === 'right');
 
-function summarise(notes: NoteResult[], extraTaps: number): JudgeResult {
+function summarise(notes: NoteResult[], extraTaps: number, holdPoints: number[]): JudgeResult {
   const counts: Record<Judgement, number> = { perfect: 0, great: 0, good: 0, miss: 0 };
   const holds: Record<HoldJudgement, number> = { right: 0, short: 0, long: 0 };
   let points = extraTaps * EXTRA_TAP_POINTS;
   let combo = 0;
   let maxCombo = 0;
   const offsets: number[] = [];
-  for (const r of notes) {
+  notes.forEach((r, i) => {
     counts[r.judgement]++;
-    points += POINTS[r.judgement];
-    if (r.hold) {
-      holds[r.hold]++;
-      if (r.hold !== 'right') points += HOLD_PENALTY;
-    }
+    points += POINTS[r.judgement] + holdPoints[i];
+    if (r.hold) holds[r.hold]++;
     if (r.offsetMs !== null) offsets.push(r.offsetMs);
     combo = keepsCombo(r) ? combo + 1 : 0;
     maxCombo = Math.max(maxCombo, combo);
-  }
+  });
   const maxPoints = notes.length * POINTS.perfect;
   const accuracy = maxPoints > 0 ? Math.max(0, Math.min(100, (points / maxPoints) * 100)) : 0;
   const flawless = notes.length > 0 && counts.perfect === notes.length && extraTaps === 0 && holds.short + holds.long === 0;

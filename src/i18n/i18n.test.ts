@@ -64,7 +64,7 @@ describe('t()', () => {
       key: 'tip.cutShort',
       params: { value: 'value.dottedQuarter', bar: 2, beat: 1, liftBeat: 2, liftPart: 'count.and', count: 1 },
     });
-    expect(tip).toBe('You let go of the dotted quarter note in bar 2 too early. Hold it through “2” and lift on the “&”.');
+    expect(tip).toBe('You let go of the dotted quarter note in bar 2 too early. Hold it through “2” until just before the “&”.');
     const onBeat = tipText({ key: 'tip.heldLong', params: { value: 'value.half', bar: 1, beat: 1, liftBeat: 3, liftPart: 'count.beat', count: 1 } });
     expect(onBeat).toBe('You held the half note in bar 1 too long. Lift on “3”.');
     expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 3 } })).toBe('You missed 1 note, most in bar 3. Read one beat ahead.');
@@ -207,7 +207,7 @@ describe('Dutch', () => {
       key: 'tip.cutShort',
       params: { value: 'value.dottedQuarter', bar: 2, beat: 1, liftBeat: 2, liftPart: 'count.and', count: 1 },
     });
-    expect(tip).toBe('Je liet de gepunteerde kwartnoot in maat 2 te vroeg los. Houd hem vast tot en met “2” en laat los op “en”.');
+    expect(tip).toBe('Je liet de gepunteerde kwartnoot in maat 2 te vroeg los. Houd hem vast tot en met “2”, tot vlak voor “en”.');
   });
 
   it('falls back to English for a key a catalog lacks', () => {
