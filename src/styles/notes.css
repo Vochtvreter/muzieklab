@@ -1601,6 +1601,10 @@
   width: 240px;
   position: sticky;
   top: 0;
+  /* Under the top header a short screen (1280 × 720) is lower than the list: it scrolls on its own. */
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 8px;

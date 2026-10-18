@@ -1,18 +1,17 @@
 /**
  * Home: streak, level and XP, Continue (the next lesson), the daily challenge and Free practice (Rhythm, Read notes).
- * Desktop adds the path summary.
+ * Desktop (App design canvas, Desktop · Home): a left column with streak and level, the daily challenge and the path
+ * summary, next to Continue and the practice tiles.
  */
 import { useMemo } from 'react';
 import { exerciseView } from '../exerciseView';
-import { SHOWN_STARS } from '../../core/api';
 import { dailyChallenge } from '../../game/daily';
-import { lessonSettings, UNITS, unitStars, type Unit } from '../../game/path';
+import { lessonSettings, UNITS, type Unit } from '../../game/path';
 import { streak } from '../../game/storage';
 import { levelInfo } from '../../game/xp';
 import { dateParts, t, tx } from '../../i18n';
 import { AppShell } from '../components/AppShell';
 import { LessonTiles, StaffBox } from '../components/Bits';
-import { Icon } from '../components/Icon';
 import { DateTile, XpLine } from '../components/Reward';
 import { useBreakpoint, useDocTitle, useToday } from '../hooks';
 import { metersLabel } from '../lib/format';
@@ -62,26 +61,42 @@ export function Home(): JSX.Element {
   const dailyDone = state.progress.daily?.day === today ? state.progress.daily : null;
 
   const xpBlock = (
-    <section aria-label={t('xp.label')} className={bp === 'desktop' ? 'card xp-card' : undefined}>
+    <section aria-label={t('xp.label')}>
       <XpLine info={xp} />
     </section>
   );
 
-  const dailyCard = (
-    <section aria-labelledby="daily-title" className="daily-card">
-      <DateTile day={today} />
-      <div className="daily-text">
-        <h2 id="daily-title">{t('home.dailyTitle')}</h2>
-        <div className="muted-text">
-          {t('home.dailyMeta', { meter: metersLabel(daily.meters), bars: t('common.bars', { count: daily.bars }), bpm: daily.tempo })}
-        </div>
-        {dailyDone && <div className="daily-done">{t('home.dailyDone', { accuracy: Math.round(dailyDone.accuracy) })}</div>}
+  const dailyText = (
+    <div className="daily-text">
+      <h2 id="daily-title">{t('home.dailyTitle')}</h2>
+      <div className="muted-text">
+        {t('home.dailyMeta', { meter: metersLabel(daily.meters), bars: t('common.bars', { count: daily.bars }), bpm: daily.tempo })}
       </div>
-      <button type="button" className="btn btn--ink daily-btn" aria-label={t('home.dailyPlayLabel', { date: dateParts(today).long })} onClick={startDaily}>
-        {t(dailyDone ? 'home.dailyAgain' : 'home.dailyPlay')}
-      </button>
-    </section>
+      {dailyDone && <div className="daily-done">{t('home.dailyDone', { accuracy: Math.round(dailyDone.accuracy) })}</div>}
+    </div>
   );
+  const dailyButton = (
+    <button type="button" className="btn btn--ink daily-btn" aria-label={t('home.dailyPlayLabel', { date: dateParts(today).long })} onClick={startDaily}>
+      {t(dailyDone ? 'home.dailyAgain' : 'home.dailyPlay')}
+    </button>
+  );
+  // Desktop: the Play button goes full width under the date and text.
+  const dailyCard =
+    bp === 'desktop' ? (
+      <section aria-labelledby="daily-title" className="daily-card daily-card--desk">
+        <div className="daily-row">
+          <DateTile day={today} />
+          {dailyText}
+        </div>
+        {dailyButton}
+      </section>
+    ) : (
+      <section aria-labelledby="daily-title" className="daily-card">
+        <DateTile day={today} />
+        {dailyText}
+        {dailyButton}
+      </section>
+    );
 
   const continueCard = cont && (
     <section aria-labelledby="continue-title" className="continue-card">
@@ -97,21 +112,15 @@ export function Home(): JSX.Element {
           {tx(cont.lesson.title)}
         </h2>
       </div>
-      {bp === 'desktop' ? (
-        <div className="continue-staff continue-staff--wide">
-          <LessonPreview lessonId={cont.lesson.id} wide count={2} />
+      <div className={'continue-staff' + (bp === 'desktop' ? ' continue-staff--wide' : '')}>
+        <div className="continue-meta">
+          <span>{t('home.previewMeta', { meter: metersLabel(lessonSettings(cont.lesson.id).meters), bars: t('common.bars', { count: lessonSettings(cont.lesson.id).bars }) })}</span>
+          <span>{t('common.bpm', { value: lessonSettings(cont.lesson.id).tempo })}</span>
         </div>
-      ) : (
-        <div className="continue-staff">
-          <div className="continue-meta">
-            <span>{t('home.previewMeta', { meter: metersLabel(lessonSettings(cont.lesson.id).meters), bars: t('common.bars', { count: lessonSettings(cont.lesson.id).bars }) })}</span>
-            <span>{t('common.bpm', { value: lessonSettings(cont.lesson.id).tempo })}</span>
-          </div>
-          <div className="continue-staff-body">
-            <LessonPreview lessonId={cont.lesson.id} wide={bp === 'tablet'} count={bp === 'tablet' ? 2 : 1} />
-          </div>
+        <div className="continue-staff-body">
+          <LessonPreview lessonId={cont.lesson.id} wide={bp !== 'phone'} count={bp === 'phone' ? 1 : 2} />
         </div>
-      )}
+      </div>
       {bp !== 'desktop' && <LessonTiles unit={cont.unit} progress={state.progress} currentId={cont.lesson.id} onFill onPick={startLesson} />}
       <button type="button" className="btn btn--on-fill continue-btn" onClick={() => startLesson(cont.lesson.id)}>
         {t(cont.done ? 'home.replayButton' : 'home.continueButton')}
@@ -154,21 +163,33 @@ export function Home(): JSX.Element {
         <h1 className="sr-only">{t('home.title')}</h1>
         <div className="home-desk">
           <aside className="home-desk-aside">
-            <section aria-label={t('streak.label')} className="card streak-card">
-              <span className="streak-badge" aria-hidden="true">
-                <span />
-              </span>
-              <span className="streak-card-text">
+            <div className="card status-card">
+              <section aria-label={t('streak.label')} className="streak-card">
+                <span className="streak-badge" aria-hidden="true">
+                  <span />
+                </span>
                 <span className="streak-card-title">{t('streak.pill', { count: days })}</span>
-                <span className="muted-text">{t('streak.keep')}</span>
-              </span>
-            </section>
-            {xpBlock}
+              </section>
+              <span className="hairline" />
+              <section aria-label={t('xp.label')} className="level-block">
+                <span className="level-block-head">
+                  <span className="level-block-level">{t('xp.level', { level: xp.level })}</span>
+                  <span className="muted-text">{t('xp.rankLine', { rank: t('rank.' + xp.rank) })}</span>
+                </span>
+                <div className="xp-bar" role="img" aria-label={t('xp.bar', { into: xp.into, span: xp.span })}>
+                  <div style={{ width: (xp.span > 0 ? Math.min(1, xp.into / xp.span) : 0) * 100 + '%' }} />
+                </div>
+                <span className="level-block-foot">
+                  <span className="mono-muted">{t('xp.ofSpan', { into: xp.into, span: xp.span })}</span>
+                  <span className="xp-next">{t('xp.toNext', { count: xp.span - xp.into, next: xp.level + 1 })}</span>
+                </span>
+              </section>
+            </div>
+            {dailyCard}
             {cont && <PathSummary currentUnit={cont.unit} currentId={cont.done ? null : cont.lesson.id} />}
           </aside>
           <div className="home-desk-main">
             {continueCard}
-            {dailyCard}
             {freeCard}
           </div>
         </div>
@@ -199,63 +220,29 @@ export function Home(): JSX.Element {
   );
 }
 
-/** Desktop Home: the learning-path card (done units, the current unit's tiles, the next locked unit). */
+/** Desktop Home: the learning-path card (the current unit, a bar of all units, its lesson tiles and the next lesson). */
 function PathSummary({ currentUnit, currentId }: { currentUnit: Unit; currentId: string | null }): JSX.Element {
   const { state } = useStore();
   const p = state.progress;
   const states = unitStates(p);
-  const curIdx = UNITS.indexOf(currentUnit);
-  const nextUnit = UNITS[curIdx + 1];
-  const totalStars = UNITS.reduce((s, u) => s + unitStars(p, u.id), 0);
-  const max = UNITS.reduce((s, u) => s + u.lessons.length * SHOWN_STARS, 0);
   const cur = currentId ? currentUnit.lessons.find((l) => l.id === currentId) : null;
   return (
     <Link to="/path" className="card path-card">
       <span className="path-card-head">
         <span className="eyebrow">{t('home.pathEyebrow')}</span>
-        <span className="mono-muted" aria-label={t('path.totalsLabel', { stars: totalStars, total: max })}>
-          {t('path.totals', { stars: totalStars, total: max })}
-        </span>
+        <span className="mono-muted">{t('home.pathUnitOf', { unit: UNITS.indexOf(currentUnit) + 1, total: UNITS.length })}</span>
       </span>
-      <span className="path-card-units">
-        {UNITS.slice(0, curIdx).map((u, i) =>
-          states[i] === 'done' ? (
-            <span key={u.id} className="path-card-unit">
-              <span className="done-check" aria-hidden="true">
-                <Icon name="check" size={12} strokeWidth={3.4} />
-              </span>
-              <span className="path-card-unit-title">{t('path.unitTitle', { id: u.id, title: tx(u.titleKey) })}</span>
-              <span className="path-card-unit-stars" aria-label={t('stars.label', { count: unitStars(p, u.id), total: u.lessons.length * SHOWN_STARS })}>
-                {t('home.unitStars', { count: unitStars(p, u.id) })}
-              </span>
-            </span>
-          ) : null,
-        )}
-      </span>
-      {curIdx > 0 && <span className="hairline" />}
       <span className="path-card-current">{t('path.unitTitle', { id: currentUnit.id, title: tx(currentUnit.titleKey) })}</span>
+      <span aria-hidden="true" className="path-card-bar" style={{ gridTemplateColumns: `repeat(${UNITS.length}, minmax(0, 1fr))` }}>
+        {states.map((st, i) => (
+          <span key={UNITS[i].id} className={'path-card-seg path-card-seg--' + st} />
+        ))}
+      </span>
       <LessonTiles unit={currentUnit} progress={p} currentId={currentId} onFill={false} />
       {cur && (
         <span className="muted-text">
           {t('path.next', { lesson: lessonNumber(cur.id), title: tx(cur.title), bpm: lessonSettings(cur.id).tempo })}
         </span>
-      )}
-      {nextUnit && (
-        <>
-          <span className="hairline" />
-          <span className="path-card-locked">
-            <span aria-hidden="true" className="unit-node unit-node--locked unit-node--small">
-              {nextUnit.glyph}
-            </span>
-            <span className="path-card-locked-text">
-              <span className="path-card-locked-title">{t('path.unitTitle', { id: nextUnit.id, title: tx(nextUnit.titleKey) })}</span>
-              <span className="path-card-locked-sub">
-                <Icon name="lock" size={13} strokeWidth={2.4} />
-                {t('home.pathLocked', { unit: currentUnit.id })}
-              </span>
-            </span>
-          </span>
-        </>
       )}
       <span className="path-card-link">{t('home.pathView')}</span>
     </Link>

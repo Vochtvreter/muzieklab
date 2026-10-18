@@ -1,6 +1,7 @@
 /**
- * Tab screens' frame. Phone: bottom tab bar (active icon in a slate pill). Tablet ≥ 700 px: a top header with the
- * same items. Desktop ≥ 1100 px: a left sidebar. The active item has aria-current="page" (DESIGN.md §9).
+ * Tab screens' frame. Phone: bottom tab bar (active icon in a slate pill). Tablet ≥ 700 px and desktop ≥ 1100 px: a
+ * top header with the same items; on desktop the items sit next to the brand, as words only (App design canvas,
+ * Desktop · Home). The active item has aria-current="page" (DESIGN.md §9).
  */
 import type { ReactNode } from 'react';
 import { t } from '../../i18n';
@@ -34,9 +35,9 @@ export function AppShell({ bp, active, children, wide, fill }: Props): JSX.Eleme
           <span className="nav-pill">
             <Icon name={it.icon} size={24} />
           </span>
-        ) : (
+        ) : bp === 'tablet' ? (
           <Icon name={it.icon} size={20} />
-        )}
+        ) : null}
         {t(it.key)}
       </Link>
     );
@@ -47,29 +48,18 @@ export function AppShell({ bp, active, children, wide, fill }: Props): JSX.Eleme
     </Link>
   );
 
-  if (bp === 'desktop') {
+  if (bp !== 'phone') {
+    const desk = bp === 'desktop';
+    const full = fill || (desk && wide);
     return (
-      <div className="shell shell--desktop">
-        <aside className="sidebar">
-          {brand}
-          <nav aria-label={t('nav.main')} className="nav nav--side">
-            {items}
-          </nav>
-        </aside>
-        <main className={'shell-main' + (wide || fill ? ' shell-main--wide' : '')}>{wide || fill ? children : <div className="column">{children}</div>}</main>
-      </div>
-    );
-  }
-  if (bp === 'tablet') {
-    return (
-      <div className="shell shell--tablet">
-        <header className="topbar">
+      <div className={'shell shell--top shell--' + bp}>
+        <header className={'topbar' + (desk ? ' topbar--desk' : '')}>
           {brand}
           <nav aria-label={t('nav.main')} className="nav nav--top">
             {items}
           </nav>
         </header>
-        <main className={'shell-main' + (fill ? ' shell-main--wide' : '')}>{fill ? children : <div className="column">{children}</div>}</main>
+        <main className={'shell-main' + (full ? ' shell-main--wide' : '')}>{full ? children : <div className="column">{children}</div>}</main>
       </div>
     );
   }

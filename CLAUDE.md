@@ -16,6 +16,22 @@ three versions: phone, tablet and desktop. Also check phone landscape (844 × 39
 has no board yet, or the code has to differ from it, say so in the PR. Every screen gets a test in
 `e2e/layout.spec.ts`, which runs at every size in `e2e/helpers.ts`.
 
+### Keep the designs consistent
+
+The two canvases and DESIGN.md describe one app, so they must agree. The shell is the same everywhere: a bottom tab
+bar on phone, and a top header on tablet and desktop (the App design canvas, Desktop · Home; DESIGN.md §9). There is no
+desktop sidebar.
+
+- **Before you build a designed screen,** compare its boards on both canvases (the release page on the MVP canvas and
+  the matching board on the App design canvas) with DESIGN.md: shell, layout, which parts are shown, and copy.
+- **When you add or change a board,** reuse the shell, tokens and component markup of the boards that already exist,
+  and check that it still agrees with the same screen on the other canvas and with DESIGN.md. Update every board that
+  draws that screen, in light and dark.
+- **When two designs conflict** (two boards for one screen, a board and DESIGN.md, or a board and what is built), do
+  not pick one silently. Point the conflict out to the user, naming the boards or sections on each side and how they
+  differ, so they can investigate, and list it in the PR. If work has to go on before they answer, follow the newer
+  App design canvas and DESIGN.md, and say that you did.
+
 ## Learning content
 
 Learn chapters (`src/ui/learn/chapters.ts`) and Learning Path units (`src/game/path.ts`) are data with their text in
