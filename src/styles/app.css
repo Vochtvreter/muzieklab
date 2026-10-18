@@ -37,7 +37,8 @@
   align-items: center;
   padding: 12px 32px;
 }
-.shell--desktop .shell-main--wide {
+.shell--desktop .shell-main--wide,
+.shell--tablet .shell-main--wide {
   align-items: stretch;
   padding: 0;
 }

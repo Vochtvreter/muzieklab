@@ -21,9 +21,11 @@ interface Props {
   children: ReactNode;
   /** Home on desktop uses the full width instead of the centred 640 px column. */
   wide?: boolean;
+  /** Learn uses the full width on tablet as well as on desktop. */
+  fill?: boolean;
 }
 
-export function AppShell({ bp, active, children, wide }: Props): JSX.Element {
+export function AppShell({ bp, active, children, wide, fill }: Props): JSX.Element {
   const items = ITEMS.map((it) => {
     const current = it.to === active;
     return (
@@ -54,7 +56,7 @@ export function AppShell({ bp, active, children, wide }: Props): JSX.Element {
             {items}
           </nav>
         </aside>
-        <main className={'shell-main' + (wide ? ' shell-main--wide' : '')}>{wide ? children : <div className="column">{children}</div>}</main>
+        <main className={'shell-main' + (wide || fill ? ' shell-main--wide' : '')}>{wide || fill ? children : <div className="column">{children}</div>}</main>
       </div>
     );
   }
@@ -67,9 +69,7 @@ export function AppShell({ bp, active, children, wide }: Props): JSX.Element {
             {items}
           </nav>
         </header>
-        <main className="shell-main">
-          <div className="column">{children}</div>
-        </main>
+        <main className={'shell-main' + (fill ? ' shell-main--wide' : '')}>{fill ? children : <div className="column">{children}</div>}</main>
       </div>
     );
   }

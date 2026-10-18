@@ -926,6 +926,8 @@ sections in reading order, each filling the width. Inside a section, related par
 by side (lines | spaces, example | rule, text | keyboard) and stack again on narrow screens,
 so notation keeps a readable size instead of stretching. Desktop adds the chapter sidebar;
 on tablet the sidebar becomes a row of section chips under the title. The canvas shows chapter 8 at 834 px (tablet) and 1280 px (desktop).
+Both use the full width (up to 1160 px of content) instead of the 640 px column, and the Learn tab's chapter list
+(up to 960 px) shows a chapter's sections in two columns, read down.
 
 The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings. The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
 
