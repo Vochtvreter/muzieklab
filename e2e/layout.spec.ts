@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectClickable, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, pad, VIEWPORTS, type ViewportName } from './helpers';
+import { expectClickable, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, pad, seed, VIEWPORTS, type ViewportName } from './helpers';
 
 /**
  * Known layout bugs from the MVP QA, fixed in the follow-up layout PR. `test.fail` keeps CI green while they are open
@@ -73,6 +73,22 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByText('Leniency', { exact: true }));
       await expectClickable(page.getByRole('button', { name: 'Reset progress' }));
       await expectNoSideScroll(page);
+    });
+
+    test('settings: language, switched to Dutch and back', async ({ page }) => {
+      known(name, 'settings-language');
+      await page.goto('./#/settings');
+      const group = page.getByRole('group', { name: 'App language' });
+      await expectClickable(group.getByRole('button', { name: 'Nederlands' }));
+      await group.getByRole('button', { name: 'Nederlands' }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('lang', 'nl');
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await page.reload();
+      await expect(page.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
+      await page.getByRole('group', { name: 'Taal van de app' }).getByRole('button', { name: 'English' }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
     });
 
     test("settings: what's new, the latest release and the earlier ones", async ({ page }) => {
@@ -203,6 +219,64 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.locator('.beats--analog')).toBeVisible();
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
+      await expectNoSideScroll(page);
+    });
+  });
+}
+
+/**
+ * Dutch text is often longer than English (DESIGN.md §11): every screen still fits at every size, with no label cut
+ * off and no sideways scroll.
+ */
+for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
+  test.describe(`${name} in Dutch`, () => {
+    test.use({ viewport: VIEWPORTS[name], hasTouch: !name.startsWith('desktop') && !name.startsWith('laptop') });
+    test.beforeEach(async ({ page }) => seed(page, { prefs: { language: 'nl', seenHowTo: true } }));
+
+    const screens: [string, string, string][] = [
+      ['', 'Start', 'Verder met de les'],
+      ['#/setup', 'Vrij oefenen', 'Start · '],
+      ['#/path', 'Leerpad', 'Begin les'],
+      ['#/settings', 'Instellingen', 'Voortgang wissen'],
+      ['#/changelog', 'Wat is er nieuw', '0.1.0'],
+      ['#/calibrate', 'Timing kalibreren', 'Ritmepad'],
+      ['#/notes', 'Noten lezen', 'Start · '],
+      ['#/notes/key', 'Toonsoort', 'Kies '],
+      ['#/learn', 'Leren', ''],
+      ['#/learn/8', 'Noten op de balk', ''],
+    ];
+    for (const [hash, title, action] of screens) {
+      test(`${hash || '#/'}: ${title}`, async ({ page }) => {
+        known(name, 'nl' + hash);
+        await page.goto('./' + hash);
+        await expect(page).toHaveTitle(new RegExp(title === 'Start' ? 'Muzieklab' : title));
+        if (action) await expectClickable(page.getByRole('button', { name: new RegExp('^' + action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).first());
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+    }
+
+    test('play, results and read notes', async ({ page }) => {
+      known(name, 'nl-play');
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Verder met de les' }).dispatchEvent('click');
+      await page.setViewportSize(VIEWPORTS[name]);
+      await expect(page.getByRole('heading', { name: 'Tik het ritme' })).toBeAttached();
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.getByRole('button', { name: 'Naar de uitslag' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      await expect(page.getByRole('heading', { name: 'Les 1.1 klaar' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Volgende oefening' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await page.goto('./#/notes');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.getByRole('img', { name: /notenbalk in C majeur/ })).toBeVisible();
+      await expectClickable(page.getByRole('radio', { name: 'kruis' }));
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
   });

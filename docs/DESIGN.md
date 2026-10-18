@@ -885,7 +885,7 @@ attribute (they default to black and disappear on a dark background).
 | **Path** | Units as a vertical path with lessons, stars and locks. |
 | **Progress** | Charts, skill map, achievements. |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
-| **Settings** | Language (English only in v1; the picker appears once translations exist), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme, metronome style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
+| **Settings** | Language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme, metronome style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
 
 ### 9.1 Learn: theory in chapters
 
@@ -987,7 +987,7 @@ src/
   ui/
     screens/ Home, Setup, Play, Dictation, Results, Path, Progress, Settings
     components/ ...
-  i18n/ en.json         # every user-facing string; other locales added later
+  i18n/ en.json nl.json # every user-facing string, one catalog per locale (found automatically)
 ```
 
 ### 10.3 Testing strategy
@@ -1005,8 +1005,23 @@ Property tests over thousands of random seeds and random settings:
 
 ## 11. Accessibility & localization
 
-**Language:** v1 is **English only**, with American English spelling and note names
-(quarter, eighth) throughout. Never mix languages in the UI.
+**Languages:** **English** (American spelling and note names: quarter, eighth) and, since 0.4,
+**Dutch** (*Nederlands*: kwartnoot, achtste noot, voortekening, majeur/mineur). Settings → Language picks one;
+until then the app follows the device's languages (`nl-BE` matches `nl`) and falls back to English. Never mix
+languages in the UI.
+
+**Adding a language** needs no code changes:
+
+1. Copy `src/i18n/en.json` to `src/i18n/<code>.json` (a BCP 47 code such as `de`) and translate every value. Set
+   `meta.name` to the language's own name ("Deutsch"): Settings → Language shows it.
+2. Keep every key and the ICU structure. A translation may drop a param it does not need, but must not invent one;
+   plural categories follow the language (`one`/`other` for Dutch and German). Words that change with the
+   language's grammar go in the message (Dutch `notes.spoken` turns F + kruis into "fis" with a `select`).
+3. Run `npm test`: `src/i18n/i18n.test.ts` fails on a missing or extra key, an unknown param or an unbalanced
+   brace. Then run `npm run e2e`: the layout suite checks that no label is cut off (it runs every screen in Dutch;
+   add the new language there too when its text is longer).
+
+A key a catalog lacks falls back to English at run time, so a partial catalog still works while it is written.
 
 **The whole app must be localizable** so translations can be added later
 without code changes:
@@ -1020,7 +1035,7 @@ without code changes:
   movable-do teaching says "ti" instead of "si". Memory aids ("Every Good Boy Does
   Fine") are per-language content.
 - Theory terms are message keys too, not literals: note and rest names, tempo words,
-  counting syllables ("1 & 2 &" differs per language and teaching method), rank names.
+  counting syllables ("1 & 2 &" differs per language and teaching method; Dutch counts "1 en 2 en"), rank names.
 - Format numbers, dates and BPM with `Intl` for the active locale.
 - Layout must survive longer translations (Dutch and German text is often noticeably
   longer than English): no fixed-width text boxes; labels may wrap.
@@ -1052,7 +1067,8 @@ without code changes:
 
 ## 13. Open questions
 
-1. **Language:** decided: English only for v1, fully localizable (§11). Which language comes next, and when?
+1. **Language:** decided: English and Dutch since 0.4, fully localizable (§11). Dutch counts the "&" as "en"; the
+   sixteenth and triplet syllables (e, a, trip, let) stay as in English until a Dutch method is confirmed (question 2).
 2. **"Muzieklab" curriculum:** is this based on a specific school method whose order of
    topics and notation conventions we should follow? In particular, which counting
    syllables does it use? Dutch teaching commonly counts "1 en 2 en", but I could not

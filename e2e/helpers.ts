@@ -46,6 +46,17 @@ export async function expectNoOverlap(a: Locator, b: Locator): Promise<void> {
   expect(overlap, 'boxes overlap').toBe(false);
 }
 
+/** No button or segmented choice cuts its words off (longer translations must wrap or fit, DESIGN.md §11). */
+export async function expectNoClippedLabels(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const clipped = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('button, .seg-btn, a.btn, select')]
+      .filter((el) => el.offsetParent !== null && /\p{L}/u.test(el.textContent ?? '') && el.scrollWidth > el.clientWidth + 1)
+      .map((el) => (el.textContent ?? '').trim() || el.getAttribute('aria-label') || el.tagName),
+  );
+  expect(clipped, 'labels cut off').toEqual([]);
+}
+
 export async function expectNoSideScroll(page: Page): Promise<void> {
   const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(wide, 'no horizontal scroll').toBe(false);

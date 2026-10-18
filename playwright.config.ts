@@ -10,6 +10,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173/',
     browserName: 'chromium',
+    // The tests read English text; the app follows the browser's language until one is picked in Settings.
+    locale: 'en-US',
     launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
     trace: 'retain-on-failure',
   },

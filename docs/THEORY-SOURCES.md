@@ -75,7 +75,7 @@ checked page by page.
 |---|---|---|
 | Whole = 4 beats, half = 2, quarter = 1, eighth = ½, sixteenth = ¼ in 2/4, 3/4, 4/4 (quarter-note beat) | Verified | [OMT] |
 | Each flag or beam halves the value; quarters are never beamed | Verified | [OMT] |
-| Dutch names: hele, halve, kwart-, achtste, zestiende noot / rust (for the future Dutch translation; not shown in v1, which is English only) | Verified | [NL-Nootwaarde], [NL-Rust] |
+| Dutch names: hele, halve, kwart-, achtste, zestiende noot / rust (used by the Dutch translation since 0.4) | Verified | [NL-Nootwaarde], [NL-Rust] |
 | A dot adds half the value (dotted half 3, dotted quarter 1½, dotted eighth ¾); also on rests | Verified | [Wiki-Dotted], [NL-Rust], [Wiki-Rest] |
 | A dotted note equals the note tied to one of half its value (dotted quarter = quarter tied to eighth) | Verified | [Wiki-Dotted] |
 | A completely empty bar gets one whole rest, **centred**, in any time signature | **Corrected**: the rest tree drew it on beat 1; now centred | [Wiki-Rest], [MMT-Rests] |

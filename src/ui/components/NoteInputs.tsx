@@ -40,7 +40,7 @@ export function SignRow({ value, onChange, disabled, kbd }: SignRowProps): JSX.E
           <button key={a} type="button" role="radio" aria-checked={a === value} aria-label={signWord(a)} disabled={disabled}
             className={'sign-btn' + (a === value ? ' is-on' : '')} onClick={() => onChange(a)}>
             <span className="sign-glyph">{signGlyph(a)}</span>
-            <span className="sign-word">{t('notes.signWord.' + signKey(a))}</span>
+            <span className="sign-word">{t('notes.signButton.' + signKey(a))}</span>
             {kbd && <kbd className="kbd kbd--cap">{SIGN_KBD[a]}</kbd>}
           </button>
         ))}
