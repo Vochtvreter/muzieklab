@@ -7,6 +7,7 @@ export const VIEWPORTS = {
   phone: { width: 390, height: 844 },
   'phone-landscape': { width: 844, height: 390 },
   tablet: { width: 834, height: 1194 },
+  'tablet-landscape': { width: 1180, height: 820 },
   'laptop-720': { width: 1280, height: 720 },
   desktop: { width: 1280, height: 800 },
 } as const;

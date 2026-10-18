@@ -26,6 +26,15 @@ export function useBreakpoint(): Breakpoint {
   return desktop ? 'desktop' : tablet ? 'tablet' : 'phone';
 }
 
+/**
+ * Keyboard hints (Esc, ?, the letter on each key) go with the desktop layout, but not on a touch-only screen that is
+ * desktop-wide (a tablet in landscape): it gets the same layout with touch wording.
+ */
+export function useKeyboardHints(bp: Breakpoint): boolean {
+  const touchOnly = useMediaQuery('(hover: none) and (pointer: coarse)');
+  return bp === 'desktop' && !touchOnly;
+}
+
 export function useReducedMotion(): boolean {
   return useMediaQuery('(prefers-reduced-motion: reduce)');
 }

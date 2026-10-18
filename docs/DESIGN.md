@@ -802,6 +802,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 | The unit boss on the Learning Path | |
 
 **Breakpoints.** Phone < 700 px; tablet 700–1099 px; desktop ≥ 1100 px.
+- A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Calibration) out in two
+  columns, so the pad or the answer buttons stay in view next to the notation.
+- A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
+  (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same five
   items (Home · Path · Learn · Progress · Settings). The active item has the soft slate pill and
   `aria-current="page"`.

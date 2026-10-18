@@ -11,7 +11,7 @@ import { BeatRow, TapPad } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import type { ExerciseView } from '../exerciseView';
-import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
+import { useBreakpoint, useDocTitle, useKeyboardHints, useLingering } from '../hooks';
 import { metersLabel } from '../lib/format';
 import { beatAt } from '../lib/playMath';
 import { Link, navigate } from '../router';
@@ -56,6 +56,7 @@ interface ListenProps {
 export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, onTapBack }: ListenProps): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
+  const keys = useKeyboardHints(bp);
   const ex = run.exercise;
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
   const [playing, setPlaying] = useState(false);
@@ -178,7 +179,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
       </div>
       {helpShown && (
         <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="help" labelledBy="howto" maxWidth={bp === 'desktop' ? 520 : undefined}>
-          <HowToContent eyebrow={t('howto.echo.eyebrow')} desktop={bp === 'desktop'} hold={ex.settings.hold} echo onDone={closeHelp} />
+          <HowToContent eyebrow={t('howto.echo.eyebrow')} desktop={keys} hold={ex.settings.hold} echo onDone={closeHelp} />
         </Sheet>
       )}
     </ExerciseFrame>
