@@ -22,7 +22,8 @@ The version lives in `package.json` (Settings → About shows it) and follows ma
 as the change; `npm version <patch|minor|major> --no-git-tag-version` updates `package.json` and `package-lock.json`
 together.
 
-- **Patch** (0.3.0 → 0.3.1): bug fixes, small fixes and tweaks.
+- **Patch** (0.3.0 → 0.3.1): bug fixes, small fixes and tweaks, and new content (a Learn chapter or lesson, exercises,
+  songs) that needs no new feature.
 - **Minor** (0.3.1 → 0.4.0): new features.
 - **Major** (0.x.y → 1.0.0): only for a major release or an overhaul.
 
