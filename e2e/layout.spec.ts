@@ -23,6 +23,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Continue lesson' }));
       await expectClickable(page.getByRole('link', { name: /^Rhythm/ }));
       await expectClickable(page.getByRole('link', { name: /^Read notes/ }));
+      // Tablet and desktop: the tabs sit in a top header (DESIGN.md §9), on desktop too, not in a sidebar.
+      if (VIEWPORTS[name].width >= 700) await expect(page.getByRole('banner').getByRole('navigation', { name: 'Main' })).toBeVisible();
       await expectNoOverlap(page.locator('.continue-card'), page.locator('.free'));
       await expectNotSqueezed(page.locator('.continue-card'));
       await expectNoSideScroll(page);

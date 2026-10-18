@@ -17,7 +17,7 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Language switch' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Desktop layout' })).toBeTruthy();
     expect(within(screen.getByRole('article')).getByText('Oct 18 · 1 fixed')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
@@ -51,7 +51,7 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Taalkeuze' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Indeling op de computer' })).toBeTruthy();
     expect(within(screen.getByRole('article')).getByText('18 okt · 1 opgelost')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });

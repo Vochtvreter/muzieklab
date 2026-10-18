@@ -808,7 +808,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same five
   items (Home · Path · Learn · Progress · Settings). The active item has the soft slate pill and
-  `aria-current="page"`.
+  `aria-current="page"`. On desktop the items follow the brand, as words only; there is no sidebar.
+- Desktop Home has two columns (App design canvas, Desktop · Home): streak and level, the daily challenge
+  and the learning path on the left; Continue and the practice tiles on the right.
 - Exercise screens swap that header for the exercise header: title, progress, and
   Pause / Quit.
 - Large screens show the same content and data as mobile, laid out side by side. They add no
