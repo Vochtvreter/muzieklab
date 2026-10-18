@@ -16,6 +16,12 @@ three versions: phone, tablet and desktop. Also check phone landscape (844 × 39
 has no board yet, or the code has to differ from it, say so in the PR. Every screen gets a test in
 `e2e/layout.spec.ts`, which runs at every size in `e2e/helpers.ts`.
 
+## Learning content
+
+Learn chapters (`src/ui/learn/chapters.ts`) and Learning Path units (`src/game/path.ts`) are data with their text in
+`src/i18n/en.json`. [docs/ADDING-CONTENT.md](docs/ADDING-CONTENT.md) explains how to add them; the plan for the chapters is
+in [docs/LEARN-CHAPTERS.md](docs/LEARN-CHAPTERS.md).
+
 ## Versioning
 
 The version lives in `package.json` (Settings → About shows it) and follows major.minor.patch. Bump it in the same PR

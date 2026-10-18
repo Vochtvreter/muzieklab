@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { CHAPTERS } from '../src/ui/learn/chapters';
 import { expectClickable, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, pad, VIEWPORTS, type ViewportName } from './helpers';
 
 /**
@@ -196,6 +197,19 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('link', { name: 'Practice on the piano →' }));
       await expectClickable(page.getByRole('link', { name: /Next\s*10 · Key signatures/ }));
       await expectNoSideScroll(page);
+    });
+
+    test('learn: every chapter fits, with its practice links reachable', async ({ page }) => {
+      known(name, 'learn-all');
+      for (const c of CHAPTERS) {
+        await page.goto(`./#/learn/${c.n}`);
+        await expect(page.getByRole('heading', { level: 1 })).toContainText(String(c.n));
+        await expect(page.locator('.learn-section')).toHaveCount(c.sections.length);
+        await expect(page.locator('.learn-practice')).toHaveCount(c.sections.filter((s) => s.practice).length);
+        await expectNoSideScroll(page);
+        if (c.sections.some((s) => s.practice)) await expectClickable(page.locator('.learn-practice').last());
+        await expectClickable(page.getByRole('link', { name: 'Back to all chapters' }));
+      }
     });
 
     test('play: how to play, then the pad', async ({ page }) => {

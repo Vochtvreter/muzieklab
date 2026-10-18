@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
+import { hasMessage } from '../i18n';
 import { NOTE_VALUES, type MeterId, type NoteValue, type Settings } from '../core/types';
 import { UNITS, findLesson, isUnlocked, lessonSettings, nextLesson, pathStars, recordLessonResult, unitStars } from './path';
 import { defaultProgress, type LessonProgress, type Progress } from './storage';
@@ -29,13 +30,15 @@ function canFill(s: Settings, meter: MeterId): boolean {
 }
 
 describe('UNITS', () => {
-  it('has units 1–8 with five lessons each and ids "u.l"', () => {
-    expect(UNITS.map((u) => u.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  it('has units 1, 2, 3, … with five lessons each, ids "u.l" and their titles in the catalog', () => {
+    expect(UNITS.map((u) => u.id)).toEqual(UNITS.map((_, i) => i + 1));
     for (const u of UNITS) {
       expect(u.lessons).toHaveLength(5);
       u.lessons.forEach((l, i) => expect(l.id).toBe(`${u.id}.${i + 1}`));
       expect(u.titleKey).toBe(`path.u${u.id}.title`);
+      expect(hasMessage(u.titleKey), u.titleKey).toBe(true);
       u.lessons.forEach((l, i) => expect(l.title).toBe(`path.u${u.id}.l${i + 1}`));
+      u.lessons.forEach((l) => expect(hasMessage(l.title), l.title).toBe(true));
     }
     expect(new Set(allIds).size).toBe(allIds.length);
   });
@@ -48,7 +51,8 @@ describe('UNITS', () => {
       expect(s.bars).toBeLessThanOrEqual(16);
       expect(s.tempo).toBeGreaterThanOrEqual(40);
       expect(s.tempo).toBeLessThanOrEqual(200);
-      expect(s.triplets).toBe(false);
+      // The generator only writes triplets as eighths.
+      if (s.triplets) expect(s.notes, id).toContain('eighth');
       for (const m of s.meters) expect(canFill(s, m), `${id} ${m}`).toBe(true);
     }
   });

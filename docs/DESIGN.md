@@ -993,10 +993,12 @@ src/
     tapInput.ts         # keyboard + pointer -> timestamped taps
   render/
     vexflowStaff.tsx    # NotatedSymbol[] -> SVG, cursor, colouring
+    notationText.ts     # rhythm written as text ('q [8 8] h') -> NotatedBar[]
   game/
     xp.ts  path.ts  achievements.ts  skills.ts  storage.ts
   ui/
-    screens/ Home, Setup, Play, Dictation, Results, Path, Progress, Settings
+    screens/ Home, Setup, Play, Dictation, Results, Path, Progress, Settings, Learn
+    learn/ chapters.ts  # the Learn chapters as data (docs/ADDING-CONTENT.md); Blocks.tsx draws them
     components/ ...
   i18n/ en.json         # every user-facing string; other locales added later
 ```
