@@ -1339,6 +1339,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_5_1": {
+      "title": "Language switch",
+      "language": "In Settings → Language, the highlight now slides to the new language, like the other choices."
+    },
     "v0_5_0": {
       "title": "A full course, from the first beat",
       "try": "Start chapter 1",

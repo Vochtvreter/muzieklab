@@ -23,6 +23,8 @@ interface SegmentedProps<T extends string | number> {
   /** Inner padding and gap of the track in px (the thumb math needs them). */
   pad?: number;
   gap?: number;
+  /** The choice the thumb slides in from when it mounts, for a control that the change itself remounts (the language). */
+  from?: T;
 }
 
 /**
@@ -30,10 +32,11 @@ interface SegmentedProps<T extends string | number> {
  * with a transform only (260 ms, cubic-bezier(.2, 0, 0, 1)), as on the canvas.
  */
 export function Segmented<T extends string | number>(props: SegmentedProps<T>): JSX.Element {
-  const { label, options, value, onChange, className, pad = 4, gap = 4 } = props;
+  const { label, options, value, onChange, className, pad = 4, gap = 4, from } = props;
   const n = options.length;
   const i = Math.max(0, options.findIndex((o) => o.value === value));
-  const move = useRef<{ at: number; n: number; fx: string }>({ at: i, n: 0, fx: '0px' });
+  const start = options.findIndex((o) => o.value === from);
+  const move = useRef<{ at: number; n: number; fx: string }>({ at: start < 0 ? i : start, n: 0, fx: '0px' });
   const m = move.current;
   if (m.at !== i) {
     m.fx = `calc(${m.at - i} * (100% + ${gap}px))`;

@@ -84,6 +84,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await group.getByRole('button', { name: 'Nederlands' }).click();
       await expect(page.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('lang', 'nl');
+      // The switch remounts the screen; the thumb still slides over from English like the other rows.
+      const thumb = page.getByRole('group', { name: 'Taal van de app' }).locator('.seg-thumb');
+      await expect(thumb).toHaveCSS('animation-name', 'm-slide-a');
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
       await page.reload();

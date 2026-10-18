@@ -221,16 +221,18 @@ interface SegRowProps<T extends string> {
   onChange(v: T): void;
   hint: string;
   first?: boolean;
+  /** See Segmented: the choice to slide in from on mount. */
+  from?: T;
   /** Shown under the hint, e.g. a preview of the choice. */
   children?: ReactNode;
 }
 
-function SegRow<T extends string>({ label, group, value, options, onChange, hint, first, children }: SegRowProps<T>): JSX.Element {
+function SegRow<T extends string>({ label, group, value, options, onChange, hint, first, from, children }: SegRowProps<T>): JSX.Element {
   return (
     <div className={'seg-row' + (first ? ' is-first' : '')}>
       <div className="seg-row-line">
         <b className="seg-row-label">{label}</b>
-        <Segmented label={group} value={value} options={options} onChange={onChange} className="seg--settings" />
+        <Segmented label={group} value={value} options={options} onChange={onChange} from={from} className="seg--settings" />
       </div>
       <span aria-live="polite" className="row-sub">
         {hint}
@@ -243,13 +245,22 @@ function SegRow<T extends string>({ label, group, value, options, onChange, hint
 /** Up to three languages fit the segmented control; with more, the row becomes a drop-down list. */
 const SEGMENTED_LOCALES = 3;
 
+/**
+ * The language the row last showed. A new language remounts the screens (App.tsx), so the control starts over; this
+ * lets its thumb slide in from the old language like the other rows.
+ */
+let shownLocale: string | undefined;
+
 /** Settings → Language: every catalog in src/i18n, each named in its own language. Shows the language in use. */
 function LanguageRow({ onChange }: { onChange(code: string): void }): JSX.Element {
   const value = getLocale();
+  useEffect(() => {
+    shownLocale = value;
+  }, [value]);
   if (LOCALES.length <= SEGMENTED_LOCALES) {
     return (
       <SegRow label={t('settings.language')} group={t('settings.languageGroup')} value={value} onChange={onChange} hint={t('settings.hintLanguage')}
-        options={LOCALES.map((l) => ({ value: l.code, label: l.name }))} first />
+        options={LOCALES.map((l) => ({ value: l.code, label: l.name }))} from={shownLocale} first />
     );
   }
   return (
