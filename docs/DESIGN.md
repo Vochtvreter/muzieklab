@@ -893,8 +893,10 @@ The theory is split into eleven chapters in teaching order: seven on rhythm, thr
 Each chapter only relies on earlier chapters, and each setting the player can practise is explained in a section
 (the full map is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md) §5). Every section has a short explanation, rendered
 notation (with the counting under the notes in the rhythm chapters; held or silent counts in grey brackets), key facts,
-an *In the game* tip where one helps, and a *Practice* link that opens Free practice or Read notes with the matching
-preset. Chapter headers show which Learning Path units use them. The contents follow the research in
+an *In the game* tip where one helps, a quick check of one question on what the section explained, and a *Practice*
+link that opens Free practice or Read notes with the matching preset. A section is marked read when its quick check is
+answered right (since 0.6.0; before, scrolling past it was enough). A wrong answer says what to look at again, without
+giving the answer away, and the player tries again. Chapter headers show which Learning Path units use them. The contents follow the research in
 `LEARN-CHAPTERS.md`, which compares them with Flemish and Dutch courses (*Allemaal nootjes*, AMV, HaFaBra) and with
 ABRSM, Trinity, RCM and Kodály.
 
@@ -928,8 +930,8 @@ rhythm chapter. Reading notes follows the courses: clefs and names, then half st
 scales last.
 
 **Each chapter is its own page**, never one long page with everything. A chapter page has:
-its number and title, what it builds on and which Path units use it, its sections, a quick
-check question, and previous / next chapter links. Sources are not shown to the player;
+its number and title, what it builds on and which Path units use it, its sections (each with its own quick check),
+a quick check question for the chapter, and previous / next chapter links. Sources are not shown to the player;
 they live in `THEORY-SOURCES.md`, where every claim on the page is checked. On
 mobile the Learn tab lists the chapters as cards that expand into their sections, with read
 status; on desktop a sidebar lists all chapters, with the open chapter's sections nested

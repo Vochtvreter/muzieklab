@@ -4,7 +4,8 @@
  *
  * Text keys in a section are relative to that section: in section 9.3, 'point1' is `learn.ch9.s3.point1`. A chapter
  * needs `learn.chapters.{n}.title` / `.sub` and `learn.ch{n}.intro`; its quick check `learn.ch{n}.quiz.question`,
- * `.right` and `.wrong`; a section `learn.ch{n}.s{k}.title`, and `.practice` when it has a practice link.
+ * `.right` and `.wrong`; a section `learn.ch{n}.s{k}.title`, its quick check `.check.question`, `.right` and `.wrong`,
+ * and `.practice` when it has a practice link.
  * `chapters.test.ts` checks all of this, so a missing text fails the tests instead of showing a raw key.
  */
 import type { Alter, Clef, KeyId, MeterId, NoteSettings, Settings } from '../../core/api';
@@ -86,13 +87,23 @@ export type Practice = { notes: Partial<NoteSettings> } | { rhythm: Partial<Sett
 export interface Section {
   /** "9.3": chapter and section number. */
   id: string;
+  /** The quick check at the end of the section; answering it right marks the section read. Text keys under 'check'. */
+  check: Quiz;
   blocks: Block[];
   /** Adds "Practice … →" (text key 'practice') at the end of the section. */
   practice?: Practice;
 }
 
-/** A quick-check answer: a note name ('Gb' → G♭) or a text key relative to the chapter's quiz ('a1' → learn.ch1.quiz.a1). */
+/**
+ * A quick-check answer: a note name ('Gb' → G♭) or a text key relative to its quiz ('a1' → learn.ch1.quiz.a1 for a
+ * chapter, learn.ch1.s2.check.a1 for section 1.2).
+ */
 export type Answer = { note: string } | { text: string };
+/** A quick check: its answers and which one is right. */
+export interface Quiz {
+  answers: Answer[];
+  right: number;
+}
 
 export interface Chapter {
   n: number;
@@ -101,7 +112,7 @@ export interface Chapter {
   /** Learning Path units that practise the chapter, for the header. */
   units?: number[];
   sections: Section[];
-  quiz: { answers: Answer[]; right: number };
+  quiz: Quiz;
   /** The big button at the end: Read notes or rhythm Free practice. */
   practice: 'notes' | 'rhythm';
 }
@@ -125,6 +136,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '1.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'pulse', tempos: [60, 120], alt: 'pulseAlt' },
@@ -147,6 +159,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '1.2',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'rhythm', meter: '4/4', bars: ['q q q q', 'h h'], alt: 'barsAlt' },
@@ -162,6 +175,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '1.3',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'accents', meters: ['2/4', '3/4', '4/4'] },
@@ -181,6 +195,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '2.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -199,6 +214,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '2.2',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2 },
         blocks: [{ kind: 'text', text: 'text' }, { kind: 'noteTree' }, { kind: 'text', text: 'after' }],
       },
     ],
@@ -212,6 +228,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '3.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -234,6 +251,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '3.2',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'rhythm', meter: '3/4', bars: ['h q', 'W'], title: 'silentTitle', alt: 'silentAlt' },
@@ -258,6 +276,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '4.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'rhythm', meter: '4/4', bars: ['[8 8] [8 8] q q'], alt: 'staffAlt' },
@@ -268,6 +287,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '4.2',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -294,6 +314,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '4.3',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'rhythm', meter: '4/4', verdict: 'write', title: 'perBeat', bars: ['q [8 8] [8 8] q'], alt: 'perBeatAlt' },
@@ -322,6 +343,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '5.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'rhythm', meter: '4/4', bars: ['q q q q~', 'q q h'], alt: 'barAlt' },
@@ -334,6 +356,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '5.2',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2 },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -359,6 +382,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '5.3',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2 },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -385,6 +409,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '6.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'rhythm', meter: '4/4', title: 'eqe', bars: ['8 q 8 q q'], alt: 'eqeAlt' },
@@ -412,6 +437,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '7.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2 },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -437,6 +463,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '8.1',
+        check: { answers: [{ note: 'C' }, { note: 'F' }, { note: 'G' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -451,6 +478,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '8.2',
+        check: { answers: [{ note: 'D' }, { note: 'E' }, { note: 'F' }], right: 2 },
         blocks: [
           {
             kind: 'pair',
@@ -466,6 +494,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '8.3',
+        check: { answers: [{ note: 'A' }, { note: 'B' }, { note: 'C' }], right: 0 },
         blocks: [
           {
             kind: 'pair',
@@ -481,6 +510,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '8.4',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -498,6 +528,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '8.5',
+        check: { answers: [{ note: 'F' }, { note: 'G' }, { note: 'A' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'noteNames' },
@@ -515,6 +546,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '9.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
         blocks: [
           { kind: 'pair', variant: 'text', columns: [[{ kind: 'text', text: 'text' }], [{ kind: 'piano', alt: 'pianoAlt' }]] },
           { kind: 'tip', text: 'game' },
@@ -523,12 +555,14 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '9.2',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'pair', variant: 'text', columns: [[{ kind: 'text', text: 'text' }], [{ kind: 'piano', marked: ['E', 'F', 'B', 'C'], alt: 'pianoAlt' }]] },
         ],
       },
       {
         id: '9.3',
+        check: { answers: [{ note: 'B' }, { note: 'Bb' }, { note: 'C' }], right: 0 },
         blocks: [
           { kind: 'list', items: ['point1', 'point2', 'point3'] },
           { kind: 'staff', clef: 'treble', notes: 'F#4 Bb4', labels: 'name', alt: 'staffAlt' },
@@ -538,6 +572,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '9.4',
+        check: { answers: [{ note: 'F' }, { note: 'F#' }, { note: 'Fb' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'staff', clef: 'treble', notes: 'F#4 F4', alt: 'staffAlt' },
@@ -555,6 +590,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '10.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text1' },
           { kind: 'staff', clef: 'treble', keyId: 'G', notes: 'F4 G4 F5', alt: 'gAlt' },
@@ -566,6 +602,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '10.2',
+        check: { answers: [{ note: 'Bb' }, { note: 'Eb' }, { note: 'F' }], right: 0 },
         blocks: [
           { kind: 'text', text: 'text3' },
           {
@@ -582,11 +619,13 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '10.3',
+        check: { answers: [{ note: 'Ab' }, { note: 'Bb' }, { note: 'Eb' }], right: 2 },
         blocks: [{ kind: 'list', items: ['point1', 'point2'] }],
         practice: { notes: { keys: ['G', 'D', 'A', 'F', 'Bb', 'Eb'], mixKeys: true, extras: 'none' } },
       },
       {
         id: '10.4',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'point3' },
           { kind: 'tip', text: 'game' },

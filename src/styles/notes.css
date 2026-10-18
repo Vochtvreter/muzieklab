@@ -1046,10 +1046,6 @@
   line-height: 1.5;
   color: var(--ink);
 }
-.learn-section-end {
-  height: 1px;
-  margin-top: -12px;
-}
 .learn-list {
   margin: 0;
   padding-left: 20px;
@@ -1155,6 +1151,18 @@
 }
 .learn-check b {
   font-size: 15px;
+}
+/* A section's quick check closes the section card, under a hairline. */
+.learn-check--section {
+  margin-top: 4px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
+}
+.learn-check-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
 }
 .learn-answers {
   display: grid;

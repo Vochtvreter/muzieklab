@@ -875,6 +875,7 @@
     "prev": "Previous",
     "next": "Next",
     "check": "Quick check",
+    "checkHint": "Answer it right to mark this section read.",
     "ch1": {
       "intro": "Music moves on a steady pulse. This chapter shows how fast that pulse goes, how it is grouped into bars, and why some beats feel stronger than others. Every later chapter counts in these beats.",
       "s1": {
@@ -902,7 +903,15 @@
         "prestoBpm": "168–200",
         "mark": "Sometimes the exact tempo is written as a metronome mark: ♩ = 80 means 80 quarter-note beats per minute. The Tempo setting in Practice works the same way.",
         "game": "In the game: the count-in clicks one bar of beats at the exercise’s tempo, so you feel the pulse before the first note. In Echo mode you hear a rhythm first and tap it back without the notation.",
-        "practice": "Practice at a steady tempo"
+        "practice": "Practice at a steady tempo",
+        "check": {
+          "question": "At 120 BPM, how many beats come in one second?",
+          "a1": "2",
+          "a2": "4",
+          "a3": "120",
+          "right": "Right. 120 beats in a minute of 60 seconds is 2 beats every second.",
+          "wrong": "Not quite. BPM counts the beats in one minute, and a minute has 60 seconds."
+        }
       },
       "s2": {
         "title": "Bars and time signatures",
@@ -920,14 +929,30 @@
         "common": "C is common time: another way to write 4/4",
         "commonAlt": "A bar in common time, written C: two quarter notes and a half note, counted 1 2 3 (4)",
         "simple": "This is how 2/4, 3/4 and 4/4 work, the time signatures the game uses. Some others, such as 6/8, count differently.",
-        "practice": "Practice in 2/4, 3/4 and 4/4"
+        "practice": "Practice in 2/4, 3/4 and 4/4",
+        "check": {
+          "question": "A C at the start of the staff stands for which time signature?",
+          "a1": "2/4",
+          "a2": "3/4",
+          "a3": "4/4",
+          "right": "Right. C is common time, another way to write 4/4.",
+          "wrong": "Not quite. Look at the last example of this section: C is another way to write one of these time signatures."
+        }
       },
       "s3": {
         "title": "Strong and weak beats",
         "text": "The beats in a bar are not equal. Beat 1, the downbeat, is the strongest. Each time signature has its own pattern of strong and weak beats:",
         "middle": "In 4/4, beat 3 is medium-strong: weaker than beat 1, stronger than beats 2 and 4. It marks the middle of the bar, which later chapters keep visible when they write rests, beams and ties.",
         "game": "In the game: set the metronome to Beat 1 under More options, and it clicks only on the downbeat. You keep the other beats yourself.",
-        "practice": "Practice feeling beat 1"
+        "practice": "Practice feeling beat 1",
+        "check": {
+          "question": "In 4/4, which beat is medium-strong: weaker than beat 1, stronger than the rest?",
+          "a1": "2",
+          "a2": "3",
+          "a3": "4",
+          "right": "Right. Beat 3 marks the middle of the bar, so it is stronger than beats 2 and 4.",
+          "wrong": "Not quite. The medium-strong beat marks the middle of the bar."
+        }
       },
       "quiz": {
         "question": "How many beats does a bar of 3/4 have?",
@@ -953,12 +978,28 @@
         "beamsText": "Flags become thick lines that join notes, one group per beat (chapter 4).",
         "staffAlt": "Two bars of 4/4: two quarter notes and a half note counted 1 2 3 (4), then a whole note counted 1 (2 3 4)",
         "game": "In the game: press as a note starts and hold for its whole length. A half note lasts two clicks, a whole note four.",
-        "practice": "Practice whole, half and quarter notes"
+        "practice": "Practice whole, half and quarter notes",
+        "check": {
+          "question": "A filled note head with a stem and two flags is…",
+          "a1": "A sixteenth (¼ beat)",
+          "a2": "An eighth (½ beat)",
+          "a3": "A half note (2 beats)",
+          "right": "Right. Each flag halves the note: one flag is an eighth, two flags a sixteenth.",
+          "wrong": "Not quite. Start from the quarter note and count the flags: each one halves the note."
+        }
       },
       "s2": {
         "title": "The note tree",
         "text": "The note tree sums it up. Each row fills one bar of 4/4, and each row has twice as many notes as the one above it:",
-        "after": "Every note value has a rest of the same length. Switch the tree to Rests to see them; chapter 3 explains them."
+        "after": "Every note value has a rest of the same length. Switch the tree to Rests to see them; chapter 3 explains them.",
+        "check": {
+          "question": "How many sixteenths fill one bar of 4/4?",
+          "a1": "4",
+          "a2": "8",
+          "a3": "16",
+          "right": "Right. Each row of the tree doubles the one above: 1 whole, 2 halves, 4 quarters, 8 eighths, 16 sixteenths.",
+          "wrong": "Not quite. Each row of the tree has twice as many notes as the row above it. Start from 4 quarters and keep doubling."
+        }
       },
       "quiz": {
         "question": "How many eighth notes fit in one half note?",
@@ -989,7 +1030,15 @@
         "count": "Keep counting through every rest. Silent counts are shown in grey brackets:",
         "countAlt": "A bar of 4/4: quarter on 1, quarter rest on (2), quarter on 3, quarter rest on (4); then a half rest on (1 2) and a half note on 3 (4)",
         "game": "In the game: let go when a note ends and stay off through the rest. With Hold notes for their length on, as in the Learning Path from unit 2, the moment you let go is judged too.",
-        "practice": "Practice rests"
+        "practice": "Practice rests",
+        "check": {
+          "question": "On the one-line staff of the game, which rest hangs below the line?",
+          "a1": "The whole rest",
+          "a2": "The half rest",
+          "a3": "The quarter rest",
+          "right": "Right. The whole rest hangs below the line and the half rest sits on it: their place tells them apart.",
+          "wrong": "Not quite. Two of the rests are the same small block, and only their place tells them apart. Look again at the one-line staff above."
+        }
       },
       "s2": {
         "title": "Writing rests correctly",
@@ -1003,7 +1052,15 @@
         "dotted": "A dot adds half the value to a rest, just as it does to a note (chapter 5). In 2/4, 3/4 and 4/4 a dotted rest is only used when it is shorter than one beat, like a dotted eighth rest (¾ beat). A longer silence is written as separate rests that show the beats:",
         "dottedAlt": "A bar of 4/4: a dotted eighth rest, a sixteenth on the a of beat 1, a quarter on 2, a quarter rest on (3), an eighth rest on (4) and an eighth on its &",
         "noTie": "Rests are never tied. A tie joins two notes into one sound; silence needs no joining, and rests in a row simply add up.",
-        "practice": "Practice reading rests"
+        "practice": "Practice reading rests",
+        "check": {
+          "question": "In 4/4, beats 2 and 3 are silent. How do you write that?",
+          "a1": "One half rest on beat 2",
+          "a2": "Two quarter rests",
+          "a3": "A dotted quarter rest",
+          "right": "Right. Two quarter rests keep the middle of the bar, beat 3, visible. A half rest only starts on beat 1 or beat 3.",
+          "wrong": "Not quite. In 4/4 the middle of the bar, beat 3, has to stay visible. Which way shows where beat 3 starts?"
+        }
       },
       "quiz": {
         "question": "A bar of 3/4 is completely silent. How do you write it?",
@@ -1022,7 +1079,15 @@
         "staffAlt": "A bar of 4/4: four eighths counted 1 & 2 &, then quarter notes on 3 and 4",
         "rest": "An eighth rest fills half a beat in the same way. Count it too, silently:",
         "restAlt": "A bar of 4/4: a quarter on 1, an eighth on 2 and an eighth rest on its (&), an eighth rest on (3) and an eighth on its &, a quarter on 4",
-        "practice": "Practice eighths"
+        "practice": "Practice eighths",
+        "check": {
+          "question": "Two eighths fill beat 2. How do you count them?",
+          "a1": "2 &",
+          "a2": "2 3",
+          "a3": "& 2",
+          "right": "Right. The first eighth gets the beat number, the second the “&”, halfway to the next beat.",
+          "wrong": "Not quite. The first eighth starts on the beat itself; the second falls exactly halfway to the next beat."
+        }
       },
       "s2": {
         "title": "Sixteenths: 1 e & a",
@@ -1036,7 +1101,15 @@
         "twoEighth": "2 16ths + 8th",
         "mixedAlt": "One beat: an eighth and two sixteenths counted 1 & a; two sixteenths and an eighth counted 1 e &",
         "staffAlt": "A bar of 4/4: four sixteenths counted 1 e & a, two eighths on 2 &, an eighth and two sixteenths counted 3 & a, a quarter on 4",
-        "practice": "Practice sixteenths"
+        "practice": "Practice sixteenths",
+        "check": {
+          "question": "An eighth and then two sixteenths fill one beat. How do you count them?",
+          "a1": "1 e &",
+          "a2": "1 & a",
+          "a3": "1 e & a",
+          "right": "Right. The eighth lasts the first half of the beat, so the two sixteenths fall on the “&” and the “a”.",
+          "wrong": "Not quite. The eighth lasts half the beat, as long as two sixteenths. Which count does it hold through?"
+        }
       },
       "s3": {
         "title": "Beams show the beat",
@@ -1053,7 +1126,15 @@
         "quarters": "Quarters",
         "quartersText": "Never beamed: they have no flag to join.",
         "game": "In the game every beam covers one beat, so each beam starts on a beat.",
-        "practice": "Practice eighths and sixteenths"
+        "practice": "Practice eighths and sixteenths",
+        "check": {
+          "question": "Which of these notes are never beamed?",
+          "a1": "Eighths",
+          "a2": "Sixteenths",
+          "a3": "Quarters",
+          "right": "Right. A beam takes the place of flags, and a quarter note has no flag to join.",
+          "wrong": "Not quite. A beam takes the place of flags. Which of these notes has no flag?"
+        }
       },
       "quiz": {
         "question": "In 4/4, four eighths should never share one beam over…",
@@ -1074,7 +1155,15 @@
         "middleAlt": "A bar of 4/4: a quarter on 1, a quarter on 2 tied to a quarter on (3), a quarter on 4",
         "slur": "A curve between two different notes is a slur, not a tie: both notes are played, smoothly connected. On the one-line rhythm staff every curve is a tie.",
         "game": "In the game: press on the first note of a tie and keep holding through the second. Don’t press again on the tied note.",
-        "practice": "Practice ties"
+        "practice": "Practice ties",
+        "check": {
+          "question": "Two quarter notes of the same pitch are tied. What do you hear?",
+          "a1": "Two notes, one after the other",
+          "a2": "One note, 2 beats long",
+          "a3": "One note, 1 beat long",
+          "right": "Right. A tie joins the two notes into one sound that lasts as long as both together.",
+          "wrong": "Not quite. A tie joins notes of the same pitch. How many times does the sound start, and how long does it last?"
+        }
       },
       "s2": {
         "title": "Dotted notes",
@@ -1091,7 +1180,15 @@
         "dottedAlt": "A bar of 2/4: a dotted quarter on 1, held through (2), then an eighth on &",
         "count": "So a dot works like a tie: press once and hold through the extra time. A dotted half fills a bar of 3/4. A dotted quarter and an eighth is counted “1 (2) &”: hold through beat 2 and play the eighth on its “&”.",
         "countAlt": "Two bars of 4/4: a dotted half counted 1 (2 3) and a quarter on 4; then a dotted quarter on 1 (2), an eighth on &, and a half note on 3 (4)",
-        "practice": "Practice dotted notes"
+        "practice": "Practice dotted notes",
+        "check": {
+          "question": "How many beats does a dotted half note last?",
+          "a1": "2",
+          "a2": "2½",
+          "a3": "3",
+          "right": "Right. The dot adds half of the half note, 1 beat: 2 + 1 = 3. It fills a bar of 3/4.",
+          "wrong": "Not quite. A dot adds half of the note’s own value. A half note lasts 2 beats; what is half of that?"
+        }
       },
       "s3": {
         "title": "Dotted eighth and sixteenth",
@@ -1102,7 +1199,15 @@
         "sixteenths": "4 sixteenths",
         "gridAlt": "One beat, divided: two eighths counted 1 &; a dotted eighth and a sixteenth counted 1 (&) a; a sixteenth and a dotted eighth counted 1 e (&); four sixteenths counted 1 e & a",
         "staffAlt": "A bar of 4/4: a dotted eighth and a sixteenth on beat 1 and again on beat 2, counted 1 (&) a 2 (&) a, then quarters on 3 and 4",
-        "practice": "Practice dotted eighths"
+        "practice": "Practice dotted eighths",
+        "check": {
+          "question": "A dotted eighth and a sixteenth fill one beat. On which count does the sixteenth start?",
+          "a1": "e",
+          "a2": "&",
+          "a3": "a",
+          "right": "Right. The dotted eighth lasts ¾ of the beat, through the “&”, so the sixteenth comes on the “a”: 1 (&) a.",
+          "wrong": "Not quite. The dotted eighth lasts ¾ of the beat. Count 1 e & a and find where those ¾ end."
+        }
       },
       "quiz": {
         "question": "Which sounds exactly the same as a dotted quarter note?",
@@ -1127,7 +1232,15 @@
         "qhqTiedAlt": "A bar of 4/4: a quarter on 1, a quarter on 2 tied to a quarter on (3), a quarter on 4",
         "game": "The game writes it the second way, with the tie, so beat 3 stays visible. Turn on Ties in Practice to get syncopation.",
         "tip": "In the game: press on the “&” or the weak beat and keep holding through the next beat. A count in grey brackets gets no new press.",
-        "practice": "Practice syncopation"
+        "practice": "Practice syncopation",
+        "check": {
+          "question": "Quarter, half, quarter in 4/4. Why is the half note often written as two tied quarters?",
+          "a1": "To keep beat 3 visible",
+          "a2": "To make it sound shorter",
+          "a3": "So it is played twice",
+          "right": "Right. A half note on beat 2 hides the middle of the bar. Two tied quarters sound the same and show where beat 3 starts.",
+          "wrong": "Not quite. Both ways sound exactly the same. Think of the middle of a 4/4 bar (chapter 1.3)."
+        }
       },
       "quiz": {
         "question": "Eighth, quarter, eighth, starting on beat 1. Where does the quarter note start?",
@@ -1149,7 +1262,15 @@
         "staffAlt": "A bar of 4/4: triplet eighths marked 3, counted 1 trip let, a quarter on 2, triplet eighths counted 3 trip let, a quarter on 4",
         "compare": "Keep the beat steady: the triplet’s three notes are each a little shorter than an eighth, and the next beat comes at the same time as always.",
         "game": "In the game: turn on Triplets under Extras in Practice. Triplets are made of eighths, so keep eighth notes on too.",
-        "practice": "Practice triplets"
+        "practice": "Practice triplets",
+        "check": {
+          "question": "Three triplet eighths start on beat 1. How do you count them?",
+          "a1": "1 & a",
+          "a2": "1 e &",
+          "a3": "1 trip let",
+          "right": "Right. Three equal notes in one beat are counted “1 trip let”.",
+          "wrong": "Not quite. Those counts split the beat into two or four. A triplet splits it into three equal parts."
+        }
       },
       "quiz": {
         "question": "Three triplet eighths take the same time as…",
@@ -1206,7 +1327,12 @@
         "trebleText": "Its curl wraps the 2nd line: that line is G, the G above middle C.",
         "bassTitle": "Bass clef (F clef)",
         "bassText": "Its two dots sit around the 4th line: that line is F, the F below middle C.",
-        "landmarks": "Three landmark notes are worth knowing by heart: the G that the treble clef marks, the F that the bass clef marks, and middle C between them. Read any other note by stepping up or down from the nearest landmark."
+        "landmarks": "Three landmark notes are worth knowing by heart: the G that the treble clef marks, the F that the bass clef marks, and middle C between them. Read any other note by stepping up or down from the nearest landmark.",
+        "check": {
+          "question": "Which note does the bass clef mark on the 4th line?",
+          "right": "Right. The two dots of the bass clef sit around the 4th line: that line is F, the F below middle C.",
+          "wrong": "Not quite. The bass clef has a second name, after the note its two dots mark."
+        }
       },
       "s2": {
         "title": "Treble clef",
@@ -1215,7 +1341,12 @@
         "linesAlt": "Treble staff with notes on the five lines: {names}",
         "spacesAlt": "Treble staff with notes in the four spaces: {names}",
         "aid": "Memory aid: lines “Every Good Boy Does Fine”, spaces spell “FACE”.",
-        "practice": "Practice the treble clef"
+        "practice": "Practice the treble clef",
+        "check": {
+          "question": "Which note is in the lowest space of the treble staff?",
+          "right": "Right. The treble spaces spell FACE from the bottom, so the lowest space is F.",
+          "wrong": "Not quite. Use the memory aid for the treble spaces: they spell a word from the bottom up."
+        }
       },
       "s3": {
         "title": "Bass clef",
@@ -1224,7 +1355,12 @@
         "linesAlt": "Bass staff with notes on the five lines: {names}",
         "spacesAlt": "Bass staff with notes in the four spaces: {names}",
         "aid": "Memory aid: lines “Good Boys Do Fine Always”, spaces “All Cows Eat Grass”.",
-        "practice": "Practice the bass clef"
+        "practice": "Practice the bass clef",
+        "check": {
+          "question": "Which note is in the lowest space of the bass staff?",
+          "right": "Right. The bass spaces are A C E G from the bottom: “All Cows Eat Grass”.",
+          "wrong": "Not quite. Try the memory aid for the bass spaces, read from the bottom up."
+        }
       },
       "s4": {
         "title": "Middle C and ledger lines",
@@ -1233,14 +1369,27 @@
         "bassAlt": "Middle C on one ledger line above the bass staff",
         "ledgerAlt": "Treble staff with A3, B3 and C4 below the staff and A5, B5 and C6 above it, on ledger lines",
         "range": "In Read notes, the Range setting adds the notes on one or two ledger lines.",
-        "practice": "Practice with ledger lines"
+        "practice": "Practice with ledger lines",
+        "check": {
+          "question": "Where is middle C on the bass staff?",
+          "a1": "On one ledger line below it",
+          "a2": "On one ledger line above it",
+          "a3": "On the middle line",
+          "right": "Right. Middle C sits on one ledger line just above the bass staff, and just below the treble staff. It is the same note.",
+          "wrong": "Not quite. Middle C lies between the treble staff and the bass staff. From the bass staff, which way is that?"
+        }
       },
       "s5": {
         "title": "Two ways to name notes",
         "text": "Letter names and do re mi name the same notes. Here “do” is always C (fixed do).",
         "ti": "Some English-speaking teachers say “ti” instead of “si”; it is the same note.",
         "game": "While you play, switch the name buttons between do re mi and letters; the game remembers your choice.",
-        "practice": "Practice both clefs"
+        "practice": "Practice both clefs",
+        "check": {
+          "question": "Which letter name is “sol”?",
+          "right": "Right. do re mi fa sol is C D E F G, so sol is G.",
+          "wrong": "Not quite. Count up from do, which is C: do re mi fa sol."
+        }
       },
       "quiz": {
         "question": "Which note is on the middle line of the treble staff?",
@@ -1255,12 +1404,28 @@
         "text": "An octave has 7 white keys and 5 black keys. The black keys come in groups of two and three. C is the white key just left of the group of two.",
         "pianoAlt": "One piano octave: white keys C D E F G A B, and five black keys in a group of two and a group of three",
         "game": "In Read notes you can answer on this piano instead of with names.",
-        "practice": "Practice on the piano"
+        "practice": "Practice on the piano",
+        "check": {
+          "question": "How many black keys does one octave have?",
+          "a1": "5",
+          "a2": "7",
+          "a3": "12",
+          "right": "Right. 5 black keys, in a group of two and a group of three, beside the 7 white keys.",
+          "wrong": "Not quite. Count the black keys in the octave: a group of two and a group of three."
+        }
       },
       "s2": {
         "title": "Half steps and whole steps",
         "text": "A half step is the very next key, black or white. Between E and F, and between B and C, there is no black key, so those white keys are a half step apart. A whole step is two half steps: C to D, or E to F♯.",
-        "pianoAlt": "One piano octave with E and F, and B and C, marked: white keys a half step apart"
+        "pianoAlt": "One piano octave with E and F, and B and C, marked: white keys a half step apart",
+        "check": {
+          "question": "Which two white keys are only a half step apart?",
+          "a1": "C and D",
+          "a2": "E and F",
+          "a3": "F and G",
+          "right": "Right. There is no black key between E and F, so they are a half step apart. B and C are the other pair.",
+          "wrong": "Not quite. Look for two white keys with no black key between them."
+        }
       },
       "s3": {
         "title": "Sharp, flat and natural",
@@ -1269,7 +1434,12 @@
         "point3": "A natural ♮ cancels a sharp or flat: the plain white key again.",
         "text": "So each black key has two names: the key right of F is F♯, and also G♭. A sign can also land on a white key: E♯ is the key F, and C♭ is the key B.",
         "staffAlt": "Treble staff with F sharp, then B flat",
-        "practice": "Practice with extra sharps"
+        "practice": "Practice with extra sharps",
+        "check": {
+          "question": "Which key on the piano is C♭?",
+          "right": "Right. A flat lowers C a half step, to the very next key on the left. There is no black key there, so C♭ is the white key B.",
+          "wrong": "Not quite. A flat lowers a note a half step: to the very next key on the left, black or white."
+        }
       },
       "s4": {
         "title": "A sign lasts for the bar",
@@ -1277,7 +1447,12 @@
         "staffAlt": "Treble staff in C major with two bars: F sharp, then a plain F in the next bar",
         "after": "The bar line ends the sign, so the F in the next bar is a plain F again.",
         "game": "Read notes puts one note in each bar, so every sign you need is written next to its note.",
-        "practice": "Practice with sharps and flats"
+        "practice": "Practice with sharps and flats",
+        "check": {
+          "question": "A bar starts with F♯. Later in the same bar, an F on the same line has no sign. Which note is it?",
+          "right": "Right. The sharp holds for the rest of the bar on that line, so the second F is F♯ too. The bar line ends it.",
+          "wrong": "Not quite. A sign next to a note holds for more than that one note. How long does it last?"
+        }
       },
       "quiz": {
         "question": "Which other name does the black key F♯ have?",
@@ -1294,7 +1469,15 @@
         "text2": "In G major the sharp sits on the top line, but the low F in the bottom space is F♯ too.",
         "text4": "A sign next to a note wins over the key signature, but only until the next bar line:",
         "barAlt": "Treble staff in G major with three bars: F sharp, then F with a natural sign, then F sharp again in the next bar",
-        "practice": "Practice in G major"
+        "practice": "Practice in G major",
+        "check": {
+          "question": "How long does a key signature hold?",
+          "a1": "Until the next bar line",
+          "a2": "For the whole piece",
+          "a3": "Only in the octave where it is written",
+          "right": "Right. A key signature holds for every note on that line or space, in every octave, for the whole piece.",
+          "wrong": "Not quite. That is how a sign next to a note works (chapter 9.4). A key signature is written once and holds much longer."
+        }
       },
       "s2": {
         "title": "The order of sharps and flats",
@@ -1302,18 +1485,36 @@
         "sharpsAlt": "Treble staff with all seven sharps: F, C, G, D, A, E, B",
         "flatsAlt": "Treble staff with all seven flats: B, E, A, D, G, C, F",
         "start": "Start with the keys of up to three signs: G, D and A major with sharps, F, B♭ and E♭ major with flats. Then add the rest.",
-        "practice": "Practice D major and B♭ major"
+        "practice": "Practice D major and B♭ major",
+        "check": {
+          "question": "Which flat always comes first?",
+          "right": "Right. Flats come in the order B E A D G C F, the order of the sharps turned around, so B♭ is always first.",
+          "wrong": "Not quite. Flats come in the order of the sharps turned around. Look again at the two staves above."
+        }
       },
       "s3": {
         "title": "Naming the key",
         "point1": "Name the key from sharps: go one key up from the last sharp. Last sharp F♯ → G major.",
         "point2": "From flats: the second-to-last flat names the key. B♭ E♭ → B♭ major. One flat is F major.",
-        "practice": "Practice keys up to three signs"
+        "practice": "Practice keys up to three signs",
+        "check": {
+          "question": "The flats are B♭, E♭ and A♭. Which major key is it?",
+          "right": "Right. The second-to-last flat names the key: B♭ E♭ A♭ → E♭ major.",
+          "wrong": "Not quite. With flats it is not the last flat that names the key. Which one is it?"
+        }
       },
       "s4": {
         "title": "Major and minor",
         "point3": "Each key signature belongs to a major key and a minor key: G major and E minor share F♯. The notes read the same.",
-        "game": "The Key screen in Read notes shows both names for each key signature."
+        "game": "The Key screen in Read notes shows both names for each key signature.",
+        "check": {
+          "question": "Which minor key shares the key signature of G major, one F♯?",
+          "a1": "D minor",
+          "a2": "E minor",
+          "a3": "G minor",
+          "right": "Right. G major and E minor share one F♯. The notes read the same.",
+          "wrong": "Not quite. Each key signature belongs to one major and one minor key; this section names the pair for one sharp."
+        }
       },
       "quiz": {
         "question": "The last sharp is C♯. Which major key is it?",
@@ -1339,6 +1540,12 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_6_0": {
+      "title": "A quick check after every section",
+      "try": "Try chapter 1",
+      "checks": "Every section in Learn now ends with its own quick check: one question on what the section just explained. A wrong answer tells you what to look at again, so you can try once more.",
+      "read": "A section is marked read when you answer its quick check right, not when you scroll past it. Sections you had already read stay read."
+    },
     "v0_5_0": {
       "title": "A full course, from the first beat",
       "try": "Start chapter 1",

@@ -875,6 +875,7 @@
     "prev": "Vorige",
     "next": "Volgende",
     "check": "Snelle check",
+    "checkHint": "Beantwoord hem goed, dan is dit deel gelezen.",
     "ch1": {
       "intro": "Muziek beweegt op een vaste puls. Dit hoofdstuk laat zien hoe snel die puls gaat, hoe hij in maten wordt verdeeld, en waarom sommige tellen sterker voelen dan andere. Alle volgende hoofdstukken tellen in deze tellen.",
       "s1": {
@@ -902,7 +903,15 @@
         "prestoBpm": "168–200",
         "mark": "Soms staat het precieze tempo er als metronoomaanduiding: ♩ = 80 betekent 80 kwartnoot-tellen per minuut. De instelling Tempo bij Vrij oefenen werkt net zo.",
         "game": "In het spel: het voortellen tikt één maat tellen in het tempo van de oefening, zodat je de puls voelt vóór de eerste noot. In de modus Echo hoor je eerst een ritme en tik je het daarna na zonder noten.",
-        "practice": "Oefen in een vast tempo"
+        "practice": "Oefen in een vast tempo",
+        "check": {
+          "question": "Hoeveel tellen komen er bij 120 BPM in één seconde?",
+          "a1": "2",
+          "a2": "4",
+          "a3": "120",
+          "right": "Goed. 120 tellen in een minuut van 60 seconden is elke seconde 2 tellen.",
+          "wrong": "Niet helemaal. BPM telt de tellen in één minuut, en een minuut heeft 60 seconden."
+        }
       },
       "s2": {
         "title": "Maten en maatsoorten",
@@ -920,14 +929,30 @@
         "common": "C staat voor 4/4: een andere manier om het te schrijven",
         "commonAlt": "Een maat met de maatsoort C: twee kwartnoten en een halve noot, geteld 1 2 3 (4)",
         "simple": "Zo werken 2/4, 3/4 en 4/4, de maatsoorten die het spel gebruikt. Andere, zoals 6/8, tellen anders.",
-        "practice": "Oefen in 2/4, 3/4 en 4/4"
+        "practice": "Oefen in 2/4, 3/4 en 4/4",
+        "check": {
+          "question": "Voor welke maatsoort staat een C aan het begin van de balk?",
+          "a1": "2/4",
+          "a2": "3/4",
+          "a3": "4/4",
+          "right": "Goed. C is een andere manier om 4/4 te schrijven.",
+          "wrong": "Niet helemaal. Kijk naar het laatste voorbeeld van dit deel: C is een andere manier om een van deze maatsoorten te schrijven."
+        }
       },
       "s3": {
         "title": "Zware en lichte tellen",
         "text": "De tellen in een maat zijn niet gelijk. Tel 1, de eerste tel, is de zwaarste. Elke maatsoort heeft zijn eigen patroon van zware en lichte tellen:",
         "middle": "In 4/4 is tel 3 halfzwaar: lichter dan tel 1, zwaarder dan tel 2 en 4. Hij markeert het midden van de maat, dat de volgende hoofdstukken zichtbaar houden bij rusten, balken en overbindingen.",
         "game": "In het spel: zet de metronoom onder Meer opties op Tel 1, dan tikt hij alleen op de eerste tel. De andere tellen houd je zelf bij.",
-        "practice": "Oefen tel 1 voelen"
+        "practice": "Oefen tel 1 voelen",
+        "check": {
+          "question": "Welke tel is in 4/4 halfzwaar: lichter dan tel 1, zwaarder dan de rest?",
+          "a1": "2",
+          "a2": "3",
+          "a3": "4",
+          "right": "Goed. Tel 3 markeert het midden van de maat, dus hij is zwaarder dan tel 2 en 4.",
+          "wrong": "Niet helemaal. De halfzware tel markeert het midden van de maat."
+        }
       },
       "quiz": {
         "question": "Hoeveel tellen heeft een maat 3/4?",
@@ -953,12 +978,28 @@
         "beamsText": "Vlaggen worden dikke strepen die noten verbinden, één groep per tel (hoofdstuk 4).",
         "staffAlt": "Twee maten 4/4: twee kwartnoten en een halve noot geteld 1 2 3 (4), dan een hele noot geteld 1 (2 3 4)",
         "game": "In het spel: druk als een noot begint en houd vast zo lang hij duurt. Een halve noot duurt twee tikken, een hele noot vier.",
-        "practice": "Oefen hele, halve en kwartnoten"
+        "practice": "Oefen hele, halve en kwartnoten",
+        "check": {
+          "question": "Een gevuld nootkopje met een steel en twee vlaggen is…",
+          "a1": "Een zestiende (¼ tel)",
+          "a2": "Een achtste (½ tel)",
+          "a3": "Een halve noot (2 tellen)",
+          "right": "Goed. Elke vlag halveert de noot: één vlag is een achtste, twee vlaggen een zestiende.",
+          "wrong": "Niet helemaal. Begin bij de kwartnoot en tel de vlaggen: elke vlag halveert de noot."
+        }
       },
       "s2": {
         "title": "De notenboom",
         "text": "De notenboom vat het samen. Elke rij vult één maat 4/4, en elke rij heeft twee keer zoveel noten als de rij erboven:",
-        "after": "Elke notenwaarde heeft een rust van dezelfde lengte. Zet de boom op Rusten om ze te zien; hoofdstuk 3 legt ze uit."
+        "after": "Elke notenwaarde heeft een rust van dezelfde lengte. Zet de boom op Rusten om ze te zien; hoofdstuk 3 legt ze uit.",
+        "check": {
+          "question": "Hoeveel zestienden vullen één maat 4/4?",
+          "a1": "4",
+          "a2": "8",
+          "a3": "16",
+          "right": "Goed. Elke rij van de boom verdubbelt die erboven: 1 hele, 2 halve, 4 kwartnoten, 8 achtsten, 16 zestienden.",
+          "wrong": "Niet helemaal. Elke rij van de boom heeft twee keer zoveel noten als de rij erboven. Begin bij 4 kwartnoten en blijf verdubbelen."
+        }
       },
       "quiz": {
         "question": "Hoeveel achtste noten passen in één halve noot?",
@@ -989,7 +1030,15 @@
         "count": "Blijf door elke rust heen tellen. Stille tellen staan tussen grijze haakjes:",
         "countAlt": "Een maat 4/4: een kwartnoot op 1, een kwartrust op (2), een kwartnoot op 3, een kwartrust op (4); dan een halve rust op (1 2) en een halve noot op 3 (4)",
         "game": "In het spel: laat los als een noot afloopt en blijf eraf tijdens de rust. Met Houd noten vast zo lang ze duren aan, zoals in het Leerpad vanaf hoofdstuk 2, telt ook het moment van loslaten mee.",
-        "practice": "Oefen rusten"
+        "practice": "Oefen rusten",
+        "check": {
+          "question": "Welke rust hangt op de balk met één lijn in het spel onder de lijn?",
+          "a1": "De hele rust",
+          "a2": "De halve rust",
+          "a3": "De kwartrust",
+          "right": "Goed. De hele rust hangt onder de lijn en de halve rust staat erop: de plaats maakt het verschil.",
+          "wrong": "Niet helemaal. Twee van de rusten zijn hetzelfde blokje, en alleen de plaats maakt het verschil. Kijk nog eens naar de balk met één lijn hierboven."
+        }
       },
       "s2": {
         "title": "Rusten goed schrijven",
@@ -1003,7 +1052,15 @@
         "dotted": "Een punt maakt een rust de helft langer, net als bij een noot (hoofdstuk 5). In 2/4, 3/4 en 4/4 gebruik je een gepunteerde rust alleen als hij korter is dan één tel, zoals een gepunteerde achtste rust (¾ tel). Een langere stilte schrijf je als losse rusten die de tellen laten zien:",
         "dottedAlt": "Een maat 4/4: een gepunteerde achtste rust, een zestiende op de a van tel 1, een kwartnoot op 2, een kwartrust op (3), een achtste rust op (4) en een achtste noot op de en daarvan",
         "noTie": "Rusten worden nooit overgebonden. Een overbinding maakt van twee noten één klank; stilte hoeft niet verbonden te worden, rusten na elkaar tellen gewoon op.",
-        "practice": "Oefen rusten lezen"
+        "practice": "Oefen rusten lezen",
+        "check": {
+          "question": "In 4/4 zijn tel 2 en 3 stil. Hoe schrijf je dat?",
+          "a1": "Eén halve rust op tel 2",
+          "a2": "Twee kwartrusten",
+          "a3": "Een gepunteerde kwartrust",
+          "right": "Goed. Twee kwartrusten houden het midden van de maat, tel 3, zichtbaar. Een halve rust begint alleen op tel 1 of tel 3.",
+          "wrong": "Niet helemaal. In 4/4 moet het midden van de maat, tel 3, zichtbaar blijven. Welke manier laat zien waar tel 3 begint?"
+        }
       },
       "quiz": {
         "question": "Een maat 3/4 is helemaal stil. Hoe schrijf je dat?",
@@ -1022,7 +1079,15 @@
         "staffAlt": "Een maat 4/4: vier achtsten geteld 1 en 2 en, dan kwartnoten op 3 en 4",
         "rest": "Een achtste rust vult op dezelfde manier een halve tel. Tel hem ook, in stilte:",
         "restAlt": "Een maat 4/4: een kwartnoot op 1, een achtste op 2 en een achtste rust op de (en), een achtste rust op (3) en een achtste op de en, een kwartnoot op 4",
-        "practice": "Oefen achtsten"
+        "practice": "Oefen achtsten",
+        "check": {
+          "question": "Twee achtsten vullen tel 2. Hoe tel je ze?",
+          "a1": "2 en",
+          "a2": "2 3",
+          "a3": "en 2",
+          "right": "Goed. De eerste achtste krijgt het nummer van de tel, de tweede de “en”, halverwege naar de volgende tel.",
+          "wrong": "Niet helemaal. De eerste achtste begint op de tel zelf; de tweede valt precies halverwege naar de volgende tel."
+        }
       },
       "s2": {
         "title": "Zestienden: 1 e en a",
@@ -1036,7 +1101,15 @@
         "twoEighth": "2 16en + 8e",
         "mixedAlt": "Eén tel: een achtste en twee zestienden geteld 1 en a; twee zestienden en een achtste geteld 1 e en",
         "staffAlt": "Een maat 4/4: vier zestienden geteld 1 e en a, twee achtsten op 2 en, een achtste en twee zestienden geteld 3 en a, een kwartnoot op 4",
-        "practice": "Oefen zestienden"
+        "practice": "Oefen zestienden",
+        "check": {
+          "question": "Een achtste en dan twee zestienden vullen één tel. Hoe tel je ze?",
+          "a1": "1 e en",
+          "a2": "1 en a",
+          "a3": "1 e en a",
+          "right": "Goed. De achtste duurt de eerste helft van de tel, dus de twee zestienden vallen op de “en” en de “a”.",
+          "wrong": "Niet helemaal. De achtste duurt een halve tel, even lang als twee zestienden. Door welke tel houdt hij vast?"
+        }
       },
       "s3": {
         "title": "Balken tonen de tel",
@@ -1053,7 +1126,15 @@
         "quarters": "Kwartnoten",
         "quartersText": "Nooit met een balk: ze hebben geen vlag om te verbinden.",
         "game": "In het spel loopt elke balk over één tel, dus elke balk begint op een tel.",
-        "practice": "Oefen achtsten en zestienden"
+        "practice": "Oefen achtsten en zestienden",
+        "check": {
+          "question": "Welke van deze noten krijgen nooit een balk?",
+          "a1": "Achtsten",
+          "a2": "Zestienden",
+          "a3": "Kwartnoten",
+          "right": "Goed. Een balk komt in de plaats van vlaggen, en een kwartnoot heeft geen vlag om te verbinden.",
+          "wrong": "Niet helemaal. Een balk komt in de plaats van vlaggen. Welke van deze noten heeft geen vlag?"
+        }
       },
       "quiz": {
         "question": "In 4/4 delen vier achtsten nooit één balk over…",
@@ -1074,7 +1155,15 @@
         "middleAlt": "Een maat 4/4: een kwartnoot op 1, een kwartnoot op 2 overgebonden naar een kwartnoot op (3), een kwartnoot op 4",
         "slur": "Een boogje tussen twee verschillende noten is een legatoboog, geen overbinding: je speelt beide noten, mooi aan elkaar. Op de ritmebalk met één lijn is elk boogje een overbinding.",
         "game": "In het spel: druk op de eerste noot van een overbinding en houd vast door de tweede heen. Druk niet opnieuw op de overgebonden noot.",
-        "practice": "Oefen overbindingen"
+        "practice": "Oefen overbindingen",
+        "check": {
+          "question": "Twee kwartnoten van dezelfde toonhoogte zijn overgebonden. Wat hoor je?",
+          "a1": "Twee noten na elkaar",
+          "a2": "Eén noot van 2 tellen",
+          "a3": "Eén noot van 1 tel",
+          "right": "Goed. Een overbinding maakt van de twee noten één klank die zo lang duurt als beide samen.",
+          "wrong": "Niet helemaal. Een overbinding verbindt noten van dezelfde toonhoogte. Hoe vaak begint de klank, en hoe lang duurt hij?"
+        }
       },
       "s2": {
         "title": "Gepunteerde noten",
@@ -1091,7 +1180,15 @@
         "dottedAlt": "Een maat 2/4: een gepunteerde kwartnoot op 1, doorgehouden tot en met (2), dan een achtste op en",
         "count": "Een punt werkt dus als een overbinding: druk één keer en houd vast tijdens de extra tijd. Een gepunteerde halve vult een maat 3/4. Een gepunteerde kwartnoot met een achtste tel je “1 (2) en”: houd vast door tel 2 en speel de achtste op de “en”.",
         "countAlt": "Twee maten 4/4: een gepunteerde halve geteld 1 (2 3) en een kwartnoot op 4; dan een gepunteerde kwartnoot op 1 (2), een achtste op en, en een halve noot op 3 (4)",
-        "practice": "Oefen gepunteerde noten"
+        "practice": "Oefen gepunteerde noten",
+        "check": {
+          "question": "Hoeveel tellen duurt een gepunteerde halve noot?",
+          "a1": "2",
+          "a2": "2½",
+          "a3": "3",
+          "right": "Goed. De punt voegt de helft van de halve noot toe, 1 tel: 2 + 1 = 3. Hij vult een maat 3/4.",
+          "wrong": "Niet helemaal. Een punt voegt de helft van de eigen waarde van de noot toe. Een halve noot duurt 2 tellen; wat is daar de helft van?"
+        }
       },
       "s3": {
         "title": "Gepunteerde achtste en zestiende",
@@ -1102,7 +1199,15 @@
         "sixteenths": "4 zestienden",
         "gridAlt": "Eén tel, verdeeld: twee achtsten geteld 1 en; een gepunteerde achtste en een zestiende geteld 1 (en) a; een zestiende en een gepunteerde achtste geteld 1 e (en); vier zestienden geteld 1 e en a",
         "staffAlt": "Een maat 4/4: een gepunteerde achtste en een zestiende op tel 1 en opnieuw op tel 2, geteld 1 (en) a 2 (en) a, dan kwartnoten op 3 en 4",
-        "practice": "Oefen gepunteerde achtsten"
+        "practice": "Oefen gepunteerde achtsten",
+        "check": {
+          "question": "Een gepunteerde achtste en een zestiende vullen één tel. Op welke tel begint de zestiende?",
+          "a1": "e",
+          "a2": "en",
+          "a3": "a",
+          "right": "Goed. De gepunteerde achtste duurt ¾ van de tel, door de “en” heen, dus de zestiende komt op de “a”: 1 (en) a.",
+          "wrong": "Niet helemaal. De gepunteerde achtste duurt ¾ van de tel. Tel 1 e en a en zoek waar die ¾ ophouden."
+        }
       },
       "quiz": {
         "question": "Wat klinkt precies hetzelfde als een gepunteerde kwartnoot?",
@@ -1127,7 +1232,15 @@
         "qhqTiedAlt": "Een maat 4/4: een kwartnoot op 1, een kwartnoot op 2 overgebonden naar een kwartnoot op (3), een kwartnoot op 4",
         "game": "Het spel schrijft het op de tweede manier, met de overbinding, zodat tel 3 zichtbaar blijft. Zet Overbindingen aan bij Vrij oefenen om syncopen te krijgen.",
         "tip": "In het spel: druk op de “en” of de lichte tel en houd vast door de volgende tel heen. Een tel tussen grijze haakjes krijgt geen nieuwe druk.",
-        "practice": "Oefen syncopen"
+        "practice": "Oefen syncopen",
+        "check": {
+          "question": "Kwartnoot, halve noot, kwartnoot in 4/4. Waarom schrijf je de halve noot vaak als twee overgebonden kwartnoten?",
+          "a1": "Zodat tel 3 zichtbaar blijft",
+          "a2": "Zodat hij korter klinkt",
+          "a3": "Zodat je hem twee keer speelt",
+          "right": "Goed. Een halve noot op tel 2 verbergt het midden van de maat. Twee overgebonden kwartnoten klinken hetzelfde en laten zien waar tel 3 begint.",
+          "wrong": "Niet helemaal. Beide manieren klinken precies hetzelfde. Denk aan het midden van een maat 4/4 (hoofdstuk 1.3)."
+        }
       },
       "quiz": {
         "question": "Achtste, kwartnoot, achtste, vanaf tel 1. Waar begint de kwartnoot?",
@@ -1149,7 +1262,15 @@
         "staffAlt": "Een maat 4/4: triool-achtsten met een 3, geteld 1 trip let, een kwartnoot op 2, triool-achtsten geteld 3 trip let, een kwartnoot op 4",
         "compare": "Houd de tel gelijk: de drie noten van de triool zijn elk iets korter dan een achtste, en de volgende tel komt op hetzelfde moment als altijd.",
         "game": "In het spel: zet Triolen aan onder Extra’s bij Vrij oefenen. Triolen bestaan uit achtsten, dus laat achtste noten ook aan staan.",
-        "practice": "Oefen triolen"
+        "practice": "Oefen triolen",
+        "check": {
+          "question": "Drie triool-achtsten beginnen op tel 1. Hoe tel je ze?",
+          "a1": "1 en a",
+          "a2": "1 e en",
+          "a3": "1 trip let",
+          "right": "Goed. Drie gelijke noten in één tel tel je “1 trip let”.",
+          "wrong": "Niet helemaal. Die tellingen verdelen de tel in twee of vier. Een triool verdeelt hem in drie gelijke delen."
+        }
       },
       "quiz": {
         "question": "Drie triool-achtsten duren even lang als…",
@@ -1206,7 +1327,12 @@
         "trebleText": "De krul draait om de 2e lijn: die lijn is G, de G boven de centrale C.",
         "bassTitle": "Bassleutel (F-sleutel)",
         "bassText": "De twee puntjes staan om de 4e lijn: die lijn is F, de F onder de centrale C.",
-        "landmarks": "Drie herkenningsnoten zijn het waard om uit je hoofd te kennen: de G die de vioolsleutel aangeeft, de F die de bassleutel aangeeft, en de centrale C daartussen. Lees elke andere noot door vanaf de dichtstbijzijnde herkenningsnoot omhoog of omlaag te tellen."
+        "landmarks": "Drie herkenningsnoten zijn het waard om uit je hoofd te kennen: de G die de vioolsleutel aangeeft, de F die de bassleutel aangeeft, en de centrale C daartussen. Lees elke andere noot door vanaf de dichtstbijzijnde herkenningsnoot omhoog of omlaag te tellen.",
+        "check": {
+          "question": "Welke noot geeft de bassleutel aan op de 4e lijn?",
+          "right": "Goed. De twee puntjes van de bassleutel staan om de 4e lijn: die lijn is F, de F onder de centrale C.",
+          "wrong": "Niet helemaal. De bassleutel heeft nog een naam, naar de noot die zijn twee puntjes aangeven."
+        }
       },
       "s2": {
         "title": "Vioolsleutel",
@@ -1215,7 +1341,12 @@
         "linesAlt": "Notenbalk met vioolsleutel en noten op de vijf lijnen: {names}",
         "spacesAlt": "Notenbalk met vioolsleutel en noten in de vier tussenruimtes: {names}",
         "aid": "Om te onthouden: de lijnen zijn E G B D F, de tussenruimtes spellen “FACE”.",
-        "practice": "Oefen de vioolsleutel"
+        "practice": "Oefen de vioolsleutel",
+        "check": {
+          "question": "Welke noot staat in de onderste tussenruimte van de balk met vioolsleutel?",
+          "right": "Goed. De tussenruimtes bij de vioolsleutel spellen van onder “FACE”, dus de onderste is F.",
+          "wrong": "Niet helemaal. Gebruik het ezelsbruggetje voor de tussenruimtes: ze spellen van onder naar boven een woord."
+        }
       },
       "s3": {
         "title": "Bassleutel",
@@ -1224,7 +1355,12 @@
         "linesAlt": "Notenbalk met bassleutel en noten op de vijf lijnen: {names}",
         "spacesAlt": "Notenbalk met bassleutel en noten in de vier tussenruimtes: {names}",
         "aid": "Om te onthouden: de lijnen zijn G B D F A, de tussenruimtes A C E G.",
-        "practice": "Oefen de bassleutel"
+        "practice": "Oefen de bassleutel",
+        "check": {
+          "question": "Welke noot staat in de onderste tussenruimte van de balk met bassleutel?",
+          "right": "Goed. De tussenruimtes bij de bassleutel zijn van onder A C E G.",
+          "wrong": "Niet helemaal. Gebruik het ezelsbruggetje voor de tussenruimtes bij de bassleutel, van onder naar boven."
+        }
       },
       "s4": {
         "title": "De centrale C en hulplijnen",
@@ -1233,14 +1369,27 @@
         "bassAlt": "Centrale C op één hulplijn boven de balk met bassleutel",
         "ledgerAlt": "Notenbalk met vioolsleutel, met A3, B3 en C4 onder de balk en A5, B5 en C6 erboven, op hulplijnen",
         "range": "Bij Noten lezen voegt de instelling Bereik de noten op één of twee hulplijnen toe.",
-        "practice": "Oefen met hulplijnen"
+        "practice": "Oefen met hulplijnen",
+        "check": {
+          "question": "Waar staat de centrale C bij de bassleutel?",
+          "a1": "Op één hulplijn onder de balk",
+          "a2": "Op één hulplijn boven de balk",
+          "a3": "Op de middelste lijn",
+          "right": "Goed. De centrale C staat op één hulplijn net boven de balk met bassleutel, en net onder de balk met vioolsleutel. Het is dezelfde noot.",
+          "wrong": "Niet helemaal. De centrale C ligt tussen de balk met vioolsleutel en de balk met bassleutel. Welke kant is dat vanaf de bassleutel?"
+        }
       },
       "s5": {
         "title": "Twee manieren om noten te noemen",
         "text": "Letternamen en do re mi noemen dezelfde noten. Hier is “do” altijd C (vaste do).",
         "ti": "In Engelstalige lessen hoor je soms “ti” in plaats van “si”; het is dezelfde noot.",
         "game": "Tijdens het spelen kun je de naamknoppen wisselen tussen do re mi en letters; het spel onthoudt je keuze.",
-        "practice": "Oefen beide sleutels"
+        "practice": "Oefen beide sleutels",
+        "check": {
+          "question": "Welke letternaam is “sol”?",
+          "right": "Goed. do re mi fa sol is C D E F G, dus sol is G.",
+          "wrong": "Niet helemaal. Tel omhoog vanaf do, en do is C: do re mi fa sol."
+        }
       },
       "quiz": {
         "question": "Welke noot staat op de middelste lijn van de balk met vioolsleutel?",
@@ -1255,12 +1404,28 @@
         "text": "Een octaaf heeft 7 witte en 5 zwarte toetsen. De zwarte toetsen staan in groepjes van twee en drie. C is de witte toets net links van het groepje van twee.",
         "pianoAlt": "Eén pianooctaaf: witte toetsen C D E F G A B, en vijf zwarte toetsen in een groepje van twee en een groepje van drie",
         "game": "Bij Noten lezen kun je op deze piano antwoorden in plaats van met namen.",
-        "practice": "Oefen op de piano"
+        "practice": "Oefen op de piano",
+        "check": {
+          "question": "Hoeveel zwarte toetsen heeft één octaaf?",
+          "a1": "5",
+          "a2": "7",
+          "a3": "12",
+          "right": "Goed. 5 zwarte toetsen, in een groepje van twee en een groepje van drie, naast de 7 witte.",
+          "wrong": "Niet helemaal. Tel de zwarte toetsen in het octaaf: een groepje van twee en een groepje van drie."
+        }
       },
       "s2": {
         "title": "Halve en hele toonafstanden",
         "text": "Een halve toonafstand is de eerstvolgende toets, zwart of wit. Tussen E en F, en tussen B en C, zit geen zwarte toets, dus die witte toetsen liggen een halve toon uit elkaar. Een hele toonafstand is twee halve: C naar D, of E naar F♯.",
-        "pianoAlt": "Eén pianooctaaf met E en F, en B en C, gemarkeerd: witte toetsen een halve toon uit elkaar"
+        "pianoAlt": "Eén pianooctaaf met E en F, en B en C, gemarkeerd: witte toetsen een halve toon uit elkaar",
+        "check": {
+          "question": "Welke twee witte toetsen liggen maar een halve toon uit elkaar?",
+          "a1": "C en D",
+          "a2": "E en F",
+          "a3": "F en G",
+          "right": "Goed. Tussen E en F zit geen zwarte toets, dus ze liggen een halve toon uit elkaar. B en C zijn het andere paar.",
+          "wrong": "Niet helemaal. Zoek twee witte toetsen zonder zwarte toets ertussen."
+        }
       },
       "s3": {
         "title": "Kruis, mol en herstellingsteken",
@@ -1269,7 +1434,12 @@
         "point3": "Een herstellingsteken ♮ heft een kruis of mol op: weer de gewone witte toets.",
         "text": "Zo heeft elke zwarte toets twee namen: de toets rechts van F is F♯ (fis), en ook G♭ (ges). Een teken kan ook op een witte toets uitkomen: E♯ is de toets F, en C♭ is de toets B.",
         "staffAlt": "Notenbalk met vioolsleutel met fis, dan bes",
-        "practice": "Oefen met extra kruisen"
+        "practice": "Oefen met extra kruisen",
+        "check": {
+          "question": "Welke toets op de piano is C♭?",
+          "right": "Goed. Een mol verlaagt C een halve toon, naar de eerstvolgende toets links. Daar zit geen zwarte toets, dus C♭ is de witte toets B.",
+          "wrong": "Niet helemaal. Een mol verlaagt een noot een halve toon: naar de eerstvolgende toets links, zwart of wit."
+        }
       },
       "s4": {
         "title": "Een teken geldt de hele maat",
@@ -1277,7 +1447,12 @@
         "staffAlt": "Notenbalk met vioolsleutel in C majeur met twee maten: fis, dan een gewone F in de volgende maat",
         "after": "De maatstreep beëindigt het teken, dus de F in de volgende maat is weer een gewone F.",
         "game": "Noten lezen zet één noot in elke maat, dus elk teken dat je nodig hebt staat voor de eigen noot.",
-        "practice": "Oefen met kruisen en mollen"
+        "practice": "Oefen met kruisen en mollen",
+        "check": {
+          "question": "Een maat begint met F♯. Verderop in dezelfde maat staat een F op dezelfde lijn zonder teken. Welke noot is dat?",
+          "right": "Goed. Het kruis geldt de rest van de maat op die lijn, dus de tweede F is ook F♯. De maatstreep maakt er een eind aan.",
+          "wrong": "Niet helemaal. Een teken voor een noot geldt voor meer dan alleen die ene noot. Hoe lang geldt het?"
+        }
       },
       "quiz": {
         "question": "Welke andere naam heeft de zwarte toets F♯?",
@@ -1294,7 +1469,15 @@
         "text2": "In G majeur staat het kruis op de bovenste lijn, maar de lage F in de onderste tussenruimte is ook een F♯.",
         "text4": "Een teken voor een noot gaat boven de voortekening, maar alleen tot de volgende maatstreep:",
         "barAlt": "Notenbalk met vioolsleutel in G majeur met drie maten: fis, dan F met een herstellingsteken, dan weer fis in de volgende maat",
-        "practice": "Oefen in G majeur"
+        "practice": "Oefen in G majeur",
+        "check": {
+          "question": "Hoe lang geldt een voortekening?",
+          "a1": "Tot de volgende maatstreep",
+          "a2": "Het hele stuk",
+          "a3": "Alleen in het octaaf waar hij staat",
+          "right": "Goed. Een voortekening geldt voor elke noot op die lijn of in die tussenruimte, in elk octaaf, het hele stuk lang.",
+          "wrong": "Niet helemaal. Zo werkt een teken voor een noot (hoofdstuk 9.4). Een voortekening schrijf je één keer en geldt veel langer."
+        }
       },
       "s2": {
         "title": "De volgorde van kruisen en mollen",
@@ -1302,18 +1485,36 @@
         "sharpsAlt": "Notenbalk met vioolsleutel en alle zeven kruisen: F, C, G, D, A, E, B",
         "flatsAlt": "Notenbalk met vioolsleutel en alle zeven mollen: B, E, A, D, G, C, F",
         "start": "Begin met de toonsoorten tot drie tekens: G, D en A majeur met kruisen, F, B♭ en E♭ majeur met mollen. Voeg daarna de rest toe.",
-        "practice": "Oefen D majeur en B♭ majeur"
+        "practice": "Oefen D majeur en B♭ majeur",
+        "check": {
+          "question": "Welke mol komt altijd als eerste?",
+          "right": "Goed. Mollen komen in de volgorde B E A D G C F, de volgorde van de kruisen omgedraaid, dus B♭ is altijd de eerste.",
+          "wrong": "Niet helemaal. Mollen komen in de volgorde van de kruisen, omgedraaid. Kijk nog eens naar de twee balken hierboven."
+        }
       },
       "s3": {
         "title": "De toonsoort benoemen",
         "point1": "Toonsoort bij kruisen: ga één toets omhoog vanaf het laatste kruis. Laatste kruis F♯ → G majeur.",
         "point2": "Bij mollen: de op één na laatste mol noemt de toonsoort. B♭ E♭ → B♭ majeur. Eén mol is F majeur.",
-        "practice": "Oefen toonsoorten tot drie tekens"
+        "practice": "Oefen toonsoorten tot drie tekens",
+        "check": {
+          "question": "De mollen zijn B♭, E♭ en A♭. Welke majeurtoonsoort is het?",
+          "right": "Goed. De op één na laatste mol noemt de toonsoort: B♭ E♭ A♭ → E♭ majeur.",
+          "wrong": "Niet helemaal. Bij mollen noemt niet de laatste mol de toonsoort. Welke dan wel?"
+        }
       },
       "s4": {
         "title": "Majeur en mineur",
         "point3": "Elke voortekening hoort bij een majeur- en een mineurtoonsoort: G majeur en E mineur delen F♯. De noten lees je hetzelfde.",
-        "game": "Het scherm Toonsoort bij Noten lezen toont beide namen voor elke voortekening."
+        "game": "Het scherm Toonsoort bij Noten lezen toont beide namen voor elke voortekening.",
+        "check": {
+          "question": "Welke mineurtoonsoort heeft dezelfde voortekening als G majeur, één F♯?",
+          "a1": "D mineur",
+          "a2": "E mineur",
+          "a3": "G mineur",
+          "right": "Goed. G majeur en E mineur delen één F♯. De noten lees je hetzelfde.",
+          "wrong": "Niet helemaal. Elke voortekening hoort bij één majeur- en één mineurtoonsoort; dit deel noemt het paar bij één kruis."
+        }
       },
       "quiz": {
         "question": "Het laatste kruis is C♯. Welke majeurtoonsoort is het?",
@@ -1339,6 +1540,12 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_6_0": {
+      "title": "Een snelle check na elk deel",
+      "try": "Probeer hoofdstuk 1",
+      "checks": "Elk deel in Leren eindigt nu met een eigen snelle check: één vraag over wat het deel net uitlegde. Bij een fout antwoord zie je waar je nog eens naar moet kijken, en probeer je het opnieuw.",
+      "read": "Een deel is gelezen als je de snelle check goed beantwoordt, niet als je erlangs scrolt. Delen die je al gelezen had, blijven gelezen."
+    },
     "v0_5_0": {
       "title": "Een volledige cursus, vanaf de eerste tel",
       "try": "Begin hoofdstuk 1",

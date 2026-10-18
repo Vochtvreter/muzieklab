@@ -244,12 +244,38 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('learn: a section is read once its quick check is answered right', async ({ page }) => {
+      known(name, 'learn-check');
+      await page.goto('./#/learn/2?s=2.1');
+      const check = page.getByRole('group', { name: /^A filled note head with a stem and two flags/ });
+      await expect(check.getByText('Answer it right to mark this section read.')).toBeVisible();
+      // A wrong answer gives a hint, not the answer, and the section stays unread.
+      await expectClickable(check.getByRole('button', { name: 'An eighth (½ beat)' }));
+      await check.getByRole('button', { name: 'An eighth (½ beat)' }).click();
+      await expect(check.getByRole('status')).toHaveText(/^Not quite\. Start from the quarter note/);
+      await expect(check.locator('.learn-answer.is-right')).toHaveCount(0);
+      await expect(check.getByText('✓ read')).toHaveCount(0);
+      await check.getByRole('button', { name: 'A sixteenth (¼ beat)' }).click();
+      await expect(check.getByRole('status')).toHaveText(/^Right\. Each flag halves the note/);
+      await expect(check.getByText('✓ read')).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: 'Practice whole, half and quarter notes →' }));
+      await expectNoSideScroll(page);
+
+      // The Learn tab counts it; 2.2 is still unread.
+      await page.goto('./#/learn');
+      await page.getByRole('button', { name: /^2\s*Note values/ }).click();
+      await expect(page.getByRole('link', { name: /^2\.1.*✓ read/ })).toBeVisible();
+      await expect(page.getByRole('link', { name: /^2\.2/ })).not.toContainText('✓ read');
+      await expect(page.getByText(`1 / ${CHAPTERS.flatMap((c) => c.sections).length} sections`)).toBeVisible();
+    });
+
     test('learn: every chapter fits, with its practice links reachable', async ({ page }) => {
       known(name, 'learn-all');
       for (const c of CHAPTERS) {
         await page.goto(`./#/learn/${c.n}`);
         await expect(page.getByRole('heading', { level: 1 })).toContainText(String(c.n));
         await expect(page.locator('.learn-section')).toHaveCount(c.sections.length);
+        await expect(page.locator('.learn-check--section')).toHaveCount(c.sections.length);
         await expect(page.locator('.learn-practice')).toHaveCount(c.sections.filter((s) => s.practice).length);
         await expectNoSideScroll(page);
         if (c.sections.some((s) => s.practice)) await expectClickable(page.locator('.learn-practice').last());

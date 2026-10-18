@@ -228,7 +228,8 @@ What this means for the chapters:
 ## 3. Proposed rhythm chapters (1–7)
 
 Each row keeps the canvas's chapter page layout: intro, sections with counted notation, an *In the game* tip, a
-*Practice* link, a quick check, previous / next. **New** marks content the boards do not have yet; it needs a board
+*Practice* link, a quick check, previous / next. Since 0.6.0 every section also ends with its own quick check, which
+marks it read (`chapters.ts`; no board yet). **New** marks content the boards do not have yet; it needs a board
 before it is built (CLAUDE.md, *Designs first*).
 
 ### Chapter 1 · Pulse and meter — Path units 1, 3, 5

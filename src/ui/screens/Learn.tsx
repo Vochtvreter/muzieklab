@@ -1,19 +1,20 @@
 /**
  * Learn (DESIGN.md §9.1): the chapter list with read status, and each chapter on its own page. The chapters are data
- * (`ui/learn/chapters.ts`); this file only lays them out. Each section is marked read once it has been on screen and may
- * end with a practice link that opens practice set up for it; a chapter ends with a quick check and previous / next.
+ * (`ui/learn/chapters.ts`); this file only lays them out. Each section ends with a quick check, and is marked read once
+ * that is answered right; it may also end with a practice link that opens practice set up for it. A chapter ends with
+ * a quick check of its own and previous / next.
  *
  * Tablet and desktop use the full width: the chapter list puts its sections in two columns, and a chapter page gets the
  * big chapter number and wider sections. Tablet jumps to a section with a row of chips; desktop has a chapter sidebar.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Letter } from '../../core/api';
 import { t } from '../../i18n';
 import { AppShell } from '../components/AppShell';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
 import { Blocks } from '../learn/Blocks';
-import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Section } from '../learn/chapters';
+import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
 import { letterName } from '../lib/noteText';
 import { hashQuery, Link, useHash, type Route } from '../router';
 import { useStore } from '../store';
@@ -95,34 +96,35 @@ export function LearnHub(): JSX.Element {
   );
 }
 
-function SectionCard({ section, onSeen }: { section: Section; onSeen(id: string): void }): JSX.Element {
+function SectionCard({ section, read, onRight }: { section: Section; read: boolean; onRight(id: string): void }): JSX.Element {
   const { id } = section;
-  const ref = useRef<HTMLElement>(null);
-  // Read once its end has been on screen.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') return;
-    const end = el.querySelector('.learn-section-end');
-    if (!end) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        onSeen(id);
-        io.disconnect();
-      }
-    });
-    io.observe(end);
-    return () => io.disconnect();
-  }, [id, onSeen]);
+  const h = 'h' + id.replace('.', '-');
   return (
-    <section ref={ref} id={anchor(id)} className="card learn-section" aria-labelledby={'h' + id.replace('.', '-')}>
-      <h2 id={'h' + id.replace('.', '-')} className="learn-section-title">
+    <section id={anchor(id)} className="card learn-section" aria-labelledby={h}>
+      <h2 id={h} className="learn-section-title">
         <span className="mono-accent">{id}</span>
         {sectionTitle(id)}
       </h2>
       <Blocks id={id} blocks={section.blocks} />
+      <SectionCheck section={section} read={read} onRight={onRight} />
       {section.practice && <PracticeLink section={section} />}
-      <span className="learn-section-end" aria-hidden="true" />
     </section>
+  );
+}
+
+/** The section's quick check: a right answer marks the section read. A wrong one says why, without giving the answer away. */
+function SectionCheck({ section, read, onRight }: { section: Section; read: boolean; onRight(id: string): void }): JSX.Element {
+  const { id } = section;
+  const q = 'q' + id.replace('.', '-');
+  return (
+    <div className="learn-check learn-check--section" role="group" aria-labelledby={q}>
+      <span className="learn-check-head">
+        <span className="eyebrow">{t('learn.check')}</span>
+        {read && <span className="chapter-read">{t('learn.read')}</span>}
+      </span>
+      <QuickCheck base={sectionKey(id, 'check')} quiz={section.check} labelId={q} onRight={() => onRight(id)}
+        hint={read ? undefined : t('learn.checkHint')} />
+    </div>
   );
 }
 
@@ -154,35 +156,54 @@ function chapterMeta(c: Chapter): string {
   return parts.join(' · ');
 }
 
-function answerText(n: number, a: Answer): string {
-  if ('text' in a) return t(`learn.ch${n}.quiz.${a.text}`);
+/** `base` is where the quiz's texts live: 'learn.ch5.quiz' for a chapter, 'learn.ch5.s2.check' for section 5.2. */
+function answerText(base: string, a: Answer): string {
+  if ('text' in a) return t(`${base}.${a.text}`);
   const name = parseNoteName(a.note)!;
   return letterName(name.letter as Letter, name.alter);
 }
 
-function QuickCheck({ chapter }: { chapter: Chapter }): JSX.Element {
+/**
+ * The question, its answers and the feedback. With `reveal` a wrong pick also marks the right answer (the chapter's
+ * check); without it, you try again (a section's).
+ */
+function QuickCheck({ base, quiz, labelId, reveal, hint, onRight }: { base: string; quiz: Quiz; labelId: string; reveal?: boolean; hint?: string; onRight?(): void }): JSX.Element {
   const [pick, setPick] = useState<number | null>(null);
-  const { n, quiz } = chapter;
-  const texts = quiz.answers.map((a) => answerText(n, a));
+  const texts = quiz.answers.map((a) => answerText(base, a));
   // Note names and numbers sit in a row; answers in words get a row each.
   const long = texts.some((x) => x.length > 4);
+  const choose = (i: number): void => {
+    setPick(i);
+    if (i === quiz.right) onRight?.();
+  };
+  const mark = (i: number): string =>
+    pick === null ? '' : i === pick ? (i === quiz.right ? ' is-right' : ' is-wrong') : reveal && i === quiz.right ? ' is-right' : '';
   return (
-    <section id={anchor('check')} className="card learn-check" aria-labelledby="quiz-q">
-      <span className="eyebrow">{t('learn.check')}</span>
-      <b id="quiz-q">{t(`learn.ch${n}.quiz.question`)}</b>
+    <>
+      <b id={labelId}>{t(`${base}.question`)}</b>
       <div className={'learn-answers' + (long ? ' learn-answers--long' : '')}>
         {texts.map((text, i) => (
-          <button key={i} type="button" aria-pressed={pick === i}
-            className={'name-btn learn-answer' + (pick !== null && i === quiz.right ? ' is-right' : pick === i ? ' is-wrong' : '')} onClick={() => setPick(i)}>
+          <button key={i} type="button" aria-pressed={pick === i} className={'name-btn learn-answer' + mark(i)} onClick={() => choose(i)}>
             {text}
           </button>
         ))}
       </div>
-      {pick !== null && (
-        <div className={'nfeedback m-in ' + (pick === quiz.right ? 'is-right' : 'is-wrong')} role="status">
-          {t(pick === quiz.right ? `learn.ch${n}.quiz.right` : `learn.ch${n}.quiz.wrong`)}
+      {pick !== null ? (
+        <div key={pick} className={'nfeedback m-in ' + (pick === quiz.right ? 'is-right' : 'is-wrong')} role="status">
+          {t(pick === quiz.right ? `${base}.right` : `${base}.wrong`)}
         </div>
+      ) : (
+        hint && <span className="muted-text">{hint}</span>
       )}
+    </>
+  );
+}
+
+function ChapterCheck({ chapter }: { chapter: Chapter }): JSX.Element {
+  return (
+    <section id={anchor('check')} className="card learn-check" aria-labelledby="quiz-q">
+      <span className="eyebrow">{t('learn.check')}</span>
+      <QuickCheck base={`learn.ch${chapter.n}.quiz`} quiz={chapter.quiz} labelId="quiz-q" reveal />
     </section>
   );
 }
@@ -203,13 +224,14 @@ function ChapterCard({ chapter, dir }: { chapter: Chapter; dir: 'prev' | 'next' 
 }
 
 export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
-  const { dispatch } = useStore();
+  const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const hash = useHash();
   const { n } = chapter;
   const title = t(`learn.chapters.${n}.title`);
   useDocTitle(t('app.docTitle', { page: title }));
-  const seen = useMemo(() => (id: string) => dispatch({ type: 'learnRead', ids: [id] }), [dispatch]);
+  const read = state.progress.learnRead;
+  const passed = useMemo(() => (id: string) => dispatch({ type: 'learnRead', ids: [id] }), [dispatch]);
   const at = CHAPTERS.indexOf(chapter);
   const prev = CHAPTERS[at - 1];
   const next = CHAPTERS[at + 1];
@@ -290,10 +312,10 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
           )}
 
           {chapter.sections.map((s) => (
-            <SectionCard key={s.id} section={s} onSeen={seen} />
+            <SectionCard key={s.id} section={s} read={read.includes(s.id)} onRight={passed} />
           ))}
 
-          <QuickCheck chapter={chapter} />
+          <ChapterCheck key={n} chapter={chapter} />
 
           {(prev || next) && (
             <nav className="learn-nav" aria-label={t('learn.chaptersHead')}>

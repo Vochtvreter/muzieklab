@@ -17,8 +17,8 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'A full course, from the first beat' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 18 · 3 new')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'A quick check after every section' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 18 · 1 new · 1 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
 
@@ -40,7 +40,7 @@ describe("What's new", () => {
   it('Fixes keeps only releases with fixes, and only their fixes', () => {
     render(<Changelog />);
     fireEvent.click(screen.getByRole('button', { name: 'Fixes' }));
-    expect(screen.queryByRole('heading', { name: 'A full course, from the first beat' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'A quick check after every section' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^0\.3\.0/ })).toBeNull();
     expect(release('0.3.1').textContent).toContain('Oct 18 · 2 fixed');
     expect(release('0.2.1').textContent).toContain('Oct 17 · 1 fixed');
@@ -51,8 +51,8 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Een volledige cursus, vanaf de eerste tel' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('18 okt · 3 nieuw')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Een snelle check na elk deel' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('18 okt · 1 nieuw · 1 beter')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
 });
