@@ -888,5 +888,56 @@
         "wrong": "Not quite. The treble lines are E G B D F from the bottom, so the middle (3rd) line is B."
       }
     }
+  },
+  "changelog": {
+    "title": "What's new",
+    "back": "Back to settings",
+    "current": "You're on version {version}",
+    "showGroup": "Show",
+    "showAll": "All",
+    "showNew": "New",
+    "showFixes": "Fixes",
+    "latest": "Latest",
+    "earlier": "Earlier releases",
+    "kindNew": "New",
+    "kindBetter": "Better",
+    "kindFix": "Fixed",
+    "countNew": "{count} new",
+    "countBetter": "{count} better",
+    "countFix": "{count} fixed",
+    "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_3_0": {
+      "title": "Read notes",
+      "try": "Try Read notes",
+      "readNotes": "Name notes in treble and bass clef, in any of the 15 keys.",
+      "answer": "Answer with do re mi, letter names or a one-octave piano. On a computer, the keys work too.",
+      "roundDone": "Round done shows your time per note and the notes that need practice.",
+      "learn": "A Learn tab, starting with chapter 8: Notes on the staff.",
+      "homeTiles": "Free practice on Home is now two tiles: Rhythm and Read notes."
+    },
+    "v0_2_2": {
+      "title": "Four-star Results",
+      "stars": "With a 4th star, Results shows a small arc of three stars over one big star."
+    },
+    "v0_2_1": {
+      "title": "Rhythm pad on iPhone",
+      "pad": "The Rhythm pad no longer stops responding after iOS sends the app to the background.",
+      "resume": "If the sound drops out, Play pauses, and Resume starts again with fresh audio."
+    },
+    "v0_2_0": {
+      "title": "Quick wins",
+      "daily": "Daily challenge: a new exercise every day, the same for everyone.",
+      "xp": "XP and levels, with a level-up sheet when you reach the next one.",
+      "codes": "Every exercise has a code on Results, with a Copy button.",
+      "echo": "Echo mode: listen, then tap the rhythm back from memory."
+    },
+    "v0_1_0": {
+      "title": "First release",
+      "rhythm": "Rhythm practice in Tap mode: the learning path, free practice, Play and Results with coaching.",
+      "calibrate": "Calibrate once per device, so timing scores match what you hear.",
+      "offline": "Works offline and installs on your Home Screen.",
+      "analog": "Analog metronome: a swinging pendulum next to the beat counter.",
+      "layouts": "Layouts fit small phones, phone landscape and short laptop screens."
+    }
   }
 }

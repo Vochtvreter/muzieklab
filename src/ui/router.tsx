@@ -1,5 +1,5 @@
 /**
- * A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/settings, #/calibrate, Read notes (#/notes, #/notes/key,
+ * A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/settings, #/calibrate, #/changelog, Read notes (#/notes, #/notes/key,
  * #/notes/play, #/notes/done), Learn (#/learn, #/learn/8), and #/dev/render. A `?s=8.7` query names a Learn section.
  */
 import { useSyncExternalStore, type AnchorHTMLAttributes } from 'react';
@@ -12,6 +12,7 @@ export type Route =
   | '/results'
   | '/settings'
   | '/calibrate'
+  | '/changelog'
   | '/notes'
   | '/notes/key'
   | '/notes/play'
@@ -28,6 +29,7 @@ const ROUTES: Route[] = [
   '/results',
   '/settings',
   '/calibrate',
+  '/changelog',
   '/notes',
   '/notes/key',
   '/notes/play',

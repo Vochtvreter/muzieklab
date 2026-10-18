@@ -75,6 +75,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test("settings: what's new, the latest release and an earlier one", async ({ page }) => {
+      known(name, 'changelog');
+      await page.goto('./#/settings');
+      await page.getByRole('link', { name: /^What's new/ }).click();
+      await expect(page.getByRole('heading', { level: 1, name: "What's new" })).toBeVisible();
+      await expectNotSqueezed(page.locator('.cl-latest'));
+      await expectClickable(page.getByRole('link', { name: 'Try Read notes' }));
+      await expectClickable(page.getByRole('button', { name: /^0\.1\.0/ }));
+      await expectNoSideScroll(page);
+    });
+
     test('calibration: pad', async ({ page }) => {
       known(name, 'calibration');
       await page.goto('./#/calibrate');

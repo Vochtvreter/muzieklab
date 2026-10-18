@@ -1,0 +1,88 @@
+/**
+ * Release notes for Settings → What's new, newest first. The first entry is the version in package.json (a test checks
+ * it), so a release that bumps the version adds its entry here. Titles, changes and action labels are message keys.
+ */
+import type { Route } from '../router';
+
+export type ChangeKind = 'new' | 'better' | 'fix';
+
+export interface Change {
+  kind: ChangeKind;
+  text: string;
+}
+
+export interface Release {
+  version: string;
+  /** Release day, yyyy-mm-dd. */
+  date: string;
+  title: string;
+  changes: Change[];
+  /** A link to try the release's main feature, shown while it is the latest release. */
+  action?: { to: Route; label: string };
+}
+
+export const KINDS: ChangeKind[] = ['new', 'better', 'fix'];
+
+export const RELEASES: Release[] = [
+  {
+    version: '0.3.0',
+    date: '2026-10-18',
+    title: 'changelog.v0_3_0.title',
+    action: { to: '/notes', label: 'changelog.v0_3_0.try' },
+    changes: [
+      { kind: 'new', text: 'changelog.v0_3_0.readNotes' },
+      { kind: 'new', text: 'changelog.v0_3_0.answer' },
+      { kind: 'new', text: 'changelog.v0_3_0.roundDone' },
+      { kind: 'new', text: 'changelog.v0_3_0.learn' },
+      { kind: 'better', text: 'changelog.v0_3_0.homeTiles' },
+    ],
+  },
+  {
+    version: '0.2.2',
+    date: '2026-10-18',
+    title: 'changelog.v0_2_2.title',
+    changes: [{ kind: 'better', text: 'changelog.v0_2_2.stars' }],
+  },
+  {
+    version: '0.2.1',
+    date: '2026-10-17',
+    title: 'changelog.v0_2_1.title',
+    changes: [
+      { kind: 'fix', text: 'changelog.v0_2_1.pad' },
+      { kind: 'better', text: 'changelog.v0_2_1.resume' },
+    ],
+  },
+  {
+    version: '0.2.0',
+    date: '2026-10-17',
+    title: 'changelog.v0_2_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_2_0.daily' },
+      { kind: 'new', text: 'changelog.v0_2_0.xp' },
+      { kind: 'new', text: 'changelog.v0_2_0.codes' },
+      { kind: 'new', text: 'changelog.v0_2_0.echo' },
+    ],
+  },
+  {
+    version: '0.1.0',
+    date: '2026-10-17',
+    title: 'changelog.v0_1_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_1_0.rhythm' },
+      { kind: 'new', text: 'changelog.v0_1_0.calibrate' },
+      { kind: 'new', text: 'changelog.v0_1_0.offline' },
+      { kind: 'new', text: 'changelog.v0_1_0.analog' },
+      { kind: 'fix', text: 'changelog.v0_1_0.layouts' },
+    ],
+  },
+];
+
+/** A bug-fix release (0.x.y with y > 0) rather than a feature release. */
+export function isPatch(version: string): boolean {
+  return !/\.0$/.test(version);
+}
+
+/** How many changes of each kind, in KINDS order, leaving out kinds with none. */
+export function countKinds(changes: Change[]): { kind: ChangeKind; count: number }[] {
+  return KINDS.map((kind) => ({ kind, count: changes.filter((c) => c.kind === kind).length })).filter((x) => x.count > 0);
+}
