@@ -32,6 +32,13 @@ desktop sidebar.
   differ, so they can investigate, and list it in the PR. If work has to go on before they answer, follow the newer
   App design canvas and DESIGN.md, and say that you did.
 
+### Built and not built
+
+Both canvases split their pages by what the app has: **Built · …** pages hold screens that are live, **Not built · …**
+pages hold screens that are designed but not in the app yet (on the App design canvas: Built · light / dark and Not
+built · light / dark). When a PR ships a screen, move its boards (light and dark, every size) from the Not built page to
+the matching Built page in the same PR, and say so in the PR. A board for a new, unbuilt screen goes on a Not built page.
+
 ## Learning content
 
 Learn chapters (`src/ui/learn/chapters.ts`) and Learning Path units (`src/game/path.ts`) are data with their text in
