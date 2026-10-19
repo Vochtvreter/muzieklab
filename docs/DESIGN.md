@@ -761,11 +761,12 @@ Built in v0.2 (dark theme was already in the MVP):
 - **Echo mode:** a Tap · Echo switch on Practice setup. Play first shows a listen card (two plays), then the normal
   Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
 
-**v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Three things
+**v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Two things
 change in the app:
 - The tab bar becomes Home · Path · Learn · Settings.
-- Results tips link to the matching section.
 - Every section ends with a practice link.
+
+Results tips stay plain text: they do not link to a Learn section (dropped from the plan).
 
 Chapters 8–11 and flash cards arrive later, with note reading.
 
