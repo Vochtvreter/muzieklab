@@ -247,26 +247,27 @@ Learn and practice major and minor scales in all 15 keys.
 
 ### 3.6 Test yourself — *flash cards*
 
-A quick theory check on any **chapters the player chooses**, opened from the Learn tab.
+Review of the Learn chapters, built into the Learn tab (boards: MVP canvas, *Not built · Flash
+cards*).
 
-- **Setup:** tick chapters (1–10; chapters marked *later* have no cards yet; a "Chapters I
-  read" shortcut selects the read ones), card types (*symbols*: "which rest is this?";
-  *facts and rules*: "how long is a dotted quarter?"; *staff reading*: name a note or a
-  staff line), 10 / 20 / 30 cards, and **Flip** or **Choice** (three options).
-- **Flip mode:** the front shows a question and a symbol or a bit of notation. Tapping the
-  card (or *Show answer*) turns it over: the answer, a one-line explanation and a link
-  to the Learn section it comes from. The player rates it **Again · Almost · Knew it**.
-- **Choice mode:** the same card with three answers (A, B, C) under it. The two wrong
-  answers are real terms from the same chapter (for "lines of the treble staff": E G B D F,
-  with F A C E, the spaces, and G B D F A, the bass lines), so a guess is never free.
-  After a pick, the right answer turns green and a wrong pick red, and the card shows the
-  explanation and the Learn link. No self-rating: right counts as *Knew it*, wrong as
-  *Again*. *Next card* stays disabled until an answer is picked.
-- **Spaced repetition:** a simple Leitner scheme per card. *Again* puts the card back in
-  this round, *Almost* brings it back tomorrow, *Knew it* moves it up a box (4 days, then
-  longer). Cards the player missed come first in the next round.
-- **Card content** is written from the Learn chapters only, so every answer is covered
-  by `THEORY-SOURCES.md`. Cards are localizable content like the chapters.
+- **Where:** a *Test yourself* card on the Learn tab, under the progress bar. It shows how many
+  cards are due, with *Choose chapters* (the setup) and *Start · 12 cards* (the due cards).
+  The round, the setup and the summary are exercise screens: no nav, a 640 px column on
+  tablet and desktop.
+- **Cards are the quick checks.** Every Learn quick check is a card: one per section, plus the
+  chapter check (38 in chapters 1–10). A quick check answered right joins the player's deck.
+  No separate card text: the question, its three answers and the "Right." explanation come
+  from the chapter, so every card is covered by `THEORY-SOURCES.md` and translated with it.
+- **Setup:** tick chapters (1–10, with their number of cards; "Chapters I read" ticks the
+  chapters with a section read) and 10 / 20 / All cards. Due cards come first.
+- **A card:** the question and three answers, styled as the quick check. After a pick, the
+  right answer turns green and a wrong pick red, and the card shows the explanation and a
+  link to its section. *Next card* stays disabled until an answer is picked.
+- **Spaced repetition:** a simple Leitner scheme per card. Right moves it up a box (back in
+  4 days, then longer); wrong puts it back in the first box (back tomorrow), and missed
+  cards come first in the next round.
+- **Round done:** right and wrong, the weakest chapters with *Read* links, *Done* (back to
+  Learn) and *Another round*.
 
 ---
 
@@ -796,8 +797,9 @@ summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains c
 Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
 appear on Progress and on the level-up sheet.
 
-**v1.6 · Flash cards and listen & write** adds *Test yourself* over all eleven Learn chapters (flip or choose from 3),
-started from the Learn tab. It also adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
+**Flash cards** (next) add *Test yourself* to the Learn tab: the Learn quick checks as cards, three answers each, with
+due cards on a Leitner schedule (§3.6). **Listen and write** (later, its own page on the canvas) adds dictation as a
+third practice mode (Tap · Listen · Echo) and a fourth Home tile.
 
 Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
 Progress, XP and levels.
