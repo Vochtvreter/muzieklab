@@ -60,6 +60,8 @@ describe('prefs and progress storage', () => {
       dailyBest: 94,
       notes: { settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G', 'Eb'], mixKeys: true }, weak: { 'treble:38': 3, 'bass:21': 1 } },
       learnRead: ['8.1', '8.2'],
+      learnQuiz: [8],
+      cards: { '8.1': { box: 2, due: '2026-10-21', missed: false }, ch8: { box: 1, due: '2026-10-18', missed: true } },
     };
     saveProgress(progress);
     expect(loadProgress()).toEqual(progress);
@@ -74,6 +76,19 @@ describe('prefs and progress storage', () => {
   it('moves the old chapter 8 sections 8.6 and 8.7 to chapters 9 and 10', () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ learnRead: ['8.1', '8.6', '8.7', '9.1'] }));
     expect(loadProgress().learnRead).toEqual(['8.1', '9.1', '10.1', '10.2', '10.3', '10.4']);
+  });
+
+  it('keeps valid Test yourself card states, and moves them with their section', () => {
+    localStorage.setItem(
+      PROGRESS_KEY,
+      JSON.stringify({
+        learnQuiz: [3, 3, 'x', 1],
+        cards: { '8.6': { box: 3, due: '2026-10-25' }, '1.1': { box: 9, due: '2026-10-20', missed: true }, '2.1': { box: 2 }, foo: { box: 1, due: '2026-10-20' } },
+      }),
+    );
+    const p = loadProgress();
+    expect(p.learnQuiz).toEqual([1, 3]);
+    expect(p.cards).toEqual({ '9.1': { box: 3, due: '2026-10-25', missed: false }, '1.1': { box: 5, due: '2026-10-20', missed: true } });
   });
 
   it('reads an all-perfect 4 saved before the diamond as the diamond', () => {

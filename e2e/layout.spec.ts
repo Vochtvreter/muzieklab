@@ -178,7 +178,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'learn');
       const { width } = VIEWPORTS[name];
       const layout = width >= 1100 ? 'desktop' : width >= 700 ? 'tablet' : 'phone';
+      // The Learn tab opens on the topics; Rhythm lists chapters 1–7.
       await page.goto('./#/learn');
+      await expectClickable(page.getByRole('link', { name: /^Rhythm/ }));
+      await page.getByRole('link', { name: /^Rhythm/ }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Rhythm' })).toBeVisible();
       // Chapter 1 starts open. Tablet and desktop use the width: its sections sit in two columns, read down.
       // Measured together, after the web fonts: a font that loads between two measurements moves the list.
       await page.getByRole('link', { name: /^1\.3/ }).waitFor();
@@ -187,11 +191,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         ['1.1', '1.3'].map((id) => [...document.querySelectorAll('a')].find((el) => el.textContent?.trim().startsWith(id))!.getBoundingClientRect().y),
       );
       expect(third === first, 'sections in two columns').toBe(layout !== 'phone');
-      // Opening chapter 10 closes chapter 1.
+      await expect(page.getByRole('button', { name: /^8\s*Notes on the staff/ })).toHaveCount(0);
+      // Reading notes lists chapters 8–10; opening chapter 10 closes chapter 8.
+      await page.locator('.learn-back').click();
+      await page.getByRole('link', { name: /^Reading notes/ }).click();
       const ch10 = page.getByRole('button', { name: /^10\s*Key signatures/ });
       await expectClickable(ch10);
       await ch10.click();
-      await expect(page.getByRole('button', { name: /^1\s*Pulse and meter/ })).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.getByRole('button', { name: /^8\s*Notes on the staff/ })).toHaveAttribute('aria-expanded', 'false');
       await expectClickable(page.getByRole('link', { name: /^10\.2/ }));
       await expectNoSideScroll(page);
 
@@ -271,12 +278,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('link', { name: 'Practice whole, half and quarter notes →' }));
       await expectNoSideScroll(page);
 
-      // The Learn tab counts it; 2.2 is still unread.
+      // The Learn tab counts it, and its card joins Test yourself; 2.2 is still unread.
       await page.goto('./#/learn');
+      await expect(page.getByText(`1 / ${CHAPTERS.flatMap((c) => c.sections).length} sections`)).toBeVisible();
+      await expect(page.getByText('1 card in your deck')).toBeVisible();
+      await page.goto('./#/learn/rhythm');
       await page.getByRole('button', { name: /^2\s*Note values/ }).click();
       await expect(page.getByRole('link', { name: /^2\.1.*✓ read/ })).toBeVisible();
       await expect(page.getByRole('link', { name: /^2\.2/ })).not.toContainText('✓ read');
-      await expect(page.getByText(`1 / ${CHAPTERS.flatMap((c) => c.sections).length} sections`)).toBeVisible();
     });
 
     test('learn: every chapter fits, with its practice links reachable', async ({ page }) => {
@@ -291,6 +300,57 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         if (c.sections.some((s) => s.practice)) await expectClickable(page.locator('.learn-practice').last());
         await expectClickable(page.getByRole('link', { name: 'Back to all chapters' }));
       }
+    });
+
+    test('test yourself: the Learn tab, setup, cards and round done', async ({ page }) => {
+      known(name, 'test');
+      const { width } = VIEWPORTS[name];
+      await seed(page, { progress: { learnRead: ['1.1', '1.2'], learnQuiz: [1] } });
+      await page.goto('./#/learn');
+      // Test yourself sits apart from the theory: beside it on desktop, under it on phone and tablet.
+      const theory = page.getByRole('region', { name: 'Theory' });
+      const test = page.getByRole('region', { name: 'Check what you know' });
+      await expectNoOverlap(theory, test);
+      const [a, b] = [(await theory.boundingBox())!, (await test.boundingBox())!];
+      expect(b.x > a.x + a.width - 1, 'Test yourself beside the theory').toBe(width >= 1100);
+      await expect(test.getByText('3 cards in your deck')).toBeVisible();
+      await expectClickable(test.getByRole('button', { name: 'Start · 3 due first' }));
+      await expectClickable(test.getByRole('link', { name: 'Choose chapters' }));
+      await expectNoSideScroll(page);
+
+      // Setup: chapters with cards are ticked; one without cards cannot be.
+      await test.getByRole('link', { name: 'Choose chapters' }).click();
+      await expect(page.getByRole('checkbox', { name: /Pulse and meter/ })).toBeChecked();
+      await expect(page.getByRole('checkbox', { name: /Note values/ })).toBeDisabled();
+      await expectClickable(page.getByRole('button', { name: 'Start · 3 due first' }));
+      await expectNoSideScroll(page);
+      await page.getByRole('button', { name: 'Start · 3 due first' }).click();
+
+      // 1.1 right, 1.2 wrong, then the chapter check: the last card.
+      await expect(page.getByRole('button', { name: 'Pick an answer' })).toBeDisabled();
+      await expectClickable(page.getByRole('button', { name: '120', exact: true }));
+      await page.getByRole('button', { name: '2', exact: true }).click();
+      await expect(page.getByRole('status')).toContainText('Right. Back in 4 days.');
+      await expectClickable(page.getByRole('link', { name: /^Read 1\.1/ }));
+      await expectClickable(page.getByRole('button', { name: 'Next card' }));
+      await expectNoSideScroll(page);
+      await page.getByRole('button', { name: 'Next card' }).click();
+      await page.getByRole('button', { name: '2/4', exact: true }).click();
+      await expect(page.getByRole('status')).toContainText('Not quite: 4/4. Back tomorrow.');
+      await page.getByRole('button', { name: 'Next card' }).click();
+      await page.getByRole('button', { name: '3', exact: true }).click();
+      await expectClickable(page.getByRole('link', { name: 'See how you did', exact: true }));
+      await page.getByRole('link', { name: 'See how you did', exact: true }).click();
+
+      await expect(page.getByRole('heading', { level: 1, name: 'Round done' })).toBeVisible();
+      await expect(page.getByText('cards right on the first try · 67%')).toBeVisible();
+      await expect(page.getByText('Missed: 1.2 Bars and time signatures')).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: 'Read 1.2 Bars and time signatures' }));
+      await expectClickable(page.getByRole('link', { name: 'New round' }));
+      await expectNoSideScroll(page);
+      await page.getByRole('link', { name: 'Done' }).click();
+      await expect(page.getByRole('region', { name: 'Check what you know' }).getByText('0 due today')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
     });
 
     test('play: how to play, then the pad', async ({ page }) => {
@@ -337,6 +397,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/notes', 'Noten lezen', 'Start · '],
       ['#/notes/key', 'Toonsoort', 'Kies '],
       ['#/learn', 'Leren', ''],
+      ['#/learn/rhythm', 'Ritme', ''],
+      ['#/learn/notes', 'Noten lezen', ''],
+      ['#/test', 'Test jezelf', ''],
       ['#/learn/1', 'Puls en maat', ''],
       ['#/learn/2', 'Notenwaarden', 'Rusten'],
       ['#/learn/3', 'Rusten', 'Eén hele rust, in het midden'],
@@ -358,6 +421,23 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
     }
+
+    test('test jezelf: a card and round done', async ({ page }) => {
+      known(name, 'nl-test');
+      await seed(page, { prefs: { language: 'nl', seenHowTo: true }, progress: { learnRead: ['5.1', '5.2', '5.3'], learnQuiz: [5] } });
+      await page.goto('./#/learn');
+      await expectNoClippedLabels(page);
+      await page.getByRole('button', { name: /^Start · eerst 4 herhalen/ }).click();
+      await page.locator('.test-answer').first().click();
+      await expect(page.getByRole('status')).toBeVisible();
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await page.getByRole('link', { name: 'Stop en bekijk hoe het ging' }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Ronde klaar' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Ga door' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
 
     test('play, results and read notes', async ({ page }) => {
       known(name, 'nl-play');

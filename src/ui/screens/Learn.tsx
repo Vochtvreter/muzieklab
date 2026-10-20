@@ -1,8 +1,9 @@
 /**
- * Learn (DESIGN.md §9.1): the chapter list with read status, and each chapter on its own page. The chapters are data
+ * Learn (DESIGN.md §9.1, §3.6). The Learn tab opens on two separate parts: the theory, as a tile per topic, and Test
+ * yourself. A topic lists its chapters with read status, and each chapter is its own page. The chapters are data
  * (`ui/learn/chapters.ts`); this file only lays them out. Each section ends with a quick check, and is marked read once
  * that is answered right; it may also end with a practice link that opens practice set up for it. A chapter ends with
- * a quick check of its own and previous / next.
+ * a quick check of its own and previous / next. Every quick check answered right adds its flash card to Test yourself.
  *
  * Tablet and desktop use the full width: the chapter list puts its sections in two columns, and a chapter page gets the
  * big chapter number and wider sections. Tablet jumps to a section with a row of chips; desktop has a chapter sidebar.
@@ -12,14 +13,16 @@ import type { Letter } from '../../core/api';
 import { t } from '../../i18n';
 import { AppShell } from '../components/AppShell';
 import { Icon } from '../components/Icon';
-import { useBreakpoint, useDocTitle } from '../hooks';
+import { useBreakpoint, useDocTitle, useToday } from '../hooks';
 import { Blocks } from '../learn/Blocks';
-import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
+import { countDeck, deckIds } from '../learn/cards';
+import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, topicChapters, TOPICS, type Answer, type Chapter, type Quiz, type Section, type Topic } from '../learn/chapters';
 import { letterName } from '../lib/noteText';
-import { hashQuery, Link, useHash, type Route } from '../router';
-import { useStore } from '../store';
+import { hashQuery, Link, navigate, useHash, type Route } from '../router';
+import { todayIso, useStore } from '../store';
 
 export const chapterRoute = (n: number): Route => `/learn/${n}`;
+export const topicRoute = (topic: Topic): Route => `/learn/${topic}`;
 const sectionTitle = (id: string): string => t(sectionKey(id, 'title'));
 /** The element id a section (or the quick check, 'check') scrolls to. */
 const anchor = (id: string): string => 's' + id.replace('.', '-');
@@ -32,34 +35,164 @@ function chapterStatus(read: string[], sections: string[]): Status {
   return n === sections.length ? 'done' : n > 0 ? 'reading' : 'new';
 }
 
+/** "12 / 28 sections" with its bar. */
+function ReadProgress({ read, ids }: { read: string[]; ids: string[] }): JSX.Element {
+  const done = ids.filter((s) => read.includes(s)).length;
+  return (
+    <div className="learn-progress">
+      <div className="learn-progress-bar" role="img" aria-label={t('learn.sectionsLabel', { read: done, total: ids.length })}>
+        <div style={{ width: (done / ids.length) * 100 + '%' }} />
+      </div>
+      <span className="mono-muted" aria-hidden="true">
+        {t('learn.sections', { read: done, total: ids.length })}
+      </span>
+    </div>
+  );
+}
+
+/** The Learn tab: the theory as topic tiles, and Test yourself apart from it (DESIGN.md §3.6). */
 export function LearnHub(): JSX.Element {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const bp = useBreakpoint();
+  const today = useToday(todayIso);
   useDocTitle(t('app.docTitle', { page: t('learn.docTitle') }));
   const read = state.progress.learnRead;
+  const deck = deckIds(state.progress);
+  const counts = countDeck(deck, state.progress.cards, today);
+  const start = (): void => {
+    dispatch({ type: 'quizStart', chapters: CHAPTERS.map((c) => c.n), today });
+    navigate('/test/play');
+  };
+
+  return (
+    <AppShell bp={bp} active="/learn" fill>
+      <div className={'page learn learn-home no-scrollbar' + (bp !== 'phone' ? ' learn--wide' : '')}>
+        <div className="learn-head">
+          <h1 className="page-title">{t('learn.title')}</h1>
+          <p className="muted-text learn-sub">{t('learn.sub')}</p>
+        </div>
+        <ReadProgress read={read} ids={CHAPTERS.flatMap(sectionIds)} />
+
+        <div className="learn-home-grid">
+          <section aria-labelledby="learn-theory" className="learn-home-part">
+            <h2 id="learn-theory" className="eyebrow learn-home-h">
+              {t('learn.theory')}
+            </h2>
+            <nav aria-label={t('learn.topicsLabel')} className="topic-tiles">
+              {TOPICS.map(({ id, glyph }) => {
+                const chapters = topicChapters(id);
+                const ids = chapters.flatMap(sectionIds);
+                const done = ids.filter((s) => read.includes(s)).length;
+                return (
+                  <Link key={id} to={topicRoute(id)} className="topic-tile">
+                    <span aria-hidden="true" className="topic-icon music">
+                      {glyph}
+                    </span>
+                    <span className="topic-text">
+                      <b>{t(`learn.topics.${id}.title`)}</b>
+                      <span>
+                        {t('learn.topicChapters', { from: chapters[0].n, to: chapters[chapters.length - 1].n })} · {t(`learn.topics.${id}.sub`)}
+                      </span>
+                    </span>
+                    <span className="topic-progress">
+                      <span className="learn-progress-bar" aria-hidden="true">
+                        <span style={{ width: (done / ids.length) * 100 + '%' }} />
+                      </span>
+                      <span className="mono-muted">{t('learn.sections', { read: done, total: ids.length })}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+              <div className="topic-tile is-later" aria-disabled="true">
+                <span aria-hidden="true" className="topic-icon">
+                  <svg width="30" height="26" viewBox="0 0 34 30">
+                    <g fill="none" stroke="currentColor" strokeWidth="2">
+                      <ellipse cx="5" cy="25" rx="4" ry="3" />
+                      <ellipse cx="13" cy="19" rx="4" ry="3" />
+                      <ellipse cx="21" cy="12" rx="4" ry="3" />
+                      <ellipse cx="29" cy="5" rx="4" ry="3" />
+                    </g>
+                  </svg>
+                </span>
+                <span className="topic-text">
+                  <span className="topic-title-row">
+                    <b>{t('learn.topics.scales.title')}</b>
+                    <span className="chapter-pill is-later">{t('learn.status.later')}</span>
+                  </span>
+                  <span>{t('learn.topics.scales.sub')}</span>
+                </span>
+              </div>
+            </nav>
+          </section>
+
+          <section aria-labelledby="learn-test" className="learn-home-part">
+            <h2 id="learn-test" className="eyebrow learn-home-h">
+              {t('learn.checkPart')}
+            </h2>
+            <div className="test-panel">
+              <div className="test-panel-head">
+                <span aria-hidden="true" className="test-panel-icon">
+                  <Icon name="cards" size={24} />
+                </span>
+                <span className="test-panel-text">
+                  <span className="test-panel-title">
+                    <b>{t('test.title')}</b>
+                    {counts.due > 0 && <span className="chapter-pill is-reading">{t('test.duePill', { count: counts.due })}</span>}
+                  </span>
+                  <span className="muted-text">{t(counts.total ? 'test.panelText' : 'test.panelEmpty')}</span>
+                </span>
+              </div>
+              {counts.total > 0 && (
+                <>
+                  <span className="test-panel-stats">
+                    <span>{t('test.inDeck', { count: counts.total })}</span>
+                    <span>{t('test.dueToday', { count: counts.due })}</span>
+                  </span>
+                  <div className="test-panel-actions">
+                    <Link to="/test" className="btn btn--outline">
+                      {t('test.choose')}
+                    </Link>
+                    <button type="button" className="btn btn--accent" onClick={start}>
+                      {counts.due ? t('test.startDue', { count: counts.due }) : t('test.start')}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+/** A topic's chapters (Rhythm: chapters 1–7), each a card that opens into its sections. */
+export function LearnTopic({ topic }: { topic: Topic }): JSX.Element {
+  const { state } = useStore();
+  const bp = useBreakpoint();
+  const title = t(`learn.topics.${topic}.title`);
+  useDocTitle(t('app.docTitle', { page: title }));
+  const read = state.progress.learnRead;
+  const chapters = topicChapters(topic);
   // One chapter open at a time: the first one not done yet.
-  const [open, setOpen] = useState<number | null>(() => CHAPTERS.find((c) => chapterStatus(read, sectionIds(c)) !== 'done')?.n ?? null);
-  const all = CHAPTERS.flatMap(sectionIds);
-  const readCount = all.filter((s) => read.includes(s)).length;
-  const total = all.length;
+  const [open, setOpen] = useState<number | null>(() => chapters.find((c) => chapterStatus(read, sectionIds(c)) !== 'done')?.n ?? null);
 
   return (
     <AppShell bp={bp} active="/learn" fill>
       <div className={'page learn no-scrollbar' + (bp !== 'phone' ? ' learn--wide' : '')}>
         <div className="learn-head">
-          <h1 className="page-title">{t('learn.title')}</h1>
-          <p className="muted-text learn-sub">{t('learn.sub')}</p>
+          <Link to="/learn" className="text-btn learn-back">
+            <Icon name="back" size={20} />
+            {t('learn.title')}
+          </Link>
+          <h1 className="page-title">{title}</h1>
+          <p className="muted-text learn-sub">
+            {t('learn.topicChapters', { from: chapters[0].n, to: chapters[chapters.length - 1].n })} · {t(`learn.topics.${topic}.intro`)}
+          </p>
         </div>
-        <div className="learn-progress">
-          <div className="learn-progress-bar" role="img" aria-label={t('learn.sectionsLabel', { read: readCount, total })}>
-            <div style={{ width: (readCount / total) * 100 + '%' }} />
-          </div>
-          <span className="mono-muted" aria-hidden="true">
-            {t('learn.sections', { read: readCount, total })}
-          </span>
-        </div>
+        <ReadProgress read={read} ids={chapters.flatMap(sectionIds)} />
 
-        {CHAPTERS.map((c) => {
+        {chapters.map((c) => {
           const ids = sectionIds(c);
           const status = chapterStatus(read, ids);
           const isOpen = open === c.n;
@@ -90,7 +223,6 @@ export function LearnHub(): JSX.Element {
             </div>
           );
         })}
-        <p className="muted-text learn-later">{t('learn.laterNote')}</p>
       </div>
     </AppShell>
   );
@@ -157,7 +289,7 @@ function chapterMeta(c: Chapter): string {
 }
 
 /** `base` is where the quiz's texts live: 'learn.ch5.quiz' for a chapter, 'learn.ch5.s2.check' for section 5.2. */
-function answerText(base: string, a: Answer): string {
+export function answerText(base: string, a: Answer): string {
   if ('text' in a) return t(`${base}.${a.text}`);
   const name = parseNoteName(a.note)!;
   return letterName(name.letter as Letter, name.alter);
@@ -199,11 +331,13 @@ function QuickCheck({ base, quiz, labelId, reveal, hint, onRight }: { base: stri
   );
 }
 
+/** The chapter's own quick check; a right answer adds its card to Test yourself. */
 function ChapterCheck({ chapter }: { chapter: Chapter }): JSX.Element {
+  const { dispatch } = useStore();
   return (
     <section id={anchor('check')} className="card learn-check" aria-labelledby="quiz-q">
       <span className="eyebrow">{t('learn.check')}</span>
-      <QuickCheck base={`learn.ch${chapter.n}.quiz`} quiz={chapter.quiz} labelId="quiz-q" reveal />
+      <QuickCheck base={`learn.ch${chapter.n}.quiz`} quiz={chapter.quiz} labelId="quiz-q" reveal onRight={() => dispatch({ type: 'learnQuiz', n: chapter.n })} />
     </section>
   );
 }
@@ -288,11 +422,15 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
               <Link to="/learn" className="learn-crumb">
                 {t('learn.title')}
               </Link>{' '}
+              ·{' '}
+              <Link to={topicRoute(chapter.practice)} className="learn-crumb">
+                {t(`learn.topics.${chapter.practice}.title`)}
+              </Link>{' '}
               · {t('learn.chapterN', counter)}
             </span>
           ) : (
             <div className="screen-head">
-              <Link to="/learn" aria-label={t('learn.back')} className="icon-btn icon-btn--edge">
+              <Link to={topicRoute(chapter.practice)} aria-label={t('learn.backTo', { topic: t(`learn.topics.${chapter.practice}.title`) })} className="icon-btn icon-btn--edge">
                 <Icon name="back" />
               </Link>
               <span className="eyebrow">{t('learn.chapterOf', counter)}</span>
@@ -328,7 +466,7 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
             <Link to={chapter.practice === 'notes' ? '/notes' : '/setup'} className="btn btn--accent">
               {t(chapter.practice === 'notes' ? 'learn.practice' : 'learn.practiceRhythm')}
             </Link>
-            <Link to="/learn" className="ghost-btn learn-all">
+            <Link to={topicRoute(chapter.practice)} className="ghost-btn learn-all">
               {t('learn.all')}
             </Link>
           </div>

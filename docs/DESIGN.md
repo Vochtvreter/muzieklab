@@ -247,8 +247,8 @@ Learn and practice major and minor scales in all 15 keys.
 
 ### 3.6 Test yourself — *flash cards*
 
-A quick theory check on the Learn chapters the player chooses, opened from the Learn tab. Designed on the canvas page
-*Test yourself* (phone, tablet and desktop, light and dark); not built yet.
+A quick theory check on the Learn chapters the player chooses, opened from the Learn tab. Built in 0.7.0 from the canvas
+page *Test yourself* (phone, tablet and desktop, light and dark).
 
 - **Cards are the Learn quick checks.** Every section's check and every chapter's end check is one card: 38 cards in
   chapters 1–10. A card has the question, its three answers, a glyph (a symbol or a bit of notation, such as 𝅘𝅥. or
@@ -287,7 +287,7 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
   weakest chapters with what was missed and a *Read* link. *Done* goes back to Learn, *Keep going* to the setup.
 - **Dropped as overlapping:** a *Flip* mode with self-rating (*Again · Almost · Knew it*), card types (symbols, facts
   and rules, staff reading) and an *Answer by* switch.
-- **Open:** whether a round earns XP.
+- **Open:** whether a round earns XP or counts for the streak; 0.7.0 does neither.
 
 ---
 
@@ -796,10 +796,12 @@ the row above them, each with a note saying how; deciding one keeps it in its sc
   each section.
 - **0.6.0:** a quick check after every section, which marks it read. **0.6.2:** on a computer the tabs sit in a top
   header, and Home has the two-column desktop layout. **0.6.3:** fairer judging of held notes.
+- **0.7.0 · Test yourself:** flash cards from the Learn quick checks, with spaced repetition and rounds of any length
+  (§3.6). The Learn tab opens on the theory topics (Rhythm, Reading notes, and Scales as *Later*), each with its
+  chapters, and Test yourself apart from them.
 
 **Planned.** In the order they are expected; each has its page on the canvas.
 
-- **Test yourself** (next): flash cards over Learn chapters 1–10 (choose from 3, §3.6), started from the Learn tab.
 - **Scales:** major and minor scales (natural, harmonic, melodic) in all 15 keys, reusing the key signatures and the
   piano: the circle of fifths hub, playing on the piano, spelling with ♭ ♮ ♯, and a round summary. Free practice becomes
   Rhythm · Read notes · Scales, and Learn gains chapter 11 · Scales.

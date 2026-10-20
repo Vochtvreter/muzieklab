@@ -7,7 +7,7 @@ import { Calibration } from './ui/screens/Calibration';
 import { Changelog } from './ui/screens/Changelog';
 import { Home } from './ui/screens/Home';
 import { findChapter } from './ui/learn/chapters';
-import { LearnChapter, LearnHub } from './ui/screens/Learn';
+import { LearnChapter, LearnHub, LearnTopic } from './ui/screens/Learn';
 import { NotesDone } from './ui/screens/notes/NotesDone';
 import { NotesKey } from './ui/screens/notes/NotesKey';
 import { NotesPlay } from './ui/screens/notes/NotesPlay';
@@ -17,6 +17,9 @@ import { Play } from './ui/screens/Play';
 import { Results } from './ui/screens/Results';
 import { SettingsScreen } from './ui/screens/Settings';
 import { Setup } from './ui/screens/Setup';
+import { TestCard } from './ui/screens/test/TestCard';
+import { TestDone } from './ui/screens/test/TestDone';
+import { TestSetup } from './ui/screens/test/TestSetup';
 import { StoreProvider, useStore } from './ui/store';
 
 /** The notation test page: development builds only, so it is not shipped. */
@@ -59,7 +62,7 @@ function Route(): JSX.Element {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [route]);
-  if (route.startsWith('/learn/')) {
+  if (/^\/learn\/\d+$/.test(route)) {
     const chapter = findChapter(Number(route.slice('/learn/'.length)));
     return chapter ? <LearnChapter key={chapter.n} chapter={chapter} /> : <LearnHub />;
   }
@@ -88,6 +91,15 @@ function Route(): JSX.Element {
       return <NotesDone />;
     case '/learn':
       return <LearnHub />;
+    case '/learn/rhythm':
+    case '/learn/notes':
+      return <LearnTopic key={route} topic={route === '/learn/rhythm' ? 'rhythm' : 'notes'} />;
+    case '/test':
+      return <TestSetup />;
+    case '/test/play':
+      return <TestCard />;
+    case '/test/done':
+      return <TestDone />;
     case '/dev/render':
       if (RenderDemo) {
         return (

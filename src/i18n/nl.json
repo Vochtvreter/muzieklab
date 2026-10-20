@@ -812,7 +812,7 @@
   "learn": {
     "title": "Leren",
     "docTitle": "Leren",
-    "sub": "Korte hoofdstukken over muziek lezen, elk met oefeningen erbij.",
+    "sub": "Korte hoofdstukken over muziek lezen, en flashcards om te zien wat is blijven hangen.",
     "sections": "{read} / {total} delen",
     "sectionsLabel": "{read} van {total} delen gelezen",
     "status": {
@@ -1522,9 +1522,94 @@
         "right": "Goed. Eén toets omhoog vanaf het laatste kruis: C♯ → D majeur.",
         "wrong": "Niet helemaal. Ga één toets omhoog vanaf het laatste kruis: C♯ → D majeur."
       }
+    },
+    "theory": "Theorie",
+    "topicsLabel": "Onderwerpen",
+    "checkPart": "Test wat je weet",
+    "topicChapters": "Hoofdstukken {from}–{to}",
+    "backTo": "Terug naar {topic}",
+    "topics": {
+      "rhythm": {
+        "title": "Ritme",
+        "sub": "van de tel tot triolen",
+        "intro": "Van de tel tot triolen. Elk deel eindigt met een snelle check en een oefenlink."
+      },
+      "notes": {
+        "title": "Noten lezen",
+        "sub": "sleutels, kruisen en mollen, toonsoorten",
+        "intro": "Sleutels, kruisen en mollen, en voortekening. Elk deel eindigt met een snelle check en een oefenlink."
+      },
+      "scales": {
+        "title": "Toonladders",
+        "sub": "Hoofdstuk 11 · komt met de modus Toonladders"
+      }
+    }
+  },
+  "test": {
+    "title": "Test jezelf",
+    "duePill": "{count} te herhalen",
+    "panelText": "Flashcards van de snelle checks die je goed had. Elk hoofdstuk dat je leest, voegt zijn kaarten toe.",
+    "panelEmpty": "Nog geen kaarten: beantwoord een snelle check in Leren goed, dan komt zijn kaart in je stapel.",
+    "inDeck": "{count, plural, one {# kaart} other {# kaarten}} in je stapel",
+    "dueToday": "{count} vandaag te herhalen",
+    "choose": "Kies hoofdstukken",
+    "startDue": "Start · eerst {count} herhalen",
+    "start": "Start",
+    "chaptersRead": "Wat ik las",
+    "toLearn": "Naar Leren",
+    "chosen": "{count} gekozen",
+    "cards": "{count, plural, one {# kaart} other {# kaarten}}",
+    "noCards": "Nog geen kaarten",
+    "chooseOne": "Kies een hoofdstuk",
+    "stop": "Stop en bekijk hoe het ging",
+    "dueLeft": "nog {count} te herhalen",
+    "moreLeft": "nog {count}",
+    "sub": "Eerst herhalen · stop wanneer je wilt",
+    "right": "goed",
+    "wrong": "fout",
+    "chapterChip": "H{n} · {title}",
+    "rightBack": "Goed. Terug over {count, plural, one {# dag} other {# dagen}}.",
+    "wrongBack": "Niet helemaal: {answer}. Morgen terug.",
+    "rightLead": "Goed.",
+    "readSection": "Lees {id} {title}",
+    "readChapter": "Lees hoofdstuk {n}",
+    "pick": "Kies een antwoord",
+    "lastDue": "Dat was de laatste kaart om te herhalen. Ga door met de andere, of stop hier.",
+    "finish": "Afronden",
+    "keepGoing": "Ga door",
+    "next": "Volgende kaart",
+    "seeHow": "Bekijk hoe het ging",
+    "done": {
+      "title": "Ronde klaar",
+      "sub": "Test jezelf · {count, plural, one {# kaart} other {# kaarten}} beantwoord",
+      "score": "kaarten in één keer goed · {pct}%",
+      "right": "Goed",
+      "wrong": "Fout",
+      "rightWhen": "Terug over 4 dagen of later",
+      "rightWhy": "elke kaart gaat een vakje hoger",
+      "wrongWhen": "Morgen terug",
+      "wrongWhy": "en als eerste in je volgende ronde",
+      "weakest": "Zwakste hoofdstukken",
+      "firstTry": "in één keer goed",
+      "missed": "Gemist: {list}",
+      "chapterCheck": "de check van het hoofdstuk",
+      "chapterScore": "{title}: {right} van {total} goed",
+      "read": "Lees",
+      "perfectIn": "{count, plural, one {Hoofdstuk {list}} other {Hoofdstukken {list}}}: elke kaart goed.",
+      "allRight": "Elke kaart in één keer goed.",
+      "done": "Klaar",
+      "another": "Nieuwe ronde",
+      "andMore": "{list} en nog {count}"
     }
   },
   "changelog": {
+    "v0_7_0": {
+      "title": "Test jezelf",
+      "try": "Open Leren",
+      "cards": "Test jezelf: flashcards van de snelle checks die je in Leren goed had. Eerst de kaarten die aan de beurt zijn, en je stopt wanneer je wilt.",
+      "review": "Elke kaart komt terug als hij aan de beurt is: na een goed antwoord steeds later, na een fout morgen.",
+      "topics": "Het tabblad Leren begint met de onderwerpen Ritme en Noten lezen, elk met zijn hoofdstukken, en apart Test jezelf."
+    },
     "title": "Wat is er nieuw",
     "back": "Terug naar instellingen",
     "current": "Je hebt versie {version}",

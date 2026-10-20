@@ -21,6 +21,7 @@ import {
   type Settings,
   type Tap,
 } from '../core/api';
+import { review } from '../game/leitner';
 import { lessonSettings, recordLessonResult } from '../game/path';
 import { xpForResult } from '../game/xp';
 import {
@@ -38,6 +39,7 @@ import {
   type Prefs,
   type Progress,
 } from '../game/storage';
+import { deckIds, roundQueue } from './learn/cards';
 import { parseHash } from './router';
 
 export interface Run {
@@ -151,6 +153,20 @@ export interface NoteLast {
   reward: Reward;
 }
 
+/**
+ * A Test yourself round (DESIGN.md §3.6): the cards to ask in order, how many of them were due, where the round is, and
+ * the answers so far. It has no set length: the player stops when they like, and each answer is saved as it is given.
+ */
+export interface QuizRun {
+  chapters: number[];
+  queue: string[];
+  due: number;
+  /** Index in `queue` of the card on screen. */
+  at: number;
+  /** The answer picked on each card asked, and whether it was right. */
+  answers: { id: string; pick: number; right: boolean }[];
+}
+
 export interface AppState {
   prefs: Prefs;
   progress: Progress;
@@ -162,6 +178,8 @@ export interface AppState {
   noteSettings: NoteSettings;
   noteRun: NoteRun | null;
   noteLast: NoteLast | null;
+  /** Test yourself: the round being played (or the one just stopped, for Round done). */
+  quiz: QuizRun | null;
 }
 
 export type Action =
@@ -173,7 +191,11 @@ export type Action =
   | { type: 'noteSettings'; settings: NoteSettings }
   | { type: 'noteStart'; run: NoteRun }
   | { type: 'noteFinish'; answers: NoteAnswer[]; today: string }
-  | { type: 'learnRead'; ids: string[] };
+  | { type: 'learnRead'; ids: string[] }
+  | { type: 'learnQuiz'; n: number }
+  | { type: 'quizStart'; chapters: number[]; today: string }
+  | { type: 'quizAnswer'; pick: number; right: boolean; today: string }
+  | { type: 'quizNext' };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -212,7 +234,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward } };
     }
     case 'resetProgress':
-      return { ...state, progress: defaultProgress(), last: null, noteLast: null, noteSettings: { ...DEFAULT_NOTE_SETTINGS } };
+      return { ...state, progress: defaultProgress(), last: null, noteLast: null, noteSettings: { ...DEFAULT_NOTE_SETTINGS }, quiz: null };
     case 'noteSettings':
       return { ...state, noteSettings: action.settings, progress: { ...state.progress, notes: { ...state.progress.notes, settings: action.settings } } };
     case 'noteStart':
@@ -236,6 +258,27 @@ export function reducer(state: AppState, action: Action): AppState {
       const add = action.ids.filter((id) => !state.progress.learnRead.includes(id));
       if (add.length === 0) return state;
       return { ...state, progress: { ...state.progress, learnRead: [...state.progress.learnRead, ...add].sort() } };
+    }
+    case 'learnQuiz': {
+      if (state.progress.learnQuiz.includes(action.n)) return state;
+      return { ...state, progress: { ...state.progress, learnQuiz: [...state.progress.learnQuiz, action.n].sort((a, b) => a - b) } };
+    }
+    case 'quizStart': {
+      const { queue, due } = roundQueue(deckIds(state.progress), action.chapters, state.progress.cards, action.today);
+      return { ...state, quiz: { chapters: action.chapters, queue, due, at: 0, answers: [] } };
+    }
+    case 'quizAnswer': {
+      // One answer per card: the first one counts, and it is saved at once so stopping loses nothing.
+      const q = state.quiz;
+      const id = q?.queue[q.at];
+      if (!q || !id || q.answers.length > q.at) return state;
+      const cards = { ...state.progress.cards, [id]: review(state.progress.cards[id], action.right, action.today) };
+      return { ...state, quiz: { ...q, answers: [...q.answers, { id, pick: action.pick, right: action.right }] }, progress: { ...state.progress, cards } };
+    }
+    case 'quizNext': {
+      const q = state.quiz;
+      if (!q || q.answers.length <= q.at || q.at + 1 >= q.queue.length) return state;
+      return { ...state, quiz: { ...q, at: q.at + 1 } };
     }
   }
 }
@@ -277,6 +320,7 @@ function initialState(): AppState {
     noteSettings: progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS },
     noteRun: route === '/notes/play' ? restoreNoteRun(progress.notes.weak) : null,
     noteLast: null,
+    quiz: null,
   };
 }
 

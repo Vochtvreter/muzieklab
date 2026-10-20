@@ -12,6 +12,7 @@ const state = (): AppState => ({
   noteSettings: DEFAULT_NOTE_SETTINGS,
   noteRun: null,
   noteLast: null,
+  quiz: null,
 });
 const result = (judgements: NoteResult['judgement'][], accuracy = 80, stars: JudgeResult['stars'] = 2): JudgeResult =>
   ({
@@ -90,5 +91,24 @@ describe('reducer: Read notes', () => {
     expect(s.progress.notes.settings?.keys).toEqual(['G']);
     const r = reducer(reducer(s, { type: 'learnRead', ids: ['8.2', '8.1'] }), { type: 'learnRead', ids: ['8.1'] });
     expect(r.progress.learnRead).toEqual(['8.1', '8.2']);
+  });
+});
+
+describe('reducer: Test yourself', () => {
+  it('a passed chapter check joins the deck; a round asks the due cards and saves each answer at once', () => {
+    let s = reducer(state(), { type: 'learnRead', ids: ['1.1', '1.2'] });
+    s = reducer(reducer(s, { type: 'learnQuiz', n: 1 }), { type: 'learnQuiz', n: 1 });
+    expect(s.progress.learnQuiz).toEqual([1]);
+    s = reducer(s, { type: 'quizStart', chapters: [1], today: '2026-10-20' });
+    expect(s.quiz).toMatchObject({ queue: ['1.1', '1.2', 'ch1'], due: 3, at: 0, answers: [] });
+    // Next waits for an answer; an answer counts once and is saved straight away.
+    expect(reducer(s, { type: 'quizNext' }).quiz?.at).toBe(0);
+    s = reducer(s, { type: 'quizAnswer', pick: 0, right: true, today: '2026-10-20' });
+    s = reducer(s, { type: 'quizAnswer', pick: 1, right: false, today: '2026-10-20' });
+    expect(s.quiz?.answers).toEqual([{ id: '1.1', pick: 0, right: true }]);
+    expect(s.progress.cards['1.1']).toEqual({ box: 2, due: '2026-10-24', missed: false });
+    s = reducer(reducer(s, { type: 'quizNext' }), { type: 'quizAnswer', pick: 2, right: false, today: '2026-10-20' });
+    expect(s.progress.cards['1.2']).toEqual({ box: 1, due: '2026-10-21', missed: true });
+    expect(s.quiz?.at).toBe(1);
   });
 });

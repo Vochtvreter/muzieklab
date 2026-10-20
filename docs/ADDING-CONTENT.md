@@ -67,8 +67,9 @@ A new kind of block (counting under the notes, for example) is a case in the `Bl
 Every quick check is also a Test yourself flash card (DESIGN.md §3.6): the deck, the chapter rows in its setup and
 the topics on the Learn tab are read from `CHAPTERS`, so a new chapter or section needs no extra step. Write each check
 so it still makes sense on its own, away from the section: name what it asks about ("in 6/8", "on the treble staff")
-instead of "this rhythm" or "above". A check may name a glyph for its card (a symbol or bit of notation); without one
-the card shows its topic's glyph.
+instead of "this rhythm" or "above". A check may name a glyph for its card, a symbol or bit of notation:
+`check: { answers: […], right: 2, glyph: '𝄴' }`; without one the card shows its topic's glyph. A chapter's topic on the
+Learn tab (Rhythm or Reading notes) follows its `practice`.
 
 ### Moving or renumbering sections
 

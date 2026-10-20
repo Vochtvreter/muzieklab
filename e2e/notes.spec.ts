@@ -68,11 +68,11 @@ test('learn: the Key screen links to key signatures; the quick check answers', a
   await check.getByRole('button', { name: 'For the whole piece' }).click();
   await expect(check.getByRole('status')).toHaveText(/^Right\. A key signature holds/);
   await page.getByRole('link', { name: 'Back to all chapters' }).click();
-  await expect(page.getByRole('heading', { name: 'Learn' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Reading notes' })).toBeVisible();
   await page.getByRole('button', { name: /^10\s*Key signatures/ }).click();
   await expect(page.getByText('✓ read')).toHaveCount(1);
   await expect(page.getByRole('link', { name: /^10\.1.*✓ read/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Learn' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Learn' })).toHaveAttribute('aria-current', 'page');
 });
 
 test('learn: a practice link opens Read notes set up for its section', async ({ page }) => {

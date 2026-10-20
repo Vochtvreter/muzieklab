@@ -812,7 +812,7 @@
   "learn": {
     "title": "Learn",
     "docTitle": "Learn",
-    "sub": "Short chapters on reading music, each with practice to match.",
+    "sub": "Short chapters on reading music, and flash cards to check what stuck.",
     "sections": "{read} / {total} sections",
     "sectionsLabel": "{read} of {total} sections read",
     "status": {
@@ -1522,9 +1522,94 @@
         "right": "Right. One key up from the last sharp: C♯ → D major.",
         "wrong": "Not quite. Go one key up from the last sharp: C♯ → D major."
       }
+    },
+    "theory": "Theory",
+    "topicsLabel": "Topics",
+    "checkPart": "Check what you know",
+    "topicChapters": "Chapters {from}–{to}",
+    "backTo": "Back to {topic}",
+    "topics": {
+      "rhythm": {
+        "title": "Rhythm",
+        "sub": "from the beat to triplets",
+        "intro": "From the beat to triplets. Each section ends with a quick check and a practice link."
+      },
+      "notes": {
+        "title": "Reading notes",
+        "sub": "clefs, sharps and flats, keys",
+        "intro": "Clefs, sharps and flats, and key signatures. Each section ends with a quick check and a practice link."
+      },
+      "scales": {
+        "title": "Scales",
+        "sub": "Chapter 11 · comes with the Scales mode"
+      }
+    }
+  },
+  "test": {
+    "title": "Test yourself",
+    "duePill": "{count} due",
+    "panelText": "Flash cards from the quick checks you answered. Every chapter you read adds its cards.",
+    "panelEmpty": "No cards yet: answer a quick check in Learn right, and its card joins your deck.",
+    "inDeck": "{count, plural, one {# card} other {# cards}} in your deck",
+    "dueToday": "{count} due today",
+    "choose": "Choose chapters",
+    "startDue": "Start · {count} due first",
+    "start": "Start",
+    "chaptersRead": "Chapters I read",
+    "toLearn": "Go to Learn",
+    "chosen": "{count} chosen",
+    "cards": "{count, plural, one {# card} other {# cards}}",
+    "noCards": "No cards yet",
+    "chooseOne": "Choose a chapter",
+    "stop": "Stop and see how you did",
+    "dueLeft": "{count} due left",
+    "moreLeft": "{count} more",
+    "sub": "Due cards first · stop any time",
+    "right": "right",
+    "wrong": "wrong",
+    "chapterChip": "Ch {n} · {title}",
+    "rightBack": "Right. Back in {count, plural, one {# day} other {# days}}.",
+    "wrongBack": "Not quite: {answer}. Back tomorrow.",
+    "rightLead": "Right.",
+    "readSection": "Read {id} {title}",
+    "readChapter": "Read chapter {n}",
+    "pick": "Pick an answer",
+    "lastDue": "That was the last due card. Keep going with the others, or stop here.",
+    "finish": "Finish",
+    "keepGoing": "Keep going",
+    "next": "Next card",
+    "seeHow": "See how you did",
+    "done": {
+      "title": "Round done",
+      "sub": "Test yourself · {count, plural, one {# card} other {# cards}} answered",
+      "score": "cards right on the first try · {pct}%",
+      "right": "Right",
+      "wrong": "Wrong",
+      "rightWhen": "Back in 4 days or later",
+      "rightWhy": "each card moves up a box",
+      "wrongWhen": "Back tomorrow",
+      "wrongWhy": "and first in your next round",
+      "weakest": "Weakest chapters",
+      "firstTry": "right on the first try",
+      "missed": "Missed: {list}",
+      "chapterCheck": "the chapter check",
+      "chapterScore": "{title}: {right} of {total} right",
+      "read": "Read",
+      "perfectIn": "{count, plural, one {Chapter {list}} other {Chapters {list}}}: every card right.",
+      "allRight": "Every card right on the first try.",
+      "done": "Done",
+      "another": "New round",
+      "andMore": "{list} and {count} more"
     }
   },
   "changelog": {
+    "v0_7_0": {
+      "title": "Test yourself",
+      "try": "Open Learn",
+      "cards": "Test yourself: flash cards made from the quick checks you answered in Learn. Due cards come first, and you stop whenever you like.",
+      "review": "Every card comes back when it is due: a right answer later each time, a wrong one tomorrow.",
+      "topics": "The Learn tab opens on its topics, Rhythm and Reading notes, each with its chapters, and Test yourself on its own."
+    },
     "title": "What's new",
     "back": "Back to settings",
     "current": "You're on version {version}",

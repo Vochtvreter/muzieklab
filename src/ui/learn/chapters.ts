@@ -99,10 +99,14 @@ export interface Section {
  * chapter, learn.ch1.s2.check.a1 for section 1.2).
  */
 export type Answer = { note: string } | { text: string };
-/** A quick check: its answers and which one is right. */
+/**
+ * A quick check: its answers and which one is right. Every quick check is also a Test yourself flash card (DESIGN.md
+ * §3.6); `glyph` is the symbol or bit of notation on its card, else the card shows its topic's glyph.
+ */
 export interface Quiz {
   answers: Answer[];
   right: number;
+  glyph?: string;
 }
 
 export interface Chapter {
@@ -113,9 +117,16 @@ export interface Chapter {
   units?: number[];
   sections: Section[];
   quiz: Quiz;
-  /** The big button at the end: Read notes or rhythm Free practice. */
-  practice: 'notes' | 'rhythm';
+  /** The big button at the end: Read notes or rhythm Free practice. It also puts the chapter in its Learn topic. */
+  practice: Topic;
 }
+
+/** The Learn tab's topics (DESIGN.md §3.6): a chapter belongs to the one its practice goes to. */
+export type Topic = 'rhythm' | 'notes';
+export const TOPICS: { id: Topic; glyph: string }[] = [
+  { id: 'rhythm', glyph: '𝅘𝅥𝅮' },
+  { id: 'notes', glyph: '𝄞' },
+];
 
 /** All chapters in the plan, built or not, for "chapter 9 of 11". */
 export const PLANNED_CHAPTERS = 11;
@@ -159,7 +170,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '1.2',
-        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2 },
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2, glyph: '𝄴' },
         blocks: [
           { kind: 'text', text: 'text' },
           { kind: 'rhythm', meter: '4/4', bars: ['q q q q', 'h h'], alt: 'barsAlt' },
@@ -195,7 +206,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '2.1',
-        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0, glyph: '𝅘𝅥𝅯' },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -228,7 +239,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '3.1',
-        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0, glyph: '𝄻 𝄼' },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -287,7 +298,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '4.2',
-        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1, glyph: '𝅘𝅥𝅮𝅘𝅥𝅯𝅘𝅥𝅯' },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -356,7 +367,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '5.2',
-        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2 },
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 2, glyph: '𝅗𝅥𝅭' },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -400,7 +411,7 @@ export const CHAPTERS: Chapter[] = [
         practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'], dotted: true } },
       },
     ],
-    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0, glyph: '𝅘𝅥𝅭' },
   },
   {
     n: 6,
@@ -463,7 +474,7 @@ export const CHAPTERS: Chapter[] = [
     sections: [
       {
         id: '8.1',
-        check: { answers: [{ note: 'C' }, { note: 'F' }, { note: 'G' }], right: 1 },
+        check: { answers: [{ note: 'C' }, { note: 'F' }, { note: 'G' }], right: 1, glyph: '𝄢' },
         blocks: [
           { kind: 'text', text: 'text' },
           {
@@ -478,7 +489,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '8.2',
-        check: { answers: [{ note: 'D' }, { note: 'E' }, { note: 'F' }], right: 2 },
+        check: { answers: [{ note: 'D' }, { note: 'E' }, { note: 'F' }], right: 2, glyph: '𝄞' },
         blocks: [
           {
             kind: 'pair',
@@ -494,7 +505,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '8.3',
-        check: { answers: [{ note: 'A' }, { note: 'B' }, { note: 'C' }], right: 0 },
+        check: { answers: [{ note: 'A' }, { note: 'B' }, { note: 'C' }], right: 0, glyph: '𝄢' },
         blocks: [
           {
             kind: 'pair',
@@ -538,7 +549,7 @@ export const CHAPTERS: Chapter[] = [
         practice: { notes: { ...C_ONLY, clefs: ['treble', 'bass'], range: 'staff', input: 'names' } },
       },
     ],
-    quiz: { answers: [{ note: 'G' }, { note: 'B' }, { note: 'D' }], right: 1 },
+    quiz: { answers: [{ note: 'G' }, { note: 'B' }, { note: 'D' }], right: 1, glyph: '𝄞' },
   },
   {
     n: 9,
@@ -619,7 +630,7 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         id: '10.3',
-        check: { answers: [{ note: 'Ab' }, { note: 'Bb' }, { note: 'Eb' }], right: 2 },
+        check: { answers: [{ note: 'Ab' }, { note: 'Bb' }, { note: 'Eb' }], right: 2, glyph: '♭♭♭' },
         blocks: [{ kind: 'list', items: ['point1', 'point2'] }],
         practice: { notes: { keys: ['G', 'D', 'A', 'F', 'Bb', 'Eb'], mixKeys: true, extras: 'none' } },
       },
@@ -632,11 +643,13 @@ export const CHAPTERS: Chapter[] = [
         ],
       },
     ],
-    quiz: { answers: [{ note: 'C' }, { note: 'D' }, { note: 'C#' }], right: 1 },
+    quiz: { answers: [{ note: 'C' }, { note: 'D' }, { note: 'C#' }], right: 1, glyph: '♯♯' },
   },
 ];
 
 export const findChapter = (n: number): Chapter | undefined => CHAPTERS.find((c) => c.n === n);
+export const topicChapters = (topic: Topic): Chapter[] => CHAPTERS.filter((c) => c.practice === topic);
+export const topicGlyph = (topic: Topic): string => TOPICS.find((x) => x.id === topic)!.glyph;
 export const sectionIds = (c: Chapter): string[] => c.sections.map((s) => s.id);
 /** The full message key of a section's text: ('9.3', 'point1') → 'learn.ch9.s3.point1'. */
 export const sectionKey = (id: string, key: string): string => {

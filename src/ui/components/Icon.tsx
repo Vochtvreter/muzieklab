@@ -27,6 +27,14 @@ const PATHS = {
   chevron: <path d="M9 5l7 7-7 7" />,
   chevronSmall: <path d="M9 6l6 6-6 6" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
+  /** Test yourself: a stack of flash cards. */
+  cards: (
+    <>
+      <rect x="3" y="6" width="14" height="14" rx="2" />
+      <path d="M7 3h12a2 2 0 0 1 2 2v12" />
+    </>
+  ),
+  arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
   help: (
     <>
       <circle cx="12" cy="12" r="9" />

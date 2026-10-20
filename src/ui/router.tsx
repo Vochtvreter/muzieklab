@@ -1,6 +1,7 @@
 /**
  * A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/settings, #/calibrate, #/changelog, Read notes (#/notes, #/notes/key,
- * #/notes/play, #/notes/done), Learn (#/learn and a chapter, #/learn/8), and #/dev/render. A `?s=10.2` query names a Learn section.
+ * #/notes/play, #/notes/done), Learn (#/learn, a topic's chapters #/learn/rhythm, a chapter #/learn/8), Test yourself (#/test,
+ * #/test/play, #/test/done), and #/dev/render. A `?s=10.2` query names a Learn section.
  */
 import { useSyncExternalStore, type AnchorHTMLAttributes } from 'react';
 
@@ -18,7 +19,12 @@ export type Route =
   | '/notes/play'
   | '/notes/done'
   | '/learn'
+  | '/learn/rhythm'
+  | '/learn/notes'
   | `/learn/${number}`
+  | '/test'
+  | '/test/play'
+  | '/test/done'
   | '/dev/render';
 
 const ROUTES: Route[] = [
@@ -35,6 +41,11 @@ const ROUTES: Route[] = [
   '/notes/play',
   '/notes/done',
   '/learn',
+  '/learn/rhythm',
+  '/learn/notes',
+  '/test',
+  '/test/play',
+  '/test/done',
   '/dev/render',
 ];
 

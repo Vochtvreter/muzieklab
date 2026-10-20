@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from '../core/defaults';
 import { MAX_WEAK, parseNoteId, sanitizeNoteSettings, type NoteSettings, type WeakSpots } from '../core/noteRound';
 import type { Volumes } from '../audio/engine';
 import { isLocale } from '../i18n';
+import { sanitizeCardState, type CardState } from './leitner';
 
 export interface Prefs {
   /** Settings → Language: a locale code ("en", "nl"), or 'system' to follow the device's languages. */
@@ -53,6 +54,10 @@ export interface Progress {
   notes: { settings: NoteSettings | null; weak: WeakSpots };
   /** Learn sections read, e.g. "8.2". */
   learnRead: string[];
+  /** Learn chapters whose end check was answered right. With the sections read, they make the Test yourself deck. */
+  learnQuiz: number[];
+  /** Test yourself: each card's Leitner box and due day, by card id ("4.2", "ch4"); a card without one is due. */
+  cards: Record<string, CardState>;
 }
 
 /** Versioned keys: a future format gets a new key (and may migrate from the old one). */
@@ -77,7 +82,7 @@ export const DEFAULT_PREFS: Prefs = {
 };
 
 export function defaultProgress(): Progress {
-  return { lessons: {}, practiceDays: [], lastSettings: null, xp: 0, daily: null, dailyBest: 0, notes: { settings: null, weak: {} }, learnRead: [] };
+  return { lessons: {}, practiceDays: [], lastSettings: null, xp: 0, daily: null, dailyBest: 0, notes: { settings: null, weak: {} }, learnRead: [], learnQuiz: [], cards: {} };
 }
 
 /** True when nothing has been earned or saved yet (storage can then be cleared). */
@@ -90,12 +95,17 @@ export function isEmptyProgress(p: Progress): boolean {
     !p.daily &&
     !p.notes.settings &&
     Object.keys(p.notes.weak).length === 0 &&
-    p.learnRead.length === 0
+    p.learnRead.length === 0 &&
+    p.learnQuiz.length === 0 &&
+    Object.keys(p.cards).length === 0
   );
 }
 
-/** Learn sections that moved when chapter 8 split into chapters 8–10 (0.3.4): the piano, and key signatures. */
-const MOVED_SECTIONS: Record<string, string[]> = { '8.6': ['9.1'], '8.7': ['10.1', '10.2', '10.3', '10.4'] };
+/**
+ * Learn sections that moved when chapter 8 split into chapters 8–10 (0.3.4): the piano, and key signatures. A moved
+ * section keeps its read status and its Test yourself card state.
+ */
+export const MOVED_SECTIONS: Record<string, string[]> = { '8.6': ['9.1'], '8.7': ['10.1', '10.2', '10.3', '10.4'] };
 
 // --- validation helpers: keep what is valid, fall back to the default for the rest ----------
 
@@ -212,7 +222,22 @@ export function sanitizeProgress(raw: unknown): Progress {
     learnRead: Array.isArray(raw.learnRead)
       ? [...new Set(raw.learnRead.filter((x): x is string => typeof x === 'string' && /^\d{1,2}\.\d{1,2}$/.test(x)).flatMap((x) => MOVED_SECTIONS[x] ?? [x]))]
       : [],
+    learnQuiz: Array.isArray(raw.learnQuiz)
+      ? [...new Set(raw.learnQuiz.filter((x): x is number => Number.isInteger(x) && x > 0 && x < 100))].sort((a, b) => a - b)
+      : [],
+    cards: sanitizeCards(raw.cards),
   };
+}
+
+function sanitizeCards(raw: unknown): Record<string, CardState> {
+  const cards: Record<string, CardState> = {};
+  if (!isObj(raw)) return cards;
+  for (const [id, v] of Object.entries(raw)) {
+    const state = sanitizeCardState(v);
+    if (!state || !/^(\d{1,2}\.\d{1,2}|ch\d{1,2})$/.test(id)) continue;
+    for (const to of MOVED_SECTIONS[id] ?? [id]) cards[to] = state;
+  }
+  return cards;
 }
 
 function sanitizeNotes(raw: unknown): Progress['notes'] {
