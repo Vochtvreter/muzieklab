@@ -270,18 +270,22 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
   cards due, the size of the deck, *Choose chapters* (the setup) and *Start · N cards*. On phone and tablet the theory
   comes first and Test yourself below it; on desktop Test yourself is a panel beside the theory.
 - **Setup:** tick chapters (1–10 today, one row per chapter in the data; each row shows its number of cards; *Chapters I read* ticks the chapters with a
-  section read) and the round size, **10 · 20 · All**. A summary line says how many cards are due and how many the
-  chosen chapters hold. *Start* stays disabled until a chapter is ticked.
+  section read). There is no round size to pick. A summary line says how many cards are due and how many the chosen
+  chapters hold. *Start · N due first* stays disabled until a chapter is ticked.
+- **No set length:** a round starts with the due cards, then goes on with the others from the chosen chapters, until
+  the player stops or every card has been shown. Each answer counts the moment it is given, so stopping loses nothing.
+  The header shows how many due cards are left, and its × (*Stop*) opens Round done. After the last due card, the card
+  says so and offers *Finish* (Round done) or *Keep going*.
 - **A card:** the chapter, the question and the glyph, with three answers (A, B, C) under it. The two wrong answers
   come from the quick check, so a guess is never free. After a pick, the right answer turns green and a wrong pick
   red, and a panel shows *Right. Back in 4 days.* or *Not quite: …. Back tomorrow.*, the explanation and the
-  *Read …* link. *Next card* stays disabled until an answer is picked. The header has Stop, a progress bar, the card
-  count and the right and wrong tally.
+  *Read …* link. *Next card* stays disabled until an answer is picked. The header has Stop, a progress bar through
+  the due cards, the due cards left and the right and wrong tally.
 - **Spaced repetition:** a simple Leitner scheme per card. Right moves the card up a box (back in 4 days, then
   longer); wrong puts it back in the first box (back tomorrow) and first in the next round. A round starts with the
   due cards, then the others from the chosen chapters.
 - **Round done:** cards right on the first try (8 / 12), the right and wrong groups with when they come back, and the
-  weakest chapters with what was missed and a *Read* link. *Done* goes back to Learn, *Another round* to the setup.
+  weakest chapters with what was missed and a *Read* link. *Done* goes back to Learn, *Keep going* to the setup.
 - **Dropped as overlapping:** a *Flip* mode with self-rating (*Again · Almost · Knew it*), card types (symbols, facts
   and rules, staff reading) and an *Answer by* switch.
 - **Open:** whether a round earns XP; and the setup summary counts every card of the chosen chapters, while the deck
