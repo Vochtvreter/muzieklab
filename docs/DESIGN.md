@@ -270,8 +270,7 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
   cards due, the size of the deck, *Choose chapters* (the setup) and *Start · N cards*. On phone and tablet the theory
   comes first and Test yourself below it; on desktop Test yourself is a panel beside the theory.
 - **Setup:** tick chapters (1–10 today, one row per chapter in the data; each row shows its number of cards; *Chapters I read* ticks the chapters with a
-  section read). There is no round size to pick. A summary line says how many cards are due and how many the chosen
-  chapters hold. *Start · N due first* stays disabled until a chapter is ticked.
+  section read). There is no round size to pick. *Start · N due first* stays disabled until a chapter is ticked.
 - **No set length:** a round starts with the due cards, then goes on with the others from the chosen chapters, until
   the player stops or every card has been shown. Each answer counts the moment it is given, so stopping loses nothing.
   The header shows how many due cards are left, and its × (*Stop*) opens Round done. After the last due card, the card
@@ -288,8 +287,7 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
   weakest chapters with what was missed and a *Read* link. *Done* goes back to Learn, *Keep going* to the setup.
 - **Dropped as overlapping:** a *Flip* mode with self-rating (*Again · Almost · Knew it*), card types (symbols, facts
   and rules, staff reading) and an *Answer by* switch.
-- **Open:** whether a round earns XP; and the setup summary counts every card of the chosen chapters, while the deck
-  rule above lets only answered checks join.
+- **Open:** whether a round earns XP.
 
 ---
 
