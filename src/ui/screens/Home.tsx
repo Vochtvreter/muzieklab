@@ -1,6 +1,6 @@
 /**
  * Home: streak, level and XP, Continue (the next lesson), the daily challenge and Free practice (Rhythm, Read notes).
- * Desktop (App design canvas, Desktop · Home): a left column with streak and level, the daily challenge and the path
+ * Desktop (canvas, Home & shell, Home · desktop): a left column with streak and level, the daily challenge and the path
  * summary, next to Continue and the practice tiles.
  */
 import { useMemo } from 'react';

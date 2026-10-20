@@ -1,7 +1,7 @@
 # Muzieklab — Design Document
 
 > Status: **Draft v0.1** — design only, no code yet.
-> Visual design (screens, foundations, engine): [Muzieklab App Design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE).
+> Visual design (screens, foundations, engine): the [Muzieklab canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS).
 
 ---
 
@@ -247,26 +247,33 @@ Learn and practice major and minor scales in all 15 keys.
 
 ### 3.6 Test yourself — *flash cards*
 
-A quick theory check on any **chapters the player chooses**, opened from the Learn tab.
+A quick theory check on the Learn chapters the player chooses, opened from the Learn tab. Designed on the canvas page
+*Test yourself* (phone, tablet and desktop, light and dark); not built yet.
 
-- **Setup:** tick chapters (1–10; chapters marked *later* have no cards yet; a "Chapters I
-  read" shortcut selects the read ones), card types (*symbols*: "which rest is this?";
-  *facts and rules*: "how long is a dotted quarter?"; *staff reading*: name a note or a
-  staff line), 10 / 20 / 30 cards, and **Flip** or **Choice** (three options).
-- **Flip mode:** the front shows a question and a symbol or a bit of notation. Tapping the
-  card (or *Show answer*) turns it over: the answer, a one-line explanation and a link
-  to the Learn section it comes from. The player rates it **Again · Almost · Knew it**.
-- **Choice mode:** the same card with three answers (A, B, C) under it. The two wrong
-  answers are real terms from the same chapter (for "lines of the treble staff": E G B D F,
-  with F A C E, the spaces, and G B D F A, the bass lines), so a guess is never free.
-  After a pick, the right answer turns green and a wrong pick red, and the card shows the
-  explanation and the Learn link. No self-rating: right counts as *Knew it*, wrong as
-  *Again*. *Next card* stays disabled until an answer is picked.
-- **Spaced repetition:** a simple Leitner scheme per card. *Again* puts the card back in
-  this round, *Almost* brings it back tomorrow, *Knew it* moves it up a box (4 days, then
-  longer). Cards the player missed come first in the next round.
-- **Card content** is written from the Learn chapters only, so every answer is covered
-  by `THEORY-SOURCES.md`. Cards are localizable content like the chapters.
+- **Cards are the Learn quick checks.** Every section's check and every chapter's end check is one card: 38 cards in
+  chapters 1–10. A card has the question, its three answers, a glyph (a symbol or a bit of notation, such as 𝅘𝅥. or
+  ♭ ♭ ♭), the explanation (the check's *Right.* text) and a link to the section it comes from. The text lives in the
+  i18n files like the chapters, so every answer is covered by `THEORY-SOURCES.md`. Chapter 11 gets cards when it is
+  built.
+- **Learn hub:** a *Test yourself* card under the progress bar shows how many cards are due, with *Choose chapters*
+  and *Start · N cards*.
+- **Setup:** tick chapters 1–10 (each row shows its number of cards; *Chapters I read* ticks the chapters with a
+  section read) and the round size, **10 · 20 · All**. A summary line says how many cards are due and how many the
+  chosen chapters hold. *Start* stays disabled until a chapter is ticked.
+- **A card:** the chapter, the question and the glyph, with three answers (A, B, C) under it. The two wrong answers
+  come from the quick check, so a guess is never free. After a pick, the right answer turns green and a wrong pick
+  red, and a panel shows *Right. Back in 4 days.* or *Not quite: …. Back tomorrow.*, the explanation and the
+  *Read …* link. *Next card* stays disabled until an answer is picked. The header has Stop, a progress bar, the card
+  count and the right and wrong tally.
+- **Spaced repetition:** a simple Leitner scheme per card. Right moves the card up a box (back in 4 days, then
+  longer); wrong puts it back in the first box (back tomorrow) and first in the next round. A round starts with the
+  due cards, then the others from the chosen chapters.
+- **Round done:** cards right on the first try (8 / 12), the right and wrong groups with when they come back, and the
+  weakest chapters with what was missed and a *Read* link. *Done* goes back to Learn, *Another round* to the setup.
+- **Later, not designed:** a *Flip* mode with self-rating (*Again · Almost · Knew it*) and card types (symbols, facts
+  and rules, staff reading).
+- **Open:** whether a round earns XP, and whether the pool is every card of the chosen chapters or only the checks
+  the player has answered (the Learn hub board says "from the quick checks you answered").
 
 ---
 
@@ -716,19 +723,21 @@ tendency trend (rushing/dragging over time).
 
 ## 9. Screens & UX
 
-See the [Muzieklab App Design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE)
-for the screen designs. It has three pages:
+The [Muzieklab canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS) holds every screen. This document holds
+the requirements; the canvas shows them. The canvas has one page per feature, and the page name ends with its status
+(*Built*, *Next*, *Planned* or *Idea*):
 
-- **Light**: every app screen in the light theme.
-- **Dark**: the same screens, in the same positions, in the dark theme.
-- **Foundations & engine**: the design foundations (tokens, type, motion, scrolling) and the
-  exercise engine overview.
+- **Start here:** the map of the pages, the status legend and the rules for adding a board.
+- **Foundations:** tokens, type, components, motion and scrolling, and the exercise engine overview.
+- **Feature pages:** Home & shell, Rhythm practice, Read notes, Learn, Path, Settings, Progress & rewards,
+  Test yourself, Scales, Listen & write, Sheet reader.
 
-On Light and Dark, each feature (Home, Rhythm, Learn, Read notes, Test yourself, Scales) is one
-row. The row has three columns: its **mobile** screens (390 × 844), then the **tablet**
-(834 × 1194) and **desktop** (1280 wide, fluid) versions of its main screens.
+Each feature page starts with a spec note: what the page covers, the section of this document it follows, and any open
+conflicts. Under it, each screen is one row of six boards: **phone** (390 × 844), **tablet** (834 × 1194) and
+**desktop** (1280 wide, fluid) in light, then the same three in dark. Built screens come first; designed screens that
+are not built yet sit under a *Planned* heading.
 
-**MVP canvas.** The [Muzieklab MVP canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS) holds the smallest
+**The releases so far.** The MVP is the smallest
 product that proves the core promise: endless rhythm exercises built from real theory, with fair timing feedback. It is
 one loop, *pick → play → feedback → next*:
 - Home (Continue + Free practice + streak)
@@ -740,7 +749,7 @@ one loop, *pick → play → feedback → next*:
 - Desktop Home and Play
 - Light theme only
 
-**v1.1 · Quick wins** (a page on the MVP canvas) holds the first features after the MVP. Each one reuses the MVP's
+**v1.1 · Quick wins** holds the first features after the MVP. Each one reuses the MVP's
 engine and screens:
 - **Daily challenge:** a date-seeded preset; one Home card and a results badge.
 - **XP and levels:** one formula on the existing score, plus a level-up sheet.
@@ -761,7 +770,7 @@ Built in v0.2 (dark theme was already in the MVP):
 - **Echo mode:** a Tap · Echo switch on Practice setup. Play first shows a listen card (two plays), then the normal
   Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
 
-**v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Three things
+**v1.2 · Learn** adds the theory pages for rhythm only: chapters 1–7. Three things
 change in the app:
 - The tab bar becomes Home · Path · Learn · Settings.
 - Results tips link to the matching section.
@@ -795,8 +804,8 @@ summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains c
 Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
 appear on Progress and on the level-up sheet.
 
-**v1.6 · Flash cards and listen & write** adds *Test yourself* over all eleven Learn chapters (flip or choose from 3),
-started from the Learn tab. It also adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
+**Flash cards** add *Test yourself* over Learn chapters 1–10 (choose from 3, §3.6), started from the Learn tab.
+**Listen and write** adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
 
 Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
 Progress, XP and levels.
@@ -827,12 +836,12 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   with each word and puts the items on the right; desktop puts them right after the brand, as words
   only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile)
   marks that tab as current.
-- Desktop Home has two columns (App design canvas, Desktop · Home): streak and level (with the XP to
+- Desktop Home has two columns (canvas, Home & shell, Home · desktop): streak and level (with the XP to
   the next level), the daily challenge and the learning path (unit N of M, a bar of all units, the
   lesson tiles) on the left; Continue (with the meter, bars and tempo over the staff) and the Free
   practice tiles on the right.
 - A Learn chapter on desktop has the top header, a chapter list on the left and the chapter's
-  sections as cards on the right (App design canvas, Desktop · chapter 5 page).
+  sections as cards on the right (canvas, Learn, chapter 5 · desktop).
 - Exercise screens swap that header for the exercise header: title, progress, and
   Pause / Quit. It has its own spacing (20 px × 40 px) and is not the tab header.
 - Large screens show the same content and data as mobile, laid out side by side. They add no

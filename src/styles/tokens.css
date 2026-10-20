@@ -1,5 +1,5 @@
 /*
- * Design tokens (DESIGN.md §9). Light values come from the MVP canvas; dark values follow the canvas dark
+ * Design tokens (DESIGN.md §9). Light values come from the Muzieklab canvas; dark values follow the canvas dark
  * generator's colour-role map (vf/gen_dark.py: MAP, TEXT_ON_FILL, SNIPPETS). Text on a filled accent
  * (--on-fill) turns dark ink in dark, because those fills turn light.
  * The theme follows the device unless Settings sets data-theme="light" | "dark" on <html>.

@@ -1,7 +1,7 @@
 # Learn chapters: research and plan
 
 What the Learn chapters (DESIGN.md §9.1) should contain, checked against the Learning Path lessons
-(`src/game/path.ts`), the practice settings, the boards on the MVP and release canvas, and real courses: Koen De Wolf's
+(`src/game/path.ts`), the practice settings, the boards on the Muzieklab canvas, and real courses: Koen De Wolf's
 *Allemaal nootjes*, Flemish academy courses (AMV / MCV), the Dutch HaFaBra A–C exams, ABRSM, Trinity, RCM, Kodály and
 Open Music Theory.
 

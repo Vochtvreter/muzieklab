@@ -1,4 +1,4 @@
-/** Line icons from the MVP canvas (24 × 24, currentColor). Always decorative: the control carries the label. */
+/** Line icons from the Muzieklab canvas (24 × 24, currentColor). Always decorative: the control carries the label. */
 import type { CSSProperties } from 'react';
 
 const PATHS = {

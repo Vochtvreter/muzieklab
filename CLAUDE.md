@@ -2,35 +2,42 @@
 
 ## Designs first
 
-Every screen is designed on the canvases before it is built, on phone (390 × 844), tablet (834 × 1194) and desktop
-(1280 wide), light and dark:
+Every screen is designed on the [Muzieklab canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS) before it is
+built, on phone (390 × 844), tablet (834 × 1194) and desktop (1280 wide), light and dark. The canvas holds the screens;
+[DESIGN.md](docs/DESIGN.md) holds the requirements (what a feature does, its rules and numbers) and §9 the breakpoints
+and layout rules.
 
-- [MVP and release canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS): one page per release (MVP, v1.1–v1.7,
-  Metronome style). Use the board for the screen you are changing, at each size.
-- [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): foundations (colour, type, components).
-- [DESIGN.md](docs/DESIGN.md) §9: breakpoints and layout rules.
+The canvas has one page per feature, plus *Start here* (the map and these rules) and *Foundations* (colour, type,
+components, the engine). The page name ends with its status: *Built*, *Next*, *Planned* or *Idea*. On every page:
 
-Before you add or change a screen, read its boards on the canvas and build what they show. A live screen needs all
-three versions: phone, tablet and desktop. Also check phone landscape (844 × 390) and a tablet in landscape
-(1180 × 820, touch), which the canvas does not draw. Then compare the result side by side with the boards. If a screen
-has no board yet, or the code has to differ from it, say so in the PR. Every screen gets a test in
-`e2e/layout.spec.ts`, which runs at every size in `e2e/helpers.ts`.
+- a spec note at the top says what the page covers, the DESIGN.md section it follows, and any open conflicts;
+- each screen is one row of six boards: phone, tablet and desktop in light, then the same three in dark;
+- built screens come first; screens that are designed but not built sit under a *Planned* heading below them;
+- board files are named `Screen[-tablet|-desktop][-dark].dc.html`.
+
+Before you add or change a screen, read its row on the canvas and build what it shows. A live screen needs all three
+versions: phone, tablet and desktop. Also check phone landscape (844 × 390) and a tablet in landscape (1180 × 820,
+touch), which the canvas does not draw. Then compare the result side by side with the boards. If a screen has no board
+yet, or the code has to differ from it, say so in the PR. Every screen gets a test in `e2e/layout.spec.ts`, which runs
+at every size in `e2e/helpers.ts`.
 
 ### Keep the designs consistent
 
-The two canvases and DESIGN.md describe one app, so they must agree. The shell is the same everywhere: a bottom tab
-bar on phone, and a top header on tablet and desktop (the App design canvas, Desktop · Home; DESIGN.md §9). There is no
-desktop sidebar.
+The canvas and DESIGN.md describe one app, so they must agree. The shell is the same everywhere: a bottom tab bar on
+phone, and a top header on tablet and desktop (the canvas's *Home & shell* page; DESIGN.md §9). There is no desktop
+sidebar.
 
-- **Before you build a designed screen,** compare its boards on both canvases (the release page on the MVP canvas and
-  the matching board on the App design canvas) with DESIGN.md: shell, layout, which parts are shown, and copy.
-- **When you add or change a board,** reuse the shell, tokens and component markup of the boards that already exist,
-  and check that it still agrees with the same screen on the other canvas and with DESIGN.md. Update every board that
-  draws that screen, in light and dark.
-- **When two designs conflict** (two boards for one screen, a board and DESIGN.md, or a board and what is built), do
+- **Before you build a designed screen,** compare its row with its DESIGN.md section and the page's spec note: shell,
+  layout, which parts are shown, and copy.
+- **When you add or change a board,** put it in its screen's row on its feature page, reuse the shell, tokens and
+  component markup of the boards that already exist, and update all six versions. A new feature gets a new page with
+  the same layout and a spec note.
+- **When a requirement changes,** update DESIGN.md and the page's spec note in the same change. **When a screen ships,**
+  move its row above *Planned*, and update the page name and spec note.
+- **When two designs conflict** (a board and DESIGN.md, two boards for one screen, or a board and what is built), do
   not pick one silently. Point the conflict out to the user, naming the boards or sections on each side and how they
-  differ, so they can investigate, and list it in the PR. If work has to go on before they answer, follow the newer
-  App design canvas and DESIGN.md, and say that you did.
+  differ, so they can investigate; list it in the PR and in the page's spec note. If work has to go on before they
+  answer, follow DESIGN.md and say that you did.
 
 ## Learning content
 

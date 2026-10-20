@@ -37,7 +37,6 @@ from the Actions tab.
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
-- [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,
-  foundations (colour, type, components) and the exercise engine.
-- [MVP and release canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS): the MVP and
-  v1.1–v1.7, each on phone, tablet and desktop, light and dark.
+- [Muzieklab canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS): every screen, one page per feature,
+  on phone, tablet and desktop, light and dark, plus the foundations (colour, type, components) and the exercise
+  engine.

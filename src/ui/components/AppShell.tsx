@@ -1,7 +1,7 @@
 /**
  * Tab screens' frame. Phone: bottom tab bar (active icon in a slate pill). Tablet ≥ 700 px and desktop ≥ 1100 px: a
- * top header with the same items; on desktop the items sit next to the brand, as words only (App design canvas,
- * Desktop · Home). The active item has aria-current="page" (DESIGN.md §9).
+ * top header with the same items; on desktop the items sit next to the brand, as words only (canvas, Home & shell,
+ * Home · desktop). The active item has aria-current="page" (DESIGN.md §9).
  */
 import type { ReactNode } from 'react';
 import { t } from '../../i18n';
