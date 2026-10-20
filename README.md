@@ -5,12 +5,11 @@ signatures, note values, rests and number of bars; the app generates a new, musi
 sensible exercise each time. Tap the rhythm in time on any key or the phone screen, or
 listen and write down the rhythm you hear.
 
-**Status:** v0.4: the MVP (rhythm practice in Tap mode: learning path, free practice, play,
-results with coaching, settings, calibration), the v1.1 quick wins (a daily challenge, XP and
-levels, exercise codes with Copy, and Echo mode: hear it, tap it back from memory) and v1.3 Read
-notes: name notes in treble and bass clef in any of the 15 keys, with names (do re mi or letters)
-or on a one-octave piano, and a round summary. The Learn tab has chapter 8, Notes on the staff;
-the rhythm chapters (v1.2) come next. On phone, tablet and desktop, in light and dark. In English and
+**Status:** built so far (the version is in `package.json`; Settings → What's new lists every release): rhythm
+practice in Tap and Echo mode (learning path, free practice, play, results with coaching, a daily challenge, XP and
+levels, exercise codes with Copy), Read notes (name notes in treble and bass clef in any of the 15 keys, with names or
+on a one-octave piano, and a round summary), Learn chapters 1–10 with a quick check after every section, settings and
+calibration. Next: Test yourself (flash cards). On phone, tablet and desktop, in light and dark. In English and
 Dutch (Settings → Language); adding a language is one new catalog, see [DESIGN.md §11](docs/DESIGN.md).
 
 ## Run it

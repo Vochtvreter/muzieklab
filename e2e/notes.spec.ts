@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { VIEWPORTS } from './helpers';
 
-/** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
+/** Read notes and Learn chapter 8 (0.3.0): Home → setup → key → a round → summary, and the chapter with its quick check. */
 
 test('read notes: a G major round from Home to the summary, answered with the keyboard', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.desktop);

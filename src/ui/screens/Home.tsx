@@ -128,7 +128,7 @@ export function Home(): JSX.Element {
     </section>
   );
 
-  // Free practice: Rhythm and Read notes side by side (v1.3), each opening its own setup.
+  // Free practice: Rhythm and Read notes side by side (0.3.0), each opening its own setup.
   const freeCard = (
     <section aria-labelledby="free-title" className="free">
       <h2 id="free-title" className="free-title">

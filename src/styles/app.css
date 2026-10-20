@@ -3078,7 +3078,7 @@ button.lesson-stars:hover {
   text-align: center;
 }
 
-/* ---------- v1.1 · Level and XP ---------- */
+/* ---------- 0.2.0 · Level and XP ---------- */
 .xp {
   display: flex;
   flex-direction: column;
@@ -3124,7 +3124,7 @@ button.lesson-stars:hover {
   }
 }
 
-/* ---------- v1.1 · Daily challenge ---------- */
+/* ---------- 0.2.0 · Daily challenge ---------- */
 .daily-card {
   flex: none;
   display: flex;
@@ -3195,7 +3195,7 @@ button.lesson-stars:hover {
   gap: 14px;
 }
 
-/* ---------- v1.1 · Results: code, Copy, XP badges ---------- */
+/* ---------- 0.2.0 · Results: code, Copy, XP badges ---------- */
 .code-row {
   flex: none;
   display: flex;
@@ -3273,7 +3273,7 @@ button.lesson-stars:hover {
   color: var(--reward-ink);
 }
 
-/* ---------- v1.1 · Level-up sheet ---------- */
+/* ---------- 0.2.0 · Level-up sheet ---------- */
 .levelup-head {
   display: flex;
   align-items: center;
@@ -3338,7 +3338,7 @@ button.lesson-stars:hover {
   min-height: 64px;
 }
 
-/* ---------- v1.1 · Setup mode ---------- */
+/* ---------- 0.2.0 · Setup mode ---------- */
 .mode-field {
   display: flex;
   flex-direction: column;
@@ -3346,7 +3346,7 @@ button.lesson-stars:hover {
   flex: none;
 }
 
-/* ---------- v1.1 · Echo ---------- */
+/* ---------- 0.2.0 · Echo ---------- */
 .echo-card {
   flex: none;
   min-height: 246px;

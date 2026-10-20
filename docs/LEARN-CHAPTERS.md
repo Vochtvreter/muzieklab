@@ -30,7 +30,7 @@ can practise. What it cannot practise yet (the upbeat, 6/8, scales) waits for th
 | **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef · 8.3 Bass clef · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes | Read notes: clefs, range, note names | **built** (0.3.4) |
 | **9 · Sharps, flats and naturals** | 9.1 The piano octave · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural · 9.4 A sign lasts for the bar | Read notes: piano, extra signs | **built** (0.3.4) |
 | **10 · Key signatures** | 10.1 The key signature · 10.2 The order of sharps and flats · 10.3 Naming the key · 10.4 Major and minor | Read notes: keys, mix keys | **built** (0.3.4) |
-| **11 · Scales** | 11.1 The major scale · 11.2 Major scales in every key · 11.3 The circle of fifths · 11.4 Minor scales · 11.5 Scale degrees and intervals | Scales (v1.4) | later |
+| **11 · Scales** | 11.1 The major scale · 11.2 Major scales in every key · 11.3 The circle of fifths · 11.4 Minor scales · 11.5 Scale degrees and intervals | Scales | later |
 
 Chapters 8–10 were one chapter 8 with seven sections until 0.3.4; the old chapter 9 · Scales is now chapter 11.
 
@@ -250,8 +250,8 @@ Quick check (board): "How many beats does a bar of 3/4 have?" 2 / **3** / 4.
 | 2.1 Reading the shape | Open or filled head, stem, flags, beams. **Order changed:** start from the quarter (one beat, the note of Path unit 1), then the half (two quarters) and the whole (two halves), then the eighth and sixteenth as halves of the beat. | Kodály: from the beat note, not from the whole note. Matches Path units 1 → 3 → 4 → 8. |
 | 2.2 The note tree | The tree as the summary of 2.1: each row one 4/4 bar, whole 4 · half 2 · quarter 1 · eighth ½ · sixteenth ¼. Keep the Notes \| Rests toggle. | As on the board. |
 
-The chapter 2 board is the older layout (no meta line, one practice button, no previous / next cards); redraw it like the
-v1.7 chapters before building. Quick check (board): "How many eighth notes fit in one half note?" 2 / **4** / 8.
+The chapter 2 board is the older layout (no meta line, one practice button, no previous / next cards); redraw it like chapters 1, 3, 4
+and 6 before building. Quick check (board): "How many eighth notes fit in one half note?" 2 / **4** / 8.
 
 ### Chapter 3 · Rests — Path units 2, 3, 5
 
@@ -345,7 +345,7 @@ Quick check: "Which other name does the black key F♯ have?" G / **G♭** / F�
 
 Quick check: "The last sharp is C♯. Which major key is it?" C / **D** / C♯.
 
-### Chapter 11 · Scales — Scales (later, v1.4; was chapter 9)
+### Chapter 11 · Scales — Scales (later; was chapter 9)
 
 11.1 The major scale (W W H W W W H, building on 9.2) · 11.2 Major scales in every key (each letter once) · 11.3 The
 circle of fifths · 11.4 Minor scales (natural, harmonic, melodic; relative minor) · **11.5 Scale degrees and intervals**

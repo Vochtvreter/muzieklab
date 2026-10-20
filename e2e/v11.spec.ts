@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { seed, VIEWPORTS } from './helpers';
 
-/** v1.1 quick wins: the daily challenge with its code and Copy, and Echo mode from setup to the reveal on Results. */
+/** Quick wins (0.2.0): the daily challenge with its code and Copy, and Echo mode from setup to the reveal on Results. */
 
 test('daily challenge: Home → Play → Results with the code and Copy', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);

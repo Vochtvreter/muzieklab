@@ -1,6 +1,6 @@
 # Muzieklab — Design Document
 
-> Status: **Draft v0.1** — design only, no code yet.
+> Status: a living document. The app is built up to the version in `package.json`; §9 lists what each release added.
 > Visual design (screens, foundations, engine): the [Muzieklab canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS).
 
 ---
@@ -739,78 +739,63 @@ conflicts. Under it, each screen is one row of six boards: **phone** (390 × 844
 are not built yet sit under *Planned*. Under *To resolve* are boards from the old App design canvas that differ from
 the row above them, each with a note saying how; deciding one keeps it in its screen's row and deletes the other.
 
-**The releases so far.** The MVP is the smallest
-product that proves the core promise: endless rhythm exercises built from real theory, with fair timing feedback. It is
-one loop, *pick → play → feedback → next*:
-- Home (Continue + Free practice + streak)
-- Practice setup (tap mode, with validation)
-- Play (first-time How to play, Pause)
-- Results (timing lane, tip, Listen, Retry / Next)
-- Learning Path (stars and locks)
-- Lean Settings and Calibration
-- Desktop Home and Play
-- Light theme only
+**Released.** Version numbers are the app's (`package.json`); Settings → What's new lists every release.
 
-**v1.1 · Quick wins** holds the first features after the MVP. Each one reuses the MVP's
-engine and screens:
-- **Daily challenge:** a date-seeded preset; one Home card and a results badge.
-- **XP and levels:** one formula on the existing score, plus a level-up sheet.
-- **Exercise codes:** settings + seed, already encoded by the engine, shown with Copy.
-- **Echo mode:** Play with the notation hidden until it has been tapped back.
-- **Dark theme:** generated from the light screens by colour role.
+- **0.1.0 · First release (the MVP):** the smallest product that proves the core promise, endless rhythm exercises
+  built from real theory with fair timing feedback, as one loop, *pick → play → feedback → next*: Home (Continue, Free
+  practice, streak), Practice setup (Tap mode, with validation), Play (first-time How to play, Pause), Results (timing
+  lane, tip, Listen, Retry / Next; stars, a 4th star without Good or Miss, a diamond for all perfect), the Learning
+  Path (stars and locks), Settings with the analog metronome style, and Calibration. Light and dark, phone, tablet and
+  desktop. The tab bar is Home · Path · Settings.
+- **0.2.0 · Quick wins**, each reusing the engine and screens of 0.1.0:
+  - **Daily challenge** (`game/daily.ts`): the date picks one of eight mid-path presets, a tempo (72–104) and 4 or 8
+    bars, then the seed. The day's first finish earns 20 bonus XP; Results shows *Streak kept* and *New personal best*
+    (best daily accuracy so far). Next after a daily is free practice with the same settings.
+  - **XP and levels** (`game/xp.ts`): XP = bars × (4 + difficulty) × accuracy, + 5 / 10 / 20 for 3 / 4 stars / the
+    diamond; nothing when no note was hit. Level *n* takes 100 + 50 (*n* − 1) XP. Ranks start at levels 1, 3, 5, 8, 12
+    and 16: Tick, Count, Measure, Groove, Metronome, Maestro. A level-up sheet follows the result.
+  - **Exercise codes** (`core/code.ts`): `T44-HQE-RQ-4B-120-7K2QF` = mode and meters, notes, rests, bars, tempo,
+    optional `X` flags for settings off their default, and the seed in Crockford base 32. Shown on Results with Copy;
+    entering a code is still to come.
+  - **Echo mode:** a Tap · Echo switch on Practice setup. Play first shows a listen card (two plays), then the normal
+    Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
+- **0.2.2:** the 4th star shows as a small arc of three stars over one big star.
+- **0.3.0 · Read notes:** naming notes in treble and bass clef, in any of the 15 keys, with names or on the piano, and a
+  round summary. Home's free practice becomes two tiles (Rhythm, Read notes), and the tab bar gains Learn, with
+  chapter 8 · Notes on the staff.
+  - **Pitch engine** (`core/pitch.ts`): staff positions as letter steps (C4 = 28), the 15 key signatures with their
+    major and relative minor, written names and pitch classes.
+  - **Rounds** (`core/noteRound.ts`): the seeded generator (allowed positions per range, no immediate repeats, at most
+    two moves the same way, clef runs of 4–6 notes, a new key every 5 notes when mixed, extra signs on a quarter of the
+    notes, weak spots and *Practice missed notes* boosted), judging (names need the written spelling; the piano accepts
+    the sounding key), the score (right without a hint / answered; hints count as not right), weak spots (misses +2,
+    hints and answers over 3 s +1, quick right answers −1; 0–5 per note) and XP: notes × (2 + difficulty / 4) ×
+    accuracy, + 5 for 3 stars. Mixed input alternates names and piano every 5 notes.
+  - **Screens:** Read notes setup, Key, Name it (names with the sign row, or the piano; computer keys on desktop; a
+    right answer moves on by itself after 0.7 s, a wrong one waits for Next note), Round done (time per note, needs
+    practice, by sign, New round / Practice missed notes), and Learn with chapter 8, its quick check and read status
+    per section.
+- **0.3.2:** What's new in Settings → About. **0.3.3:** Learn uses the width of a tablet or computer. **0.3.4:** chapter 8
+  splits into chapters 8–10 (see §9.1).
+- **0.4.0 · Dutch:** the whole app in Dutch, and Settings → Language.
+- **0.5.0 · Learn chapters 1–7:** the rhythm chapters, with counting under the notes and a practice link at the end of
+  each section.
+- **0.6.0:** a quick check after every section, which marks it read. **0.6.2:** on a computer the tabs sit in a top
+  header, and Home has the two-column desktop layout. **0.6.3:** fairer judging of held notes.
 
-Built in v0.2 (dark theme was already in the MVP):
-- **Daily challenge** (`game/daily.ts`): the date picks one of eight mid-path presets, a tempo (72–104) and 4 or 8 bars,
-  then the seed. The day's first finish earns 20 bonus XP; Results shows *Streak kept* and *New personal best* (best
-  daily accuracy so far). Next after a daily is free practice with the same settings.
-- **XP and levels** (`game/xp.ts`): XP = bars × (4 + difficulty) × accuracy, + 5 / 10 / 20 for 3 / 4 stars / the
-  diamond; nothing when no note was hit. Level *n* takes 100 + 50 (*n* − 1) XP. Ranks start at levels 1, 3, 5, 8, 12
-  and 16: Tick, Count, Measure, Groove, Metronome, Maestro.
-- **Exercise codes** (`core/code.ts`): `T44-HQE-RQ-4B-120-7K2QF` = mode and meters, notes, rests, bars, tempo, optional
-  `X` flags for settings off their default, and the seed in Crockford base 32. Shown on Results with Copy; entering a
-  code is still later.
-- **Echo mode:** a Tap · Echo switch on Practice setup. Play first shows a listen card (two plays), then the normal
-  Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
+**Planned.** In the order they are expected; each has its page on the canvas.
 
-**v1.2 · Learn** adds the theory pages for rhythm only: chapters 1–7. Three things
-change in the app:
-- The tab bar becomes Home · Path · Learn · Settings.
-- Results tips link to the matching section.
-- Every section ends with a practice link.
-
-Chapters 8–11 and flash cards arrive later, with note reading.
-
-**v1.3 · Read notes** adds naming notes in treble and bass clef, in any of the 15 keys. You answer with names or on
-the piano, and a round summary follows. Home's free practice splits into Rhythm and Read notes, and Learn gains
-chapter 8 · Notes on the staff (since 0.3.4 chapters 8–10, see §9.1).
-
-Built in v0.3 (ahead of v1.2, whose rhythm chapters 1–7 come next; the Learn tab holds chapter 8 until then):
-- **Pitch engine** (`core/pitch.ts`): staff positions as letter steps (C4 = 28), the 15 key signatures with their major
-  and relative minor, written names and pitch classes.
-- **Rounds** (`core/noteRound.ts`): the seeded generator (allowed positions per range, no immediate repeats, at most two
-  moves the same way, clef runs of 4–6 notes, a new key every 5 notes when mixed, extra signs on a quarter of the notes,
-  weak spots and *Practice missed notes* boosted), judging (names need the written spelling; the piano accepts the
-  sounding key), the score (right without a hint / answered; hints count as not right), weak spots (misses +2, hints and
-  answers over 3 s +1, quick right answers −1; 0–5 per note) and XP: notes × (2 + difficulty / 4) × accuracy, + 5 for 3
-  stars. Mixed input alternates names and piano every 5 notes.
-- **Screens:** Home's free practice is two tiles (Rhythm, Read notes); Read notes setup, Key, Name it (names with the
-  sign row, or the piano; computer keys on desktop; a right answer moves on by itself after 0.7 s, a wrong one waits
-  for Next note), Round done (time per note, needs practice, by sign, New round / Practice missed notes), and Learn
-  (the tab bar becomes Home · Path · Learn · Settings) with chapter 8, its quick check and read status per section.
-
-**v1.4 · Scales** builds on that, reusing the key signatures and the piano. It adds major and minor scales (natural,
-harmonic, melodic) in all 15 keys: the circle of fifths hub, playing on the piano, spelling with ♭ ♮ ♯, and a round
-summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains chapter 11 · Scales.
-
-**v1.5 · Progress** adds the Progress tab (the tab bar becomes Home · Path · Learn · Progress · Settings) with
-Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
-appear on Progress and on the level-up sheet.
-
-**Flash cards** add *Test yourself* over Learn chapters 1–10 (choose from 3, §3.6), started from the Learn tab.
-**Listen and write** adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
-
-Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
-Progress, XP and levels.
+- **Test yourself** (next): flash cards over Learn chapters 1–10 (choose from 3, §3.6), started from the Learn tab.
+- **Scales:** major and minor scales (natural, harmonic, melodic) in all 15 keys, reusing the key signatures and the
+  piano: the circle of fifths hub, playing on the piano, spelling with ♭ ♮ ♯, and a round summary. Free practice becomes
+  Rhythm · Read notes · Scales, and Learn gains chapter 11 · Scales.
+- **Progress:** the Progress tab (the tab bar becomes Home · Path · Learn · Progress · Settings) with Rhythm / Notes /
+  Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements appear on
+  Progress and on the level-up sheet.
+- **Listen and write:** dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
+- **Learning paths:** Rhythm, Read notes and Keys paths on the Path tab, with a switcher.
+- **Results tips link to Learn:** a Results tip opens the matching Learn section.
+- **Sheet reader** (an idea, not planned yet): read a photo or file of sheet music, fix it and play it.
 
 **Design scope: MVP vs later.** MVP is what v1 (milestones M1–M6) needs so that every loop
 closes and every tab leads somewhere. All MVP screens are designed on the canvas.
@@ -833,8 +818,8 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
-  tab bar of that release (Home · Path · Settings in the MVP, + Learn from v1.2, + Progress from
-  v1.5). The active item has the soft slate pill and `aria-current="page"`. Tablet keeps the icon
+  tab bar of that release (Home · Path · Settings in 0.1.0, + Learn since 0.3.0, + Progress when
+  it ships). The active item has the soft slate pill and `aria-current="page"`. Tablet keeps the icon
   with each word and puts the items on the right; desktop puts them right after the brand, as words
   only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile)
   marks that tab as current.
@@ -950,7 +935,7 @@ ABRSM, Trinity, RCM and Kodály.
 | **11 · Scales** *(later)* | 11.1 The major scale (W W H W W W H) · 11.2 Major scales in every key (each letter once; the scale's signs = its key signature) · 11.3 The circle of fifths (15 key signatures, 12 sounding keys) · 11.4 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 11.5 Scale degrees and intervals (tonic … leading tone, intervals by number, the tonic triad; fixed do in this app) | Scales |
 
 Chapters 8–10 are built (0.3.4); they were one chapter 8 with seven sections before, and the canvas still draws that
-version. Chapters 1–7 are built (0.5.0) from the canvas (v1.2 and v1.7), without 1.4 and 7.2, which wait until the game
+version. Chapters 1–7 are built (0.5.0) from the canvas, without 1.4 and 7.2, which wait until the game
 can play an upbeat and 6/8. On the canvas, 5.3 and the new chapter 7 (triplets moved there from chapter 6) still need
 boards, and the desktop boards of chapters 1–7 still draw the 640 px column that chapter 8 replaced with the full width
 in 0.3.3: the built chapters use the full width, with diagrams up to 640 px and each rhythm as wide as its notes need.
@@ -970,7 +955,7 @@ a quick check question for the chapter, and previous / next chapter links. Sourc
 they live in `THEORY-SOURCES.md`, where every claim on the page is checked. On
 mobile the Learn tab lists the chapters as cards that expand into their sections, with read
 status; on desktop a sidebar lists all chapters, with the open chapter's sections nested
-under it. The canvas draws chapters 1–7 (v1.2 and v1.7), the old chapter 8 (v1.3) and scales (v1.4, still numbered 9).
+under it. The canvas draws chapters 1–6 and 8, compound meter as chapter 7, and scales (on its Scales page, still numbered 9).
 On tablet (≥ 700 px) and desktop (≥ 1100 px) a chapter page keeps one column of
 sections in reading order, each filling the width. Inside a section, related parts sit side
 by side (lines | spaces, example | rule, text | keyboard) and stack again on narrow screens,

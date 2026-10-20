@@ -1,4 +1,4 @@
-/** v1.1 rewards: the level and XP line, the daily challenge's date tile, the exercise code with Copy and the level-up sheet. */
+/** Rewards (0.2.0): the level and XP line, the daily challenge's date tile, the exercise code with Copy and the level-up sheet. */
 import { useEffect, useState, type ReactNode } from 'react';
 import { levelInfo, RANKS, type LevelInfo } from '../../game/xp';
 import { dateParts, t } from '../../i18n';
