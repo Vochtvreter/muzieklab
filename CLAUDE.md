@@ -7,12 +7,15 @@ built, on phone (390 × 844), tablet (834 × 1194) and desktop (1280 wide), ligh
 [DESIGN.md](docs/DESIGN.md) holds the requirements (what a feature does, its rules and numbers) and §9 the breakpoints
 and layout rules.
 
-The canvas has one page per feature, plus *Start here* (the map and these rules) and *Foundations* (colour, type,
-components, the engine). The page name ends with its status: *Built*, *Next*, *Planned* or *Idea*. On every page:
+The canvas has one page per feature, plus *Start here* (the map and these rules), *Foundations* (colour, type,
+components, the engine) and *Archive* (earlier versions, never built from). The page name ends with its status: *Built*, *Next*, *Planned* or *Idea*. On every page:
 
 - a spec note at the top says what the page covers, the DESIGN.md section it follows, and any open conflicts;
 - each screen is one row of six boards: phone, tablet and desktop in light, then the same three in dark;
-- built screens come first; screens that are designed but not built sit under a *Planned* heading below them;
+- built screens come first; screens that are designed but not built sit under *Planned* below them;
+- *To resolve* holds boards from the old App design canvas that differ from the row above them, each with a note on
+  how. When you work on such a screen, ask the user which one is right, keep it in the screen's row and delete the
+  other;
 - board files are named `Screen[-tablet|-desktop][-dark].dc.html`.
 
 Before you add or change a screen, read its row on the canvas and build what it shows. A live screen needs all three

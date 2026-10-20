@@ -252,9 +252,9 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
 
 - **Cards are the Learn quick checks.** Every section's check and every chapter's end check is one card: 38 cards in
   chapters 1–10. A card has the question, its three answers, a glyph (a symbol or a bit of notation, such as 𝅘𝅥. or
-  ♭ ♭ ♭), the explanation (the check's *Right.* text) and a link to the section it comes from. The text lives in the
-  i18n files like the chapters, so every answer is covered by `THEORY-SOURCES.md`. Chapter 11 gets cards when it is
-  built.
+  ♭ ♭ ♭), the explanation (the check's *Right.* text) and a link to the section it comes from. A quick check the
+  player answers right in a chapter joins their deck. The text lives in the i18n files like the chapters, so every
+  answer is covered by `THEORY-SOURCES.md`. Chapter 11 gets cards when it is built.
 - **Learn hub:** a *Test yourself* card under the progress bar shows how many cards are due, with *Choose chapters*
   and *Start · N cards*.
 - **Setup:** tick chapters 1–10 (each row shows its number of cards; *Chapters I read* ticks the chapters with a
@@ -270,10 +270,10 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
   due cards, then the others from the chosen chapters.
 - **Round done:** cards right on the first try (8 / 12), the right and wrong groups with when they come back, and the
   weakest chapters with what was missed and a *Read* link. *Done* goes back to Learn, *Another round* to the setup.
-- **Later, not designed:** a *Flip* mode with self-rating (*Again · Almost · Knew it*) and card types (symbols, facts
-  and rules, staff reading).
-- **Open:** whether a round earns XP, and whether the pool is every card of the chosen chapters or only the checks
-  the player has answered (the Learn hub board says "from the quick checks you answered").
+- **Dropped as overlapping:** a *Flip* mode with self-rating (*Again · Almost · Knew it*), card types (symbols, facts
+  and rules, staff reading) and an *Answer by* switch.
+- **Open:** whether a round earns XP; and the setup summary counts every card of the chosen chapters, while the deck
+  rule above lets only answered checks join.
 
 ---
 
@@ -729,13 +729,15 @@ the requirements; the canvas shows them. The canvas has one page per feature, an
 
 - **Start here:** the map of the pages, the status legend and the rules for adding a board.
 - **Foundations:** tokens, type, components, motion and scrolling, and the exercise engine overview.
-- **Feature pages:** Home & shell, Rhythm practice, Read notes, Learn, Path, Settings, Progress & rewards,
-  Test yourself, Scales, Listen & write, Sheet reader.
+- **Feature pages:** Home & shell, Rhythm practice, Read notes, Learn, Path, Settings, Test yourself,
+  Progress & rewards, Scales, Listen & write, Sheet reader.
+- **Archive:** earlier versions of screens, kept for history. Nothing is built from it.
 
 Each feature page starts with a spec note: what the page covers, the section of this document it follows, and any open
 conflicts. Under it, each screen is one row of six boards: **phone** (390 × 844), **tablet** (834 × 1194) and
 **desktop** (1280 wide, fluid) in light, then the same three in dark. Built screens come first; designed screens that
-are not built yet sit under a *Planned* heading.
+are not built yet sit under *Planned*. Under *To resolve* are boards from the old App design canvas that differ from
+the row above them, each with a note saying how; deciding one keeps it in its screen's row and deletes the other.
 
 **The releases so far.** The MVP is the smallest
 product that proves the core promise: endless rhythm exercises built from real theory, with fair timing feedback. It is
