@@ -255,8 +255,11 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
   ♭ ♭ ♭), the explanation (the check's *Right.* text) and a link to the section it comes from. A quick check the
   player answers right in a chapter joins their deck. The text lives in the i18n files like the chapters, so every
   answer is covered by `THEORY-SOURCES.md`. Chapter 11 gets cards when it is built.
-- **Learn hub:** a *Test yourself* card under the progress bar shows how many cards are due, with *Choose chapters*
-  and *Start · N cards*.
+- **Learn tab:** with Test yourself, the Learn tab opens on tiles instead of the chapter list: *Continue reading*
+  (the next unread section), then **Rhythm** (chapters 1–7), **Reading notes** (8–10), **Scales** (11, shown as
+  *Later* until it is built) and **Test yourself** (the cards due). A topic tile shows its sections read and opens a
+  topic page with that topic's chapters, as cards that expand into their sections; *Learn* at its top goes back to the
+  tiles. The Test yourself tile opens the setup. Two tiles a row on phone and tablet, four on desktop.
 - **Setup:** tick chapters 1–10 (each row shows its number of cards; *Chapters I read* ticks the chapters with a
   section read) and the round size, **10 · 20 · All**. A summary line says how many cards are due and how many the
   chosen chapters hold. *Start* stays disabled until a chapter is ticked.
@@ -952,9 +955,9 @@ scales last.
 **Each chapter is its own page**, never one long page with everything. A chapter page has:
 its number and title, what it builds on and which Path units use it, its sections (each with its own quick check),
 a quick check question for the chapter, and previous / next chapter links. Sources are not shown to the player;
-they live in `THEORY-SOURCES.md`, where every claim on the page is checked. On
-mobile the Learn tab lists the chapters as cards that expand into their sections, with read
-status; on desktop a sidebar lists all chapters, with the open chapter's sections nested
+they live in `THEORY-SOURCES.md`, where every claim on the page is checked. The
+Learn tab lists the chapters as cards that expand into their sections, with read status (with Test yourself it opens
+on topic tiles first, and each topic lists its chapters this way, §3.6); on desktop a sidebar lists all chapters, with the open chapter's sections nested
 under it. The canvas draws chapters 1–6 and 8, compound meter as chapter 7, and scales (on its Scales page, still numbered 9).
 On tablet (≥ 700 px) and desktop (≥ 1100 px) a chapter page keeps one column of
 sections in reading order, each filling the width. Inside a section, related parts sit side
