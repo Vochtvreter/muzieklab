@@ -263,7 +263,7 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
   leaves the deck. A check may name a glyph for its card; without one the card shows its chapter's topic glyph. A unit
   test fails when a quick check would not make a valid card.
 - **Learn tab:** with Test yourself, the Learn tab opens on two separate parts, so testing never looks like another
-  chapter or path. **Theory:** *Continue reading* (the next unread section), then the topic tiles **Rhythm**
+  chapter or path. **Theory:** the topic tiles **Rhythm**
   (chapters 1–7), **Reading notes** (8–10) and **Scales** (11, shown as *Later* until it is built). A topic tile shows
   its sections read and opens a topic page with that topic's chapters, as cards that expand into their sections;
   *Learn* at its top goes back. **Check what you know:** one *Test yourself* card on its own tinted surface, with the
