@@ -254,13 +254,22 @@ A quick theory check on the Learn chapters the player chooses, opened from the L
   chapters 1–10. A card has the question, its three answers, a glyph (a symbol or a bit of notation, such as 𝅘𝅥. or
   ♭ ♭ ♭), the explanation (the check's *Right.* text) and a link to the section it comes from. A quick check the
   player answers right in a chapter joins their deck. The text lives in the i18n files like the chapters, so every
-  answer is covered by `THEORY-SOURCES.md`. Chapter 11 gets cards when it is built.
-- **Learn tab:** with Test yourself, the Learn tab opens on tiles instead of the chapter list: *Continue reading*
-  (the next unread section), then **Rhythm** (chapters 1–7), **Reading notes** (8–10), **Scales** (11, shown as
-  *Later* until it is built) and **Test yourself** (the cards due). A topic tile shows its sections read and opens a
-  topic page with that topic's chapters, as cards that expand into their sections; *Learn* at its top goes back to the
-  tiles. The Test yourself tile opens the setup. Two tiles a row on phone and tablet, four on desktop.
-- **Setup:** tick chapters 1–10 (each row shows its number of cards; *Chapters I read* ticks the chapters with a
+  answer is covered by `THEORY-SOURCES.md`.
+- **Grows with Learn.** The deck is built from the Learn chapter data (`CHAPTERS` in `src/ui/learn/chapters.ts`), not
+  from a separate card list, so new Learn content is Test yourself content with no extra step: a new section or
+  chapter brings its quick checks as cards, a new chapter gets its row in the setup and its topic on the Learn tab, and
+  a reworded check changes its card. A card's id is its check's id (`4.2`, or `ch4` for the chapter check), so the
+  spaced-repetition state follows a section through `MOVED_SECTIONS` like the read status does, and a removed check
+  leaves the deck. A check may name a glyph for its card; without one the card shows its chapter's topic glyph. A unit
+  test fails when a quick check would not make a valid card.
+- **Learn tab:** with Test yourself, the Learn tab opens on two separate parts, so testing never looks like another
+  chapter or path. **Theory:** *Continue reading* (the next unread section), then the topic tiles **Rhythm**
+  (chapters 1–7), **Reading notes** (8–10) and **Scales** (11, shown as *Later* until it is built). A topic tile shows
+  its sections read and opens a topic page with that topic's chapters, as cards that expand into their sections;
+  *Learn* at its top goes back. **Check what you know:** one *Test yourself* card on its own tinted surface, with the
+  cards due, the size of the deck, *Choose chapters* (the setup) and *Start · N cards*. On phone and tablet the theory
+  comes first and Test yourself below it; on desktop Test yourself is a panel beside the theory.
+- **Setup:** tick chapters (1–10 today, one row per chapter in the data; each row shows its number of cards; *Chapters I read* ticks the chapters with a
   section read) and the round size, **10 · 20 · All**. A summary line says how many cards are due and how many the
   chosen chapters hold. *Start* stays disabled until a chapter is ticked.
 - **A card:** the chapter, the question and the glyph, with three answers (A, B, C) under it. The two wrong answers

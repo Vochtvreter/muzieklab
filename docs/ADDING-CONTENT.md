@@ -62,6 +62,14 @@ A new kind of block (counting under the notes, for example) is a case in the `Bl
   `ch{n}.s{k}.check`. Answering it right marks the section read, so ask about what the section itself explains. A wrong
   pick does not show the right answer: `.wrong` is a hint that sends the player back to the section, and they try again.
 
+### Test yourself
+
+Every quick check is also a Test yourself flash card (DESIGN.md §3.6): the deck, the chapter rows in its setup and
+the topics on the Learn tab are read from `CHAPTERS`, so a new chapter or section needs no extra step. Write each check
+so it still makes sense on its own, away from the section: name what it asks about ("in 6/8", "on the treble staff")
+instead of "this rhythm" or "above". A check may name a glyph for its card (a symbol or bit of notation); without one
+the card shows its topic's glyph.
+
 ### Moving or renumbering sections
 
 Read status is stored by section id. When a section moves, map the old id to the new ones in `MOVED_SECTIONS` in
