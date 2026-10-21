@@ -1541,6 +1541,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_6_4": {
+      "title": "Easier to read green text",
+      "green": "Green text, such as “✓ read” in Learn, Done today and your count of right answers, is a darker green in the light theme, so it is easier to read on white."
+    },
     "v0_6_3": {
       "title": "Fairer holds",
       "lift": "Holding a note is judged the way people play, not like a machine: you may let go from halfway through a note, so there is time to lift and press the next one. Before a rest the release still counts, with a little more room either side.",

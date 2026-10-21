@@ -17,8 +17,8 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Fairer holds' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 18 · 2 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Easier to read green text' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 21 · 1 fixed')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
 
@@ -51,8 +51,8 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Eerlijker vasthouden' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('18 okt · 2 beter')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Groene tekst beter leesbaar' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('21 okt · 1 opgelost')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
 });

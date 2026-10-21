@@ -861,6 +861,7 @@ reserved for feedback; gold only for rewards (stars, streak, XP).
 | Accent soft | `#dfeaea` | `#1c3031` |
 | Reward gold | `#e0a526` | `#e0a526` |
 | Perfect / great | `#1f8a5b` | `#4cc38a` |
+| Perfect / great text (`--good-ink`) | `#176c47` | `#7ad9a8` |
 | Good (early/late) | `#b7791f` | `#f0b429` |
 | Miss | `#d64545` | `#ff6b6b` |
 
@@ -1089,6 +1090,9 @@ without code changes:
 - Screen-reader labels for controls; notation itself gets a text alternative
   ("quarter, quarter, half").
 - High-contrast theme; big touch targets (≥ 48 px).
+- Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
+  larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,
+  borders and bars.
 
 ---
 
