@@ -227,23 +227,46 @@ Learn and practice major and minor scales in all 15 keys.
   The centre shows the selected key signature. Under the circle: the scale's notes (each
   letter once, sharps and flats tinted), stars, *Options* and *Practice*, plus *Go round
   the circle* (all 15 in circle order).
+- **Where the hub sits:** it is a Home page, opened from Home's Scales tile, so it keeps the
+  app's navigation with Home current (§9): the tab bar on phone, with a back arrow as on a
+  Learn chapter; the top header on tablet and desktop. Tablet and desktop put the circle and
+  the selected key side by side: the key signature, the stars per form (one rating for major,
+  natural / harmonic / melodic for minor), the scale's notes and *Options* / *Practice*.
 - **Settings:** keys (the selected key · all 15 · choose, using the Key screen from Read
   notes) · scales (major, natural minor, harmonic minor, melodic minor; each shows its
   step pattern) · answer with (piano · names · mixed) · direction (up · up and down) ·
   write with (♯ ♭ signs · key signature) · show the steps (W and H) · play each note.
   A minor scale uses the relative minor of the chosen key (G → E minor).
-- **Piano:** a keyboard window that starts on the tonic (9 white keys, enough for one
-  octave from any starting note). The player plays the scale note by note; each right
+- **Piano:** a keyboard window that starts on the tonic, or on the white key just below it
+  when the tonic is a black key (F♯, D♭ …): 9 white keys, enough for one octave from any
+  starting note. The player plays the scale note by note; each right
   note is written on the staff and fills the next degree box. The W/H steps sit between
   the boxes. A wrong key flashes red and the feedback names the step ("From G, go a whole
-  step: skip one key"). *Hear it so far* and *Start over* are always there.
+  step: skip one key"). *Hear it so far* and *Start over* are always there. Computer keys
+  on desktop, as in Read notes: A S D F G H J K L for the white keys, and for a black key
+  the letter above the gap between its two white keys (W E R T Y U I O).
 - **Names (spelling):** the letters are given, one per degree, because a scale uses each
-  letter once; the player chooses ♭, ♮ or ♯ for each. This drills exactly what changes
-  between keys and between the minor forms (D♯ in E harmonic minor). Double sharps and
-  flats (F𝄪 in G♯ harmonic minor) appear only in keys that need them.
+  letter once; the player chooses ♭, ♮ or ♯ for each (keys − 0 =, as in Read notes). This
+  drills exactly what changes between keys and between the minor forms (D♯ in E harmonic
+  minor). Double sharps (F𝄪 in G♯ harmonic minor, C𝄪 in D♯, G𝄪 in A♯) appear only in keys
+  that need them: then a fourth button, 𝄪 (key X), joins the row. No scale here needs a
+  double flat.
+- **Up and down** adds the way back: the degree row gets a second line, from 7 down to 1, and
+  the piano window stays the same.
 - **Melodic minor down** is written as natural minor (the classical form).
 - **Scoring:** a scale is right when it was finished without mistakes; stars by mistakes
   (0 → ★★★, 1 → ★★, 2–3 → ★). A scale with mistakes comes back at the end of the round.
+  XP: 2 per star for each scale (doubled for up and down), + 5 when every scale in the round
+  has ★★★ (starting values, to tune).
+- **Round done** lists each scale with its mistakes and stars (a scale with mistakes is
+  marked *Came back at the end of the round*) and how far the circle is filled, with
+  *Change setup* and *New round* (the same setup, shuffled again). Its back arrow goes to the
+  Scales hub.
+- **Layout:** setup, play, spell and round done are exercise screens (no tab bar or header):
+  the phone layout, in the 640 px column on tablet. On desktop, play and spell use the wide
+  exercise layout of Read notes: the exercise header (title, scale *n* of *m*, progress,
+  Quit · Esc), the staff across the top, then the degree row with the piano or the sign
+  buttons, and beside it the mistakes, *Hear it so far* (Space) and *Start over*.
 
 ### 3.6 Test yourself — *flash cards*
 
@@ -817,16 +840,17 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 | The unit boss on the Learning Path | |
 
 **Breakpoints.** Phone < 700 px; tablet 700–1099 px; desktop ≥ 1100 px.
-- A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Calibration) out in two
-  columns, so the pad or the answer buttons stay in view next to the notation.
+- A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Scales, Calibration) out in
+  two columns, so the pad or the answer buttons stay in view next to the notation (Scales: the staff and the degree row
+  on the left, the piano or the sign buttons on the right).
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
   tab bar of that release (Home · Path · Settings in the MVP, + Learn from v1.2, + Progress from
   v1.5). The active item has the soft slate pill and `aria-current="page"`. Tablet keeps the icon
   with each word and puts the items on the right; desktop puts them right after the brand, as words
-  only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile)
-  marks that tab as current.
+  only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile, a
+  Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow.
 - Desktop Home has two columns (App design canvas, Desktop · Home): streak and level (with the XP to
   the next level), the daily challenge and the learning path (unit N of M, a bar of all units, the
   lesson tiles) on the left; Continue (with the meter, bars and tempo over the staff) and the Free
