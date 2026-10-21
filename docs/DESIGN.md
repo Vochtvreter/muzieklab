@@ -227,47 +227,69 @@ Learn and practice major and minor scales in all 15 keys.
   The centre shows the selected key signature. Under the circle: the scale's notes (each
   letter once, sharps and flats tinted), stars, *Options* and *Practice*, plus *Go round
   the circle* (all 15 in circle order).
+- **Where the hub sits:** it is a Home page, opened from Home's Scales tile, so it keeps the
+  app's navigation with Home current (§9): the tab bar on phone, with a back arrow as on a
+  Learn chapter; the top header on tablet and desktop. Tablet and desktop put the circle and
+  the selected key side by side: the key signature, the stars per form (one rating for major,
+  natural / harmonic / melodic for minor), the scale's notes and *Options* / *Practice*.
 - **Settings:** keys (the selected key · all 15 · choose, using the Key screen from Read
   notes) · scales (major, natural minor, harmonic minor, melodic minor; each shows its
   step pattern) · answer with (piano · names · mixed) · direction (up · up and down) ·
   write with (♯ ♭ signs · key signature) · show the steps (W and H) · play each note.
   A minor scale uses the relative minor of the chosen key (G → E minor).
-- **Piano:** a keyboard window that starts on the tonic (9 white keys, enough for one
-  octave from any starting note). The player plays the scale note by note; each right
+- **Piano:** a keyboard window that starts on the tonic, or on the white key just below it
+  when the tonic is a black key (F♯, D♭ …): 9 white keys, enough for one octave from any
+  starting note. The player plays the scale note by note; each right
   note is written on the staff and fills the next degree box. The W/H steps sit between
   the boxes. A wrong key flashes red and the feedback names the step ("From G, go a whole
-  step: skip one key"). *Hear it so far* and *Start over* are always there.
+  step: skip one key"). *Hear it so far* and *Start over* are always there. Computer keys
+  on desktop, as in Read notes: A S D F G H J K L for the white keys, and for a black key
+  the letter above the gap between its two white keys (W E R T Y U I O).
 - **Names (spelling):** the letters are given, one per degree, because a scale uses each
-  letter once; the player chooses ♭, ♮ or ♯ for each. This drills exactly what changes
-  between keys and between the minor forms (D♯ in E harmonic minor). Double sharps and
-  flats (F𝄪 in G♯ harmonic minor) appear only in keys that need them.
+  letter once; the player chooses ♭, ♮ or ♯ for each (keys − 0 =, as in Read notes). This
+  drills exactly what changes between keys and between the minor forms (D♯ in E harmonic
+  minor). Double sharps (F𝄪 in G♯ harmonic minor, C𝄪 in D♯, G𝄪 in A♯) appear only in keys
+  that need them: then a fourth button, 𝄪 (key X), joins the row. No scale here needs a
+  double flat.
+- **Up and down** adds the way back: the degree row gets a second line, from 7 down to 1, and
+  the piano window stays the same.
 - **Melodic minor down** is written as natural minor (the classical form).
 - **Scoring:** a scale is right when it was finished without mistakes; stars by mistakes
   (0 → ★★★, 1 → ★★, 2–3 → ★). A scale with mistakes comes back at the end of the round.
+  XP: 2 per star for each scale (doubled for up and down), + 5 when every scale in the round
+  has ★★★ (starting values, to tune).
+- **Round done** lists each scale with its mistakes and stars (a scale with mistakes is
+  marked *Came back at the end of the round*) and how far the circle is filled, with
+  *Change setup* and *New round* (the same setup, shuffled again). Its back arrow goes to the
+  Scales hub.
+- **Layout:** setup, play, spell and round done are exercise screens (no tab bar or header):
+  the phone layout, in the 640 px column on tablet. On desktop, play and spell use the wide
+  exercise layout of Read notes: the exercise header (title, scale *n* of *m*, progress,
+  Quit · Esc), the staff across the top, then the degree row with the piano or the sign
+  buttons, and beside it the mistakes, *Hear it so far* (Space) and *Start over*.
 
 ### 3.6 Test yourself — *flash cards*
 
-Review of the Learn chapters, built into the Learn tab (boards: MVP canvas, *Not built · Flash
-cards*).
+A quick theory check on any **chapters the player chooses**, opened from the Learn tab.
 
-- **Where:** a *Test yourself* card on the Learn tab, under the progress bar. It shows how many
-  cards are due, with *Choose chapters* (the setup) and *Start · 12 cards* (the due cards).
-  The round, the setup and the summary are exercise screens: no nav, a 640 px column on
-  tablet and desktop.
-- **Cards are the quick checks.** Every Learn quick check is a card: one per section, plus the
-  chapter check (38 in chapters 1–10). A quick check answered right joins the player's deck.
-  No separate card text: the question, its three answers and the "Right." explanation come
-  from the chapter, so every card is covered by `THEORY-SOURCES.md` and translated with it.
-- **Setup:** tick chapters (1–10, with their number of cards; "Chapters I read" ticks the
-  chapters with a section read) and 10 / 20 / All cards. Due cards come first.
-- **A card:** the question and three answers, styled as the quick check. After a pick, the
-  right answer turns green and a wrong pick red, and the card shows the explanation and a
-  link to its section. *Next card* stays disabled until an answer is picked.
-- **Spaced repetition:** a simple Leitner scheme per card. Right moves it up a box (back in
-  4 days, then longer); wrong puts it back in the first box (back tomorrow), and missed
-  cards come first in the next round.
-- **Round done:** right and wrong, the weakest chapters with *Read* links, *Done* (back to
-  Learn) and *Another round*.
+- **Setup:** tick chapters (1–10; chapters marked *later* have no cards yet; a "Chapters I
+  read" shortcut selects the read ones), card types (*symbols*: "which rest is this?";
+  *facts and rules*: "how long is a dotted quarter?"; *staff reading*: name a note or a
+  staff line), 10 / 20 / 30 cards, and **Flip** or **Choice** (three options).
+- **Flip mode:** the front shows a question and a symbol or a bit of notation. Tapping the
+  card (or *Show answer*) turns it over: the answer, a one-line explanation and a link
+  to the Learn section it comes from. The player rates it **Again · Almost · Knew it**.
+- **Choice mode:** the same card with three answers (A, B, C) under it. The two wrong
+  answers are real terms from the same chapter (for "lines of the treble staff": E G B D F,
+  with F A C E, the spaces, and G B D F A, the bass lines), so a guess is never free.
+  After a pick, the right answer turns green and a wrong pick red, and the card shows the
+  explanation and the Learn link. No self-rating: right counts as *Knew it*, wrong as
+  *Again*. *Next card* stays disabled until an answer is picked.
+- **Spaced repetition:** a simple Leitner scheme per card. *Again* puts the card back in
+  this round, *Almost* brings it back tomorrow, *Knew it* moves it up a box (4 days, then
+  longer). Cards the player missed come first in the next round.
+- **Card content** is written from the Learn chapters only, so every answer is covered
+  by `THEORY-SOURCES.md`. Cards are localizable content like the chapters.
 
 ---
 
@@ -793,13 +815,17 @@ Built in v0.3 (ahead of v1.2, whose rhythm chapters 1–7 come next; the Learn t
 harmonic, melodic) in all 15 keys: the circle of fifths hub, playing on the piano, spelling with ♭ ♮ ♯, and a round
 summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains chapter 11 · Scales.
 
+Built in v0.7.0: the Scales hub (`/scales`, a Home page with the circle of fifths), the setup (`/scales/setup`, with the
+Read notes Key screen for *Choose…*), play and spell (`/scales/play`; the wide exercise layout and computer keys on
+desktop), round done (`/scales/done`), the third Home tile and Learn chapter 11. The engine is `core/scale.ts` and
+`core/scaleRound.ts`; progress keeps the best stars per scale.
+
 **v1.5 · Progress** adds the Progress tab (the tab bar becomes Home · Path · Learn · Progress · Settings) with
 Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
 appear on Progress and on the level-up sheet.
 
-**Flash cards** (next) add *Test yourself* to the Learn tab: the Learn quick checks as cards, three answers each, with
-due cards on a Leitner schedule (§3.6). **Listen and write** (later, its own page on the canvas) adds dictation as a
-third practice mode (Tap · Listen · Echo) and a fourth Home tile.
+**v1.6 · Flash cards and listen & write** adds *Test yourself* over all eleven Learn chapters (flip or choose from 3),
+started from the Learn tab. It also adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
 
 Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
 Progress, XP and levels.
@@ -820,16 +846,17 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 | The unit boss on the Learning Path | |
 
 **Breakpoints.** Phone < 700 px; tablet 700–1099 px; desktop ≥ 1100 px.
-- A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Calibration) out in two
-  columns, so the pad or the answer buttons stay in view next to the notation.
+- A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Scales, Calibration) out in
+  two columns, so the pad or the answer buttons stay in view next to the notation (Scales: the staff and the degree row
+  on the left, the piano or the sign buttons on the right).
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
   tab bar of that release (Home · Path · Settings in the MVP, + Learn from v1.2, + Progress from
   v1.5). The active item has the soft slate pill and `aria-current="page"`. Tablet keeps the icon
   with each word and puts the items on the right; desktop puts them right after the brand, as words
-  only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile)
-  marks that tab as current.
+  only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile, a
+  Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow.
 - Desktop Home has two columns (App design canvas, Desktop · Home): streak and level (with the XP to
   the next level), the daily challenge and the learning path (unit N of M, a bar of all units, the
   lesson tiles) on the left; Continue (with the meter, bars and tempo over the staff) and the Free
@@ -864,6 +891,7 @@ reserved for feedback; gold only for rewards (stars, streak, XP).
 | Accent soft | `#dfeaea` | `#1c3031` |
 | Reward gold | `#e0a526` | `#e0a526` |
 | Perfect / great | `#1f8a5b` | `#4cc38a` |
+| Perfect / great text (`--good-ink`) | `#176c47` | `#7ad9a8` |
 | Good (early/late) | `#b7791f` | `#f0b429` |
 | Miss | `#d64545` | `#ff6b6b` |
 
@@ -939,7 +967,7 @@ ABRSM, Trinity, RCM and Kodály.
 | **8 · Notes on the staff** | 8.1 The staff and two clefs (landmark notes) · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) | Read notes: clefs, range |
 | **9 · Sharps, flats and naturals** | 9.1 The piano octave (groups of 2 and 3 black keys) · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural (two names for a black key; E♯ = F, C♭ = B) · 9.4 A sign lasts for the bar (same line or space, same octave) | Read notes: piano, extra signs |
 | **10 · Key signatures** | 10.1 The key signature (every octave; a sign next to a note wins until the bar line) · 10.2 The order of sharps F C G D A E B and flats B E A D G C F (start with up to three signs) · 10.3 Naming the key · 10.4 Major and minor (relative minor) | Read notes: keys, mix keys |
-| **11 · Scales** *(later)* | 11.1 The major scale (W W H W W W H) · 11.2 Major scales in every key (each letter once; the scale's signs = its key signature) · 11.3 The circle of fifths (15 key signatures, 12 sounding keys) · 11.4 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 11.5 Scale degrees and intervals (tonic … leading tone, intervals by number, the tonic triad; fixed do in this app) | Scales |
+| **11 · Scales** | 11.1 The major scale (W W H W W W H) · 11.2 Major scales in every key (each letter once; the scale's signs = its key signature) · 11.3 The circle of fifths (15 key signatures, 12 sounding keys) · 11.4 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 11.5 Scale degrees and intervals (tonic … leading tone, intervals by number, the tonic triad; fixed do in this app) | Scales |
 
 Chapters 8–10 are built (0.3.4); they were one chapter 8 with seven sections before, and the canvas still draws that
 version. Chapters 1–7 are built (0.5.0) from the canvas (v1.2 and v1.7), without 1.4 and 7.2, which wait until the game
@@ -1092,6 +1120,9 @@ without code changes:
 - Screen-reader labels for controls; notation itself gets a text alternative
   ("quarter, quarter, half").
 - High-contrast theme; big touch targets (≥ 48 px).
+- Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
+  larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,
+  borders and bars.
 
 ---
 
