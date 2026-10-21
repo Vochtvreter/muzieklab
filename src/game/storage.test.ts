@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { DEFAULT_NOTE_SETTINGS } from '../core/noteRound';
+import { DEFAULT_SCALE_SETTINGS } from '../core/scaleRound';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import {
   DEFAULT_PREFS,
@@ -59,6 +60,7 @@ describe('prefs and progress storage', () => {
       daily: { day: '2026-10-17', stars: 3, accuracy: 91.5 },
       dailyBest: 94,
       notes: { settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G', 'Eb'], mixKeys: true }, weak: { 'treble:38': 3, 'bass:21': 1 } },
+      scales: { settings: { ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys: ['D', 'Bb'], types: ['major', 'harmonic'] }, stars: { 'D-major': 3, 'E-harmonic': 1 } },
       learnRead: ['8.1', '8.2'],
     };
     saveProgress(progress);
@@ -69,6 +71,14 @@ describe('prefs and progress storage', () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ notes: { weak: { 'treble:38': 9, 'alto:20': 2, 'bass:21': 0, x: 1 } }, learnRead: ['8.1', 'x', '8.1'] }));
     expect(loadProgress().notes).toEqual({ settings: null, weak: { 'treble:38': 5 } });
     expect(loadProgress().learnRead).toEqual(['8.1']);
+  });
+
+  it('keeps valid Scales stars only, 1–3 per known scale', () => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ scales: { settings: { types: ['minor', 'melodic'], keyMode: 'x' }, stars: { 'D-major': 9, 'H-major': 2, 'G#-harmonic': 2, 'E-natural': 0 } } }));
+    expect(loadProgress().scales).toEqual({
+      settings: { ...DEFAULT_SCALE_SETTINGS, types: ['melodic'] },
+      stars: { 'D-major': 3, 'G#-harmonic': 2 },
+    });
   });
 
   it('moves the old chapter 8 sections 8.6 and 8.7 to chapters 9 and 10', () => {

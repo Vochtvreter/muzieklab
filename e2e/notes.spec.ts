@@ -93,3 +93,44 @@ test('learn: a rhythm practice link opens Free practice set up for its section',
   await expect(page.getByRole('button', { name: 'Dotted', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: 'Ties', exact: true })).toHaveAttribute('aria-pressed', 'false');
 });
+
+test('scales: from Home to the circle, a G major round played with the keyboard, and the stars on the circle', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./');
+  await page.getByRole('link', { name: /^Scales/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Scales' })).toBeVisible();
+  await expect(page.getByText('0 of 15')).toBeVisible();
+  await page.getByRole('button', { name: 'Practice G major' }).click();
+  await expect(page.getByText('Scale 1 of 1')).toBeVisible();
+  await expect(page.getByText('Play with A S D F G H J K L (white) and W E R T Y U I O (black)')).toBeVisible();
+
+  // One wrong key first (F instead of F♯ at the 7th degree), so the scale comes back at the end of the round.
+  for (const k of ['a', 's', 'd', 'f', 'g', 'h', 'j']) await page.keyboard.press(k);
+  await expect(page.locator('.nfeedback')).toHaveText(/^Not F\. From E, go up a whole step/);
+  await page.keyboard.press('i');
+  await page.keyboard.press('k');
+  await expect(page.locator('.nfeedback')).toHaveText(/^G major: done with 1 mistake/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Scale 2 of 2')).toBeVisible();
+  for (const k of ['a', 's', 'd', 'f', 'g', 'h', 'i', 'k']) await page.keyboard.press(k);
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  await expect(page.getByText('Came back at the end of the round')).toBeVisible();
+  await expect(page.getByRole('img', { name: '2 of 3 stars' })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to Scales' }).click();
+  await expect(page.getByRole('button', { name: 'G major: 2 stars' })).toBeVisible();
+  await expect(page.getByText('1 of 15')).toBeVisible();
+});
+
+test('learn: chapter 11 links to the Scales setup and the circle', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/learn/11');
+  await expect(page.getByRole('heading', { level: 1, name: /Scales/ })).toBeVisible();
+  await page.getByRole('link', { name: 'Practice D major and B♭ major →' }).click();
+  await expect(page.getByRole('heading', { name: 'Scale practice' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start · 2 scales' })).toBeVisible();
+  await page.goto('./#/learn/11');
+  await page.getByRole('link', { name: 'Practice scales' }).click();
+  await expect(page.getByRole('group', { name: 'Circle of fifths, major keys' })).toBeVisible();
+});

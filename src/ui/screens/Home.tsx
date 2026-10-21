@@ -1,5 +1,6 @@
 /**
- * Home: streak, level and XP, Continue (the next lesson), the daily challenge and Free practice (Rhythm, Read notes).
+ * Home: streak, level and XP, Continue (the next lesson), the daily challenge and Free practice (Rhythm, Read notes,
+ * Scales).
  * Desktop (App design canvas, Desktop · Home): a left column with streak and level, the daily challenge and the path
  * summary, next to Continue and the practice tiles.
  */
@@ -128,7 +129,7 @@ export function Home(): JSX.Element {
     </section>
   );
 
-  // Free practice: Rhythm and Read notes side by side (v1.3), each opening its own setup.
+  // Free practice: Rhythm, Read notes and Scales side by side (v1.4); each opens its own setup or, for Scales, the hub.
   const freeCard = (
     <section aria-labelledby="free-title" className="free">
       <h2 id="free-title" className="free-title">
@@ -151,6 +152,22 @@ export function Home(): JSX.Element {
           <span className="free-tile-text">
             <b>{t('home.notesTile')}</b>
             <span>{t('home.notesTileSub')}</span>
+          </span>
+        </Link>
+        <Link to="/scales" className="free-tile">
+          <span aria-hidden="true" className="free-tile-icon">
+            <svg width="34" height="30" viewBox="0 0 34 30" className="free-tile-scale">
+              <g fill="none" stroke="currentColor" strokeWidth="2">
+                <ellipse cx="5" cy="25" rx="4" ry="3" />
+                <ellipse cx="13" cy="19" rx="4" ry="3" />
+                <ellipse cx="21" cy="12" rx="4" ry="3" />
+                <ellipse cx="29" cy="5" rx="4" ry="3" />
+              </g>
+            </svg>
+          </span>
+          <span className="free-tile-text">
+            <b>{t('home.scalesTile')}</b>
+            <span>{t('home.scalesTileSub')}</span>
           </span>
         </Link>
       </div>

@@ -15,8 +15,9 @@ only partly readable, **U** not confirmed. Claims that go into a chapter still g
 ### 1.1 The chapters
 
 Eleven chapters: seven on rhythm, three on reading notes, one on scales. Every setting a player can practise has a
-section that explains it (§5). Chapters 1–10 are built: together they are the beginner course up to everything the game
-can practise. What it cannot practise yet (the upbeat, 6/8, scales) waits for the feature that plays it.
+section that explains it (§5). All eleven are built (chapter 11 with the Scales mode in 0.7.0): together they are the
+beginner course up to everything the game can practise. What it cannot practise yet (the upbeat, 6/8) waits for the
+feature that plays it.
 
 | Chapter | Sections | Practice | State |
 |---|---|---|---|
@@ -30,7 +31,7 @@ can practise. What it cannot practise yet (the upbeat, 6/8, scales) waits for th
 | **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef · 8.3 Bass clef · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes | Read notes: clefs, range, note names | **built** (0.3.4) |
 | **9 · Sharps, flats and naturals** | 9.1 The piano octave · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural · 9.4 A sign lasts for the bar | Read notes: piano, extra signs | **built** (0.3.4) |
 | **10 · Key signatures** | 10.1 The key signature · 10.2 The order of sharps and flats · 10.3 Naming the key · 10.4 Major and minor | Read notes: keys, mix keys | **built** (0.3.4) |
-| **11 · Scales** | 11.1 The major scale · 11.2 Major scales in every key · 11.3 The circle of fifths · 11.4 Minor scales · 11.5 Scale degrees and intervals | Scales (v1.4) | later |
+| **11 · Scales** | 11.1 The major scale · 11.2 Major scales in every key · 11.3 The circle of fifths · 11.4 Minor scales · 11.5 Scale degrees and intervals | Scales (v1.4) | **built** (0.7.0) |
 
 Chapters 8–10 were one chapter 8 with seven sections until 0.3.4; the old chapter 9 · Scales is now chapter 11.
 
@@ -345,7 +346,7 @@ Quick check: "Which other name does the black key F♯ have?" G / **G♭** / F�
 
 Quick check: "The last sharp is C♯. Which major key is it?" C / **D** / C♯.
 
-### Chapter 11 · Scales — Scales (later, v1.4; was chapter 9)
+### Chapter 11 · Scales — Scales (built in 0.7.0, v1.4; was chapter 9)
 
 11.1 The major scale (W W H W W W H, building on 9.2) · 11.2 Major scales in every key (each letter once) · 11.3 The
 circle of fifths · 11.4 Minor scales (natural, harmonic, melodic; relative minor) · **11.5 Scale degrees and intervals**
@@ -374,7 +375,7 @@ circle of fifths · 11.4 Minor scales (natural, harmonic, melodic; relative mino
 | | Answer with names or piano | 8.5, 9.1 | – |
 | | Extra sharps and flats | 9.3, 9.4 | – |
 | | Key, mix keys | 10.1–10.4 | – |
-| Scales (later) | – | 11 | – |
+| Scales | Keys, scale types, answer with, direction | 11.1–11.4 | – |
 
 Everything the game can practise now has a section. The Learning Path is behind: Path units 9 (syncopation), 10 (dotted
 eighth + sixteenth) and 11 (triplets) are designed (DESIGN.md §8.2) and playable in free practice, but not built yet,

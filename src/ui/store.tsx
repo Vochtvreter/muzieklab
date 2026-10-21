@@ -5,19 +5,31 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react';
 import {
   DEFAULT_NOTE_SETTINGS,
+  DEFAULT_SCALE_SETTINGS,
   DEFAULT_SETTINGS,
   generateExercise,
   generateRound,
+  generateScaleRound,
   noteRoundXp,
   sanitizeNoteSettings,
+  sanitizeScaleSettings,
+  scaleRoundXp,
   scoreRound,
+  scoreScaleRound,
+  updateScaleStars,
   updateWeak,
   type Exercise,
   type JudgeResult,
+  type KeyId,
   type NoteAnswer,
   type NoteSettings,
+  type PlayedScale,
   type RoundNote,
   type RoundResult,
+  type RoundScale,
+  type ScaleRoundResult,
+  type ScaleSettings,
+  type ScaleStars,
   type Settings,
   type Tap,
 } from '../core/api';
@@ -125,6 +137,42 @@ export function restoreNoteRun(weak: Record<string, number>): NoteRun | null {
   }
 }
 
+/** A Scales round: its settings and seed, and the scales drawn (scales with mistakes are added at the end while playing). */
+export interface ScaleRun {
+  settings: ScaleSettings;
+  seed: number;
+  scales: RoundScale[];
+}
+
+/** The current Scales round, per tab, so a reload on its play screen starts the same round again. */
+export const SCALE_RUN_KEY = 'muzieklab.scaleRun.v1';
+
+export function makeScaleRun(settings: ScaleSettings, seed: number): ScaleRun {
+  return { settings, seed, scales: generateScaleRound(settings, seed) };
+}
+
+function saveScaleRun(run: ScaleRun | null): void {
+  try {
+    if (!run) sessionStorage.removeItem(SCALE_RUN_KEY);
+    else sessionStorage.setItem(SCALE_RUN_KEY, JSON.stringify({ settings: run.settings, seed: run.seed }));
+  } catch {
+    /* storage blocked: a reload goes back to the hub */
+  }
+}
+
+export function restoreScaleRun(): ScaleRun | null {
+  try {
+    const raw = sessionStorage.getItem(SCALE_RUN_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { settings?: unknown; seed?: unknown };
+    const settings = sanitizeScaleSettings(v?.settings);
+    if (!settings || typeof v.seed !== 'number') return null;
+    return makeScaleRun(settings, v.seed);
+  } catch {
+    return null;
+  }
+}
+
 /** What a finished run earned, for Results and the level-up sheet. */
 export interface Reward {
   xp: number;
@@ -151,6 +199,21 @@ export interface NoteLast {
   reward: Reward;
 }
 
+export interface ScaleLast {
+  run: ScaleRun;
+  played: PlayedScale[];
+  result: ScaleRoundResult;
+  reward: Reward;
+  /** The best stars per scale before this round, for the circle's progress on Round done. */
+  starsBefore: ScaleStars;
+}
+
+/** The Scales hub: the ring in front (Major / Minor) and the selected key (§3.7). */
+export interface ScaleHub {
+  tab: 'major' | 'minor';
+  key: KeyId;
+}
+
 export interface AppState {
   prefs: Prefs;
   progress: Progress;
@@ -162,6 +225,11 @@ export interface AppState {
   noteSettings: NoteSettings;
   noteRun: NoteRun | null;
   noteLast: NoteLast | null;
+  /** Scales: the setup, the hub's selection, the round being played and the last finished round. */
+  scaleSettings: ScaleSettings;
+  scaleHub: ScaleHub;
+  scaleRun: ScaleRun | null;
+  scaleLast: ScaleLast | null;
 }
 
 export type Action =
@@ -173,7 +241,11 @@ export type Action =
   | { type: 'noteSettings'; settings: NoteSettings }
   | { type: 'noteStart'; run: NoteRun }
   | { type: 'noteFinish'; answers: NoteAnswer[]; today: string }
-  | { type: 'learnRead'; ids: string[] };
+  | { type: 'learnRead'; ids: string[] }
+  | { type: 'scaleSettings'; settings: ScaleSettings }
+  | { type: 'scaleHub'; hub: ScaleHub }
+  | { type: 'scaleStart'; run: ScaleRun }
+  | { type: 'scaleFinish'; played: PlayedScale[]; today: string };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -212,7 +284,16 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward } };
     }
     case 'resetProgress':
-      return { ...state, progress: defaultProgress(), last: null, noteLast: null, noteSettings: { ...DEFAULT_NOTE_SETTINGS } };
+      return {
+        ...state,
+        progress: defaultProgress(),
+        last: null,
+        noteLast: null,
+        noteSettings: { ...DEFAULT_NOTE_SETTINGS },
+        scaleLast: null,
+        scaleSettings: { ...DEFAULT_SCALE_SETTINGS },
+        scaleHub: { tab: 'major', key: DEFAULT_SCALE_SETTINGS.keys[0] },
+      };
     case 'noteSettings':
       return { ...state, noteSettings: action.settings, progress: { ...state.progress, notes: { ...state.progress.notes, settings: action.settings } } };
     case 'noteStart':
@@ -231,6 +312,32 @@ export function reducer(state: AppState, action: Action): AppState {
       progress = { ...progress, xp: xpBefore + xp };
       const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest: false };
       return { ...state, progress, noteLast: { run, answers, result, reward } };
+    }
+    case 'scaleSettings':
+      return { ...state, scaleSettings: action.settings, progress: { ...state.progress, scales: { ...state.progress.scales, settings: action.settings } } };
+    case 'scaleHub': {
+      // With one key, the setup follows the key picked on the circle.
+      const s = state.scaleSettings;
+      const settings = s.keyMode === 'one' && s.keys[0] !== action.hub.key ? { ...s, keys: [action.hub.key] } : s;
+      const progress = settings === s ? state.progress : { ...state.progress, scales: { ...state.progress.scales, settings } };
+      return { ...state, scaleHub: action.hub, scaleSettings: settings, progress };
+    }
+    case 'scaleStart':
+      return { ...state, scaleRun: action.run };
+    case 'scaleFinish': {
+      const run = state.scaleRun;
+      if (!run) return state;
+      const result = scoreScaleRound(action.played);
+      // Real practice: at least one scale finished.
+      const practised = result.total > 0;
+      let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
+      const starsBefore = progress.scales.stars;
+      progress = { ...progress, scales: { ...progress.scales, stars: updateScaleStars(starsBefore, result) } };
+      const xp = scaleRoundXp(run.settings, result);
+      const xpBefore = progress.xp;
+      progress = { ...progress, xp: xpBefore + xp };
+      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest: false };
+      return { ...state, progress, scaleLast: { run, played: action.played, result, reward, starsBefore } };
     }
     case 'learnRead': {
       const add = action.ids.filter((id) => !state.progress.learnRead.includes(id));
@@ -266,6 +373,7 @@ function initialState(): AppState {
   const prefs = loadPrefs();
   const progress = loadProgress();
   const settings = progress.lastSettings ?? { ...DEFAULT_SETTINGS };
+  const scaleSettings = progress.scales.settings ?? { ...DEFAULT_SCALE_SETTINGS };
   // A reload on Play picks the exercise up again instead of falling back to Setup.
   const route = typeof window !== 'undefined' ? parseHash(window.location.hash) : '/';
   return {
@@ -277,6 +385,10 @@ function initialState(): AppState {
     noteSettings: progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS },
     noteRun: route === '/notes/play' ? restoreNoteRun(progress.notes.weak) : null,
     noteLast: null,
+    scaleSettings,
+    scaleHub: { tab: 'major', key: scaleSettings.keys[0] },
+    scaleRun: route === '/scales/play' ? restoreScaleRun() : null,
+    scaleLast: null,
   };
 }
 
@@ -311,6 +423,10 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
     if (first.current) return;
     saveNoteRun(state.noteRun);
   }, [state.noteRun]);
+  useEffect(() => {
+    if (first.current) return;
+    saveScaleRun(state.scaleRun);
+  }, [state.scaleRun]);
   useEffect(() => {
     first.current = false;
   }, []);

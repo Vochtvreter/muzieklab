@@ -1,6 +1,7 @@
 /**
  * Key (DESIGN.md §3.5 Keys): the 15 key signatures as small treble staves, C on top and then sharps beside flats by
- * count, each with its major key and relative minor. One key, or Mix keys (several; a new key every 5 notes).
+ * count, each with its major key and relative minor. One key, or Mix keys (several; a new key every 5 notes). Scales
+ * uses the same screen for *Choose…* (§3.7), through KeyScreen.
  */
 import { useState } from 'react';
 import { KEY_ORDER, keySigns, roundKeys, type KeyId } from '../../../core/api';
@@ -11,16 +12,36 @@ import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useDocTitle } from '../../hooks';
 import { keySignsAria, letterName, majorName, minorName } from '../../lib/noteText';
-import { Link, navigate } from '../../router';
+import { Link, navigate, type Route } from '../../router';
 import { useStore } from '../../store';
 
 export function NotesKey(): JSX.Element {
   const { state, dispatch } = useStore();
-  useDocTitle(t('app.docTitle', { page: t('notes.keys.title') }));
   const s = state.noteSettings;
+  return (
+    <KeyScreen keys={roundKeys(s)} mix={s.mixKeys && s.keys.length > 1} back="/notes" mixText={t('notes.keys.mixText')}
+      onUse={(keys, mix) => {
+        dispatch({ type: 'noteSettings', settings: { ...s, keys, mixKeys: mix } });
+        navigate('/notes', { replace: true });
+      }} />
+  );
+}
+
+interface KeyScreenProps {
+  /** The keys chosen so far; the first is the one key. */
+  keys: KeyId[];
+  mix: boolean;
+  back: Route;
+  /** What Mix keys does, for the summary line. */
+  mixText: string;
+  onUse(keys: KeyId[], mix: boolean): void;
+}
+
+export function KeyScreen({ keys, mix: mixed, back, mixText, onUse }: KeyScreenProps): JSX.Element {
+  useDocTitle(t('app.docTitle', { page: t('notes.keys.title') }));
   // A draft until Use: Back leaves the setup as it was.
-  const [mix, setMix] = useState(s.mixKeys && s.keys.length > 1);
-  const [chosen, setChosen] = useState<KeyId[]>(() => roundKeys(s));
+  const [mix, setMix] = useState(mixed);
+  const [chosen, setChosen] = useState<KeyId[]>(() => (mixed ? keys : keys.slice(0, 1)));
 
   const toggle = (id: KeyId): void => {
     if (!mix) return setChosen([id]);
@@ -30,16 +51,13 @@ export function NotesKey(): JSX.Element {
       setChosen([...chosen, id]);
     }
   };
-  const use = (): void => {
-    dispatch({ type: 'noteSettings', settings: { ...s, keys: chosen, mixKeys: mix } });
-    navigate('/notes', { replace: true });
-  };
+  const use = (): void => onUse(chosen, mix);
 
   const first = chosen[0];
   const signs = keySigns(first);
   const summaryTitle = mix ? t('notes.keys.summaryMix', { count: chosen.length }) : t('notes.keys.summaryOne', { major: majorName(first), minor: minorName(first) });
   const summary = mix
-    ? t('notes.keys.mixText')
+    ? mixText
     : signs.length === 0
       ? t('notes.keys.summaryNone')
       : t('notes.keys.summarySigns', {
@@ -68,7 +86,7 @@ export function NotesKey(): JSX.Element {
     <ExerciseFrame className="frame--setup">
       <div className="page setup nkeys no-scrollbar">
         <div className="screen-head">
-          <Link to="/notes" aria-label={t('notes.keys.back')} className="icon-btn icon-btn--edge">
+          <Link to={back} aria-label={t('notes.keys.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <h1 className="screen-title">{t('notes.keys.title')}</h1>

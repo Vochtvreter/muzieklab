@@ -76,6 +76,9 @@ checked page by page.
 | The 7th a whole step below the tonic is called the subtonic | Verified | [Wiki-Subtonic] |
 | The dominant is next in importance after the tonic | Verified | [Wiki-Dominant] |
 | Movable do (do = degree 1) exists alongside fixed do | Verified; the app uses fixed do | [Wiki-Solfege] |
+| An interval's number counts the letters from the lower note, both ends included (C–E a 3rd, C–G a 5th, C–C an octave) | Verified | [Wiki-Interval] |
+| The tonic triad is degrees 1, 3 and 5 sounding together: C E G in C major, A C E in A minor | Verified (a triad stacks thirds: root, third, fifth) | [Wiki-Triad] |
+| G♯, D♯ and A♯ harmonic minor raise a sharp 7th to a double sharp (F𝄪, C𝄪, G𝄪) | Verified (raised 7th, each letter once) | [Wiki-Minor], [Wiki-Accidental] |
 | Letters given, player picks the sign (spelling drill); stars by mistakes | Design choice | — |
 
 ## Note values and rests
@@ -163,6 +166,8 @@ checked page by page.
 - **[Wiki-CoF]** "Circle of fifths". Wikipedia. https://en.wikipedia.org/wiki/Circle_of_fifths
 - **[Wiki-Subtonic]** "Subtonic". Wikipedia. https://en.wikipedia.org/wiki/Subtonic
 - **[Wiki-Dominant]** "Dominant (music)". Wikipedia. https://en.wikipedia.org/wiki/Dominant_(music)
+- **[Wiki-Interval]** "Interval (music)". Wikipedia. https://en.wikipedia.org/wiki/Interval_(music)
+- **[Wiki-Triad]** "Triad (music)". Wikipedia. https://en.wikipedia.org/wiki/Triad_(music)
 - **[Wiki-Accidental]** "Accidental (music)". Wikipedia. https://en.wikipedia.org/wiki/Accidental_(music)
 - **[Amphion-A]** Amphion, *Theorieboek A* (HaFaBra A). https://www.amphion.nl/site/assets/files/9088/theorieboek_a.pdf
 - **[Wilrijk-AMV]** Academie Wilrijk, *Theorie in een notendop* (AMV for adults, 2010). http://amapledoesntvoice.weebly.com/uploads/5/2/5/4/5254538/amv_volw_theoriecursus_vs_2010.pdf
