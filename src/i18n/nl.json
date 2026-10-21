@@ -1541,6 +1541,10 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_6_4": {
+      "title": "Groene tekst beter leesbaar",
+      "green": "Groene tekst, zoals “✓ gelezen” bij Leren, Vandaag gedaan en het aantal goede antwoorden, is in het lichte thema donkerder groen, zodat je het beter leest op wit."
+    },
     "v0_6_3": {
       "title": "Eerlijker vasthouden",
       "lift": "Hoe lang je een noot vasthoudt, wordt beoordeeld zoals mensen spelen, niet als een machine: je mag loslaten vanaf de helft van een noot, zodat je tijd hebt om op te tillen en de volgende in te drukken. Voor een rust telt het loslaten nog steeds, met wat meer ruimte aan beide kanten.",
