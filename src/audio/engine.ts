@@ -57,6 +57,11 @@ export interface AudioEngine {
   setCalibrationOffsetMs(ms: number): void;
   start(opts: StartOptions): Started;
   stop(): void;
+  /**
+   * Plays notes by MIDI number (60 = middle C), one after the other, `gap` seconds apart, starting now: a soft piano-like
+   * tone on the rhythm channel (Scales: each right note, and *Hear it so far*).
+   */
+  pitches(midis: number[], gap?: number): void;
   /** Tap feedback sound: starts on press, sustains softly while held, stops on release. */
   tapDown(): void;
   tapUp(): void;
@@ -462,6 +467,22 @@ class WebAudioEngine implements AudioEngine {
     } catch {
       /* already stopped */
     }
+  }
+
+  pitches(midis: number[], gap = 0.32): void {
+    const ctx = this.context();
+    if (!ctx || !this.channels) return;
+    const at = ctx.currentTime + 0.02;
+    midis.forEach((m, i) => this.pianoTone(ctx, m, at + i * gap));
+  }
+
+  /** A short struck tone: a triangle with a quieter octave above, fast attack and a long-ish decay. */
+  private pianoTone(ctx: AudioContext, midi: number, at: number): void {
+    const freq = 440 * 2 ** ((midi - 69) / 12);
+    const body = this.voice(ctx, 'rhythm', 'triangle', freq, at, at + 1.3);
+    this.envelope(body.env, at, 0.5, 0.005, 1.2);
+    const shine = this.voice(ctx, 'rhythm', 'sine', freq * 2, at, at + 0.6);
+    this.envelope(shine.env, at, 0.12, 0.005, 0.5);
   }
 
   /** Metronome click: beat 1 higher and a little louder. */

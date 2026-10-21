@@ -28,6 +28,7 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/app.css';
 import './styles/notes.css';
+import './styles/scales.css';
 
 // The saved language, or the device's: set before the first paint so nothing flashes in English.
 setLocale(resolveLocale(loadPrefs().language));

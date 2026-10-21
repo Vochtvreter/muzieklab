@@ -23,6 +23,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Continue lesson' }));
       await expectClickable(page.getByRole('link', { name: /^Rhythm/ }));
       await expectClickable(page.getByRole('link', { name: /^Read notes/ }));
+      await expectClickable(page.getByRole('link', { name: /^Scales/ }));
       // Tablet and desktop: the tabs sit in a top header (DESIGN.md §9), on desktop too, not in a sidebar.
       if (VIEWPORTS[name].width >= 700) await expect(page.getByRole('banner').getByRole('navigation', { name: 'Main' })).toBeVisible();
       await expectNoOverlap(page.locator('.continue-card'), page.locator('.free'));
@@ -171,6 +172,92 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(keys).toHaveCount(12);
       for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i));
       await expectClickable(page.getByRole('button', { name: 'Hint' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('scales: the hub, its circle and the selected key, a Home page', async ({ page }) => {
+      known(name, 'scales-hub');
+      const wide = VIEWPORTS[name].width >= 700;
+      await page.goto('./#/scales');
+      await expect(page.getByRole('heading', { level: 1, name: 'Scales' })).toBeVisible();
+      // The hub is opened from Home: Home stays current, in the tab bar on phone and in the header on tablet and desktop.
+      const nav = wide ? page.getByRole('banner').getByRole('navigation', { name: 'Main' }) : page.getByRole('navigation', { name: 'Main' });
+      await expect(nav.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
+      await expectClickable(page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Minor' }));
+      const circle = page.getByRole('group', { name: 'Circle of fifths, major keys' });
+      for (const key of ['C major', 'F♯ major', 'B major', 'D♭ major']) await expectClickable(circle.getByRole('button', { name: new RegExp('^' + key) }));
+      await circle.getByRole('button', { name: /^D major/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice D major' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Practice D major' }));
+      await expectClickable(page.getByRole('link', { name: 'Options' }));
+      await expectClickable(page.getByRole('button', { name: /^Go round the circle/ }));
+      if (wide) await expectNoOverlap(page.locator('.hub-circle-col'), page.locator('.hub-sel'));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      // Minor: the inner ring comes to the front; tapping the selected bottom key again switches its spelling.
+      await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Minor' }).click();
+      const minor = page.getByRole('group', { name: 'Circle of fifths, minor keys' });
+      await minor.getByRole('button', { name: /^B♭ minor/ }).click();
+      await minor.getByRole('button', { name: /^B♭ minor/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice A♯ minor' })).toBeVisible();
+      await expectNoSideScroll(page);
+    });
+
+    test('scales: setup and start', async ({ page }) => {
+      known(name, 'scales-setup');
+      await page.goto('./#/scales/setup');
+      await expect(page.getByRole('heading', { name: 'Scale practice' })).toBeVisible();
+      await expectClickable(page.getByRole('group', { name: 'Keys' }).getByRole('button', { name: 'All 15' }));
+      await expectClickable(page.getByRole('button', { name: /^Melodic minor/ }));
+      await expectClickable(page.getByRole('switch', { name: /^Play each note/ }));
+      await expectClickable(page.getByRole('button', { name: 'Start · 1 scale' }));
+      await page.getByRole('group', { name: 'Keys' }).getByRole('button', { name: 'All 15' }).click();
+      await expect(page.getByRole('button', { name: 'Start · 15 scales' })).toBeVisible();
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('scales: play G major on the piano, then round done', async ({ page }) => {
+      known(name, 'scales-play');
+      await page.goto('./#/scales/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
+      await expect(keys).toHaveCount(15);
+      for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i));
+      await expectClickable(page.getByRole('button', { name: /^Start over/ }));
+      await expectClickable(page.getByRole('button', { name: 'Skip to summary' }));
+      // G A B C D E F♯ G: the F♯ is the black key between F and G.
+      const piano = page.getByRole('group', { name: /^Piano keyboard from G to A/ });
+      const key = (name: string) => piano.getByRole('button', { name: new RegExp('^' + name + '(,|$)') });
+      for (const k of ['G', 'A', 'B', 'C', 'D', 'E']) await key(k).first().click();
+      await key('F sharp or G flat').click();
+      await key('G').nth(1).click();
+      await expect(page.locator('.nfeedback')).toHaveText(/^G major: done, no mistakes/);
+      await expectClickable(page.getByRole('button', { name: /^See the round/ }));
+      await expectNoSideScroll(page);
+      await page.getByRole('button', { name: /^See the round/ }).click();
+      await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+      await expect(page.getByLabel('1 of 1 scales without a mistake')).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'New round' }));
+      await expectClickable(page.getByRole('link', { name: 'Change setup' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('scales: spell E harmonic minor with the signs', async ({ page }) => {
+      known(name, 'scales-spell');
+      await seed(page, { progress: { scales: { settings: { keyMode: 'one', keys: ['G'], types: ['harmonic'], input: 'names', direction: 'up', write: 'signs', showSteps: true, playNotes: false }, stars: {} } } });
+      await page.goto('./#/scales/setup');
+      await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+      await expect(page.getByText('E harmonic minor', { exact: true })).toBeVisible();
+      const signs = page.getByRole('group', { name: 'Sign for E' }).getByRole('button');
+      await expect(signs).toHaveCount(3);
+      for (let i = 0; i < 3; i++) await expectClickable(signs.nth(i));
+      await expectClickable(page.getByRole('button', { name: 'Hint' }));
+      await signs.nth(1).click();
+      await page.getByRole('group', { name: 'Sign for F' }).getByRole('button', { name: /^F sharp/ }).click();
+      await page.getByRole('group', { name: 'Sign for G' }).getByRole('button').nth(2).click();
+      await expect(page.locator('.nfeedback')).toHaveText(/^Not G♯\. From F♯, go up a half step/);
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 
@@ -347,6 +434,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/learn/8', 'Noten op de balk', ''],
       ['#/learn/9', 'Kruisen, mollen en herstellingstekens', ''],
       ['#/learn/10', 'Voortekening', ''],
+      ['#/learn/11', 'Toonladders', ''],
+      ['#/scales', 'Toonladders', 'Oefen G majeur'],
+      ['#/scales/setup', 'Toonladders oefenen', 'Start · '],
     ];
     for (const [hash, title, action] of screens) {
       test(`${hash || '#/'}: ${title}`, async ({ page }) => {
@@ -399,6 +489,11 @@ test('a touch screen at desktop width (tablet in landscape) gets the desktop lay
     await expect(page.locator('.nplay-desk')).toBeVisible();
     if (hasTouch) await expect(page.locator('.nplay-desk kbd')).toHaveCount(0);
     else await expect(page.locator('.nplay-desk kbd').first()).toBeVisible();
+    await page.goto('./#/scales/setup');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    await expect(page.locator('.splay-desk')).toBeVisible();
+    if (hasTouch) await expect(page.locator('.splay-desk kbd')).toHaveCount(0);
+    else await expect(page.locator('.splay-desk kbd').first()).toBeVisible();
     await page.close();
   }
 });

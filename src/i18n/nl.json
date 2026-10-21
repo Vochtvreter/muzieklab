@@ -85,7 +85,9 @@
     "rhythmTile": "Ritme",
     "rhythmTileSub": "Eindeloos oefenen",
     "notesTile": "Noten lezen",
-    "notesTileSub": "Viool- en bassleutel"
+    "notesTileSub": "Viool- en bassleutel",
+    "scalesTile": "Toonladders",
+    "scalesTileSub": "Alle toonsoorten"
   },
   "tile": {
     "next": "volgende les, nog geen sterren",
@@ -575,21 +577,27 @@
     "sign": {
       "flat": "♭",
       "natural": "♮",
-      "sharp": "♯"
+      "sharp": "♯",
+      "doubleSharp": "𝄪",
+      "doubleFlat": "𝄫"
     },
     "signWord": {
       "flat": "mol",
       "natural": "herstellingsteken",
-      "sharp": "kruis"
+      "sharp": "kruis",
+      "doubleSharp": "dubbelkruis",
+      "doubleFlat": "dubbelmol"
     },
     "signButton": {
       "flat": "mol",
       "natural": "herstel",
-      "sharp": "kruis"
+      "sharp": "kruis",
+      "doubleSharp": "dubbelkruis",
+      "doubleFlat": "dubbelmol"
     },
     "name": "{main} ({sub})",
     "withOctave": "{name}{octave}",
-    "spoken": "{sign, select, kruis {{letter, select, C {cis} D {dis} E {eis} F {fis} G {gis} A {ais} B {bis} other {{letter} kruis}}} mol {{letter, select, C {ces} D {des} E {es} F {fes} G {ges} A {as} B {bes} other {{letter} mol}}} other {{letter} {sign}}}",
+    "spoken": "{sign, select, kruis {{letter, select, C {cis} D {dis} E {eis} F {fis} G {gis} A {ais} B {bis} other {{letter} kruis}}} mol {{letter, select, C {ces} D {des} E {es} F {fes} G {ges} A {as} B {bes} other {{letter} mol}}} dubbelkruis {{letter, select, C {cisis} D {disis} E {eisis} F {fisis} G {gisis} A {aisis} B {bisis} other {{letter} dubbelkruis}}} dubbelmol {{letter, select, C {ceses} D {deses} E {eses} F {feses} G {geses} A {ases} B {beses} other {{letter} dubbelmol}}} other {{letter} {sign}}}",
     "clef": {
       "treble": "Viool",
       "bass": "Bas"
@@ -809,6 +817,192 @@
       "change": "Instellingen wijzigen"
     }
   },
+  "scales": {
+    "title": "Toonladders",
+    "starsAria": "{count, plural, =0 {Nog geen sterren} one {1 van 3 sterren} other {# van 3 sterren}}",
+    "name": {
+      "major": "{tonic} majeur",
+      "natural": "{tonic} natuurlijk mineur",
+      "harmonic": "{tonic} harmonisch mineur",
+      "melodic": "{tonic} melodisch mineur"
+    },
+    "type": {
+      "major": "Majeur",
+      "natural": "Natuurlijk mineur",
+      "harmonic": "Harmonisch mineur",
+      "melodic": "Melodisch mineur"
+    },
+    "typeLower": {
+      "major": "majeur",
+      "natural": "natuurlijk mineur",
+      "harmonic": "harmonisch mineur",
+      "melodic": "melodisch mineur"
+    },
+    "step": {
+      "W": "1",
+      "H": "½",
+      "WH": "1½"
+    },
+    "how": {
+      "W": "een hele toon (sla één toets over)",
+      "H": "een halve toon (de toets ernaast)",
+      "WH": "anderhalve toon (sla twee toetsen over)"
+    },
+    "hub": {
+      "back": "Terug naar Start",
+      "learn": "Over toonladders",
+      "ring": "Majeur of mineur",
+      "major": "Majeur",
+      "minor": "Mineur",
+      "doneCount": "{done} van {total}",
+      "doneMajor": "majeurladders met 2+ sterren",
+      "doneMinor": "mineurladders (elk 3 vormen)",
+      "circle": "Kwintencirkel",
+      "circleMajor": "Kwintencirkel, majeurtoonsoorten",
+      "circleMinor": "Kwintencirkel, mineurtoonsoorten",
+      "majorAria": "{name}: {level, plural, =0 {nog geen sterren} one {1 ster} other {# sterren}}",
+      "minorAria": "{name}: {level, plural, =0 {nog geen vorm met 2 sterren} one {1 vorm met 2 sterren} other {# vormen met 2 sterren}}",
+      "alsoAria": " (of {other})",
+      "sigAria": "Voortekening: {signs}",
+      "noSigns": "geen ♯ of ♭",
+      "selected": "Gekozen toonsoort",
+      "practise": "Oefen de gekozen toonsoort",
+      "relMinor": "Parallelle mineur: {name}",
+      "relMajor": "Parallelle majeur: {name}",
+      "tapAgain": " · tik nog eens voor {name}",
+      "clickAgain": " · klik nog eens voor {name}",
+      "keySig": "Voortekening",
+      "sigNone": "Geen kruisen of mollen",
+      "sharps": "{count, plural, one {1 kruis} other {# kruisen}}",
+      "flats": "{count, plural, one {1 mol} other {# mollen}}",
+      "mastery": "Beheersing",
+      "majorScale": "Majeurladder",
+      "notes": "Noten van de ladder",
+      "notesAria": "Noten: {notes}",
+      "options": "Opties",
+      "practice": "Oefen {name}",
+      "roundMajor": "De cirkel rond",
+      "roundMajorSub": "Alle 15 majeurladders, telkens één kruis of mol meer",
+      "roundMinor": "Mineur de cirkel rond",
+      "roundMinorSub": "Elke mineurtoonsoort op volgorde van de cirkel, in de gekozen vormen"
+    },
+    "setup": {
+      "title": "Toonladders oefenen",
+      "back": "Terug naar Toonladders",
+      "reset": "Herstel",
+      "keys": "Toonsoorten",
+      "circle": "Alle 15",
+      "choose": "Kies…",
+      "change": "Wijzig",
+      "keysWord": "{count, plural, one {1 toonsoort} other {# toonsoorten}}",
+      "oneWord": "{major} / {minor}",
+      "circleWord": "alle 15 toonsoorten",
+      "hintOne": "De toonsoort die je op de cirkel koos: {major}, en {minor} voor mineurladders.",
+      "hintCircle": "Met de klok mee vanaf C: telkens één kruis meer, daarna de mollen.",
+      "hintPicked": "{list}, en hun parallelle mineur voor mineurladders.",
+      "mixText": "Elke gekozen toonsoort, in elke gekozen ladder.",
+      "types": "Ladders",
+      "answerWith": "Antwoord met",
+      "inputPiano": "Piano",
+      "inputNames": "Namen",
+      "inputMixed": "Gemengd",
+      "inputWord": {
+        "piano": "piano",
+        "names": "namen",
+        "mixed": "gemengd"
+      },
+      "hintPiano": "Speel de ladder op het toetsenbord, de ene noot na de andere.",
+      "hintNames": "De letters staan er al op volgorde; kies voor elke ♭, ♮ of ♯.",
+      "hintMixed": "Om en om met de piano en met namen, ladder voor ladder.",
+      "direction": "Richting",
+      "up": "Op",
+      "upDown": "Op & neer",
+      "upWord": "op",
+      "upDownWord": "op en neer",
+      "write": "Schrijf met",
+      "writeSigns": "♯ ♭ tekens",
+      "writeKeySig": "Voortek.",
+      "steps": "Toon de stappen",
+      "stepsOn": "1 en ½ tussen de noten",
+      "stepsOff": "Verborgen: zoek het patroon zelf",
+      "sound": "Speel elke noot",
+      "soundOn": "Hoor de ladder terwijl je hem bouwt",
+      "soundOff": "Stil",
+      "summary": "{types} · {keys} · {direction}",
+      "summaryMany": "Door elkaar; een ladder met fouten komt aan het eind terug.",
+      "summaryOne": "Eén ladder, daarna een korte samenvatting.",
+      "start": "Start · {count, plural, one {# ladder} other {# ladders}}"
+    },
+    "play": {
+      "docTitle": "Toonladders",
+      "headingPiano": "Speel de ladder",
+      "headingNames": "Spel de ladder",
+      "quit": "Stoppen",
+      "progress": "Voortgang van de ronde",
+      "count": "{n} / {total}",
+      "scaleOf": "Ladder {n} van {total}",
+      "eyebrow": "{type} · {dir} · {input}",
+      "eyebrowLong": "Toonladders · {rest}",
+      "again": "nog eens",
+      "mistakes": "{count, plural, one {fout} other {fouten}}",
+      "mistakesAria": "{count, plural, =0 {Geen fouten} one {1 fout} other {# fouten}}",
+      "mistakesTitle": "Fouten",
+      "starsRule": "0 fouten ★★★ · 1 ★★ · 2–3 ★",
+      "staffLabel": "Notenbalk met vioolsleutel, {scale}: {notes}",
+      "none": "nog geen noten",
+      "degreesUp": "Trappen omhoog",
+      "degreesDown": "Trappen omlaag",
+      "degreeAria": "Trap {degree}: {name}",
+      "unknown": "nog niet",
+      "piano": "Pianotoetsenbord van {from} tot {to}",
+      "signFor": "Teken voor {letter}",
+      "kbdPiano": "Speel met A S D F G H J K L (wit) en W E R T Y U I O (zwart)",
+      "kbdNames": "Druk − voor ♭, 0 voor ♮, = voor ♯ (X voor 𝄪)",
+      "idleStart": "Begin op {tonic}, de eerste noot van de ladder.",
+      "idleUp": "Trap {degree}: {how} omhoog vanaf {prev}.",
+      "idleDown": "Trap {degree}: {how} omlaag vanaf {prev}.",
+      "nextNote": "naar de volgende letter",
+      "idleSign": "Welk teken krijgt {letter}?",
+      "wrongStart": "Niet {given}. De ladder begint op zijn naam: {scale}.",
+      "wrongUp": "Niet {given}. Ga vanaf {prev} {how} omhoog.",
+      "wrongDown": "Niet {given}. Ga vanaf {prev} {how} omlaag.",
+      "hintStart": "Tip: de eerste noot staat in de naam: {scale}.",
+      "hintUp": "Tip: vanaf {prev} is de stap omhoog {step}, {how}.",
+      "hintDown": "Tip: vanaf {prev} is de stap omlaag {step}, {how}.",
+      "doneClean": "{scale}: klaar, geen fouten. {notes}",
+      "doneMistakes": "{scale}: klaar met {count, plural, one {1 fout} other {# fouten}}. {notes}",
+      "hear": "Hoor tot nu toe",
+      "space": "Spatie",
+      "startOver": "Opnieuw",
+      "hint": "Tip",
+      "next": "Volgende ladder",
+      "finish": "Naar de uitslag",
+      "skip": "Naar de samenvatting"
+    },
+    "done": {
+      "docTitle": "Ronde klaar",
+      "title": "Ronde klaar",
+      "back": "Terug naar Toonladders",
+      "sub": "Toonladders · {types} · {dir} · {input}",
+      "cleanAria": "{clean} van {total} ladders zonder fout",
+      "score": "ladders zonder fout · {count, plural, one {1 fout} other {# fouten}} in totaal",
+      "none": "Geen ladder afgemaakt in deze ronde.",
+      "listAria": "Ladders in deze ronde",
+      "mistakes": "{count, plural, =0 {geen fouten} one {1 fout} other {# fouten}}",
+      "cameBack": "Kwam aan het eind van de ronde terug",
+      "circle": "Kwintencirkel",
+      "of": "van {total}",
+      "majorCount": "majeurladders met 2+ sterren.",
+      "minorCount": "mineurvormen met 2+ sterren.",
+      "reached": "{names} haalde deze ronde ★★.",
+      "nothingNew": "Twee sterren op een ladder vullen zijn toonsoort.",
+      "circleMajorAria": "Kwintencirkel, majeurtoonsoorten met 2 of meer sterren: {count} van {total}. Nieuw deze ronde: {fresh}.",
+      "circleMinorAria": "Kwintencirkel, mineurvormen met 2 of meer sterren: {count} van {total}. Nieuw deze ronde: {fresh}.",
+      "noneNew": "geen",
+      "change": "Setup wijzigen",
+      "newRound": "Nieuwe ronde"
+    }
+  },
   "learn": {
     "title": "Leren",
     "docTitle": "Leren",
@@ -862,9 +1056,12 @@
       "10": {
         "title": "Voortekening",
         "sub": "Kruisen en mollen voor het hele stuk"
+      },
+      "11": {
+        "title": "Toonladders",
+        "sub": "Majeur en mineur, de kwintencirkel rond"
       }
     },
-    "laterNote": "Hoofdstuk 11 over toonladders komt met de modus Toonladders.",
     "chapterOf": "Leren · hoofdstuk {n} van {total}",
     "chapterN": "hoofdstuk {n} van {total}",
     "chaptersHead": "Hoofdstukken",
@@ -872,6 +1069,7 @@
     "jump": "Delen",
     "practice": "Oefen noten lezen",
     "practiceRhythm": "Oefen ritme",
+    "practiceScales": "Toonladders oefenen",
     "all": "Terug naar alle hoofdstukken",
     "prev": "Vorige",
     "next": "Volgende",
@@ -1522,6 +1720,139 @@
         "right": "Goed. Eén toets omhoog vanaf het laatste kruis: C♯ → D majeur.",
         "wrong": "Niet helemaal. Ga één toets omhoog vanaf het laatste kruis: C♯ → D majeur."
       }
+    },
+    "ch11": {
+      "intro": "Een toonladder is een rij noten van één noot tot dezelfde letter een octaaf hoger, elke letter één keer. Het patroon van hele en halve tonen bepaalt hoe hij klinkt.",
+      "s1": {
+        "title": "De majeurtoonladder",
+        "text": "Elke majeurladder gebruikt hetzelfde patroon van hele tonen (1) en halve tonen (½), de stappen uit 9.2:",
+        "cTitle": "C majeur",
+        "cValue": "1 1 ½ 1 1 1 ½",
+        "cAlt": "Notenbalk met vioolsleutel met de toonladder C majeur: {names}",
+        "keys": "Een hele toon slaat één toets over, zwart of wit: van C naar D sla je Cis over. Een halve toon is de toets ernaast: tussen E en F en tussen B en C zit geen zwarte toets.",
+        "pianoAlt": "Eén pianooctaaf, C tot B, met E, F, B en C gemarkeerd: de twee halve tonen tussen witte toetsen",
+        "white": "Vanaf C valt het patroon alleen op witte toetsen. Daarom heeft C majeur geen kruisen of mollen.",
+        "practice": "Oefen C majeur",
+        "check": {
+          "question": "Tussen welke trappen van een majeurladder liggen de halve tonen?",
+          "a1": "2–3 en 6–7",
+          "a2": "3–4 en 7–8",
+          "a3": "4–5 en 7–8",
+          "right": "Goed. 1 1 ½ 1 1 1 ½: de halve tonen liggen van 3 naar 4 en van 7 naar 8. In C majeur is dat E–F en B–C.",
+          "wrong": "Niet helemaal. Tel mee met 1 1 ½ 1 1 1 ½: de 3e en de 7e stap zijn de halve tonen."
+        }
+      },
+      "s2": {
+        "title": "Majeurladders in elke toonsoort",
+        "text": "Begin op een willekeurige noot en houd hetzelfde patroon. In G majeur moet de stap van de 6e noot, E, naar de 7e een hele toon zijn, dus wordt F een Fis (F♯).",
+        "gTitle": "G majeur",
+        "gValue": "1 kruis: F♯",
+        "gAlt": "Notenbalk met vioolsleutel met de toonladder G majeur: {names}",
+        "letters": "Elke letter komt één keer voor, op volgorde: G A B C D E F♯ G. Daarom is het F♯ en nooit G♭.",
+        "sig": "De kruisen of mollen die een ladder nodig heeft, zijn precies zijn voortekening (10.1): G majeur heeft één kruis, F♯.",
+        "practice": "Oefen D majeur en B♭ majeur",
+        "check": {
+          "question": "Hoeveel kruisen heeft D majeur nodig?",
+          "a1": "1",
+          "a2": "2",
+          "a3": "3",
+          "right": "Goed. D E F♯ G A B C♯ D: twee kruisen, F♯ en C♯. Dat is de voortekening van D majeur.",
+          "wrong": "Niet helemaal. Bouw hem op vanaf D met 1 1 ½ 1 1 1 ½: D E F♯ G A B C♯ D."
+        }
+      },
+      "s3": {
+        "title": "De kwintencirkel",
+        "text": "Tel vijf letters omhoog vanaf C, C D E F G, en je komt bij G: de toonsoort met één kruis. Elke kwint omhoog geeft één kruis meer, en elke kwint omlaag één mol meer:",
+        "upTitle": "Een kwint omhoog: één kruis meer",
+        "up": "C → G → D → A → E → B → F♯ → C♯",
+        "downTitle": "Een kwint omlaag: één mol meer",
+        "down": "C → F → B♭ → E♭ → A♭ → D♭ → G♭ → C♭",
+        "pairs": "Drie paren klinken hetzelfde: B en C♭, F♯ en G♭, C♯ en D♭. Zo zijn er 15 voortekeningen voor 12 verschillende begintonen.",
+        "game": "Het overzicht van Toonladders is deze cirkel: de majeurtoonsoorten buiten, hun parallelle mineur binnen.",
+        "practice": "De cirkel rond",
+        "check": {
+          "question": "Eén stap met de klok mee vanaf D majeur: welke toonsoort is dat?",
+          "right": "Goed. Een kwint boven D (D E F♯ G A) is A majeur, met drie kruisen.",
+          "wrong": "Niet helemaal. Met de klok mee is een kwint omhoog: tel vijf letters vanaf D, beide uiteinden meegeteld."
+        }
+      },
+      "s4": {
+        "title": "Mineurtoonladders",
+        "text": "Natuurlijk mineur gebruikt de noten van zijn parallelle majeur (10.4), vanaf de 6e noot. A mineur heeft de noten van C majeur, van A tot A:",
+        "naturalTitle": "A natuurlijk mineur",
+        "naturalValue": "1 ½ 1 1 ½ 1 1",
+        "naturalAlt": "Notenbalk met vioolsleutel met A natuurlijk mineur: {names}",
+        "harmonic": "Harmonisch mineur verhoogt de 7e noot, zodat die naar de bovenste noot leidt: Gis (G♯) in A mineur. Van F naar G♯ is anderhalve toon.",
+        "harmonicTitle": "A harmonisch mineur",
+        "harmonicValue": "1 ½ 1 1 ½ 1½ ½",
+        "harmonicAlt": "Notenbalk met vioolsleutel met A harmonisch mineur: {names}",
+        "melodic": "Melodisch mineur verhoogt de 6e en de 7e omhoog, F♯ en G♯ in A mineur, en komt omlaag terug als natuurlijk mineur.",
+        "melodicTitle": "A melodisch mineur, omhoog",
+        "melodicValue": "1 ½ 1 1 1 1 ½",
+        "melodicAlt": "Notenbalk met vioolsleutel met A melodisch mineur omhoog: {names}",
+        "practice": "Oefen A mineur in alle drie de vormen",
+        "check": {
+          "question": "Welke noot wordt verhoogd in A harmonisch mineur?",
+          "right": "Goed. Harmonisch mineur verhoogt de 7e: G wordt G♯, een halve toon onder A.",
+          "wrong": "Niet helemaal. Harmonisch mineur verhoogt alleen de 7e noot. In A mineur is de 7e noot G."
+        }
+      },
+      "s5": {
+        "title": "Trappen en intervallen",
+        "text": "Elke noot van een toonladder heeft een nummer, zijn trap, en een naam. De namen werken in elke toonsoort; hier staan ze in C majeur.",
+        "d1": "1 · Tonica",
+        "d1Text": "de grondtoon",
+        "d1Value": "C · do",
+        "d2": "2 · Supertonica",
+        "d2Value": "D · re",
+        "d3": "3 · Mediant",
+        "d3Value": "E · mi",
+        "d4": "4 · Subdominant",
+        "d4Value": "F · fa",
+        "d5": "5 · Dominant",
+        "d5Text": "na de tonica de belangrijkste",
+        "d5Value": "G · sol",
+        "d6": "6 · Submediant",
+        "d6Value": "A · la",
+        "d7": "7 · Leidtoon",
+        "d7Text": "een halve toon onder de tonica",
+        "d7Value": "B · si",
+        "intervals": "Een interval is de afstand tussen twee noten. Tel de letters vanaf de laagste noot, beide uiteinden meegeteld: C tot E is een terts (C D E), C tot G een kwint.",
+        "i2": "Secunde (2)",
+        "i2Value": "C–D",
+        "i3": "Terts (3)",
+        "i3Value": "C–E",
+        "i4": "Kwart (4)",
+        "i4Value": "C–F",
+        "i5": "Kwint (5)",
+        "i5Value": "C–G",
+        "i6": "Sext (6)",
+        "i6Value": "C–A",
+        "i7": "Septiem (7)",
+        "i7Value": "C–B",
+        "i8": "Octaaf (8)",
+        "i8Value": "C–C",
+        "triad": "Trap 1, 3 en 5 samen vormen het tonica-akkoord, de drieklank op de tonica:",
+        "triadMajor": "C majeur",
+        "triadMajorValue": "C E G",
+        "triadMinor": "A mineur",
+        "triadMinorValue": "A C E",
+        "fixedDo": "In deze app is do altijd C (vaste do). Sommige leraren gebruiken een beweeglijke do, waarbij do altijd de 1e noot van de majeurladder is.",
+        "practice": "Spel G majeur",
+        "check": {
+          "question": "Welke noot is in G majeur de dominant?",
+          "right": "Goed. De dominant is de 5e trap: G A B C D.",
+          "wrong": "Niet helemaal. De dominant is de 5e trap. Tel vijf letters vanaf G, beide uiteinden meegeteld."
+        }
+      },
+      "quiz": {
+        "question": "Welk stappenpatroon is natuurlijk mineur?",
+        "a1": "1 1 ½ 1 1 1 ½",
+        "a2": "1 ½ 1 1 ½ 1 1",
+        "a3": "1 ½ 1 1 1 1 ½",
+        "right": "Goed. 1 ½ 1 1 ½ 1 1: de noten van de parallelle majeur, vanaf zijn 6e noot.",
+        "wrong": "Niet helemaal. Natuurlijk mineur is 1 ½ 1 1 ½ 1 1: de noten van de parallelle majeur, vanaf zijn 6e noot."
+      }
     }
   },
   "changelog": {
@@ -1541,6 +1872,13 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_7_0": {
+      "title": "Toonladders, de kwintencirkel rond",
+      "try": "Open Toonladders",
+      "scales": "Toonladders: majeur- en mineurladders (natuurlijk, harmonisch en melodisch) in alle 15 toonsoorten. Kies een toonsoort op de kwintencirkel en speel de ladder op de piano of spel hem met ♭ ♮ ♯. Een ladder met fouten komt aan het eind van de ronde terug, en twee sterren vullen zijn toonsoort op de cirkel.",
+      "learn": "Leren hoofdstuk 11, Toonladders: de majeurladder, elke toonsoort, de kwintencirkel, de drie mineurladders, en trappen en intervallen.",
+      "home": "Vrij oefenen op Start heeft een derde tegel: Toonladders."
+    },
     "v0_6_3": {
       "title": "Eerlijker vasthouden",
       "lift": "Hoe lang je een noot vasthoudt, wordt beoordeeld zoals mensen spelen, niet als een machine: je mag loslaten vanaf de helft van een noot, zodat je tijd hebt om op te tillen en de volgende in te drukken. Voor een rust telt het loslaten nog steeds, met wat meer ruimte aan beide kanten.",

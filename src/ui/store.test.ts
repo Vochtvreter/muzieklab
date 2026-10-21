@@ -1,6 +1,6 @@
-import { DEFAULT_NOTE_SETTINGS, DEFAULT_SETTINGS, generateExercise, type JudgeResult, type NoteResult } from '../core/api';
+import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type ScaleSettings } from '../core/api';
 import { defaultProgress, DEFAULT_PREFS } from '../game/storage';
-import { makeNoteRun, reducer, type AppState } from './store';
+import { makeNoteRun, makeScaleRun, reducer, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -12,6 +12,10 @@ const state = (): AppState => ({
   noteSettings: DEFAULT_NOTE_SETTINGS,
   noteRun: null,
   noteLast: null,
+  scaleSettings: DEFAULT_SCALE_SETTINGS,
+  scaleHub: { tab: 'major', key: 'G' },
+  scaleRun: null,
+  scaleLast: null,
 });
 const result = (judgements: NoteResult['judgement'][], accuracy = 80, stars: JudgeResult['stars'] = 2): JudgeResult =>
   ({
@@ -90,5 +94,43 @@ describe('reducer: Read notes', () => {
     expect(s.progress.notes.settings?.keys).toEqual(['G']);
     const r = reducer(reducer(s, { type: 'learnRead', ids: ['8.2', '8.1'] }), { type: 'learnRead', ids: ['8.1'] });
     expect(r.progress.learnRead).toEqual(['8.1', '8.2']);
+  });
+});
+
+describe('reducer: scales', () => {
+  const settings: ScaleSettings = { ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys: ['G', 'D', 'A'] };
+  const started = (): AppState => reducer(state(), { type: 'scaleStart', run: makeScaleRun(settings, 5) });
+
+  it('scores a round on first tries, saves the best stars and adds the XP', () => {
+    const s = started();
+    const [a, b] = s.scaleRun!.scales;
+    const played = [
+      { scale: a, mistakes: 0 },
+      { scale: b, mistakes: 1 },
+      { scale: { ...b, again: true }, mistakes: 0 },
+    ];
+    const next = reducer({ ...s, progress: { ...s.progress, scales: { settings: null, stars: { 'G-major': 3 } } } }, { type: 'scaleFinish', played, today: '2026-10-21' });
+    expect(next.scaleLast!.result.total).toBe(2);
+    expect(next.scaleLast!.starsBefore).toEqual({ 'G-major': 3 });
+    expect(next.progress.scales.stars[scaleId(a)]).toBe(3);
+    expect(next.progress.scales.stars[scaleId(b)]).toBe(2);
+    expect(next.scaleLast!.reward.xp).toBe(2 * (3 + 2));
+    expect(next.progress.xp).toBe(10);
+    expect(next.progress.practiceDays).toEqual(['2026-10-21']);
+  });
+
+  it('a round with no scale finished keeps no streak and earns nothing', () => {
+    const next = reducer(started(), { type: 'scaleFinish', played: [], today: '2026-10-21' });
+    expect(next.progress.practiceDays).toEqual([]);
+    expect(next.scaleLast!.reward.xp).toBe(0);
+  });
+
+  it('with one key, the setup follows the key picked on the circle', () => {
+    const one = reducer(state(), { type: 'scaleHub', hub: { tab: 'minor', key: 'D' } });
+    expect(one.scaleSettings.keys).toEqual(['D']);
+    expect(one.progress.scales.settings?.keys).toEqual(['D']);
+    const picked = reducer({ ...state(), scaleSettings: settings }, { type: 'scaleHub', hub: { tab: 'major', key: 'F' } });
+    expect(picked.scaleSettings.keys).toEqual(['G', 'D', 'A']);
+    expect(picked.scaleHub).toEqual({ tab: 'major', key: 'F' });
   });
 });

@@ -1,6 +1,6 @@
 # Scales (v1.4): design check and implementation plan
 
-Status: **designs resolved; the engine is built (PR 1), the screens are not.** Compared on 2026-10-21: the live app (0.6.3 at vochtvreter.github.io/muzieklab,
+Status: **built in 0.7.0** (engine, screens and Learn chapter 11; §3). Compared on 2026-10-21: the live app (0.6.3 at vochtvreter.github.io/muzieklab,
 the same as `main`) with the [MVP and release canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS) page *Scales ·
 Planned*, the [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE) *Not built* pages, and
 [DESIGN.md](DESIGN.md) §3.7, §9 and §9.1 with [LEARN-CHAPTERS.md](LEARN-CHAPTERS.md) chapter 11. The conflicts found

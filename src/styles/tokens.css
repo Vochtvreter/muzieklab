@@ -58,6 +58,8 @@
   --piano-white-label: #5a6667;
   --piano-black: #161b1c;
   --piano-black-label: #9aa5a5;
+  /* A played key's dot on a black key: the same in both themes, as pianos keep their colours. */
+  --piano-black-dot: #4cc38a;
   /* Notation and length lane (render/theme.ts) */
   --slate: #2f6669;
   --staff: #9aa5a5;
@@ -83,6 +85,10 @@
   --font-ui: Figtree, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-music: 'Noto Music', serif;
+
+  /* Scales: the circle's middle fill (★★); ★ is accent-soft, ★★★ the accent (DESIGN.md §3.7) */
+  --mastery-mid: #9cc1c1;
+  --mastery-mid-ink: #10302f;
 
   /* Motion */
   --ease-std: cubic-bezier(0.2, 0, 0, 1);
@@ -164,6 +170,8 @@
     --focus: #f0b429;
     --link: #8fbfc1;
     --link-hover: #b7d8d9;
+    --mastery-mid: #3d6466;
+    --mastery-mid-ink: #e8eeed;
     color-scheme: dark;
   }
 }
@@ -221,5 +229,7 @@
   --focus: #f0b429;
   --link: #8fbfc1;
   --link-hover: #b7d8d9;
+  --mastery-mid: #3d6466;
+  --mastery-mid-ink: #e8eeed;
   color-scheme: dark;
 }

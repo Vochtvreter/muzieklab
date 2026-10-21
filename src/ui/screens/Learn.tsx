@@ -90,7 +90,6 @@ export function LearnHub(): JSX.Element {
             </div>
           );
         })}
-        <p className="muted-text learn-later">{t('learn.laterNote')}</p>
       </div>
     </AppShell>
   );
@@ -128,16 +127,23 @@ function SectionCheck({ section, read, onRight }: { section: Section; read: bool
   );
 }
 
-/** "Practice the treble clef →": Read notes or Free practice, set up for the section on top of the player's own setup. */
+/**
+ * "Practice the treble clef →": Read notes, Free practice or the Scales setup, set up for the section on top of the
+ * player's own setup.
+ */
 function PracticeLink({ section }: { section: Section }): JSX.Element {
   const { state, dispatch } = useStore();
   const p = section.practice!;
   const start = (): void => {
     if ('notes' in p) dispatch({ type: 'noteSettings', settings: { ...state.noteSettings, ...p.notes } });
-    else dispatch({ type: 'settings', settings: { ...state.settings, ...p.rhythm } });
+    else if ('scales' in p) {
+      const settings = { ...state.scaleSettings, ...p.scales };
+      dispatch({ type: 'scaleSettings', settings });
+      if (settings.keyMode === 'one') dispatch({ type: 'scaleHub', hub: { ...state.scaleHub, key: settings.keys[0] } });
+    } else dispatch({ type: 'settings', settings: { ...state.settings, ...p.rhythm } });
   };
   return (
-    <Link to={'notes' in p ? '/notes' : '/setup'} className="text-btn text-btn--link learn-practice" onClick={start}>
+    <Link to={'notes' in p ? '/notes' : 'scales' in p ? '/scales/setup' : '/setup'} className="text-btn text-btn--link learn-practice" onClick={start}>
       {t(sectionKey(section.id, 'practice'))} →
     </Link>
   );
@@ -279,7 +285,6 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
                 </Link>
               ),
             )}
-            <p className="muted-text learn-side-later">{t('learn.laterNote')}</p>
           </aside>
         )}
         <div className="learn-main">
@@ -325,8 +330,8 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
           )}
 
           <div className="learn-end">
-            <Link to={chapter.practice === 'notes' ? '/notes' : '/setup'} className="btn btn--accent">
-              {t(chapter.practice === 'notes' ? 'learn.practice' : 'learn.practiceRhythm')}
+            <Link to={chapter.practice === 'notes' ? '/notes' : chapter.practice === 'scales' ? '/scales' : '/setup'} className="btn btn--accent">
+              {t(chapter.practice === 'notes' ? 'learn.practice' : chapter.practice === 'scales' ? 'learn.practiceScales' : 'learn.practiceRhythm')}
             </Link>
             <Link to="/learn" className="ghost-btn learn-all">
               {t('learn.all')}

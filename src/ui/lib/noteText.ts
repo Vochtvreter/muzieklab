@@ -19,28 +19,30 @@ import {
   type KeyId,
   type Letter,
   type RoundNote,
+  type ScaleAlter,
   type Step,
 } from '../../core/api';
 import { t } from '../../i18n';
 
 export type NameSystem = 'solfege' | 'letters';
 
-const SIGN_KEY: Record<Alter, string> = { [-1]: 'flat', 0: 'natural', 1: 'sharp' };
-export const signKey = (a: Alter): string => SIGN_KEY[a];
-/** ♭ ♮ ♯ */
-export const signGlyph = (a: Alter): string => t('notes.sign.' + SIGN_KEY[a]);
-export const signWord = (a: Alter): string => t('notes.signWord.' + SIGN_KEY[a]);
+/** Read notes uses ♭ ♮ ♯ only; scales also need the double sharp (F𝄪 in G♯ harmonic minor, §3.7). */
+const SIGN_KEY: Record<ScaleAlter, string> = { [-2]: 'doubleFlat', [-1]: 'flat', 0: 'natural', 1: 'sharp', 2: 'doubleSharp' };
+export const signKey = (a: ScaleAlter): string => SIGN_KEY[a];
+/** ♭ ♮ ♯ 𝄪 */
+export const signGlyph = (a: ScaleAlter): string => t('notes.sign.' + SIGN_KEY[a]);
+export const signWord = (a: ScaleAlter): string => t('notes.signWord.' + SIGN_KEY[a]);
 
 /** "F♯" (no sign for a natural). */
-export function letterName(letter: Letter, alter: Alter): string {
+export function letterName(letter: Letter, alter: ScaleAlter): string {
   return t('notes.letter.' + letter) + (alter === 0 ? '' : signGlyph(alter));
 }
 /** "fa♯" */
-export function solfegeName(letter: Letter, alter: Alter): string {
+export function solfegeName(letter: Letter, alter: ScaleAlter): string {
   return t('notes.solfege.' + letter) + (alter === 0 ? '' : signGlyph(alter));
 }
 /** "F♯ (fa♯)" with letters first, or "fa♯ (F♯)" with do re mi, so both systems are learned together. */
-export function fullName(letter: Letter, alter: Alter, system: NameSystem = 'letters'): string {
+export function fullName(letter: Letter, alter: ScaleAlter, system: NameSystem = 'letters'): string {
   const l = letterName(letter, alter);
   const s = solfegeName(letter, alter);
   return system === 'solfege' ? t('notes.name', { main: s, sub: l }) : t('notes.name', { main: l, sub: s });
@@ -50,7 +52,7 @@ export function octaveName(step: Step, alter: Alter): string {
   return t('notes.withOctave', { name: letterName(letterOf(step), alter), octave: octaveOf(step) });
 }
 /** For screen readers: "F sharp". */
-export function spokenName(letter: Letter, alter: Alter): string {
+export function spokenName(letter: Letter, alter: ScaleAlter): string {
   return alter === 0 ? t('notes.letter.' + letter) : t('notes.spoken', { letter: t('notes.letter.' + letter), sign: signWord(alter) });
 }
 

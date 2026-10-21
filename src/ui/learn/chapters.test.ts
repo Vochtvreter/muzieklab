@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_NOTE_SETTINGS, DEFAULT_SETTINGS, LETTERS, PPQ, checkSettings, getMeter, sanitizeNoteSettings } from '../../core/api';
+import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, LETTERS, PPQ, checkSettings, getMeter, sanitizeNoteSettings, sanitizeScaleSettings } from '../../core/api';
 import { UNITS } from '../../game/path';
 import { parseBars } from '../../render/notationText';
 import { hasMessage } from '../../i18n';
@@ -120,6 +120,10 @@ describe('Learn chapters', () => {
         const settings = { ...DEFAULT_NOTE_SETTINGS, ...s.practice.notes };
         expect(sanitizeNoteSettings(settings), s.id).toEqual(settings);
         if (settings.mixKeys) expect(settings.keys.length, s.id).toBeGreaterThan(1);
+      } else if ('scales' in s.practice) {
+        const settings = { ...DEFAULT_SCALE_SETTINGS, ...s.practice.scales };
+        expect(sanitizeScaleSettings(settings), s.id).toEqual(settings);
+        if (settings.keyMode === 'pick') expect(settings.keys.length, s.id).toBeGreaterThan(1);
       } else {
         const settings = { ...DEFAULT_SETTINGS, ...s.practice.rhythm };
         expect(checkSettings(settings).playable.length, s.id).toBeGreaterThan(0);

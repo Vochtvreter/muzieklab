@@ -814,6 +814,11 @@ Built in v0.3 (ahead of v1.2, whose rhythm chapters 1–7 come next; the Learn t
 harmonic, melodic) in all 15 keys: the circle of fifths hub, playing on the piano, spelling with ♭ ♮ ♯, and a round
 summary. Free practice becomes Rhythm · Read notes · Scales, and Learn gains chapter 11 · Scales.
 
+Built in v0.7.0: the Scales hub (`/scales`, a Home page with the circle of fifths), the setup (`/scales/setup`, with the
+Read notes Key screen for *Choose…*), play and spell (`/scales/play`; the wide exercise layout and computer keys on
+desktop), round done (`/scales/done`), the third Home tile and Learn chapter 11. The engine is `core/scale.ts` and
+`core/scaleRound.ts`; progress keeps the best stars per scale.
+
 **v1.5 · Progress** adds the Progress tab (the tab bar becomes Home · Path · Learn · Progress · Settings) with
 Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
 appear on Progress and on the level-up sheet.
@@ -960,7 +965,7 @@ ABRSM, Trinity, RCM and Kodály.
 | **8 · Notes on the staff** | 8.1 The staff and two clefs (landmark notes) · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) | Read notes: clefs, range |
 | **9 · Sharps, flats and naturals** | 9.1 The piano octave (groups of 2 and 3 black keys) · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural (two names for a black key; E♯ = F, C♭ = B) · 9.4 A sign lasts for the bar (same line or space, same octave) | Read notes: piano, extra signs |
 | **10 · Key signatures** | 10.1 The key signature (every octave; a sign next to a note wins until the bar line) · 10.2 The order of sharps F C G D A E B and flats B E A D G C F (start with up to three signs) · 10.3 Naming the key · 10.4 Major and minor (relative minor) | Read notes: keys, mix keys |
-| **11 · Scales** *(later)* | 11.1 The major scale (W W H W W W H) · 11.2 Major scales in every key (each letter once; the scale's signs = its key signature) · 11.3 The circle of fifths (15 key signatures, 12 sounding keys) · 11.4 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 11.5 Scale degrees and intervals (tonic … leading tone, intervals by number, the tonic triad; fixed do in this app) | Scales |
+| **11 · Scales** | 11.1 The major scale (W W H W W W H) · 11.2 Major scales in every key (each letter once; the scale's signs = its key signature) · 11.3 The circle of fifths (15 key signatures, 12 sounding keys) · 11.4 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 11.5 Scale degrees and intervals (tonic … leading tone, intervals by number, the tonic triad; fixed do in this app) | Scales |
 
 Chapters 8–10 are built (0.3.4); they were one chapter 8 with seven sections before, and the canvas still draws that
 version. Chapters 1–7 are built (0.5.0) from the canvas (v1.2 and v1.7), without 1.4 and 7.2, which wait until the game
