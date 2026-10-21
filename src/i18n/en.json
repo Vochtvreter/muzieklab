@@ -1879,6 +1879,10 @@
       "learn": "Learn chapter 11, Scales: the major scale, every key, the circle of fifths, the three minor scales, and scale degrees and intervals.",
       "home": "Home's Free practice has a third tile, Scales."
     },
+    "v0_6_4": {
+      "title": "Easier to read green text",
+      "green": "Green text, such as “✓ read” in Learn, Done today and your count of right answers, is a darker green in the light theme, so it is easier to read on white."
+    },
     "v0_6_3": {
       "title": "Fairer holds",
       "lift": "Holding a note is judged the way people play, not like a machine: you may let go from halfway through a note, so there is time to lift and press the next one. Before a rest the release still counts, with a little more room either side.",

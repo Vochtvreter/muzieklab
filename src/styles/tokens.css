@@ -47,7 +47,7 @@
   --gold: #b7791f;
   --gold-ink: #9a6a10;
   --miss: #c23b3b;
-  /* Answer feedback fills (Read notes, Learn checks) */
+  /* Answer feedback fills (Read notes, Learn checks). Green text uses --good-ink: --good is only 4.3:1 on paper. */
   --good-soft: #e3f2ea;
   --good-ink: #176c47;
   --miss-soft: #fbe4e4;
