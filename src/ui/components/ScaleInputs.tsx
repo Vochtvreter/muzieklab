@@ -1,12 +1,12 @@
 /**
  * Scales answers (DESIGN.md §3.7): the degree boxes with the W / H steps between them, the 9-white-key piano window
- * that starts on the tonic, and the sign buttons for spelling (♭ ♮ ♯, and 𝄪 where a scale needs it). Desktop shows each
+ * that starts on the tonic (its white keys always show their letters), and the sign buttons for spelling (♭ ♮ ♯, and 𝄪 where a scale needs it). Desktop shows each
  * control's computer key.
  */
 import type { CSSProperties } from 'react';
 import { pianoWindow, type Letter, type Scale, type ScaleAlter, type StepName } from '../../core/api';
 import { t } from '../../i18n';
-import { letterName, signGlyph, signKey, signWord, solfegeName, spokenName } from '../lib/noteText';
+import { letterName, signGlyph, signKey, signWord, spokenName } from '../lib/noteText';
 import { stepLabel } from '../lib/scaleText';
 import type { KeyMark } from './NoteInputs';
 
@@ -60,7 +60,6 @@ export function DegreeRow({ cells, steps, known, label }: { cells: DegreeCell[];
 
 interface PianoProps {
   scale: Scale;
-  labels: 'letters' | 'solfege' | 'off';
   /** Marks by MIDI number. */
   marks: Partial<Record<number, KeyMark>>;
   /** Keys already played in this scale get a dot. */
@@ -70,10 +69,12 @@ interface PianoProps {
   kbd?: boolean;
 }
 
-/** 9 white keys from the tonic (or the white key below a black tonic), with the black keys between them. */
-export function ScalePiano({ scale, labels, marks, played, onPick, disabled, kbd }: PianoProps): JSX.Element {
+/**
+ * 9 white keys from the tonic (or the white key below a black tonic), with the black keys between them. The white keys
+ * always show A–G, whatever Read notes' label setting: the window moves with every scale, so the letters find the keys.
+ */
+export function ScalePiano({ scale, marks, played, onPick, disabled, kbd }: PianoProps): JSX.Element {
   const w = pianoWindow(scale);
-  const name = (L: Letter): string => (labels === 'solfege' ? solfegeName(L, 0) : letterName(L, 0));
   const first = WHITE_LETTER[pc(w.whites[0])];
   const last = WHITE_LETTER[pc(w.whites[w.whites.length - 1])];
   return (
@@ -85,7 +86,7 @@ export function ScalePiano({ scale, labels, marks, played, onPick, disabled, kbd
           <button key={m} type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key: SCALE_WHITE_KBD[i] }) : aria}
             className={'piano-white' + (marks[m] ? ' is-' + marks[m] : '')} onClick={() => onPick(m)}>
             <span aria-hidden="true" className={'spiano-dot' + (played.includes(m) ? ' is-on' : '')} />
-            {labels !== 'off' && <span className="piano-label">{name(L)}</span>}
+            <span className="piano-label">{letterName(L, 0)}</span>
             {kbd && <kbd className="kbd kbd--cap">{SCALE_WHITE_KBD[i]}</kbd>}
           </button>
         );

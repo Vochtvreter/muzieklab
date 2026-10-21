@@ -239,7 +239,9 @@ Learn and practice major and minor scales in all 15 keys.
   A minor scale uses the relative minor of the chosen key (G → E minor).
 - **Piano:** a keyboard window that starts on the tonic, or on the white key just below it
   when the tonic is a black key (F♯, D♭ …): 9 white keys, enough for one octave from any
-  starting note. The player plays the scale note by note; each right
+  starting note. The white keys always show their letters (A–G), whatever the label setting in
+  Read notes: the window starts somewhere new with every scale, so the letters find the keys.
+  The player plays the scale note by note; each right
   note is written on the staff and fills the next degree box. The W/H steps sit between
   the boxes. A wrong key flashes red and the feedback names the step ("From G, go a whole
   step: skip one key"). *Hear it so far* and *Start over* are always there. Computer keys

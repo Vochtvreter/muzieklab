@@ -219,11 +219,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('scales: play G major on the piano, then round done', async ({ page }) => {
       known(name, 'scales-play');
+      // The Scales piano shows its letters even with Read notes' labels off.
+      await seed(page, { prefs: { pianoLabels: 'off' } });
       await page.goto('./#/scales/setup');
       await page.getByRole('button', { name: /^Start · / }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
       await expect(keys).toHaveCount(15);
       for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i));
+      await expect(page.locator('.spiano .piano-label')).toHaveText(['G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A']);
       await expectClickable(page.getByRole('button', { name: /^Start over/ }));
       await expectClickable(page.getByRole('button', { name: 'Skip to summary' }));
       // G A B C D E F♯ G: the F♯ is the black key between F and G.
