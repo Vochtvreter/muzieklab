@@ -1872,6 +1872,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_7_1": {
+      "title": "Letters on the Scales piano",
+      "letters": "The Scales piano always shows A to G on its white keys, even when Read notes shows do re mi or no labels. The keyboard starts on a new key with every scale, so the letters help you find your way."
+    },
     "v0_7_0": {
       "title": "Scales, around the circle of fifths",
       "try": "Open Scales",

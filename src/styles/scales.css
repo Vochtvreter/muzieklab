@@ -737,6 +737,9 @@
 .spiano.piano--kbd {
   --black-w: 48px;
 }
+.spiano.piano--kbd .piano-white {
+  font-size: 15px;
+}
 .spiano.piano--kbd .piano-black {
   left: calc(var(--after) * (100% + 4px) / 9 - var(--black-w) / 2 - 2px);
 }

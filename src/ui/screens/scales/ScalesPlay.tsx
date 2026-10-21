@@ -45,7 +45,7 @@ export function ScalesPlay(): JSX.Element | null {
 }
 
 function Round({ run }: { run: ScaleRun }): JSX.Element {
-  const { state, dispatch } = useStore();
+  const { dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
   const kbd = useKeyboardHints(bp);
@@ -240,7 +240,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   if (wrong?.kind === 'piano') keyMarks[wrong.midi] = 'wrong';
   const playedMidis = notes.slice(0, pos).map((n) => n.midi);
   const inputs = piano ? (
-    <ScalePiano scale={sc} labels={state.prefs.pianoLabels} marks={keyMarks} played={playedMidis} onPick={(midi) => answer({ kind: 'piano', midi })} disabled={done} kbd={kbd} />
+    <ScalePiano scale={sc} marks={keyMarks} played={playedMidis} onPick={(midi) => answer({ kind: 'piano', midi })} disabled={done} kbd={kbd} />
   ) : (
     <SignButtons letter={curLetter} choices={choices} wrong={wrong?.kind === 'sign' ? wrong.alter : null} onPick={(alter) => answer({ kind: 'sign', alter })} disabled={done} kbd={kbd} />
   );
