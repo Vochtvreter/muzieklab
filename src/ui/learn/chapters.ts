@@ -8,7 +8,7 @@
  * and `.practice` when it has a practice link.
  * `chapters.test.ts` checks all of this, so a missing text fails the tests instead of showing a raw key.
  */
-import type { Alter, Clef, KeyId, MeterId, NoteSettings, Settings } from '../../core/api';
+import type { Alter, Clef, KeyId, MeterId, NoteSettings, ScaleSettings, Settings } from '../../core/api';
 
 /**
  * Notes on a five-line staff, written as text: letter, optional sign, octave, split by spaces. '#' sharp, 'b' flat,
@@ -44,6 +44,8 @@ export type Block =
       /** Staff spaces of room for ledger lines above and below; default 1.6. */
       room?: number;
       labels?: 'name' | 'nameOctave';
+      /** false: one bar without bar lines, as a scale is written (each letter once). */
+      barlines?: boolean;
       title?: string;
       value?: string;
       alt: string;
@@ -81,8 +83,8 @@ export type Block =
   /** Columns side by side on tablet and desktop, stacked on phones: 'staves' for notation, 'text' for text | picture. */
   | { kind: 'pair'; variant?: 'staves' | 'text'; columns: Block[][] };
 
-/** Where a section's practice link goes: Read notes or rhythm Free practice, set up for the section. */
-export type Practice = { notes: Partial<NoteSettings> } | { rhythm: Partial<Settings> };
+/** Where a section's practice link goes: Read notes, rhythm Free practice or Scales, set up for the section. */
+export type Practice = { notes: Partial<NoteSettings> } | { rhythm: Partial<Settings> } | { scales: Partial<ScaleSettings> };
 
 export interface Section {
   /** "9.3": chapter and section number. */
@@ -113,8 +115,8 @@ export interface Chapter {
   units?: number[];
   sections: Section[];
   quiz: Quiz;
-  /** The big button at the end: Read notes or rhythm Free practice. */
-  practice: 'notes' | 'rhythm';
+  /** The big button at the end: Read notes, rhythm Free practice or Scales. */
+  practice: 'notes' | 'rhythm' | 'scales';
 }
 
 /** All chapters in the plan, built or not, for "chapter 9 of 11". */
@@ -633,6 +635,96 @@ export const CHAPTERS: Chapter[] = [
       },
     ],
     quiz: { answers: [{ note: 'C' }, { note: 'D' }, { note: 'C#' }], right: 1 },
+  },
+  {
+    n: 11,
+    builds: [9, 10],
+    practice: 'scales',
+    sections: [
+      {
+        id: '11.1',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'staff', clef: 'treble', notes: 'C4 D4 E4 F4 G4 A4 B4 C5', labels: 'name', barlines: false, title: 'cTitle', value: 'cValue', alt: 'cAlt' },
+          { kind: 'pair', variant: 'text', columns: [[{ kind: 'text', text: 'keys' }], [{ kind: 'piano', marked: ['E', 'F', 'B', 'C'], alt: 'pianoAlt' }]] },
+          { kind: 'text', text: 'white' },
+        ],
+        practice: { scales: { keyMode: 'one', keys: ['C'], types: ['major'] } },
+      },
+      {
+        id: '11.2',
+        check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'staff', clef: 'treble', notes: 'G4 A4 B4 C5 D5 E5 F#5 G5', labels: 'name', barlines: false, title: 'gTitle', value: 'gValue', alt: 'gAlt' },
+          { kind: 'text', text: 'letters' },
+          { kind: 'tip', text: 'sig' },
+        ],
+        practice: { scales: { keyMode: 'pick', keys: ['D', 'Bb'], types: ['major'] } },
+      },
+      {
+        id: '11.3',
+        check: { answers: [{ note: 'G' }, { note: 'A' }, { note: 'E' }], right: 1 },
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'table', rows: [{ title: 'upTitle', text: 'up' }, { title: 'downTitle', text: 'down' }] },
+          { kind: 'text', text: 'pairs' },
+          { kind: 'tip', text: 'game' },
+        ],
+        practice: { scales: { keyMode: 'circle', types: ['major'] } },
+      },
+      {
+        id: '11.4',
+        check: { answers: [{ note: 'F#' }, { note: 'G#' }, { note: 'C#' }], right: 1 },
+        blocks: [
+          { kind: 'text', text: 'text' },
+          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F5 G5 A5', labels: 'name', barlines: false, title: 'naturalTitle', value: 'naturalValue', alt: 'naturalAlt' },
+          { kind: 'text', text: 'harmonic' },
+          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F5 G#5 A5', labels: 'name', barlines: false, title: 'harmonicTitle', value: 'harmonicValue', alt: 'harmonicAlt' },
+          { kind: 'text', text: 'melodic' },
+          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F#5 G#5 A5', labels: 'name', barlines: false, title: 'melodicTitle', value: 'melodicValue', alt: 'melodicAlt' },
+        ],
+        practice: { scales: { keyMode: 'one', keys: ['C'], types: ['natural', 'harmonic', 'melodic'] } },
+      },
+      {
+        id: '11.5',
+        check: { answers: [{ note: 'C' }, { note: 'D' }, { note: 'E' }], right: 1 },
+        blocks: [
+          { kind: 'text', text: 'text' },
+          {
+            kind: 'table',
+            rows: [
+              { title: 'd1', text: 'd1Text', value: 'd1Value' },
+              { title: 'd2', value: 'd2Value' },
+              { title: 'd3', value: 'd3Value' },
+              { title: 'd4', value: 'd4Value' },
+              { title: 'd5', text: 'd5Text', value: 'd5Value' },
+              { title: 'd6', value: 'd6Value' },
+              { title: 'd7', text: 'd7Text', value: 'd7Value' },
+            ],
+          },
+          { kind: 'text', text: 'intervals' },
+          {
+            kind: 'table',
+            rows: [
+              { title: 'i2', value: 'i2Value' },
+              { title: 'i3', value: 'i3Value' },
+              { title: 'i4', value: 'i4Value' },
+              { title: 'i5', value: 'i5Value' },
+              { title: 'i6', value: 'i6Value' },
+              { title: 'i7', value: 'i7Value' },
+              { title: 'i8', value: 'i8Value' },
+            ],
+          },
+          { kind: 'text', text: 'triad' },
+          { kind: 'table', rows: [{ title: 'triadMajor', value: 'triadMajorValue' }, { title: 'triadMinor', value: 'triadMinorValue' }] },
+          { kind: 'tip', text: 'fixedDo' },
+        ],
+        practice: { scales: { keyMode: 'one', keys: ['G'], types: ['major'], input: 'names' } },
+      },
+    ],
+    quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
   },
 ];
 

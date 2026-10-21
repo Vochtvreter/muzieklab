@@ -15,6 +15,11 @@ import { NotesSetup } from './ui/screens/notes/NotesSetup';
 import { PathScreen } from './ui/screens/Path';
 import { Play } from './ui/screens/Play';
 import { Results } from './ui/screens/Results';
+import { ScalesDone } from './ui/screens/scales/ScalesDone';
+import { ScalesHub } from './ui/screens/scales/ScalesHub';
+import { ScalesKey } from './ui/screens/scales/ScalesKey';
+import { ScalesPlay } from './ui/screens/scales/ScalesPlay';
+import { ScalesSetup } from './ui/screens/scales/ScalesSetup';
 import { SettingsScreen } from './ui/screens/Settings';
 import { Setup } from './ui/screens/Setup';
 import { StoreProvider, useStore } from './ui/store';
@@ -86,6 +91,16 @@ function Route(): JSX.Element {
       return <NotesPlay />;
     case '/notes/done':
       return <NotesDone />;
+    case '/scales':
+      return <ScalesHub />;
+    case '/scales/setup':
+      return <ScalesSetup />;
+    case '/scales/key':
+      return <ScalesKey />;
+    case '/scales/play':
+      return <ScalesPlay />;
+    case '/scales/done':
+      return <ScalesDone />;
     case '/learn':
       return <LearnHub />;
     case '/dev/render':

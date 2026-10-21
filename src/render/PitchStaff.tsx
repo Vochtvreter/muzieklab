@@ -17,14 +17,16 @@ export interface PitchStaffProps {
   scale?: number;
   /** Staff spaces of room above and below for ledger lines (default 3). */
   room?: number;
+  /** false: all notes in one bar without bar lines (a scale), and the cursor may sit on an empty slot. */
+  barlines?: boolean;
   /** Accessible description; omit for a decorative staff (its text is given next to it). */
   label?: string;
   className?: string;
 }
 
-/** A five-line staff in treble or bass clef with a key signature and whole notes (Read notes, Learn chapter 8). */
+/** A five-line staff in treble or bass clef with a key signature and whole notes (Read notes, Scales, Learn chapters 8–11). */
 export function PitchStaff(props: PitchStaffProps): JSX.Element {
-  const { clef, keyId, notes, slots = notes.length, marks, cursor, scale = 1, room = 3, label, className } = props;
+  const { clef, keyId, notes, slots = notes.length, marks, cursor, scale = 1, room = 3, barlines = true, label, className } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(hostRef);
   const themeVersion = useThemeVersion();
@@ -43,6 +45,7 @@ export function PitchStaff(props: PitchStaffProps): JSX.Element {
       scale,
       room,
       fit: slots === 0,
+      barlines,
       palette: {
         ink: readToken(el, 'ink'),
         staff: readToken(el, 'staff'),
@@ -52,7 +55,7 @@ export function PitchStaff(props: PitchStaffProps): JSX.Element {
         cursor: readToken(el, 'slate'),
       },
     });
-  }, [clef, keyId, notes, slots, marks, cursor, width, scale, room, themeVersion]);
+  }, [clef, keyId, notes, slots, marks, cursor, width, scale, room, barlines, themeVersion]);
 
   return (
     <div ref={hostRef} className={'pitch-staff' + (className ? ' ' + className : '')} role={label ? 'img' : undefined} aria-label={label}

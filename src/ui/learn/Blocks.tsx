@@ -1,11 +1,11 @@
 /** Draws the content blocks of a Learn section (chapters.ts): text, tips, lists, staves, the piano and side-by-side pairs. */
 import { useMemo, useState, type CSSProperties } from 'react';
-import { LETTERS, PPQ, getMeter, letterOf, type Alter, type Letter, type Meter, type MeterId, type NotatedSymbol, type NoteValue } from '../../core/api';
+import { LETTERS, PPQ, getMeter, letterOf, type ScaleAlter, type Letter, type Meter, type MeterId, type NotatedSymbol, type NoteValue } from '../../core/api';
 import { countBar, countText, type CountMark } from '../../render/counting';
 import { PitchStaff, type PitchNote } from '../../render/PitchStaff';
 import { Staff } from '../../render/Staff';
 import { parseBars } from '../../render/notationText';
-import { t } from '../../i18n';
+import { hasMessage, t } from '../../i18n';
 import { Segmented } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { useBreakpoint } from '../hooks';
@@ -129,7 +129,7 @@ function BlockView({ id, block: b }: { id: string; block: Block }): JSX.Element 
   }
 }
 
-const nameOf = (step: number, octave: boolean, alter: Alter): string => letterName(letterOf(step), alter) + (octave ? Math.floor(step / 7) : '');
+const nameOf = (step: number, octave: boolean, alter: ScaleAlter): string => letterName(letterOf(step), alter) + (octave ? Math.floor(step / 7) : '');
 
 function StaffBlock({ id, block: b }: { id: string; block: BlockOf<'staff'> }): JSX.Element {
   const notes = useMemo<PitchNote[]>(
@@ -146,21 +146,24 @@ function StaffBlock({ id, block: b }: { id: string; block: BlockOf<'staff'> }): 
   const names = notes.map((n) => nameOf(n.step, false, n.sign ?? 0)).join(', ');
   const alt = t(sectionKey(id, b.alt), { names });
   const keyId = b.keyId ?? 'C';
+  // A value is shown as written ('F C G D A E B'), or from the catalog when it names a text of the section (a step
+  // pattern reads W W H in English and 1 1 ½ in Dutch).
+  const value = b.value && hasMessage(sectionKey(id, b.value)) ? t(sectionKey(id, b.value)) : b.value;
   if (b.slots === 0) {
     return (
       <div className="learn-sig">
         <PitchStaff clef={b.clef} keyId={keyId} notes={[]} slots={0} room={b.room ?? 1.2} label={alt} />
-        {b.value && <span className="mono-accent">{b.value}</span>}
+        {value && <span className="mono-accent">{value}</span>}
       </div>
     );
   }
-  const staff = <PitchStaff clef={b.clef} keyId={keyId} notes={notes} slots={b.slots} scale={1.2} room={b.room ?? 1.6} label={alt} />;
+  const staff = <PitchStaff clef={b.clef} keyId={keyId} notes={notes} slots={b.slots} scale={1.2} room={b.room ?? 1.6} barlines={b.barlines} label={alt} />;
   if (!b.title) return staff;
   return (
     <div className="learn-example">
       <div className="learn-example-head">
         <b>{t(sectionKey(id, b.title))}</b>
-        {b.value && <span className="mono-accent">{b.value}</span>}
+        {value && <span className="mono-accent">{value}</span>}
       </div>
       {staff}
     </div>

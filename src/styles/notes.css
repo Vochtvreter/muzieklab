@@ -959,9 +959,6 @@
   font-weight: 700;
   color: var(--good-ink);
 }
-.learn-later {
-  padding: 0 4px;
-}
 
 .learn-chapter,
 .learn-main {
@@ -1645,10 +1642,6 @@
   .learn-side-chapter a {
     min-height: 44px;
   }
-}
-.learn-side-later {
-  padding: 4px 10px 0;
-  font-size: 13px;
 }
 /* The other chapters, closed. */
 .learn-side-other {
