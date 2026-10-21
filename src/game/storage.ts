@@ -2,6 +2,8 @@ import type { Leniency, MeterId, NoteValue, Settings, Stars } from '../core/type
 import { DIAMOND, METER_IDS, MODES, NOTE_VALUES } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { MAX_WEAK, parseNoteId, sanitizeNoteSettings, type NoteSettings, type WeakSpots } from '../core/noteRound';
+import { parseScaleId, type ScaleStars } from '../core/scale';
+import { sanitizeScaleSettings, type ScaleSettings } from '../core/scaleRound';
 import type { Volumes } from '../audio/engine';
 import { isLocale } from '../i18n';
 
@@ -51,6 +53,8 @@ export interface Progress {
   dailyBest: number;
   /** Read notes: the setup as last edited, and the weak spots per note (§3.5 spaced repetition). */
   notes: { settings: NoteSettings | null; weak: WeakSpots };
+  /** Scales: the setup as last edited, and the best stars per scale id ("D-major", §3.7). */
+  scales: { settings: ScaleSettings | null; stars: ScaleStars };
   /** Learn sections read, e.g. "8.2". */
   learnRead: string[];
 }
@@ -77,7 +81,17 @@ export const DEFAULT_PREFS: Prefs = {
 };
 
 export function defaultProgress(): Progress {
-  return { lessons: {}, practiceDays: [], lastSettings: null, xp: 0, daily: null, dailyBest: 0, notes: { settings: null, weak: {} }, learnRead: [] };
+  return {
+    lessons: {},
+    practiceDays: [],
+    lastSettings: null,
+    xp: 0,
+    daily: null,
+    dailyBest: 0,
+    notes: { settings: null, weak: {} },
+    scales: { settings: null, stars: {} },
+    learnRead: [],
+  };
 }
 
 /** True when nothing has been earned or saved yet (storage can then be cleared). */
@@ -90,6 +104,8 @@ export function isEmptyProgress(p: Progress): boolean {
     !p.daily &&
     !p.notes.settings &&
     Object.keys(p.notes.weak).length === 0 &&
+    !p.scales.settings &&
+    Object.keys(p.scales.stars).length === 0 &&
     p.learnRead.length === 0
   );
 }
@@ -209,6 +225,7 @@ export function sanitizeProgress(raw: unknown): Progress {
     daily,
     dailyBest: num(raw.dailyBest, 0, 0, 100),
     notes: sanitizeNotes(raw.notes),
+    scales: sanitizeScales(raw.scales),
     learnRead: Array.isArray(raw.learnRead)
       ? [...new Set(raw.learnRead.filter((x): x is string => typeof x === 'string' && /^\d{1,2}\.\d{1,2}$/.test(x)).flatMap((x) => MOVED_SECTIONS[x] ?? [x]))]
       : [],
@@ -225,6 +242,18 @@ function sanitizeNotes(raw: unknown): Progress['notes'] {
     }
   }
   return { settings: sanitizeNoteSettings(raw.settings), weak };
+}
+
+function sanitizeScales(raw: unknown): Progress['scales'] {
+  if (!isObj(raw)) return { settings: null, stars: {} };
+  const stars: ScaleStars = {};
+  if (isObj(raw.stars)) {
+    for (const [id, s] of Object.entries(raw.stars)) {
+      const v = Math.round(num(s, 0, 0, 3));
+      if (v > 0 && parseScaleId(id)) stars[id] = v;
+    }
+  }
+  return { settings: sanitizeScaleSettings(raw.settings), stars };
 }
 
 export function loadPrefs(): Prefs {

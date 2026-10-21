@@ -1,6 +1,6 @@
 # Scales (v1.4): design check and implementation plan
 
-Status: **designs resolved, not built.** Compared on 2026-10-21: the live app (0.6.3 at vochtvreter.github.io/muzieklab,
+Status: **designs resolved; the engine is built (PR 1), the screens are not.** Compared on 2026-10-21: the live app (0.6.3 at vochtvreter.github.io/muzieklab,
 the same as `main`) with the [MVP and release canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS) page *Scales ·
 Planned*, the [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE) *Not built* pages, and
 [DESIGN.md](DESIGN.md) §3.7, §9 and §9.1 with [LEARN-CHAPTERS.md](LEARN-CHAPTERS.md) chapter 11. The conflicts found
@@ -56,21 +56,24 @@ Not changed on purpose:
 
 Three PRs, each releasable, each with its version bump and changelog entry.
 
-### PR 1 · Engine (patch: no visible change)
+### PR 1 · Engine (done: no visible change, so no version bump; the minor bump comes with PR 2)
 
-- `src/core/scale.ts`: scale types and step patterns (major W W H W W W H, natural W H W W H W W, harmonic
-  W H W W H 1½ H, melodic W H W W W W H up and natural minor down); `spellScale(tonic, type, direction)` with each
-  letter once and a −2…+2 alter (Read notes' `Alter` stays −1…+1); the 12 circle positions with the three enharmonic
-  pairs (B/C♭, F♯/G♭, D♭/C♯) and their relative minors; key ids reuse `KeyId` from `pitch.ts`; the piano window
-  (first white key at or below the tonic, 9 white keys); judging (piano by sounding key and octave, names by letter +
-  sign); `scaleId` (`D-major`, `E-harmonic`).
-- `src/core/scaleRound.ts`: a seeded round (chosen keys × chosen types, shuffled; *Go round the circle* in circle
-  order), scales with mistakes queued again at the end, stars by mistakes (0 → ★★★, 1 → ★★, 2–3 → ★), XP (§3.7).
-- `src/game/storage.ts`: `progress.scales = { settings, stars: Record<scaleId, 0–3> }` with sanitizing; hub fill =
-  major stars, or minor forms with ★★+.
-- Tests: every one of the 60 scales spells each letter once and has the right pattern; known spellings (E harmonic
-  minor has D♯, G♯ harmonic minor has F𝄪); the 15 major scales' signs equal their key signatures; property tests on
-  the round.
+- `src/core/scale.ts`: a scale is a key signature + a type (`{ key: 'G', type: 'harmonic' }` = E harmonic minor);
+  `scaleNotes(scale, direction)` spells it (each letter once, a −2…+2 `ScaleAlter`, staff step and MIDI number;
+  melodic minor down as natural minor); `scaleSteps` / `stepName` (W, H, WH); `needsDoubleSharp`; `scaleId`
+  (`D-major`, `E-harmonic`) and `parseScaleId`; `CIRCLE` (12 positions, three with two spellings), `CIRCLE_ORDER`;
+  `majorLevel`, `minorLevel`, `doneCounts` for the hub; `pianoWindow` (9 white keys from the tonic or the white key
+  below it, black keys with the gap they sit in).
+- `src/core/scaleRound.ts`: `ScaleSettings` with `sanitizeScaleSettings`; `generateScaleRound` (seeded and shuffled,
+  circle order for *Go round the circle*, mixed input alternating); `afterScale` (a scale with mistakes comes back
+  once at the end); `isRightNote` (piano by MIDI number, so the octave counts; names by sign); `signChoices` (𝄪 only
+  where needed); `scaleStars`, `scoreScaleRound` (first tries count, `cameBack` marks the retried ones),
+  `scaleRoundXp`, `updateScaleStars`.
+- `src/game/storage.ts`: `progress.scales = { settings, stars }`, sanitized (known scale ids, 1–3 stars).
+- Tests (`scale.test.ts`, `scaleRound.test.ts`, `storage.test.ts`): all 60 scales have their pattern and each letter
+  once; the board and textbook spellings (D major, E and G♯ harmonic minor, A♯ melodic minor, C♭ major); major and
+  natural minor use exactly the key signature; double sharps only in G♯, D♯ and A♯ minor, never a double flat; the
+  piano window holds every scale; property tests on the round.
 
 ### PR 2 · Scales mode (minor: new feature)
 

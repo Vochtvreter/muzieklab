@@ -17,3 +17,5 @@ export type { CoachTip } from './coach';
 export * from './types';
 export * from './pitch';
 export * from './noteRound';
+export * from './scale';
+export * from './scaleRound';
