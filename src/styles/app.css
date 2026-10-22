@@ -2584,6 +2584,8 @@ button.lesson-stars:hover {
   --pb: 30px;
   --px: 16px;
   gap: 10px;
+  /* Scrolling to a control (Tab to Calibrate, or a script) leaves it above the sticky actions. */
+  scroll-padding-bottom: 140px;
 }
 .score {
   display: flex;
@@ -2702,10 +2704,21 @@ button.lesson-stars:hover {
   font-size: 14px;
   line-height: 1.45;
 }
-.tip svg {
+.tip > svg {
   flex: none;
   margin-top: 1px;
   color: var(--reward-ink);
+}
+.tip-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+/* Calibrate under a latency tip: a quiet action, its text in line with the tip's. */
+.tip-action {
+  margin: 0 0 -8px -14px;
 }
 .results-actions {
   margin-top: auto;
@@ -2726,6 +2739,25 @@ button.lesson-stars:hover {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
   gap: 10px;
+}
+/* Under 2 stars: New exercise and the filled Try again, side by side at the same width. */
+.results-main--again {
+  grid-template-columns: 1fr 1fr;
+}
+.copy-btn.is-copied {
+  color: var(--good-ink);
+}
+/* Phone: Copy code as a small muted link under the main buttons, its 44 px target eating into the gap and padding. */
+.copy-link {
+  align-self: center;
+  margin: -8px 0 -10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+}
+.copy-link:hover {
+  color: var(--ink);
 }
 /*
  * Results and the round summaries scroll when they are taller than the screen (8 bars, a 1280 × 800 laptop, a small
@@ -3703,60 +3735,7 @@ button.lesson-stars:hover {
   gap: 14px;
 }
 
-/* ---------- v1.1 · Results: code, Copy, XP badges ---------- */
-.code-row {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-left: 48px;
-}
-.code-row-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.code-line {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  min-width: 0;
-}
-.code-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-.code-text {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 11.5px;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  user-select: all;
-}
-.copy-btn {
-  flex: none;
-  min-width: 92px;
-  height: 44px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1.5px solid var(--line);
-  background: var(--paper);
-  color: var(--accent-ink);
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-.copy-btn.is-copied {
-  color: var(--good-ink);
-}
+/* ---------- v1.1 · Results: XP badges ---------- */
 .badges {
   flex: none;
   display: flex;

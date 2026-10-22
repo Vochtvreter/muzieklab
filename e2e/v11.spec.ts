@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { seed, VIEWPORTS } from './helpers';
 
-/** v1.1 quick wins: the daily challenge with its code and Copy, and Echo mode from setup to the reveal on Results. */
+/** v1.1 quick wins: the daily challenge with Copy code, and Echo mode from setup to the reveal on Results. */
 
-test('daily challenge: Home → Play → Results with the code and Copy', async ({ page, context }) => {
+test('daily challenge: Home → Play → Results with Copy code', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await seed(page, { prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);
@@ -14,17 +14,19 @@ test('daily challenge: Home → Play → Results with the code and Copy', async 
   await page.getByRole('button', { name: 'Skip to results' }).click();
   await expect(page.getByRole('heading', { name: 'Daily challenge done' })).toBeVisible();
   await expect(page.getByText(/same for everyone$/)).toBeVisible();
-  const code = (await page.locator('#excode').textContent())!;
-  expect(code).toMatch(/^T(24|34|44)+-[WHQES]+-R[WHQES]*-\d+B-\d+(-X[0-9A-Z]+)?-[0-9A-Z]+$/);
-  await page.getByRole('button', { name: 'Copy' }).click();
+  // The code is not on screen: Copy code copies it, says Copied, and has it in its title.
+  await expect(page.getByText(/^T(24|34|44)+-/)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Copy code' }).click();
   await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(code);
+  const code = await page.evaluate(() => navigator.clipboard.readText());
+  expect(code).toMatch(/^T(24|34|44)+-[WHQES]+-R[WHQES]*-\d+B-\d+(-X[0-9A-Z]+)?-[0-9A-Z]+$/);
+  await expect(page.getByRole('button', { name: 'Copied' })).toHaveAttribute('title', 'Copy the exercise code: ' + code);
   await expect(page.getByText('+0 XP')).toBeVisible();
 
-  // Retry plays the same exercise: the same code.
-  await page.getByRole('button', { name: 'Retry' }).click();
+  // Nothing was played, so Try again is the main button: it plays the same exercise, with the same code.
+  await page.getByRole('button', { name: 'Try again' }).click();
   await page.getByRole('button', { name: 'Skip to results' }).click();
-  await expect(page.locator('#excode')).toHaveText(code);
+  await expect(page.getByRole('button', { name: 'Copy code' })).toHaveAttribute('title', 'Copy the exercise code: ' + code);
 });
 
 test('echo: listen, tap it back with the notation hidden, then Results reveals it', async ({ page }) => {
@@ -55,7 +57,7 @@ test('echo: listen, tap it back with the notation hidden, then Results reveals i
 
   await expect(page.getByRole('heading', { name: 'Echo done' })).toBeVisible();
   await expect(page.getByRole('img', { name: /^The rhythm you heard, revealed/ })).toBeAttached();
-  await expect(page.locator('#excode')).toHaveText(/^E44-/);
+  await expect(page.getByRole('button', { name: 'Copy code' })).toHaveAttribute('title', /: E44-/);
 });
 
 test('a level-up is saved and shown on Home', async ({ page }) => {
