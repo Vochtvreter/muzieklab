@@ -52,28 +52,84 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
   test.describe(name, () => {
     test.use({ viewport: VIEWPORTS[name], hasTouch: !name.startsWith('desktop') && !name.startsWith('laptop') });
 
-    test('home: continue lesson and free practice', async ({ page }) => {
+    const desktopLayout = VIEWPORTS[name].width >= 1100;
+    const tabletLayout = VIEWPORTS[name].width >= 700 && !desktopLayout;
+
+    test('home: start the first lesson and free practice', async ({ page }) => {
       known(name, 'home');
       await page.goto('./');
-      await expectClickable(page.getByRole('button', { name: 'Continue lesson' }));
+      // Nothing played yet: the card starts lesson 1.1 (no "Continue"), with no meter, bars or tempo over the staff.
+      await expect(page.getByText('Unit 1 · Lesson 1 of 5', { exact: true })).toBeVisible();
+      await expect(page.locator('.continue-card')).not.toContainText('BPM');
+      await expectClickable(page.getByRole('button', { name: 'Start lesson' }));
+      // It is the one filled button on Home: the daily challenge's is outlined.
+      await expect(page.locator('.home-desk, .home').locator('.btn--accent, .btn--ink')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /^Play the daily challenge for / })).toHaveClass(/btn--outline/);
       await expectClickable(page.getByRole('link', { name: /^Rhythm/ }));
       await expectClickable(page.getByRole('link', { name: /^Read notes/ }));
       await expectClickable(page.getByRole('link', { name: /^Scales/ }));
       // Tablet and desktop: the tabs sit in a top header (DESIGN.md §9), on desktop too, not in a sidebar.
       if (VIEWPORTS[name].width >= 700) await expect(page.getByRole('banner').getByRole('navigation', { name: 'Main' })).toBeVisible();
+      // Tablet: the staff box keeps the height of its one line of notes instead of stretching down the tall screen.
+      if (tabletLayout) expect((await page.locator('.continue-staff').boundingBox())!.height).toBeLessThan(200);
       await expectNoOverlap(page.locator('.continue-card'), page.locator('.free'));
       await expectNotSqueezed(page.locator('.continue-card'));
       await expectNoSideScroll(page);
     });
 
-    test('home: level, XP and the daily challenge', async ({ page }) => {
+    test('home: the level chip and its sheet, and the daily challenge', async ({ page }) => {
       known(name, 'home-daily');
       await page.goto('./');
-      await expect(page.getByRole('img', { name: 'XP bar: 0 of 100' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: /^Play the daily challenge for / }));
+      await expect(page.locator('.daily-card')).toContainText('4 bars · new every day');
       await expectNoOverlap(page.locator('.continue-card'), page.locator('.daily-card'));
       await expectNoOverlap(page.locator('.daily-card'), page.locator('.free'));
       await expectNotSqueezed(page.locator('.daily-card'));
+      if (desktopLayout) {
+        // Desktop keeps its level card (DESIGN.md §9), with one label under the XP bar.
+        await expect(page.getByRole('img', { name: 'XP bar: 0 of 100' })).toBeVisible();
+        await expect(page.getByText('100 XP to level 2')).toBeVisible();
+      } else {
+        // Phone and tablet: a level chip beside the streak opens the level details.
+        await expect(page.getByRole('img', { name: /^XP bar/ })).toHaveCount(0);
+        const chip = page.getByRole('button', { name: 'Level 1' });
+        await expectClickable(chip);
+        await chip.click();
+        const sheet = page.getByRole('dialog', { name: 'Level 1 · Tick' });
+        await expect(sheet.getByText('Count at level 3')).toBeVisible();
+        await expect(sheet.getByRole('img', { name: 'XP bar: 0 of 100' })).toBeVisible();
+        await expect(sheet.getByText('100 XP to level 2')).toBeVisible();
+        await expectClickable(sheet.getByRole('button', { name: 'Close' }));
+        await expectNoClippedLabels(page);
+        await sheet.getByRole('button', { name: 'Close' }).click();
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        await expect(chip).toBeFocused();
+      }
+      await expect(page.getByText(/\/ 100 XP/)).toHaveCount(0);
+      await expectNoSideScroll(page);
+    });
+
+    test('home and path: lesson stars, with the diamond as four diamond stars', async ({ page }) => {
+      known(name, 'home-stars');
+      const lessons = { '1.1': { stars: 5, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 }, '1.3': { stars: 2, bestAccuracy: 80 } };
+      await seed(page, { progress: { lessons }, prefs: { seenHowTo: true, seenHold: true } });
+      await page.goto('./');
+      await expect(page.getByText('Continue · Unit 1 · Lesson 4 of 5', { exact: true })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Continue lesson' }));
+      const tiles = page.locator(desktopLayout ? '.path-card .tile' : '.continue-card .tile');
+      await expect(tiles.nth(0).locator('.diamond-star')).toHaveCount(4);
+      await expect(tiles.nth(1)).toContainText('★★★★');
+      await expect(tiles.nth(2)).toContainText('★★☆');
+      if (desktopLayout) {
+        await expect(page.getByRole('img', { name: 'Diamond: every note perfect' })).toBeVisible();
+        await expect(page.getByText('Next: lesson 1.4 · A little faster · 80 BPM')).toBeVisible();
+      } else {
+        await expect(page.getByRole('button', { name: 'Play lesson 1.1, Diamond: every note perfect' })).toBeVisible();
+      }
+      await page.goto('./#/path');
+      const diamond = page.getByRole('button', { name: 'Play lesson 1.1 · Quarter notes: Diamond: every note perfect' });
+      await expect(diamond.locator('.diamond-star')).toHaveCount(4);
+      await expect(page.getByRole('button', { name: 'Play lesson 1.2 · Half notes: 3 of 3 stars and the bonus 4th star' })).toContainText('★★★★');
       await expectNoSideScroll(page);
     });
 
@@ -116,6 +172,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('button', { name: /^1 · Quarter and half notes/ })).toHaveAttribute('aria-expanded', 'true');
       await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Quarter notes: 0 of 3 stars' }));
       await expect(page.getByRole('img', { name: 'Lesson 1.2 · Half notes, locked' })).toBeVisible();
+      // What opens the locked units is said once, under the first; no Next line repeats Start.
+      const units = page.getByRole('list', { name: 'Units' });
+      await expect(units.getByText('Opens with 2 stars on every unit 1 lesson')).toHaveCount(1);
+      await expect(units.getByText(/^Opens with/)).toHaveCount(1);
+      await expect(units.getByText(/^Next: lesson/)).toHaveCount(0);
+      await expect(paths.nth(1)).toContainText('Read notes');
 
       await expectClickable(paths.nth(1));
       await paths.nth(1).click();
@@ -137,6 +199,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
       await paths.nth(2).click();
       await expect(page.getByText('Opens after Read notes unit 3').first()).toBeVisible();
+      await expect(units.getByText(/^Opens/)).toHaveCount(1);
       await expectClickable(page.getByRole('button', { name: 'Go to Read notes' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
@@ -202,7 +265,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // Desktop Play has no Skip link: finish on a phone-sized window, then show Results at this size.
       await page.setViewportSize(VIEWPORTS.phone);
       await page.goto('./');
-      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
       await page.getByRole('button', { name: 'Got it' }).click();
       await page.getByRole('button', { name: 'Skip to results' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
@@ -539,7 +602,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('play: how to play, then the pad', async ({ page }) => {
       known(name, 'play');
       await page.goto('./');
-      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
       await expectClickable(page.getByRole('button', { name: 'Got it' }));
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -552,7 +615,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/settings');
       await page.getByRole('group', { name: 'Metronome style' }).getByRole('button', { name: 'Analog' }).click();
       await page.goto('./');
-      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.locator('.beats--analog')).toBeVisible();
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
@@ -571,7 +634,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test.beforeEach(async ({ page }) => seed(page, { prefs: { language: 'nl', seenHowTo: true, seenHold: true } }));
 
     const screens: [string, string, string][] = [
-      ['', 'Start', 'Verder met de les'],
+      ['', 'Start', 'Begin de les'],
       ['#/setup', 'Vrij oefenen', 'Start · '],
       ['#/path', 'Leerpad', 'Begin les'],
       ['#/settings', 'Instellingen', 'Voortgang wissen'],
@@ -609,7 +672,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'nl-play');
       await page.setViewportSize(VIEWPORTS.phone);
       await page.goto('./');
-      await page.getByRole('button', { name: 'Verder met de les' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Begin de les' }).dispatchEvent('click');
       await page.setViewportSize(VIEWPORTS[name]);
       await expect(page.getByRole('heading', { name: 'Tik het ritme' })).toBeAttached();
       await expectNoClippedLabels(page);
@@ -637,7 +700,7 @@ test('a touch screen at desktop width (tablet in landscape) gets the desktop lay
   for (const hasTouch of [true, false]) {
     const page = await browser.newPage({ viewport: VIEWPORTS['tablet-landscape'], hasTouch });
     await page.goto('./');
-    await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+    await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
     await expect(page.getByText(hasTouch ? /^On a computer, any key works/ : /^Any key works/)).toBeVisible();
     await page.getByRole('button', { name: 'Got it' }).click();
     await expect(page.locator('.dplay')).toBeVisible();

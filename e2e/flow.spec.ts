@@ -30,7 +30,7 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
 
     await page.goto('./');
     await expect(page.getByText('No streak yet')).toBeVisible();
-    await page.getByRole('button', { name: 'Continue lesson' }).click();
+    await page.getByRole('button', { name: 'Start lesson' }).click();
     await expect(page).toHaveURL(/#\/play$/);
     await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
     await page.getByRole('button', { name: 'Got it' }).click();
@@ -77,7 +77,7 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
 test('a reload on Play keeps the lesson and waits for Start', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.reload();
   await expect(page).toHaveURL(/#\/play$/);
@@ -91,7 +91,7 @@ test('a reload on Play keeps the lesson and waits for Start', async ({ page }) =
 test('after quitting, Back does not walk into the exercise again', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   await expect(page).toHaveURL(/#\/$/);
@@ -103,7 +103,7 @@ test('after quitting, Back does not walk into the exercise again', async ({ page
 test('Esc does not start the Ready sheet (browsers do not let Esc start audio); Start does', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.desktop);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.reload();
   await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();

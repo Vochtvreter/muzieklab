@@ -60,12 +60,31 @@ test('echo: listen, tap it back with the notation hidden, then Results reveals i
   await expect(page.getByRole('button', { name: 'Copy code' })).toHaveAttribute('title', /: E44-/);
 });
 
-test('a level-up is saved and shown on Home', async ({ page }) => {
+test('a level-up is saved and shown on Home: the level chip opens its details', async ({ page }) => {
   await seed(page, { progress: { lessons: {}, practiceDays: [], lastSettings: null, xp: 1700 } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await expect(page.getByText('Level 7')).toBeVisible();
-  await expect(page.getByText('· Measure')).toBeVisible();
-  await expect(page.getByText('350 / 400 XP')).toBeVisible();
-  await expect(page.getByText('50 XP to level 8')).toBeVisible();
+  await page.getByRole('button', { name: 'Level 7' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Level 7 · Measure' });
+  await expect(sheet.getByText('Groove at level 8')).toBeVisible();
+  await expect(sheet.getByRole('list', { name: 'Ranks' }).locator('[aria-current="step"]')).toHaveText('Measure');
+  await expect(sheet.getByText('50 XP to level 8')).toBeVisible();
+  await expect(page.getByText('350 / 400 XP')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('daily challenge on day one: short and tap only, under the lesson card', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./');
+  await expect(page.locator('.daily-card')).toContainText('4 bars · new every day');
+  await page.getByRole('button', { name: /^Play the daily challenge for / }).click();
+  // How to play shows (first time), without the hold section: the path teaches holding from unit 2.
+  const howTo = page.getByRole('dialog', { name: 'How to play' });
+  await expect(howTo).toBeVisible();
+  await expect(howTo.getByText('New: hold each note')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Got it' }).click();
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await expect(page.getByRole('heading', { name: 'Daily challenge done' })).toBeVisible();
+  await expect(page.locator('#excode')).toHaveText(/^T44-[HQ]+-R-4B-(60|66|72)-/);
 });

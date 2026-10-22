@@ -30,7 +30,7 @@
     "label": "{count} of {total} stars",
     "of3": "{count} of 3 stars",
     "fourth": "3 of 3 stars and the bonus 4th star",
-    "diamond": "Diamond star, all perfect"
+    "diamond": "Diamond: every note perfect"
   },
   "streak": {
     "pill": "{count, plural, =0 {No streak yet} one {#-day streak} other {#-day streak}}",
@@ -40,7 +40,6 @@
   "xp": {
     "level": "Level {level}",
     "rankLine": " · {rank}",
-    "ofSpan": "{into} / {span} XP",
     "toNext": "{count} XP to level {next}",
     "bar": "XP bar: {into} of {span}",
     "label": "Level and XP",
@@ -58,25 +57,27 @@
     "eyebrow": "Level up",
     "title": "Level {level} · {rank}",
     "newRank": "New rank: up from {rank}",
-    "sameRank": "Up from level {level}",
+    "nextRank": "{rank} at level {level}",
+    "topRank": "The top rank",
     "ranks": "Ranks",
-    "into": "{count} XP into level {level}",
-    "continue": "Continue"
+    "continue": "Continue",
+    "close": "Close"
   },
   "home": {
     "title": "Home",
     "continueEyebrow": "Continue · Unit {unit} · Lesson {lesson} of {total}",
     "replayEyebrow": "Path complete · Unit {unit} · Lesson {lesson} of {total}",
     "continueButton": "Continue lesson",
+    "startEyebrow": "Unit {unit} · Lesson {lesson} of {total}",
+    "startButton": "Start lesson",
     "replayButton": "Play again",
-    "previewMeta": "{meter} · {bars}",
     "pathEyebrow": "Learning path",
     "pathUnitOf": "Unit {unit} of {total}",
     "pathView": "View path →",
     "pathLocked": "2 stars on every unit {unit} lesson",
     "unitStars": "{count} ★",
     "dailyTitle": "Daily challenge",
-    "dailyMeta": "{meter} · {bars} · {bpm} BPM · same for everyone",
+    "dailyMeta": "{bars} · new every day",
     "dailyPlay": "Play",
     "dailyAgain": "Play again",
     "dailyDone": "Done today · {accuracy}%",
@@ -101,7 +102,7 @@
     "totalsLabel": "{stars} of {total} stars",
     "unitTitle": "{id} · {title}",
     "next": "Next: lesson {lesson} · {title} · {bpm} BPM",
-    "unlocks": "Unlocks with 2 stars on every unit {unit} lesson",
+    "unlocks": "Opens with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
     "playLesson": "Play lesson {id} · {title}: {stars}",
     "lockedLesson": "Lesson {id}, locked",
@@ -176,11 +177,6 @@
       "notes": "Read notes",
       "keys": "Keys"
     },
-    "trackShort": {
-      "rhythm": "Rhythm",
-      "notes": "Notes",
-      "keys": "Keys"
-    },
     "trackMeta": "Unit {unit} of {total}",
     "trackDone": "All done",
     "trackLocked": "Locked",
@@ -195,7 +191,6 @@
     },
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} of {max} stars",
-    "nextNotes": "Next: lesson {lesson} · {title} · {count} notes",
     "opensAfter": "Opens after Read notes unit {unit}",
     "lockedLessonTitled": "Lesson {id} · {title}, locked",
     "notes": {
