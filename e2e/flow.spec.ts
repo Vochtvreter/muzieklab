@@ -129,6 +129,15 @@ test('a finished lesson can be played again from Home and from the Path', async 
   await expect(page.getByText('Lesson 1.2', { exact: true })).toBeVisible();
 });
 
+test('desktop Home: the learning-path card opens the rhythm path it shows, whichever path was picked last', async ({ page }) => {
+  await seed(page, { prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./');
+  await page.getByRole('link', { name: /^Learning path/ }).click();
+  await expect(page).toHaveURL(/#\/path$/);
+  await expect(page.getByRole('heading', { level: 2, name: 'Rhythm' })).toBeVisible();
+});
+
 test('the first lesson that judges holds shows How to play again, with holding, once', async ({ page }) => {
   // Unit 1 (tap only) done, its How to play seen: lesson 2.1 is the first where holding counts.
   const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 3, bestAccuracy: 92 }]));

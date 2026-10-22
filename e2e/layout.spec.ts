@@ -93,6 +93,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('button', { name: /^1 · Treble clef/ })).toHaveAttribute('aria-expanded', 'false');
       await expect(page.locator('#unit-notes-1')).toBeHidden();
       await expect(page.locator('.unit-stars').getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' })).toBeVisible();
+      // A tap low on the header, right above the stars, opens the unit (it does not start lesson 1.1).
+      const head = page.getByRole('button', { name: /^1 · Treble clef/ });
+      const headBox = (await head.boundingBox())!;
+      await head.click({ position: { x: 30, y: headBox.height - 5 } });
+      await expect(head).toHaveAttribute('aria-expanded', 'true');
+      await expect(page).toHaveURL(/#\/path$/);
 
       await paths.nth(2).click();
       await expect(page.getByText('Opens after Read notes unit 3').first()).toBeVisible();
@@ -196,6 +202,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await seed(page, { progress: { lessons }, prefs: { language: 'nl', seenHowTo: true, seenHold: true } });
       await page.goto('./#/path');
       await expect(page.getByRole('button', { name: /^7 · Gepunteerde noten/ })).toBeInViewport();
+      // Picking another path keeps the paths (and the focused one) in view, on a short screen too.
+      const notesPath = page.getByRole('group', { name: 'Paden' }).getByRole('button').nth(1);
+      await notesPath.focus();
+      await page.keyboard.press('Enter');
+      await expect(notesPath).toHaveAttribute('aria-pressed', 'true');
+      await expect(notesPath).toBeInViewport();
+      await page.getByRole('group', { name: 'Paden' }).getByRole('button').nth(0).click();
+      await expect(page.getByRole('button', { name: /^7 · Gepunteerde noten/ })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: /^Begin les 7\.3/ }));
       // "5 · Tweekwartsmaat, achtste rusten": a long word breaks instead of running into the unit's stars.
       await page.evaluate(() => document.fonts.ready.then(() => undefined));

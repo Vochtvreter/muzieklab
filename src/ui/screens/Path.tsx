@@ -72,6 +72,12 @@ export function PathScreen(): JSX.Element {
   const totals = allStars(p);
   const pick = (to: TrackId): void => dispatch({ type: 'prefs', patch: { pathTrack: to } });
   const play = (lessonId: string): void => (id === 'rhythm' ? startRhythm(lessonId) : startNotes(id, lessonId));
+  // On a short screen the page scrolls to the current unit when the Path opens; picking another path keeps the
+  // switcher (and the focused chip) in view. Child effects run first, so the first Units still sees `true`.
+  const opening = useRef(true);
+  useEffect(() => {
+    opening.current = false;
+  }, []);
 
   const head = (
     <div className="path-head">
@@ -81,7 +87,7 @@ export function PathScreen(): JSX.Element {
       </span>
     </div>
   );
-  const units = <Units key={id} view={cur} progress={p} tiles={bp !== 'phone'} onPlay={play} />;
+  const units = <Units key={id} view={cur} progress={p} tiles={bp !== 'phone'} scrollPage={opening.current} onPlay={play} />;
   // Start, or (Keys while it is closed) the way to the path that opens it. One <button> in both cases, so keyboard
   // focus stays on it when Go to Read notes switches the path.
   const after = OPENS_AFTER[id];
@@ -222,7 +228,14 @@ function nextLine(id: TrackId, lesson: TrackLesson): string {
   return t('path.nextNotes', { ...base, count: noteLessonSettings(id, lesson.id)?.count ?? 0 });
 }
 
-function Units({ view: v, progress: p, tiles, onPlay }: { view: TrackView; progress: Progress; tiles: boolean; onPlay(id: string): void }): JSX.Element {
+function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
+  view: TrackView;
+  progress: Progress;
+  tiles: boolean;
+  /** The list does not scroll (a short screen): scroll the page instead. */
+  scrollPage: boolean;
+  onPlay(id: string): void;
+}): JSX.Element {
   const { track, states } = v;
   const id = track.id;
   const curUnit = states.indexOf('current');
@@ -233,7 +246,7 @@ function Units({ view: v, progress: p, tiles, onPlay }: { view: TrackView; progr
   useEffect(() => {
     const box = list.current;
     const el = box?.querySelector('.unit--current');
-    const scroller = box && box.scrollHeight > box.clientHeight ? box : box?.closest<HTMLElement>('.page');
+    const scroller = box && box.scrollHeight > box.clientHeight ? box : scrollPage ? box?.closest<HTMLElement>('.page') : null;
     if (!el || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
     scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
   }, []);

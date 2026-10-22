@@ -1230,6 +1230,9 @@
 }
 /* A unit's title row; an open unit's is a button that shows or hides its lessons. 44 px: centred on the node. */
 .unit-head {
+  /* Above the enlarged hit area of the lesson stars just below it: a tap on the header opens the unit. */
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-height: 44px;
   padding: 6px 0;

@@ -240,12 +240,13 @@ export function Home(): JSX.Element {
 
 /** Desktop Home: the learning-path card (the current unit, a bar of all units, its lesson tiles and the next lesson). */
 function PathSummary({ currentUnit, currentId }: { currentUnit: Unit; currentId: string | null }): JSX.Element {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const p = state.progress;
   const states = unitStates(p);
   const cur = currentId ? currentUnit.lessons.find((l) => l.id === currentId) : null;
   return (
-    <Link to="/path" className="card path-card">
+    // The card shows the rhythm path, so it opens that path (not the one picked last on the Path tab).
+    <Link to="/path" className="card path-card" onClick={() => dispatch({ type: 'prefs', patch: { pathTrack: 'rhythm' } })}>
       <span className="path-card-head">
         <span className="eyebrow">{t('home.pathEyebrow')}</span>
         <span className="mono-muted">{t('home.pathUnitOf', { unit: UNITS.indexOf(currentUnit) + 1, total: UNITS.length })}</span>
