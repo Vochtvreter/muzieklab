@@ -1,23 +1,17 @@
-import { SHOWN_STARS, type Settings } from '../core/types';
+import type { Settings } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import type { LessonProgress, Progress } from './storage';
+import { lessonOpen, nextIn, trackStarsIn, unitStarsIn, type Track, type TrackLesson, type TrackUnit } from './track';
 
-export interface Lesson {
-  id: string; // "7.3"
-  title: string; // message key or plain title
+export { UNLOCK_STARS } from './track';
+
+export interface Lesson extends TrackLesson {
   settings: Partial<Settings>; // preset on top of the unit's base
 }
 
-export interface Unit {
-  id: number; // 1–8 in the MVP path
-  titleKey: string;
-  glyph: string; // Noto Music glyph or short text like "3/4"
+export interface Unit extends TrackUnit<Lesson> {
   base: Partial<Settings>;
-  lessons: Lesson[];
 }
-
-/** Stars on a lesson needed to unlock the next one (§8.2). */
-export const UNLOCK_STARS = 2;
 
 function unit(id: number, glyph: string, base: Partial<Settings>, lessons: Partial<Settings>[]): Unit {
   return {
@@ -108,6 +102,9 @@ export const UNITS: Unit[] = [
   ]),
 ];
 
+/** The rhythm path, for the rules every path shares (track.ts). */
+export const RHYTHM_TRACK: Track<Lesson> = { id: 'rhythm', units: UNITS };
+
 export const ALL_LESSONS: Array<{ unit: Unit; lesson: Lesson; index: number }> = UNITS.flatMap((unit) =>
   unit.lessons.map((lesson, index) => ({ unit, lesson, index })),
 );
@@ -124,43 +121,23 @@ export function lessonSettings(lessonId: string): Settings {
   return { ...s, meters: [...s.meters], notes: [...s.notes], rests: [...s.rests] };
 }
 
-const starsOf = (progress: Progress, lessonId: string): number => progress.lessons[lessonId]?.stars ?? 0;
-
 /**
  * Lesson 1.1 is always open; any other lesson opens with 2 stars on the one before it.
  * The first lesson of a unit needs 2 stars on every lesson of the previous unit (the Path's
  * "Unlocks with 2 stars on every unit N lesson").
  */
-export function isUnlocked(progress: Progress, lessonId: string): boolean {
-  const pos = ALL_LESSONS.findIndex((x) => x.lesson.id === lessonId);
-  if (pos < 0) return false;
-  if (pos === 0) return true;
-  const { unit, index } = ALL_LESSONS[pos];
-  if (index > 0) return starsOf(progress, unit.lessons[index - 1].id) >= UNLOCK_STARS;
-  const prevUnit = ALL_LESSONS[pos - 1].unit;
-  return prevUnit.lessons.every((l) => starsOf(progress, l.id) >= UNLOCK_STARS);
-}
+export const isUnlocked = (progress: Progress, lessonId: string): boolean => lessonOpen(progress, RHYTHM_TRACK, lessonId);
 
 /** The lesson to continue with: the first one, in path order, without 2 stars yet. Null when the path is done. */
-export function nextLesson(progress: Progress): Lesson | null {
-  return ALL_LESSONS.find((x) => starsOf(progress, x.lesson.id) < UNLOCK_STARS)?.lesson ?? null;
-}
+export const nextLesson = (progress: Progress): Lesson | null => nextIn(progress, RHYTHM_TRACK);
 
 /** Stars earned in a unit (max 3 per lesson: the hidden 4th star and the diamond count as three). */
-export function unitStars(progress: Progress, unitId: number): number {
-  const u = UNITS.find((x) => x.id === unitId);
-  return u ? u.lessons.reduce((sum, l) => sum + Math.min(SHOWN_STARS, starsOf(progress, l.id)), 0) : 0;
-}
+export const unitStars = (progress: Progress, unitId: number): number => unitStarsIn(progress, RHYTHM_TRACK, unitId);
 
 /** Stars over the whole path, for the "79 / 120 ★" header. */
-export function pathStars(progress: Progress): { earned: number; max: number } {
-  return {
-    earned: UNITS.reduce((sum, u) => sum + unitStars(progress, u.id), 0),
-    max: ALL_LESSONS.length * SHOWN_STARS,
-  };
-}
+export const pathStars = (progress: Progress): { earned: number; max: number } => trackStarsIn(progress, RHYTHM_TRACK);
 
-/** Progress with a finished lesson recorded, keeping the best stars and accuracy. */
+/** Progress with a finished lesson recorded (by its progress key, track.ts), keeping the best stars and accuracy. */
 export function recordLessonResult(progress: Progress, lessonId: string, stars: LessonProgress['stars'], accuracy: number): Progress {
   const prev = progress.lessons[lessonId];
   const next: LessonProgress = {

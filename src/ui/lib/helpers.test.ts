@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type Timeline } from '../../core/api';
-import { defaultProgress } from '../../game/storage';
+import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type Stars, type Timeline } from '../../core/api';
+import { defaultProgress, type Progress } from '../../game/storage';
 import { UNITS } from '../../game/path';
 import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
-import { continueLesson, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
+import { continueLesson, lessonOutcome, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
 import { beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
 import { setupHints, startBlockedKey } from './setupHints';
@@ -186,6 +186,44 @@ describe('learning path view', () => {
     expect(c?.lesson.id).toBe('7.3');
     expect(unitStates(p)[6]).toBe('current');
     expect(tileStates(p, UNITS[6], '7.3')).toEqual(['done', 'done', 'current', 'upcoming', 'upcoming']);
+  });
+});
+
+describe('lesson outcome on Results', () => {
+  const withStars = (stars: Record<string, number>): Progress => {
+    const p = defaultProgress();
+    for (const [id, n] of Object.entries(stars)) p.lessons[id] = { stars: n as Stars, bestAccuracy: 80 };
+    return p;
+  };
+  const allBefore = (id: string, n = 2): Record<string, number> =>
+    Object.fromEntries(UNITS.flatMap((u) => u.lessons).filter((l) => l.id < id || Number(l.id.split('.')[0]) < Number(id.split('.')[0])).map((l) => [l.id, n]));
+
+  it('a first pass opens the next lesson, and the main button goes there', () => {
+    const o = lessonOutcome(withStars({ '1.1': 2 }), '1.1', 0);
+    expect(o).toMatchObject({ kind: 'unlocked', continueId: '1.2' });
+    expect(o?.next?.id).toBe('1.2');
+  });
+
+  it('under two stars names the lesson two stars would open, and keeps the player on this lesson', () => {
+    expect(lessonOutcome(withStars({ '1.1': 1 }), '1.1', 0)).toMatchObject({ kind: 'needStars', continueId: null, next: { id: '1.2' } });
+    // The last lesson of a unit opens the next unit's first lesson.
+    expect(lessonOutcome(withStars({ ...allBefore('1.5'), '1.5': 1 }), '1.5', 1)?.next?.id).toBe('2.1');
+  });
+
+  it('playing an earlier lesson again continues the path where it is, not with the lesson after the replayed one', () => {
+    const o = lessonOutcome(withStars({ ...allBefore('2.3'), '1.2': 3 }), '1.2', 2);
+    expect(o).toMatchObject({ kind: 'passed', continueId: '2.3' });
+  });
+
+  it('the last lesson to two stars finishes the path; after that Next stays on the same lesson', () => {
+    const all = Object.fromEntries(UNITS.flatMap((u) => u.lessons).map((l) => [l.id, 2]));
+    expect(lessonOutcome(withStars(all), '8.5', 1)).toMatchObject({ kind: 'pathDone', continueId: null });
+    expect(lessonOutcome(withStars(all), '3.2', 2)).toMatchObject({ kind: 'passed', continueId: null });
+    expect(lessonOutcome(withStars({ ...all, '8.5': 1 }), '8.5', 0)).toMatchObject({ kind: 'needStars', next: null });
+  });
+
+  it('is null for a lesson id the path does not have', () => {
+    expect(lessonOutcome(defaultProgress(), '99.1', 0)).toBeNull();
   });
 });
 

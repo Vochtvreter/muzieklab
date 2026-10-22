@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { VIEWPORTS } from './helpers';
+import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
+import { letterOf } from '../src/core/pitch';
+import { noteLessonSettings } from '../src/game/notesPath';
+import { seed as seedStorage, VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
 
@@ -36,6 +39,86 @@ test('read notes: a G major round from Home to the summary, answered with the ke
   // The streak counts a round with answers.
   await page.getByRole('link', { name: 'Back to home' }).click();
   await expect(page.getByText('1-day streak')).toBeVisible();
+});
+
+test('read notes: a round answered all right ends on the summary (the last right answer moves on by itself)', async ({ page }) => {
+  // The round Play restores after a reload: the same settings and seed draw the same notes here and in the app.
+  const settings = { ...DEFAULT_NOTE_SETTINGS, count: 10 };
+  const seed = 4242;
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./#/notes/play');
+  for (const [i, note] of generateRound(settings, seed).entries()) {
+    await expect(page.getByText(`Note ${i + 1} of 10`)).toBeVisible();
+    await page.keyboard.press(letterOf(note.step).toLowerCase());
+  }
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible({ timeout: 5000 });
+  await expect(page).toHaveURL(/#\/notes\/done$/);
+  await expect(page.getByText(/^10 of 10 notes right/)).toBeVisible();
+});
+
+test('read notes lesson: from the Path to Round done, then the next lesson', async ({ page }) => {
+  // The lesson Play restores after a reload: its settings and seed draw the same notes here and in the app.
+  const settings = noteLessonSettings('notes', '1.1')!;
+  const seed = 4242;
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await seedStorage(page, { prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Start lesson 1.1' }).click();
+  await expect(page).toHaveURL(/#\/notes\/play$/);
+  await expect(page.getByText('Lesson 1.1 · Treble clef · C major')).toBeVisible();
+  // The same lesson with a known seed, so the test knows the notes.
+  await page.evaluate((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [], lesson: { track: 'notes', id: '1.1' } });
+  await page.reload();
+  for (const [i, note] of generateRound(settings, seed).entries()) {
+    await expect(page.getByText(`Note ${i + 1} of 10`)).toBeVisible();
+    await page.keyboard.press(letterOf(note.step).toLowerCase());
+  }
+  await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText('Read notes · Treble clef')).toBeVisible();
+  await expect(page.getByText('Lesson 1.2 unlocked')).toBeVisible();
+  await page.getByRole('button', { name: 'Next lesson: 1.2 · Twenty notes' }).click();
+  await expect(page.getByText('Lesson 1.2 · Treble clef · C major')).toBeVisible();
+  await expect(page.getByText('Note 1 of 20')).toBeVisible();
+  // Quit goes back to the Path, where 1.1 has its stars.
+  await page.getByRole('link', { name: /^Quit/ }).click();
+  await expect(page).toHaveURL(/#\/path$/);
+  await expect(page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 3 of 3 stars' })).toBeVisible();
+});
+
+test('read notes lesson: skipping to the summary counts the notes left as missed', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await seedStorage(page, { prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' }).click();
+  await expect(page.getByText('Lesson 1.1 · Treble clef · C major')).toBeVisible();
+  await page.getByRole('group', { name: 'Note names' }).getByRole('button').first().click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+  // One note answered, ten in the score; the time chart shows the one answered.
+  await expect(page.getByText(/^[01] of 10 notes right/)).toBeVisible();
+  await expect(page.getByRole('img', { name: /^Answer time for each of the 1 notes/ })).toBeVisible();
+  await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
+  await page.getByRole('button', { name: 'New round' }).click();
+  await expect(page.getByText('Lesson 1.1 · Treble clef · C major')).toBeVisible();
+});
+
+test('read notes lesson: three right, then skipped, is not "every note right"', async ({ page }) => {
+  const settings = noteLessonSettings('notes', '1.1')!;
+  const seed = 4242;
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [], lesson: { track: 'notes', id: '1.1' } });
+  await page.goto('./#/notes/play');
+  for (const [i, note] of generateRound(settings, seed).slice(0, 3).entries()) {
+    await expect(page.getByText(`Note ${i + 1} of 10`)).toBeVisible();
+    await page.keyboard.press(letterOf(note.step).toLowerCase());
+  }
+  await expect(page.getByText('Note 4 of 10')).toBeVisible();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+  await expect(page.getByText(/^3 of 10 notes right/)).toBeVisible();
+  await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
+  await expect(page.getByText('Nothing to practise: every note right, and quick.')).toHaveCount(0);
 });
 
 test('read notes: piano answers, a hint and skipping to the summary', async ({ page }) => {
@@ -79,19 +162,27 @@ test('learn: a practice link opens Read notes set up for its section', async ({ 
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/learn/8?s=8.3');
   await page.getByRole('link', { name: 'Practice the bass clef →' }).click();
-  await expect(page).toHaveURL(/#\/notes$/);
+  await expect(page).toHaveURL(/#\/notes\?from=8\.3$/);
   await expect(page.getByRole('button', { name: /Treble/ })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: /Bass/ })).toHaveAttribute('aria-pressed', 'true');
+  // Back returns to the section, also after a visit to the Key screen.
+  await page.getByRole('link', { name: /^Key: / }).click();
+  await page.getByRole('link', { name: 'Back to setup' }).click();
+  await expect(page).toHaveURL(/#\/notes\?from=8\.3$/);
+  await page.getByRole('link', { name: 'Back to chapter 8' }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
 });
 
 test('learn: a rhythm practice link opens Free practice set up for its section', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/learn/7');
   await page.getByRole('link', { name: 'Practice triplets →' }).click();
-  await expect(page).toHaveURL(/#\/setup$/);
+  await expect(page).toHaveURL(/#\/setup\?from=7\.1$/);
   await expect(page.getByRole('button', { name: 'Triplets', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Dotted', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: 'Ties', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('link', { name: 'Back to chapter 7' }).click();
+  await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
 });
 
 test('scales: from Home to the circle, a G major round played with the keyboard, and the stars on the circle', async ({ page }) => {
@@ -100,6 +191,9 @@ test('scales: from Home to the circle, a G major round played with the keyboard,
   await page.getByRole('link', { name: /^Scales/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Scales' })).toBeVisible();
   await expect(page.getByText('0 of 15')).toBeVisible();
+  // C major is selected first; G is one step clockwise.
+  await expect(page.getByRole('button', { name: 'Practice C major' })).toBeVisible();
+  await page.getByRole('button', { name: 'G major: no stars yet' }).click();
   await page.getByRole('button', { name: 'Practice G major' }).click();
   await expect(page.getByText('Scale 1 of 1')).toBeVisible();
   await expect(page.getByText('Play with A S D F G H J K L (white) and W E R T Y U I O (black)')).toBeVisible();

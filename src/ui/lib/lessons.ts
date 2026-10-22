@@ -1,6 +1,7 @@
 /** How the Learning Path looks for a given progress: unit states and the lesson tiles. Pure. */
 import type { NotatedBar, Settings } from '../../core/api';
-import { ALL_LESSONS, UNITS, findLesson, lessonSettings, nextLesson, type Lesson, type Unit } from '../../game/path';
+import { ALL_LESSONS, RHYTHM_TRACK, UNITS, findLesson, lessonSettings, nextLesson, type Lesson, type Unit } from '../../game/path';
+import { outcomeIn, type LessonOutcome } from '../../game/track';
 import type { Progress } from '../../game/storage';
 import { exerciseView } from '../exerciseView';
 import { makeRun, type Run } from '../store';
@@ -75,7 +76,15 @@ const PREVIEW_TRIES = 8;
  * The Home preview of a lesson: a run (same every visit) and the bar to show, chosen so it contains what the lesson
  * adds (the half rest in "Half rests"). Falls back to the first bar when no tried seed has one.
  */
+const previews = new Map<string, { run: Run; bar: number } | null>();
+
 export function lessonPreview(lessonId: string): { run: Run; bar: number } | null {
+  // The same every visit, so it is made once: Home mounts again on every visit, and some lessons try 8 seeds.
+  if (!previews.has(lessonId)) previews.set(lessonId, makeLessonPreview(lessonId));
+  return previews.get(lessonId) ?? null;
+}
+
+function makeLessonPreview(lessonId: string): { run: Run; bar: number } | null {
   const settings = lessonSettings(lessonId);
   const wanted = newFeatures(lessonId);
   let first: { run: Run; bar: number } | null = null;
@@ -92,3 +101,7 @@ export function lessonPreview(lessonId: string): { run: Run; bar: number } | nul
   }
   return first;
 }
+
+/** What a finished rhythm lesson means for the path, for Results (§6.4): see outcomeIn (track.ts). */
+export const lessonOutcome = (after: Progress, lessonId: string, starsBefore: number): LessonOutcome<Lesson> | null =>
+  outcomeIn(after, RHYTHM_TRACK, lessonId, starsBefore);

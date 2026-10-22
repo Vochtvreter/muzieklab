@@ -38,9 +38,10 @@ function StreakPill({ days }: { days: number }): JSX.Element {
 function LessonPreview({ lessonId, wide, count = 1 }: { lessonId: string; wide?: boolean; count?: 1 | 2 }): JSX.Element | null {
   const preview = useMemo(() => lessonPreview(lessonId), [lessonId]);
   const view = preview ? exerciseView(preview.run.exercise) : null;
-  if (!preview || !view || view.bars.length === 0) return null;
-  const from = Math.max(0, Math.min(preview.bar, view.bars.length - count));
-  const bars = view.bars.slice(from, from + count);
+  const from = preview && view ? Math.max(0, Math.min(preview.bar, view.bars.length - count)) : 0;
+  // The same array between renders, so the staff is not drawn again whenever Home renders.
+  const bars = useMemo(() => view?.bars.slice(from, from + count) ?? [], [view, from, count]);
+  if (!preview || !view || bars.length === 0) return null;
   return (
     <div className={'preview-staff' + (wide ? ' preview-staff--wide' : '')}>
       <StaffBox bars={bars} meter={preview.run.exercise.meter} barsPerRow={bars.length} label={describeBars(bars, preview.run.exercise.meter.id, from + 1)} />
@@ -239,12 +240,13 @@ export function Home(): JSX.Element {
 
 /** Desktop Home: the learning-path card (the current unit, a bar of all units, its lesson tiles and the next lesson). */
 function PathSummary({ currentUnit, currentId }: { currentUnit: Unit; currentId: string | null }): JSX.Element {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const p = state.progress;
   const states = unitStates(p);
   const cur = currentId ? currentUnit.lessons.find((l) => l.id === currentId) : null;
   return (
-    <Link to="/path" className="card path-card">
+    // The card shows the rhythm path, so it opens that path (not the one picked last on the Path tab).
+    <Link to="/path" className="card path-card" onClick={() => dispatch({ type: 'prefs', patch: { pathTrack: 'rhythm' } })}>
       <span className="path-card-head">
         <span className="eyebrow">{t('home.pathEyebrow')}</span>
         <span className="mono-muted">{t('home.pathUnitOf', { unit: UNITS.indexOf(currentUnit) + 1, total: UNITS.length })}</span>

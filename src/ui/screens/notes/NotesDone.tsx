@@ -1,22 +1,27 @@
 /**
  * Read notes · round done (DESIGN.md §3.5 Scoring): stars, correct / total, the average time and XP; time per note;
- * the notes that need practice (missed, slow); right answers by sign; and New round / Practice missed notes.
+ * the notes that need practice (missed, slow); right answers by sign; and New round / Practice missed notes. After a
+ * Read notes or Keys lesson (§8.2): the lesson and its unit, what it did for the path, and Next lesson once it has two
+ * stars.
  */
 import { useEffect, useRef, useState } from 'react';
-import { keySigns, missedIds, roundKeys, SLOW_MS, type KeyId, type NoteAnswer, type RoundResult } from '../../../core/api';
+import { keySigns, missedIds, roundKeys, scoreRound, SLOW_MS, type KeyId, type NoteAnswer, type RoundResult } from '../../../core/api';
+import { noteTrack } from '../../../game/notesPath';
+import { findTrackLesson, outcomeIn, UNLOCK_STARS } from '../../../game/track';
+import { OPENS_AFTER, trackOpen } from '../../../game/tracks';
 import { levelInfo } from '../../../game/xp';
 import { useElementWidth } from '../../../render/theme';
-import { t } from '../../../i18n';
+import { t, tx } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
-import { LevelUpContent } from '../../components/Reward';
+import { LevelUpContent, OutcomeBadge } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
 import { starsLabel } from '../../lib/format';
 import { letterName, majorName, octaveName, signWord } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { useStore, type NoteLast } from '../../store';
-import { useStartNotes } from './start';
+import { useStartNoteLesson, useStartNotes } from './start';
 
 const shownLevelUp = new WeakSet<NoteLast>();
 const secs = (ms: number): string => (ms / 1000).toFixed(1);
@@ -25,6 +30,7 @@ export function NotesDone(): JSX.Element | null {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const start = useStartNotes();
+  const startLesson = useStartNoteLesson();
   useDocTitle(t('app.docTitle', { page: t('notes.done.docTitle') }));
   const last = state.noteLast;
   useEffect(() => {
@@ -48,6 +54,8 @@ export function NotesDone(): JSX.Element | null {
 
   if (!last) return null;
   const { result: r, run, reward, answers } = last;
+  // A lesson's score counts notes left unanswered as missed; the time chart and the notes to practise show the ones answered.
+  const d = run.lesson ? scoreRound(run.notes, answers) : r;
   const s = run.settings;
   const keys = roundKeys(s);
   const clefs = s.clefs.length > 1 ? t('notes.setup.clefsBoth').toLowerCase() : t('notes.clefLower.' + s.clefs[0]);
@@ -56,17 +64,35 @@ export function NotesDone(): JSX.Element | null {
   const again = (): void => start(s, [], { replace: true });
   const practise = (): void => start(s, missed, { replace: true });
   const change = (): void => dispatch({ type: 'noteSettings', settings: s });
+  // A lesson: what the round did for its path, and the lesson Next starts.
+  const lesson = run.lesson;
+  const track = lesson && noteTrack(lesson.track);
+  const where = lesson && track ? findTrackLesson(track, lesson.id) : null;
+  const outcome = lesson && track ? outcomeIn(state.progress, track, lesson.id, last.lessonStarsBefore) : null;
+  const goOn = outcome?.continueId && track ? findTrackLesson(track, outcome.continueId)?.lesson ?? null : null;
+  const replay = (id: string): void => {
+    if (lesson) startLesson(lesson.track, id, { replace: true });
+  };
+  // Two stars on the last lesson the Keys path waits for open it (it was closed before this round).
+  const keysAfter = OPENS_AFTER.keys;
+  const opensKeys =
+    !!keysAfter && lesson?.track === keysAfter.track && where?.unit.id === keysAfter.unit && last.lessonStarsBefore < UNLOCK_STARS && trackOpen(state.progress, 'keys');
+  const outcomeBadge = outcome && outcome.kind !== 'passed' ? <OutcomeBadge outcome={outcome} /> : null;
 
   return (
     <ExerciseFrame className="frame--results">
       <div className="page results ndone no-scrollbar">
         <div className="screen-head">
-          <Link to="/" aria-label={t('notes.done.back')} className="icon-btn icon-btn--edge-sm">
+          <Link to={lesson ? '/path' : '/'} aria-label={t(lesson ? 'notes.done.lessonBack' : 'notes.done.back')} className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">
-            <h1 className="screen-title">{t('notes.done.title')}</h1>
-            <span className="muted-text">{t('notes.done.sub', { clefs, keys: keyText })}</span>
+            <h1 className="screen-title">{lesson ? t('notes.done.lessonTitle', { id: lesson.id }) : t('notes.done.title')}</h1>
+            <span className="muted-text">
+              {lesson && where
+                ? t('notes.done.lessonSub', { track: t('path.track.' + lesson.track), unit: tx(where.unit.titleKey) })
+                : t('notes.done.sub', { clefs, keys: keyText })}
+            </span>
           </div>
         </div>
 
@@ -82,37 +108,77 @@ export function NotesDone(): JSX.Element | null {
           </div>
           <div className="score-pct">{t('common.percent', { value: Math.round(r.accuracy) })}</div>
           <div className="muted-text score-sub">
-            {r.total === 0 ? t('notes.done.none') : t('notes.done.score', { right: r.right, total: r.total, avg: secs(r.avgMs) })}
+            {d.total === 0 ? t('notes.done.none') : t('notes.done.score', { right: r.right, total: r.total, avg: secs(d.avgMs) })}
             {r.hinted > 0 && ' · ' + t('notes.done.hinted', { count: r.hinted })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
           </div>
         </div>
 
-        {r.total > 0 && <TimeChart answers={answers.slice(0, r.total)} avgMs={r.avgMs} missed={r.total - r.right - r.hinted} />}
-        {r.total > 0 && <Needs r={r} />}
-        {r.bySign.length > 1 && <BySign r={r} keyId={keys.length === 1 ? keys[0] : null} />}
+        {(outcomeBadge || opensKeys) && (
+          <div className="badges">
+            {outcomeBadge}
+            {opensKeys && (
+              <span className="badge badge--unlock">
+                <Icon name="unlock" size={15} />
+                {t('notes.done.keysOpen')}
+              </span>
+            )}
+          </div>
+        )}
 
-        <div className="results-actions">
-          <div className="results-main">
-            <button type="button" className="btn btn--outline" onClick={again}>
-              {t('notes.done.newRound')}
-            </button>
-            {missed.length > 0 ? (
-              <button type="button" className="btn btn--accent" onClick={practise}>
-                {t('notes.done.practiceMissed')}
+        {d.total > 0 && <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />}
+        {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
+        {d.total > 0 && (d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} />}
+        {d.bySign.length > 1 && <BySign r={d} keyId={keys.length === 1 ? keys[0] : null} />}
+
+        {lesson ? (
+          // A lesson: New round plays it again (new notes); Next lesson once it has two stars, else back to the path.
+          <div className="results-actions">
+            <div className="results-main">
+              {goOn ? (
+                <button type="button" className="btn btn--outline" onClick={() => replay(lesson.id)}>
+                  {t('notes.done.newRound')}
+                </button>
+              ) : (
+                <Link to="/path" className="btn btn--outline">
+                  {t('notes.done.toPath')}
+                </Link>
+              )}
+              {goOn ? (
+                <button type="button" className="btn btn--accent" aria-label={t('results.nextLessonLabel', { id: goOn.id, title: tx(goOn.title) })}
+                  onClick={() => replay(goOn.id)}>
+                  {t('results.nextLesson')}
+                </button>
+              ) : (
+                <button type="button" className="btn btn--accent" onClick={() => replay(lesson.id)}>
+                  {t('notes.done.newRound')}
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="results-actions">
+            <div className="results-main">
+              <button type="button" className="btn btn--outline" onClick={again}>
+                {t('notes.done.newRound')}
               </button>
-            ) : (
-              <Link to="/notes" className="btn btn--accent" onClick={change}>
+              {missed.length > 0 ? (
+                <button type="button" className="btn btn--accent" onClick={practise}>
+                  {t('notes.done.practiceMissed')}
+                </button>
+              ) : (
+                <Link to="/notes" className="btn btn--accent" onClick={change}>
+                  {t('notes.done.change')}
+                </Link>
+              )}
+            </div>
+            {missed.length > 0 && (
+              <Link to="/notes" className="ghost-btn ndone-change" onClick={change}>
+                <Icon name="sliders" size={18} />
                 {t('notes.done.change')}
               </Link>
             )}
           </div>
-          {missed.length > 0 && (
-            <Link to="/notes" className="ghost-btn ndone-change" onClick={change}>
-              <Icon name="sliders" size={18} />
-              {t('notes.done.change')}
-            </Link>
-          )}
-        </div>
+        )}
       </div>
       {sheet && (
         <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="levelup" labelledBy="leveluptitle" maxWidth={bp === 'desktop' ? 460 : undefined}>

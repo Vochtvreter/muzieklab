@@ -143,7 +143,8 @@ function PracticeLink({ section }: { section: Section }): JSX.Element {
     } else dispatch({ type: 'settings', settings: { ...state.settings, ...p.rhythm } });
   };
   return (
-    <Link to={'notes' in p ? '/notes' : 'scales' in p ? '/scales/setup' : '/setup'} className="text-btn text-btn--link learn-practice" onClick={start}>
+    <Link to={'notes' in p ? '/notes' : 'scales' in p ? '/scales/setup' : '/setup'} query={'from=' + section.id} className="text-btn text-btn--link learn-practice"
+      onClick={start}>
       {t(sectionKey(section.id, 'practice'))} →
     </Link>
   );
@@ -330,7 +331,8 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
           )}
 
           <div className="learn-end">
-            <Link to={chapter.practice === 'notes' ? '/notes' : chapter.practice === 'scales' ? '/scales' : '/setup'} className="btn btn--accent">
+            <Link to={chapter.practice === 'notes' ? '/notes' : chapter.practice === 'scales' ? '/scales' : '/setup'} query={chapter.practice === 'scales' ? undefined : 'from=' + chapter.n}
+              className="btn btn--accent">
               {t(chapter.practice === 'notes' ? 'learn.practice' : chapter.practice === 'scales' ? 'learn.practiceScales' : 'learn.practiceRhythm')}
             </Link>
             <Link to="/learn" className="ghost-btn learn-all">

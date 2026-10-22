@@ -41,7 +41,8 @@ export interface ScaleSettings {
 
 export const DEFAULT_SCALE_SETTINGS: ScaleSettings = {
   keyMode: 'one',
-  keys: ['G'],
+  // C major first: no sharps or flats, only white keys, as method books start (then G, one sharp, round the circle).
+  keys: ['C'],
   types: ['major'],
   input: 'piano',
   direction: 'up',

@@ -55,6 +55,8 @@ function deviceLanguages(): readonly string[] {
 
 let locale = DEFAULT_LOCALE;
 const warned = new Set<string>();
+/** Messages without params, formatted once per locale: Play looks up a couple of dozen on every frame. */
+const plain = new Map<string, string>();
 
 export function getLocale(): string {
   return locale;
@@ -63,6 +65,7 @@ export function getLocale(): string {
 /** Switches the active catalog and the document's lang attribute. */
 export function setLocale(next: string): void {
   if (!catalogs[next]) return;
+  if (next !== locale) plain.clear();
   locale = next;
   if (typeof document !== 'undefined') document.documentElement.lang = next;
 }
@@ -83,6 +86,10 @@ export function hasMessage(key: string): boolean {
 
 /** Translate `key` with ICU-style params. Falls back to English, then to the key itself. */
 export function t(key: string, params?: MessageParams): string {
+  if (params === undefined) {
+    const hit = plain.get(key);
+    if (hit !== undefined) return hit;
+  }
   const msg = lookup(key, catalogs[locale]) ?? lookup(key, catalogs[DEFAULT_LOCALE]);
   if (msg === undefined) {
     if (!warned.has(key) && typeof console !== 'undefined') {
@@ -91,7 +98,9 @@ export function t(key: string, params?: MessageParams): string {
     }
     return key;
   }
-  return formatMessage(msg, params, locale);
+  const out = formatMessage(msg, params, locale);
+  if (params === undefined) plain.set(key, out);
+  return out;
 }
 
 /**

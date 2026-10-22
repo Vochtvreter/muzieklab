@@ -31,6 +31,8 @@ export default defineConfig({
     }),
   ],
   base: './',
+  // JSON modules (the message catalogs) as JSON.parse of a string: faster to load than the same data as a JS object.
+  json: { stringify: true },
   build: {
     // The VexFlow chunk (Bravura glyph data included) is ~565 kB on its own; everything else is far below.
     chunkSizeWarningLimit: 600,

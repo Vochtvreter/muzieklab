@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { DEFAULT_SETTINGS, generateExercise, type JudgeResult, type Settings } from '../../core/api';
 import { DEFAULT_PREFS } from '../../game/storage';
 import { exerciseView } from '../exerciseView';
-import { usePlaySession } from './playSession';
+import { howToIntro, usePlaySession } from './playSession';
 
 /*
  * The play session against a fake audio engine. Two clocks, as on a real device: `clock.now` is the scheduling clock
@@ -65,7 +65,7 @@ function setup(settings: Partial<Settings> = {}, runExtra: { needsGesture?: bool
   const ex = generateExercise({ ...DEFAULT_SETTINGS, bars: 4, tempo: 80, rests: [], ...settings }, 3);
   const view = exerciseView(ex)!;
   const run = { exercise: ex, lessonId: null, daily: null, ...runExtra };
-  const prefs = { ...DEFAULT_PREFS, seenHowTo: true };
+  const prefs = { ...DEFAULT_PREFS, seenHowTo: true, seenHold: true };
   const done: { result: JudgeResult | null } = { result: null };
   const hook = renderHook(() =>
     usePlaySession(run, view, prefs, () => undefined, (r) => {
@@ -233,7 +233,7 @@ describe('usePlaySession', () => {
     const ex = generateExercise({ ...DEFAULT_SETTINGS, bars: 2 }, 5);
     const view = exerciseView(ex)!;
     const run = { exercise: ex, lessonId: null, daily: null };
-    const prefs = { ...DEFAULT_PREFS, seenHowTo: true };
+    const prefs = { ...DEFAULT_PREFS, seenHowTo: true, seenHold: true };
     starts.length = 0;
     const first = renderHook(() => usePlaySession(run, view, prefs, () => undefined, () => undefined));
     at(0.1); // first frame
@@ -241,6 +241,24 @@ describe('usePlaySession', () => {
     const again = renderHook(() => usePlaySession(run, view, prefs, () => undefined, () => undefined));
     expect(starts.length).toBe(1);
     expect(again.result.current.sheet).toBe('ready');
+  });
+
+  it('opens How to play again the first time holding counts, and starts once it is closed', () => {
+    const ex = generateExercise({ ...DEFAULT_SETTINGS, bars: 2, hold: true }, 5);
+    const view = exerciseView(ex)!;
+    const run = { exercise: ex, lessonId: '2.1', daily: null };
+    // Seen in a tap-only lesson (unit 1), never with holds.
+    const prefs = { ...DEFAULT_PREFS, seenHowTo: true, seenHold: false };
+    let introDone = 0;
+    starts.length = 0;
+    const hook = renderHook(() => usePlaySession(run, view, prefs, () => (introDone += 1), () => undefined));
+    expect(hook.result.current.intro).toBe('hold');
+    expect(hook.result.current.sheet).toBe('help');
+    expect(starts.length).toBe(0);
+    act(() => hook.result.current.closeSheet());
+    expect(introDone).toBe(1);
+    expect(starts.length).toBe(1);
+    expect(hook.result.current.phase).toBe('running');
   });
 
   it('pauses with a note when the audio is interrupted', () => {
@@ -252,5 +270,18 @@ describe('usePlaySession', () => {
     expect(hook.result.current.interrupted).toBe(true);
     act(() => hook.result.current.closeSheet());
     expect(hook.result.current.interrupted).toBe(false);
+  });
+});
+
+describe('howToIntro', () => {
+  it('opens How to play the very first time, tap only or not', () => {
+    expect(howToIntro({ seenHowTo: false, seenHold: false }, false)).toBe('first');
+    expect(howToIntro({ seenHowTo: false, seenHold: false }, true)).toBe('first');
+  });
+
+  it('opens it again for the first exercise that judges holds, and never for tap-only ones', () => {
+    expect(howToIntro({ seenHowTo: true, seenHold: false }, true)).toBe('hold');
+    expect(howToIntro({ seenHowTo: true, seenHold: false }, false)).toBeNull();
+    expect(howToIntro({ seenHowTo: true, seenHold: true }, true)).toBeNull();
   });
 });

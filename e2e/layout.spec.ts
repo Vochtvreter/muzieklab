@@ -71,6 +71,50 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('path: three paths, a unit open with its lessons by name, Keys locked', async ({ page }) => {
+      known(name, 'path-tracks');
+      await page.goto('./#/path');
+      const paths = page.getByRole('group', { name: 'Paths' }).getByRole('button');
+      await expect(paths).toHaveCount(3);
+      await expect(paths.nth(0)).toHaveAttribute('aria-pressed', 'true');
+      // The current unit is open: its lessons by name, the first one to play.
+      await expect(page.getByRole('button', { name: /^1 · Quarter and half notes/ })).toHaveAttribute('aria-expanded', 'true');
+      await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Quarter notes: 0 of 3 stars' }));
+      await expect(page.getByRole('img', { name: 'Lesson 1.2 · Half notes, locked' })).toBeVisible();
+
+      await expectClickable(paths.nth(1));
+      await paths.nth(1).click();
+      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('link', { name: 'Theory: chapter 8' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' }));
+      await expectClickable(page.getByRole('button', { name: 'Start lesson 1.1' }));
+      // Closing the open unit shows its lessons as stars again.
+      await page.getByRole('button', { name: /^1 · Treble clef/ }).click();
+      await expect(page.getByRole('button', { name: /^1 · Treble clef/ })).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.locator('#unit-notes-1')).toBeHidden();
+      await expect(page.locator('.unit-stars').getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' })).toBeVisible();
+      // A tap low on the header, right above the stars, opens the unit (it does not start lesson 1.1).
+      const head = page.getByRole('button', { name: /^1 · Treble clef/ });
+      const headBox = (await head.boundingBox())!;
+      await head.click({ position: { x: 30, y: headBox.height - 5 } });
+      await expect(head).toHaveAttribute('aria-expanded', 'true');
+      await expect(page).toHaveURL(/#\/path$/);
+
+      await paths.nth(2).click();
+      await expect(page.getByText('Opens after Read notes unit 3').first()).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Go to Read notes' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      // With the keyboard: the focus stays on the button, which becomes Start for Read notes.
+      await page.getByRole('button', { name: 'Go to Read notes' }).focus();
+      await page.keyboard.press('Enter');
+      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Start lesson 1.1' })).toBeFocused();
+      // The app remembers the path picked last.
+      await page.reload();
+      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
+    });
+
     test('settings: leniency and reset progress', async ({ page }) => {
       known(name, 'settings');
       await page.goto('./#/settings');
@@ -128,9 +172,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Skip to results' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
       await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      // Nothing was played: the badge says what opens lesson 1.2, and Next stays on this lesson.
+      await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'Copy' }));
       await expectClickable(page.getByRole('button', { name: 'Retry' }));
       await expectClickable(page.getByRole('button', { name: 'Next exercise' }));
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 
@@ -143,6 +190,49 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'New round' }));
       await expectClickable(page.getByRole('link', { name: 'Change setup' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('path: the current unit is in view, and long Dutch titles stay inside their boxes', async ({ page }) => {
+      known(name, 'path-current');
+      // Rhythm up to lesson 7.2 with two stars: unit 7 is current, below the fold on most screens.
+      const lessons: Record<string, { stars: number; bestAccuracy: number }> = {};
+      for (let u = 1; u <= 6; u++) for (let l = 1; l <= 5; l++) lessons[`${u}.${l}`] = { stars: 2, bestAccuracy: 88 };
+      lessons['7.1'] = lessons['7.2'] = { stars: 2, bestAccuracy: 88 };
+      await seed(page, { progress: { lessons }, prefs: { language: 'nl', seenHowTo: true, seenHold: true } });
+      await page.goto('./#/path');
+      await expect(page.getByRole('button', { name: /^7 · Gepunteerde noten/ })).toBeInViewport();
+      // Picking another path keeps the paths (and the focused one) in view, on a short screen too.
+      const notesPath = page.getByRole('group', { name: 'Paden' }).getByRole('button').nth(1);
+      await notesPath.focus();
+      await page.keyboard.press('Enter');
+      await expect(notesPath).toHaveAttribute('aria-pressed', 'true');
+      await expect(notesPath).toBeInViewport();
+      await page.getByRole('group', { name: 'Paden' }).getByRole('button').nth(0).click();
+      await expect(page.getByRole('button', { name: /^7 · Gepunteerde noten/ })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: /^Begin les 7\.3/ }));
+      // "5 · Tweekwartsmaat, achtste rusten": a long word breaks instead of running into the unit's stars.
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const spill = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('.unit-head .unit-title, .lesson-title')]
+          .filter((el) => el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1)
+          .map((el) => el.textContent),
+      );
+      expect(spill, 'titles that run out of their box').toEqual([]);
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes lesson: round done with Next lesson', async ({ page }) => {
+      known(name, 'notes-lesson-done');
+      await seed(page, { progress: { lessons: { 'notes:1.1': { stars: 3, bestAccuracy: 96 } } }, prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+      await page.goto('./#/path');
+      await page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 3 of 3 stars' }).click();
+      await page.getByRole('button', { name: 'Skip to summary' }).click();
+      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: 'Back to the path' }));
+      await expectClickable(page.getByRole('button', { name: 'New round' }));
+      await expectClickable(page.getByRole('button', { name: 'Next lesson: 1.2 · Twenty notes' }));
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 
@@ -220,7 +310,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('scales: play G major on the piano, then round done', async ({ page }) => {
       known(name, 'scales-play');
       // The Scales piano shows its letters even with Read notes' labels off.
-      await seed(page, { prefs: { pianoLabels: 'off' } });
+      await seed(page, {
+        prefs: { pianoLabels: 'off' },
+        progress: { scales: { settings: { keyMode: 'one', keys: ['G'], types: ['major'], input: 'piano', direction: 'up', write: 'signs', showSteps: true, playNotes: true }, stars: {} } },
+      });
       await page.goto('./#/scales/setup');
       await page.getByRole('button', { name: /^Start · / }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
@@ -415,7 +508,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
   test.describe(`${name} in Dutch`, () => {
     test.use({ viewport: VIEWPORTS[name], hasTouch: !name.startsWith('desktop') && !name.startsWith('laptop') });
-    test.beforeEach(async ({ page }) => seed(page, { prefs: { language: 'nl', seenHowTo: true } }));
+    test.beforeEach(async ({ page }) => seed(page, { prefs: { language: 'nl', seenHowTo: true, seenHold: true } }));
 
     const screens: [string, string, string][] = [
       ['', 'Start', 'Verder met de les'],
@@ -438,7 +531,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/learn/9', 'Kruisen, mollen en herstellingstekens', ''],
       ['#/learn/10', 'Voortekening', ''],
       ['#/learn/11', 'Toonladders', ''],
-      ['#/scales', 'Toonladders', 'Oefen G majeur'],
+      ['#/scales', 'Toonladders', 'Oefen C majeur'],
       ['#/scales/setup', 'Toonladders oefenen', 'Start · '],
     ];
     for (const [hash, title, action] of screens) {

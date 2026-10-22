@@ -11,18 +11,20 @@ import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useDocTitle } from '../../hooks';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { keySignsAria, letterName, majorName, minorName } from '../../lib/noteText';
 import { Link, navigate, type Route } from '../../router';
 import { useStore } from '../../store';
 
 export function NotesKey(): JSX.Element {
   const { state, dispatch } = useStore();
+  const { carry } = useLearnReturn();
   const s = state.noteSettings;
   return (
-    <KeyScreen keys={roundKeys(s)} mix={s.mixKeys && s.keys.length > 1} back="/notes" mixText={t('notes.keys.mixText')}
+    <KeyScreen keys={roundKeys(s)} mix={s.mixKeys && s.keys.length > 1} back="/notes" backQuery={carry} mixText={t('notes.keys.mixText')}
       onUse={(keys, mix) => {
         dispatch({ type: 'noteSettings', settings: { ...s, keys, mixKeys: mix } });
-        navigate('/notes', { replace: true });
+        navigate('/notes', { replace: true, query: carry });
       }} />
   );
 }
@@ -32,12 +34,14 @@ interface KeyScreenProps {
   keys: KeyId[];
   mix: boolean;
   back: Route;
+  /** The setup's query to go back with (?from= a Learn section). */
+  backQuery?: string;
   /** What Mix keys does, for the summary line. */
   mixText: string;
   onUse(keys: KeyId[], mix: boolean): void;
 }
 
-export function KeyScreen({ keys, mix: mixed, back, mixText, onUse }: KeyScreenProps): JSX.Element {
+export function KeyScreen({ keys, mix: mixed, back, backQuery, mixText, onUse }: KeyScreenProps): JSX.Element {
   useDocTitle(t('app.docTitle', { page: t('notes.keys.title') }));
   // A draft until Use: Back leaves the setup as it was.
   const [mix, setMix] = useState(mixed);
@@ -86,7 +90,7 @@ export function KeyScreen({ keys, mix: mixed, back, mixText, onUse }: KeyScreenP
     <ExerciseFrame className="frame--setup">
       <div className="page setup nkeys no-scrollbar">
         <div className="screen-head">
-          <Link to={back} aria-label={t('notes.keys.back')} className="icon-btn icon-btn--edge">
+          <Link to={back} query={backQuery} aria-label={t('notes.keys.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <h1 className="screen-title">{t('notes.keys.title')}</h1>

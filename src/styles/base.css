@@ -184,7 +184,7 @@ button:active:not(:disabled) {
   }
 }
 
-/* Scrolling: screens are laid out to fit, so the page never shows a scrollbar. Lists that grow use .m-scroll. */
+/* Scrolling: screens are laid out to fit; touch screens never show a scrollbar. Lists that grow use .m-scroll. */
 html {
   scrollbar-width: none;
 }

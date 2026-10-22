@@ -70,7 +70,7 @@ export function ScalesDone(): JSX.Element | null {
         </div>
 
         <div className="score sdone-score">
-          <div className="score-pct" aria-label={t('scales.done.cleanAria', { clean: r.clean, total: r.total })}>
+          <div className="score-pct" role="img" aria-label={t('scales.done.cleanAria', { clean: r.clean, total: r.total })}>
             <span aria-hidden="true">{r.clean}</span>
             <span aria-hidden="true" className="sdone-of">
               {' '}

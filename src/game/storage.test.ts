@@ -49,7 +49,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const };
+    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
@@ -100,6 +100,13 @@ describe('prefs and progress storage', () => {
     expect(loadPrefs().language).toBe('system');
   });
 
+  it('keeps the Path tab on a known path, else Rhythm', () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ pathTrack: 'notes' }));
+    expect(loadPrefs().pathTrack).toBe('notes');
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ pathTrack: 'scales' }));
+    expect(loadPrefs().pathTrack).toBe('rhythm');
+  });
+
   it('survives corrupt JSON', () => {
     localStorage.setItem(PREFS_KEY, '{not json');
     localStorage.setItem(PROGRESS_KEY, '[1,2');
@@ -144,6 +151,23 @@ describe('prefs and progress storage', () => {
     });
     expect(loadPrefs()).toEqual(DEFAULT_PREFS);
     get.mockRestore();
+  });
+
+  it('prefs saved before seenHold count holds as seen only when the player has played holds', () => {
+    const old = (prefs: object, progress: Partial<Progress>): boolean => {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify({ ...defaultProgress(), ...progress }));
+      return loadPrefs().seenHold;
+    };
+    // In unit 1 (tap only): the holding version of How to play is still to come.
+    expect(old({ seenHowTo: true }, { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } })).toBe(false);
+    // Past unit 1, or after free practice or a daily challenge (hold by default): holding is known.
+    expect(old({ seenHowTo: true }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(true);
+    expect(old({ seenHowTo: true }, { lastSettings: { ...DEFAULT_SETTINGS } })).toBe(true);
+    expect(old({ seenHowTo: true }, { daily: { day: '2026-10-17', stars: 2, accuracy: 80 } })).toBe(true);
+    // Never saw How to play: the first exercise shows it anyway. A saved seenHold is kept as it is.
+    expect(old({ seenHowTo: false }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(false);
+    expect(old({ seenHowTo: true, seenHold: false }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(false);
   });
 
   it('resetProgress clears progress but keeps prefs', () => {

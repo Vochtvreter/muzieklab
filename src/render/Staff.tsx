@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { Meter, NotatedBar } from '../core/types';
 import type { CountMark } from './counting';
-import { drawStaff, type NoteMark } from './staffDraw';
+import { drawStaff, placeCursor, type NoteBox, type NoteMark } from './staffDraw';
 import { readToken, useElementWidth, useThemeVersion } from './theme';
 
 export type { NoteMark };
@@ -29,15 +29,20 @@ export function Staff(props: StaffProps): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(hostRef);
   const themeVersion = useThemeVersion();
+  // The drawn staff's note boxes and cursor colour: the cursor moves on its own, without drawing the staff again.
+  const drawn = useRef<{ onsets: Map<number, NoteBox>; colour: string } | null>(null);
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
 
   useLayoutEffect(() => {
     const el = hostRef.current;
     if (!el || width <= 0) return;
-    drawStaff(el, {
+    const colour = readToken(el, 'slate');
+    const { onsets } = drawStaff(el, {
       bars,
       meter,
       marks,
-      cursor,
+      cursor: cursorRef.current,
       // A staff that can show a cursor (cursor prop given, even null) keeps room for it, so it never jumps.
       cursorSpace: cursor !== undefined,
       barsPerRow,
@@ -50,10 +55,20 @@ export function Staff(props: StaffProps): JSX.Element {
         hit: readToken(el, 'hit'),
         early: readToken(el, 'early'),
         miss: readToken(el, 'miss'),
-        cursor: readToken(el, 'slate'),
+        cursor: colour,
       },
     });
-  }, [bars, meter, marks, cursor, barsPerRow, width, themeVersion, countText, timeSig]);
+    drawn.current = { onsets, colour };
+    // cursor is left out on purpose (the effect below moves it); `cursor !== undefined` only sets the room above.
+  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, themeVersion, countText, timeSig]);
+
+  // Play moves the cursor once per note: swap the highlight box instead of drawing VexFlow again.
+  useLayoutEffect(() => {
+    const el = hostRef.current;
+    const d = drawn.current;
+    if (!el || !d) return;
+    placeCursor(el, cursor == null ? null : (d.onsets.get(cursor) ?? null), d.colour);
+  }, [cursor]);
 
   return <div ref={hostRef} role="img" aria-label={label} style={{ width: '100%', minWidth: 0 }} />;
 }

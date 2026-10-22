@@ -1,0 +1,22 @@
+import { learnReturn } from './learnReturn';
+
+const q = (s: string): URLSearchParams => new URLSearchParams(s);
+
+describe('learnReturn', () => {
+  it('goes back to the section a Practice link came from', () => {
+    expect(learnReturn(q('from=3.1'))).toEqual({ to: '/learn/3', query: 's=3.1', chapter: 3 });
+    expect(learnReturn(q('from=10.2'))).toEqual({ to: '/learn/10', query: 's=10.2', chapter: 10 });
+  });
+
+  it("goes back to the chapter from its Practice button, or when the section is not one of the chapter's", () => {
+    expect(learnReturn(q('from=8'))).toEqual({ to: '/learn/8', chapter: 8 });
+    expect(learnReturn(q('from=3.9'))).toEqual({ to: '/learn/3', chapter: 3 });
+  });
+
+  it('is null when the setup was not opened from Learn, or the chapter does not exist', () => {
+    expect(learnReturn(q(''))).toBeNull();
+    expect(learnReturn(q('from=99'))).toBeNull();
+    expect(learnReturn(q('from=home'))).toBeNull();
+    expect(learnReturn(q('from=3.1.2'))).toBeNull();
+  });
+});

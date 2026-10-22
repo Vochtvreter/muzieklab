@@ -24,9 +24,14 @@ export interface PitchStaffProps {
   className?: string;
 }
 
+const NO_NOTES: PitchNote[] = [];
+
 /** A five-line staff in treble or bass clef with a key signature and whole notes (Read notes, Scales, Learn chapters 8–11). */
 export function PitchStaff(props: PitchStaffProps): JSX.Element {
-  const { clef, keyId, notes, slots = notes.length, marks, cursor, scale = 1, room = 3, barlines = true, label, className } = props;
+  const { clef, keyId, slots = props.notes.length, marks, cursor, scale = 1, room = 3, barlines = true, label, className } = props;
+  // A key-signature staff passes notes={[]}, a new array every render: one shared empty list keeps VexFlow from drawing
+  // it again each time its parent renders.
+  const notes = props.notes.length ? props.notes : NO_NOTES;
   const hostRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(hostRef);
   const themeVersion = useThemeVersion();

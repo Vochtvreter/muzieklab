@@ -9,6 +9,7 @@ import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented, SwitchTrack } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useDocTitle } from '../../hooks';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { keyName, stepsText } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore } from '../../store';
@@ -21,11 +22,13 @@ export function ScalesSetup(): JSX.Element {
   const s = state.scaleSettings;
   const hubKey = state.scaleHub.key;
   const update = (patch: Partial<ScaleSettings>): void => dispatch({ type: 'scaleSettings', settings: { ...s, ...patch } });
+  // Opened from Learn chapter 11: Back returns there, also after a visit to the Key screen.
+  const { back, carry } = useLearnReturn();
 
   const keys = scaleRoundKeys(s);
   const count = keys.length * s.types.length;
   const pickKeys = (v: ScaleKeys): void => {
-    if (v === 'pick') navigate('/scales/key');
+    if (v === 'pick') navigate('/scales/key', { query: carry });
     else update({ keyMode: v, keys: v === 'one' ? [hubKey] : s.keys });
   };
   const keyHint =
@@ -54,7 +57,8 @@ export function ScalesSetup(): JSX.Element {
     <ExerciseFrame className="frame--setup">
       <div className="page setup ssetup no-scrollbar">
         <div className="screen-head">
-          <Link to="/scales" aria-label={t('scales.setup.back')} className="icon-btn icon-btn--edge">
+          <Link to={back?.to ?? '/scales'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('scales.setup.back')}
+            className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">
@@ -76,7 +80,7 @@ export function ScalesSetup(): JSX.Element {
           <span className="muted-text input-hint" aria-live="polite">
             {keyHint}{' '}
             {s.keyMode === 'pick' && (
-              <Link to="/scales/key" className="text-link">
+              <Link to="/scales/key" query={carry} className="text-link">
                 {t('scales.setup.change')}
               </Link>
             )}

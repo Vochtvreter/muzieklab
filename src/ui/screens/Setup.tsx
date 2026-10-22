@@ -10,6 +10,7 @@ import { exerciseView } from '../exerciseView';
 import { useDocTitle } from '../hooks';
 import { difficultyLevel, newSeed, tempoWordKey } from '../lib/format';
 import { describeBars } from '../lib/notation';
+import { useLearnReturn } from '../lib/learnReturn';
 import { NO_NOTES_HINT_ID, meterHintId, setupHints, startBlockedKey } from '../lib/setupHints';
 import { Link } from '../router';
 import { makeRun, useStore } from '../store';
@@ -26,6 +27,8 @@ export function Setup(): JSX.Element {
   const start = useStartPractice();
   const [previewSeed, setPreviewSeed] = useState(() => newSeed());
   const [more, setMore] = useState(false);
+  // Opened from a Learn section: Back returns there.
+  const { back } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('setup.title') }));
 
   const hold = state.prefs.holdMode === 'hold';
@@ -58,7 +61,7 @@ export function Setup(): JSX.Element {
     <ExerciseFrame className="frame--setup">
       <div className="page setup no-scrollbar">
         <div className="screen-head">
-          <Link to="/" aria-label={t('common.back')} className="icon-btn icon-btn--edge">
+          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('common.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">

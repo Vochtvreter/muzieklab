@@ -122,6 +122,24 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     setHelp(null);
     if (!state.prefs.seenEchoHowTo) dispatch({ type: 'prefs', patch: { seenEchoHowTo: true } });
   };
+  // Desktop: Esc closes How to play and ? opens it again, as the sheet says (closing it starts no sound here).
+  const seen = state.prefs.seenEchoHowTo;
+  useEffect(() => {
+    if (!keys) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Escape' && help) {
+        e.preventDefault();
+        setHelp(null);
+        if (!seen) dispatch({ type: 'prefs', patch: { seenEchoHowTo: true } });
+      } else if (e.key === '?' && !help) {
+        e.preventDefault();
+        setHelp('help');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [keys, help, seen, dispatch]);
   const { shown: helpShown, closing } = useLingering(help, 240);
   const bars = t('common.bars', { count: ex.bars.length });
   const cue = playing ? t('play.echo.listening') : heard ? t('play.echo.yourTurnCue') : t('play.echo.listenFirst');
