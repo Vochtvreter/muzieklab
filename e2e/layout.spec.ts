@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import { expectClickable, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, pad, seed, VIEWPORTS, type ViewportName } from './helpers';
 
@@ -11,6 +11,41 @@ const known = (vp: string, screen: string): void => {
   const why = KNOWN[`${vp}/${screen}`];
   test.fail(!!why, why);
 };
+
+/** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
+const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
+  metronome: 'on', countIn: 1, density: 'balanced', restAmount: 'few' };
+
+/**
+ * Plays along on the keyboard, every beat `lateMs` after it, from the first counted beat on Play: a steady late tapper
+ * (Bluetooth headphones). Each key event carries its own time stamp, so a timer that fires late does not move a tap.
+ */
+async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number): Promise<void> {
+  await page.evaluate(
+    ({ beats, beatMs, lateMs }) =>
+      new Promise<void>((resolve) => {
+        const key = (type: string, at: number): void => {
+          const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
+          Object.defineProperty(ev, 'timeStamp', { value: at });
+          window.dispatchEvent(ev);
+        };
+        const look = (): void => {
+          if (!document.querySelector('[role="img"][aria-label^="Counting beat 1 "]')) return void requestAnimationFrame(look);
+          const t0 = performance.now();
+          for (let k = 0; k < beats; k++) {
+            const at = t0 + k * beatMs + lateMs;
+            window.setTimeout(() => {
+              key('keydown', at);
+              key('keyup', at + 80);
+            }, at + 80 - performance.now());
+          }
+          window.setTimeout(resolve, beats * beatMs + lateMs);
+        };
+        look();
+      }),
+    { beats, beatMs, lateMs },
+  );
+}
 
 /** Every screen's main action can be reached and tapped, at every supported size, with no sideways scroll. */
 for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
@@ -162,7 +197,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('results: retry and next', async ({ page }) => {
+    test('results: try again, new exercise and copy code', async ({ page }) => {
       known(name, 'results');
       // Desktop Play has no Skip link: finish on a phone-sized window, then show Results at this size.
       await page.setViewportSize(VIEWPORTS.phone);
@@ -172,13 +207,38 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Skip to results' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
       await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
-      // Nothing was played: the badge says what opens lesson 1.2, and Next stays on this lesson.
+      // Nothing was played: the badge says what opens lesson 1.2, the tip says no taps came in, and under 2 stars the
+      // filled button plays the same exercise again. The code is not shown, only copied.
       await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
-      await expectClickable(page.getByRole('button', { name: 'Copy' }));
-      await expectClickable(page.getByRole('button', { name: 'Retry' }));
-      await expectClickable(page.getByRole('button', { name: 'Next exercise' }));
+      await expect(page.getByText(/^No taps came in\./)).toBeVisible();
+      await expect(page.getByText(/max combo|T44-/)).toHaveCount(0);
+      await expect(page.locator('.results-main .btn--accent')).toHaveText('Try again');
+      await expectClickable(page.getByRole('button', { name: 'Try again' }));
+      await expectClickable(page.getByRole('button', { name: 'New exercise' }));
+      await expectClickable(page.getByRole('button', { name: 'Copy code' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+    });
+
+    test('results: a steady late tapper is told about latency, with Calibrate', async ({ page }) => {
+      known(name, 'results-latency');
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: QUARTERS } });
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await tapLate(page, 4, 500, 130);
+      await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible({ timeout: 10_000 });
+      await page.setViewportSize(VIEWPORTS[name]);
+      // Every tap about 130 ms late: all Miss and Extra, and a tip that names the delay, not the reading.
+      await expect(page.getByText(/^Your taps came about \d+ ms late every time\./)).toBeVisible();
+      const calibrate = page.getByRole('link', { name: 'Calibrate' });
+      await expectClickable(calibrate);
+      await expectClickable(page.getByRole('button', { name: 'Try again' }));
+      await expectClickable(page.getByRole('button', { name: 'Copy code' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await calibrate.click();
+      await expect(page).toHaveURL(/#\/calibrate\?from=results$/);
     });
 
     test('read notes: round done', async ({ page }) => {
@@ -558,7 +618,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Naar de uitslag' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
       await expect(page.getByRole('heading', { name: 'Les 1.1 klaar' })).toBeVisible();
-      await expectClickable(page.getByRole('button', { name: 'Volgende oefening' }));
+      await expectClickable(page.getByRole('button', { name: 'Nog een keer' }));
+      await expectClickable(page.getByRole('button', { name: 'Nieuwe oefening' }));
+      await expectClickable(page.getByRole('button', { name: 'Kopieer code' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
       await page.goto('./#/notes');

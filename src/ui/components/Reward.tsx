@@ -1,5 +1,5 @@
-/** v1.1 rewards: the level and XP line, the daily challenge's date tile, the exercise code with Copy and the level-up sheet. */
-import { useEffect, useState, type ReactNode } from 'react';
+/** v1.1 rewards: the level and XP line, the daily challenge's date tile, Copy code and the level-up sheet. */
+import { useEffect, useState } from 'react';
 import { UNLOCK_STARS, type LessonOutcome } from '../../game/track';
 import { levelInfo, RANKS, type LevelInfo } from '../../game/xp';
 import { dateParts, t } from '../../i18n';
@@ -43,8 +43,11 @@ export function DateTile({ day }: { day: string }): JSX.Element {
   );
 }
 
-/** "Code T44-HQE-RQ-4B-80-7K2QF" (below any `children` lines) and a Copy button that says Copied for two seconds. */
-export function CodeCopy({ code, children }: { code: string; children?: ReactNode }): JSX.Element {
+/**
+ * Copy code: a quiet button that copies the exercise code (T44-HQE-RQ-4B-80-7K2QF) and says Copied for two seconds.
+ * The code is not shown; its title has it.
+ */
+export function CodeCopy({ code, className }: { code: string; className: string }): JSX.Element {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -57,25 +60,14 @@ export function CodeCopy({ code, children }: { code: string; children?: ReactNod
       const p = navigator.clipboard?.writeText(code);
       if (p) p.then(done, () => undefined);
     } catch {
-      /* no clipboard: the code stays on screen to copy by hand */
+      /* no clipboard: nothing to copy to */
     }
   };
   return (
-    <div className="code-row">
-      <span className="code-row-text">
-        {children}
-        <span className="code-line">
-          <span className="code-label">{t('results.code')} </span>
-          <span id="excode" className="code-text">
-            {code}
-          </span>
-        </span>
-      </span>
-      <button type="button" className={'copy-btn' + (copied ? ' is-copied' : '')} title={t('results.copyTitle')} aria-describedby="excode" onClick={copy}>
-        {copied ? <Icon name="check" size={16} strokeWidth={2.6} className="m-in" /> : <Icon name="copy" size={16} />}
-        <span aria-live="polite">{t(copied ? 'results.copied' : 'results.copy')}</span>
-      </button>
-    </div>
+    <button type="button" className={className + ' copy-btn' + (copied ? ' is-copied' : '')} title={t('results.copyTitle', { code })} onClick={copy}>
+      {copied ? <Icon name="check" size={18} strokeWidth={2.6} className="m-in" /> : <Icon name="copy" size={18} />}
+      <span aria-live="polite">{t(copied ? 'results.copied' : 'results.copyCode')}</span>
+    </button>
   );
 }
 

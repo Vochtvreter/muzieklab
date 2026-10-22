@@ -64,7 +64,8 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
     }
     await expect(page).toHaveURL(/#\/results$/, { timeout: 10_000 });
     await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+    // Retry, or Try again under 2 stars: these taps are untimed.
+    await expect(page.getByRole('button', { name: /^(Retry|Try again)$/ })).toBeVisible();
 
     // A run with at least one hit note keeps the streak; these taps are untimed, so read what Results counted.
     const hits = await page.locator('.counts .count-n').evaluateAll((els) => els.slice(0, 3).reduce((s, el) => s + Number(el.textContent), 0));
