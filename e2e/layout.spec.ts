@@ -516,7 +516,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/path', 'Leerpad', 'Begin les'],
       ['#/settings', 'Instellingen', 'Voortgang wissen'],
       ['#/changelog', 'Wat is er nieuw', '0.1.0'],
-      ['#/calibrate', 'Timing kalibreren', 'Ritmepad'],
+      ['#/calibrate', 'Timing kalibreren', 'Tikpad'],
       ['#/notes', 'Noten lezen', 'Start · '],
       ['#/notes/key', 'Toonsoort', 'Kies '],
       ['#/learn', 'Leren', ''],

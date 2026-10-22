@@ -428,8 +428,8 @@
     "tapLegendLong": "gray = each note, mark = when you tapped",
     "barsRange": "{from, select, other {bars {from}–{to}}}",
     "barsOne": "bar {from}",
-    "pad": "Rhythm pad",
-    "padLabel": "Rhythm",
+    "pad": "Tap pad",
+    "padLabel": "Tap",
     "staffLabel": "{rhythm} Cursor on note {note}.",
     "staffLabelIdle": "{rhythm}",
     "echo": {
@@ -476,16 +476,16 @@
     "hold": "hold",
     "nextNote": "next note",
     "oneNote": "one note",
-    "step1": "Press the Rhythm pad when a note starts.",
+    "step1": "Press the Tap pad when a note starts.",
     "step2": "Hold it for the length of the note. Lift when the note ends.",
     "step3": "On a rest, stay off the pad. On a tie, keep holding.",
-    "computer": "On a computer, any key works as the Rhythm pad. Tap ? at the top to see this again.",
-    "desktop": "Any key works as the Rhythm pad. Press ? to see this again.",
+    "computer": "On a computer, any key works as the Tap pad. Tap ? at the top to see this again.",
+    "desktop": "Any key works as the Tap pad. Press ? to see this again.",
     "gotIt": "Got it",
     "tap": {
       "diagram": "Tap when each note starts; how long you hold does not count",
       "tap": "tap",
-      "step1": "Tap the Rhythm pad when a note starts.",
+      "step1": "Tap the pad when a note starts.",
       "step2": "Only the start counts here: no need to hold the note.",
       "step3": "On a rest, don't tap."
     },
@@ -493,7 +493,7 @@
     "echo": {
       "eyebrow": "Echo mode",
       "step1": "Listen to the rhythm. You can hear it twice.",
-      "step2": "Tap it back on the Rhythm pad from memory. Hold each note for its length.",
+      "step2": "Tap it back on the pad from memory. Hold each note for its length.",
       "step3": "The notation shows at the end, with your timing on every note."
     }
   },
@@ -638,7 +638,7 @@
     "lastTap": "LAST TAP {offset}",
     "tapEach": "TAP ON EACH CLICK",
     "pressToStart": "PRESS THE PAD TO START",
-    "anyKey": "On a computer, any key works as the pad.",
+    "anyKey": "On a computer, any key works as the Tap pad.",
     "yourOffset": "Your offset",
     "resultLate": "Median of {count} taps. Your taps reach Muzieklab {ms} ms after the click, so every score is shifted by that much.",
     "resultEarly": "Median of {count} taps. Your taps reach Muzieklab {ms} ms before the click, so every score is shifted by that much.",

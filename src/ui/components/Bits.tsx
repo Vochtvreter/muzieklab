@@ -83,7 +83,7 @@ interface PadProps {
   disabled?: boolean;
 }
 
-/** Phone / tablet tap pad: a quarter-note glyph and "Rhythm", with a ring that fills while you hold. */
+/** Phone / tablet tap pad: a quarter-note glyph and "Tap", with a ring that fills while you hold. */
 export const TapPad = forwardRef<HTMLButtonElement, PadProps>(function TapPad({ progress, held, label, disabled }, ref) {
   const dash = (RING_C * Math.max(0, Math.min(1, progress))).toFixed(1);
   return (
