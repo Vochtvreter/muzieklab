@@ -18,6 +18,8 @@ export function HowToContent({ eyebrow, desktop, hold = true, echo = false, onDo
   onDone(): void;
 }): JSX.Element {
   const k = echo ? 'howto.echo.' : hold ? 'howto.' : 'howto.tap.';
+  // Echo tap only (before the path teaches holding): its step 2 does not ask to hold.
+  const step = (n: number): string => (echo && !hold && n === 2 ? 'howto.echo.step2Tap' : k + 'step' + n);
   return (
     <>
       <div className="sheet-head">
@@ -74,7 +76,7 @@ export function HowToContent({ eyebrow, desktop, hold = true, echo = false, onDo
             <span className="step-n" aria-hidden="true">
               {n}
             </span>
-            <span>{t(k + 'step' + n)}</span>
+            <span>{t(step(n))}</span>
           </li>
         ))}
       </ol>

@@ -494,6 +494,7 @@
       "eyebrow": "Echo mode",
       "step1": "Listen to the rhythm. You can hear it twice.",
       "step2": "Tap it back on the pad from memory. Hold each note for its length.",
+      "step2Tap": "Tap it back on the pad from memory. Only when each note starts counts.",
       "step3": "The notation shows at the end, with your timing on every note."
     }
   },

@@ -56,6 +56,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }).click();
       await page.getByRole('button', { name: /^Start · / }).click();
       await expectClickable(page.getByRole('button', { name: 'Got it' }));
+      // Before the path teaches holding, Echo is tap only too: How to play does not ask to hold.
+      await expect(page.getByRole('dialog', { name: 'How to play' }).getByText(/Only when each note starts counts/)).toBeVisible();
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await expectClickable(page.getByRole('button', { name: 'Play the rhythm' }), { scroll: false });
