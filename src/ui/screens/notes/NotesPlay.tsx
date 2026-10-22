@@ -80,10 +80,15 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const finish = useCallback(
     (list: NoteAnswer[]) => {
       dispatch({ type: 'noteFinish', answers: list, today: todayIso() });
-      navigate('/notes/done', { replace: true });
     },
     [dispatch],
   );
+  // Go to Round done once the store holds this round's result. Navigating in finish() itself raced the store when a
+  // right last answer finished the round from a timer: the summary rendered before the result and sent the player
+  // back to the setup.
+  useEffect(() => {
+    if (state.noteLast?.run === run) navigate('/notes/done', { replace: true });
+  }, [state.noteLast, run]);
 
   const next = useCallback(() => {
     if (!done) return;
@@ -122,6 +127,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   useEffect(() => {
     if (!timer || done) return;
     const id = window.setInterval(() => {
+      // In a hidden tab the clock waits (browsers slow this interval down but keep it running); coming back restarts it.
+      if (document.visibilityState === 'hidden') return;
       const rest = timer * 1000 - (performance.now() - shownAt.current);
       setLeft(Math.max(0, rest));
       if (rest <= 0) answer(null);
@@ -345,7 +352,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
             <aside className="nstats">
               <div className="card stat">
                 <span className="label">{t('notes.play.correctTitle')}</span>
-                <span className="stat-mono nstat-big" aria-label={t('notes.play.correctLabel', { right, done: answeredCount })}>
+                <span className="stat-mono nstat-big" role="img" aria-label={t('notes.play.correctLabel', { right, done: answeredCount })}>
                   <span className="tone-good">{right}</span>
                   <span className="tone-muted"> / {answeredCount}</span>
                 </span>
@@ -387,7 +394,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
             <span className="eyebrow">{where}</span>
             <span className="nplay-ask">{ask}</span>
           </div>
-          <div className="nplay-score" aria-label={t('notes.play.correctLabel', { right, done: answeredCount })}>
+          <div className="nplay-score" role="img" aria-label={t('notes.play.correctLabel', { right, done: answeredCount })}>
             <div className="nplay-score-n" aria-hidden="true">
               <span className="tone-good">{right}</span>
               <span className="tone-faint"> / {answeredCount}</span>

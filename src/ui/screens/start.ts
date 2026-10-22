@@ -7,15 +7,16 @@ import { newSeed } from '../lib/format';
 import { navigate } from '../router';
 import { makeRun, runSettings, todayIso, useStore, type Run } from '../store';
 
-export function useStartLesson(): (lessonId: string) => void {
+/** A lesson by id; `replace` swaps the current screen for Play (from Results, so Back does not return to it). */
+export function useStartLesson(): (lessonId: string, opts?: { replace?: boolean }) => void {
   const { state, dispatch } = useStore();
   return useCallback(
-    (lessonId: string) => {
+    (lessonId: string, opts: { replace?: boolean } = {}) => {
       unlockAudio();
       const run = makeRun(runSettings(state, lessonId), newSeed(), lessonId);
       if (!run) return;
       dispatch({ type: 'start', run });
-      navigate('/play');
+      navigate('/play', { replace: opts.replace });
     },
     [state, dispatch],
   );

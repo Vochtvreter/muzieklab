@@ -103,7 +103,7 @@
     "next": "Next: lesson {lesson} · {title} · {bpm} BPM",
     "unlocks": "Unlocks with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
-    "playLesson": "Play lesson {id}: {stars}",
+    "playLesson": "Play lesson {id} · {title}: {stars}",
     "lockedLesson": "Lesson {id}, locked",
     "u1": {
       "title": "Quarter and half notes",
@@ -344,6 +344,7 @@
   },
   "howto": {
     "firstTime": "First time here",
+    "newHold": "New: hold each note",
     "paused": "Paused",
     "title": "How to play",
     "diagram": "Press when a note starts, hold for its length, lift when it ends",
@@ -409,6 +410,12 @@
     "streakKept": "Streak kept · {count, plural, one {# day} other {# days}}",
     "newBest": "New personal best",
     "newBestTitle": "Your best accuracy on a daily so far",
+    "unlocked": "Lesson {id} unlocked",
+    "pathDone": "Learning path done",
+    "needStars": "Get {count, plural, one {# star} other {# stars}} to open lesson {id}",
+    "needStarsLast": "Get {count, plural, one {# star} other {# stars}} to finish the path",
+    "nextLesson": "Next lesson",
+    "nextLessonLabel": "Next lesson: {id} · {title}",
     "allPerfect": "All perfect! Diamond star",
     "perfect": "Perfect",
     "great": "Great",
@@ -1872,6 +1879,16 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_8_0": {
+      "title": "Next lesson, and holding explained",
+      "try": "Open the learning path",
+      "nextLesson": "After a lesson, Results says what it opened: with two stars you see “Lesson 1.2 unlocked”, and Next lesson takes you straight there. Under two stars, Results says how many stars open the next lesson.",
+      "hold": "The first lesson where holding counts (usually 2.1) shows How to play again, now with holding, so the new rule never comes as a surprise.",
+      "scales": "Scales starts on C major: no sharps or flats, only white keys.",
+      "screens": "Results and the round summaries keep Retry and Next in view on short screens, and Play runs more smoothly on slower phones.",
+      "notes": "Read notes: a round that ended on a right answer skipped its summary and went back to the setup. It now ends on Round done.",
+      "misc": "The time per note no longer runs out while the app is in another tab, screen readers now read the scores in Read notes and Scales, and Reset progress also resets Free practice."
+    },
     "v0_7_1": {
       "title": "Letters on the Scales piano",
       "letters": "The Scales piano always shows A to G on its white keys, even when Read notes shows do re mi or no labels. The keyboard starts on a new key with every scale, so the letters help you find your way."

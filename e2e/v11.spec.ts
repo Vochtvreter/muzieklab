@@ -5,7 +5,7 @@ import { seed, VIEWPORTS } from './helpers';
 
 test('daily challenge: Home → Play → Results with the code and Copy', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await seed(page, { prefs: { seenHowTo: true } });
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
   await page.getByRole('button', { name: /^Play the daily challenge for / }).click();
@@ -29,7 +29,7 @@ test('daily challenge: Home → Play → Results with the code and Copy', async 
 
 test('echo: listen, tap it back with the notation hidden, then Results reveals it', async ({ page }) => {
   test.setTimeout(60_000);
-  await seed(page, { prefs: { seenHowTo: true, seenEchoHowTo: true } });
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/setup');
   await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }).click();

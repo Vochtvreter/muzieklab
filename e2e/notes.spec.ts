@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
+import { letterOf } from '../src/core/pitch';
 import { VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
@@ -36,6 +38,22 @@ test('read notes: a G major round from Home to the summary, answered with the ke
   // The streak counts a round with answers.
   await page.getByRole('link', { name: 'Back to home' }).click();
   await expect(page.getByText('1-day streak')).toBeVisible();
+});
+
+test('read notes: a round answered all right ends on the summary (the last right answer moves on by itself)', async ({ page }) => {
+  // The round Play restores after a reload: the same settings and seed draw the same notes here and in the app.
+  const settings = { ...DEFAULT_NOTE_SETTINGS, count: 10 };
+  const seed = 4242;
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./#/notes/play');
+  for (const [i, note] of generateRound(settings, seed).entries()) {
+    await expect(page.getByText(`Note ${i + 1} of 10`)).toBeVisible();
+    await page.keyboard.press(letterOf(note.step).toLowerCase());
+  }
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible({ timeout: 5000 });
+  await expect(page).toHaveURL(/#\/notes\/done$/);
+  await expect(page.getByText(/^10 of 10 notes right/)).toBeVisible();
 });
 
 test('read notes: piano answers, a hint and skipping to the summary', async ({ page }) => {
@@ -100,6 +118,9 @@ test('scales: from Home to the circle, a G major round played with the keyboard,
   await page.getByRole('link', { name: /^Scales/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Scales' })).toBeVisible();
   await expect(page.getByText('0 of 15')).toBeVisible();
+  // C major is selected first; G is one step clockwise.
+  await expect(page.getByRole('button', { name: 'Practice C major' })).toBeVisible();
+  await page.getByRole('button', { name: 'G major: no stars yet' }).click();
   await page.getByRole('button', { name: 'Practice G major' }).click();
   await expect(page.getByText('Scale 1 of 1')).toBeVisible();
   await expect(page.getByText('Play with A S D F G H J K L (white) and W E R T Y U I O (black)')).toBeVisible();

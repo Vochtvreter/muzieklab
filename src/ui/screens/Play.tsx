@@ -91,10 +91,11 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   useEffect(() => {
     if (state.last?.run === run) navigate('/results', { replace: true });
   }, [state.last, run]);
-  const onIntroDone = useCallback(() => dispatch({ type: 'prefs', patch: { seenHowTo: true } }), [dispatch]);
+  const hold = ex.settings.hold;
+  const onIntroDone = useCallback(() => dispatch({ type: 'prefs', patch: hold ? { seenHowTo: true, seenHold: true } : { seenHowTo: true } }), [dispatch, hold]);
   // Echo has its own How to play in the listen phase, so tapping starts straight away.
   const isEcho = !!echo;
-  const prefs = useMemo(() => (isEcho ? { ...state.prefs, seenHowTo: true } : state.prefs), [isEcho, state.prefs]);
+  const prefs = useMemo(() => (isEcho ? { ...state.prefs, seenHowTo: true, seenHold: true } : state.prefs), [isEcho, state.prefs]);
   const s = usePlaySession(run, view, prefs, onIntroDone, onFinish);
 
   // Esc closes an open sheet (Resume / Got it); ? swaps to How to play.
@@ -140,7 +141,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   );
   const lane = (
     <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={4} taps={s.taps} result={s.liveResult}
-      now={s.phase === 'running' && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} hold={ex.settings.hold} />
+      now={s.phase === 'running' && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} hold={ex.settings.hold} live />
   );
   const laneHead = (
     <div className="lane-head">
@@ -189,7 +190,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
       maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined}>
       {sheetShown === 'help' ? (
-        <HowToContent eyebrow={t(echo ? 'howto.echo.eyebrow' : s.phase === 'intro' ? 'howto.firstTime' : 'howto.paused')} desktop={keys} hold={ex.settings.hold} echo={!!echo}
+        <HowToContent eyebrow={t(echo ? 'howto.echo.eyebrow' : s.phase !== 'intro' ? 'howto.paused' : s.intro === 'hold' ? 'howto.newHold' : 'howto.firstTime')} desktop={keys} hold={ex.settings.hold} echo={!!echo}
           onDone={s.closeSheet} />
       ) : sheetShown === 'ready' ? (
         <ReadyContent context={where} onStart={s.closeSheet}

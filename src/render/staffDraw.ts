@@ -86,10 +86,26 @@ function groupBy<T>(items: T[], key: (t: T) => number | undefined): T[][] {
  * Draws the exercise into `host` (replacing its content) as a one-line staff with VexFlow's SVG backend.
  * Returns the drawn size. Every glyph gets an explicit fill from the palette (DESIGN.md §9 notation colour rule).
  */
-export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: number; height: number } {
+/** Where a note is drawn, in the svg's coordinates. */
+export interface NoteBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface DrawnStaff {
+  width: number;
+  height: number;
+  /** Each onset's note box, so the play cursor can move without drawing the staff again (placeCursor). */
+  onsets: Map<number, NoteBox>;
+}
+
+export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
   const { bars, meter, palette: pal, width } = o;
+  const onsets = new Map<number, NoteBox>();
   host.innerHTML = '';
-  if (bars.length === 0 || width <= 0) return { width, height: 0 };
+  if (bars.length === 0 || width <= 0) return { width, height: 0, onsets };
 
   const per = Math.max(1, Math.min(o.barsPerRow, bars.length));
   const rows = Math.ceil(bars.length / per);
@@ -105,6 +121,7 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
   const barW = (width - TS_EXTRA - 2) / per;
   const colourById = new Map<string, string>(); // VexFlow note id -> mark colour
   let cursorNote: StaveNote | null = null;
+  const onsetNotes: [number, StaveNote][] = [];
   let tieFrom: { note: StaveNote; row: number } | null = null;
   let colourOnset = -1; // onset index whose colour tied continuations inherit
   const ties: StaveTie[] = [];
@@ -132,6 +149,7 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
           colourById.set(note.getAttribute('id') as string, colour);
         }
         if (o.cursor != null && sym.onsetIndex === o.cursor) cursorNote = note;
+        if (sym.onsetIndex >= 0) onsetNotes.push([sym.onsetIndex, note]);
         if (tieFrom) {
           if (tieFrom.row === row) {
             ties.push(new StaveTie({ first_note: tieFrom.note, last_note: note, first_indices: [0], last_indices: [0] }));
@@ -179,10 +197,11 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
   });
   ties.forEach((t) => t.setContext(ctx).draw());
 
+  for (const [i, note] of onsetNotes) onsets.set(i, boxOf(note));
   const svg = host.querySelector('svg');
-  if (!svg) return { width, height };
+  if (!svg) return { width, height, onsets };
   paintSvg(svg, pal, colourById);
-  if (cursorNote) addCursor(svg, cursorNote, pal.cursor);
+  if (cursorNote) placeCursor(host, boxOf(cursorNote), pal.cursor);
   if (o.counts) addCounts(svg, counts, pal.ink, o.counts.held);
 
   svg.removeAttribute('style');
@@ -191,7 +210,7 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): { width: numb
   svg.setAttribute('height', String(height));
   svg.setAttribute('aria-hidden', 'true');
   svg.style.display = 'block';
-  return { width, height };
+  return { width, height, onsets };
 }
 
 /**
@@ -263,13 +282,26 @@ function addCounts(svg: SVGSVGElement, counts: { x: number; y: number; text: str
   svg.appendChild(g);
 }
 
-function addCursor(svg: SVGSVGElement, note: StaveNote, colour: string): void {
+function boxOf(note: StaveNote): NoteBox {
   const bb = note.getBoundingBox();
+  return { x: bb.getX(), y: bb.getY(), w: bb.getW(), h: bb.getH() };
+}
+
+/**
+ * The play cursor: a soft slate box behind the note (the svg's first child, so it never covers notation). Moving it
+ * only swaps this box, so the staff is not drawn again for every note. A null box removes it.
+ */
+export function placeCursor(host: HTMLElement, box: NoteBox | null, colour: string): void {
+  const svg = host.querySelector('svg');
+  if (!svg) return;
+  svg.querySelector('rect[data-cursor]')?.remove();
+  if (!box) return;
   const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  r.setAttribute('x', String(bb.getX() - CURSOR_PAD));
-  r.setAttribute('y', String(bb.getY() - CURSOR_PAD));
-  r.setAttribute('width', String(bb.getW() + CURSOR_PAD * 2));
-  r.setAttribute('height', String(bb.getH() + CURSOR_PAD * 2));
+  r.setAttribute('data-cursor', '');
+  r.setAttribute('x', String(box.x - CURSOR_PAD));
+  r.setAttribute('y', String(box.y - CURSOR_PAD));
+  r.setAttribute('width', String(box.w + CURSOR_PAD * 2));
+  r.setAttribute('height', String(box.h + CURSOR_PAD * 2));
   r.setAttribute('rx', '8');
   r.setAttribute('fill', colour);
   r.setAttribute('fill-opacity', '0.22');

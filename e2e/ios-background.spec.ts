@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
       for (const c of made) c.broken = { mode, t: c.currentTime };
     };
   });
-  await seed(page, { prefs: { seenHowTo: true } });
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);
 });
 

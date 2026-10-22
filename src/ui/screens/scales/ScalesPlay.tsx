@@ -45,7 +45,7 @@ export function ScalesPlay(): JSX.Element | null {
 }
 
 function Round({ run }: { run: ScaleRun }): JSX.Element {
-  const { dispatch } = useStore();
+  const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
   const kbd = useKeyboardHints(bp);
@@ -84,10 +84,13 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const finish = useCallback(
     (list: PlayedScale[]) => {
       dispatch({ type: 'scaleFinish', played: list, today: todayIso() });
-      navigate('/scales/done', { replace: true });
     },
     [dispatch],
   );
+  // Go to Round done once the store holds this round's result (as Read notes and Play do), never before it.
+  useEffect(() => {
+    if (state.scaleLast?.run === run) navigate('/scales/done', { replace: true });
+  }, [state.scaleLast, run]);
 
   const next = useCallback(() => {
     if (!done) return;
@@ -285,7 +288,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   });
   const again = sc.again && <span className="splay-again">{t('scales.play.again')}</span>;
   const mistakesBox = (
-    <div className="splay-mistakes" aria-label={t('scales.play.mistakesAria', { count: mistakes })}>
+    <div className="splay-mistakes" role="img" aria-label={t('scales.play.mistakesAria', { count: mistakes })}>
       <div className={'splay-mistakes-n ' + (mistakes ? 'tone-miss' : 'tone-good')} aria-hidden="true">
         {mistakes}
       </div>

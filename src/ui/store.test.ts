@@ -30,6 +30,19 @@ describe('reducer: finish', () => {
     expect(next.progress.practiceDays).toEqual(['2026-10-17']);
   });
 
+  it('remembers the lesson\'s stars before the run, so Results can tell a first pass from a replay', () => {
+    const lesson = (stars: 0 | 1 | 2 | 3): AppState => ({
+      ...state(),
+      run: { exercise, lessonId: '1.1', daily: null },
+      progress: { ...defaultProgress(), lessons: stars ? { '1.1': { stars, bestAccuracy: 70 } } : {} },
+    });
+    const first = reducer(lesson(1), { type: 'finish', result: result(['good'], 80, 2), taps: [], today: '2026-10-17' });
+    expect(first.last?.lessonStarsBefore).toBe(1);
+    expect(first.progress.lessons['1.1'].stars).toBe(2);
+    expect(reducer(lesson(0), { type: 'finish', result: result(['good']), taps: [], today: '2026-10-17' }).last?.lessonStarsBefore).toBe(0);
+    expect(reducer(state(), { type: 'finish', result: result(['good']), taps: [], today: '2026-10-17' }).last?.lessonStarsBefore).toBe(0);
+  });
+
   it('a run left to play out with nothing hit does not keep the streak', () => {
     const next = reducer(state(), { type: 'finish', result: result(['miss', 'miss']), taps: [], today: '2026-10-17' });
     expect(next.progress.practiceDays).toEqual([]);
@@ -89,6 +102,12 @@ describe('reducer: Read notes', () => {
     expect(next.noteLast?.reward).toMatchObject({ xp: 0, streak: null });
   });
 
+  it('scores a round once: a second finish of the same round changes nothing', () => {
+    const answers = run.notes.map(() => ({ outcome: 'right' as const, ms: 900, given: { kind: 'piano' as const, pc: 0 } }));
+    const once = reducer(started(), { type: 'noteFinish', answers, today: '2026-10-17' });
+    expect(reducer(once, { type: 'noteFinish', answers, today: '2026-10-17' })).toBe(once);
+  });
+
   it('saves the setup with the progress, and Learn sections once', () => {
     const s = reducer(state(), { type: 'noteSettings', settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G'] } });
     expect(s.progress.notes.settings?.keys).toEqual(['G']);
@@ -119,6 +138,13 @@ describe('reducer: scales', () => {
     expect(next.progress.practiceDays).toEqual(['2026-10-21']);
   });
 
+  it('scores a round once', () => {
+    const s = started();
+    const played = [{ scale: s.scaleRun!.scales[0], mistakes: 0 }];
+    const once = reducer(s, { type: 'scaleFinish', played, today: '2026-10-21' });
+    expect(reducer(once, { type: 'scaleFinish', played, today: '2026-10-21' })).toBe(once);
+  });
+
   it('a round with no scale finished keeps no streak and earns nothing', () => {
     const next = reducer(started(), { type: 'scaleFinish', played: [], today: '2026-10-21' });
     expect(next.progress.practiceDays).toEqual([]);
@@ -132,5 +158,14 @@ describe('reducer: scales', () => {
     const picked = reducer({ ...state(), scaleSettings: settings }, { type: 'scaleHub', hub: { tab: 'major', key: 'F' } });
     expect(picked.scaleSettings.keys).toEqual(['G', 'D', 'A']);
     expect(picked.scaleHub).toEqual({ tab: 'major', key: 'F' });
+  });
+});
+
+describe('reducer: reset progress', () => {
+  it('also puts the free-practice setup back to the defaults (it is kept with the progress)', () => {
+    const custom = { ...state(), settings: { ...DEFAULT_SETTINGS, meters: ['3/4' as const], tempo: 132 } };
+    const reset = reducer(custom, { type: 'resetProgress' });
+    expect(reset.settings).toEqual({ ...DEFAULT_SETTINGS, hold: true });
+    expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdMode: 'tap' } }, { type: 'resetProgress' }).settings.hold).toBe(false);
   });
 });

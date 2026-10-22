@@ -190,6 +190,8 @@ export interface LastResult {
   result: JudgeResult;
   taps: Tap[];
   reward: Reward;
+  /** The lesson's best stars before this run (0 for free practice and the daily challenge): Results tells a first pass. */
+  lessonStarsBefore: number;
 }
 
 export interface NoteLast {
@@ -263,6 +265,7 @@ export function reducer(state: AppState, action: Action): AppState {
       // The streak counts a day with real practice: at least one note hit (letting a run play out untouched does not).
       const { result } = action;
       const practised = result.notes.some((n) => n.judgement !== 'miss');
+      const lessonStarsBefore = state.run.lessonId ? (state.progress.lessons[state.run.lessonId]?.stars ?? 0) : 0;
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
       if (state.run.lessonId) progress = recordLessonResult(progress, state.run.lessonId, result.stars, result.accuracy);
       let dailyBest = false;
@@ -281,12 +284,14 @@ export function reducer(state: AppState, action: Action): AppState {
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
       const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest };
-      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward } };
+      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore } };
     }
     case 'resetProgress':
       return {
         ...state,
         progress: defaultProgress(),
+        // The free-practice setup comes from the progress (lastSettings), so it goes back to the defaults too.
+        settings: { ...DEFAULT_SETTINGS, hold: state.prefs.holdMode === 'hold' },
         last: null,
         noteLast: null,
         noteSettings: { ...DEFAULT_NOTE_SETTINGS },
@@ -300,7 +305,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, noteRun: action.run };
     case 'noteFinish': {
       const run = state.noteRun;
-      if (!run) return state;
+      // Scored once: a second finish (Enter in the moment before Round done opens) must not add the XP again.
+      if (!run || state.noteLast?.run === run) return state;
       const answers = action.answers.slice(0, run.notes.length);
       const result = scoreRound(run.notes, answers);
       // Real practice: at least one note answered (a round that only timed out, or was skipped at once, does not count).
@@ -326,7 +332,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, scaleRun: action.run };
     case 'scaleFinish': {
       const run = state.scaleRun;
-      if (!run) return state;
+      if (!run || state.scaleLast?.run === run) return state;
       const result = scoreScaleRound(action.played);
       // Real practice: at least one scale finished.
       const practised = result.total > 0;

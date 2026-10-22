@@ -17,6 +17,11 @@ export interface LengthLaneProps {
   label?: string;
   /** false for tap-only exercises: presses show as marks, not holds. */
   hold?: boolean;
+  /**
+   * On Play: keep the playing row height all the time. The playhead is gone during the count-in and while paused,
+   * and without this the lane took the results height then, so it jumped when the first beat came.
+   */
+  live?: boolean;
 }
 
 const DEFAULT_WIDTH = 342;
@@ -73,7 +78,7 @@ export function LengthLane(props: LengthLaneProps): JSX.Element {
     now: props.now,
     hold: props.hold,
     width,
-    rowHeight: laneRowHeight(width, props.result !== undefined && props.now == null),
+    rowHeight: laneRowHeight(width, !props.live && props.result !== undefined && props.now == null),
   });
   return (
     <div ref={hostRef} style={{ width: '100%', minWidth: 0 }}>

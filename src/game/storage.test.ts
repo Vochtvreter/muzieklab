@@ -146,6 +146,23 @@ describe('prefs and progress storage', () => {
     get.mockRestore();
   });
 
+  it('prefs saved before seenHold count holds as seen only when the player has played holds', () => {
+    const old = (prefs: object, progress: Partial<Progress>): boolean => {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify({ ...defaultProgress(), ...progress }));
+      return loadPrefs().seenHold;
+    };
+    // In unit 1 (tap only): the holding version of How to play is still to come.
+    expect(old({ seenHowTo: true }, { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } })).toBe(false);
+    // Past unit 1, or after free practice or a daily challenge (hold by default): holding is known.
+    expect(old({ seenHowTo: true }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(true);
+    expect(old({ seenHowTo: true }, { lastSettings: { ...DEFAULT_SETTINGS } })).toBe(true);
+    expect(old({ seenHowTo: true }, { daily: { day: '2026-10-17', stars: 2, accuracy: 80 } })).toBe(true);
+    // Never saw How to play: the first exercise shows it anyway. A saved seenHold is kept as it is.
+    expect(old({ seenHowTo: false }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(false);
+    expect(old({ seenHowTo: true, seenHold: false }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(false);
+  });
+
   it('resetProgress clears progress but keeps prefs', () => {
     savePrefs({ ...DEFAULT_PREFS, calibrationMs: 20 });
     saveProgress({ ...defaultProgress(), lessons: { '1.1': { stars: 2, bestAccuracy: 80 } } });

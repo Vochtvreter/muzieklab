@@ -128,9 +128,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Skip to results' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
       await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      // Nothing was played: the badge says what opens lesson 1.2, and Next stays on this lesson.
+      await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'Copy' }));
       await expectClickable(page.getByRole('button', { name: 'Retry' }));
       await expectClickable(page.getByRole('button', { name: 'Next exercise' }));
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 
@@ -220,7 +223,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('scales: play G major on the piano, then round done', async ({ page }) => {
       known(name, 'scales-play');
       // The Scales piano shows its letters even with Read notes' labels off.
-      await seed(page, { prefs: { pianoLabels: 'off' } });
+      await seed(page, {
+        prefs: { pianoLabels: 'off' },
+        progress: { scales: { settings: { keyMode: 'one', keys: ['G'], types: ['major'], input: 'piano', direction: 'up', write: 'signs', showSteps: true, playNotes: true }, stars: {} } },
+      });
       await page.goto('./#/scales/setup');
       await page.getByRole('button', { name: /^Start · / }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
@@ -415,7 +421,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
   test.describe(`${name} in Dutch`, () => {
     test.use({ viewport: VIEWPORTS[name], hasTouch: !name.startsWith('desktop') && !name.startsWith('laptop') });
-    test.beforeEach(async ({ page }) => seed(page, { prefs: { language: 'nl', seenHowTo: true } }));
+    test.beforeEach(async ({ page }) => seed(page, { prefs: { language: 'nl', seenHowTo: true, seenHold: true } }));
 
     const screens: [string, string, string][] = [
       ['', 'Start', 'Verder met de les'],
@@ -438,7 +444,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/learn/9', 'Kruisen, mollen en herstellingstekens', ''],
       ['#/learn/10', 'Voortekening', ''],
       ['#/learn/11', 'Toonladders', ''],
-      ['#/scales', 'Toonladders', 'Oefen G majeur'],
+      ['#/scales', 'Toonladders', 'Oefen C majeur'],
       ['#/scales/setup', 'Toonladders oefenen', 'Start · '],
     ];
     for (const [hash, title, action] of screens) {

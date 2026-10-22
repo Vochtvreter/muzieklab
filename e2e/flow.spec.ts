@@ -115,7 +115,7 @@ test('Esc does not start the Ready sheet (browsers do not let Esc start audio); 
 test('a finished lesson can be played again from Home and from the Path', async ({ page }) => {
   await seed(page, {
     progress: { lessons: { '1.1': { stars: 2, bestAccuracy: 85 }, '1.2': { stars: 1, bestAccuracy: 65 } }, practiceDays: [], lastSettings: null },
-    prefs: { seenHowTo: true },
+    prefs: { seenHowTo: true, seenHold: true },
   });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
@@ -125,6 +125,27 @@ test('a finished lesson can be played again from Home and from the Path', async 
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   await page.goto('./#/path');
   await expect(page.getByRole('img', { name: 'Lesson 1.3, locked' })).toBeVisible();
-  await page.getByRole('button', { name: 'Play lesson 1.2: 1 of 3 stars' }).click();
+  await page.getByRole('button', { name: 'Play lesson 1.2 · Half notes: 1 of 3 stars' }).click();
   await expect(page.getByText('Lesson 1.2', { exact: true })).toBeVisible();
+});
+
+test('the first lesson that judges holds shows How to play again, with holding, once', async ({ page }) => {
+  // Unit 1 (tap only) done, its How to play seen: lesson 2.1 is the first where holding counts.
+  const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 3, bestAccuracy: 92 }]));
+  await seed(page, { progress: { lessons, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  const sheet = page.getByRole('dialog', { name: 'How to play' });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText('New: hold each note')).toBeVisible();
+  await expect(sheet.getByText('Hold it for the length of the note. Lift when the note ends.')).toBeVisible();
+  await page.getByRole('button', { name: 'Got it' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('img', { name: /Count-in, beat|Counting beat/ })).toBeAttached({ timeout: 3000 });
+  // Only once: the next hold lesson starts straight away.
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await expect(page.getByText('Lesson 2.1', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });

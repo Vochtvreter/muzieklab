@@ -1,6 +1,6 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
 import { useMemo, useState } from 'react';
-import { checkSettings, DEFAULT_SETTINGS, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, METER_IDS, NOTE_VALUES, rateDifficulty, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
 import { ExerciseFrame } from '../components/AppShell';
@@ -18,6 +18,9 @@ import { useStartPractice } from './start';
 const NOTE_GLYPH: Record<NoteValue, string> = { whole: '𝅝', half: '𝅗𝅥', quarter: '𝅘𝅥', eighth: '𝅘𝅥𝅮', sixteenth: '𝅘𝅥𝅯' };
 const REST_GLYPH: Record<NoteValue, string> = { whole: '𝄻', half: '𝄼', quarter: '𝄽', eighth: '𝄾', sixteenth: '𝄿' };
 
+/** Settings that change how an exercise is played, not its rhythm: the same seed gives the same bars. */
+const PLAY_ONLY = new Set<keyof Settings>(['tempo', 'metronome', 'countIn', 'mode', 'hold']);
+
 const toggle = <T,>(list: T[], v: T, order: readonly T[]): T[] =>
   list.includes(v) ? list.filter((x) => x !== v) : order.filter((x) => x === v || list.includes(x));
 
@@ -32,9 +35,13 @@ export function Setup(): JSX.Element {
   const s: Settings = { ...state.settings, hold };
   const update = (patch: Partial<Settings>): void => {
     dispatch({ type: 'settings', settings: { ...s, ...patch } });
-    setPreviewSeed(newSeed());
+    // A new preview when the rhythm's material changes; tempo, metronome, count-in and mode do not change the rhythm.
+    if (Object.keys(patch).some((k) => !PLAY_ONLY.has(k as keyof Settings))) setPreviewSeed(newSeed());
   };
 
+  // Keyed on the rhythm's settings only: dragging the tempo slider no longer generates and draws a new exercise on
+  // every step (up to 70 ms each on a slow phone).
+  const rhythmKey = JSON.stringify(s, (k, v: unknown) => (PLAY_ONLY.has(k as keyof Settings) ? undefined : v));
   const feas = useMemo(() => {
     try {
       return checkSettings(s);
@@ -42,7 +49,7 @@ export function Setup(): JSX.Element {
       console.error('checkSettings failed', e);
       return { playable: [], blocked: {}, ok: false };
     }
-  }, [JSON.stringify(s)]);
+  }, [rhythmKey]);
   const hints = setupHints(s, feas);
   const blockedKey = startBlockedKey(s, feas);
 
@@ -52,7 +59,8 @@ export function Setup(): JSX.Element {
     const view = run ? exerciseView(run.exercise) : null;
     return run && view ? { run, bars: view.bars.slice(0, 1) } : null;
   }, [feas, previewSeed]);
-  const level = preview ? difficultyLevel(preview.run.exercise.difficulty) : 0;
+  // The difficulty meter follows the tempo as well: rated again (microseconds), without a new exercise.
+  const level = preview ? difficultyLevel(rateDifficulty(preview.run.exercise.meter, preview.run.exercise.bars, s.tempo)) : 0;
 
   return (
     <ExerciseFrame className="frame--setup">

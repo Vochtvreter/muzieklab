@@ -2,8 +2,17 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 export type Breakpoint = 'phone' | 'tablet' | 'desktop';
 
+const lists = new Map<string, MediaQueryList>();
+
+/** One MediaQueryList per query (its `matches` stays live): Play reads several on every frame. */
 function mq(query: string): MediaQueryList | null {
-  return typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query) : null;
+  if (typeof window === 'undefined' || !window.matchMedia) return null;
+  let m = lists.get(query);
+  if (!m) {
+    m = window.matchMedia(query);
+    lists.set(query, m);
+  }
+  return m;
 }
 
 export function useMediaQuery(query: string): boolean {

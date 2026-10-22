@@ -85,6 +85,9 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    next to Pause (desktop: the ? key). It pauses the exercise and opens the same sheet,
    labelled *Paused* instead of *First time here*. The icon stays quiet (muted gray,
    no label) because it is rarely needed once the player knows the game.
+   Unit 1 is tap only, so a beginner's first sheet is the tap version ("no need to hold the note"). The first
+   exercise that judges holds (usually lesson 2.1) opens How to play once more, with the hold steps and the eyebrow
+   *New: hold each note*; *Got it* starts it (since 0.8.0). After that it opens only from **?**.
 5. **Results** (§6.4).
 
 **Input**
@@ -232,6 +235,8 @@ Learn and practice major and minor scales in all 15 keys.
   Learn chapter; the top header on tablet and desktop. Tablet and desktop put the circle and
   the selected key side by side: the key signature, the stars per form (one rating for major,
   natural / harmonic / melodic for minor), the scale's notes and *Options* / *Practice*.
+- **Starts on C major** (since 0.8.0): no sharps or flats and only white keys, where method books start; G, one sharp,
+  is the next step round the circle.
 - **Settings:** keys (the selected key · all 15 · choose, using the Key screen from Read
   notes) · scales (major, natural minor, harmonic minor, melodic minor; each shows its
   step pattern) · answer with (piano · names · mixed) · direction (up · up and down) ·
@@ -667,6 +672,18 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   tendency (only from 4+ hit notes).
 - Buttons: **Retry** (same exercise) · **Next** (new exercise, same settings) · **Listen**
   (correct playback) · **Settings**.
+- After a lesson (since 0.8.0), a badge under the score says what the run means for the Learning Path, and the main
+  button follows it:
+  - the lesson reached 2 stars for the first time: *Lesson 7.4 unlocked* (slate tint, an open lock), and **Next
+    lesson** starts the path's next lesson in place of Next;
+  - under 2 stars: *Get 2 stars to open lesson 7.4* (quiet, a lock); Retry and Next stay as they are;
+  - the last lesson to 2 stars: *Learning path done*;
+  - a lesson played again that already had 2 stars shows no badge, and Next lesson goes to the path's current lesson.
+
+  Free practice and the daily challenge are unchanged. MVP canvas, Rhythm practice: the Results row and *Results ·
+  lesson under 2 stars*.
+- On a short screen (an 8-bar exercise, a 1280 × 800 laptop) Results scrolls and Listen, Retry and Next stay at the
+  bottom, as Start does on Setup; the round summaries of Read notes and Scales do the same.
 
 ---
 

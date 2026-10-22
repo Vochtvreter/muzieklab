@@ -18,6 +18,11 @@ export interface Prefs {
   calibrationMs: number; // device offset
   calibratedAt: string | null; // ISO date
   seenHowTo: boolean;
+  /**
+   * How to play was shown for an exercise where holding counts. Unit 1 is tap only, so a beginner first sees the tap
+   * version; the first exercise that judges holds shows it again (§3.1 First time).
+   */
+  seenHold: boolean;
   /** The Echo mode's How to play was shown once. */
   seenEchoHowTo: boolean;
   /** Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold'. */
@@ -73,6 +78,7 @@ export const DEFAULT_PREFS: Prefs = {
   calibrationMs: 0,
   calibratedAt: null,
   seenHowTo: false,
+  seenHold: false,
   seenEchoHowTo: false,
   holdMode: 'hold',
   metronomeLook: 'digital',
@@ -164,6 +170,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     calibrationMs: num(raw.calibrationMs, d.calibrationMs, -500, 500),
     calibratedAt: typeof raw.calibratedAt === 'string' ? raw.calibratedAt : null,
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
+    seenHold: bool(raw.seenHold, d.seenHold),
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
@@ -256,8 +263,17 @@ function sanitizeScales(raw: unknown): Progress['scales'] {
   return { settings: sanitizeScaleSettings(raw.settings), stars };
 }
 
+/** Played an exercise that judges holds: a lesson after unit 1, free practice or a daily challenge (hold by default). */
+export function playedHolds(p: Progress): boolean {
+  return Object.keys(p.lessons).some((id) => !id.startsWith('1.')) || p.lastSettings !== null || p.daily !== null;
+}
+
 export function loadPrefs(): Prefs {
-  return sanitizePrefs(readJson(PREFS_KEY));
+  const raw = readJson(PREFS_KEY);
+  const prefs = sanitizePrefs(raw);
+  // Saved before seenHold (0.8.0): a player who has seen How to play and has played holds since knows them already.
+  if (isObj(raw) && typeof raw.seenHold !== 'boolean' && prefs.seenHowTo) prefs.seenHold = playedHolds(loadProgress());
+  return prefs;
 }
 export function savePrefs(p: Prefs): void {
   writeJson(PREFS_KEY, p);

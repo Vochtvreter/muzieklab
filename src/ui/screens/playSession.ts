@@ -69,7 +69,18 @@ const EARLY_IGNORE_S = 0.25;
 const END_GRACE_S = 0.35;
 const END_HARD_S = 1.5;
 
+/**
+ * Whether Play opens with How to play, and why: 'first' the very first time, 'hold' the first time an exercise judges
+ * holds after only tap-only ones (the sheet's eyebrow then says holding is new), null when it starts straight away.
+ */
+export function howToIntro(prefs: Pick<Prefs, 'seenHowTo' | 'seenHold'>, hold: boolean): 'first' | 'hold' | null {
+  if (!prefs.seenHowTo) return 'first';
+  return hold && !prefs.seenHold ? 'hold' : null;
+}
+
 export interface PlaySession {
+  /** Why How to play opened before the start (see howToIntro), for its eyebrow. */
+  intro: 'first' | 'hold' | null;
   phase: Phase;
   sheet: SheetKind;
   frame: Frame;
@@ -104,9 +115,11 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
 
   // No tap led here (a reload, Back / Forward into Play): wait for one, so the audio may start.
   const [gated] = useState(() => !!run.needsGesture || played.has(run));
-  const autoStart = prefs.seenHowTo && !gated;
+  // How to play opens first the very first time, and again the first time holding counts (unit 1 is tap only).
+  const [intro] = useState(() => howToIntro(prefs, ex.settings.hold));
+  const autoStart = !intro && !gated;
   const [phase, setPhase] = useState<Phase>(autoStart ? 'running' : 'intro');
-  const [sheet, setSheet] = useState<SheetKind>(!prefs.seenHowTo ? 'help' : gated ? 'ready' : null);
+  const [sheet, setSheet] = useState<SheetKind>(intro ? 'help' : gated ? 'ready' : null);
   const [interrupted, setInterrupted] = useState(false);
   const segStartedAt = useRef(0);
   const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, cursor: view.timeline.notes.length ? 0 : null, ring: 0, held: false });
@@ -445,6 +458,7 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
 
   const liveNotes = [...live.current.values()];
   return {
+    intro,
     phase,
     sheet,
     frame,

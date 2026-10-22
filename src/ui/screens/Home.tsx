@@ -38,9 +38,10 @@ function StreakPill({ days }: { days: number }): JSX.Element {
 function LessonPreview({ lessonId, wide, count = 1 }: { lessonId: string; wide?: boolean; count?: 1 | 2 }): JSX.Element | null {
   const preview = useMemo(() => lessonPreview(lessonId), [lessonId]);
   const view = preview ? exerciseView(preview.run.exercise) : null;
-  if (!preview || !view || view.bars.length === 0) return null;
-  const from = Math.max(0, Math.min(preview.bar, view.bars.length - count));
-  const bars = view.bars.slice(from, from + count);
+  const from = preview && view ? Math.max(0, Math.min(preview.bar, view.bars.length - count)) : 0;
+  // The same array between renders, so the staff is not drawn again whenever Home renders.
+  const bars = useMemo(() => view?.bars.slice(from, from + count) ?? [], [view, from, count]);
+  if (!preview || !view || bars.length === 0) return null;
   return (
     <div className={'preview-staff' + (wide ? ' preview-staff--wide' : '')}>
       <StaffBox bars={bars} meter={preview.run.exercise.meter} barsPerRow={bars.length} label={describeBars(bars, preview.run.exercise.meter.id, from + 1)} />

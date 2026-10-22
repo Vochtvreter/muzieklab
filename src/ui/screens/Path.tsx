@@ -25,7 +25,7 @@ export function PathScreen(): JSX.Element {
       <div className="page path">
         <div className="path-head">
           <h1 className="page-title">{t('path.title')}</h1>
-          <span className="mono-muted" aria-label={t('path.totalsLabel', { stars: totals.earned, total: totals.max })}>
+          <span className="mono-muted" role="img" aria-label={t('path.totalsLabel', { stars: totals.earned, total: totals.max })}>
             {t('path.totals', { stars: totals.earned, total: totals.max })}
           </span>
         </div>
@@ -49,7 +49,7 @@ export function PathScreen(): JSX.Element {
                     <div className="unit-stars">
                       {u.lessons.map((l) => {
                         const n = lessonStars(p, l.id);
-                        const label = t('path.playLesson', { id: l.id, stars: starsLabel(n) });
+                        const label = t('path.playLesson', { id: l.id, title: tx(l.title), stars: starsLabel(n) });
                         // Unlocked lessons can be played again, e.g. to turn two stars into three.
                         return isUnlocked(p, l.id) ? (
                           <button key={l.id} type="button" className={'lesson-stars' + (n ? ' has-stars' : '')} title={label}

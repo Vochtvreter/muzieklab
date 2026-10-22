@@ -103,7 +103,7 @@
     "next": "Volgende: les {lesson} · {title} · {bpm} BPM",
     "unlocks": "Gaat open met 2 sterren op elke les van hoofdstuk {unit}",
     "start": "Begin les {id}",
-    "playLesson": "Speel les {id}: {stars}",
+    "playLesson": "Speel les {id} · {title}: {stars}",
     "lockedLesson": "Les {id}, op slot",
     "u1": {
       "title": "Kwartnoten en halve noten",
@@ -344,6 +344,7 @@
   },
   "howto": {
     "firstTime": "De eerste keer",
+    "newHold": "Nieuw: houd elke noot vast",
     "paused": "Gepauzeerd",
     "title": "Zo speel je",
     "diagram": "Druk als een noot begint, houd vast zo lang hij duurt, laat los als hij ophoudt",
@@ -409,6 +410,12 @@
     "streakKept": "Reeks gehouden · {count, plural, one {# dag} other {# dagen}}",
     "newBest": "Nieuw persoonlijk record",
     "newBestTitle": "Je beste score op een uitdaging van de dag tot nu toe",
+    "unlocked": "Les {id} is open",
+    "pathDone": "Leerpad klaar",
+    "needStars": "Haal {count, plural, one {# ster} other {# sterren}} om les {id} te openen",
+    "needStarsLast": "Haal {count, plural, one {# ster} other {# sterren}} om het leerpad af te ronden",
+    "nextLesson": "Volgende les",
+    "nextLessonLabel": "Volgende les: {id} · {title}",
     "allPerfect": "Alles perfect! Diamanten ster",
     "perfect": "Perfect",
     "great": "Super",
@@ -715,7 +722,7 @@
       "names": "Notennamen",
       "piano": "Pianoklavier, één octaaf van C tot B",
       "blackKey": "{sharp} of {flat}",
-      "withKey": "{name}, toonsoort {key}",
+      "withKey": "{name}, toets {key}",
       "kbdNames": "Typ de letter; druk eerst op = voor ♯, 0 voor ♮ of − voor ♭",
       "kbdPiano": "Speel met A S D F G H J (wit) en W E T Y U (zwart)",
       "idleNames": "Kies het teken als er een is, en dan de naam.",
@@ -1872,6 +1879,16 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_8_0": {
+      "title": "Volgende les, en vasthouden uitgelegd",
+      "try": "Open het leerpad",
+      "nextLesson": "Na een les zegt de uitslag wat die opende: met twee sterren zie je “Les 1.2 is open”, en Volgende les brengt je er meteen heen. Onder twee sterren zegt de uitslag hoeveel sterren de volgende les openen.",
+      "hold": "De eerste les waarin vasthouden telt (meestal 2.1) toont Zo speel je opnieuw, nu met vasthouden, zodat de nieuwe regel nooit als een verrassing komt.",
+      "scales": "Toonladders begint bij C majeur: geen kruisen of mollen, alleen witte toetsen.",
+      "screens": "De uitslag en de samenvattingen houden Opnieuw en Volgende in beeld op korte schermen, en Spelen loopt soepeler op tragere telefoons.",
+      "notes": "Noten lezen: een ronde die eindigde met een goed antwoord sloeg de samenvatting over en ging terug naar de instellingen. Nu eindigt ze op Ronde klaar.",
+      "misc": "De tijd per noot loopt niet meer af terwijl de app in een ander tabblad staat, schermlezers lezen nu de scores bij Noten lezen en Toonladders voor, en Voortgang wissen zet ook Vrij oefenen terug."
+    },
     "v0_7_1": {
       "title": "Letters op de piano bij Toonladders",
       "letters": "De piano bij Toonladders toont altijd A tot G op de witte toetsen, ook als Noten lezen do re mi of geen namen toont. Het klavier begint bij elke ladder op een andere toets, dus de letters helpen je de weg te vinden."

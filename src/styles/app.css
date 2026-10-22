@@ -1350,7 +1350,8 @@ button.lesson-stars:hover {
 .setup .start-btn {
   position: sticky;
   bottom: 0;
-  box-shadow: 0 -18px 14px -6px var(--ground);
+  /* A fade above, and the ground below over the page's bottom padding, so nothing scrolls into view under it. */
+  box-shadow: 0 -18px 14px -6px var(--ground), 0 40px 0 24px var(--ground);
 }
 .staff-fallback {
   margin: 0;
@@ -2235,6 +2236,17 @@ button.lesson-stars:hover {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
   gap: 10px;
+}
+/*
+ * Results and the round summaries scroll when they are taller than the screen (8 bars, a 1280 × 800 laptop, a small
+ * phone), with the scrollbar hidden: Retry and Next stay in view at the bottom, as Start does on Setup.
+ */
+.results .results-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: var(--ground);
+  box-shadow: 0 -18px 14px -6px var(--ground), 0 40px 0 24px var(--ground);
 }
 
 /* ---------- Settings ---------- */
@@ -3277,6 +3289,17 @@ button.lesson-stars:hover {
   background: var(--reward-soft);
   border-color: transparent;
   color: var(--reward-ink);
+}
+/* Results after a lesson: the lesson that 2 stars just opened (or the finished path). */
+.badge--unlock {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+/* Results after a lesson under 2 stars: what opens the next lesson. Quiet, not a reward. */
+.badge--quiet {
+  color: var(--muted);
+  font-weight: 500;
 }
 
 /* ---------- v1.1 · Level-up sheet ---------- */

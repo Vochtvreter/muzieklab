@@ -4,10 +4,11 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { coachTip, DIAMOND, encodeCode, MAX_STARS, SHOWN_STARS, type Judgement } from '../../core/api';
+import { findLesson, UNLOCK_STARS } from '../../game/path';
 import { levelInfo } from '../../game/xp';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
-import { dateParts, t, tipText } from '../../i18n';
+import { dateParts, t, tipText, tx } from '../../i18n';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
 import { StaffBox } from '../components/Bits';
@@ -17,10 +18,11 @@ import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
 import { starsLabel } from '../lib/format';
+import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
 import { useStore, type LastResult } from '../store';
-import { useReplay } from './start';
+import { useReplay, useStartLesson } from './start';
 
 const COUNTS: { key: Judgement | 'extra'; tone: string }[] = [
   { key: 'perfect', tone: 'good' },
@@ -36,6 +38,7 @@ const levelUpShown = new WeakSet<LastResult>();
 export function Results(): JSX.Element | null {
   const { state, dispatch } = useStore();
   const replay = useReplay();
+  const startLesson = useStartLesson();
   const bp = useBreakpoint();
   const [playing, setPlaying] = useState(false);
   useDocTitle(t('app.docTitle', { page: t('results.docTitle') }));
@@ -119,7 +122,27 @@ export function Results(): JSX.Element | null {
       : echo
         ? t('results.echoDone')
         : t('results.practiceDone');
-  const badges = run.daily && (reward.streak !== null || reward.dailyBest);
+  // A lesson: what this run means for the path (a lesson opened, or the stars still needed), and where Next goes.
+  const outcome = run.lessonId ? lessonOutcome(state.progress, run.lessonId, last.lessonStarsBefore) : null;
+  const goOn = outcome?.continueId ? findLesson(outcome.continueId)?.lesson ?? null : null;
+  const outcomeBadge =
+    outcome?.kind === 'unlocked' && outcome.next ? (
+      <span className="badge badge--unlock">
+        <Icon name="unlock" size={15} />
+        {t('results.unlocked', { id: outcome.next.id })}
+      </span>
+    ) : outcome?.kind === 'pathDone' ? (
+      <span className="badge badge--unlock">
+        <Icon name="trophy" size={15} />
+        {t('results.pathDone')}
+      </span>
+    ) : outcome?.kind === 'needStars' ? (
+      <span className="badge badge--quiet">
+        <Icon name="lock" size={13} strokeWidth={2.4} />
+        {outcome.next ? t('results.needStars', { count: UNLOCK_STARS, id: outcome.next.id }) : t('results.needStarsLast', { count: UNLOCK_STARS })}
+      </span>
+    ) : null;
+  const badges = (run.daily && (reward.streak !== null || reward.dailyBest)) || outcomeBadge;
   const countOf = (k: Judgement | 'extra'): number => (k === 'extra' ? result.extraTaps : result.counts[k]);
 
   return (
@@ -167,7 +190,7 @@ export function Results(): JSX.Element | null {
 
         {badges && (
           <div className="badges">
-            {reward.streak !== null && (
+            {run.daily && reward.streak !== null && (
               <span className="badge">
                 <span className="streak-dot" aria-hidden="true" />
                 {t('results.streakKept', { count: reward.streak })}
@@ -179,6 +202,7 @@ export function Results(): JSX.Element | null {
                 {t('results.newBest')}
               </span>
             )}
+            {outcomeBadge}
           </div>
         )}
 
@@ -239,9 +263,19 @@ export function Results(): JSX.Element | null {
             <button type="button" className="btn btn--outline" onClick={() => replay(run, true)}>
               {t('results.retry')}
             </button>
-            <button type="button" className="btn btn--accent" onClick={() => replay(run, false)}>
-              {t('results.next')}
-            </button>
+            {goOn ? (
+              <button type="button" className="btn btn--accent" aria-label={t('results.nextLessonLabel', { id: goOn.id, title: tx(goOn.title) })}
+                onClick={() => {
+                  engine().stop();
+                  startLesson(goOn.id, { replace: true });
+                }}>
+                {t('results.nextLesson')}
+              </button>
+            ) : (
+              <button type="button" className="btn btn--accent" onClick={() => replay(run, false)}>
+                {t('results.next')}
+              </button>
+            )}
           </div>
         </div>
       </div>
