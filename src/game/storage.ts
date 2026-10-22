@@ -6,6 +6,7 @@ import { parseScaleId, type ScaleStars } from '../core/scale';
 import { sanitizeScaleSettings, type ScaleSettings } from '../core/scaleRound';
 import type { Volumes } from '../audio/engine';
 import { isLocale } from '../i18n';
+import { INTRO_IDS, introsOf } from './intro';
 import { TRACK_IDS, type TrackId } from './track';
 
 export interface Prefs {
@@ -26,6 +27,8 @@ export interface Prefs {
   seenHold: boolean;
   /** The Echo mode's How to play was shown once. */
   seenEchoHowTo: boolean;
+  /** The new symbols a lesson's intro sheet has shown ("note:half", "meter:3/4"; game/intro.ts), so each shows once. */
+  seenIntros: string[];
   /**
    * Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold', and free
    * practice only holds once the path has taught it (ui/store.tsx practiceHold).
@@ -88,6 +91,7 @@ export const DEFAULT_PREFS: Prefs = {
   seenHowTo: false,
   seenHold: false,
   seenEchoHowTo: false,
+  seenIntros: [],
   holdMode: 'hold',
   holdEarly: false,
   metronomeLook: 'digital',
@@ -164,7 +168,7 @@ function writeJson(key: string, value: unknown): void {
 
 export function sanitizePrefs(raw: unknown): Prefs {
   const d = DEFAULT_PREFS;
-  if (!isObj(raw)) return { ...d, volumes: { ...d.volumes } };
+  if (!isObj(raw)) return { ...d, volumes: { ...d.volumes }, seenIntros: [] };
   const v = isObj(raw.volumes) ? raw.volumes : {};
   return {
     language: raw.language === 'system' || isLocale(raw.language) ? raw.language : d.language,
@@ -182,6 +186,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
     seenHold: bool(raw.seenHold, d.seenHold),
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),
+    seenIntros: Array.isArray(raw.seenIntros) ? INTRO_IDS.filter((id) => (raw.seenIntros as unknown[]).includes(id)) : [],
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
     holdEarly: bool(raw.holdEarly, d.holdEarly),
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
@@ -285,6 +290,8 @@ export function loadPrefs(): Prefs {
   const prefs = sanitizePrefs(raw);
   // Saved before seenHold (0.8.0): a player who has seen How to play and has played holds since knows them already.
   if (isObj(raw) && typeof raw.seenHold !== 'boolean' && prefs.seenHowTo) prefs.seenHold = playedHolds(loadProgress());
+  // Saved before seenIntros: the symbols of the lessons played already were met there.
+  if (isObj(raw) && !Array.isArray(raw.seenIntros)) prefs.seenIntros = introsOf(Object.keys(loadProgress().lessons));
   return prefs;
 }
 export function savePrefs(p: Prefs): void {

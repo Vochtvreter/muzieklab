@@ -49,7 +49,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const, holdEarly: true };
+    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const, seenIntros: ['meter:3/4', 'note:half'], holdEarly: true };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
@@ -168,6 +168,21 @@ describe('prefs and progress storage', () => {
     // Never saw How to play: the first exercise shows it anyway. A saved seenHold is kept as it is.
     expect(old({ seenHowTo: false }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(false);
     expect(old({ seenHowTo: true, seenHold: false }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(false);
+  });
+
+  it('keeps known intro ids only', () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ seenIntros: ['note:half', 'note:half', 'x', 3, 'ties'], holdEarly: 'yes' }));
+    expect(loadPrefs().seenIntros).toEqual(['note:half', 'ties']);
+    expect(loadPrefs().holdEarly).toBe(false);
+  });
+
+  it('prefs saved before seenIntros count the symbols of the lessons played as shown', () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ seenHowTo: true }));
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ ...defaultProgress(), lessons: { '1.2': { stars: 1, bestAccuracy: 60 }, '2.2': { stars: 2, bestAccuracy: 80 } } }));
+    expect(loadPrefs().seenIntros.sort()).toEqual(['note:half', 'rest:quarter']);
+    // A saved list is kept as it is.
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ seenHowTo: true, seenIntros: [] }));
+    expect(loadPrefs().seenIntros).toEqual([]);
   });
 
   it('resetProgress clears progress but keeps prefs', () => {
