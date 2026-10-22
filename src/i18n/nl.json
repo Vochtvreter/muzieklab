@@ -504,6 +504,42 @@
     "detail": "{bars} in {meter} op {bpm} BPM. Het voortellen begint als je op Start drukt.",
     "start": "Start"
   },
+  "intro": {
+    "eyebrow": "Nieuw in deze les",
+    "listen": "Luisteren",
+    "listenTitle": "Hoor deze oefening met de tel",
+    "stop": "Stop",
+    "learnMore": "Meer uitleg",
+    "learnMoreLabel": "Meer uitleg: {name}",
+    "name": {
+      "meter2": "Tweekwartsmaat",
+      "meter3": "Driekwartsmaat",
+      "meter4": "Vierkwartsmaat",
+      "dotted": "Punt",
+      "ties": "Overbinding",
+      "triplets": "Triool"
+    },
+    "fact": {
+      "note": {
+        "whole": "4 tellen",
+        "half": "2 tellen",
+        "quarter": "1 tel",
+        "eighth": "een halve tel",
+        "sixteenth": "een kwart tel"
+      },
+      "rest": {
+        "whole": "een hele maat stilte",
+        "half": "2 tellen stilte",
+        "quarter": "1 tel stilte",
+        "eighth": "een halve tel stilte",
+        "sixteenth": "een kwart tel stilte"
+      },
+      "meter": "{count} tellen in een maat",
+      "dotted": "maakt de noot de helft langer",
+      "ties": "telt de lengte van de tweede noot erbij",
+      "triplets": "3 in de tijd van 2"
+    }
+  },
   "pause": {
     "title": "Gepauzeerd",
     "context": "{where} · Maat {bar} van {total}",

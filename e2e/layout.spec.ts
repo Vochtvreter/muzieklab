@@ -509,6 +509,22 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('play: what a lesson introduces, before the count-in', async ({ page }) => {
+      known(name, 'play-intro');
+      await seed(page, { prefs: { seenHowTo: true }, progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } } });
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      const sheet = page.getByRole('dialog', { name: 'Half notes' });
+      await expect(sheet.getByText('New in this lesson')).toBeVisible();
+      await expectClickable(sheet.getByRole('link', { name: 'Learn more: Half note' }));
+      await expectClickable(sheet.getByRole('button', { name: 'Listen' }));
+      await expectClickable(sheet.getByRole('button', { name: 'Start' }));
+      // Desktop: the dialog sits under the staff, so the rhythm stays readable.
+      if (VIEWPORTS[name].width >= 1100) await expectNoOverlap(sheet, page.locator('.dplay-staff svg').first());
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
     test('play with the analog metronome: pendulum and the pad', async ({ page }) => {
       known(name, 'play-analog');
       await page.goto('./#/settings');
@@ -566,6 +582,21 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
     }
+
+    test('play: the intro sheet and the count-in', async ({ page }) => {
+      known(name, 'nl-play-intro');
+      await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } } });
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Verder met de les' }).dispatchEvent('click');
+      const sheet = page.getByRole('dialog', { name: 'Halve noten' });
+      await expect(sheet.getByText('Nieuw in deze les')).toBeVisible();
+      await expectClickable(sheet.getByRole('button', { name: 'Luisteren' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await sheet.getByRole('button', { name: 'Start' }).click();
+      await expect(page.locator(VIEWPORTS[name].width >= 1100 ? '.dplay-title .mono-line' : '.play-info .mono-line')).toContainText('Voortellen');
+      await expectNoSideScroll(page);
+    });
 
     test('play, results and read notes', async ({ page }) => {
       known(name, 'nl-play');

@@ -19,6 +19,7 @@ import {
 } from '../../core/api';
 import { attachTapInput } from '../../input/tapInput';
 import type { NoteMark } from '../../render/Staff';
+import { introId, unseenIntros, type Intro } from '../../game/intro';
 import type { Prefs } from '../../game/storage';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import type { ExerciseView } from '../exerciseView';
@@ -26,7 +27,8 @@ import { beatAt, cursorAt, holdProgress, partialResult, pressFeedback, sliceTime
 import type { Run } from '../store';
 
 export type Phase = 'intro' | 'running' | 'paused' | 'done';
-export type SheetKind = 'help' | 'pause' | 'ready' | null;
+/** How to play, what the lesson introduces (the intro sheet), Ready, Pause. */
+export type SheetKind = 'help' | 'new' | 'pause' | 'ready' | null;
 
 /**
  * Runs that have already played. Coming back to one (Back / Forward after quitting or finishing) must not start it
@@ -84,9 +86,22 @@ export function howToIntro(prefs: Pick<Prefs, 'seenHowTo' | 'seenHold'>, hold: b
   return hold && !prefs.seenHold ? 'hold' : null;
 }
 
+/**
+ * The sheet Play opens with, before the count-in: How to play when it is due (howToIntro), else the intro sheet when
+ * the lesson brings symbols the player was not shown yet, else Ready when no tap led here (`gated`) or the run is a
+ * lesson other than the one finished last (`fresh`: read the new rhythm first). Null: count in straight away.
+ */
+export function firstSheet(howTo: 'first' | 'hold' | null, intros: number, gated: boolean, fresh: boolean): SheetKind {
+  if (howTo) return 'help';
+  if (intros > 0) return 'new';
+  return gated || fresh ? 'ready' : null;
+}
+
 export interface PlaySession {
   /** Why How to play opened before the start (see howToIntro), for its eyebrow. */
   intro: 'first' | 'hold' | null;
+  /** What this lesson introduces that the player has not been shown yet (the intro sheet); empty for other runs. */
+  intros: Intro[];
   phase: Phase;
   sheet: SheetKind;
   frame: Frame;
@@ -113,7 +128,18 @@ export interface PlaySession {
   skip(): void;
 }
 
-export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onIntroDone: () => void, onFinish: (r: JudgeResult, taps: Tap[]) => void): PlaySession {
+/**
+ * `onSeen`: a sheet before the start was done with (How to play, the intro sheet); the prefs to save. `fresh`: a lesson
+ * other than the one finished last, so Play waits on Ready (see firstSheet).
+ */
+export function usePlaySession(
+  run: Run,
+  view: ExerciseView,
+  prefs: Prefs,
+  onSeen: (patch: Partial<Prefs>) => void,
+  onFinish: (r: JudgeResult, taps: Tap[]) => void,
+  fresh = false,
+): PlaySession {
   const ex = run.exercise;
   const meter = ex.meter;
   const barSec = view.barSeconds;
@@ -123,9 +149,13 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
   const [gated] = useState(() => !!run.needsGesture || played.has(run));
   // How to play opens first the very first time, and again the first time holding counts (unit 1 is tap only).
   const [intro] = useState(() => howToIntro(prefs, ex.settings.hold));
-  const autoStart = !intro && !gated;
+  const [intros] = useState(() => (run.lessonId ? unseenIntros(run.lessonId, prefs.seenIntros) : []));
+  const [first] = useState(() => firstSheet(intro, intros.length, gated, fresh));
+  const autoStart = first === null;
   const [phase, setPhase] = useState<Phase>(autoStart ? 'running' : 'intro');
-  const [sheet, setSheet] = useState<SheetKind>(intro ? 'help' : gated ? 'ready' : null);
+  const [sheet, setSheet] = useState<SheetKind>(first);
+  /** The intro sheet's Start was pressed: How to play, opened again with ?, does not lead back to it. */
+  const introsDone = useRef(false);
   const [interrupted, setInterrupted] = useState(false);
   const segStartedAt = useRef(0);
   const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, countIn: false, cursor: null, ring: 0, held: false });
@@ -433,16 +463,27 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
 
   const closeSheet = useCallback(() => {
     const kind = sheet;
-    setSheet(null);
     // Closing a sheet is a tap or a key press: the moment iOS lets the page make sound.
     unlockAudio();
     if (phaseRef.current === 'intro') {
-      if (kind === 'help') onIntroDone();
+      const hold = ex.settings.hold;
+      if (kind === 'help') onSeen(hold ? { seenHowTo: true, seenHold: true } : { seenHowTo: true });
+      if (kind === 'new') {
+        introsDone.current = true;
+        onSeen({ seenIntros: [...new Set([...prefsRef.current.seenIntros, ...intros.map(introId)])] });
+      }
+      // One sheet at a time: How to play first, then what the lesson introduces, then the count-in.
+      if (kind === 'help' && intros.length > 0 && !introsDone.current) {
+        setSheet('new');
+        return;
+      }
+      setSheet(null);
       startSegment(0, ex.settings.countIn);
-    } else if (phaseRef.current === 'paused' && kind) {
-      resume();
+    } else {
+      setSheet(null);
+      if (phaseRef.current === 'paused' && kind) resume();
     }
-  }, [sheet, onIntroDone, startSegment, ex.settings.countIn, resume]);
+  }, [sheet, onSeen, intros, startSegment, ex.settings.countIn, ex.settings.hold, resume]);
 
   const restart = useCallback(() => {
     setSheet(null);
@@ -466,6 +507,7 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
   const liveNotes = [...live.current.values()];
   return {
     intro,
+    intros,
     phase,
     sheet,
     frame,

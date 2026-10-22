@@ -2421,6 +2421,11 @@ button.lesson-stars:hover {
   justify-content: center;
   padding: 24px;
 }
+/* Ready and the intro sheet before the count-in: under the staff, which the player reads first. */
+.overlay--dialog.overlay--low {
+  align-items: flex-end;
+  padding-bottom: 48px;
+}
 .sheet {
   width: 100%;
   background: var(--paper);
@@ -2541,6 +2546,105 @@ button.lesson-stars:hover {
   min-height: 54px;
   flex: none;
   gap: 10px;
+}
+/* The intro sheet (§3.1): each new symbol's glyph on a soft tile, its name, one fact and Learn more; Listen and Start. */
+.intro-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.intro-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.intro-glyph {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-music);
+  font-size: 40px;
+  line-height: 1;
+}
+/* A time signature: the two numbers stacked, in the display face. */
+.intro-glyph--meter {
+  flex-direction: column;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 0.95;
+}
+.intro-glyph--tie,
+.intro-glyph--triplet {
+  position: relative;
+  font-size: 30px;
+}
+.intro-glyph--tie {
+  gap: 10px;
+}
+.intro-glyph--triplet {
+  gap: 2px;
+  padding-top: 8px;
+}
+/* Under the two note heads (stems up, so the tie curves below). */
+.intro-tie {
+  position: absolute;
+  left: calc(50% - 3px);
+  bottom: 8px;
+  width: 22px;
+  height: 9px;
+  transform: translateX(-50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.intro-three {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+}
+.intro-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.intro-learn {
+  min-height: 36px;
+  padding: 6px 0;
+}
+/* Listen as wide as its label (Dutch "Luisteren" too), Start takes the rest. */
+.intro-actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+}
+.intro-actions .btn {
+  min-height: 54px;
+}
+.intro-actions .btn--outline {
+  padding-inline: 20px;
+}
+.intro-actions .btn--outline.is-on {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent-ink);
 }
 .menu {
   border: 1px solid var(--divider);

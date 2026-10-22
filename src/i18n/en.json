@@ -504,6 +504,42 @@
     "detail": "{bars} in {meter} at {bpm} BPM. The count-in starts when you press Start.",
     "start": "Start"
   },
+  "intro": {
+    "eyebrow": "New in this lesson",
+    "listen": "Listen",
+    "listenTitle": "Hear this exercise with the beat",
+    "stop": "Stop",
+    "learnMore": "Learn more",
+    "learnMoreLabel": "Learn more: {name}",
+    "name": {
+      "meter2": "Two-four",
+      "meter3": "Three-four",
+      "meter4": "Four-four",
+      "dotted": "Dot",
+      "ties": "Tie",
+      "triplets": "Triplet"
+    },
+    "fact": {
+      "note": {
+        "whole": "4 beats",
+        "half": "2 beats",
+        "quarter": "1 beat",
+        "eighth": "half a beat",
+        "sixteenth": "a quarter of a beat"
+      },
+      "rest": {
+        "whole": "a whole bar of silence",
+        "half": "2 beats of silence",
+        "quarter": "1 beat of silence",
+        "eighth": "half a beat of silence",
+        "sixteenth": "a quarter beat of silence"
+      },
+      "meter": "{count} beats in a bar",
+      "dotted": "adds half the note’s length",
+      "ties": "adds the second note’s length",
+      "triplets": "3 in the time of 2"
+    }
+  },
   "pause": {
     "title": "Paused",
     "context": "{where} · Bar {bar} of {total}",

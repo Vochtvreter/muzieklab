@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import type { JudgeResult, Tap } from '../../core/api';
 import { findLesson } from '../../game/path';
+import type { Prefs } from '../../game/storage';
 import { LengthLane } from '../../render/LengthLane';
 import { t, tx } from '../../i18n';
 import { applyAudioPrefs, engine } from '../audio';
@@ -23,7 +24,7 @@ import { metersLabel } from '../lib/format';
 import { Link, navigate } from '../router';
 import { todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
-import { HowToContent, PauseContent, ReadyContent } from './PlaySheets';
+import { HowToContent, IntroContent, PauseContent, ReadyContent, useListen } from './PlaySheets';
 import { usePlaySession } from './playSession';
 
 export function Play(): JSX.Element | null {
@@ -91,14 +92,27 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   useEffect(() => {
     if (state.last?.run === run) navigate('/results', { replace: true });
   }, [state.last, run]);
-  const hold = ex.settings.hold;
-  const onIntroDone = useCallback(() => dispatch({ type: 'prefs', patch: hold ? { seenHowTo: true, seenHold: true } : { seenHowTo: true } }), [dispatch, hold]);
+  const onSeen = useCallback((patch: Partial<Prefs>) => dispatch({ type: 'prefs', patch }), [dispatch]);
   // Echo has its own How to play in the listen phase, so tapping starts straight away.
   const isEcho = !!echo;
   const prefs = useMemo(() => (isEcho ? { ...state.prefs, seenHowTo: true, seenHold: true } : state.prefs), [isEcho, state.prefs]);
-  const s = usePlaySession(run, view, prefs, onIntroDone, onFinish);
+  // A lesson other than the one finished last waits on Ready, so its rhythm can be read first; Retry and Next exercise
+  // of the same lesson start straight away.
+  const [fresh] = useState(() => !isEcho && !!run.lessonId && !!state.last && state.last.run.lessonId !== run.lessonId);
+  const s = usePlaySession(run, view, prefs, onSeen, onFinish, fresh);
+  const listen = useListen(ex, view.timeline, state.prefs);
+  // Every way out of a sheet: Start's count-in takes the audio over from the intro sheet's Listen.
+  const closeSheet = (): void => {
+    listen.halt();
+    s.closeSheet();
+  };
+  const help = (): void => {
+    listen.stop();
+    s.openSheet('help');
+  };
 
-  // Esc closes an open sheet (Resume / Got it); ? swaps to How to play.
+  // Esc closes an open sheet (Resume / Got it / Start); ? swaps to How to play. Attached again on each render, which
+  // is rare while a sheet is open, so it calls the current closeSheet and help.
   useEffect(() => {
     if (!s.sheet) return;
     const onKey = (e: KeyboardEvent): void => {
@@ -107,15 +121,15 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       if (e.key === 'Escape') {
         e.preventDefault();
         // Esc may not start audio (it is not a user-activation key), so it does not start or resume from here.
-        if (!s.needsTap) s.closeSheet();
+        if (!s.needsTap) closeSheet();
       } else if (e.key === '?' && s.sheet !== 'help') {
         e.preventDefault();
-        s.openSheet('help');
+        help();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [s.sheet, s.closeSheet, s.openSheet, s.needsTap]);
+  });
 
   const bars = ex.bars.length;
   const total = view.timeline.totalSeconds;
@@ -189,17 +203,19 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const { shown: sheetShown, closing } = useLingering(s.sheet, 240);
   const sheet = sheetShown && (
     <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey={sheetShown}
-      labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
-      maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined}>
+      labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'new' ? 'introtitle' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
+      maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined} low={sheetShown === 'new' || sheetShown === 'ready'}>
       {sheetShown === 'help' ? (
         <HowToContent eyebrow={t(echo ? 'howto.echo.eyebrow' : s.phase !== 'intro' ? 'howto.paused' : s.intro === 'hold' ? 'howto.newHold' : 'howto.firstTime')} desktop={keys} hold={ex.settings.hold} echo={!!echo}
-          onDone={s.closeSheet} />
+          onDone={closeSheet} />
+      ) : sheetShown === 'new' ? (
+        <IntroContent title={lesson ? tx(lesson.lesson.title) : where} intros={s.intros} listen={listen} onStart={closeSheet} />
       ) : sheetShown === 'ready' ? (
-        <ReadyContent context={where} onStart={s.closeSheet}
+        <ReadyContent context={where} onStart={closeSheet}
           detail={t('ready.detail', { bars: t('common.bars', { count: bars }), meter: metersLabel([ex.meter.id]), bpm: ex.tempo })} />
       ) : (
         <PauseContent context={t('pause.context', { where, bar: curBar + 1, total: bars })} desktop={keys} lesson={!!lesson} interrupted={s.interrupted}
-          onResume={s.closeSheet} onRestart={s.restart} onHelp={() => s.openSheet('help')} onSettings={toSettings} onQuit={quit} />
+          onResume={closeSheet} onRestart={s.restart} onHelp={help} onSettings={toSettings} onQuit={quit} />
       )}
     </Sheet>
   );

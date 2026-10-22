@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { DEFAULT_SETTINGS, generateExercise, type JudgeResult, type Settings } from '../../core/api';
-import { DEFAULT_PREFS } from '../../game/storage';
+import { lessonSettings } from '../../game/path';
+import { DEFAULT_PREFS, type Prefs } from '../../game/storage';
 import { exerciseView } from '../exerciseView';
-import { howToIntro, usePlaySession } from './playSession';
+import { firstSheet, howToIntro, usePlaySession } from './playSession';
 
 /*
  * The play session against a fake audio engine. Two clocks, as on a real device: `clock.now` is the scheduling clock
@@ -290,6 +291,73 @@ describe('usePlaySession', () => {
     expect(hook.result.current.interrupted).toBe(true);
     act(() => hook.result.current.closeSheet());
     expect(hook.result.current.interrupted).toBe(false);
+  });
+});
+
+describe('sheets before the count-in', () => {
+  /** A lesson run, the prefs saved by its sheets, and its starts. */
+  function lesson(lessonId: string, prefs: Partial<Prefs>, fresh = false) {
+    starts.length = 0;
+    const ex = generateExercise(lessonSettings(lessonId), 7);
+    const run = { exercise: ex, lessonId, daily: null };
+    const seen: Partial<Prefs>[] = [];
+    const hook = renderHook(() => usePlaySession(run, exerciseView(ex)!, { ...DEFAULT_PREFS, ...prefs }, (p) => seen.push(p), () => undefined, fresh));
+    return { hook, seen };
+  }
+
+  it('a lesson with a new symbol opens the intro sheet; Start saves it as shown and counts in', () => {
+    const { hook, seen } = lesson('1.2', { seenHowTo: true });
+    expect(hook.result.current.sheet).toBe('new');
+    expect(hook.result.current.intros).toEqual([{ kind: 'note', value: 'half' }]);
+    expect(starts.length).toBe(0);
+    act(() => hook.result.current.closeSheet());
+    expect(seen).toEqual([{ seenIntros: ['note:half'] }]);
+    expect(starts.length).toBe(1);
+    expect(hook.result.current.phase).toBe('running');
+  });
+
+  it('a symbol shown before does not open it again', () => {
+    const { hook } = lesson('1.2', { seenHowTo: true, seenIntros: ['note:half'] });
+    expect(hook.result.current.sheet).toBeNull();
+    expect(starts.length).toBe(1);
+  });
+
+  it('How to play first, then the intro sheet: one sheet, one tap at a time', () => {
+    const { hook, seen } = lesson('1.2', {});
+    expect(hook.result.current.sheet).toBe('help');
+    act(() => hook.result.current.closeSheet());
+    expect(hook.result.current.sheet).toBe('new');
+    expect(starts.length).toBe(0);
+    act(() => hook.result.current.closeSheet());
+    expect(seen).toEqual([{ seenHowTo: true }, { seenIntros: ['note:half'] }]);
+    expect(starts.length).toBe(1);
+  });
+
+  it('How to play opened with ? from the intro sheet leads back to it', () => {
+    const { hook } = lesson('1.2', { seenHowTo: true });
+    act(() => hook.result.current.openSheet('help'));
+    expect(hook.result.current.sheet).toBe('help');
+    act(() => hook.result.current.closeSheet());
+    expect(hook.result.current.sheet).toBe('new');
+    expect(starts.length).toBe(0);
+  });
+
+  it('a lesson other than the one finished last waits on Ready; Start counts in', () => {
+    const { hook } = lesson('1.3', { seenHowTo: true, seenIntros: ['note:half'] }, true);
+    expect(hook.result.current.sheet).toBe('ready');
+    // A tap led here (Next lesson), so Esc may start it.
+    expect(hook.result.current.needsTap).toBe(false);
+    expect(starts.length).toBe(0);
+    act(() => hook.result.current.closeSheet());
+    expect(starts.length).toBe(1);
+  });
+
+  it('firstSheet: How to play, then the intro sheet, then Ready, else straight away', () => {
+    expect(firstSheet('first', 1, true, true)).toBe('help');
+    expect(firstSheet(null, 1, true, true)).toBe('new');
+    expect(firstSheet(null, 0, true, false)).toBe('ready');
+    expect(firstSheet(null, 0, false, true)).toBe('ready');
+    expect(firstSheet(null, 0, false, false)).toBeNull();
   });
 });
 
