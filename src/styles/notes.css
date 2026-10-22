@@ -1205,6 +1205,66 @@
   border-color: var(--accent);
   color: var(--accent-ink);
 }
+/*
+ * An example you can hear (DESIGN.md §9.1): its play button in front of the notation on tablet and desktop; on phones
+ * it starts the example's first line, so the notation keeps the full width.
+ */
+.learn-listen,
+.learn-example-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.learn-listen > :last-child,
+.learn-example-top > .learn-example-head {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.learn-example-top > .learn-verdict {
+  align-self: center;
+}
+/* The piano keeps its size and sits right after its button. */
+.learn-listen > .piano--diagram {
+  flex: 0 1 320px;
+  margin: 0;
+}
+/* A slate circle in a 44 px touch target, nudged left so the circle lines up with the text. */
+.learn-play {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-left: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--on-fill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.learn-play-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.18s ease-out,
+    box-shadow 0.18s ease-out;
+}
+/* The triangle's weight sits left of its box: centre it by eye. */
+.learn-play:not(.is-on) .learn-play-dot svg {
+  margin-left: 2px;
+}
+.learn-play:hover .learn-play-dot {
+  background: var(--accent-ink);
+}
+.learn-play.is-on .learn-play-dot {
+  box-shadow: 0 0 0 4px var(--accent-halo);
+}
 /* The counts under a Learn rhythm (DESIGN.md §9.1): held and silent counts are grey, in brackets. */
 .staff-counts {
   font-family: var(--font-mono);
@@ -1341,9 +1401,9 @@
 }
 .learn-pulse-row {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 40px 60px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .learn-pulse-track {
   position: relative;
@@ -1366,6 +1426,27 @@
   margin-top: -6px;
   border-radius: 50%;
   background: var(--accent);
+  transition:
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out;
+}
+/* The beat just heard. */
+.learn-pulse-dot.is-on {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 4px var(--accent-halo);
+}
+/* Phones under the 390 px board: the tempo goes over its time line, so eight beats keep their room. */
+@media (max-width: 389.98px) {
+  .learn-pulse-row {
+    grid-template-columns: 40px minmax(0, 1fr);
+    row-gap: 2px;
+  }
+  .learn-pulse-row > .learn-play {
+    grid-row: span 2;
+  }
+  .learn-pulse-axis > .mono-muted {
+    display: none;
+  }
 }
 .learn-pulse-axis .learn-pulse-track::before {
   display: none;

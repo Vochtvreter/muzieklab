@@ -33,19 +33,37 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
 | `{ kind: 'tip', text }` | a grey box: a memory aid or "in the game" |
 | `{ kind: 'list', items }` | a bulleted list |
 | `{ kind: 'tiles', tiles: [{ glyph, title, text }] }` | cards with a music glyph (the two clefs) |
-| `{ kind: 'staff', clef, keyId?, notes, labels?, title?, value?, slots?, room?, alt }` | a five-line staff, one whole note per bar. `notes: 'E4 G4 F#4 Bb4 Fn5'` (letter, sign `#` `b` `n`, octave; C4 = middle C). `labels: 'name'` writes the names under the notes. `slots: 0` draws only the clef and key signature, with `value` beside it. |
-| `{ kind: 'rhythm', meter, bars, title?, value?, verdict?, common?, alt }` | the one-line rhythm staff with the counting under the notes. `bars: ['q [8 8] h', 'q. 8 q qr']`; the tokens are in `src/render/notationText.ts` (`w h q 8 16`, `.` dot, `r` rest, `~` tie, `t` triplet, `W` whole-bar rest, `[ ]` beam). The counts come from the rhythm (`src/render/counting.ts`). `verdict: 'write' \| 'avoid'` adds a green or red label, `common: true` draws 4/4 as C. |
+| `{ kind: 'staff', clef, keyId?, notes, labels?, title?, value?, slots?, room?, play?, alt }` | a five-line staff, one whole note per bar. `notes: 'E4 G4 F#4 Bb4 Fn5'` (letter, sign `#` `b` `n`, octave; C4 = middle C). `labels: 'name'` writes the names under the notes. `slots: 0` draws only the clef and key signature, with `value` beside it. `play: true` adds a play button (see *Sound* below). |
+| `{ kind: 'rhythm', meter, bars, title?, value?, verdict?, common?, tempo?, alt }` | the one-line rhythm staff with the counting under the notes, and a play button. `bars: ['q [8 8] h', 'q. 8 q qr']`; the tokens are in `src/render/notationText.ts` (`w h q 8 16`, `.` dot, `r` rest, `~` tie, `t` triplet, `W` whole-bar rest, `[ ]` beam). The counts come from the rhythm (`src/render/counting.ts`). `verdict: 'write' \| 'avoid'` adds a green or red label, `common: true` draws 4/4 as C, `tempo: 60` plays it at 60 BPM (default 80). |
 | `{ kind: 'table', rows: [{ glyph?, title, text?, value? }] }` | rows of a name, a line under it and a value on the right (tempo words, the rests) |
 | `{ kind: 'beatGrid', rows: [{ title, beat }], alt }` | one beat divided several ways, each row's counts in one grid: `beat: '[8. 16]'` reads 1 (&) a |
 | `{ kind: 'timeSig', meter, top, bottom }` | a big time signature beside what its two numbers mean |
 | `{ kind: 'accents', meters }` | strong, medium and weak beats per meter, from the engine's metric weights |
-| `{ kind: 'pulse', tempos, alt }` | four seconds of beats at each tempo |
-| `{ kind: 'noteTree' }` | the note tree, one bar of 4/4 per value, with a Notes \| Rests switch |
-| `{ kind: 'piano', marked?, alt }` | one piano octave; `marked: ['E', 'F']` tints white keys |
+| `{ kind: 'pulse', tempos, alt }` | four seconds of beats at each tempo, each with a play button |
+| `{ kind: 'noteTree' }` | the note tree, one bar of 4/4 per value, with a Notes \| Rests switch; each bar can be played |
+| `{ kind: 'piano', marked?, alt }` | one piano octave from middle C; a tapped key sounds. `marked: ['E', 'F']` tints white keys and adds a play button |
 | `{ kind: 'noteNames' }` | C–B with do re mi |
 | `{ kind: 'pair', variant?, columns }` | columns side by side on tablet and desktop, stacked on phones (`'staves'` or `'text'`) |
 
 Every `alt` is the description a screen reader gets for the picture; for a staff it may use `{names}`.
+
+### Sound
+
+Examples that show music can be heard (DESIGN.md §9.1). A round play button sits in front of the notation on tablet and
+desktop, and at the start of the example's first line on phones; it turns into Stop while the example plays. One example
+plays at a time, and leaving the chapter stops it. The sound follows the Sound volumes in Settings.
+
+| Block | Play button | What it plays |
+|---|---|---|
+| `rhythm` | always | one bar of count-in clicks, then the rhythm on the woodblock with every beat clicking, at `tempo` (default 80 BPM) |
+| `noteTree` | always, per row | that row's bar the same way (a rests row: only the clicks) |
+| `pulse` | always, per tempo | four seconds of beat clicks; the dot of each beat lights up |
+| `staff` | with `play: true` | the notes left to right as piano tones (the scales of chapter 11 go up); a note without a sign takes the key signature's |
+| `piano` | with `marked` | the marked keys in the order written, each above the one before (`['E', 'F', 'B', 'C']` plays E–F and B–C) |
+
+Every piano diagram's keys sound when tapped. Tables, text, the beat grid and the other blocks stay silent. What each
+block sends to the audio engine is worked out in `src/ui/lib/learnSound.ts` (unit tested), and played by
+`src/ui/learn/Listen.tsx`.
 
 A new kind of block (counting under the notes, for example) is a case in the `Block` type in `chapters.ts`, a case in
 `src/ui/learn/Blocks.tsx`, and a line in `blockKeys` in `chapters.test.ts`.

@@ -101,7 +101,10 @@ describe('Learn chapters', () => {
             expect(bar.symbols.reduce((sum, x) => sum + x.duration, 0), `${s.id} ${r.beat}`).toBeCloseTo(PPQ);
           }
         }
+        // A playable staff has notes to play; a rhythm plays at a tempo the game can play.
+        if (b.kind === 'staff' && b.play) expect(b.notes.trim(), s.id).not.toBe('');
         if (b.kind === 'rhythm') {
+          if (b.tempo !== undefined) expect(b.tempo >= 40 && b.tempo <= 200, `${s.id} tempo ${b.tempo}`).toBe(true);
           if (b.common) expect(b.meter, s.id).toBe('4/4');
           const meter = getMeter(b.meter);
           // Each bar is exactly full.

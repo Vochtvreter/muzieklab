@@ -33,6 +33,7 @@ export type Block =
   /**
    * A pitch staff, one whole note per bar. `labels` writes each note's name under it ('nameOctave' adds the octave:
    * C4). With `title` it gets a header line with `value` on the right. The `alt` text gets `{names}`: the notes' names.
+   * `play` adds a play button that plays the notes left to right (a scale goes up).
    */
   | {
       kind: 'staff';
@@ -48,11 +49,13 @@ export type Block =
       barlines?: boolean;
       title?: string;
       value?: string;
+      play?: boolean;
       alt: string;
     }
   /**
    * A rhythm on the one-line staff, with the counting under the notes (held and silent counts grey, in brackets).
-   * `title` and `value` give it a header line; `verdict` a "Write" or "Avoid" label; `common` draws 4/4 as C.
+   * `title` and `value` give it a header line; `verdict` a "Write" or "Avoid" label; `common` draws 4/4 as C. Its play
+   * button plays it after a bar of count-in, at `tempo` BPM (default 80).
    */
   | {
       kind: 'rhythm';
@@ -63,20 +66,21 @@ export type Block =
       value?: string;
       verdict?: 'write' | 'avoid';
       common?: boolean;
+      tempo?: number;
     }
   /** Rows of a name, a line of text and a value on the right, with an optional music glyph (tempo words, rests). */
   | { kind: 'table'; rows: { glyph?: string; title: string; text?: string; value?: string }[] }
   /** Strong, medium and weak beats of each meter, as bars of different heights. */
   | { kind: 'accents'; meters: MeterId[] }
-  /** Four seconds of beats at each tempo, as dots on a time line. */
+  /** Four seconds of beats at each tempo, as dots on a time line, each tempo with a play button. */
   | { kind: 'pulse'; tempos: number[]; alt: string }
   /** A big time signature with what its top and bottom number mean. */
   | { kind: 'timeSig'; meter: MeterId; top: string; bottom: string }
   /** One beat, divided in several ways: each row's rhythm fills one beat and shows its counts in a shared grid. */
   | { kind: 'beatGrid'; rows: { title: string; beat: RhythmText }[]; alt: string }
-  /** The note tree: one 4/4 bar per value, whole to sixteenth, with a Notes | Rests switch. */
+  /** The note tree: one 4/4 bar per value, whole to sixteenth, with a Notes | Rests switch; each bar can be played. */
   | { kind: 'noteTree' }
-  /** One piano octave C–B; `marked` white keys are tinted. */
+  /** One piano octave C–B: a tapped key sounds; `marked` white keys are tinted, and a play button plays them in order. */
   | { kind: 'piano'; marked?: string[]; alt: string }
   /** The seven letter names with do re mi under them. */
   | { kind: 'noteNames' }
@@ -646,7 +650,7 @@ export const CHAPTERS: Chapter[] = [
         check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
-          { kind: 'staff', clef: 'treble', notes: 'C4 D4 E4 F4 G4 A4 B4 C5', labels: 'name', barlines: false, title: 'cTitle', value: 'cValue', alt: 'cAlt' },
+          { kind: 'staff', clef: 'treble', notes: 'C4 D4 E4 F4 G4 A4 B4 C5', labels: 'name', barlines: false, play: true, title: 'cTitle', value: 'cValue', alt: 'cAlt' },
           { kind: 'pair', variant: 'text', columns: [[{ kind: 'text', text: 'keys' }], [{ kind: 'piano', marked: ['E', 'F', 'B', 'C'], alt: 'pianoAlt' }]] },
           { kind: 'text', text: 'white' },
         ],
@@ -657,7 +661,7 @@ export const CHAPTERS: Chapter[] = [
         check: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
-          { kind: 'staff', clef: 'treble', notes: 'G4 A4 B4 C5 D5 E5 F#5 G5', labels: 'name', barlines: false, title: 'gTitle', value: 'gValue', alt: 'gAlt' },
+          { kind: 'staff', clef: 'treble', notes: 'G4 A4 B4 C5 D5 E5 F#5 G5', labels: 'name', barlines: false, play: true, title: 'gTitle', value: 'gValue', alt: 'gAlt' },
           { kind: 'text', text: 'letters' },
           { kind: 'tip', text: 'sig' },
         ],
@@ -679,11 +683,11 @@ export const CHAPTERS: Chapter[] = [
         check: { answers: [{ note: 'F#' }, { note: 'G#' }, { note: 'C#' }], right: 1 },
         blocks: [
           { kind: 'text', text: 'text' },
-          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F5 G5 A5', labels: 'name', barlines: false, title: 'naturalTitle', value: 'naturalValue', alt: 'naturalAlt' },
+          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F5 G5 A5', labels: 'name', barlines: false, play: true, title: 'naturalTitle', value: 'naturalValue', alt: 'naturalAlt' },
           { kind: 'text', text: 'harmonic' },
-          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F5 G#5 A5', labels: 'name', barlines: false, title: 'harmonicTitle', value: 'harmonicValue', alt: 'harmonicAlt' },
+          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F5 G#5 A5', labels: 'name', barlines: false, play: true, title: 'harmonicTitle', value: 'harmonicValue', alt: 'harmonicAlt' },
           { kind: 'text', text: 'melodic' },
-          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F#5 G#5 A5', labels: 'name', barlines: false, title: 'melodicTitle', value: 'melodicValue', alt: 'melodicAlt' },
+          { kind: 'staff', clef: 'treble', notes: 'A4 B4 C5 D5 E5 F#5 G#5 A5', labels: 'name', barlines: false, play: true, title: 'melodicTitle', value: 'melodicValue', alt: 'melodicAlt' },
         ],
         practice: { scales: { keyMode: 'one', keys: ['C'], types: ['natural', 'harmonic', 'melodic'] } },
       },

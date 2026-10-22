@@ -476,6 +476,34 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
     });
 
+    test('learn: examples play one at a time: the pulse, a rhythm, a scale and the piano', async ({ page }) => {
+      known(name, 'learn-sound');
+      await page.goto('./#/learn/1');
+      const pulse = page.getByRole('group', { name: /^Four seconds of beats/ });
+      await expectClickable(pulse.getByRole('button', { name: 'Play 60 BPM' }));
+      await pulse.getByRole('button', { name: 'Play 60 BPM' }).click();
+      await expect(pulse.getByRole('button', { name: 'Stop' })).toBeVisible();
+      // Starting another example stops the first.
+      const bars = page.locator('#s1-2').getByRole('button', { name: 'Play', exact: true }).first();
+      await expectClickable(bars);
+      await bars.click();
+      await expect(pulse.getByRole('button', { name: 'Play 60 BPM' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(1);
+      await expectNoSideScroll(page);
+
+      // Opening another chapter stops it. A scale plays, and so do the piano's marked keys and each key.
+      await page.goto('./#/learn/11?s=11.1');
+      await expect(page.getByRole('heading', { level: 1, name: /Scales/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
+      const scale = page.locator('#s11-1');
+      await expect(scale.getByRole('button', { name: 'Play', exact: true })).toHaveCount(2);
+      await expectClickable(scale.getByRole('button', { name: 'Play', exact: true }).first());
+      const piano = scale.getByRole('group', { name: /^One piano octave/ });
+      await expectClickable(piano.getByRole('button', { name: 'E', exact: true }));
+      await expectClickable(piano.getByRole('button', { name: 'F sharp or G flat' }));
+      await expectNoSideScroll(page);
+    });
+
     test('play: how to play, then the pad', async ({ page }) => {
       known(name, 'play');
       await page.goto('./');

@@ -1212,6 +1212,8 @@
     "next": "Volgende",
     "check": "Snelle check",
     "checkHint": "Beantwoord hem goed, dan is dit deel gelezen.",
+    "play": "Afspelen",
+    "stop": "Stoppen",
     "ch1": {
       "intro": "Muziek beweegt op een vaste puls. Dit hoofdstuk laat zien hoe snel die puls gaat, hoe hij in maten wordt verdeeld, en waarom sommige tellen sterker voelen dan andere. Alle volgende hoofdstukken tellen in deze tellen.",
       "s1": {
@@ -1634,6 +1636,7 @@
     },
     "pulse": {
       "bpm": "{bpm} BPM",
+      "play": "{bpm} BPM afspelen",
       "time": "tijd",
       "sec": "{s} s"
     },

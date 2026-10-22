@@ -2,7 +2,8 @@
  * Learn (DESIGN.md §9.1): the chapter list with read status, and each chapter on its own page. The chapters are data
  * (`ui/learn/chapters.ts`); this file only lays them out. Each section ends with a quick check, and is marked read once
  * that is answered right; it may also end with a practice link that opens practice set up for it. A chapter ends with
- * a quick check of its own and previous / next.
+ * a quick check of its own and previous / next. Examples can be heard (learn/Listen.tsx); leaving the chapter stops the
+ * sound.
  *
  * Tablet and desktop use the full width: the chapter list puts its sections in two columns, and a chapter page gets the
  * big chapter number and wider sections. Tablet jumps to a section with a row of chips; desktop has a chapter sidebar.
@@ -15,6 +16,7 @@ import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
 import { Blocks } from '../learn/Blocks';
 import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
+import { stopLearnSound } from '../learn/Listen';
 import { letterName } from '../lib/noteText';
 import { hashQuery, Link, useHash, type Route } from '../router';
 import { useStore } from '../store';
@@ -244,6 +246,8 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
   const next = CHAPTERS[at + 1];
   const ids = sectionIds(chapter);
   const route = chapterRoute(n);
+  // An example still sounding stops when another chapter opens or Learn closes.
+  useEffect(() => stopLearnSound, [n]);
 
   // #/learn/10?s=10.2 opens at that section.
   const target = hashQuery(hash).get('s');
