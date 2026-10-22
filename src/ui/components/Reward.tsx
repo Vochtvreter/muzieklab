@@ -2,7 +2,7 @@
  * v1.1 rewards: the XP bar, the daily challenge's date tile, Copy code, and the level sheet (Home's level details, and
  * the level-up after a result).
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { UNLOCK_STARS, type LessonOutcome } from '../../game/track';
 import { levelInfo, rankOf, RANKS, type LevelInfo } from '../../game/xp';
 import { dateParts, t } from '../../i18n';

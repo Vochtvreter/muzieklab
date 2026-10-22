@@ -22,16 +22,19 @@ export function useStartLesson(): (lessonId: string, opts?: { replace?: boolean 
   );
 }
 
-/** Free practice with the given settings (hold follows the path: practiceSettings). */
-export function useStartPractice(): (settings: Settings) => void {
+/**
+ * Free practice with the given settings (hold follows the path: practiceSettings). `query` goes along to Play: from a
+ * Learn practice link, `from=1.1`, so Quit and Results return to that section.
+ */
+export function useStartPractice(): (settings: Settings, opts?: { query?: string }) => void {
   const { state, dispatch } = useStore();
   return useCallback(
-    (settings: Settings) => {
+    (settings: Settings, opts: { query?: string } = {}) => {
       unlockAudio();
       const run = makeRun(practiceSettings(state, settings), newSeed(), null);
       if (!run) return;
       dispatch({ type: 'start', run });
-      navigate('/play');
+      navigate('/play', opts);
     },
     [state, dispatch],
   );
@@ -54,18 +57,21 @@ export function useStartDaily(): () => void {
   }, [state.progress, state.prefs.holdMode, dispatch]);
 }
 
-/** Retry (the same exercise) or Next (a new seed, same settings and lesson; after a daily challenge, free practice). */
-export function useReplay(): (prev: Run, same: boolean) => void {
+/**
+ * Retry (the same exercise) or Next (a new seed, same settings and lesson; after a daily challenge, free practice).
+ * `query` keeps a Learn section to return to (`from=1.1`).
+ */
+export function useReplay(): (prev: Run, same: boolean, query?: string) => void {
   const { dispatch } = useStore();
   return useCallback(
-    (prev: Run, same: boolean) => {
+    (prev: Run, same: boolean, query?: string) => {
       unlockAudio();
       const { exercise, lessonId } = prev;
       const run: Run | null = same ? { exercise, lessonId, daily: prev.daily } : makeRun(exercise.settings, newSeed(), lessonId);
       if (!run) return;
       dispatch({ type: 'start', run });
       // Results is swapped for Play (and Play for Results at the end), so Back leaves the exercise, not replays it.
-      navigate('/play', { replace: true });
+      navigate('/play', { replace: true, query });
     },
     [dispatch],
   );

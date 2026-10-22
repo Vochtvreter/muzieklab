@@ -7,11 +7,12 @@ import { newSeed } from '../../lib/format';
 import { navigate } from '../../router';
 import { makeNoteRun, useStore } from '../../store';
 
-export function useStartNotes(): (settings: NoteSettings, focus?: string[], opts?: { replace?: boolean }) => void {
+/** A round with these settings; `opts.query` goes along to Play (`from=8.2`: started from a Learn section). */
+export function useStartNotes(): (settings: NoteSettings, focus?: string[], opts?: { replace?: boolean; query?: string }) => void {
   const { state, dispatch } = useStore();
   const weak = state.progress.notes.weak;
   return useCallback(
-    (settings: NoteSettings, focus: string[] = [], opts: { replace?: boolean } = {}) => {
+    (settings: NoteSettings, focus: string[] = [], opts: { replace?: boolean; query?: string } = {}) => {
       dispatch({ type: 'noteStart', run: makeNoteRun(settings, newSeed(), weak, focus) });
       navigate('/notes/play', opts);
     },

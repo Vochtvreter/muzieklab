@@ -18,6 +18,7 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { exerciseView, type ExerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useKeyboardHints, useLingering, useReducedMotion } from '../hooks';
+import { useLearnReturn } from '../lib/learnReturn';
 import { liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
@@ -80,6 +81,9 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const still = useReducedMotion();
   const ex = run.exercise;
   const lesson = run.lessonId ? findLesson(run.lessonId) : null;
+  // Started from a Learn section (?from=1.1): Quit returns there, and Results and the setup keep it.
+  const { back, carry } = useLearnReturn();
+  const exit = back?.to ?? '/';
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
 
   const onFinish = useCallback(
@@ -90,8 +94,8 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   );
   // Go to Results once the store holds this run's result (not before, or Results would see the old state).
   useEffect(() => {
-    if (state.last?.run === run) navigate('/results', { replace: true });
-  }, [state.last, run]);
+    if (state.last?.run === run) navigate('/results', { replace: true, query: carry });
+  }, [state.last, run, carry]);
   const onSeen = useCallback((patch: Partial<Prefs>) => dispatch({ type: 'prefs', patch }), [dispatch]);
   // Echo has its own How to play in the listen phase, so tapping starts straight away.
   const isEcho = !!echo;
@@ -185,10 +189,10 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const fbClass = 'judgement' + (s.feedback ? ' tone-' + s.feedback.tone : '');
   const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : echo && s.phase === 'running' ? t('play.echo.yourTurnCue') : ' ';
 
-  // Quit swaps Play for Home in the history, so Back does not walk into the exercise again.
+  // Quit swaps Play for Home (or the Learn section) in the history, so Back does not walk into the exercise again.
   const quit = (): void => {
     s.stop();
-    navigate('/', { replace: true });
+    navigate(exit, { replace: true, query: back?.query });
   };
   const quitLink = (e: MouseEvent): void => {
     e.preventDefault();
@@ -197,7 +201,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const toSettings = (): void => {
     s.stop();
     dispatch({ type: 'settings', settings: ex.settings });
-    navigate('/setup');
+    navigate('/setup', { query: carry });
   };
 
   const { shown: sheetShown, closing } = useLingering(s.sheet, 240);
@@ -249,7 +253,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
               <Icon name="pause" size={16} />
               {t('play.pause')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
             </button>
-            <Link to="/" className="text-link-btn" onClick={quitLink}>
+            <Link to={exit} query={back?.query} className="text-link-btn" onClick={quitLink}>
               {t('play.quitShort')}
             </Link>
           </div>
@@ -322,7 +326,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       <div className="page play">
         <h1 className="sr-only">{t('play.heading')}</h1>
         <div className="play-top">
-          <Link to="/" aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
+          <Link to={exit} query={back?.query} aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('play.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
