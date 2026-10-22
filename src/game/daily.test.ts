@@ -1,21 +1,103 @@
 import { checkSettings } from '../core/feasibility';
 import { generateExercise } from '../core/generator';
-import { dailyChallenge } from './daily';
+import { dailyChallenge, reachedUnit } from './daily';
+import { lessonSettings, UNITS } from './path';
+import { defaultProgress, type Progress } from './storage';
+
+const days = (n: number): string[] =>
+  Array.from({ length: n }, (_, i) => `2027-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + ((i * 7) % 28)).padStart(2, '0')}`);
+
+/** Progress with two stars on every lesson of units 1 … n. */
+function passedUnits(n: number): Progress {
+  const lessons: Progress['lessons'] = {};
+  for (const u of UNITS.slice(0, n)) for (const l of u.lessons) lessons[l.id] = { stars: 2, bestAccuracy: 80 };
+  return { ...defaultProgress(), lessons };
+}
+
+/** Everything the path has taught by the end of unit `unit`. */
+function taughtBy(unit: number): { notes: Set<string>; rests: Set<string>; meters: Set<string>; dotted: boolean; ties: boolean } {
+  const all = UNITS.filter((u) => u.id <= unit).flatMap((u) => u.lessons.map((l) => lessonSettings(l.id)));
+  return {
+    notes: new Set(all.flatMap((s) => s.notes)),
+    rests: new Set(all.flatMap((s) => s.rests)),
+    meters: new Set(all.flatMap((s) => s.meters)),
+    dotted: all.some((s) => s.dotted),
+    ties: all.some((s) => s.ties),
+  };
+}
+
+describe('reachedUnit', () => {
+  it('is the highest open unit of the rhythm path', () => {
+    expect(reachedUnit(defaultProgress())).toBe(1);
+    expect(reachedUnit({ ...defaultProgress(), lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } })).toBe(1);
+    expect(reachedUnit(passedUnits(1))).toBe(2);
+    expect(reachedUnit(passedUnits(5))).toBe(6);
+    expect(reachedUnit(passedUnits(8))).toBe(8);
+  });
+});
 
 describe('dailyChallenge', () => {
-  it('is the same for everyone on a date, and changes with the date', () => {
-    expect(dailyChallenge('2026-10-17')).toEqual(dailyChallenge('2026-10-17'));
-    const days = Array.from({ length: 30 }, (_, i) => dailyChallenge(`2026-11-${String(i + 1).padStart(2, '0')}`).seed);
-    expect(new Set(days).size).toBe(30);
+  it('is the same for everyone at a unit on a date, and changes with the date', () => {
+    for (const unit of [1, 2, 5, 8]) {
+      expect(dailyChallenge('2026-10-17', unit)).toEqual(dailyChallenge('2026-10-17', unit));
+      const seeds = Array.from({ length: 30 }, (_, i) => dailyChallenge(`2026-11-${String(i + 1).padStart(2, '0')}`, unit).seed);
+      expect(new Set(seeds).size).toBe(30);
+    }
+  });
+
+  it('gives each unit its own exercise', () => {
+    const seeds = UNITS.map((u) => dailyChallenge('2026-10-22', u.id).seed);
+    expect(new Set(seeds).size).toBe(UNITS.length);
+    // Past the last unit the tier stays the last one.
+    expect(dailyChallenge('2026-10-22', 12)).toEqual(dailyChallenge('2026-10-22', UNITS[UNITS.length - 1].id));
+  });
+
+  it('never uses material from a unit that is not open yet', () => {
+    for (const u of UNITS) {
+      const taught = taughtBy(u.id);
+      for (const day of days(40)) {
+        const s = dailyChallenge(day, u.id).settings;
+        for (const v of s.notes) expect(taught.notes, `unit ${u.id}, ${day}: ${v}`).toContain(v);
+        for (const v of s.rests) expect(taught.rests, `unit ${u.id}, ${day}: ${v} rest`).toContain(v);
+        for (const m of s.meters) expect(taught.meters, `unit ${u.id}, ${day}: ${m}`).toContain(m);
+        if (s.dotted) expect(taught.dotted, `unit ${u.id}, ${day}: dotted`).toBe(true);
+        if (s.ties) expect(taught.ties, `unit ${u.id}, ${day}: ties`).toBe(true);
+        expect(s.triplets).toBe(false);
+      }
+    }
+  });
+
+  it('starts short and slow, tap only in unit 1, and holds notes from unit 2', () => {
+    for (const day of days(40)) {
+      const one = dailyChallenge(day, 1).settings;
+      expect(one.hold).toBe(false);
+      expect(one.meters).toEqual(['4/4']);
+      expect(one.rests).toEqual([]);
+      for (const unit of [1, 2]) {
+        const s = dailyChallenge(day, unit).settings;
+        expect(s.bars).toBe(4);
+        expect(s.tempo).toBeGreaterThanOrEqual(60);
+        expect(s.tempo).toBeLessThanOrEqual(72);
+      }
+      for (const unit of [2, 3, 8]) expect(dailyChallenge(day, unit).settings.hold).toBe(true);
+    }
+  });
+
+  it('from unit 3 on, picks the mid-path material', () => {
+    // Over a few months every unit-8 player meets sixteenths at least once, and never only quarter and half notes.
+    const all = days(120).map((d) => dailyChallenge(d, 8).settings);
+    expect(all.some((s) => s.notes.includes('sixteenth'))).toBe(true);
+    expect(all.every((s) => s.notes.some((v) => v !== 'half' && v !== 'quarter') || s.meters.some((m) => m !== '4/4'))).toBe(true);
   });
 
   it('is always a playable tap exercise', () => {
-    for (let i = 1; i <= 60; i++) {
-      const day = `2027-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`;
-      const { settings, seed } = dailyChallenge(day);
-      expect(settings.mode).toBe('tap');
-      expect(checkSettings(settings).ok).toBe(true);
-      expect(generateExercise(settings, seed).bars).toHaveLength(settings.bars);
+    for (const u of UNITS) {
+      for (const day of days(30)) {
+        const { settings, seed } = dailyChallenge(day, u.id);
+        expect(settings.mode).toBe('tap');
+        expect(checkSettings(settings).ok).toBe(true);
+        expect(generateExercise(settings, seed).bars).toHaveLength(settings.bars);
+      }
     }
   });
 });

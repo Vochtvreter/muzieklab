@@ -6,7 +6,7 @@
  */
 import { useMemo } from 'react';
 import { exerciseView } from '../exerciseView';
-import { dailyChallenge } from '../../game/daily';
+import { dailyChallenge, reachedUnit } from '../../game/daily';
 import { lessonSettings, UNITS, type Unit } from '../../game/path';
 import { streak } from '../../game/storage';
 import { levelInfo } from '../../game/xp';
@@ -59,7 +59,8 @@ export function Home(): JSX.Element {
   const days = streak(state.progress.practiceDays, today);
   const cont = continueLesson(state.progress);
   const xp = levelInfo(state.progress.xp);
-  const daily = useMemo(() => dailyChallenge(today).settings, [today]);
+  const reached = reachedUnit(state.progress);
+  const daily = useMemo(() => dailyChallenge(today, reached).settings, [today, reached]);
   const dailyDone = state.progress.daily?.day === today ? state.progress.daily : null;
 
   const xpBlock = (
