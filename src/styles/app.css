@@ -1144,8 +1144,8 @@
 .path--tablet .track-chip-meta {
   font-size: 12.5px;
 }
-/* The smallest phones: the names alone, so a long one ("Toonsoorten") still fits. */
-@media (max-width: 359px) {
+/* Phones under 390 px: the names alone, so the long ones ("Read notes", "Toonsoorten") fit on one line. */
+@media (max-width: 389px) {
   .track-glyph {
     display: none;
   }
@@ -1298,6 +1298,10 @@ button.unit-head:active:not(:disabled) {
   color: var(--muted);
   transform: rotate(90deg);
   transition: transform 0.26s var(--ease-out-soft);
+}
+.unit-lock {
+  flex: none;
+  color: var(--muted);
 }
 .unit-head[aria-expanded='true'] .unit-chevron {
   transform: rotate(-90deg);
@@ -1463,15 +1467,10 @@ button.lesson-stars:hover {
   font-size: 1em;
   letter-spacing: inherit;
 }
+/* What opens the locked units, once, under the first of them. */
 .unit-sub {
-  display: flex;
-  align-items: center;
-  gap: 5px;
   font-size: 13px;
   color: var(--muted);
-}
-.unit-sub svg {
-  flex: none;
 }
 .path-start {
   margin-top: auto;

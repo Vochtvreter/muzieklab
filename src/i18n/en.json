@@ -102,7 +102,7 @@
     "totalsLabel": "{stars} of {total} stars",
     "unitTitle": "{id} · {title}",
     "next": "Next: lesson {lesson} · {title} · {bpm} BPM",
-    "unlocks": "Unlocks with 2 stars on every unit {unit} lesson",
+    "unlocks": "Opens with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
     "playLesson": "Play lesson {id} · {title}: {stars}",
     "lockedLesson": "Lesson {id}, locked",
@@ -177,11 +177,6 @@
       "notes": "Read notes",
       "keys": "Keys"
     },
-    "trackShort": {
-      "rhythm": "Rhythm",
-      "notes": "Notes",
-      "keys": "Keys"
-    },
     "trackMeta": "Unit {unit} of {total}",
     "trackDone": "All done",
     "trackLocked": "Locked",
@@ -196,7 +191,6 @@
     },
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} of {max} stars",
-    "nextNotes": "Next: lesson {lesson} · {title} · {count} notes",
     "opensAfter": "Opens after Read notes unit {unit}",
     "lockedLessonTitled": "Lesson {id} · {title}, locked",
     "notes": {

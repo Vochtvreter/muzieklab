@@ -177,11 +177,6 @@
       "notes": "Noten lezen",
       "keys": "Toonsoorten"
     },
-    "trackShort": {
-      "rhythm": "Ritme",
-      "notes": "Noten",
-      "keys": "Toonsoorten"
-    },
     "trackMeta": "Hoofdstuk {unit} van {total}",
     "trackDone": "Alles klaar",
     "trackLocked": "Op slot",
@@ -196,7 +191,6 @@
     },
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} van {max} sterren",
-    "nextNotes": "Volgende: les {lesson} · {title} · {count} noten",
     "opensAfter": "Gaat open na hoofdstuk {unit} van Noten lezen",
     "lockedLessonTitled": "Les {id} · {title}, op slot",
     "notes": {

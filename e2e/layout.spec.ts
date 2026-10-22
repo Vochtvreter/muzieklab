@@ -137,6 +137,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('button', { name: /^1 · Quarter and half notes/ })).toHaveAttribute('aria-expanded', 'true');
       await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Quarter notes: 0 of 3 stars' }));
       await expect(page.getByRole('img', { name: 'Lesson 1.2 · Half notes, locked' })).toBeVisible();
+      // What opens the locked units is said once, under the first; no Next line repeats Start.
+      const units = page.getByRole('list', { name: 'Units' });
+      await expect(units.getByText('Opens with 2 stars on every unit 1 lesson')).toHaveCount(1);
+      await expect(units.getByText(/^Opens with/)).toHaveCount(1);
+      await expect(units.getByText(/^Next: lesson/)).toHaveCount(0);
+      await expect(paths.nth(1)).toContainText('Read notes');
 
       await expectClickable(paths.nth(1));
       await paths.nth(1).click();
@@ -158,6 +164,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
       await paths.nth(2).click();
       await expect(page.getByText('Opens after Read notes unit 3').first()).toBeVisible();
+      await expect(units.getByText(/^Opens/)).toHaveCount(1);
       await expectClickable(page.getByRole('button', { name: 'Go to Read notes' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);

@@ -2,12 +2,10 @@
  * Learning path (DESIGN.md §8.2; MVP canvas, Path page, Learning paths): three paths, Rhythm, Read notes and Keys,
  * picked with a switcher (phone, tablet) or path cards (desktop); the app remembers the last one. Each path shows its
  * stars and theory link, the unit spine (done, current, locked) and Start for its next lesson. A unit opens to show its
- * lessons by name, as rows on phone and five tiles on tablet and desktop; the current unit is open. Keys opens after
- * Read notes unit 3.
+ * lessons by name, as rows on phone and five tiles on tablet and desktop; the current unit is open. Locked units show a
+ * lock and their title; what opens them is said once, under the first. Keys opens after Read notes unit 3.
  */
 import { useEffect, useRef, useState } from 'react';
-import { lessonSettings } from '../../game/path';
-import { noteLessonSettings } from '../../game/notesPath';
 import { trackLessons, starsIn, trackStarsIn, unitStarsIn, unitStatesIn, lessonOpen, type Track, type TrackId, type TrackLesson, type UnitState } from '../../game/track';
 import { allStars, continueIn, OPENS_AFTER, trackById, trackOpen, TRACKS } from '../../game/tracks';
 import type { Progress } from '../../game/storage';
@@ -165,7 +163,7 @@ function TrackChip({ view: v, on, onPick }: { view: TrackView; on: boolean; onPi
         <span aria-hidden="true" className="track-glyph">
           {GLYPH[id]}
         </span>
-        {t('path.trackShort.' + id)}
+        {t('path.track.' + id)}
       </span>
       <span className="track-chip-meta">
         {!v.open && <Icon name="lock" size={12} strokeWidth={2.4} />}
@@ -222,13 +220,6 @@ function TrackInfo({ view: v }: { view: TrackView }): JSX.Element {
   );
 }
 
-/** "Next: lesson 7.3 · Dotted quarter + eighth · 80 BPM" (rhythm) or "… · 20 notes" (Read notes, Keys). */
-function nextLine(id: TrackId, lesson: TrackLesson): string {
-  const base = { lesson: lesson.id, title: tx(lesson.title) };
-  if (id === 'rhythm') return t('path.next', { ...base, bpm: lessonSettings(lesson.id).tempo });
-  return t('path.nextNotes', { ...base, count: noteLessonSettings(id, lesson.id)?.count ?? 0 });
-}
-
 function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
   view: TrackView;
   progress: Progress;
@@ -252,6 +243,8 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
     scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
   }, []);
   const after = OPENS_AFTER[id];
+  // What opens the locked units is said once, under the first of them; the others show a lock and their title.
+  const firstLocked = states.indexOf('locked');
 
   return (
     <ol ref={list} className="units m-scroll" aria-label={t('path.units')}>
@@ -276,6 +269,8 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
               {st === 'locked' ? (
                 <div className="unit-head">
                   <span className="unit-title">{title}</span>
+                  <span className="sr-only">{t('path.trackLocked')}</span>
+                  <Icon name="lock" size={15} strokeWidth={2.4} className="unit-lock" />
                 </div>
               ) : (
                 <button type="button" className="unit-head" aria-expanded={isOpen} aria-controls={panel} onClick={() => setOpenUnit(isOpen ? null : u.id)}>
@@ -313,11 +308,9 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
                   </div>
                 </div>
               )}
-              {st === 'current' && v.next && <div className="unit-sub">{nextLine(id, v.next)}</div>}
-              {st === 'locked' && (i > 0 || after) && (
+              {i === firstLocked && (i > 0 || after) && (
                 <div className="unit-sub">
-                  <Icon name="lock" size={13} strokeWidth={2.4} />
-                  <span>{i === 0 && after ? t('path.opensAfter', { unit: after.unit }) : t('path.unlocks', { unit: track.units[i - 1]?.id ?? u.id })}</span>
+                  {i === 0 && after ? t('path.opensAfter', { unit: after.unit }) : t('path.unlocks', { unit: track.units[i - 1]?.id ?? u.id })}
                 </div>
               )}
             </div>
