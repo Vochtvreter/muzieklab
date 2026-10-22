@@ -70,10 +70,11 @@ A new kind of block (counting under the notes, for example) is a case in the `Bl
 
 ### Practice links and the quick check
 
-- `practice: { notes: { clefs: ['bass'], range: 'staff' } }` opens Read notes with those settings on top of the
-  player's own (answer with, notes per round and the timer stay). `practice: { rhythm: { meters: ['3/4'] } }` opens
-  rhythm Free practice the same way, and `practice: { scales: { keyMode: 'one', keys: ['C'], types: ['major'] } }` the
-  Scales setup.
+- `practice: { notes: { clefs: ['bass'], range: 'staff' } }` starts a Read notes round straight away, with those
+  settings on top of the player's own (answer with, notes per round and the timer stay). `practice: { rhythm: { meters:
+  ['3/4'] } }` starts a rhythm exercise the same way, in Tap mode (tempo, bars and the metronome stay the player's).
+  Quit, and the back arrow on Results or Round done, return to the section; their setup button opens the setup with
+  the preset. `practice: { scales: { keyMode: 'one', keys: ['C'], types: ['major'] } }` opens the Scales setup.
 - The chapter's `practice: 'notes' | 'rhythm' | 'scales'` picks the big button at the end.
 - A staff block with `barlines: false` writes its notes in one bar without bar lines, as a scale is written.
 - `quiz: { answers: [{ note: 'G' }, { note: 'Gb' }, { text: 'a3' }], right: 1 }`: the chapter's quick check at the

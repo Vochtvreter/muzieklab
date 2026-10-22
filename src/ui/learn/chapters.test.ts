@@ -128,7 +128,9 @@ describe('Learn chapters', () => {
         expect(sanitizeScaleSettings(settings), s.id).toEqual(settings);
         if (settings.keyMode === 'pick') expect(settings.keys.length, s.id).toBeGreaterThan(1);
       } else {
-        const settings = { ...DEFAULT_SETTINGS, ...s.practice.rhythm };
+        // Over Echo as the player's last mode too: the link starts the exercise, so it must show the notation.
+        const settings = { ...DEFAULT_SETTINGS, mode: 'echo' as const, ...s.practice.rhythm };
+        expect(settings.mode, s.id).toBe('tap');
         expect(checkSettings(settings).playable.length, s.id).toBeGreaterThan(0);
       }
     }

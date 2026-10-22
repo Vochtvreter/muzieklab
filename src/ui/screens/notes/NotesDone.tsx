@@ -18,6 +18,7 @@ import { LevelUpContent, OutcomeBadge } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
 import { starsLabel } from '../../lib/format';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { letterName, majorName, octaveName, signWord } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { useStore, type NoteLast } from '../../store';
@@ -31,6 +32,8 @@ export function NotesDone(): JSX.Element | null {
   const bp = useBreakpoint();
   const start = useStartNotes();
   const startLesson = useStartNoteLesson();
+  // A round started from a Learn section (?from=8.2): Back returns there; a new round and the setup keep it.
+  const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('notes.done.docTitle') }));
   const last = state.noteLast;
   useEffect(() => {
@@ -61,8 +64,8 @@ export function NotesDone(): JSX.Element | null {
   const clefs = s.clefs.length > 1 ? t('notes.setup.clefsBoth').toLowerCase() : t('notes.clefLower.' + s.clefs[0]);
   const keyText = keys.length > 1 ? t('notes.done.keysMix', { count: keys.length }) : majorName(keys[0]);
   const missed = missedIds(run.notes, answers);
-  const again = (): void => start(s, [], { replace: true });
-  const practise = (): void => start(s, missed, { replace: true });
+  const again = (): void => start(s, [], { replace: true, query: carry });
+  const practise = (): void => start(s, missed, { replace: true, query: carry });
   const change = (): void => dispatch({ type: 'noteSettings', settings: s });
   // A lesson: what the round did for its path, and the lesson Next starts.
   const lesson = run.lesson;
@@ -83,7 +86,8 @@ export function NotesDone(): JSX.Element | null {
     <ExerciseFrame className="frame--results">
       <div className="page results ndone no-scrollbar">
         <div className="screen-head">
-          <Link to={lesson ? '/path' : '/'} aria-label={t(lesson ? 'notes.done.lessonBack' : 'notes.done.back')} className="icon-btn icon-btn--edge-sm">
+          <Link to={lesson ? '/path' : (back?.to ?? '/')} query={lesson ? undefined : back?.query}
+            aria-label={lesson ? t('notes.done.lessonBack') : back ? t('learn.backToChapter', { n: back.chapter }) : t('notes.done.back')} className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">
@@ -166,13 +170,13 @@ export function NotesDone(): JSX.Element | null {
                   {t('notes.done.practiceMissed')}
                 </button>
               ) : (
-                <Link to="/notes" className="btn btn--accent" onClick={change}>
+                <Link to="/notes" query={carry} className="btn btn--accent" onClick={change}>
                   {t('notes.done.change')}
                 </Link>
               )}
             </div>
             {missed.length > 0 && (
-              <Link to="/notes" className="ghost-btn ndone-change" onClick={change}>
+              <Link to="/notes" query={carry} className="ghost-btn ndone-change" onClick={change}>
                 <Icon name="sliders" size={18} />
                 {t('notes.done.change')}
               </Link>

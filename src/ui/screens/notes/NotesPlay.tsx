@@ -13,6 +13,7 @@ import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
 import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { feedbackText, hintText, keySignsText, majorName, positionText, letterName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
@@ -83,12 +84,14 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     },
     [dispatch],
   );
+  // A round started from a Learn section (?from=8.2) keeps it: Round done and Quit return there.
+  const { back, carry } = useLearnReturn();
   // Go to Round done once the store holds this round's result. Navigating in finish() itself raced the store when a
   // right last answer finished the round from a timer: the summary rendered before the result and sent the player
   // back to the setup.
   useEffect(() => {
-    if (state.noteLast?.run === run) navigate('/notes/done', { replace: true });
-  }, [state.noteLast, run]);
+    if (state.noteLast?.run === run) navigate('/notes/done', { replace: true, query: carry });
+  }, [state.noteLast, run, carry]);
 
   const next = useCallback(() => {
     if (!done) return;
@@ -148,9 +151,10 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [done, timer]);
 
-  // Quit goes back where the round started: the Path for a lesson, the Read notes setup otherwise.
-  const home = run.lesson ? '/path' : '/notes';
-  const quit = (): void => navigate(home, { replace: true });
+  // Quit goes back where the round started: the Path for a lesson, the Learn section, the Read notes setup otherwise.
+  const home = run.lesson ? '/path' : (back?.to ?? '/notes');
+  const homeQuery = run.lesson ? undefined : back?.query;
+  const quit = (): void => navigate(home, { replace: true, query: homeQuery });
   const skip = (): void => finish(answers.slice(0, done ? i + 1 : i));
 
   // Keys: letters (names) or A S D F G H J / W E T Y U (piano), − 0 = for the sign, Enter or Space for Next, Esc quits (desktop).
@@ -334,7 +338,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
             <div style={{ width: (answeredCount / total) * 100 + '%' }} />
           </div>
           <div className="dplay-actions">
-            <Link to={home} className="text-link-btn" aria-keyshortcuts="Escape" onClick={quitLink}>
+            <Link to={home} query={homeQuery} className="text-link-btn" aria-keyshortcuts="Escape" onClick={quitLink}>
               {t('notes.play.quit')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
             </Link>
           </div>
@@ -387,7 +391,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       <div className="page play nplay no-scrollbar">
         <h1 className="sr-only">{t('notes.play.heading')}</h1>
         <div className="play-top">
-          <Link to={home} aria-label={t('notes.play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
+          <Link to={home} query={homeQuery} aria-label={t('notes.play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('notes.play.progress')} aria-valuemin={0} aria-valuemax={total} aria-valuenow={answeredCount}>

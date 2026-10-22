@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { noteLessonSettings } from '../src/game/notesPath';
-import { seed as seedStorage, VIEWPORTS } from './helpers';
+import { DEFAULT_SETTINGS } from '../src/core/defaults';
+import { pad, seed as seedStorage, VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
 
@@ -158,14 +159,30 @@ test('learn: the Key screen links to key signatures; the quick check answers', a
   await expect(page.getByRole('link', { name: 'Learn' })).toHaveAttribute('aria-current', 'page');
 });
 
-test('learn: a practice link opens Read notes set up for its section', async ({ page }) => {
+test('learn: a practice link starts a Read notes round for its section; Quit and Round done return to it', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/learn/8?s=8.3');
-  await page.getByRole('link', { name: 'Practice the bass clef →' }).click();
+  const link = page.getByRole('link', { name: 'Practice the bass clef →' });
+  await link.click();
+  await expect(page).toHaveURL(/#\/notes\/play\?from=8\.3$/);
+  await page.getByRole('link', { name: 'Quit' }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
+
+  // Round done's back arrow returns to the section.
+  await link.click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/notes\/done\?from=8\.3$/);
+  await page.getByRole('link', { name: 'Back to chapter 8' }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
+
+  // Change setup shows the section's preset; its Back returns to the section, also after a visit to the Key screen.
+  await link.click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await page.getByRole('link', { name: 'Change setup' }).click();
   await expect(page).toHaveURL(/#\/notes\?from=8\.3$/);
   await expect(page.getByRole('button', { name: /Treble/ })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: /Bass/ })).toHaveAttribute('aria-pressed', 'true');
-  // Back returns to the section, also after a visit to the Key screen.
   await page.getByRole('link', { name: /^Key: / }).click();
   await page.getByRole('link', { name: 'Back to setup' }).click();
   await expect(page).toHaveURL(/#\/notes\?from=8\.3$/);
@@ -173,14 +190,38 @@ test('learn: a practice link opens Read notes set up for its section', async ({ 
   await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
 });
 
-test('learn: a rhythm practice link opens Free practice set up for its section', async ({ page }) => {
+test('learn: a rhythm practice link starts the exercise for its section; Quit, Results and the setup return to it', async ({ page }) => {
+  test.setTimeout(45_000);
+  // The player's last setup: Echo, one bar at 200 BPM. The link plays in Tap mode with the section's preset.
+  await seedStorage(page, {
+    prefs: { seenHowTo: true, seenHold: true },
+    progress: { lessons: {}, practiceDays: [], lastSettings: { ...DEFAULT_SETTINGS, mode: 'echo', bars: 1, tempo: 200 } },
+  });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/learn/7');
-  await page.getByRole('link', { name: 'Practice triplets →' }).click();
+  const link = page.getByRole('link', { name: 'Practice triplets →' });
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?from=7\.1$/);
+  await expect(pad(page)).toBeVisible();
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
+
+  // Played to the end: Results goes back to the section, and Retry keeps that.
+  await link.click();
+  await expect(page).toHaveURL(/#\/results\?from=7\.1$/, { timeout: 10_000 });
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect(page).toHaveURL(/#\/results\?from=7\.1$/, { timeout: 10_000 });
+  await page.getByRole('link', { name: 'Back to chapter 7' }).click();
+  await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
+
+  // Practice settings opens the setup with the preset; its Back returns to the section.
+  await link.click();
+  await page.getByRole('link', { name: 'Practice settings' }).click({ timeout: 10_000 });
   await expect(page).toHaveURL(/#\/setup\?from=7\.1$/);
   await expect(page.getByRole('button', { name: 'Triplets', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Dotted', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: 'Ties', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Tap' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('link', { name: 'Back to chapter 7' }).click();
   await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
 });

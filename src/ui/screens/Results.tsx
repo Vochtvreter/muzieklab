@@ -18,6 +18,7 @@ import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
 import { starsLabel } from '../lib/format';
+import { useLearnReturn } from '../lib/learnReturn';
 import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
@@ -41,6 +42,8 @@ export function Results(): JSX.Element | null {
   const startLesson = useStartLesson();
   const bp = useBreakpoint();
   const [playing, setPlaying] = useState(false);
+  // An exercise started from a Learn section (?from=1.1): Back returns there; Retry, Next and the setup keep it.
+  const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('results.docTitle') }));
   const last = state.last;
   const view = last ? exerciseView(last.run.exercise) : null;
@@ -133,7 +136,8 @@ export function Results(): JSX.Element | null {
     <ExerciseFrame className="frame--results">
       <div className="page results no-scrollbar">
         <div className="screen-head">
-          <Link to="/" aria-label={t('results.backHome')} className="icon-btn icon-btn--edge-sm">
+          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('results.backHome')}
+            className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
           <h1 className="screen-title">{title}</h1>
@@ -238,13 +242,13 @@ export function Results(): JSX.Element | null {
               {playing ? <Icon name="stop" size={18} className="m-in" /> : <Icon name="speaker" size={18} />}
               {t(playing ? 'results.playing' : 'results.listen')}
             </button>
-            <Link to="/setup" className="ghost-btn" title={t('results.settings')} onClick={toSettings}>
+            <Link to="/setup" query={carry} className="ghost-btn" title={t('results.settings')} onClick={toSettings}>
               <Icon name="sliders" size={18} />
               {t('results.settings')}
             </Link>
           </div>
           <div className="results-main">
-            <button type="button" className="btn btn--outline" onClick={() => replay(run, true)}>
+            <button type="button" className="btn btn--outline" onClick={() => replay(run, true, carry)}>
               {t('results.retry')}
             </button>
             {goOn ? (
@@ -256,7 +260,7 @@ export function Results(): JSX.Element | null {
                 {t('results.nextLesson')}
               </button>
             ) : (
-              <button type="button" className="btn btn--accent" onClick={() => replay(run, false)}>
+              <button type="button" className="btn btn--accent" onClick={() => replay(run, false, carry)}>
                 {t('results.next')}
               </button>
             )}

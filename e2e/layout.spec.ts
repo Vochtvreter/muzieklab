@@ -504,6 +504,22 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('learn: a rhythm practice link lands on Play, and Quit returns to the section', async ({ page }) => {
+      known(name, 'learn-practice');
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true } });
+      await page.goto('./#/learn/1?s=1.1');
+      const link = page.getByRole('link', { name: 'Practice at a steady tempo →' });
+      await expectClickable(link);
+      await link.click();
+      await expect(page).toHaveURL(/#\/play\?from=1\.1$/);
+      const quit = page.getByRole('link', { name: /^Quit/ });
+      await expectClickable(quit, { scroll: false });
+      await expectNoSideScroll(page);
+      await quit.click();
+      await expect(page).toHaveURL(/#\/learn\/1\?s=1\.1$/);
+      await expect(page.getByRole('heading', { name: /1\.1\s*The beat and tempo/ })).toBeInViewport();
+    });
+
     test('play: how to play, then the pad', async ({ page }) => {
       known(name, 'play');
       await page.goto('./');

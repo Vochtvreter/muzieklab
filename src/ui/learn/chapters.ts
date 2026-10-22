@@ -87,7 +87,10 @@ export type Block =
   /** Columns side by side on tablet and desktop, stacked on phones: 'staves' for notation, 'text' for text | picture. */
   | { kind: 'pair'; variant?: 'staves' | 'text'; columns: Block[][] };
 
-/** Where a section's practice link goes: Read notes, rhythm Free practice or Scales, set up for the section. */
+/**
+ * What a section's practice link starts: a Read notes round or a rhythm exercise straight away, or the Scales setup,
+ * set up for the section.
+ */
 export type Practice = { notes: Partial<NoteSettings> } | { rhythm: Partial<Settings> } | { scales: Partial<ScaleSettings> };
 
 export interface Section {
@@ -96,7 +99,7 @@ export interface Section {
   /** The quick check at the end of the section; answering it right marks the section read. Text keys under 'check'. */
   check: Quiz;
   blocks: Block[];
-  /** Adds "Practice … →" (text key 'practice') at the end of the section. */
+  /** Adds "Practice … →" (text key 'practice') at the end of the section; Quit and the summary return to it. */
   practice?: Practice;
 }
 
@@ -130,9 +133,10 @@ const C_ONLY: Partial<NoteSettings> = { keys: ['C'], mixKeys: false, extras: 'no
 
 /**
  * Every rhythm practice link spells out all musical settings, so nothing from the player's last setup leaks in;
- * tempo, bars, mode and the metronome stay theirs.
+ * tempo, bars and the metronome stay theirs. The link starts the exercise straight away, in Tap mode: Echo would hide
+ * the notation the section is about.
  */
-const RHYTHM: Partial<Settings> = { meters: ['4/4'], notes: ['half', 'quarter'], rests: ['quarter'], dotted: false, ties: false, triplets: false };
+const RHYTHM: Partial<Settings> = { mode: 'tap', meters: ['4/4'], notes: ['half', 'quarter'], rests: ['quarter'], dotted: false, ties: false, triplets: false };
 
 export const CHAPTERS: Chapter[] = [
   {

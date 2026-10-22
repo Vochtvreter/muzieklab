@@ -1,6 +1,7 @@
 /**
- * A setup opened from Learn (a section's Practice link, a chapter's Practice button) carries ?from=9.3 or ?from=9, so
- * its back arrow returns to that section or chapter instead of Home. The Key screens pass it along and back.
+ * A screen opened from Learn carries ?from=9.3 or ?from=9, so its back arrow (or Quit) returns to that section or
+ * chapter instead of Home: the exercise or Read notes round a section's Practice link starts, its Results or Round
+ * done, and the setup opened from there or from a chapter's Practice button. The Key screens pass it along and back.
  */
 import { findChapter } from '../learn/chapters';
 import { hashQuery, useHash, type Route } from '../router';
@@ -12,7 +13,7 @@ export interface LearnReturn {
   chapter: number;
 }
 
-/** Where Back goes from a setup opened from Learn; null when it was not opened from Learn. */
+/** Where Back goes from a screen opened from Learn; null when it was not opened from Learn. */
 export function learnReturn(query: URLSearchParams): LearnReturn | null {
   const from = query.get('from') ?? '';
   const m = /^(\d{1,2})(?:\.\d{1,2})?$/.exec(from);
