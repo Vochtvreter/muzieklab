@@ -412,6 +412,7 @@
     "comboValue": "×{count}",
     "countingBeat": "Counting beat {beat} of {total}",
     "countIn": "Count-in, beat {beat} of {total}",
+    "countingIn": "Count-in",
     "beats": "Beats 1 to {total}",
     "count": "Count",
     "soFar": "So far",

@@ -205,6 +205,26 @@ describe('usePlaySession', () => {
     }
   });
 
+  it('the count-in is not bar 1: no note highlighted until the first beat, also in the count-in after a pause', () => {
+    const { hook, view, origin } = setup();
+    expect(hook.result.current.frame.cursor).toBeNull();
+    let o = origin(0, 0);
+    at(o - 0.5);
+    expect(hook.result.current.frame).toMatchObject({ countIn: true, cursor: null, beat: { countIn: true } });
+    at(o + 0.01);
+    expect(hook.result.current.frame).toMatchObject({ countIn: false, cursor: 0, beat: { inBar: 0, countIn: false } });
+    at(o + 2.5 * view.barSeconds);
+    act(() => hook.result.current.openSheet('pause'));
+    const resumedAt = clock.heard;
+    act(() => hook.result.current.closeSheet());
+    o = origin(resumedAt, 2);
+    at(o + 2 * view.barSeconds - 0.5);
+    expect(hook.result.current.frame).toMatchObject({ countIn: true, cursor: null });
+    at(o + 2 * view.barSeconds + 0.01);
+    expect(hook.result.current.frame.countIn).toBe(false);
+    expect(view.timeline.notes[hook.result.current.frame.cursor!].bar).toBe(2);
+  });
+
   it('count-in "Silent" still gives one bar of lead, without clicks', () => {
     setup({ countIn: 0 });
     expect(starts[0]).toMatchObject({ countInBars: 1, silentCountIn: true });

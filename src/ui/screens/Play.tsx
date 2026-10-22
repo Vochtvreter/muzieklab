@@ -123,7 +123,9 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const curBar = Math.min(bars - 1, Math.floor(tg / view.barSeconds));
   const progress = total > 0 ? Math.min(1, tg / total) : 0;
   const where = echo ? echoWhere(runWhere(run)) : runWhere(run);
-  const barText = echo ? t('play.echo.tapBack') : t('play.barOf', { bar: curBar + 1, total: bars });
+  // The count-in does not look like bar 1 (§3.1): the line says Count-in until the music's first beat.
+  const countIn = s.frame.countIn;
+  const barText = echo ? t('play.echo.tapBack') : countIn ? t('play.countingIn') : t('play.barOf', { bar: curBar + 1, total: bars });
 
   const perRow = desktop ? 4 : 2;
   const from = windowStart(curBar, perRow, 2, bars);
@@ -263,9 +265,9 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
             </div>
             <div className="dstats">
               <div className="card stat">
-                <span className="label">{t('play.count')}</span>
+                <span className="label">{t(countIn ? 'play.countingIn' : 'play.count')}</span>
                 {analog || (
-                  <div className="dbeats" role="img" aria-label={beatLabel}>
+                  <div className={'dbeats' + (beat.countIn ? ' is-count-in' : '')} role="img" aria-label={beatLabel}>
                     {Array.from({ length: ex.meter.beatsPerBar }, (_, i) => (
                       <span key={i} aria-hidden="true" className={i === beat.inBar ? 'is-on' : ''}>
                         {i + 1}
@@ -343,7 +345,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
           )}
         </div>
 
-        {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} label={beatLabel} />}
+        {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />}
 
         <div aria-live="polite" className={fbClass + ' judgement--phone'}>
           {fbText}

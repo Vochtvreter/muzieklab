@@ -412,6 +412,7 @@
     "comboValue": "×{count}",
     "countingBeat": "Tel {beat} van {total}",
     "countIn": "Voortellen, tel {beat} van {total}",
+    "countingIn": "Voortellen",
     "beats": "Tel 1 tot {total}",
     "count": "Tel",
     "soFar": "Tot nu toe",

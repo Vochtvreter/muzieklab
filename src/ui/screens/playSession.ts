@@ -47,6 +47,12 @@ export interface Frame {
   beat: BeatState;
   /** Beats since the first beat of the exercise, with the fraction (negative in the count-in): drives the pendulum. */
   beats: number;
+  /**
+   * Before the music's first beat: the lead-in and the count-in, also the one after a pause. Play says Count-in, not
+   * Bar 1, and no note is highlighted yet (§3.1).
+   */
+  countIn: boolean;
+  /** The note under the playhead, highlighted on the staff; null until the music's first beat. */
   cursor: number | null;
   ring: number;
   held: boolean;
@@ -122,7 +128,7 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
   const [sheet, setSheet] = useState<SheetKind>(intro ? 'help' : gated ? 'ready' : null);
   const [interrupted, setInterrupted] = useState(false);
   const segStartedAt = useRef(0);
-  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, cursor: view.timeline.notes.length ? 0 : null, ring: 0, held: false });
+  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, countIn: false, cursor: null, ring: 0, held: false });
   const [marks, setMarks] = useState<Record<number, NoteMark>>({});
   const [feedback, setFeedback] = useState<PlaySession['feedback']>(null);
   const [combo, setCombo] = useState(0);
@@ -211,9 +217,10 @@ export function usePlaySession(run: Run, view: ExerciseView, prefs: Prefs, onInt
     // The judge settles the combo once a note's hold is over, so read it every frame.
     setCombo(s.judge.combo());
     const beat = beatAt(ts, view.timeline.beatSeconds, meter.beatsPerBar, s.countInBeats, s.timeline.totalSeconds);
-    const cursor = ts < 0 ? (s.timeline.notes.length ? s.firstIndex : null) : cursorAt(view.timeline.notes, tg, view.timeline.totalSeconds);
+    const countIn = ts < 0;
+    const cursor = countIn ? null : cursorAt(view.timeline.notes, tg, view.timeline.totalSeconds);
     const cur = current.current;
-    setFrame({ tg, beat, beats: view.timeline.beatSeconds > 0 ? ts / view.timeline.beatSeconds : 0, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current });
+    setFrame({ tg, beat, beats: view.timeline.beatSeconds > 0 ? ts / view.timeline.beatSeconds : 0, countIn, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current });
     const over = ts - s.timeline.totalSeconds;
     if ((over > END_GRACE_S && !cur) || over > END_HARD_S) {
       finish();
