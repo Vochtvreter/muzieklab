@@ -16,6 +16,7 @@ import {
   scaleRoundXp,
   scoreRound,
   scoreScaleRound,
+  SLOW_MS,
   updateScaleStars,
   updateWeak,
   type Exercise,
@@ -33,7 +34,9 @@ import {
   type Settings,
   type Tap,
 } from '../core/api';
+import { noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { lessonSettings, recordLessonResult } from '../game/path';
+import { progressKey } from '../game/track';
 import { xpForResult } from '../game/xp';
 import {
   addPracticeDay,
@@ -98,25 +101,33 @@ export function restoreRun(): Run | null {
   }
 }
 
-/** A Read notes round: its settings and seed, the notes drawn, and the focus notes of *Practice missed notes*. */
+/** A Read notes or Keys path lesson: its path and its id there ("4.3"). */
+export interface NoteLessonRef {
+  track: NoteTrackId;
+  id: string;
+}
+
+/** A Read notes round: its settings and seed, the notes drawn, the focus notes of *Practice missed notes*, and its lesson. */
 export interface NoteRun {
   settings: NoteSettings;
   seed: number;
   focus: string[];
   notes: RoundNote[];
+  /** The path lesson this round is, or null for free practice. */
+  lesson: NoteLessonRef | null;
 }
 
 /** The current Read notes round, per tab, so a reload on its Play screen starts the same round again. */
 export const NOTE_RUN_KEY = 'muzieklab.noteRun.v1';
 
-export function makeNoteRun(settings: NoteSettings, seed: number, weak: Record<string, number>, focus: string[] = []): NoteRun {
-  return { settings, seed, focus, notes: generateRound(settings, seed, weak, focus) };
+export function makeNoteRun(settings: NoteSettings, seed: number, weak: Record<string, number>, focus: string[] = [], lesson: NoteLessonRef | null = null): NoteRun {
+  return { settings, seed, focus, notes: generateRound(settings, seed, weak, focus), lesson };
 }
 
 function saveNoteRun(run: NoteRun | null): void {
   try {
     if (!run) sessionStorage.removeItem(NOTE_RUN_KEY);
-    else sessionStorage.setItem(NOTE_RUN_KEY, JSON.stringify({ settings: run.settings, seed: run.seed, focus: run.focus }));
+    else sessionStorage.setItem(NOTE_RUN_KEY, JSON.stringify({ settings: run.settings, seed: run.seed, focus: run.focus, lesson: run.lesson }));
   } catch {
     /* storage blocked: a reload goes back to the setup */
   }
@@ -127,11 +138,14 @@ export function restoreNoteRun(weak: Record<string, number>): NoteRun | null {
   try {
     const raw = sessionStorage.getItem(NOTE_RUN_KEY);
     if (!raw) return null;
-    const v = JSON.parse(raw) as { settings?: unknown; seed?: unknown; focus?: unknown };
+    const v = JSON.parse(raw) as { settings?: unknown; seed?: unknown; focus?: unknown; lesson?: { track?: unknown; id?: unknown } | null };
     const settings = sanitizeNoteSettings(v?.settings);
     if (!settings || typeof v.seed !== 'number') return null;
     const focus = Array.isArray(v.focus) ? v.focus.filter((x): x is string => typeof x === 'string') : [];
-    return makeNoteRun(settings, v.seed, weak, focus);
+    const l = v.lesson;
+    const lesson =
+      l && (l.track === 'notes' || l.track === 'keys') && typeof l.id === 'string' && noteLessonSettings(l.track, l.id) ? { track: l.track as NoteTrackId, id: l.id } : null;
+    return makeNoteRun(settings, v.seed, weak, focus, lesson);
   } catch {
     return null;
   }
@@ -196,9 +210,12 @@ export interface LastResult {
 
 export interface NoteLast {
   run: NoteRun;
+  /** The notes answered (a lesson's score also counts the ones left as missed: see `result`). */
   answers: NoteAnswer[];
   result: RoundResult;
   reward: Reward;
+  /** A lesson round: the lesson's best stars before it, so Round done can tell a first pass (0 otherwise). */
+  lessonStarsBefore: number;
 }
 
 export interface ScaleLast {
@@ -307,17 +324,26 @@ export function reducer(state: AppState, action: Action): AppState {
       const run = state.noteRun;
       // Scored once: a second finish (Enter in the moment before Round done opens) must not add the XP again.
       if (!run || state.noteLast?.run === run) return state;
-      const answers = action.answers.slice(0, run.notes.length);
+      const given = action.answers.slice(0, run.notes.length);
+      // A lesson counts the whole round: notes left when the player skipped to the summary count as missed, so a
+      // lesson cannot be passed on its first few notes. Free practice scores the notes answered.
+      const answers = run.lesson
+        ? [...given, ...run.notes.slice(given.length).map((): NoteAnswer => ({ outcome: 'timeout', ms: SLOW_MS, given: null }))]
+        : given;
       const result = scoreRound(run.notes, answers);
       // Real practice: at least one note answered (a round that only timed out, or was skipped at once, does not count).
-      const practised = answers.some((a) => a.given !== null);
+      const practised = given.some((a) => a.given !== null);
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
-      progress = { ...progress, notes: { ...progress.notes, weak: updateWeak(progress.notes.weak, run.notes, answers) } };
+      // Weak spots learn from the notes answered only.
+      progress = { ...progress, notes: { ...progress.notes, weak: updateWeak(progress.notes.weak, run.notes, given) } };
+      const lessonKey = run.lesson ? progressKey(run.lesson.track, run.lesson.id) : null;
+      const lessonStarsBefore = lessonKey ? (progress.lessons[lessonKey]?.stars ?? 0) : 0;
+      if (lessonKey) progress = recordLessonResult(progress, lessonKey, result.stars, result.accuracy);
       const xp = noteRoundXp(run.settings, result);
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
       const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest: false };
-      return { ...state, progress, noteLast: { run, answers, result, reward } };
+      return { ...state, progress, noteLast: { run, answers: given, result, reward, lessonStarsBefore } };
     }
     case 'scaleSettings':
       return { ...state, scaleSettings: action.settings, progress: { ...state.progress, scales: { ...state.progress.scales, settings: action.settings } } };

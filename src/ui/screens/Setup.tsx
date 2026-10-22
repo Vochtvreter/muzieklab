@@ -1,6 +1,6 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
 import { useMemo, useState } from 'react';
-import { checkSettings, DEFAULT_SETTINGS, METER_IDS, NOTE_VALUES, rateDifficulty, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
 import { ExerciseFrame } from '../components/AppShell';
@@ -10,6 +10,7 @@ import { exerciseView } from '../exerciseView';
 import { useDocTitle } from '../hooks';
 import { difficultyLevel, newSeed, tempoWordKey } from '../lib/format';
 import { describeBars } from '../lib/notation';
+import { useLearnReturn } from '../lib/learnReturn';
 import { NO_NOTES_HINT_ID, meterHintId, setupHints, startBlockedKey } from '../lib/setupHints';
 import { Link } from '../router';
 import { makeRun, useStore } from '../store';
@@ -17,9 +18,6 @@ import { useStartPractice } from './start';
 
 const NOTE_GLYPH: Record<NoteValue, string> = { whole: '𝅝', half: '𝅗𝅥', quarter: '𝅘𝅥', eighth: '𝅘𝅥𝅮', sixteenth: '𝅘𝅥𝅯' };
 const REST_GLYPH: Record<NoteValue, string> = { whole: '𝄻', half: '𝄼', quarter: '𝄽', eighth: '𝄾', sixteenth: '𝄿' };
-
-/** Settings that change how an exercise is played, not its rhythm: the same seed gives the same bars. */
-const PLAY_ONLY = new Set<keyof Settings>(['tempo', 'metronome', 'countIn', 'mode', 'hold']);
 
 const toggle = <T,>(list: T[], v: T, order: readonly T[]): T[] =>
   list.includes(v) ? list.filter((x) => x !== v) : order.filter((x) => x === v || list.includes(x));
@@ -29,19 +27,17 @@ export function Setup(): JSX.Element {
   const start = useStartPractice();
   const [previewSeed, setPreviewSeed] = useState(() => newSeed());
   const [more, setMore] = useState(false);
+  // Opened from a Learn section: Back returns there.
+  const { back } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('setup.title') }));
 
   const hold = state.prefs.holdMode === 'hold';
   const s: Settings = { ...state.settings, hold };
   const update = (patch: Partial<Settings>): void => {
     dispatch({ type: 'settings', settings: { ...s, ...patch } });
-    // A new preview when the rhythm's material changes; tempo, metronome, count-in and mode do not change the rhythm.
-    if (Object.keys(patch).some((k) => !PLAY_ONLY.has(k as keyof Settings))) setPreviewSeed(newSeed());
+    setPreviewSeed(newSeed());
   };
 
-  // Keyed on the rhythm's settings only: dragging the tempo slider no longer generates and draws a new exercise on
-  // every step (up to 70 ms each on a slow phone).
-  const rhythmKey = JSON.stringify(s, (k, v: unknown) => (PLAY_ONLY.has(k as keyof Settings) ? undefined : v));
   const feas = useMemo(() => {
     try {
       return checkSettings(s);
@@ -49,7 +45,7 @@ export function Setup(): JSX.Element {
       console.error('checkSettings failed', e);
       return { playable: [], blocked: {}, ok: false };
     }
-  }, [rhythmKey]);
+  }, [JSON.stringify(s)]);
   const hints = setupHints(s, feas);
   const blockedKey = startBlockedKey(s, feas);
 
@@ -59,14 +55,13 @@ export function Setup(): JSX.Element {
     const view = run ? exerciseView(run.exercise) : null;
     return run && view ? { run, bars: view.bars.slice(0, 1) } : null;
   }, [feas, previewSeed]);
-  // The difficulty meter follows the tempo as well: rated again (microseconds), without a new exercise.
-  const level = preview ? difficultyLevel(rateDifficulty(preview.run.exercise.meter, preview.run.exercise.bars, s.tempo)) : 0;
+  const level = preview ? difficultyLevel(preview.run.exercise.difficulty) : 0;
 
   return (
     <ExerciseFrame className="frame--setup">
       <div className="page setup no-scrollbar">
         <div className="screen-head">
-          <Link to="/" aria-label={t('common.back')} className="icon-btn icon-btn--edge">
+          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('common.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">

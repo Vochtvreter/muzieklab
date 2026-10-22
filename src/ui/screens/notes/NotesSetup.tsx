@@ -6,6 +6,7 @@ import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useDocTitle } from '../../hooks';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { keyPairName, keySignsText, majorName } from '../../lib/noteText';
 import { Link } from '../../router';
 import { useStore } from '../../store';
@@ -20,6 +21,8 @@ export function NotesSetup(): JSX.Element {
   useDocTitle(t('app.docTitle', { page: t('notes.setup.title') }));
   const s = state.noteSettings;
   const update = (patch: Partial<NoteSettings>): void => dispatch({ type: 'noteSettings', settings: { ...s, ...patch } });
+  // Opened from a Learn section: Back returns there, also after a visit to the Key screen.
+  const { back, carry } = useLearnReturn();
 
   const keys = roundKeys(s);
   const mixed = keys.length > 1;
@@ -33,7 +36,7 @@ export function NotesSetup(): JSX.Element {
     <ExerciseFrame className="frame--setup">
       <div className="page setup nsetup no-scrollbar">
         <div className="screen-head">
-          <Link to="/" aria-label={t('common.back')} className="icon-btn icon-btn--edge">
+          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('common.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">
@@ -72,7 +75,7 @@ export function NotesSetup(): JSX.Element {
 
         <div className="field">
           <div className="label">{t('notes.setup.key')}</div>
-          <Link to="/notes/key" className="key-row" aria-label={t('notes.setup.keyAria', { name: keyName, sub: keySub })}>
+          <Link to="/notes/key" query={carry} className="key-row" aria-label={t('notes.setup.keyAria', { name: keyName, sub: keySub })}>
             <span className="key-thumb">
               <PitchStaff clef="treble" keyId={key} notes={[]} slots={0} room={1.5} />
             </span>

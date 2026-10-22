@@ -1,6 +1,7 @@
 /** How the Learning Path looks for a given progress: unit states and the lesson tiles. Pure. */
 import type { NotatedBar, Settings } from '../../core/api';
-import { ALL_LESSONS, UNITS, UNLOCK_STARS, findLesson, lessonSettings, nextLesson, type Lesson, type Unit } from '../../game/path';
+import { ALL_LESSONS, RHYTHM_TRACK, UNITS, findLesson, lessonSettings, nextLesson, type Lesson, type Unit } from '../../game/path';
+import { outcomeIn, type LessonOutcome } from '../../game/track';
 import type { Progress } from '../../game/storage';
 import { exerciseView } from '../exerciseView';
 import { makeRun, type Run } from '../store';
@@ -101,30 +102,6 @@ function makeLessonPreview(lessonId: string): { run: Run; bar: number } | null {
   return first;
 }
 
-/**
- * What a finished lesson means for the path, for Results (§6.4): the badge under the score and whether the main button
- * goes on to the next lesson.
- * - `unlocked`: this run took the lesson to 2 stars, which opened `next`.
- * - `pathDone`: this run took the last lesson without 2 stars to 2 stars: the path is finished.
- * - `needStars`: still under 2 stars; `next` is the lesson that 2 stars open (null for the last lesson).
- * - `passed`: the lesson had 2 stars already (played again).
- * `continueId` is the lesson the main button starts: the path's next lesson once this one has 2 stars, else null.
- */
-export interface LessonOutcome {
-  kind: 'unlocked' | 'pathDone' | 'needStars' | 'passed';
-  next: Lesson | null;
-  continueId: string | null;
-}
-
-export function lessonOutcome(after: Progress, lessonId: string, starsBefore: number): LessonOutcome | null {
-  const pos = ALL_LESSONS.findIndex((x) => x.lesson.id === lessonId);
-  if (pos < 0) return null;
-  const following = ALL_LESSONS[pos + 1]?.lesson ?? null;
-  const starsNow = lessonStars(after, lessonId);
-  const cont = nextLesson(after);
-  const continueId = starsNow >= UNLOCK_STARS && cont && cont.id !== lessonId ? cont.id : null;
-  if (starsNow < UNLOCK_STARS) return { kind: 'needStars', next: following, continueId: null };
-  if (starsBefore >= UNLOCK_STARS) return { kind: 'passed', next: cont, continueId };
-  if (!cont) return { kind: 'pathDone', next: null, continueId: null };
-  return { kind: 'unlocked', next: cont, continueId };
-}
+/** What a finished rhythm lesson means for the path, for Results (§6.4): see outcomeIn (track.ts). */
+export const lessonOutcome = (after: Progress, lessonId: string, starsBefore: number): LessonOutcome<Lesson> | null =>
+  outcomeIn(after, RHYTHM_TRACK, lessonId, starsBefore);

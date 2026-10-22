@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { coachTip, DIAMOND, encodeCode, MAX_STARS, SHOWN_STARS, type Judgement } from '../../core/api';
-import { findLesson, UNLOCK_STARS } from '../../game/path';
+import { findLesson } from '../../game/path';
 import { levelInfo } from '../../game/xp';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
@@ -13,7 +13,7 @@ import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
 import { StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
-import { CodeCopy, LevelUpContent } from '../components/Reward';
+import { CodeCopy, LevelUpContent, OutcomeBadge } from '../components/Reward';
 import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
@@ -125,23 +125,7 @@ export function Results(): JSX.Element | null {
   // A lesson: what this run means for the path (a lesson opened, or the stars still needed), and where Next goes.
   const outcome = run.lessonId ? lessonOutcome(state.progress, run.lessonId, last.lessonStarsBefore) : null;
   const goOn = outcome?.continueId ? findLesson(outcome.continueId)?.lesson ?? null : null;
-  const outcomeBadge =
-    outcome?.kind === 'unlocked' && outcome.next ? (
-      <span className="badge badge--unlock">
-        <Icon name="unlock" size={15} />
-        {t('results.unlocked', { id: outcome.next.id })}
-      </span>
-    ) : outcome?.kind === 'pathDone' ? (
-      <span className="badge badge--unlock">
-        <Icon name="trophy" size={15} />
-        {t('results.pathDone')}
-      </span>
-    ) : outcome?.kind === 'needStars' ? (
-      <span className="badge badge--quiet">
-        <Icon name="lock" size={13} strokeWidth={2.4} />
-        {outcome.next ? t('results.needStars', { count: UNLOCK_STARS, id: outcome.next.id }) : t('results.needStarsLast', { count: UNLOCK_STARS })}
-      </span>
-    ) : null;
+  const outcomeBadge = outcome && outcome.kind !== 'passed' ? <OutcomeBadge outcome={outcome} /> : null;
   const badges = (run.daily && (reward.streak !== null || reward.dailyBest)) || outcomeBadge;
   const countOf = (k: Judgement | 'extra'): number => (k === 'extra' ? result.extraTaps : result.counts[k]);
 

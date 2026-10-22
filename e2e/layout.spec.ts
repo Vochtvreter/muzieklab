@@ -71,6 +71,39 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('path: three paths, a unit open with its lessons by name, Keys locked', async ({ page }) => {
+      known(name, 'path-tracks');
+      await page.goto('./#/path');
+      const paths = page.getByRole('group', { name: 'Paths' }).getByRole('button');
+      await expect(paths).toHaveCount(3);
+      await expect(paths.nth(0)).toHaveAttribute('aria-pressed', 'true');
+      // The current unit is open: its lessons by name, the first one to play.
+      await expect(page.getByRole('button', { name: /^1 · Quarter and half notes/ })).toHaveAttribute('aria-expanded', 'true');
+      await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Quarter notes: 0 of 3 stars' }));
+      await expect(page.getByRole('img', { name: 'Lesson 1.2 · Half notes, locked' })).toBeVisible();
+
+      await expectClickable(paths.nth(1));
+      await paths.nth(1).click();
+      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('link', { name: 'Theory: chapter 8' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' }));
+      await expectClickable(page.getByRole('button', { name: 'Start lesson 1.1' }));
+      // Closing the open unit shows its lessons as stars again.
+      await page.getByRole('button', { name: /^1 · Treble clef/ }).click();
+      await expect(page.getByRole('button', { name: /^1 · Treble clef/ })).toHaveAttribute('aria-expanded', 'false');
+
+      await paths.nth(2).click();
+      await expect(page.getByText('Opens after Read notes unit 3').first()).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Go to Read notes' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await page.getByRole('button', { name: 'Go to Read notes' }).click();
+      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
+      // The app remembers the path picked last.
+      await page.reload();
+      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
+    });
+
     test('settings: leniency and reset progress', async ({ page }) => {
       known(name, 'settings');
       await page.goto('./#/settings');
@@ -146,6 +179,20 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'New round' }));
       await expectClickable(page.getByRole('link', { name: 'Change setup' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes lesson: round done with Next lesson', async ({ page }) => {
+      known(name, 'notes-lesson-done');
+      await seed(page, { progress: { lessons: { 'notes:1.1': { stars: 3, bestAccuracy: 96 } } }, prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+      await page.goto('./#/path');
+      await page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 3 of 3 stars' }).click();
+      await page.getByRole('button', { name: 'Skip to summary' }).click();
+      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: 'Back to the path' }));
+      await expectClickable(page.getByRole('button', { name: 'New round' }));
+      await expectClickable(page.getByRole('button', { name: 'Next lesson: 1.2 · Twenty notes' }));
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 

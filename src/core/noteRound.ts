@@ -42,7 +42,8 @@ export interface NoteSettings {
 }
 
 export const DEFAULT_NOTE_SETTINGS: NoteSettings = {
-  clefs: ['treble', 'bass'],
+  // Treble first: one set of landmarks for a beginner's first round; the bass clef is one tap away.
+  clefs: ['treble'],
   keys: ['C'],
   mixKeys: false,
   input: 'names',

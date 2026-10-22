@@ -124,7 +124,7 @@ test('a finished lesson can be played again from Home and from the Path', async 
   await expect(page.getByText('Lesson 1.1', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   await page.goto('./#/path');
-  await expect(page.getByRole('img', { name: 'Lesson 1.3, locked' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Lesson 1.3 · Halves and quarters, locked' })).toBeVisible();
   await page.getByRole('button', { name: 'Play lesson 1.2 · Half notes: 1 of 3 stars' }).click();
   await expect(page.getByText('Lesson 1.2', { exact: true })).toBeVisible();
 });

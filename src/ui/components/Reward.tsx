@@ -1,5 +1,6 @@
 /** v1.1 rewards: the level and XP line, the daily challenge's date tile, the exercise code with Copy and the level-up sheet. */
 import { useEffect, useState, type ReactNode } from 'react';
+import { UNLOCK_STARS, type LessonOutcome } from '../../game/track';
 import { levelInfo, RANKS, type LevelInfo } from '../../game/xp';
 import { dateParts, t } from '../../i18n';
 import { useReducedMotion } from '../hooks';
@@ -138,4 +139,33 @@ export function LevelUpContent({ xpBefore, xpAfter, onDone }: { xpBefore: number
       </button>
     </>
   );
+}
+
+/**
+ * What a finished lesson did for its path (§6.4), on Results and Round done: the lesson that two stars opened, the
+ * finished path, or (under two stars) what opens the next lesson. Nothing for a lesson played again.
+ */
+export function OutcomeBadge({ outcome }: { outcome: LessonOutcome | null }): JSX.Element | null {
+  if (outcome?.kind === 'unlocked' && outcome.next)
+    return (
+      <span className="badge badge--unlock">
+        <Icon name="unlock" size={15} />
+        {t('results.unlocked', { id: outcome.next.id })}
+      </span>
+    );
+  if (outcome?.kind === 'pathDone')
+    return (
+      <span className="badge badge--unlock">
+        <Icon name="trophy" size={15} />
+        {t('results.pathDone')}
+      </span>
+    );
+  if (outcome?.kind === 'needStars')
+    return (
+      <span className="badge badge--quiet">
+        <Icon name="lock" size={13} strokeWidth={2.4} />
+        {outcome.next ? t('results.needStars', { count: UNLOCK_STARS, id: outcome.next.id }) : t('results.needStarsLast', { count: UNLOCK_STARS })}
+      </span>
+    );
+  return null;
 }

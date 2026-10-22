@@ -49,7 +49,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const };
+    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
@@ -98,6 +98,13 @@ describe('prefs and progress storage', () => {
     expect(loadPrefs().language).toBe('system');
     localStorage.setItem(PREFS_KEY, JSON.stringify({ language: 7 }));
     expect(loadPrefs().language).toBe('system');
+  });
+
+  it('keeps the Path tab on a known path, else Rhythm', () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ pathTrack: 'notes' }));
+    expect(loadPrefs().pathTrack).toBe('notes');
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ pathTrack: 'scales' }));
+    expect(loadPrefs().pathTrack).toBe('rhythm');
   });
 
   it('survives corrupt JSON', () => {

@@ -80,3 +80,14 @@ Set `PLANNED_CHAPTERS` in `chapters.ts` when the plan grows ("chapter 9 of 11").
 
 Then link it from the chapter that explains it: the Path units in the chapter's row of DESIGN.md §9.1 and in
 `LEARN-CHAPTERS.md` §5.
+
+### A Read notes or Keys unit
+
+The Read notes and Keys paths (DESIGN.md §8.2) work the same way, in `src/game/notesPath.ts`:
+
+1. **Data:** add a `unit('notes' | 'keys', n, glyph, base, lessons)` to `NOTES_UNITS` or `KEYS_UNITS`. The base and
+   each lesson are Read notes settings (clefs, keys, mix keys, input, range, extra signs, count, timer); a lesson's
+   preset is laid over its unit's base, and the Read notes defaults fill the rest.
+2. **Text:** `path.notes.u{n}.title` and `l1` … `l5` (or `path.keys.…`) in `en.json`.
+3. **Run `npm test`.** `src/game/notesPath.test.ts` checks the numbering, the texts, that every preset is valid and
+   can be played, and the order of the units.

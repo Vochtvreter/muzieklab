@@ -1,4 +1,5 @@
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type ScaleSettings } from '../core/api';
+import { noteLessonSettings } from '../game/notesPath';
 import { defaultProgress, DEFAULT_PREFS } from '../game/storage';
 import { makeNoteRun, makeScaleRun, reducer, type AppState } from './store';
 
@@ -106,6 +107,34 @@ describe('reducer: Read notes', () => {
     const answers = run.notes.map(() => ({ outcome: 'right' as const, ms: 900, given: { kind: 'piano' as const, pc: 0 } }));
     const once = reducer(started(), { type: 'noteFinish', answers, today: '2026-10-17' });
     expect(reducer(once, { type: 'noteFinish', answers, today: '2026-10-17' })).toBe(once);
+  });
+
+  it('a lesson round records its stars under its path, and counts the notes left as missed', () => {
+    const settings = noteLessonSettings('notes', '1.1')!;
+    const lessonRun = makeNoteRun(settings, 7, {}, [], { track: 'notes', id: '1.1' });
+    const s = reducer(state(), { type: 'noteStart', run: lessonRun });
+    // All ten right: three stars on "notes:1.1", not on the rhythm lesson "1.1".
+    const right = lessonRun.notes.map(() => ({ outcome: 'right' as const, ms: 900, given: { kind: 'piano' as const, pc: 0 } }));
+    const done = reducer(s, { type: 'noteFinish', answers: right, today: '2026-10-22' });
+    expect(done.progress.lessons['notes:1.1']?.stars).toBe(3);
+    expect(done.progress.lessons['1.1']).toBeUndefined();
+    expect(done.noteLast?.lessonStarsBefore).toBe(0);
+    // Three answered right, then skipped: 3 of 10, no stars; the summary keeps the three answered.
+    const skipped = reducer(s, { type: 'noteFinish', answers: right.slice(0, 3), today: '2026-10-22' });
+    expect(skipped.noteLast?.result).toMatchObject({ total: 10, right: 3, stars: 0 });
+    expect(skipped.noteLast?.answers).toHaveLength(3);
+    expect(skipped.progress.lessons['notes:1.1']?.stars).toBe(0);
+    // Played again: the stars before this round are kept for Round done.
+    const again = reducer({ ...s, progress: done.progress }, { type: 'noteFinish', answers: right.slice(0, 3), today: '2026-10-22' });
+    expect(again.noteLast?.lessonStarsBefore).toBe(3);
+    expect(again.progress.lessons['notes:1.1']?.stars).toBe(3);
+  });
+
+  it('free practice scores the notes answered only', () => {
+    const answers = run.notes.slice(0, 3).map(() => ({ outcome: 'right' as const, ms: 900, given: { kind: 'piano' as const, pc: 0 } }));
+    const next = reducer(started(), { type: 'noteFinish', answers, today: '2026-10-22' });
+    expect(next.noteLast?.result).toMatchObject({ total: 3, right: 3 });
+    expect(Object.keys(next.progress.lessons)).toEqual([]);
   });
 
   it('saves the setup with the progress, and Learn sections once', () => {

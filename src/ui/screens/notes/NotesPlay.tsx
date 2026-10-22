@@ -148,7 +148,9 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [done, timer]);
 
-  const quit = (): void => navigate('/notes', { replace: true });
+  // Quit goes back where the round started: the Path for a lesson, the Read notes setup otherwise.
+  const home = run.lesson ? '/path' : '/notes';
+  const quit = (): void => navigate(home, { replace: true });
   const skip = (): void => finish(answers.slice(0, done ? i + 1 : i));
 
   // Keys: letters (names) or A S D F G H J / W E T Y U (piano), − 0 = for the sign, Enter or Space for Next, Esc quits (desktop).
@@ -198,7 +200,10 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const answeredCount = answers.length;
   const avg = answeredCount ? answers.reduce((s, a) => s + a.ms, 0) / answeredCount / 1000 : null;
   const keyHasSigns = keySigns(note.key).length > 0;
-  const where = t('notes.play.eyebrow', { clef: t('notes.clefLong.' + note.clef), key: majorName(note.key) });
+  // A path lesson says which one ("Lesson 4.3 · Treble clef · C major"); free practice names the clef and key.
+  const where = run.lesson
+    ? t('notes.play.eyebrowLesson', { id: run.lesson.id, clef: t('notes.clefLong.' + note.clef), key: majorName(note.key) })
+    : t('notes.play.eyebrow', { clef: t('notes.clefLong.' + note.clef), key: majorName(note.key) });
 
   // The feedback line: the answer's verdict, the hint, a new key or clef, or what to do.
   let feedback: string;
@@ -320,14 +325,16 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         <header className="dplay-head">
           <div className="brand brand--static">{t('app.name')}</div>
           <div className="dplay-title">
-            <span className="eyebrow">{t('notes.play.eyebrowLong', { clef: t('notes.clefLower.' + note.clef), key: majorName(note.key) })}</span>
+            <span className="eyebrow">
+              {run.lesson ? where : t('notes.play.eyebrowLong', { clef: t('notes.clefLower.' + note.clef), key: majorName(note.key) })}
+            </span>
             <span className="mono-line">{t('notes.play.noteOf', { n: i + 1, total })}</span>
           </div>
           <div className="progress progress--grow" role="progressbar" aria-label={t('notes.play.progress')} aria-valuemin={0} aria-valuemax={total} aria-valuenow={answeredCount}>
             <div style={{ width: (answeredCount / total) * 100 + '%' }} />
           </div>
           <div className="dplay-actions">
-            <Link to="/notes" className="text-link-btn" aria-keyshortcuts="Escape" onClick={quitLink}>
+            <Link to={home} className="text-link-btn" aria-keyshortcuts="Escape" onClick={quitLink}>
               {t('notes.play.quit')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
             </Link>
           </div>
@@ -380,7 +387,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       <div className="page play nplay no-scrollbar">
         <h1 className="sr-only">{t('notes.play.heading')}</h1>
         <div className="play-top">
-          <Link to="/notes" aria-label={t('notes.play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
+          <Link to={home} aria-label={t('notes.play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('notes.play.progress')} aria-valuemin={0} aria-valuemax={total} aria-valuenow={answeredCount}>

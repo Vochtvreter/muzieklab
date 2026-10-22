@@ -26,6 +26,7 @@ import { Icon } from '../../components/Icon';
 import type { KeyMark } from '../../components/NoteInputs';
 import { DegreeRow, keyNames, SCALE_GAP_KBD, SCALE_WHITE_KBD, ScalePiano, SignButtons, type DegreeCell } from '../../components/ScaleInputs';
 import { useBreakpoint, useDocTitle, useKeyboardHints, useMediaQuery } from '../../hooks';
+import { keyForTabbedControl } from '../../lib/focusModality';
 import { letterName } from '../../lib/noteText';
 import { noteName, scaleName, scaleSpoken, stepHow, stepLabel, stepsOf } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
@@ -141,6 +142,8 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      // A button reached with Tab (a sign, Start over, Skip) takes Space and Enter itself.
+      if (keyForTabbedControl(e)) return;
       const k = e.key.toUpperCase();
       if (e.key === 'Enter') {
         if (done) {

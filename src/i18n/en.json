@@ -168,7 +168,130 @@
       "l3": "Eighth and two sixteenths",
       "l4": "Sixteenth combinations",
       "l5": "Unit review"
-    }
+    },
+    "allTotalsLabel": "{stars} of {total} stars on all paths",
+    "paths": "Paths",
+    "track": {
+      "rhythm": "Rhythm",
+      "notes": "Read notes",
+      "keys": "Keys"
+    },
+    "trackShort": {
+      "rhythm": "Rhythm",
+      "notes": "Notes",
+      "keys": "Keys"
+    },
+    "trackMeta": "Unit {unit} of {total}",
+    "trackDone": "All done",
+    "trackLocked": "Locked",
+    "cardMeta": "Unit {unit} of {total} · {title}",
+    "trackStars": "Unit {unit} of {total} · {stars} / {max} ★",
+    "trackStarsDone": "All done · {stars} / {max} ★",
+    "trackStarsLabel": "{stars} of {max} stars",
+    "theory": {
+      "rhythm": "Theory: chapters 1–7",
+      "notes": "Theory: chapter 8",
+      "keys": "Theory: chapters 9 and 10"
+    },
+    "unitScore": "{stars} / {max} ★",
+    "unitScoreLabel": "{stars} of {max} stars",
+    "nextNotes": "Next: lesson {lesson} · {title} · {count} notes",
+    "opensAfter": "Opens after Read notes unit {unit}",
+    "lockedLessonTitled": "Lesson {id} · {title}, locked",
+    "notes": {
+      "u1": {
+        "title": "Treble clef",
+        "l1": "Name the notes",
+        "l2": "Twenty notes",
+        "l3": "On the piano",
+        "l4": "Against the clock",
+        "l5": "Unit review"
+      },
+      "u2": {
+        "title": "Bass clef",
+        "l1": "Name the notes",
+        "l2": "Twenty notes",
+        "l3": "On the piano",
+        "l4": "Against the clock",
+        "l5": "Unit review"
+      },
+      "u3": {
+        "title": "Both clefs",
+        "l1": "Switching clefs",
+        "l2": "Twenty notes",
+        "l3": "On the piano",
+        "l4": "Against the clock",
+        "l5": "Unit review"
+      },
+      "u4": {
+        "title": "Middle C and ledger lines",
+        "l1": "One ledger line, treble",
+        "l2": "One ledger line, bass",
+        "l3": "Both clefs, one ledger line",
+        "l4": "Two ledger lines",
+        "l5": "Unit review"
+      },
+      "u5": {
+        "title": "Quick reading",
+        "l1": "Three seconds, treble",
+        "l2": "Three seconds, bass",
+        "l3": "Names and piano mixed",
+        "l4": "Ledger lines, quick",
+        "l5": "Unit review"
+      }
+    },
+    "keys": {
+      "u1": {
+        "title": "Sharps and flats",
+        "l1": "Black keys on the piano",
+        "l2": "Flats too",
+        "l3": "Name them",
+        "l4": "Both clefs",
+        "l5": "Unit review"
+      },
+      "u2": {
+        "title": "G major: one sharp",
+        "l1": "F sharp in the key",
+        "l2": "Bass clef",
+        "l3": "On the piano",
+        "l4": "Against the clock",
+        "l5": "Unit review"
+      },
+      "u3": {
+        "title": "F major: one flat",
+        "l1": "B flat in the key",
+        "l2": "Bass clef",
+        "l3": "On the piano",
+        "l4": "Against the clock",
+        "l5": "Unit review"
+      },
+      "u4": {
+        "title": "Two and three sharps",
+        "l1": "D major",
+        "l2": "A major",
+        "l3": "Both clefs",
+        "l4": "On the piano",
+        "l5": "Unit review"
+      },
+      "u5": {
+        "title": "Two and three flats",
+        "l1": "B flat major",
+        "l2": "E flat major",
+        "l3": "Both clefs",
+        "l4": "On the piano",
+        "l5": "Unit review"
+      },
+      "u6": {
+        "title": "Mix the keys",
+        "l1": "C, G and F",
+        "l2": "Up to two signs",
+        "l3": "Up to three signs",
+        "l4": "With extra signs",
+        "l5": "Unit review"
+      }
+    },
+    "units": "Units",
+    "toTrack": "Go to {track}"
   },
   "setup": {
     "title": "Free practice",
@@ -785,7 +908,8 @@
         "ledgerAbove": "the {n, select, 1 {first} other {second}} ledger line above",
         "underLedger": "the space below the {n, select, 1 {first} other {second}} ledger line",
         "overLedger": "the space above the {n, select, 1 {first} other {second}} ledger line"
-      }
+      },
+      "eyebrowLesson": "Lesson {id} · {clef} · {key}"
     },
     "done": {
       "docTitle": "Round done",
@@ -821,7 +945,12 @@
       "rule": "every {letters} is {signWord}",
       "newRound": "New round",
       "practiceMissed": "Practice missed notes",
-      "change": "Change setup"
+      "change": "Change setup",
+      "lessonTitle": "Lesson {id} done",
+      "lessonSub": "{track} · {unit}",
+      "lessonBack": "Back to the path",
+      "keysOpen": "Keys path open",
+      "toPath": "Learning path"
     }
   },
   "scales": {
@@ -1013,6 +1142,7 @@
   "learn": {
     "title": "Learn",
     "docTitle": "Learn",
+    "backToChapter": "Back to chapter {n}",
     "sub": "Short chapters on reading music, each with practice to match.",
     "sections": "{read} / {total} sections",
     "sectionsLabel": "{read} of {total} sections read",
@@ -1879,6 +2009,16 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_9_0": {
+      "title": "Read notes and Keys learning paths",
+      "try": "Open the learning paths",
+      "paths": "The Path tab has two new learning paths next to Rhythm: Read notes (treble clef, bass clef, both, ledger lines, quick reading) and Keys (sharps and flats, then key signatures with up to three signs). Keys opens after Read notes unit 3.",
+      "names": "Tap a unit on the Path to see its lessons by name, and play any lesson you have opened.",
+      "learn": "A practice link in Learn brings you back to its chapter, and Read notes starts with the treble clef only; the bass clef is one tap away.",
+      "scrollbar": "On a computer, a page that scrolls shows a thin scrollbar, so it is clear there is more below.",
+      "keys": "Scales: Space and Enter press the button you moved to with Tab. Space still plays the notes again otherwise.",
+      "preview": "Free practice draws a new example again when you change the tempo, the metronome or the count-in, as before 0.8.0."
+    },
     "v0_8_0": {
       "title": "Next lesson, and holding explained",
       "try": "Open the learning path",

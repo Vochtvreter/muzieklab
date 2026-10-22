@@ -6,7 +6,6 @@ export { DEFAULT_SETTINGS } from './defaults';
 export { checkSettings } from './feasibility';
 export type { Feasibility } from './feasibility';
 export { generateExercise, normaliseSettings } from './generator';
-export { rateDifficulty } from './difficulty';
 export { spellExercise } from './speller';
 export { buildTimeline } from './timeline';
 export { judge, createLiveJudge, POINTS, EXTRA_TAP_POINTS } from './judge';

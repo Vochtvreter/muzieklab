@@ -168,7 +168,130 @@
       "l3": "Achtste en twee zestienden",
       "l4": "Combinaties met zestienden",
       "l5": "Herhaling"
-    }
+    },
+    "allTotalsLabel": "{stars} van {total} sterren op alle paden",
+    "paths": "Paden",
+    "track": {
+      "rhythm": "Ritme",
+      "notes": "Noten lezen",
+      "keys": "Toonsoorten"
+    },
+    "trackShort": {
+      "rhythm": "Ritme",
+      "notes": "Noten",
+      "keys": "Toonsoorten"
+    },
+    "trackMeta": "Hoofdstuk {unit} van {total}",
+    "trackDone": "Alles klaar",
+    "trackLocked": "Op slot",
+    "cardMeta": "Hoofdstuk {unit} van {total} · {title}",
+    "trackStars": "Hoofdstuk {unit} van {total} · {stars} / {max} ★",
+    "trackStarsDone": "Alles klaar · {stars} / {max} ★",
+    "trackStarsLabel": "{stars} van {max} sterren",
+    "theory": {
+      "rhythm": "Theorie: hoofdstukken 1–7",
+      "notes": "Theorie: hoofdstuk 8",
+      "keys": "Theorie: hoofdstukken 9 en 10"
+    },
+    "unitScore": "{stars} / {max} ★",
+    "unitScoreLabel": "{stars} van {max} sterren",
+    "nextNotes": "Volgende: les {lesson} · {title} · {count} noten",
+    "opensAfter": "Gaat open na hoofdstuk {unit} van Noten lezen",
+    "lockedLessonTitled": "Les {id} · {title}, op slot",
+    "notes": {
+      "u1": {
+        "title": "Vioolsleutel",
+        "l1": "Benoem de noten",
+        "l2": "Twintig noten",
+        "l3": "Op de piano",
+        "l4": "Tegen de klok",
+        "l5": "Herhaling"
+      },
+      "u2": {
+        "title": "Bassleutel",
+        "l1": "Benoem de noten",
+        "l2": "Twintig noten",
+        "l3": "Op de piano",
+        "l4": "Tegen de klok",
+        "l5": "Herhaling"
+      },
+      "u3": {
+        "title": "Beide sleutels",
+        "l1": "Wisselende sleutels",
+        "l2": "Twintig noten",
+        "l3": "Op de piano",
+        "l4": "Tegen de klok",
+        "l5": "Herhaling"
+      },
+      "u4": {
+        "title": "Centrale C en hulplijnen",
+        "l1": "Eén hulplijn, vioolsleutel",
+        "l2": "Eén hulplijn, bassleutel",
+        "l3": "Beide sleutels, één hulplijn",
+        "l4": "Twee hulplijnen",
+        "l5": "Herhaling"
+      },
+      "u5": {
+        "title": "Snel lezen",
+        "l1": "Drie seconden, vioolsleutel",
+        "l2": "Drie seconden, bassleutel",
+        "l3": "Namen en piano door elkaar",
+        "l4": "Hulplijnen, snel",
+        "l5": "Herhaling"
+      }
+    },
+    "keys": {
+      "u1": {
+        "title": "Kruisen en mollen",
+        "l1": "Zwarte toetsen op de piano",
+        "l2": "Ook mollen",
+        "l3": "Benoem ze",
+        "l4": "Beide sleutels",
+        "l5": "Herhaling"
+      },
+      "u2": {
+        "title": "G majeur: één kruis",
+        "l1": "F♯ in de voortekening",
+        "l2": "Bassleutel",
+        "l3": "Op de piano",
+        "l4": "Tegen de klok",
+        "l5": "Herhaling"
+      },
+      "u3": {
+        "title": "F majeur: één mol",
+        "l1": "B♭ in de voortekening",
+        "l2": "Bassleutel",
+        "l3": "Op de piano",
+        "l4": "Tegen de klok",
+        "l5": "Herhaling"
+      },
+      "u4": {
+        "title": "Twee en drie kruisen",
+        "l1": "D majeur",
+        "l2": "A majeur",
+        "l3": "Beide sleutels",
+        "l4": "Op de piano",
+        "l5": "Herhaling"
+      },
+      "u5": {
+        "title": "Twee en drie mollen",
+        "l1": "B♭ majeur",
+        "l2": "E♭ majeur",
+        "l3": "Beide sleutels",
+        "l4": "Op de piano",
+        "l5": "Herhaling"
+      },
+      "u6": {
+        "title": "Toonsoorten door elkaar",
+        "l1": "C, G en F",
+        "l2": "Tot twee voortekens",
+        "l3": "Tot drie voortekens",
+        "l4": "Met losse voortekens",
+        "l5": "Herhaling"
+      }
+    },
+    "units": "Hoofdstukken",
+    "toTrack": "Naar {track}"
   },
   "setup": {
     "title": "Vrij oefenen",
@@ -785,7 +908,8 @@
         "ledgerAbove": "de {n, select, 1 {eerste} other {tweede}} hulplijn erboven",
         "underLedger": "de ruimte onder de {n, select, 1 {eerste} other {tweede}} hulplijn",
         "overLedger": "de ruimte boven de {n, select, 1 {eerste} other {tweede}} hulplijn"
-      }
+      },
+      "eyebrowLesson": "Les {id} · {clef} · {key}"
     },
     "done": {
       "docTitle": "Ronde klaar",
@@ -821,7 +945,12 @@
       "rule": "krijgt elke {letters} een {signWord}",
       "newRound": "Nieuwe ronde",
       "practiceMissed": "Gemiste noten oefenen",
-      "change": "Instellingen wijzigen"
+      "change": "Instellingen wijzigen",
+      "lessonTitle": "Les {id} klaar",
+      "lessonSub": "{track} · {unit}",
+      "lessonBack": "Terug naar het leerpad",
+      "keysOpen": "Pad Toonsoorten open",
+      "toPath": "Leerpad"
     }
   },
   "scales": {
@@ -1013,6 +1142,7 @@
   "learn": {
     "title": "Leren",
     "docTitle": "Leren",
+    "backToChapter": "Terug naar hoofdstuk {n}",
     "sub": "Korte hoofdstukken over muziek lezen, elk met oefeningen erbij.",
     "sections": "{read} / {total} delen",
     "sectionsLabel": "{read} van {total} delen gelezen",
@@ -1879,6 +2009,16 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_9_0": {
+      "title": "Leerpaden voor Noten lezen en Toonsoorten",
+      "try": "Open de leerpaden",
+      "paths": "Het tabblad Leerpad heeft naast Ritme twee nieuwe leerpaden: Noten lezen (vioolsleutel, bassleutel, beide, hulplijnen, snel lezen) en Toonsoorten (kruisen en mollen, dan voortekeningen met tot drie tekens). Toonsoorten gaat open na hoofdstuk 3 van Noten lezen.",
+      "names": "Tik op een hoofdstuk in het leerpad om de lessen met hun naam te zien, en speel elke les die al open is.",
+      "learn": "Een oefenlink in Leren brengt je terug naar het hoofdstuk, en Noten lezen begint met alleen de vioolsleutel; de bassleutel staat één tik verder.",
+      "scrollbar": "Op een computer toont een pagina die scrolt een dunne schuifbalk, zodat je ziet dat er meer volgt.",
+      "keys": "Toonladders: Spatie en Enter drukken op de knop waar je met Tab naartoe ging. Anders speelt Spatie de noten nog steeds opnieuw.",
+      "preview": "Vrij oefenen tekent weer een nieuw voorbeeld als je het tempo, de metronoom of het voortellen wijzigt, zoals voor 0.8.0."
+    },
     "v0_8_0": {
       "title": "Volgende les, en vasthouden uitgelegd",
       "try": "Open het leerpad",
