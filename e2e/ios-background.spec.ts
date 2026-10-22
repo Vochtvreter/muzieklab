@@ -76,13 +76,13 @@ for (const mode of ['frozen', 'interrupted'] as const) {
     test.setTimeout(60_000);
     await page.goto('./');
     // Play once so the page has an AudioContext, as after any earlier exercise.
-    await page.getByRole('button', { name: 'Continue lesson' }).click();
+    await page.getByRole('button', { name: 'Start lesson' }).click();
     await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
     await page.getByRole('link', { name: 'Quit exercise' }).click();
     await expect(page).toHaveURL(/#\/$/);
 
     await background(page, mode);
-    await page.getByRole('button', { name: 'Continue lesson' }).click();
+    await page.getByRole('button', { name: 'Start lesson' }).click();
     await playToResults(page);
   });
 }
@@ -90,7 +90,7 @@ for (const mode of ['frozen', 'interrupted'] as const) {
 test('back from the background mid-exercise, Resume plays on', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
   await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
   await background(page, 'frozen');
   await expect(page.getByRole('dialog', { name: 'Paused' })).toBeVisible();
@@ -101,7 +101,7 @@ test('back from the background mid-exercise, Resume plays on', async ({ page }) 
 test('a clock that freezes without the page being hidden pauses with a note, and Resume plays on', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
   await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
   await page.evaluate(() => (window as unknown as { breakAudio(mode: string): void }).breakAudio('frozen'));
   await expect(page.getByRole('dialog', { name: 'Paused' })).toBeVisible({ timeout: 3000 });

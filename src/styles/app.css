@@ -600,11 +600,20 @@
 }
 .home-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
-.streak-pill {
+/* The level and streak chips; on a narrow phone they go under the brand. */
+.home-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.streak-pill,
+.level-chip {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -621,6 +630,40 @@
   height: 10px;
   border-radius: 50%;
   background: var(--reward);
+}
+/* A button: the 44 px hit area reaches past the chip's 29 px. */
+.level-chip {
+  position: relative;
+  gap: 6px;
+  padding: 6px 11px 6px 8px;
+  color: var(--ink);
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+.level-chip::after {
+  content: '';
+  position: absolute;
+  inset: -8px 0;
+}
+@media (hover: hover) {
+  .level-chip:hover {
+    border-color: var(--rule);
+  }
+}
+.level-ring {
+  flex: none;
+  display: block;
+}
+.level-ring circle {
+  fill: none;
+  stroke-width: 2.6;
+}
+.level-ring-track {
+  stroke: var(--rule);
+}
+.level-ring-fill {
+  stroke: var(--reward);
 }
 .continue-card {
   /* Fills a tall screen, but never shrinks below its content: on a short screen the page scrolls instead. */
@@ -651,18 +694,14 @@
   background: var(--paper);
   color: var(--ink);
   border-radius: 14px;
-  padding: 12px 10px 6px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
 }
-.continue-meta {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 4px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
+/* Tablet: the card and its staff keep their own height instead of stretching to fill the tall screen. */
+.home--tablet .continue-card,
+.home--tablet .continue-staff {
+  flex: none;
 }
 .continue-staff-body {
   flex: 1;
@@ -962,15 +1001,6 @@
 }
 .level-block-head .muted-text {
   font-size: 14px;
-}
-.level-block-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-}
-.level-block-foot .xp-next {
-  align-self: auto;
 }
 .path-card {
   flex: 1;
@@ -3599,23 +3629,6 @@ button.lesson-stars:hover {
   flex-direction: column;
   gap: 6px;
 }
-.xp-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  font-size: 14px;
-}
-.xp-level b {
-  font-weight: 700;
-}
-.xp-of {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
-}
 .xp-bar {
   height: 8px;
   border-radius: 99px;
@@ -3860,8 +3873,9 @@ button.lesson-stars:hover {
 .ranks li + li.is-current::before {
   margin-left: -8px;
 }
+/* Room for the bar and its label, which appears once the bar has filled. */
 .levelup-line {
-  min-height: 64px;
+  min-height: 30px;
 }
 
 /* ---------- v1.1 · Setup mode ---------- */
