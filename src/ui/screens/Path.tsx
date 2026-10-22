@@ -17,7 +17,7 @@ import { AppShell } from '../components/AppShell';
 import { StarsMark } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
-import { starsLabel, starsText } from '../lib/format';
+import { starsLabel } from '../lib/format';
 import { Link, type Route } from '../router';
 import { useStore } from '../store';
 import { useStartNoteLesson } from './notes/start';
@@ -300,7 +300,7 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
                       </button>
                     ) : (
                       <span key={l.id} role="img" className="lesson-stars is-locked" aria-label={t('path.lockedLesson', { id: l.id })}>
-                        {starsText(n)}
+                        <StarsMark stars={n} />
                       </span>
                     );
                   })}

@@ -30,7 +30,7 @@
     "label": "{count} van {total} sterren",
     "of3": "{count} van 3 sterren",
     "fourth": "3 van 3 sterren en de bonusster, de 4e",
-    "diamond": "Diamanten ster, alles perfect"
+    "diamond": "Diamant: elke noot perfect"
   },
   "streak": {
     "pill": "{count, plural, =0 {Nog geen reeks} one {# dag op rij} other {# dagen op rij}}",

@@ -30,7 +30,7 @@
     "label": "{count} of {total} stars",
     "of3": "{count} of 3 stars",
     "fourth": "3 of 3 stars and the bonus 4th star",
-    "diamond": "Diamond star, all perfect"
+    "diamond": "Diamond: every note perfect"
   },
   "streak": {
     "pill": "{count, plural, =0 {No streak yet} one {#-day streak} other {#-day streak}}",

@@ -1,6 +1,6 @@
 /** Small shared pieces: lesson tiles, the staff with a safety net, the tap pad, the beat counters (digital, analog). */
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
-import { DIAMOND, type Meter, type NotatedBar } from '../../core/api';
+import { DIAMOND, MAX_STARS, type Meter, type NotatedBar } from '../../core/api';
 import { isUnlocked, type Unit } from '../../game/path';
 import type { Progress } from '../../game/storage';
 import { Staff, type NoteMark } from '../../render/Staff';
@@ -50,9 +50,22 @@ export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
   );
 }
 
-/** A lesson's stars as text, or the one diamond star in their place. */
+/**
+ * A lesson's stars, drawn one way wherever lessons show (Home tiles, the Path; DESIGN.md §6.3): three slots (★★☆), four
+ * stars for the 4th, and four diamond-blue stars for the diamond, so a better result never shows fewer stars. The gold
+ * comes from where they sit; the tile or button around them carries the label (`starsLabel`).
+ */
 export function StarsMark({ stars }: { stars: number }): JSX.Element {
-  return stars === DIAMOND ? <span className="diamond-star">★</span> : <>{starsText(stars)}</>;
+  if (stars !== DIAMOND) return <>{starsText(stars)}</>;
+  return (
+    <span className="stars-diamond">
+      {Array.from({ length: MAX_STARS }, (_, i) => (
+        <span key={i} className="diamond-star">
+          ★
+        </span>
+      ))}
+    </span>
+  );
 }
 
 interface StaffBoxProps {

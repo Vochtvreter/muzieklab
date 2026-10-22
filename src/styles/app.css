@@ -1414,7 +1414,7 @@ button.lesson-stars:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-/* The diamond star (an all-perfect lesson), wherever stars show; it stands in for all four. */
+/* The diamond star (an all-perfect lesson): one big one on Results, four in place of the gold ones elsewhere. */
 .diamond-star {
   display: inline-block;
   font-size: 1.25em;
@@ -1425,6 +1425,13 @@ button.lesson-stars:hover {
   background-clip: text;
   color: transparent;
   filter: drop-shadow(0 0 0.12em var(--diamond-glow));
+}
+.stars-diamond {
+  display: inline-flex;
+}
+.stars-diamond .diamond-star {
+  font-size: 1em;
+  letter-spacing: inherit;
 }
 .unit-sub {
   display: flex;
