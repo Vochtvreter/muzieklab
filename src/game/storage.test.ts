@@ -49,7 +49,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const };
+    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const, holdEarly: true };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {

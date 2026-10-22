@@ -170,3 +170,24 @@ test('the first lesson that judges holds shows How to play again, with holding, 
   await expect(page.getByText('Lesson 2.1', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+test('free practice follows the path: tap only until unit 2, unless the setup turns holding on', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  const hold = page.getByRole('switch', { name: /^Hold notes for their length/ });
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await page.reload();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+});
+
+test('free practice holds by default once unit 2 is open', async ({ page }) => {
+  const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2, bestAccuracy: 85 }]));
+  await seed(page, { progress: { lessons, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  await expect(page.getByRole('switch', { name: /^Hold notes for their length/ })).toHaveAttribute('aria-checked', 'true');
+});

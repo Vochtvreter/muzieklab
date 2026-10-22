@@ -1,7 +1,7 @@
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type ScaleSettings } from '../core/api';
 import { noteLessonSettings } from '../game/notesPath';
 import { defaultProgress, DEFAULT_PREFS } from '../game/storage';
-import { makeNoteRun, makeScaleRun, reducer, type AppState } from './store';
+import { makeNoteRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -194,7 +194,47 @@ describe('reducer: reset progress', () => {
   it('also puts the free-practice setup back to the defaults (it is kept with the progress)', () => {
     const custom = { ...state(), settings: { ...DEFAULT_SETTINGS, meters: ['3/4' as const], tempo: 132 } };
     const reset = reducer(custom, { type: 'resetProgress' });
-    expect(reset.settings).toEqual({ ...DEFAULT_SETTINGS, hold: true });
-    expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdMode: 'tap' } }, { type: 'resetProgress' }).settings.hold).toBe(false);
+    // Back at lesson 1.1: tap only until the path teaches holding again.
+    expect(reset.settings).toEqual({ ...DEFAULT_SETTINGS, hold: false });
+    expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdEarly: true } }, { type: 'resetProgress' }).settings.hold).toBe(true);
+    expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdMode: 'tap', holdEarly: true } }, { type: 'resetProgress' }).settings.hold).toBe(false);
+  });
+});
+
+describe('practice hold', () => {
+  const unit1Done = { ...defaultProgress(), lessons: Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2 as const, bestAccuracy: 80 }])) };
+  const unit1Half = { ...defaultProgress(), lessons: { '1.1': { stars: 3 as const, bestAccuracy: 95 }, '1.2': { stars: 2 as const, bestAccuracy: 80 } } };
+
+  it('follows the path: tap only until unit 2 (the unit that teaches holding) is open', () => {
+    expect(practiceHold(DEFAULT_PREFS, defaultProgress())).toBe(false);
+    expect(practiceHold(DEFAULT_PREFS, unit1Half)).toBe(false);
+    expect(practiceHold(DEFAULT_PREFS, unit1Done)).toBe(true);
+  });
+
+  it('tap only in Settings → Input always wins; the setup switch can turn holding on early', () => {
+    expect(practiceHold({ ...DEFAULT_PREFS, holdMode: 'tap' }, unit1Done)).toBe(false);
+    expect(practiceHold({ ...DEFAULT_PREFS, holdMode: 'tap', holdEarly: true }, unit1Done)).toBe(false);
+    expect(practiceHold({ ...DEFAULT_PREFS, holdEarly: true }, defaultProgress())).toBe(true);
+  });
+
+  it('the setup switch: on holds now; off takes back the early choice before unit 2, else sets tap only', () => {
+    expect(practiceHoldPatch({ progress: defaultProgress() }, true)).toEqual({ holdMode: 'hold', holdEarly: true });
+    expect(practiceHoldPatch({ progress: defaultProgress() }, false)).toEqual({ holdEarly: false });
+    expect(practiceHoldPatch({ progress: unit1Done }, false)).toEqual({ holdMode: 'tap', holdEarly: false });
+    for (const progress of [defaultProgress(), unit1Done]) {
+      for (const on of [true, false]) {
+        const prefs = { ...DEFAULT_PREFS, ...practiceHoldPatch({ progress }, on) };
+        expect(practiceHold(prefs, progress), `on: ${on}`).toBe(on);
+      }
+    }
+  });
+
+  it('every free-practice start uses it; lessons keep their own hold', () => {
+    const s = { prefs: DEFAULT_PREFS, progress: defaultProgress(), settings: { ...DEFAULT_SETTINGS, hold: true } };
+    expect(practiceSettings(s, s.settings).hold).toBe(false);
+    expect(runSettings(s, null).hold).toBe(false);
+    expect(runSettings({ ...s, progress: unit1Done }, null).hold).toBe(true);
+    expect(runSettings(s, '1.1').hold).toBe(false);
+    expect(runSettings(s, '2.1').hold).toBe(true);
   });
 });

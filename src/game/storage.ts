@@ -26,8 +26,13 @@ export interface Prefs {
   seenHold: boolean;
   /** The Echo mode's How to play was shown once. */
   seenEchoHowTo: boolean;
-  /** Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold'. */
+  /**
+   * Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold', and free
+   * practice only holds once the path has taught it (ui/store.tsx practiceHold).
+   */
   holdMode: 'hold' | 'tap';
+  /** The setup's "Hold notes for their length" was turned on before the path taught holding (unit 2). */
+  holdEarly: boolean;
   /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */
   metronomeLook: 'digital' | 'analog';
   /** Read notes: the name buttons show do re mi (fixed do) or letters. */
@@ -84,6 +89,7 @@ export const DEFAULT_PREFS: Prefs = {
   seenHold: false,
   seenEchoHowTo: false,
   holdMode: 'hold',
+  holdEarly: false,
   metronomeLook: 'digital',
   noteNames: 'solfege',
   pianoLabels: 'letters',
@@ -177,6 +183,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     seenHold: bool(raw.seenHold, d.seenHold),
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
+    holdEarly: bool(raw.holdEarly, d.holdEarly),
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
     noteNames: oneOf(raw.noteNames, ['solfege', 'letters'] as const, d.noteNames),
     pianoLabels: oneOf(raw.pianoLabels, ['letters', 'solfege', 'off'] as const, d.pianoLabels),

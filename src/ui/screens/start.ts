@@ -5,7 +5,7 @@ import { dailyChallenge } from '../../game/daily';
 import { unlockAudio } from '../audio';
 import { newSeed } from '../lib/format';
 import { navigate } from '../router';
-import { makeRun, runSettings, todayIso, useStore, type Run } from '../store';
+import { makeRun, practiceSettings, runSettings, todayIso, useStore, type Run } from '../store';
 
 /** A lesson by id; `replace` swaps the current screen for Play (from Results, so Back does not return to it). */
 export function useStartLesson(): (lessonId: string, opts?: { replace?: boolean }) => void {
@@ -22,18 +22,18 @@ export function useStartLesson(): (lessonId: string, opts?: { replace?: boolean 
   );
 }
 
-/** Free practice with the given settings (hold comes from the Input pref). */
+/** Free practice with the given settings (hold follows the path: practiceSettings). */
 export function useStartPractice(): (settings: Settings) => void {
   const { state, dispatch } = useStore();
   return useCallback(
     (settings: Settings) => {
       unlockAudio();
-      const run = makeRun({ ...settings, hold: state.prefs.holdMode === 'hold' }, newSeed(), null);
+      const run = makeRun(practiceSettings(state, settings), newSeed(), null);
       if (!run) return;
       dispatch({ type: 'start', run });
       navigate('/play');
     },
-    [state.prefs.holdMode, dispatch],
+    [state, dispatch],
   );
 }
 
