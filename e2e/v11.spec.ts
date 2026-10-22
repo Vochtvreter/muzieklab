@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { seed, VIEWPORTS } from './helpers';
+import { pad, seed, VIEWPORTS } from './helpers';
 
 /** v1.1 quick wins: the daily challenge with Copy code, and Echo mode from setup to the reveal on Results. */
 
@@ -40,7 +40,7 @@ test('echo: listen, tap it back with the notation hidden, then Results reveals i
   await page.getByRole('button', { name: 'Start · 1 bar' }).click();
 
   await expect(page.getByText('LISTEN FIRST')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Rhythm pad' })).toBeDisabled();
+  await expect(pad(page)).toBeDisabled();
   await expect(page.locator('.staff, svg.vf')).toHaveCount(0);
   await page.getByRole('button', { name: 'Play the rhythm' }).click();
   await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
@@ -51,7 +51,7 @@ test('echo: listen, tap it back with the notation hidden, then Results reveals i
   await expect(page.getByRole('button', { name: 'Hear again · 1 left' })).toBeVisible();
   // Presses in the count-in are ignored: tap once the rhythm's first beat has come.
   await expect(page.getByRole('img', { name: /^Counting beat/ })).toBeAttached({ timeout: 8000 });
-  await page.getByRole('button', { name: 'Rhythm pad' }).click();
+  await pad(page).click();
   await expect(page.locator('.echo-count b')).toHaveText('1');
   await page.getByRole('button', { name: 'Done' }).click();
 

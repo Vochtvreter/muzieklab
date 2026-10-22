@@ -35,7 +35,7 @@ import {
   type Tap,
 } from '../core/api';
 import { noteLessonSettings, type NoteTrackId } from '../game/notesPath';
-import { lessonSettings, recordLessonResult } from '../game/path';
+import { ALL_LESSONS, isUnlocked, lessonSettings, recordLessonResult } from '../game/path';
 import { progressKey } from '../game/track';
 import { xpForResult } from '../game/xp';
 import {
@@ -308,7 +308,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         progress: defaultProgress(),
         // The free-practice setup comes from the progress (lastSettings), so it goes back to the defaults too.
-        settings: { ...DEFAULT_SETTINGS, hold: state.prefs.holdMode === 'hold' },
+        settings: practiceSettings({ prefs: state.prefs, progress: defaultProgress() }, DEFAULT_SETTINGS),
         last: null,
         noteLast: null,
         noteSettings: { ...DEFAULT_NOTE_SETTINGS },
@@ -379,16 +379,43 @@ export function reducer(state: AppState, action: Action): AppState {
   }
 }
 
-/** The hold setting an exercise uses: a lesson preset's `hold: false` wins, otherwise the Input pref. */
+/** The hold setting a lesson uses: its preset's `hold: false` wins, otherwise the Input pref. */
 export function effectiveHold(prefs: Prefs, lessonId: string | null): boolean {
   if (lessonId && lessonSettings(lessonId).hold === false) return false;
   return prefs.holdMode === 'hold';
 }
 
-/** Settings for a run, with the effective hold applied. */
-export function runSettings(state: Pick<AppState, 'prefs' | 'settings'>, lessonId: string | null): Settings {
-  const base = lessonId ? lessonSettings(lessonId) : state.settings;
-  return { ...base, hold: effectiveHold(state.prefs, lessonId) };
+/** The path's first lesson that judges holds (2.1: unit 1 is tap only). */
+const FIRST_HOLD_LESSON = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson.id).hold)?.lesson.id ?? '2.1';
+
+/**
+ * Whether free practice (Tap and Echo, Learn's practice links) judges holds. It follows the path, so the rules do not
+ * change when the player leaves it: the Input pref, once the path has taught holding (its first hold lesson is open),
+ * or earlier when the setup's "Hold notes for their length" was turned on.
+ */
+export function practiceHold(prefs: Prefs, progress: Progress): boolean {
+  if (prefs.holdMode !== 'hold') return false;
+  return prefs.holdEarly || isUnlocked(progress, FIRST_HOLD_LESSON);
+}
+
+/** Free-practice settings for a run: `settings` with the practice hold. Every start outside the path uses this. */
+export function practiceSettings(state: Pick<AppState, 'prefs' | 'progress'>, settings: Settings): Settings {
+  return { ...settings, hold: practiceHold(state.prefs, state.progress) };
+}
+
+/**
+ * The setup's hold switch. On holds from now on, also before the path teaches it. Off before that only takes the
+ * early choice back, so the lessons of unit 2 on still hold; after it, it sets the Input pref to tap only.
+ */
+export function practiceHoldPatch(state: Pick<AppState, 'progress'>, on: boolean): Partial<Prefs> {
+  if (on) return { holdMode: 'hold', holdEarly: true };
+  return isUnlocked(state.progress, FIRST_HOLD_LESSON) ? { holdMode: 'tap', holdEarly: false } : { holdEarly: false };
+}
+
+/** Settings for a run: a lesson's, with its hold, or the free-practice setup with the practice hold. */
+export function runSettings(state: Pick<AppState, 'prefs' | 'progress' | 'settings'>, lessonId: string | null): Settings {
+  if (!lessonId) return practiceSettings(state, state.settings);
+  return { ...lessonSettings(lessonId), hold: effectiveHold(state.prefs, lessonId) };
 }
 
 /** Generates a run; null when the settings cannot make an exercise. */
@@ -411,7 +438,7 @@ function initialState(): AppState {
   return {
     prefs,
     progress,
-    settings: { ...settings, hold: prefs.holdMode === 'hold' },
+    settings: practiceSettings({ prefs, progress }, settings),
     run: route === '/play' ? restoreRun() : null,
     last: null,
     noteSettings: progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS },

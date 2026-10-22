@@ -407,6 +407,7 @@
     "comboValue": "×{count}",
     "countingBeat": "Counting beat {beat} of {total}",
     "countIn": "Count-in, beat {beat} of {total}",
+    "countingIn": "Count-in",
     "beats": "Beats 1 to {total}",
     "count": "Count",
     "soFar": "So far",
@@ -423,8 +424,8 @@
     "tapLegendLong": "gray = each note, mark = when you tapped",
     "barsRange": "{from, select, other {bars {from}–{to}}}",
     "barsOne": "bar {from}",
-    "pad": "Rhythm pad",
-    "padLabel": "Rhythm",
+    "pad": "Tap pad",
+    "padLabel": "Tap",
     "staffLabel": "{rhythm} Cursor on note {note}.",
     "staffLabelIdle": "{rhythm}",
     "echo": {
@@ -471,16 +472,16 @@
     "hold": "hold",
     "nextNote": "next note",
     "oneNote": "one note",
-    "step1": "Press the Rhythm pad when a note starts.",
+    "step1": "Press the Tap pad when a note starts.",
     "step2": "Hold it for the length of the note. Lift when the note ends.",
     "step3": "On a rest, stay off the pad. On a tie, keep holding.",
-    "computer": "On a computer, any key works as the Rhythm pad. Tap ? at the top to see this again.",
-    "desktop": "Any key works as the Rhythm pad. Press ? to see this again.",
+    "computer": "On a computer, any key works as the Tap pad. Tap ? at the top to see this again.",
+    "desktop": "Any key works as the Tap pad. Press ? to see this again.",
     "gotIt": "Got it",
     "tap": {
       "diagram": "Tap when each note starts; how long you hold does not count",
       "tap": "tap",
-      "step1": "Tap the Rhythm pad when a note starts.",
+      "step1": "Tap the pad when a note starts.",
       "step2": "Only the start counts here: no need to hold the note.",
       "step3": "On a rest, don't tap."
     },
@@ -488,7 +489,8 @@
     "echo": {
       "eyebrow": "Echo mode",
       "step1": "Listen to the rhythm. You can hear it twice.",
-      "step2": "Tap it back on the Rhythm pad from memory. Hold each note for its length.",
+      "step2": "Tap it back on the pad from memory. Hold each note for its length.",
+      "step2Tap": "Tap it back on the pad from memory. Only when each note starts counts.",
       "step3": "The notation shows at the end, with your timing on every note."
     }
   },
@@ -496,6 +498,42 @@
     "title": "Ready?",
     "detail": "{bars} in {meter} at {bpm} BPM. The count-in starts when you press Start.",
     "start": "Start"
+  },
+  "intro": {
+    "eyebrow": "New in this lesson",
+    "listen": "Listen",
+    "listenTitle": "Hear this exercise with the beat",
+    "stop": "Stop",
+    "learnMore": "Learn more",
+    "learnMoreLabel": "Learn more: {name}",
+    "name": {
+      "meter2": "Two-four",
+      "meter3": "Three-four",
+      "meter4": "Four-four",
+      "dotted": "Dot",
+      "ties": "Tie",
+      "triplets": "Triplet"
+    },
+    "fact": {
+      "note": {
+        "whole": "4 beats",
+        "half": "2 beats",
+        "quarter": "1 beat",
+        "eighth": "half a beat",
+        "sixteenth": "a quarter of a beat"
+      },
+      "rest": {
+        "whole": "a whole bar of silence",
+        "half": "2 beats of silence",
+        "quarter": "1 beat of silence",
+        "eighth": "half a beat of silence",
+        "sixteenth": "a quarter beat of silence"
+      },
+      "meter": "{count} beats in a bar",
+      "dotted": "adds half the note’s length",
+      "ties": "adds the second note’s length",
+      "triplets": "3 in the time of 2"
+    }
   },
   "pause": {
     "title": "Paused",
@@ -636,7 +674,7 @@
     "lastTap": "LAST TAP {offset}",
     "tapEach": "TAP ON EACH CLICK",
     "pressToStart": "PRESS THE PAD TO START",
-    "anyKey": "On a computer, any key works as the pad.",
+    "anyKey": "On a computer, any key works as the Tap pad.",
     "yourOffset": "Your offset",
     "resultLate": "Median of {count} taps. Your taps reach Muzieklab {ms} ms after the click, so every score is shifted by that much.",
     "resultEarly": "Median of {count} taps. Your taps reach Muzieklab {ms} ms before the click, so every score is shifted by that much.",

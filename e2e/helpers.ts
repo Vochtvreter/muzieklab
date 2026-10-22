@@ -73,4 +73,4 @@ export async function seed(page: Page, data: { prefs?: object; progress?: object
   }, data);
 }
 
-export const pad = (page: Page): Locator => page.getByRole('button', { name: 'Rhythm pad' });
+export const pad = (page: Page): Locator => page.getByRole('button', { name: 'Tap pad' });

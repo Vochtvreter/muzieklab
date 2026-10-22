@@ -147,6 +147,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }).click();
       await page.getByRole('button', { name: /^Start · / }).click();
       await expectClickable(page.getByRole('button', { name: 'Got it' }));
+      // Before the path teaches holding, Echo is tap only too: How to play does not ask to hold.
+      await expect(page.getByRole('dialog', { name: 'How to play' }).getByText(/Only when each note starts counts/)).toBeVisible();
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await expectClickable(page.getByRole('button', { name: 'Play the rhythm' }), { scroll: false });
@@ -610,6 +612,42 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('play: the count-in says Count-in, with no note highlighted, then bar 1', async ({ page }) => {
+      known(name, 'play-count-in');
+      await seed(page, { prefs: { seenHowTo: true } });
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+      // The desktop layout from 1100 px wide (a tablet in landscape too).
+      const desk = VIEWPORTS[name].width >= 1100;
+      const line = page.locator(desk ? '.dplay-title .mono-line' : '.play-info .mono-line');
+      await expect(line).toContainText('Count-in');
+      await expect(page.locator(desk ? '.dbeats.is-count-in' : '.beats.is-count-in')).toBeVisible();
+      await expect(page.locator('rect[data-cursor]')).toHaveCount(0);
+      // Lesson 1.1: one bar of 4/4 at 60 BPM.
+      await expect(page.getByRole('img', { name: /^Counting beat/ })).toBeAttached({ timeout: 6000 });
+      await expect(line).toContainText('Bar 1 of 2');
+      await expect(page.locator('.is-count-in')).toHaveCount(0);
+      await expect(page.locator('rect[data-cursor]')).toHaveCount(1);
+      await expectNoSideScroll(page);
+    });
+
+    test('play: what a lesson introduces, before the count-in', async ({ page }) => {
+      known(name, 'play-intro');
+      await seed(page, { prefs: { seenHowTo: true }, progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } } });
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      const sheet = page.getByRole('dialog', { name: 'Half notes' });
+      await expect(sheet.getByText('New in this lesson')).toBeVisible();
+      await expectClickable(sheet.getByRole('link', { name: 'Learn more: Half note' }));
+      await expectClickable(sheet.getByRole('button', { name: 'Listen' }));
+      await expectClickable(sheet.getByRole('button', { name: 'Start' }));
+      // Desktop: the dialog sits under the staff, so the rhythm stays readable.
+      if (VIEWPORTS[name].width >= 1100) await expectNoOverlap(sheet, page.locator('.dplay-staff svg').first());
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
     test('play with the analog metronome: pendulum and the pad', async ({ page }) => {
       known(name, 'play-analog');
       await page.goto('./#/settings');
@@ -639,7 +677,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/path', 'Leerpad', 'Begin les'],
       ['#/settings', 'Instellingen', 'Voortgang wissen'],
       ['#/changelog', 'Wat is er nieuw', '0.1.0'],
-      ['#/calibrate', 'Timing kalibreren', 'Ritmepad'],
+      ['#/calibrate', 'Timing kalibreren', 'Tikpad'],
       ['#/notes', 'Noten lezen', 'Start · '],
       ['#/notes/key', 'Toonsoort', 'Kies '],
       ['#/learn', 'Leren', ''],
@@ -667,6 +705,21 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
     }
+
+    test('play: the intro sheet and the count-in', async ({ page }) => {
+      known(name, 'nl-play-intro');
+      await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } } });
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Verder met de les' }).dispatchEvent('click');
+      const sheet = page.getByRole('dialog', { name: 'Halve noten' });
+      await expect(sheet.getByText('Nieuw in deze les')).toBeVisible();
+      await expectClickable(sheet.getByRole('button', { name: 'Luisteren' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await sheet.getByRole('button', { name: 'Start' }).click();
+      await expect(page.locator(VIEWPORTS[name].width >= 1100 ? '.dplay-title .mono-line' : '.play-info .mono-line')).toContainText('Voortellen');
+      await expectNoSideScroll(page);
+    });
 
     test('play, results and read notes', async ({ page }) => {
       known(name, 'nl-play');

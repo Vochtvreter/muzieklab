@@ -407,6 +407,7 @@
     "comboValue": "×{count}",
     "countingBeat": "Tel {beat} van {total}",
     "countIn": "Voortellen, tel {beat} van {total}",
+    "countingIn": "Voortellen",
     "beats": "Tel 1 tot {total}",
     "count": "Tel",
     "soFar": "Tot nu toe",
@@ -423,8 +424,8 @@
     "tapLegendLong": "grijs = elke noot, streep = wanneer je tikte",
     "barsRange": "{from, select, other {maat {from}–{to}}}",
     "barsOne": "maat {from}",
-    "pad": "Ritmepad",
-    "padLabel": "Ritme",
+    "pad": "Tikpad",
+    "padLabel": "Tik",
     "staffLabel": "{rhythm} Cursor op noot {note}.",
     "staffLabelIdle": "{rhythm}",
     "echo": {
@@ -471,16 +472,16 @@
     "hold": "vast",
     "nextNote": "volgende noot",
     "oneNote": "één noot",
-    "step1": "Druk op het ritmepad als een noot begint.",
+    "step1": "Druk op het tikpad als een noot begint.",
     "step2": "Houd vast zo lang de noot duurt. Laat los als de noot ophoudt.",
     "step3": "Bij een rust blijf je van het pad af. Bij een overbinding houd je vast.",
-    "computer": "Op een computer werkt elke toets als ritmepad. Tik bovenaan op ? om dit nog eens te zien.",
-    "desktop": "Elke toets werkt als ritmepad. Druk op ? om dit nog eens te zien.",
+    "computer": "Op een computer werkt elke toets als tikpad. Tik bovenaan op ? om dit nog eens te zien.",
+    "desktop": "Elke toets werkt als tikpad. Druk op ? om dit nog eens te zien.",
     "gotIt": "Begrepen",
     "tap": {
       "diagram": "Tik als elke noot begint; hoe lang je vasthoudt telt niet",
       "tap": "tik",
-      "step1": "Tik op het ritmepad als een noot begint.",
+      "step1": "Tik op het pad als een noot begint.",
       "step2": "Hier telt alleen het begin: je hoeft de noot niet vast te houden.",
       "step3": "Bij een rust tik je niet."
     },
@@ -488,7 +489,8 @@
     "echo": {
       "eyebrow": "Echo",
       "step1": "Luister naar het ritme. Je kunt het twee keer horen.",
-      "step2": "Tik het uit je hoofd na op het ritmepad. Houd elke noot vast zo lang hij duurt.",
+      "step2": "Tik het uit je hoofd na op het pad. Houd elke noot vast zo lang hij duurt.",
+      "step2Tap": "Tik het uit je hoofd na op het pad. Alleen het begin van elke noot telt.",
       "step3": "Aan het eind zie je de noten, met je timing op elke noot."
     }
   },
@@ -496,6 +498,42 @@
     "title": "Klaar?",
     "detail": "{bars} in {meter} op {bpm} BPM. Het voortellen begint als je op Start drukt.",
     "start": "Start"
+  },
+  "intro": {
+    "eyebrow": "Nieuw in deze les",
+    "listen": "Luisteren",
+    "listenTitle": "Hoor deze oefening met de tel",
+    "stop": "Stop",
+    "learnMore": "Meer uitleg",
+    "learnMoreLabel": "Meer uitleg: {name}",
+    "name": {
+      "meter2": "Tweekwartsmaat",
+      "meter3": "Driekwartsmaat",
+      "meter4": "Vierkwartsmaat",
+      "dotted": "Punt",
+      "ties": "Overbinding",
+      "triplets": "Triool"
+    },
+    "fact": {
+      "note": {
+        "whole": "4 tellen",
+        "half": "2 tellen",
+        "quarter": "1 tel",
+        "eighth": "een halve tel",
+        "sixteenth": "een kwart tel"
+      },
+      "rest": {
+        "whole": "een hele maat stilte",
+        "half": "2 tellen stilte",
+        "quarter": "1 tel stilte",
+        "eighth": "een halve tel stilte",
+        "sixteenth": "een kwart tel stilte"
+      },
+      "meter": "{count} tellen in een maat",
+      "dotted": "maakt de noot de helft langer",
+      "ties": "telt de lengte van de tweede noot erbij",
+      "triplets": "3 in de tijd van 2"
+    }
   },
   "pause": {
     "title": "Gepauzeerd",
@@ -636,7 +674,7 @@
     "lastTap": "LAATSTE TIK {offset}",
     "tapEach": "TIK OP ELKE KLIK",
     "pressToStart": "DRUK OP HET PAD OM TE BEGINNEN",
-    "anyKey": "Op een computer werkt elke toets als pad.",
+    "anyKey": "Op een computer werkt elke toets als tikpad.",
     "yourOffset": "Jouw afwijking",
     "resultLate": "Mediaan van {count} tikken. Je tikken komen {ms} ms na de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
     "resultEarly": "Mediaan van {count} tikken. Je tikken komen {ms} ms voor de klik bij Muzieklab aan, dus elke score schuift zoveel op.",

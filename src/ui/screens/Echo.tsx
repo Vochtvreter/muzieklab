@@ -13,7 +13,7 @@ import { Sheet } from '../components/Sheet';
 import type { ExerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useKeyboardHints, useLingering } from '../hooks';
 import { metersLabel } from '../lib/format';
-import { beatAt } from '../lib/playMath';
+import { beatAt, type BeatState } from '../lib/playMath';
 import { Link, navigate } from '../router';
 import { useStore, type Run } from '../store';
 import { HowToContent } from './PlaySheets';
@@ -21,6 +21,7 @@ import { HowToContent } from './PlaySheets';
 /** How often the rhythm can be heard (the first listen included). */
 export const ECHO_PLAYS = 2;
 const LEAD_IN_S = 0.3;
+const IDLE_BEAT: BeatState = { inBar: null, countIn: false };
 
 /** "Echo · Free practice", "Echo · Lesson 2.3", "Echo · Daily challenge". */
 export function echoWhere(where: string): string {
@@ -61,7 +62,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(playsLeft < ECHO_PLAYS);
-  const [beat, setBeat] = useState<number | null>(null);
+  const [beat, setBeat] = useState<BeatState>(IDLE_BEAT);
   const [help, setHelp] = useState<'help' | null>(state.prefs.seenEchoHowTo ? null : 'help');
   const timer = useRef<number | null>(null);
   const raf = useRef<number | null>(null);
@@ -84,13 +85,15 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     const beatSec = view.timeline.beatSeconds;
     const tick = (): void => {
       const tg = eng.heardNow() - started.exerciseStart;
-      setBeat(beatAt(tg, beatSec, ex.meter.beatsPerBar, ex.meter.beatsPerBar, view.timeline.totalSeconds).inBar);
+      const now = beatAt(tg, beatSec, ex.meter.beatsPerBar, ex.meter.beatsPerBar, view.timeline.totalSeconds);
+      // A new state only when the beat changes, not every frame.
+      setBeat((b) => (b.inBar === now.inBar && b.countIn === now.countIn ? b : now));
       raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
     timer.current = window.setTimeout(() => {
       stopLoop();
-      setBeat(null);
+      setBeat(IDLE_BEAT);
       setPlaying(false);
       setHeard(true);
     }, Math.max(0, started.end - eng.now() + 0.25) * 1000);
@@ -143,7 +146,9 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
   const { shown: helpShown, closing } = useLingering(help, 240);
   const bars = t('common.bars', { count: ex.bars.length });
   const cue = playing ? t('play.echo.listening') : heard ? t('play.echo.yourTurnCue') : t('play.echo.listenFirst');
-  const beatLabel = beat === null ? t('play.beats', { total: ex.meter.beatsPerBar }) : t('play.countingBeat', { beat: beat + 1, total: ex.meter.beatsPerBar });
+  const beatLabel = beat.inBar === null
+    ? t('play.beats', { total: ex.meter.beatsPerBar })
+    : t(beat.countIn ? 'play.countIn' : 'play.countingBeat', { beat: beat.inBar + 1, total: ex.meter.beatsPerBar });
 
   return (
     <ExerciseFrame className="frame--play">
@@ -189,7 +194,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
           <p className="sr-only">{t('play.echo.hidden')}</p>
         </section>
 
-        <BeatRow beats={ex.meter.beatsPerBar} active={beat} label={beatLabel} />
+        <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />
         <div aria-live="polite" className="judgement judgement--phone tone-muted">
           {cue}
         </div>

@@ -96,7 +96,7 @@ interface PadProps {
   disabled?: boolean;
 }
 
-/** Phone / tablet tap pad: a quarter-note glyph and "Rhythm", with a ring that fills while you hold. */
+/** Phone / tablet tap pad: a quarter-note glyph and "Tap", with a ring that fills while you hold. */
 export const TapPad = forwardRef<HTMLButtonElement, PadProps>(function TapPad({ progress, held, label, disabled }, ref) {
   const dash = (RING_C * Math.max(0, Math.min(1, progress))).toFixed(1);
   return (
@@ -116,11 +116,14 @@ export const TapPad = forwardRef<HTMLButtonElement, PadProps>(function TapPad({ 
   );
 });
 
-/** Beat counter. Phone: digits with a slate circle that moves to the current beat (120 ms). */
-export function BeatRow({ beats, active, label }: { beats: number; active: number | null; label: string }): JSX.Element {
+/**
+ * Beat counter. Phone: digits with a slate circle that moves to the current beat (120 ms). In the count-in the circle
+ * is an outlined ring, so the count-in does not look like bar 1.
+ */
+export function BeatRow({ beats, active, countIn = false, label }: { beats: number; active: number | null; countIn?: boolean; label: string }): JSX.Element {
   const style = { '--beat': active ?? 0 } as CSSProperties;
   return (
-    <div className="beats" role="img" aria-label={label} style={style}>
+    <div className={'beats' + (countIn ? ' is-count-in' : '')} role="img" aria-label={label} style={style}>
       <span className={'beats-dot' + (active === null ? ' is-idle' : '')} aria-hidden="true" />
       {Array.from({ length: beats }, (_, i) => (
         <span key={i} aria-hidden="true" className={'beat' + (i === active ? ' is-on' : '')}>

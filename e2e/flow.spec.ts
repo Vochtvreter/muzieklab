@@ -171,3 +171,84 @@ test('the first lesson that judges holds shows How to play again, with holding, 
   await expect(page.getByText('Lesson 2.1', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+test('Next lesson introduces what is new before the count-in, once; another lesson waits on Ready', async ({ page }) => {
+  test.setTimeout(60_000);
+  await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } }, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  const countIn = page.getByRole('img', { name: /^Count-in, beat/ });
+  // The first run of the session starts straight away.
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: /^Play lesson 1\.1/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('button', { name: /^Next lesson/ }).click();
+
+  // Lesson 1.2 brings the half note: its card, Listen, Learn more and Start, before any count-in.
+  const sheet = page.getByRole('dialog', { name: 'Half notes' });
+  await expect(sheet.getByText('New in this lesson')).toBeVisible();
+  await expect(sheet.getByText('· 2 beats')).toBeVisible();
+  await expect(sheet.getByRole('link', { name: 'Learn more: Half note' })).toHaveAttribute('href', '#/learn/2?s=2.1');
+  await expect(countIn).toHaveCount(0);
+  await sheet.getByRole('button', { name: 'Listen' }).click();
+  await expect(sheet.getByRole('button', { name: 'Stop' })).toHaveAttribute('aria-pressed', 'true');
+  await sheet.getByRole('button', { name: 'Stop' }).click();
+  await expect(sheet.getByRole('button', { name: 'Listen' })).toHaveAttribute('aria-pressed', 'false');
+  await sheet.getByRole('button', { name: 'Start' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(countIn).toBeAttached({ timeout: 3000 });
+
+  // Shown once; Retry of the same lesson starts straight away.
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect(countIn).toBeAttached({ timeout: 3000 });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Another lesson than the one finished last: Ready first, so the rhythm can be read; Start counts in.
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: /^Play lesson 1\.1/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
+  await expect(countIn).toHaveCount(0);
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await expect(countIn).toBeAttached({ timeout: 3000 });
+});
+
+test('the intro sheet comes after How to play, the first time both are due', async ({ page }) => {
+  await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } }, practiceDays: [], lastSettings: null }, prefs: {} });
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
+  await page.getByRole('button', { name: /^Got it/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Half notes' })).toBeVisible();
+  // Learn more opens the section; Back returns to the lesson, still waiting on its intro.
+  await page.getByRole('link', { name: 'Learn more: Half note' }).click();
+  await expect(page).toHaveURL(/#\/learn\/2\?s=2\.1$/);
+  await page.goBack();
+  await expect(page.getByRole('dialog', { name: 'Half notes' })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+});
+
+test('free practice follows the path: tap only until unit 2, unless the setup turns holding on', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  const hold = page.getByRole('switch', { name: /^Hold notes for their length/ });
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await page.reload();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+});
+
+test('free practice holds by default once unit 2 is open', async ({ page }) => {
+  const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2, bestAccuracy: 85 }]));
+  await seed(page, { progress: { lessons, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  await expect(page.getByRole('switch', { name: /^Hold notes for their length/ })).toHaveAttribute('aria-checked', 'true');
+});
