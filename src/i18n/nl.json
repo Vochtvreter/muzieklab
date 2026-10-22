@@ -65,16 +65,16 @@
   },
   "home": {
     "title": "Start",
-    "continueEyebrow": "Verder · Hoofdstuk {unit} · Les {lesson} van {total}",
-    "replayEyebrow": "Leerpad klaar · Hoofdstuk {unit} · Les {lesson} van {total}",
+    "continueEyebrow": "Verder · Blok {unit} · Les {lesson} van {total}",
+    "replayEyebrow": "Leerpad klaar · Blok {unit} · Les {lesson} van {total}",
     "continueButton": "Verder met de les",
-    "startEyebrow": "Hoofdstuk {unit} · Les {lesson} van {total}",
+    "startEyebrow": "Blok {unit} · Les {lesson} van {total}",
     "startButton": "Begin de les",
     "replayButton": "Nog een keer",
     "pathEyebrow": "Leerpad",
-    "pathUnitOf": "Hoofdstuk {unit} van {total}",
+    "pathUnitOf": "Blok {unit} van {total}",
     "pathView": "Bekijk leerpad →",
-    "pathLocked": "2 sterren op elke les van hoofdstuk {unit}",
+    "pathLocked": "2 sterren op elke les van blok {unit}",
     "unitStars": "{count} ★",
     "dailyTitle": "Uitdaging van de dag",
     "dailyMeta": "{bars} · elke dag nieuw",
@@ -102,7 +102,7 @@
     "totalsLabel": "{stars} van {total} sterren",
     "unitTitle": "{id} · {title}",
     "next": "Volgende: les {lesson} · {title} · {bpm} BPM",
-    "unlocks": "Gaat open met 2 sterren op elke les van hoofdstuk {unit}",
+    "unlocks": "Gaat open met 2 sterren op elke les van blok {unit}",
     "start": "Begin les {id}",
     "playLesson": "Speel les {id} · {title}: {stars}",
     "lockedLesson": "Les {id}, op slot",
@@ -177,11 +177,11 @@
       "notes": "Noten lezen",
       "keys": "Toonsoorten"
     },
-    "trackMeta": "Hoofdstuk {unit} van {total}",
+    "trackMeta": "Blok {unit} van {total}",
     "trackDone": "Alles klaar",
     "trackLocked": "Op slot",
-    "cardMeta": "Hoofdstuk {unit} van {total} · {title}",
-    "trackStars": "Hoofdstuk {unit} van {total} · {stars} / {max} ★",
+    "cardMeta": "Blok {unit} van {total} · {title}",
+    "trackStars": "Blok {unit} van {total} · {stars} / {max} ★",
     "trackStarsDone": "Alles klaar · {stars} / {max} ★",
     "trackStarsLabel": "{stars} van {max} sterren",
     "theory": {
@@ -191,7 +191,7 @@
     },
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} van {max} sterren",
-    "opensAfter": "Gaat open na hoofdstuk {unit} van Noten lezen",
+    "opensAfter": "Gaat open na blok {unit} van Noten lezen",
     "lockedLessonTitled": "Les {id} · {title}, op slot",
     "notes": {
       "u1": {
@@ -285,7 +285,7 @@
         "l5": "Herhaling"
       }
     },
-    "units": "Hoofdstukken",
+    "units": "Blokken",
     "toTrack": "Naar {track}"
   },
   "setup": {
@@ -1360,7 +1360,7 @@
         "placeAlt": "Twee maten 4/4 op de balk met één lijn: een hele rust die onder de lijn hangt, geteld (1 2 3 4), dan een halve rust die op de lijn staat, geteld (1 2), en een halve noot geteld 3 (4)",
         "count": "Blijf door elke rust heen tellen. Stille tellen staan tussen grijze haakjes:",
         "countAlt": "Een maat 4/4: een kwartnoot op 1, een kwartrust op (2), een kwartnoot op 3, een kwartrust op (4); dan een halve rust op (1 2) en een halve noot op 3 (4)",
-        "game": "In het spel: laat los als een noot afloopt en blijf eraf tijdens de rust. Met Houd noten vast zo lang ze duren aan, zoals in het Leerpad vanaf hoofdstuk 2, telt ook het moment van loslaten mee.",
+        "game": "In het spel: laat los als een noot afloopt en blijf eraf tijdens de rust. Met Houd noten vast zo lang ze duren aan, zoals in het Leerpad vanaf blok 2, telt ook het moment van loslaten mee.",
         "practice": "Oefen rusten",
         "check": {
           "question": "Welke rust hangt op de balk met één lijn in het spel onder de lijn?",
@@ -1617,7 +1617,7 @@
     "meta": {
       "start": "Begin hier",
       "builds": "{count, plural, one {Bouwt voort op hoofdstuk {list}} other {Bouwt voort op hoofdstukken {list}}}",
-      "units": "{count, plural, one {Leerpad, hoofdstuk {list}} other {Leerpad, hoofdstukken {list}}}",
+      "units": "{count, plural, one {Leerpad, blok {list}} other {Leerpad, blokken {list}}}",
       "and": " en "
     },
     "accent": {
