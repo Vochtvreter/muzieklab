@@ -72,12 +72,13 @@ export function PathScreen(): JSX.Element {
   const totals = allStars(p);
   const pick = (to: TrackId): void => dispatch({ type: 'prefs', patch: { pathTrack: to } });
   const play = (lessonId: string): void => (id === 'rhythm' ? startRhythm(lessonId) : startNotes(id, lessonId));
-  // On a short screen the page scrolls to the current unit when the Path opens; picking another path keeps the
-  // switcher (and the focused chip) in view. Child effects run first, so the first Units still sees `true`.
-  const opening = useRef(true);
+  // On a short screen the page scrolls to the current unit when the units appear (the Path opens, or the shell
+  // changes on a rotation), but not when another path is picked: the switcher and the focused chip stay in view.
+  const shownId = useRef(id);
+  const switched = shownId.current !== id;
   useEffect(() => {
-    opening.current = false;
-  }, []);
+    shownId.current = id;
+  });
 
   const head = (
     <div className="path-head">
@@ -87,7 +88,7 @@ export function PathScreen(): JSX.Element {
       </span>
     </div>
   );
-  const units = <Units key={id} view={cur} progress={p} tiles={bp !== 'phone'} scrollPage={opening.current} onPlay={play} />;
+  const units = <Units key={id} view={cur} progress={p} tiles={bp !== 'phone'} scrollPage={!switched} onPlay={play} />;
   // Start, or (Keys while it is closed) the way to the path that opens it. One <button> in both cases, so keyboard
   // focus stays on it when Go to Read notes switches the path.
   const after = OPENS_AFTER[id];

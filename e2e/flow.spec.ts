@@ -129,6 +129,18 @@ test('a finished lesson can be played again from Home and from the Path', async 
   await expect(page.getByText('Lesson 1.2', { exact: true })).toBeVisible();
 });
 
+test('the Path keeps the current unit in view when a phone turns to landscape', async ({ page }) => {
+  const lessons: Record<string, { stars: number; bestAccuracy: number }> = {};
+  for (let u = 1; u <= 6; u++) for (let l = 1; l <= 5; l++) lessons[`${u}.${l}`] = { stars: 2, bestAccuracy: 88 };
+  await seed(page, { progress: { lessons }, prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/path');
+  const unit7 = page.getByRole('button', { name: /^7 · Dotted notes/ });
+  await expect(unit7).toBeInViewport();
+  await page.setViewportSize(VIEWPORTS['phone-landscape']);
+  await expect(unit7).toBeInViewport();
+});
+
 test('desktop Home: the learning-path card opens the rhythm path it shows, whichever path was picked last', async ({ page }) => {
   await seed(page, { prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.desktop);
