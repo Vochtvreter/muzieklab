@@ -103,6 +103,24 @@ test('read notes lesson: skipping to the summary counts the notes left as missed
   await expect(page.getByText('Lesson 1.1 · Treble clef · C major')).toBeVisible();
 });
 
+test('read notes lesson: three right, then skipped, is not "every note right"', async ({ page }) => {
+  const settings = noteLessonSettings('notes', '1.1')!;
+  const seed = 4242;
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [], lesson: { track: 'notes', id: '1.1' } });
+  await page.goto('./#/notes/play');
+  for (const [i, note] of generateRound(settings, seed).slice(0, 3).entries()) {
+    await expect(page.getByText(`Note ${i + 1} of 10`)).toBeVisible();
+    await page.keyboard.press(letterOf(note.step).toLowerCase());
+  }
+  await expect(page.getByText('Note 4 of 10')).toBeVisible();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+  await expect(page.getByText(/^3 of 10 notes right/)).toBeVisible();
+  await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
+  await expect(page.getByText('Nothing to practise: every note right, and quick.')).toHaveCount(0);
+});
+
 test('read notes: piano answers, a hint and skipping to the summary', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/notes');

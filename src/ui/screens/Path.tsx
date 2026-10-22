@@ -82,13 +82,18 @@ export function PathScreen(): JSX.Element {
     </div>
   );
   const units = <Units key={id} view={cur} progress={p} tiles={bp !== 'phone'} onPlay={play} />;
+  // Start, or (Keys while it is closed) the way to the path that opens it. One <button> in both cases, so keyboard
+  // focus stays on it when Go to Read notes switches the path.
+  const after = OPENS_AFTER[id];
   const action = cur.start ? (
     <button type="button" className="btn btn--accent path-start" onClick={() => play(cur.start!.id)}>
       {t('path.start', { id: cur.start.id })}
     </button>
-  ) : (
-    <OpensAfterButton id={id} onPick={pick} />
-  );
+  ) : after ? (
+    <button type="button" className="btn btn--outline path-start" onClick={() => pick(after.track)}>
+      {t('path.toTrack', { track: t('path.track.' + after.track) })}
+    </button>
+  ) : null;
 
   if (bp === 'desktop') {
     return (
@@ -210,17 +215,6 @@ function TrackInfo({ view: v }: { view: TrackView }): JSX.Element {
   );
 }
 
-/** Keys while it is closed: what opens it, and the way to Read notes. */
-function OpensAfterButton({ id, onPick }: { id: TrackId; onPick(id: TrackId): void }): JSX.Element | null {
-  const after = OPENS_AFTER[id];
-  if (!after) return null;
-  return (
-    <button type="button" className="btn btn--outline path-start" onClick={() => onPick(after.track)}>
-      {t('path.toTrack', { track: t('path.track.' + after.track) })}
-    </button>
-  );
-}
-
 /** "Next: lesson 7.3 · Dotted quarter + eighth · 80 BPM" (rhythm) or "… · 20 notes" (Read notes, Keys). */
 function nextLine(id: TrackId, lesson: TrackLesson): string {
   const base = { lesson: lesson.id, title: tx(lesson.title) };
@@ -235,12 +229,13 @@ function Units({ view: v, progress: p, tiles, onPlay }: { view: TrackView; progr
   // The current unit is open; any open unit can be opened instead, or closed.
   const [openUnit, setOpenUnit] = useState<number | null>(curUnit >= 0 ? track.units[curUnit].id : null);
   const list = useRef<HTMLOListElement>(null);
-  // Show the current unit (unit 7 is below the fold on a phone).
+  // Show the current unit (unit 7 is below the fold on a phone): the list scrolls, or on a short screen the page.
   useEffect(() => {
     const box = list.current;
     const el = box?.querySelector('.unit--current');
-    if (!el || !box || box.scrollHeight <= box.clientHeight) return;
-    box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - 8;
+    const scroller = box && box.scrollHeight > box.clientHeight ? box : box?.closest<HTMLElement>('.page');
+    if (!el || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+    scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
   }, []);
   const after = OPENS_AFTER[id];
 

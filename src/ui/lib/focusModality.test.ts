@@ -26,4 +26,12 @@ describe('keyForTabbedControl', () => {
     window.dispatchEvent(new Event('pointerdown'));
     expect(keyForTabbedControl(keyOn(b, ' '))).toBe(false);
   });
+
+  it('leaves Enter to a link reached with Tab, but not Space, which a link does not take', () => {
+    document.body.innerHTML = '<a id="q" href="#/scales">Quit</a>';
+    const q = document.getElementById('q')!;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(keyForTabbedControl(keyOn(q, 'Enter'))).toBe(true);
+    expect(keyForTabbedControl(keyOn(q, ' '))).toBe(false);
+  });
 });

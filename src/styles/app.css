@@ -1245,6 +1245,12 @@
   flex: 1;
   min-width: 0;
 }
+/* Long words ("Tweekwartsmaat") break instead of running into the score or out of a tile. */
+.unit-head .unit-title,
+.lesson-title {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
 button.unit-head:active:not(:disabled) {
   transform: none;
 }

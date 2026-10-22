@@ -14,11 +14,13 @@ if (typeof window !== 'undefined') {
   }, true);
 }
 
-const CONTROL = 'button, a[href], summary, [role="button"], [role="radio"], [role="switch"], [role="checkbox"]';
+/** Controls that Space presses; Enter also follows a link (Space on a link scrolls the page, so it stays a shortcut). */
+const SPACE_CONTROL = 'button, summary, [role="button"], [role="radio"], [role="switch"], [role="checkbox"]';
+const ENTER_CONTROL = SPACE_CONTROL + ', a[href]';
 
 /** Space or Enter on a control the player reached with Tab: leave the key to the control. */
 export function keyForTabbedControl(e: KeyboardEvent): boolean {
   if (e.key !== ' ' && e.key !== 'Enter') return false;
   const target = e.target instanceof Element ? e.target : null;
-  return tabbed && !!target?.closest(CONTROL);
+  return tabbed && !!target?.closest(e.key === ' ' ? SPACE_CONTROL : ENTER_CONTROL);
 }

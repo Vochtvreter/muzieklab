@@ -126,7 +126,8 @@ export function NotesDone(): JSX.Element | null {
         )}
 
         {d.total > 0 && <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />}
-        {d.total > 0 && <Needs r={d} />}
+        {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
+        {d.total > 0 && (d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} />}
         {d.bySign.length > 1 && <BySign r={d} keyId={keys.length === 1 ? keys[0] : null} />}
 
         {lesson ? (

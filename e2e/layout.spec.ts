@@ -91,14 +91,19 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // Closing the open unit shows its lessons as stars again.
       await page.getByRole('button', { name: /^1 · Treble clef/ }).click();
       await expect(page.getByRole('button', { name: /^1 · Treble clef/ })).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.locator('#unit-notes-1')).toBeHidden();
+      await expect(page.locator('.unit-stars').getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' })).toBeVisible();
 
       await paths.nth(2).click();
       await expect(page.getByText('Opens after Read notes unit 3').first()).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'Go to Read notes' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
-      await page.getByRole('button', { name: 'Go to Read notes' }).click();
+      // With the keyboard: the focus stays on the button, which becomes Start for Read notes.
+      await page.getByRole('button', { name: 'Go to Read notes' }).focus();
+      await page.keyboard.press('Enter');
       await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Start lesson 1.1' })).toBeFocused();
       // The app remembers the path picked last.
       await page.reload();
       await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
@@ -179,6 +184,27 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'New round' }));
       await expectClickable(page.getByRole('link', { name: 'Change setup' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('path: the current unit is in view, and long Dutch titles stay inside their boxes', async ({ page }) => {
+      known(name, 'path-current');
+      // Rhythm up to lesson 7.2 with two stars: unit 7 is current, below the fold on most screens.
+      const lessons: Record<string, { stars: number; bestAccuracy: number }> = {};
+      for (let u = 1; u <= 6; u++) for (let l = 1; l <= 5; l++) lessons[`${u}.${l}`] = { stars: 2, bestAccuracy: 88 };
+      lessons['7.1'] = lessons['7.2'] = { stars: 2, bestAccuracy: 88 };
+      await seed(page, { progress: { lessons }, prefs: { language: 'nl', seenHowTo: true, seenHold: true } });
+      await page.goto('./#/path');
+      await expect(page.getByRole('button', { name: /^7 · Gepunteerde noten/ })).toBeInViewport();
+      await expectClickable(page.getByRole('button', { name: /^Begin les 7\.3/ }));
+      // "5 · Tweekwartsmaat, achtste rusten": a long word breaks instead of running into the unit's stars.
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const spill = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('.unit-head .unit-title, .lesson-title')]
+          .filter((el) => el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1)
+          .map((el) => el.textContent),
+      );
+      expect(spill, 'titles that run out of their box').toEqual([]);
       await expectNoSideScroll(page);
     });
 

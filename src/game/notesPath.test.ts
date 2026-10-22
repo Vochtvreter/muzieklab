@@ -1,9 +1,14 @@
 import { generateRound, sanitizeNoteSettings, type NoteSettings } from '../core/noteRound';
-import { hasMessage, setLocale } from '../i18n';
+import en from '../i18n/en.json';
+import nl from '../i18n/nl.json';
 import { KEYS_UNITS, NOTES_UNITS, noteLessonSettings, type NoteTrackId } from './notesPath';
 import { defaultProgress, type LessonProgress, type Progress } from './storage';
 import { lessonOpen, nextIn, outcomeIn, progressKey, trackLessons, trackStarsIn } from './track';
 import { allStars, continueIn, trackById, trackLessonOpen, trackOpen } from './tracks';
+
+/** A message in one catalog, without the English fallback that t() and hasMessage() use. */
+const message = (catalog: object, key: string): unknown =>
+  key.split('.').reduce<unknown>((node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined), catalog);
 
 const PATHS: Array<[NoteTrackId, typeof NOTES_UNITS]> = [
   ['notes', NOTES_UNITS],
@@ -25,17 +30,15 @@ describe('Read notes and Keys paths (MVP canvas, Learning paths)', () => {
   it('have the units of the design, five lessons each, ids "u.l" and every title in both catalogs', () => {
     expect(NOTES_UNITS.map((u) => u.id)).toEqual([1, 2, 3, 4, 5]);
     expect(KEYS_UNITS.map((u) => u.id)).toEqual([1, 2, 3, 4, 5, 6]);
-    for (const locale of ['en', 'nl']) {
-      setLocale(locale);
+    for (const [name, catalog] of [['en', en], ['nl', nl]] as const) {
       for (const [, units] of PATHS) {
         for (const u of units) {
-          expect(hasMessage(u.titleKey)).toBe(true);
+          expect(typeof message(catalog, u.titleKey), `${name} ${u.titleKey}`).toBe('string');
           expect(u.lessons.map((l) => l.id)).toEqual([1, 2, 3, 4, 5].map((n) => `${u.id}.${n}`));
-          for (const l of u.lessons) expect(hasMessage(l.title), l.title).toBe(true);
+          for (const l of u.lessons) expect(typeof message(catalog, l.title), `${name} ${l.title}`).toBe('string');
         }
       }
     }
-    setLocale('en');
   });
 
   it('every lesson is a valid, playable Read notes preset', () => {
