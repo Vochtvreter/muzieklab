@@ -140,6 +140,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/setup');
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
       await expectClickable(page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }));
+      // Only the time signatures that can be played: no disabled "6/8 soon" chip.
+      await expect(page.getByRole('button', { name: /6\/8/ })).toHaveCount(0);
       await expectNoSideScroll(page);
     });
 
@@ -221,6 +223,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'settings');
       await page.goto('./#/settings');
       await expectClickable(page.getByText('Leniency', { exact: true }));
+      // Leniency in words, not milliseconds; one Metronome row (the volume), the look is the Beat counter.
+      await expect(page.getByText('Fair timing for most players.')).toBeVisible();
+      await expect(page.getByText('Metronome', { exact: true })).toHaveCount(1);
+      await expectClickable(page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }));
       await expectClickable(page.getByRole('button', { name: 'Reset progress' }));
       await expectNoSideScroll(page);
     });
@@ -264,6 +270,29 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('calibration from results: your delay, and back to results', async ({ page }) => {
+      known(name, 'calibration-results');
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Got it' }).click();
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      await page.evaluate(() => {
+        window.location.hash = '#/calibrate?from=results';
+      });
+      await expect(page.getByRole('heading', { level: 1, name: 'Calibrate timing' })).toBeVisible();
+      await expect(page.getByText('Your delay', { exact: true })).toBeVisible();
+      const back = page.getByRole('link', { name: 'Back to results' });
+      await expectClickable(back, { scroll: false });
+      await expectClickable(pad(page), { scroll: false });
+      await expectNoSideScroll(page);
+      await back.click();
+      await expect(page).toHaveURL(/#\/results$/);
+      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+    });
+
     test('results: try again, new exercise and copy code', async ({ page }) => {
       known(name, 'results');
       // Desktop Play has no Skip link: finish on a phone-sized window, then show Results at this size.
@@ -283,6 +312,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Try again' }));
       await expectClickable(page.getByRole('button', { name: 'New exercise' }));
       await expectClickable(page.getByRole('button', { name: 'Copy code' }));
+      // Every note was missed: each has a × under it on the staff as well as the miss colour (DESIGN.md §9).
+      const misses = Number(await page.locator('.counts .count-n').nth(3).textContent());
+      expect(misses).toBeGreaterThan(0);
+      await expect(page.locator('.results-staff .staff-miss path')).toHaveCount(misses);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -749,7 +782,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('play with the analog metronome: pendulum and the pad', async ({ page }) => {
       known(name, 'play-analog');
       await page.goto('./#/settings');
-      await page.getByRole('group', { name: 'Metronome style' }).getByRole('button', { name: 'Analog' }).click();
+      await page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }).click();
       await page.goto('./');
       await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
       await page.getByRole('button', { name: 'Got it' }).click();
@@ -799,6 +832,15 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.goto('./' + hash);
         await expect(page).toHaveTitle(new RegExp(title === 'Start' ? 'Muzieklab' : title));
         if (action) await expectClickable(page.getByRole('button', { name: new RegExp('^' + action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).first());
+        // Calibrate's prompt above the pad stays on one line (white-space: pre): it must fit inside the 16 px gutters.
+        if (hash === '#/calibrate') {
+          const width = await page.locator('.judgement--cal').evaluate((el) => {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            return range.getBoundingClientRect().width;
+          });
+          expect(width, 'the start prompt fits on screen').toBeLessThanOrEqual(VIEWPORTS[name].width - 32);
+        }
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });

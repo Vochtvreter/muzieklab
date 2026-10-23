@@ -69,6 +69,9 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
 
     // A run with at least one hit note keeps the streak; these taps are untimed, so read what Results counted.
     const hits = await page.locator('.counts .count-n').evaluateAll((els) => els.slice(0, 3).reduce((s, el) => s + Number(el.textContent), 0));
+    // Each missed note has a × on the staff as well as the miss colour (colour plus shape, DESIGN.md §9).
+    const misses = Number(await page.locator('.counts .count-n').nth(3).textContent());
+    await expect(page.locator('.results-staff .staff-miss path')).toHaveCount(misses);
     await page.goto('./#/');
     await expect(page.getByText(hits > 0 ? '1-day streak' : 'No streak yet')).toBeVisible();
   });

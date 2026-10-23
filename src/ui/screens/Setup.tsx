@@ -105,9 +105,6 @@ export function Setup(): JSX.Element {
                 </Chip>
               );
             })}
-            <button type="button" className="chip chip--meter chip--soon" disabled>
-              {t('setup.meterSoon', { meter: '6/8' })}
-            </button>
           </div>
           {hints.length > 0 && (
             <div className="hint-box m-in" role="status">

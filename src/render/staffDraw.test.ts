@@ -4,7 +4,7 @@ import { DEMO_44, DEMO_BARS_44, DEMO_LESSON } from './demoFixtures';
 import { getMeter } from '../core/api';
 import { plainSyllable } from './counting';
 import { parseBars } from './notationText';
-import { drawStaff, type StaffPalette } from './staffDraw';
+import { drawStaff, missMarkPath, type StaffPalette } from './staffDraw';
 
 const DARK: StaffPalette = { ink: '#e8eeed', staff: '#5d6a6b', hit: '#4cc38a', early: '#f0b429', miss: '#ff6b6b', cursor: '#8fbfc1' };
 const PALETTE = new Set(Object.values(DARK));
@@ -45,6 +45,32 @@ describe('drawStaff', () => {
     const first = svg.firstElementChild!;
     expect(first.tagName).toBe('rect');
     expect(first.getAttribute('fill')).toBe(DARK.cursor);
+  });
+
+  it('marks a missed note with a × under its head, like the lane (colour plus shape)', () => {
+    expect(missMarkPath({ x: 100, y: 40 })).toBe('M96 53l8 8M104 53l-8 8');
+    const { svg, size } = draw({ bars: DEMO_LESSON, marks: { 0: 'perfect', 1: 'good', 5: 'miss', 9: 'miss' }, cursor: 2, cursorSpace: true });
+    const g = svg.querySelector('g.staff-miss')!;
+    expect(g.getAttribute('stroke')).toBe(DARK.miss);
+    expect(g.getAttribute('fill')).toBe('none');
+    const starts = [...g.querySelectorAll('path')].map((p) => p.getAttribute('d')!.match(/^M([\d.]+) ([\d.]+)/)!.slice(1).map(Number));
+    expect(starts).toHaveLength(2);
+    // Under the note it belongs to: within its width, just below its head (the bottom of a stems-up note's box).
+    [5, 9].forEach((onset, i) => {
+      const box = size.onsets.get(onset)!;
+      const [x, y] = starts[i];
+      expect(x + 4).toBeGreaterThan(box.x);
+      expect(x + 4).toBeLessThan(box.x + box.w);
+      expect(y).toBeGreaterThan(box.y + box.h);
+      expect(y + 8).toBeLessThan(size.height);
+    });
+    expect(draw({ bars: DEMO_LESSON, marks: { 0: 'good' } }).svg.querySelector('.staff-miss')).toBeNull();
+  });
+
+  it('gives a missed tied note one ×, on the note it starts on', () => {
+    const { svg } = draw({ marks: { 10: 'miss' } }); // bar 3: q q~ q q
+    expect(svg.querySelectorAll('.staff-miss path')).toHaveLength(1);
+    expect([...svg.querySelectorAll('g.vf-stavenote')].filter((n) => n.getAttribute('fill') === DARK.miss)).toHaveLength(2);
   });
 
   it('draws ties, a tuplet and beams', () => {

@@ -1,5 +1,5 @@
 /**
- * Settings: language, sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about
+ * Settings: language, sound, timing (calibrate, leniency), playing (input), display (theme, beat counter), about
  * (what's new, version, offline, reset).
  */
 import { useEffect, useState, type ReactNode } from 'react';
@@ -285,7 +285,7 @@ function LanguageRow({ onChange }: { onChange(code: string): void }): JSX.Elemen
 const PREVIEW_BPM = 80;
 const PREVIEW_BEATS = 4;
 
-/** Metronome look: the chosen beat counter ticking silently in 4/4 at 80 BPM, as it will look on Play. */
+/** Beat counter: the chosen look ticking silently in 4/4 at 80 BPM, as it will look on Play. */
 function LookPreview({ look }: { look: Prefs['metronomeLook'] }): JSX.Element {
   const still = useReducedMotion();
   const [at, setAt] = useState(0);

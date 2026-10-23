@@ -9,7 +9,7 @@ export type { NoteMark };
 export interface StaffProps {
   bars: NotatedBar[];
   meter: Meter;
-  /** Colour per onset index (judgement so far). */
+  /** Colour per onset index (judgement so far); a miss also gets a × under the note. */
   marks?: Record<number, NoteMark>;
   /** Onset index under the cursor (highlighted), or null. */
   cursor?: number | null;

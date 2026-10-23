@@ -1,4 +1,7 @@
-/** Calibrate timing (DESIGN.md §6.1): tap along with 16 clicks; the median offset is this device's delay. */
+/**
+ * Calibrate timing (DESIGN.md §6.1): tap along with 16 clicks; the median offset is this device's delay. Opened from
+ * Results (`#/calibrate?from=results`), back and Save return there; otherwise to Settings.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { medianOffsetMs, tapOffsetsMs } from '../../audio/calibration';
 import { localDateIso } from '../../game/storage';
@@ -10,7 +13,7 @@ import { TapPad } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { useDocTitle } from '../hooks';
 import { signed, signedMs } from '../lib/format';
-import { Link, navigate } from '../router';
+import { hashQuery, Link, navigate, useHash } from '../router';
 import { useStore } from '../store';
 
 const CLICKS = 16;
@@ -43,6 +46,8 @@ const pct = (v: number): string => ((Math.max(-100, Math.min(100, v)) + 100) / 2
 export function Calibration(): JSX.Element {
   const { state, dispatch } = useStore();
   useDocTitle(t('app.docTitle', { page: t('calibrate.title') }));
+  const fromResults = hashQuery(useHash()).get('from') === 'results';
+  const backTo = fromResults ? '/results' : '/settings';
   const [phase, setPhase] = useState<Phase>('idle');
   const [taps, setTaps] = useState<number[]>([]);
   const clicks = useRef<number[]>([]);
@@ -118,7 +123,7 @@ export function Calibration(): JSX.Element {
     if (median === null) return;
     dispatch({ type: 'prefs', patch: { calibrationMs: median, calibratedAt: localDateIso() } });
     engine().setCalibrationOffsetMs(median);
-    navigate('/settings');
+    navigate(backTo);
   };
 
   const dots = offsets.map((v, i) => {
@@ -135,7 +140,7 @@ export function Calibration(): JSX.Element {
     <ExerciseFrame className="frame--cal">
       <div className="page cal no-scrollbar">
         <div className="screen-head">
-          <Link to="/settings" aria-label={t('calibrate.back')} className="icon-btn icon-btn--edge">
+          <Link to={backTo} aria-label={t(fromResults ? 'calibrate.backResults' : 'calibrate.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <h1 className="screen-title">{t('calibrate.title')}</h1>
@@ -154,7 +159,7 @@ export function Calibration(): JSX.Element {
               </span>
             </div>
             <div className="cal-stat cal-stat--right">
-              <span className="label">{t('calibrate.median')}</span>
+              <span className="label">{t('calibrate.delay')}</span>
               <span className="cal-median">{median === null ? t('common.dash') : fmt(median)}</span>
             </div>
           </div>
@@ -164,7 +169,7 @@ export function Calibration(): JSX.Element {
             ))}
           </div>
           <div role="img" className="cal-plot"
-            aria-label={n ? t('calibrate.lineAria', { count: n, min: fmt(sorted[0]), max: fmt(sorted[n - 1]), median: fmt(median ?? 0) }) : t('calibrate.lineEmpty')}>
+            aria-label={n ? t('calibrate.lineAria', { count: n, min: fmt(sorted[0]), max: fmt(sorted[n - 1]), delay: fmt(median ?? 0) }) : t('calibrate.lineEmpty')}>
             <span className="cal-axis" />
             <span className="cal-tick cal-tick--end" style={{ left: 0 }} />
             <span className="cal-tick" style={{ left: 'calc(25% - 1px)' }} />
@@ -200,7 +205,7 @@ export function Calibration(): JSX.Element {
         ) : enough && median !== null ? (
           <>
             <div className="card cal-result m-in" role="status">
-              <span className="label">{t('calibrate.yourOffset')}</span>
+              <span className="label">{t('calibrate.delay')}</span>
               <span className="cal-result-n">{fmt(median)}</span>
               <span className="cal-result-text">{t(resultKey, { count: n, ms: signed(Math.abs(median)).replace(/^[+−]/, '') })}</span>
             </div>
