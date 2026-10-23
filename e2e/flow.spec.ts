@@ -235,8 +235,13 @@ test('the intro sheet comes after How to play, the first time both are due', asy
   // Learn more opens the section; Back returns to the lesson, still waiting on its intro.
   await page.getByRole('link', { name: 'Learn more: Half note' }).click();
   await expect(page).toHaveURL(/#\/learn\/2\?s=2\.1$/);
+  // Wait for Learn itself: the URL changes before the screen does, and Back must leave Learn, not the old sheet.
+  await expect(page.getByRole('heading', { level: 1, name: /Note values/ })).toBeVisible();
   await page.goBack();
-  await expect(page.getByRole('dialog', { name: 'Half notes' })).toBeVisible();
+  const intro = page.getByRole('dialog', { name: 'Half notes' });
+  await expect(intro).toBeVisible();
+  // The sheet puts focus on Start, so Enter starts the count-in.
+  await expect(intro.getByRole('button', { name: 'Start', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
