@@ -382,6 +382,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const misses = Number(await page.locator('.counts .count-n').nth(3).textContent());
       expect(misses).toBeGreaterThan(0);
       await expect(page.locator('.results-staff .staff-miss path')).toHaveCount(misses);
+      // Tablet and desktop: the staff, the lane and the tip on the left; beside them the side panel with the score, the
+      // badge, the counts and every action. A phone keeps its one column.
+      if (VIEWPORTS[name].width >= 700) {
+        const main = page.locator('.wide-main');
+        const side = page.locator('.wide-side');
+        const [m, s] = [(await main.boundingBox())!, (await side.boundingBox())!];
+        expect(s.x, 'the side panel is right of the main column').toBeGreaterThanOrEqual(m.x + m.width);
+        expect(s.y < m.y + m.height && m.y < s.y + s.height, 'the side panel is beside the main column').toBe(true);
+        await expect(main.locator('.results-staff')).toBeVisible();
+        await expect(main.locator('.results-lane')).toBeVisible();
+        await expect(main.getByText(/^No taps came in\./)).toBeVisible();
+        await expect(side.locator('.score-pct')).toBeVisible();
+        await expect(side.getByText('Get 2 stars to open lesson 2.2')).toBeVisible();
+        await expect(side.locator('.counts')).toBeVisible();
+        for (const label of ['Listen', 'Copy code', 'New exercise', 'Try again']) await expectClickable(side.getByRole('button', { name: label }));
+        await expectClickable(side.getByRole('link', { name: 'Practice settings' }));
+      } else {
+        await expect(page.locator('.wide')).toHaveCount(0);
+      }
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -404,6 +423,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(calibrate);
       await expectClickable(page.getByRole('button', { name: 'Try again' }));
       await expectClickable(page.getByRole('button', { name: 'Copy code' }));
+      // Tablet and desktop: the tip with Calibrate under the lane on the left, the actions in the side panel.
+      if (VIEWPORTS[name].width >= 700) {
+        await expect(page.locator('.wide-main').getByRole('link', { name: 'Calibrate' })).toBeVisible();
+        await expect(page.locator('.wide-side').getByRole('button', { name: 'Try again' })).toBeVisible();
+        await expectNoOverlap(page.locator('.wide-main .tip'), page.locator('.wide-side .results-actions'));
+      }
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
       await expect(calibrate).toHaveAttribute('href', '#/calibrate?from=results');
@@ -441,6 +466,21 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'New round' }));
       await expectClickable(page.getByRole('link', { name: 'Change setup' }));
+      // Tablet and desktop: the round's cards on the left; the score and the actions in the side panel beside them.
+      if (VIEWPORTS[name].width >= 700) {
+        const main = page.locator('.wide-main');
+        const side = page.locator('.wide-side');
+        const [m, s] = [(await main.boundingBox())!, (await side.boundingBox())!];
+        expect(s.x, 'the side panel is right of the main column').toBeGreaterThanOrEqual(m.x + m.width);
+        expect(s.y < m.y + m.height && m.y < s.y + s.height, 'the side panel is beside the main column').toBe(true);
+        await expect(main.getByRole('img', { name: /^Answer time for each of the / })).toBeVisible();
+        await expect(side.locator('.score-pct')).toBeVisible();
+        await expectClickable(side.getByRole('button', { name: 'New round' }));
+        await expectClickable(side.getByRole('link', { name: 'Change setup' }));
+      } else {
+        await expect(page.locator('.wide')).toHaveCount(0);
+      }
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 
@@ -474,6 +514,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('link', { name: 'Back to the path' }));
       await expectClickable(page.getByRole('button', { name: 'New round' }));
       await expectClickable(page.getByRole('button', { name: 'Next lesson: 15.2 · Twenty notes' }));
+      // Nothing answered: no cards for a main column, so tablet and desktop keep the one column too.
+      await expect(page.locator('.wide')).toHaveCount(0);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -602,6 +644,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(chips.first().locator('.pitch-staff svg')).toBeVisible();
       await expectNotSqueezed(page.locator('.ncard').nth(1));
       await expectClickable(page.getByRole('button', { name: 'Practice missed notes' }));
+      // Tablet and desktop: the chips in the main column, Practice missed notes in the side panel.
+      if (VIEWPORTS[name].width >= 700) {
+        await expect(page.locator('.wide-main').getByRole('list', { name: 'Missed' })).toBeVisible();
+        await expectClickable(page.locator('.wide-side').getByRole('button', { name: 'Practice missed notes' }));
+        await expectNoOverlap(page.locator('.wide-main'), page.locator('.wide-side'));
+      }
       await expectNoSideScroll(page);
     });
 
@@ -685,6 +733,22 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByLabel('1 of 1 scales without a mistake')).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'New round' }));
       await expectClickable(page.getByRole('link', { name: 'Change setup' }));
+      // Tablet and desktop: the scales and the circle on the left; the score and the actions in the side panel beside them.
+      if (VIEWPORTS[name].width >= 700) {
+        const main = page.locator('.wide-main');
+        const side = page.locator('.wide-side');
+        const [m, s] = [(await main.boundingBox())!, (await side.boundingBox())!];
+        expect(s.x, 'the side panel is right of the main column').toBeGreaterThanOrEqual(m.x + m.width);
+        expect(s.y < m.y + m.height && m.y < s.y + s.height, 'the side panel is beside the main column').toBe(true);
+        await expect(main.getByRole('list', { name: 'Scales in this round' })).toBeVisible();
+        await expect(main.locator('.cprog')).toBeVisible();
+        await expect(side.getByLabel('1 of 1 scales without a mistake')).toBeVisible();
+        await expectClickable(side.getByRole('button', { name: 'New round' }));
+        await expectClickable(side.getByRole('link', { name: 'Change setup' }));
+      } else {
+        await expect(page.locator('.wide')).toHaveCount(0);
+      }
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 
