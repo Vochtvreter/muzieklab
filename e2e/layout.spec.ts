@@ -287,10 +287,28 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/settings');
       await page.getByRole('link', { name: /^What's new/ }).click();
       await expect(page.getByRole('heading', { level: 1, name: "What's new" })).toBeVisible();
-      await expectNotSqueezed(page.locator('.cl-latest'));
-      await expectClickable(page.getByRole('button', { name: /^0\.1\.0/ }));
-      await page.getByRole('button', { name: /^0\.3\.0/ }).click();
-      await expectClickable(page.getByRole('link', { name: 'Try Read notes' }));
+      await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
+      if (desktopLayout) {
+        // Desktop: the releases on the left, the chosen one beside them (the MVP canvas's Desktop · What's new).
+        const list = page.getByRole('navigation', { name: 'Releases' });
+        await expectNotSqueezed(page.locator('.cl-card'));
+        await expectNoOverlap(page.locator('.cl-side'), page.locator('.cl-detail'));
+        await expectClickable(list.getByRole('button', { name: /^0\.1\.0/ }));
+        await list.getByRole('button', { name: /^0\.3\.0/ }).click();
+        await expect(list.getByRole('button', { name: /^0\.3\.0/ })).toHaveAttribute('aria-current', 'true');
+        await expectClickable(page.getByRole('link', { name: 'Try Read notes' }));
+        await page.getByRole('button', { name: /^Older 0\.2\.2/ }).click();
+        await expect(page.getByRole('heading', { level: 2, name: 'Four-star Results' })).toBeVisible();
+        await expectClickable(page.getByRole('button', { name: /^Newer 0\.3\.0/ }));
+      } else {
+        await expectNotSqueezed(page.locator('.cl-latest'));
+        // Tablet uses the full width under the header, as on the board, not the 640 px column.
+        if (tabletLayout) expect((await page.locator('.cl-latest').boundingBox())!.width).toBeGreaterThan(VIEWPORTS[name].width - 80);
+        await expectClickable(page.getByRole('button', { name: /^0\.1\.0/ }));
+        await page.getByRole('button', { name: /^0\.3\.0/ }).click();
+        await expectClickable(page.getByRole('link', { name: 'Try Read notes' }));
+      }
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 

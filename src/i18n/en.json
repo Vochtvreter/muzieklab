@@ -2122,6 +2122,11 @@
     "showFixes": "Fixes",
     "latest": "Latest",
     "earlier": "Earlier releases",
+    "releases": "Releases",
+    "release": "Release",
+    "fixRelease": "Fix release",
+    "newer": "Newer",
+    "older": "Older",
     "kindNew": "New",
     "kindBetter": "Better",
     "kindFix": "Fixed",
@@ -2129,6 +2134,11 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_11_1": {
+      "title": "What's new on big screens",
+      "desktop": "On a computer, What's new lists every release on the left and shows the one you pick beside it, with Newer and Older to step through them.",
+      "tablet": "On a tablet, What's new uses the full width: the latest release fills a wide card with its changes beside it."
+    },
     "v0_11_0": {
       "title": "One learning path: notes and rhythm together",
       "try": "Open the learning path",
