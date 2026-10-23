@@ -5,6 +5,10 @@ export const VIEWPORTS = {
   'phone-se': { width: 320, height: 568 },
   'phone-small': { width: 375, height: 667 },
   phone: { width: 390, height: 844 },
+  // What a phone browser leaves of the screen under its toolbars (Safari on an iPhone 14 and on an iPhone SE), so
+  // exercise screens are checked at the height a player really has (DESIGN.md §9).
+  'phone-browser': { width: 390, height: 664 },
+  'phone-se-browser': { width: 375, height: 553 },
   'phone-landscape': { width: 844, height: 390 },
   tablet: { width: 834, height: 1194 },
   'tablet-landscape': { width: 1180, height: 820 },
@@ -34,6 +38,21 @@ export async function expectClickable(el: Locator, opts: { scroll?: boolean } = 
       return top && (node === top || node.contains(top)) ? 'ok' : 'covered by ' + (top ? top.tagName.toLowerCase() + '.' + top.className : 'nothing');
     }, rescroll);
   await expect.poll(probe, { message: 'the element is on screen and nothing covers it', timeout: 3000 }).toBe('ok');
+}
+
+/** An exercise screen fits: its page does not scroll (DESIGN.md §9: laid out to fit, it never scrolls during play). */
+export async function expectFits(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const over = await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>('.page') ?? document.documentElement;
+    return el.scrollHeight - el.clientHeight;
+  });
+  expect(over, 'the screen scrolls').toBeLessThanOrEqual(1);
+}
+
+/** A touch target at least 44 px tall (DESIGN.md §9, visual design tokens). */
+export async function expectTouchHeight(el: Locator): Promise<void> {
+  expect((await el.boundingBox())!.height, 'shorter than 44 px').toBeGreaterThanOrEqual(44);
 }
 
 /** The box shows all of its content (nothing spills out of a card that was squeezed too small). */
