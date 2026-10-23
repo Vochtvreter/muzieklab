@@ -147,7 +147,7 @@ test('read notes: piano answers, a hint and skipping to the summary', async ({ p
   await page.getByRole('button', { name: /^Start · / }).click();
   await expect(page.getByText('Play the highlighted note')).toBeVisible();
   await page.getByRole('button', { name: 'Hint' }).click();
-  await expect(page.locator('.nfeedback')).toHaveText(/(This is|steps? (above|below)) /);
+  await expect(page.locator('.nfeedback')).toHaveText(/^(This is .+: .+\.|.+ is .+\. This note is (one step|\d steps) (higher|lower)\.)/);
   await page.getByRole('button', { name: 'C, do' }).click();
   await expect(page.locator('.nfeedback')).toHaveText(/^(Right|That was)/);
   await page.getByRole('button', { name: 'Skip to summary' }).click();
