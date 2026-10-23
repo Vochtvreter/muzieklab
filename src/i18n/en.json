@@ -726,7 +726,6 @@
       "doubleFlat": "double flat"
     },
     "name": "{main} ({sub})",
-    "withOctave": "{name}{octave}",
     "spoken": "{letter} {sign}",
     "clef": {
       "treble": "Treble",
@@ -936,6 +935,7 @@
       "missed": "Missed",
       "slow": "Slow",
       "missedChip": "{note}, {count, plural, one {missed once} other {missed # times}}",
+      "chipNote": "{name} on {pos} ({clef})",
       "times": "×{count}",
       "slowChip": "{note}, {value} seconds",
       "comeBack": "These notes come back more often next round.",

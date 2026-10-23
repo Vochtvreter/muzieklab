@@ -1,15 +1,28 @@
 /**
  * Read notes · round done (DESIGN.md §3.5 Scoring): stars, correct / total, the average time and XP; time per note;
- * the notes that need practice (missed, slow); right answers by sign; and New round / Practice missed notes. After a
- * Read notes or Keys lesson (§8.2): the lesson and its unit, what it did for the path, and Next lesson once it has two
- * stars.
+ * the notes that need practice (missed, slow), each on a small staff with its name as the player reads it (do re mi
+ * or letters); right answers by sign; and New round / Practice missed notes. After a Read notes or Keys lesson
+ * (§8.2): the lesson and its unit, what it did for the path, and Next lesson once it has two stars.
  */
-import { useEffect, useRef, useState } from 'react';
-import { keySigns, missedIds, roundKeys, scoreRound, SLOW_MS, type KeyId, type NoteAnswer, type RoundResult } from '../../../core/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  keySigns,
+  letterOf,
+  missedIds,
+  roundKeys,
+  scoreRound,
+  SLOW_MS,
+  staffOffset,
+  type KeyId,
+  type NoteAnswer,
+  type NoteChip,
+  type RoundResult,
+} from '../../../core/api';
 import { noteTrack } from '../../../game/notesPath';
 import { findTrackLesson, outcomeIn, UNLOCK_STARS } from '../../../game/track';
 import { OPENS_AFTER, trackOpen } from '../../../game/tracks';
 import { levelInfo } from '../../../game/xp';
+import { PitchStaff } from '../../../render/PitchStaff';
 import { useElementWidth } from '../../../render/theme';
 import { t, tx } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
@@ -18,7 +31,7 @@ import { LevelUpContent, OutcomeBadge } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
 import { starsLabel } from '../../lib/format';
-import { letterName, majorName, octaveName, signWord } from '../../lib/noteText';
+import { letterName, majorName, positionText, signWord, solfegeName, spokenName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { useStore, type NoteLast } from '../../store';
 import { useStartNoteLesson, useStartNotes } from './start';
@@ -127,7 +140,7 @@ export function NotesDone(): JSX.Element | null {
 
         {d.total > 0 && <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />}
         {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
-        {d.total > 0 && (d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} />}
+        {d.total > 0 && (d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} system={state.prefs.noteNames} />}
         {d.bySign.length > 1 && <BySign r={d} keyId={keys.length === 1 ? keys[0] : null} />}
 
         {lesson ? (
@@ -245,11 +258,17 @@ function TimeChart({ answers, avgMs, missed }: { answers: NoteAnswer[]; avgMs: n
   );
 }
 
-function Needs({ r }: { r: RoundResult }): JSX.Element {
+/** The small staff in a chip: VexFlow's size × this (5 px per staff space). */
+const CHIP_SCALE = 0.5;
+
+function Needs({ r, system }: { r: RoundResult; system: NameSystem }): JSX.Element {
   const groups = [
     { key: 'missed', label: t('notes.done.missed'), chips: r.missed.slice(0, 6) },
     { key: 'slow', label: t('notes.done.slow'), chips: r.slow.slice(0, 6) },
   ].filter((g) => g.chips.length > 0);
+  // One staff height for every chip: room (in staff spaces) for the note furthest off the staff.
+  const beyond = (c: NoteChip): number => Math.max(0, -staffOffset(c.clef, c.step), staffOffset(c.clef, c.step) - 8) / 2;
+  const room = Math.max(1.5, ...groups.flatMap((g) => g.chips.map((c) => beyond(c) + 1)));
   return (
     <div className="card ncard">
       <b>{t('notes.done.needs')}</b>
@@ -258,22 +277,35 @@ function Needs({ r }: { r: RoundResult }): JSX.Element {
         <div key={g.key} className="nchips-row">
           <span className="nchips-label">{g.label}</span>
           <div role="list" aria-label={g.label} className="nchips">
-            {g.chips.map((c) => {
-              const note = octaveName(c.step, c.alter);
-              const aria = g.key === 'missed' ? t('notes.done.missedChip', { note, count: c.count }) : t('notes.done.slowChip', { note, value: secs(c.ms) });
-              return (
-                <span key={c.id} role="listitem" aria-label={aria} className={'nchip nchip--' + g.key}>
-                  <span aria-hidden="true">{note}</span>
-                  {g.key === 'missed' && c.count > 1 && <span aria-hidden="true" className="nchip-tag">{t('notes.done.times', { count: c.count })}</span>}
-                  {g.key === 'slow' && <span aria-hidden="true" className="nchip-tag">{t('notes.play.seconds', { value: secs(c.ms) })}</span>}
-                </span>
-              );
-            })}
+            {g.chips.map((c) => (
+              <Chip key={c.id} c={c} kind={g.key} system={system} room={room} />
+            ))}
           </div>
         </div>
       ))}
       {groups.length > 0 && <span className="muted-text">{t('notes.done.comeBack')}</span>}
     </div>
+  );
+}
+
+/** A note to practise as it was read: on a small staff in its clef, named in the player's names, with its misses or time. */
+function Chip({ c, kind, system, room }: { c: NoteChip; kind: string; system: NameSystem; room: number }): JSX.Element {
+  const L = letterOf(c.step);
+  const name = (system === 'solfege' ? solfegeName : letterName)(L, c.alter);
+  const spoken = system === 'solfege' ? `${solfegeName(L, 0)}, ${spokenName(L, c.alter)}` : spokenName(L, c.alter);
+  const note = t('notes.done.chipNote', { name: spoken, pos: positionText(c.clef, c.step), clef: t('notes.clefLower.' + c.clef) });
+  const aria = kind === 'missed' ? t('notes.done.missedChip', { note, count: c.count }) : t('notes.done.slowChip', { note, value: secs(c.ms) });
+  // No key signature in a chip this small: the note carries its sign, as its name does.
+  const shown = useMemo(() => [{ step: c.step, sign: c.alter === 0 ? null : c.alter }], [c.step, c.alter]);
+  return (
+    <span role="listitem" aria-label={aria} className={'nchip nchip--' + kind}>
+      <PitchStaff clef={c.clef} keyId="C" notes={shown} slots={1} barlines={false} scale={CHIP_SCALE} room={room} className="nchip-staff" />
+      <span aria-hidden="true" className="nchip-name">
+        {name}
+      </span>
+      {kind === 'missed' && c.count > 1 && <span aria-hidden="true" className="nchip-tag">{t('notes.done.times', { count: c.count })}</span>}
+      {kind === 'slow' && <span aria-hidden="true" className="nchip-tag">{t('notes.play.seconds', { value: secs(c.ms) })}</span>}
+    </span>
   );
 }
 

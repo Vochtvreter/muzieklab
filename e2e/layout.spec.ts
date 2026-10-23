@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
+import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import { expectClickable, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, pad, seed, VIEWPORTS, type ViewportName } from './helpers';
 
@@ -279,6 +281,31 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       for (let i = 0; i < 7; i++) await expectClickable(names.nth(i));
       await expectClickable(page.getByRole('button', { name: 'Hint' }));
       await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: round done with the missed notes on small staves, named as the player reads them', async ({ page }) => {
+      known(name, 'notes-done-chips');
+      // A known round (treble, C major, on the staff): the first three notes answered with a wrong letter.
+      const settings = { ...DEFAULT_NOTE_SETTINGS, count: 10 };
+      const seed = 4242;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      const notes = generateRound(settings, seed).slice(0, 3);
+      for (const n of notes) {
+        const wrong = letterOf(n.step) === 'C' ? 'D' : 'C';
+        // "C", or "C, key C" with the computer keys shown.
+        await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${wrong}(,|$)`) }).click();
+        await page.getByRole('button', { name: /^Next note/ }).click();
+      }
+      await page.getByRole('button', { name: 'Skip to summary' }).click();
+      await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+      const chips = page.getByRole('list', { name: 'Missed' }).getByRole('listitem');
+      await expect(chips.first()).toHaveAccessibleName(/^[A-G] on the .+ \(treble clef\), missed (once|\d times)$/);
+      await expect(chips.first()).toHaveText(/^[A-G]/);
+      await expect(chips.first().locator('.pitch-staff svg')).toBeVisible();
+      await expectNotSqueezed(page.locator('.ncard').nth(1));
+      await expectClickable(page.getByRole('button', { name: 'Practice missed notes' }));
       await expectNoSideScroll(page);
     });
 

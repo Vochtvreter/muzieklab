@@ -1,5 +1,5 @@
 import type { RoundNote } from '../../core/api';
-import { feedbackText, fullName, hintText, keyPairName, keySignsText, octaveName, positionText } from './noteText';
+import { feedbackText, fullName, hintText, keyPairName, keySignsText, positionText } from './noteText';
 
 const note = (n: Partial<RoundNote>): RoundNote => ({ clef: 'treble', key: 'C', step: 34, alter: 0, sign: null, input: 'names', ...n });
 
@@ -7,8 +7,6 @@ describe('note and key names', () => {
   it('names notes with both systems, the chosen one first', () => {
     expect(fullName('F', 1)).toBe('F♯ (fa♯)');
     expect(fullName('F', 1, 'solfege')).toBe('fa♯ (F♯)');
-    expect(octaveName(38, 1)).toBe('F♯5');
-    expect(octaveName(28, 0)).toBe('C4');
   });
 
   it('names keys and their signatures', () => {

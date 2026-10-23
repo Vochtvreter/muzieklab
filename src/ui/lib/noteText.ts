@@ -10,10 +10,8 @@ import {
   keySigns,
   letterOf,
   missKind,
-  octaveOf,
   placeKind,
   staffOffset,
-  type Alter,
   type Clef,
   type Given,
   type KeyId,
@@ -46,10 +44,6 @@ export function fullName(letter: Letter, alter: ScaleAlter, system: NameSystem =
   const l = letterName(letter, alter);
   const s = solfegeName(letter, alter);
   return system === 'solfege' ? t('notes.name', { main: s, sub: l }) : t('notes.name', { main: l, sub: s });
-}
-/** "F♯5": the written name with its octave (C4 = middle C). */
-export function octaveName(step: Step, alter: Alter): string {
-  return t('notes.withOctave', { name: letterName(letterOf(step), alter), octave: octaveOf(step) });
 }
 /** For screen readers: "F sharp". */
 export function spokenName(letter: Letter, alter: ScaleAlter): string {

@@ -230,6 +230,26 @@ test('read notes: the sign row only when a note can have a sign', async ({ page 
   await expect(page.getByText('Type the letter; press = for ♯, 0 for ♮ or − for ♭ first')).toBeVisible();
 });
 
+test('read notes: round done names the missed notes in do re mi after a round in do re mi', async ({ page }) => {
+  const settings = { ...DEFAULT_NOTE_SETTINGS, count: 10 };
+  const seed = 4242;
+  await seedStorage(page, { prefs: { noteNames: 'solfege' } });
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes/play');
+  const [first] = generateRound(settings, seed);
+  const wrong = letterOf(first.step) === 'C' ? 'D' : 'C';
+  await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(', ' + wrong + '$') }).click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  const solfege: Record<string, string> = { C: 'do', D: 're', E: 'mi', F: 'fa', G: 'sol', A: 'la', B: 'si' };
+  const chip = page.getByRole('list', { name: 'Missed' }).getByRole('listitem');
+  await expect(chip).toHaveCount(1);
+  await expect(chip).toHaveText(solfege[letterOf(first.step)]);
+  await expect(chip).toHaveAccessibleName(new RegExp(`^${solfege[letterOf(first.step)]}, ${letterOf(first.step)} on the .+ \\(treble clef\\), missed once$`));
+  await expect(chip.locator('.pitch-staff svg')).toBeVisible();
+});
+
 test('learn: the Key screen links to key signatures; the quick check answers', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/notes/key');

@@ -28,7 +28,7 @@ import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
 import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
-import { feedbackText, hintText, keySignsText, majorName, positionText, letterName, type NameSystem } from '../../lib/noteText';
+import { feedbackText, hintText, keySignsText, majorName, positionText, letterName, solfegeName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
 
@@ -364,7 +364,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       .map(({ n }) => noteId(n.clef, n.step));
     const needsText = [...new Set(needs)].slice(0, 3).map((id) => {
       const n = notes.find((x) => noteId(x.clef, x.step) === id)!;
-      return t('notes.play.needsItem', { note: letterName(letterOf(n.step), n.alter), pos: positionText(n.clef, n.step) });
+      const name = (state.prefs.noteNames === 'solfege' ? solfegeName : letterName)(letterOf(n.step), n.alter);
+      return t('notes.play.needsItem', { note: name, pos: positionText(n.clef, n.step) });
     });
     return (
       <div className="dplay nplay-desk">

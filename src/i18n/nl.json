@@ -726,7 +726,6 @@
       "doubleFlat": "dubbelmol"
     },
     "name": "{main} ({sub})",
-    "withOctave": "{name}{octave}",
     "spoken": "{sign, select, kruis {{letter, select, C {cis} D {dis} E {eis} F {fis} G {gis} A {ais} B {bis} other {{letter} kruis}}} mol {{letter, select, C {ces} D {des} E {es} F {fes} G {ges} A {as} B {bes} other {{letter} mol}}} dubbelkruis {{letter, select, C {cisis} D {disis} E {eisis} F {fisis} G {gisis} A {aisis} B {bisis} other {{letter} dubbelkruis}}} dubbelmol {{letter, select, C {ceses} D {deses} E {eses} F {feses} G {geses} A {ases} B {beses} other {{letter} dubbelmol}}} other {{letter} {sign}}}",
     "clef": {
       "treble": "Viool",
@@ -936,6 +935,7 @@
       "missed": "Gemist",
       "slow": "Langzaam",
       "missedChip": "{note}, {count, plural, one {één keer gemist} other {# keer gemist}}",
+      "chipNote": "{name} op {pos} ({clef})",
       "times": "×{count}",
       "slowChip": "{note}, {value} seconden",
       "comeBack": "Deze noten komen de volgende ronde vaker terug.",
