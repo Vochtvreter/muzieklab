@@ -2135,6 +2135,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_11_3": {
+      "title": "The test site has a gold icon",
+      "icon": "The test site's icon is gold with a dark note, so a browser tab or a home-screen icon tells it apart from the real Muzieklab."
+    },
     "v0_11_2": {
       "title": "The test site names its branch",
       "branch": "The test site shows the branch it was built from, at the top of every screen and next to the version in Settings → About."
