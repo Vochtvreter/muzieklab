@@ -2171,6 +2171,58 @@ button.lesson-stars:hover {
     max-height: 70%;
   }
 }
+
+/*
+ * A phone browser (DESIGN.md §9): its toolbars leave 390 × 664 on an iPhone 14 and 375 × 553 on an iPhone SE, not the
+ * whole screen. Play still may not scroll, so the gaps and the page's padding tighten first, then the pad gives up
+ * height down to a smaller minimum; below 600 px the staff is drawn at 0.8 as well (Play.tsx, SHORTER_PHONE in
+ * hooks.ts). Calibration's pad follows the same rules (its own block below).
+ */
+@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+  .play {
+    --pt: 46px;
+    --pb: 24px;
+    gap: 10px;
+  }
+  .play-staff {
+    padding: 10px 8px 8px;
+  }
+  /* The pad is a size container: its ring follows its height, and a low pad keeps only the word (below). */
+  .play .pad,
+  .cal .pad {
+    min-height: 112px;
+    container-type: size;
+  }
+  .play .pad-ring,
+  .cal .pad-ring {
+    height: min(150px, 100cqh - 16px);
+    width: auto;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  .play {
+    --pt: 44px;
+    --pb: 22px;
+    gap: 8px;
+  }
+  .play-staff {
+    padding: 8px 8px 6px;
+  }
+  .play .pad,
+  .cal .pad {
+    min-height: 76px;
+  }
+  /* Play's Skip link; Read notes and Scales set their own margins (.nplay-skip). */
+  .skip-link {
+    margin-top: 0;
+  }
+}
+/* A pad squeezed under 104 px (8 bars on a short phone): the note glyph no longer fits in the ring, "Tap" does. */
+@container (max-height: 103.98px) {
+  .pad-glyph {
+    display: none;
+  }
+}
 .judgement--cal {
   margin-top: auto;
   color: var(--accent-ink);
@@ -3755,6 +3807,58 @@ button.lesson-stars:hover {
   }
 }
 
+/* A phone browser (see Play): tighter gaps first, then a smaller intro and card on the shortest screens; the pad shrinks. */
+@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+  .cal {
+    --pt: 46px;
+    --pb: 24px;
+    gap: 10px;
+  }
+  /*
+   * The result: Save and Try again side by side, and kept in view at the bottom as on Results (the narrowest screens
+   * scroll the result card a little under them).
+   */
+  .cal-actions {
+    flex-direction: row;
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--ground);
+    box-shadow: 0 -18px 14px -6px var(--ground), 0 40px 0 24px var(--ground);
+  }
+  .cal-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  .cal {
+    --pt: 44px;
+    --pb: 22px;
+    gap: 8px;
+  }
+  .cal-intro {
+    gap: 4px;
+  }
+  .cal-intro p {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .cal-intro .muted-text {
+    font-size: 12.5px;
+  }
+  .cal-card {
+    padding: 12px 14px 8px;
+    gap: 8px;
+  }
+  .cal-result {
+    padding: 14px;
+  }
+  .cal-result-n {
+    font-size: 36px;
+  }
+}
+
 /* ---------- Crash screen ---------- */
 .crash {
   min-height: 100dvh;
@@ -4076,6 +4180,20 @@ button.lesson-stars:hover {
 }
 .pad:disabled {
   opacity: 0.5;
+}
+/* The shortest phone browsers (375 × 553): a smaller play button and card, so the pad keeps its glyph. */
+@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  /* Later than .play-staff--echo, so the listen card gets this padding too (room for the play button's halo). */
+  .echo-card {
+    min-height: 200px;
+    padding: 14px 16px;
+    gap: 4px;
+  }
+  .echo-play {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 6px;
+  }
 }
 .levelup-line .xp-next {
   text-align: right;

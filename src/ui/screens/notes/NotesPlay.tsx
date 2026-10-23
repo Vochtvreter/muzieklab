@@ -27,7 +27,7 @@ import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
-import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
+import { SHORTER_PHONE, useBreakpoint, useDocTitle, useKeyboardHints, useMediaQuery } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
 import { feedbackText, hintText, keySignsText, majorName, positionText, letterName, solfegeName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
@@ -71,6 +71,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
+  // A phone browser on a small phone (375 × 553): a smaller staff, so the answer buttons fit below it (DESIGN.md §9).
+  const shorter = useMediaQuery(SHORTER_PHONE);
   const keys = useKeyboardHints(bp);
   useDocTitle(t('app.docTitle', { page: t('notes.play.docTitle') }));
   const notes = run.notes;
@@ -298,7 +300,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
 
   const staffLabel = t('notes.play.staffLabel', { clef: t('notes.clefLong.' + note.clef), key: majorName(note.key), n: i + 1, total });
   const staff = (
-    <PitchStaff clef={note.clef} keyId={note.key} notes={shown} slots={size} marks={marks} cursor={i - page.from} scale={desktop ? 1.6 : bp === 'tablet' ? 2 : 1.45}
+    <PitchStaff clef={note.clef} keyId={note.key} notes={shown} slots={size} marks={marks} cursor={i - page.from} scale={desktop ? 1.6 : bp === 'tablet' ? 2 : shorter ? 1.15 : 1.45}
       room={room} label={staffLabel} className="nplay-staff-svg" />
   );
   const timerBar = timer > 0 && (

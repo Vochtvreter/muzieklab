@@ -26,7 +26,7 @@ import { ExerciseFrame } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
 import type { KeyMark } from '../../components/NoteInputs';
 import { DegreeRow, keyNames, SCALE_GAP_KBD, SCALE_WHITE_KBD, ScalePiano, SignButtons, type DegreeCell } from '../../components/ScaleInputs';
-import { useBreakpoint, useDocTitle, useKeyboardHints, useMediaQuery } from '../../hooks';
+import { SHORTER_PHONE, useBreakpoint, useDocTitle, useKeyboardHints, useMediaQuery } from '../../hooks';
 import { keyForTabbedControl } from '../../lib/focusModality';
 import { letterName } from '../../lib/noteText';
 import { noteName, scaleName, scaleSpoken, stepHow, stepLabel, stepsOf } from '../../lib/scaleText';
@@ -53,6 +53,8 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const kbd = useKeyboardHints(bp);
   // A phone on its side is tablet-wide but short: a smaller staff keeps the degrees and feedback in view.
   const short = useMediaQuery('(orientation: landscape) and (max-height: 560px)');
+  // So is a phone browser on a small phone (375 × 553, DESIGN.md §9): the piano and its letters stay in view.
+  const shorter = useMediaQuery(SHORTER_PHONE);
   useDocTitle(t('app.docTitle', { page: t('scales.play.docTitle') }));
   const s = run.settings;
   const dir = s.direction;
@@ -200,7 +202,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   });
   const staff = (
     <PitchStaff clef="treble" keyId={keyId} notes={shown} slots={PAGE} cursor={done ? null : pos - start} barlines={false} room={2.2}
-      scale={desktop ? 1.7 : short ? 1.1 : bp === 'tablet' ? 1.8 : 1.25} label={staffLabel} className="splay-staff-svg" />
+      scale={desktop ? 1.7 : short || shorter ? 1.1 : bp === 'tablet' ? 1.8 : 1.25} label={staffLabel} className="splay-staff-svg" />
   );
 
   // Degree boxes: given letters when spelling, "?" for the next note when playing.

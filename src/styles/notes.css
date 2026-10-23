@@ -1799,6 +1799,56 @@
 .learn-chapter > * {
   flex-shrink: 0;
 }
+/*
+ * A phone browser (DESIGN.md §9, see Play in app.css): the page's gaps tighten, and the piano gives up height so Hint
+ * and Next note stay in view. On the shortest screens the staff is drawn smaller (NotesPlay), and the feedback, the name
+ * buttons and the actions are lower.
+ */
+@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+  .nplay-staff {
+    padding: 10px 12px;
+  }
+  .nplay .ninputs {
+    flex-shrink: 1;
+    min-height: 0;
+    gap: 8px;
+  }
+  .nplay .piano {
+    min-height: 120px;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  .nplay-staff {
+    padding: 8px 12px;
+  }
+  .nfeedback {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  .nplay .name-btn {
+    height: 56px;
+  }
+  .nplay .piano {
+    min-height: 80px;
+  }
+  .nplay .nactions .btn {
+    min-height: 44px;
+  }
+}
+/* From 360 px wide the piano labels fit beside "Any octave counts" again, which leaves the piano 24 px more. */
+@media (min-width: 360px) and (max-width: 389.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  .nlabels {
+    flex-direction: row;
+    align-items: center;
+    font-size: 12px;
+  }
+  .nlabels .seg {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 228px;
+  }
+}
 /* Phone in landscape: question, staff and feedback on the left; the answer controls on the right. */
 @media (orientation: landscape) and (max-height: 560px) {
   .nplay {

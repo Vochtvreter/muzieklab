@@ -17,7 +17,7 @@ import { SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { exerciseView, type ExerciseView } from '../exerciseView';
-import { useBreakpoint, useDocTitle, useKeyboardHints, useLingering, useReducedMotion } from '../hooks';
+import { SHORTER_PHONE, useBreakpoint, useDocTitle, useKeyboardHints, useLingering, useMediaQuery, useReducedMotion } from '../hooks';
 import { useLearnReturn } from '../lib/learnReturn';
 import { liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
@@ -27,6 +27,9 @@ import { todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
 import { HowToContent, IntroContent, PauseContent, ReadyContent, useListen } from './PlaySheets';
 import { usePlaySession } from './playSession';
+
+/** The staff's size on the shortest phone screens: two rows of notes take 139 px instead of 174. */
+const STAFF_SHORTER = 0.8;
 
 export function Play(): JSX.Element | null {
   const { state } = useStore();
@@ -79,6 +82,8 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const desktop = bp === 'desktop';
   const keys = useKeyboardHints(bp);
   const still = useReducedMotion();
+  // A phone browser on a small phone (375 × 553): the staff is drawn smaller so the pad still fits (DESIGN.md §9).
+  const shorter = useMediaQuery(SHORTER_PHONE);
   const ex = run.exercise;
   const lesson = run.lessonId ? findLesson(run.lessonId) : null;
   // Started from a Learn section (?from=1.1): Quit returns there, and Results and the setup keep it.
@@ -157,7 +162,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       }} />
   );
   const staff = (
-    <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} />
+    <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={shorter ? STAFF_SHORTER : 1} />
   );
   const lane = (
     <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={4} taps={s.taps} result={s.liveResult}
