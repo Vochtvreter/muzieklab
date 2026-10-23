@@ -31,8 +31,9 @@ game rather than homework.
 ### Non-goals (for v1)
 
 - Pitch reading / melodic dictation (see §13, possible later module).
-- Multiplayer, accounts, cloud sync.
-- Teacher dashboards.
+- Multiplayer.
+- Accounts, cloud sync and teacher dashboards: planned after v1, optional next to the account-free app
+  ([BACKEND-PLAN.md](BACKEND-PLAN.md)).
 
 ---
 
@@ -1334,7 +1335,8 @@ The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · S
 | Storage | `localStorage` (settings) + **IndexedDB** (history, stats) | Offline, no account. |
 | Offline / install | **PWA** (`vite-plugin-pwa`) | Home-screen app on phones. |
 | Tests | **Vitest** + **fast-check** (property tests) | Generator correctness over thousands of seeds. |
-| Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)) | No backend needed. |
+| Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)) | The app needs no backend. |
+| Accounts (planned) | **Node** API + **MongoDB** on the same server ([BACKEND-PLAN.md](BACKEND-PLAN.md)) | Optional accounts, roles and progress across devices. |
 
 ### 10.2 Module layout
 
@@ -1452,6 +1454,7 @@ without code changes:
 | M5 | **Game layer** | XP, levels, Learning Path, daily challenge, streaks, achievements. |
 | M5b | **Read notes** | Note generator, treble and bass clef rendering, names / piano input, setup, scoring, Learn chapter 8. |
 | M6 | **Polish** | Calibration, PWA/offline, mobile tuning, localization-ready check (all strings in the catalog), progress screen, Weak Spots. |
+| M7 | **Accounts** (planned) | Invite-only accounts with roles, then progress on the account, classes, content editing and premium ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). |
 
 ---
 
@@ -1470,6 +1473,9 @@ without code changes:
 5. **Counting aid:** show counting text under the notes ("1 & 2 &") as an optional help?
 6. **Tap vs hold:** decided: tap & hold is the default in v1; tap only stays as a setting
    for beginners (§3.1).
+7. **Accounts:** the open questions for accounts and permissions (email service, children's accounts, two-step
+   sign-in, content editing, premium, where the account sits in the shell) are in [BACKEND-PLAN.md](BACKEND-PLAN.md)
+   §11.
 
 ---
 

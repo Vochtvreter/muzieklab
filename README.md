@@ -40,6 +40,7 @@ The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
+- [Accounts and permissions](docs/BACKEND-PLAN.md): the planned back-end (design, nothing built yet).
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,
