@@ -1075,8 +1075,19 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 - **Phone browsers** (since 0.10.0). In Safari or Chrome the toolbars take about 180 px of a phone's screen, so the
   sizes to check include the visible area: 390 × 664 (an iPhone 14 in Safari) and 375 × 553 (an iPhone SE in Safari),
   `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens
-  must fit them without scrolling during play, with the pad, the piano and the answer buttons in view. On a short
-  screen the empty space above the pad, the piano or the answer buttons shrinks first, then the staff.
+  (Play, Echo, Read notes, Scales, Calibration) must fit them without scrolling during play, with the pad, the piano
+  and the answer buttons in view and at least 44 px tall. A phone in portrait has two short-screen steps (CSS
+  `max-height: 699.98px` and `599.98px`; the second is `SHORTER_PHONE` in `ui/hooks.ts`). 390 × 844, tablets, desktop
+  and phone landscape do not change.
+  - Under 700 px tall (390 × 664, 375 × 667): the gaps tighten to 10 px, and so do the page padding (10 px at the top,
+    12 px at the bottom) and the staff card's. Then the pad and the pianos give up height, down to 112 px for the pad
+    (214 px on the board), 120 px for the Read notes piano (200 px) and 140 px for the Scales piano (210 px). The pad
+    is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only *Tap* in the ring,
+    without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
+  - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
+    0.8, the Read notes staff at 1.15 (not 1.45) and the Scales staff at 1.1 (not 1.25). The floors are lower (pad
+    76 px, Read notes piano 80 px, Scales piano 110 px), and so are the name buttons (56 px), the feedback, the
+    degrees, the sign buttons, Echo's listen card and Calibration's intro.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
