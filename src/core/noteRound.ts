@@ -21,6 +21,7 @@ import {
   type Step,
 } from './pitch';
 import { Rng } from './rng';
+import { midiOf } from './scale';
 
 export type NoteInput = 'names' | 'piano' | 'mixed';
 export type Extras = 'none' | 'sharps' | 'both';
@@ -39,6 +40,8 @@ export interface NoteSettings {
   count: number;
   /** Seconds per note; 0 = off. */
   timer: NoteTimer;
+  /** Hear the notes: a piano key sounds when pressed, and the right note after every answer (§3.5). */
+  playNotes: boolean;
 }
 
 export const DEFAULT_NOTE_SETTINGS: NoteSettings = {
@@ -51,6 +54,7 @@ export const DEFAULT_NOTE_SETTINGS: NoteSettings = {
   extras: 'none',
   count: 20,
   timer: 0,
+  playNotes: true,
 };
 
 export const NOTE_INPUTS: readonly NoteInput[] = ['names', 'piano', 'mixed'];
@@ -93,7 +97,16 @@ export function sanitizeNoteSettings(raw: unknown): NoteSettings | null {
     extras: one(v.extras, EXTRAS, d.extras),
     count,
     timer: one(v.timer, NOTE_TIMERS, d.timer),
+    playNotes: typeof v.playNotes === 'boolean' ? v.playNotes : d.playNotes,
   };
+}
+
+/**
+ * Whether any note of the round can carry a sign: a key with a signature, or extra signs. Without (C major or A minor
+ * only, no extra signs) the sign row and its "pick the sign" line are left out (§3.5).
+ */
+export function roundHasSigns(s: NoteSettings): boolean {
+  return s.extras !== 'none' || roundKeys(s).some((k) => KEYS[k].fifths !== 0);
 }
 
 export interface RoundNote {
@@ -106,6 +119,15 @@ export interface RoundNote {
   sign: Alter | null;
   /** How this note is answered when the round is mixed; otherwise the round's input. */
   input: 'names' | 'piano';
+}
+
+/** The note as it sounds, as a MIDI number (60 = middle C), with the key signature's or its own sign. */
+export const noteMidi = (n: RoundNote): number => midiOf(n.step, n.alter);
+
+/** A key of the one-octave answer piano (pitch class 0–11) in the octave of the note it answers: the right key sounds as the note. */
+export function pianoKeyMidi(n: RoundNote, pc: number): number {
+  const m = noteMidi(n);
+  return m - (((m % 12) + 12) % 12) + pc;
 }
 
 /** A note position in one clef: the unit of weak spots ("E on the top space"). */

@@ -1,5 +1,6 @@
 import type { RoundNote } from '../../core/api';
-import { feedbackText, fullName, hintText, keyPairName, keySignsText, octaveName, positionText } from './noteText';
+import { setLocale } from '../../i18n';
+import { feedbackText, fullName, hintText, keyPairName, keySignsText, positionText } from './noteText';
 
 const note = (n: Partial<RoundNote>): RoundNote => ({ clef: 'treble', key: 'C', step: 34, alter: 0, sign: null, input: 'names', ...n });
 
@@ -7,8 +8,6 @@ describe('note and key names', () => {
   it('names notes with both systems, the chosen one first', () => {
     expect(fullName('F', 1)).toBe('F♯ (fa♯)');
     expect(fullName('F', 1, 'solfege')).toBe('fa♯ (F♯)');
-    expect(octaveName(38, 1)).toBe('F♯5');
-    expect(octaveName(28, 0)).toBe('C4');
   });
 
   it('names keys and their signatures', () => {
@@ -34,9 +33,22 @@ describe('positions and hints', () => {
   });
 
   it('points to the nearest landmark, and to the key signature when it changes the letter (§3.5)', () => {
-    expect(hintText(note({ step: 29 }), 'letters')).toBe('One step below the bottom line, E (mi).');
+    expect(hintText(note({ step: 29 }), 'letters')).toBe('The bottom line is E (mi). This note is one step lower.');
+    // The landmark's name and the way to the note are two sentences: G above the staff does not read as F.
+    expect(hintText(note({ step: 39 }), 'solfege')).toBe('The top line is fa (F). This note is one step higher.');
+    expect(hintText(note({ clef: 'bass', step: 24 }), 'letters')).toBe("This is the F line between the clef's dots: F (fa).");
     expect(hintText(note({ step: 38, key: 'G', alter: 1 }), 'letters')).toBe('This is the top line: F (fa). Look at the sharp after the clef.');
     expect(hintText(note({ step: 28 }), 'solfege')).toBe('This is middle C: do (C).');
+  });
+
+  it('words the hint naturally in Dutch', () => {
+    setLocale('nl');
+    try {
+      expect(hintText(note({ step: 39 }), 'solfege')).toBe('De bovenste lijn is fa (F). Deze noot ligt één stap hoger.');
+      expect(hintText(note({ step: 33 }), 'letters')).toBe('De middelste lijn is B (si). Deze noot ligt één stap lager.');
+    } finally {
+      setLocale('en');
+    }
   });
 });
 

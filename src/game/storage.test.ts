@@ -7,6 +7,7 @@ import {
   PREFS_KEY,
   PROGRESS_KEY,
   addPracticeDay,
+  defaultNoteNames,
   defaultProgress,
   loadPrefs,
   loadProgress,
@@ -100,6 +101,22 @@ describe('prefs and progress storage', () => {
     expect(loadPrefs().language).toBe('system');
   });
 
+  it('gives a new player note names by the device language; saved prefs keep theirs', () => {
+    const lang = vi.spyOn(navigator, 'language', 'get');
+    lang.mockReturnValue('fr-FR');
+    expect(loadPrefs().noteNames).toBe('solfege');
+    lang.mockReturnValue('en-GB');
+    expect(loadPrefs().noteNames).toBe('letters');
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ ...DEFAULT_PREFS, noteNames: 'letters' }));
+    lang.mockReturnValue('it-IT');
+    expect(loadPrefs().noteNames).toBe('letters');
+    // Saved before Read notes had the choice: do re mi, as they had it.
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: 'dark' }));
+    lang.mockReturnValue('en-US');
+    expect(loadPrefs().noteNames).toBe('solfege');
+    lang.mockRestore();
+  });
+
   it('keeps the Path tab on a known path, else Rhythm', () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ pathTrack: 'notes' }));
     expect(loadPrefs().pathTrack).toBe('notes');
@@ -191,6 +208,13 @@ describe('prefs and progress storage', () => {
     resetProgress();
     expect(loadProgress().lessons).toEqual({});
     expect(loadPrefs().calibrationMs).toBe(20);
+  });
+});
+
+describe('defaultNoteNames', () => {
+  it('is do re mi where music lessons use it, letters elsewhere', () => {
+    for (const tag of ['fr', 'fr-CA', 'it-IT', 'es-419', 'pt-BR', 'ro', 'nl-BE', 'nl_BE']) expect(defaultNoteNames(tag), tag).toBe('solfege');
+    for (const tag of ['en', 'en-US', 'nl', 'nl-NL', 'de-DE', 'ja', '', undefined]) expect(defaultNoteNames(tag), String(tag)).toBe('letters');
   });
 });
 

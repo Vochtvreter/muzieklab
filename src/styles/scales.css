@@ -719,6 +719,11 @@
 .splay-hear svg {
   color: var(--accent);
 }
+/* Hear it so far and Start over before the first note: hidden in their place, so nothing moves when they come. */
+.splay-tools .is-idle,
+.sstats > .is-idle {
+  visibility: hidden;
+}
 .splay .nplay-skip {
   margin: -6px 0 -6px;
 }

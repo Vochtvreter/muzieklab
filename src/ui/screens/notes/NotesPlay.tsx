@@ -1,25 +1,42 @@
 /**
  * Read notes · name it (DESIGN.md §3.5). A staff of whole notes, one per bar, with the current one highlighted; answer
- * with names (sign first, then the name) or on the piano, switchable mid-round. Right answers move on by themselves;
- * after a wrong one the feedback says why and Next note goes on. Desktop: the exercise header, a wide staff, the answer
- * card with computer keys and three stat cards.
+ * with names (sign first, then the name; no sign row when no note can have one) or on the piano, switchable
+ * mid-round. With Hear the notes on, a piano key sounds when pressed and the right note after every answer. Right
+ * answers move on by themselves; after a wrong one the feedback says why and Next note goes on. Desktop: the exercise
+ * header, a wide staff, the answer card with computer keys and three stat cards.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { isRight, keySigns, letterOf, noteId, type Alter, type Given, type Letter, type NoteAnswer, type RoundNote } from '../../../core/api';
+import {
+  isRight,
+  keySigns,
+  letterOf,
+  noteId,
+  noteMidi,
+  pianoKeyMidi,
+  roundHasSigns,
+  type Alter,
+  type Given,
+  type Letter,
+  type NoteAnswer,
+  type RoundNote,
+} from '../../../core/api';
 import { PitchStaff, type PitchMark } from '../../../render/PitchStaff';
 import { t } from '../../../i18n';
+import { engine, unlockAudio } from '../../audio';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
 import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
-import { feedbackText, hintText, keySignsText, majorName, positionText, letterName, type NameSystem } from '../../lib/noteText';
+import { feedbackText, hintText, keySignsText, majorName, positionText, letterName, solfegeName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
 
 /** A right answer without a hint moves on after this long. */
 const AUTO_NEXT_MS = 700;
+/** After a wrong piano key, the right note follows this long after it (seconds). */
+const CORRECTION_GAP = 0.5;
 const BLACK_PCS = [1, 3, 6, 8, 10];
 const WHITE_PCS: Record<Letter, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const WHITE_ORDER = [0, 2, 4, 5, 7, 9, 11];
@@ -59,6 +76,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const notes = run.notes;
   const total = notes.length;
   const timer = run.settings.timer;
+  // C major or A minor without extra signs: no note can have a sign, so there is no sign to pick.
+  const signs = roundHasSigns(run.settings);
 
   const [i, setI] = useState(0);
   const [answers, setAnswers] = useState<NoteAnswer[]>([]);
@@ -77,6 +96,15 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     if (i === 0 || notes[i].input === notes[i - 1].input) return;
     setMode(notes[i].input === 'piano' ? 'piano' : state.prefs.noteNames);
   }, [i]);
+
+  const sound = useCallback(
+    (midis: number[], gap?: number) => {
+      if (!run.settings.playNotes) return;
+      unlockAudio();
+      engine().pitches(midis, gap);
+    },
+    [run.settings.playNotes],
+  );
 
   const finish = useCallback(
     (list: NoteAnswer[]) => {
@@ -114,8 +142,20 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       setAnswers((a) => [...a.slice(0, i), { outcome, ms, given: g }]);
       setGiven(g);
       setDone(true);
+      // The key pressed sounds at once; then the note on the staff, unless that key was it (a wrong answer hears the right one).
+      const midi = noteMidi(note);
+      if (g?.kind === 'piano') sound(right ? [midi] : [pianoKeyMidi(note, g.pc), midi], CORRECTION_GAP);
+      else sound([midi]);
     },
-    [done, note, hinted, i, timer],
+    [done, note, hinted, i, timer, sound],
+  );
+  // A piano key: the answer, or after it just its sound, to compare with the right note.
+  const pressKey = useCallback(
+    (pc: number) => {
+      if (done) sound([pianoKeyMidi(note, pc)]);
+      else answer({ kind: 'piano', pc });
+    },
+    [done, note, answer, sound],
   );
 
   // A right answer moves on by itself; wrong ones wait for Next so the explanation can be read.
@@ -157,7 +197,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const quit = (): void => navigate(home, { replace: true, query: homeQuery });
   const skip = (): void => finish(answers.slice(0, done ? i + 1 : i));
 
-  // Keys: letters (names) or A S D F G H J / W E T Y U (piano), − 0 = for the sign, Enter or Space for Next, Esc quits (desktop).
+  // Keys: letters (names) or A S D F G H J / W E T Y U (piano; after the answer they only sound), − 0 = for the sign,
+  // Enter or Space for Next, Esc quits (desktop).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
@@ -176,23 +217,23 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         quit();
         return;
       }
-      if (done) return;
       if (mode === 'piano') {
         const w = (WHITE_KBD as readonly string[]).indexOf(k);
         const b = (BLACK_KBD as readonly string[]).indexOf(k);
-        if (w >= 0) answer({ kind: 'piano', pc: WHITE_ORDER[w] });
-        else if (b >= 0) answer({ kind: 'piano', pc: BLACK_PCS[b] });
+        if (w >= 0) pressKey(WHITE_ORDER[w]);
+        else if (b >= 0) pressKey(BLACK_PCS[b]);
         else return;
-      } else if (e.key === '-' || e.key === '_') setSign(-1);
-      else if (e.key === '0') setSign(0);
-      else if (e.key === '=' || e.key === '+') setSign(1);
+      } else if (done) return;
+      else if (signs && (e.key === '-' || e.key === '_')) setSign(-1);
+      else if (signs && e.key === '0') setSign(0);
+      else if (signs && (e.key === '=' || e.key === '+')) setSign(1);
       else if (/^[A-G]$/.test(k)) answer({ kind: 'name', letter: k as Letter, alter: sign });
       else return;
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [mode, done, sign, answer, next, desktop]);
+  }, [mode, done, sign, signs, answer, pressKey, next, desktop]);
 
   const size = desktop ? 8 : 6;
   const page = staffPage(notes, i, size);
@@ -225,8 +266,13 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   } else if (i > 0 && notes[i - 1].clef !== note.clef) {
     feedback = t('notes.play.newClef', { clef: t('notes.clefLower.' + note.clef) });
     tone = 'news';
+  } else if (mode === 'piano') {
+    feedback = t(keyHasSigns ? 'notes.play.idlePianoKey' : 'notes.play.idlePiano');
+  } else if (signs) {
+    feedback = t(keyHasSigns ? 'notes.play.idleNamesKey' : 'notes.play.idleNames');
   } else {
-    feedback = t(mode === 'piano' ? (keyHasSigns ? 'notes.play.idlePianoKey' : 'notes.play.idlePiano') : keyHasSigns ? 'notes.play.idleNamesKey' : 'notes.play.idleNames');
+    // Nothing to say about signs: the question alone (desktop has no question line above the staff).
+    feedback = desktop ? t('notes.play.askNames') : '';
   }
 
   // Answer marks on the buttons: the right one green, a wrong pick red.
@@ -286,10 +332,10 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   );
   const inputs =
     mode === 'piano' ? (
-      <Piano labels={state.prefs.pianoLabels} marks={keyMarks} onPick={(pc) => answer({ kind: 'piano', pc })} kbd={keys} />
+      <Piano labels={state.prefs.pianoLabels} marks={keyMarks} onPick={pressKey} kbd={keys} />
     ) : (
       <>
-        <SignRow value={sign} onChange={setSign} disabled={done} kbd={keys} />
+        {signs && <SignRow value={sign} onChange={setSign} disabled={done} kbd={keys} />}
         <NameButtons system={system} sign={sign} marks={nameMarks} onPick={(L) => answer({ kind: 'name', letter: L, alter: sign })} kbd={keys} />
       </>
     );
@@ -322,7 +368,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       .map(({ n }) => noteId(n.clef, n.step));
     const needsText = [...new Set(needs)].slice(0, 3).map((id) => {
       const n = notes.find((x) => noteId(x.clef, x.step) === id)!;
-      return t('notes.play.needsItem', { note: letterName(letterOf(n.step), n.alter), pos: positionText(n.clef, n.step) });
+      const name = (state.prefs.noteNames === 'solfege' ? solfegeName : letterName)(letterOf(n.step), n.alter);
+      return t('notes.play.needsItem', { note: name, pos: positionText(n.clef, n.step) });
     });
     return (
       <div className="dplay nplay-desk">
@@ -353,7 +400,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
             <section className="card nanswer" aria-label={ask}>
               <div className="nanswer-head">
                 {modeSeg}
-                {keys && <span className="muted-text">{t(mode === 'piano' ? 'notes.play.kbdPiano' : 'notes.play.kbdNames')}</span>}
+                {keys && <span className="muted-text">{t(mode === 'piano' ? 'notes.play.kbdPiano' : signs ? 'notes.play.kbdNames' : 'notes.play.kbdNamesPlain')}</span>}
               </div>
               {labelsSeg}
               {inputs}
