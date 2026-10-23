@@ -857,7 +857,8 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 - **Copy code** (since 0.10.0; before, the exercise code and Copy were the first row under the title, though a code
   cannot be entered yet): one quiet action that copies the exercise code (§4.2). It says *Copied* with a check for
   2 s and has the code in its title. On tablet and desktop it is the third ghost button, after Listen and Practice
-  settings; on a phone (< 700 px) that row has no room, so it is a small muted link (13 px, 44 px target) at the very
+  settings (in the side panel since 0.12.0, on a row of its own when the panel is narrow); on a phone (< 700 px) that
+  row has no room, so it is a small muted link (13 px, 44 px target) at the very
   bottom, under the main buttons. A daily challenge's date line (*Oct 22*) sits under the title, as on Round done; it
   no longer says *same for everyone*, as the daily follows the player's unit (§3.4).
 - After a lesson (since 0.8.0), a badge under the score says what the run means for the Learning Path, and the main
@@ -1181,8 +1182,13 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   the top, the main content on the left, and a side panel on the right (300 px on tablet, 360 px on desktop, up to
   1160 px in all) that holds the summary and the screen's main button and stays in view while the main content
   scrolls. Setups: the options on the left; the preview (Rhythm) or the summary, and Start, on the right. Key: the keys
-  on the left; the one key's signature drawn large, what it means, and Use on the right. A phone keeps the one column,
-  in the same order. Calibration on tablet uses the whole width with the pad filling the height under the plot (as Play
+  on the left; the one key's signature drawn large, what it means, and Use on the right. Results: the judged staff (4
+  bars a row on desktop, 2 on tablet), the timing lane and the tip on the left; the stars, the score line, the badges,
+  the counts and every button on the right. Round done (Read notes, Scales): the cards (time per note, needs practice,
+  by sign; the scales played and the circle of fifths) on the left; the score, its line and the buttons on the right.
+  A Read notes round with nothing answered has no cards, so it keeps the one column. A phone keeps the one column, in
+  the same order. On a phone in landscape the side panel scrolls with the page until its end is in view (Results'
+  is taller than the screen), and the buttons stay at the bottom as on a phone. Calibration on tablet uses the whole width with the pad filling the height under the plot (as Play
   on the App design canvas's PlayTablet); on desktop the intro and the plot are on the left and the pad or the result
   on the right, as on a phone in landscape.
 - Exercise screens swap that header for the exercise header: title, progress, and

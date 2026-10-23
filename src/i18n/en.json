@@ -2141,6 +2141,7 @@
       "try": "Open Settings",
       "settings": "On a tablet or a computer, Settings lists its sections on the left and shows the cards in two columns.",
       "setups": "The practice setups and the Key screen use the whole width: the options on the left, the preview or summary and Start beside them.",
+      "results": "Results and the round summaries show your score and the buttons beside the staff and the details, so nothing is far below.",
       "calibrate": "Calibrate uses the whole screen: a big pad under the timing on a tablet, and beside it on a computer."
     },
     "v0_11_2": {

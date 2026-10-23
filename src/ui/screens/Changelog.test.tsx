@@ -31,7 +31,7 @@ describe("What's new", () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Made for tablets and computers' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 23 · 1 new · 2 better')).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 23 · 1 new · 3 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
 
@@ -65,7 +65,7 @@ describe("What's new", () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Gemaakt voor tablets en computers' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('23 okt · 1 nieuw · 2 beter')).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('23 okt · 1 nieuw · 3 beter')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
 
@@ -74,7 +74,7 @@ describe("What's new", () => {
     render(<Changelog />);
     const card = screen.getByRole('article');
     expect(within(card).getAllByText('New')).toHaveLength(1);
-    expect(within(card).getAllByText('Better')).toHaveLength(2);
+    expect(within(card).getAllByText('Better')).toHaveLength(3);
     expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
   });
 
@@ -85,7 +85,7 @@ describe("What's new", () => {
     expect(within(list).getAllByRole('button')).toHaveLength(RELEASES.length);
     expect(release(RELEASES[0].version).getAttribute('aria-current')).toBe('true');
     expect(screen.getByRole('heading', { level: 2, name: 'Made for tablets and computers' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('October 23, 2026 · 1 new · 2 better')).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('October 23, 2026 · 1 new · 3 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
     expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
 
