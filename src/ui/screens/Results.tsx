@@ -102,8 +102,9 @@ export function Results(): JSX.Element | null {
   const { result, run } = last;
   const ex = run.exercise;
   const tip = coach ? tipText(coach) : null;
-  // A steady offset may be the speaker or headphones: calibrating takes it off every score.
-  const calibrate = !!coach && (coach.key === 'tip.latency' || (uncalibrated && /^tip\.(rushing|dragging)/.test(coach.key)));
+  // A steady offset may be the speaker or headphones: calibrating takes it off every score. A device delay only makes
+  // taps late, so rushing is the player's.
+  const calibrate = !!coach && (coach.key === 'tip.latency' || (uncalibrated && coach.key.startsWith('tip.dragging')));
   // Under 2 stars the filled button plays the same exercise again: moving on is not the next step yet.
   const again = result.stars < UNLOCK_STARS;
   const code = encodeCode(ex.settings, ex.seed);

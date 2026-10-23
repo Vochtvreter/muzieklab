@@ -753,8 +753,9 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   tapping along to a beat naturally land tens of milliseconds early (*negative mean
   asynchrony*, Repp 2005), so a small early average is normal and is reported as
   *steady*. The rushing tip only appears beyond about −40 ms (tunable after playtesting);
-  dragging beyond about +30 ms. Device latency is removed separately by calibration (§6.1); when the offsets are
-  steady and the device is not calibrated, the tip points there (§6.4).
+  dragging beyond about +30 ms. Device latency is removed separately by calibration (§6.1); when a dragging player's
+  offsets are steady and the device is not calibrated, the tip points there (§6.4). A device delay only makes taps
+  late, so rushing is never blamed on it.
 - **Steadiness:** standard deviation of offsets.
 - **Combo:** consecutive notes started Perfect/Great **and** held right; a Good, Miss,
   cut-short or held-too-long note resets it. It shows during play; Results no longer shows the max combo (since
@@ -776,28 +777,35 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   0.10.0):
   1. No taps at all: *No taps came in. Tap the pad, or press any key, when each note starts.* The player did not know
      what to do, or the taps did not register; "read one beat ahead" would not help.
-  2. A steady delay: *Your taps came about 125 ms late (early) every time. That is usually the speaker or headphones:
+  2. A steady delay: *Your taps came about 125 ms late every time. That is usually the speaker or headphones:
      calibrate once and it is taken off every score.* A steady player 125 ms late (Bluetooth, an uncalibrated phone)
      gets 0% with every note Miss + Extra, and the old tip blamed their reading. The offsets are the hit notes'
      offsets plus, for each missed note, the nearest unpaired extra tap after it (late) or before it (early), within
      350 ms and before the neighbouring note. It is a delay when all of these hold: those offsets cover at least 60% of
      the notes (and at least 3); every one is at least 20 ms off the same way; the mean is at least 80 ms; the SD is at
      most 60 ms; and unpaired extra taps are at most a quarter of the notes. Sloppy timing spreads both ways and wider,
-     and mashing the pad leaves many unpaired extra taps.
+     and mashing the pad leaves many unpaired extra taps. On evenly spaced notes both ways can pass (at 120 BPM a tap
+     200 ms early is also the previous note's tap, 300 ms late): the way that pairs more notes wins, as the other
+     leaves the first or last note without a tap, then the nearer one. A device delay only makes taps late, so a steady
+     early offset never blames the speaker. On a run played with a calibration, that calibration no longer fits (made
+     with Bluetooth, now played on the speaker): *Your taps came about 110 ms early every time. If you calibrated with
+     other headphones or another speaker, calibrate again.* On a run played before any calibration it is the player
+     rushing: *You were rushing: on average 110 ms early. Wait for each note.*
   3. Off track (misses + extra taps add up to a quarter or more of the notes): timing advice is beside the point when
      the player lost their place, so it names the misses, with the bar that had the most (*You missed 3 notes, most in
      bar 2. Read one beat ahead.*) or, when bars tie, without a bar (*You missed 8 notes. Read one beat ahead.*); or
      the extra taps.
   4. The worst hold problem, e.g. "You let go of the dotted quarter in bar 2 too early".
-  5. The tendency (only from 4+ hit notes). When the hit offsets are steady (SD ≤ 60 ms) and the device is not
-     calibrated, it points to calibration instead of "press sooner" or "wait": *Your taps came on average 60 ms late,
-     about the same on every note. That is often the speaker or headphones: calibrate once and it is taken off every
-     score.* (early: *… Calibrate once and a steady offset like that is taken off every score.*)
+  5. The tendency (only from 4+ hit notes). When the player drags steadily (every hit at least 20 ms late, SD
+     ≤ 45 ms) and the device is not calibrated, it points to calibration instead of "press sooner": *Your taps came
+     on average 60 ms late, about the same on every note. That is often the speaker or headphones: calibrate once and
+     it is taken off every score.* Taps on both sides of the beat are the player, and so is rushing: *Wait for each
+     note.*
   6. Misses (the same tie rule), extra taps, unsteady, then praise. A perfect run that offers Next lesson says *Every
      note perfect. On to the next lesson.* (a lesson fixes tempo and bars); free practice and the daily keep *Every
      note perfect. Try a faster tempo or more bars.*
-- **Calibrate in the tip** (since 0.10.0): with the delay tip, or a rushing or dragging tip while the device is not
-  calibrated (`prefs.calibratedAt` is null), the tip box shows a quiet **Calibrate** action (a ghost button with the
+- **Calibrate in the tip** (since 0.10.0): with the delay tip, or a dragging tip while the device is not calibrated
+  (`prefs.calibratedAt` is null), the tip box shows a quiet **Calibrate** action (a ghost button with the
   metronome icon, titled *Measure the delay of your speaker or headphones*) under its text. It opens
   `#/calibrate?from=results`, which comes back to Results (§6.1).
 - Buttons: **Listen** (correct playback) and **Practice settings** as quiet ghost buttons, then the main pair:

@@ -146,9 +146,34 @@ describe('coachTip: latency', () => {
     expect(coachTip(r, tl8, ex8).key).toBe('tip.missedSpread');
   });
 
-  it('steady early, hit (−110 ms) or missed (−170 ms), is latency too', () => {
+  it('steady early, hit (−110 ms) or missed (−170 ms), is latency when the run was played calibrated', () => {
+    // The calibration no longer fits (made with Bluetooth, now on the speaker): it shifts every tap early.
     expect(tipFor(steady(-110))).toEqual({ key: 'tip.latency', params: { ms: 110, dir: 'early' } });
-    expect(tipFor(steady(-170))).toEqual({ key: 'tip.latency', params: { ms: 170, dir: 'early' } });
+    expect(tipFor(steady(-170), { uncalibrated: false })).toEqual({ key: 'tip.latency', params: { ms: 170, dir: 'early' } });
+  });
+
+  it('steady early before a calibration is the player rushing: a device delay only makes taps late', () => {
+    expect(tipFor(steady(-110), { uncalibrated: true })).toEqual({ key: 'tip.rushing', params: { ms: 110 } });
+    expect(tipFor(steady(-170), { uncalibrated: true })).toEqual({ key: 'tip.rushing', params: { ms: 170 } });
+  });
+
+  it('steady early on evenly spaced notes is early, not the next note late', () => {
+    // Every note Miss + Extra; each early tap is also the previous note's tap, late (0.5 s − 0.2 s = 300 ms).
+    const run = (meter: '4/4', bar: [number, 'n'][], tempo: number, ms: number) => {
+      const ex = makeExercise(meter, [bar, bar], { hold: false }, tempo);
+      const timeline = buildTimeline(ex);
+      const taps = played(timeline, timeline.notes.map(() => ms));
+      return coachTip(judge(timeline, taps, tapOnly), timeline, ex, { taps });
+    };
+    const eighths = Array.from({ length: 8 }, (): [number, 'n'] => [24, 'n']);
+    const quarters = Array.from({ length: 4 }, (): [number, 'n'] => [48, 'n']);
+    expect(run('4/4', eighths, 60, -200)).toEqual({ key: 'tip.latency', params: { ms: 200, dir: 'early' } });
+    expect(run('4/4', eighths, 60, -160)).toEqual({ key: 'tip.latency', params: { ms: 160, dir: 'early' } });
+    expect(run('4/4', quarters, 120, -200)).toEqual({ key: 'tip.latency', params: { ms: 200, dir: 'early' } });
+    expect(run('4/4', quarters, 150, -170)).toEqual({ key: 'tip.latency', params: { ms: 170, dir: 'early' } });
+    // Late by more than half the gap: the early pairing is the nearer one, but it leaves the first note unpaired.
+    expect(run('4/4', quarters, 120, 300)).toEqual({ key: 'tip.latency', params: { ms: 300, dir: 'late' } });
+    expect(run('4/4', quarters, 150, 230)).toEqual({ key: 'tip.latency', params: { ms: 230, dir: 'late' } });
   });
 
   it('hits and misses at one steady offset, with a skipped note; and Bluetooth-sized lag', () => {
@@ -165,11 +190,17 @@ describe('coachTip: latency', () => {
   it('a steady 60 ms is dragging, not latency; uncalibrated, the tip points to calibration', () => {
     expect(tipFor(steady(60))).toEqual({ key: 'tip.dragging', params: { ms: 60 } });
     expect(tipFor(steady(60), { uncalibrated: true })).toEqual({ key: 'tip.draggingCalibrate', params: { ms: 60 } });
-    expect(tipFor(steady(-60), { uncalibrated: true })).toEqual({ key: 'tip.rushingCalibrate', params: { ms: 60 } });
+    // Rushing is never the device: "wait for each note", calibrated or not.
+    expect(tipFor(steady(-60), { uncalibrated: true })).toEqual({ key: 'tip.rushing', params: { ms: 60 } });
   });
 
   it('dragging that wanders is the player: no calibration hint', () => {
     expect(tipFor([100, -40, 110, -20, 115, 90, -30, 105], { uncalibrated: true })).toEqual({ key: 'tip.dragging', params: { ms: 54 } });
+    // Taps on both sides of the beat (SD 53, then 42): not "about the same on every note".
+    expect(tipFor([-30, 100, 30, 110, -20, 90, 20, -10], { uncalibrated: true })).toEqual({ key: 'tip.dragging', params: { ms: 36 } });
+    expect(tipFor([-20, 90, 10, 100, 0, 80, 40, 20], { uncalibrated: true })).toEqual({ key: 'tip.dragging', params: { ms: 40 } });
+    // Late every time, but spread wider than the coach calls steady (SD 47).
+    expect(tipFor([20, 118, 22, 118, 20, 115, 22, 20], { uncalibrated: true })).toEqual({ key: 'tip.dragging', params: { ms: 57 } });
   });
 
   it('perfect play is not latency', () => {
