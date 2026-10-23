@@ -265,6 +265,15 @@
 .key-summary b {
   color: var(--ink);
 }
+/* Tablet and desktop: the one key's signature, large, in the side panel above the summary. */
+.key-big {
+  padding: 8px 20px;
+}
+@media (min-width: 700px) {
+  .nkeys .key-btn {
+    height: 58px;
+  }
+}
 .nkeys .start-btn,
 .nsetup .start-btn {
   margin-top: auto;
