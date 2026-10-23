@@ -2656,8 +2656,10 @@ button.lesson-stars:hover {
   line-height: 1.35;
 }
 .intro-learn {
-  min-height: 36px;
-  padding: 6px 0;
+  /* A 44 px target that takes 36 px of the line, so the sheet is no taller. */
+  min-height: 44px;
+  padding: 10px 0;
+  margin: -4px 0;
 }
 /* Listen as wide as its label (Dutch "Luisteren" too), Start takes the rest. */
 .intro-actions {
