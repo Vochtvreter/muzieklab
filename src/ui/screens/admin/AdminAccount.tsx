@@ -491,6 +491,8 @@ function LinkMaker({ kind, detail, fail, onMade }: { kind: LinkKind; detail: Acc
   const make = async (): Promise<void> => {
     setBusy(true);
     setError(null);
+    // The earlier link stays where it is, dimmed, until the new one takes its place: the page keeps its height, so
+    // nothing above or below it moves (the admin is usually scrolled down to it).
     try {
       const link = await api.post<LinkCreated>(`/admin/accounts/${detail.id}/${kind}-link`);
       if (!mounted.current) return;
@@ -498,6 +500,7 @@ function LinkMaker({ kind, detail, fail, onMade }: { kind: LinkKind; detail: Acc
       onMade?.();
     } catch (e) {
       if (!mounted.current) return;
+      // It may have stopped working: the server could have made the new one before the answer was lost.
       setMade(null);
       setError(fail(e).message);
     } finally {
@@ -513,7 +516,9 @@ function LinkMaker({ kind, detail, fail, onMade }: { kind: LinkKind; detail: Acc
       {(made || error) && (
         <div className="card-pad">
           <FormError error={error} />
-          {made && <LinkResult kind={kind} name={detail.name} link={made.link} expiresAt={made.expiresAt} announce />}
+          {/* A new link is a new result (keyed by the link): its "New link ready" line is read out again, and Copy starts
+              over. */}
+          {made && <LinkResult key={made.link} kind={kind} name={detail.name} link={made.link} expiresAt={made.expiresAt} announce stale={busy} />}
         </div>
       )}
     </>

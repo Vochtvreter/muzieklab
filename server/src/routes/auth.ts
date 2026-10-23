@@ -10,12 +10,12 @@ import type {
 import { writeAudit } from '../accounts/audit.js';
 import { isEmail, validName } from '../accounts/validate.js';
 import { toMe } from '../accounts/views.js';
-import { addressKey, pairKey, passwordKeys } from '../auth/attempts.js';
+import { linkKeys, pairKey, passwordKeys } from '../auth/attempts.js';
 import { signedIn } from '../auth/guard.js';
 import { findLink } from '../auth/links.js';
 import { hashPassword, passwordProblem, verifyDummy, verifyPassword } from '../auth/passwords.js';
 import { clearSessionCookie, replaceSession } from '../auth/sessions.js';
-import { countedTry } from '../auth/tries.js';
+import { countedTry, hashLane, rightPassword } from '../auth/tries.js';
 import type { AppContext } from '../context.js';
 import { inTransaction, type AccountDoc, type LinkKind } from '../db.js';
 import { ApiError } from '../errors.js';
@@ -39,15 +39,16 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
       if (!isEmail(email)) throw invalidCredentials();
       const account = await countedTry(ctx, passwordKeys(email, request.ip), async () => {
         const found = await c.accounts.findOne({ email });
+        const lane = hashLane(ctx, request.ip);
         // Without an account (or a password yet), check against a dummy hash, so the time taken tells nothing.
         const ok = found?.passwordHash
-          ? await verifyPassword(request.body.password, found.passwordHash)
-          : await verifyDummy(request.body.password);
+          ? await verifyPassword(request.body.password, found.passwordHash, lane)
+          : await verifyDummy(request.body.password, lane);
         // Blocked and invited accounts get the same answer as a wrong password.
         return found && ok && found.status === 'active' ? found : null;
       });
       if (!account) throw invalidCredentials();
-      ctx.attempts.clear(pairKey(email, request.ip));
+      rightPassword(ctx, email, request.ip);
 
       const now = ctx.now();
       const updated = await c.accounts.findOneAndUpdate(
@@ -79,11 +80,11 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
   });
 
   /**
-   * The link's account while the link works. Wrong tokens count as failed tries for the address (not for an email:
-   * there is none to count against), so links cannot be guessed quickly.
+   * The link's account while the link works. Wrong tokens count as failed tries for the address only (attempts.ts
+   * linkKeys): not for an email, as there is none, and not for the network, which others share.
    */
   async function checkedLink(kind: LinkKind, token: string, ip: string) {
-    const found = await countedTry(ctx, [addressKey(ip)], () => findLink(c, kind, token, ctx.now()));
+    const found = await countedTry(ctx, linkKeys(ip), () => findLink(c, kind, token, ctx.now()));
     if (!found) throw linkInvalid();
     return found;
   }
@@ -113,7 +114,7 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
     const found = await checkedLink(kind, token, ip);
     const problem = passwordProblem(password, found.account.email);
     if (problem) throw new ApiError(problem, 'This password cannot be used');
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(password, hashLane(ctx, ip));
     const now = ctx.now();
     const accountId = found.account._id;
     return inTransaction(ctx.db, async (session) => {

@@ -25,7 +25,11 @@ import { GateMessage, NoAccess, useAdminGate } from './AdminParts';
 export const SEARCH_DELAY_MS = 250;
 
 type Filter = 'all' | AccountStatus;
-const FILTERS: Filter[] = ['all', 'invited', 'active', 'blocked'];
+/** The status filter, in two pairs: a line breaks only between them (all four on one line, or two and two). */
+const FILTER_PAIRS: [Filter, Filter][] = [
+  ['all', 'invited'],
+  ['active', 'blocked'],
+];
 
 type List =
   | { state: 'loading' }
@@ -60,7 +64,8 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
   const [status, setStatus] = useState<Filter>('all');
   const [attempt, setAttempt] = useState(0);
   const [list, setList] = useState<List>({ state: 'loading' });
-  // Set once the first list came: from then on, each answer (a search, a filter, Try again) is read out.
+  // Set once the first answer came (the list, or an error): from then on, each answer (a search, a filter, Try again)
+  // is read out. The first list is not, as the screen's own heading covers it.
   const loaded = useRef(false);
   // A message from the one-account screen ("…'s account was deleted."), shown once.
   const [notice] = useState(peekListNotice);
@@ -99,6 +104,8 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
       (e: unknown) => {
         // Typed over, or the screen was left: a newer request (or none) answers instead.
         if (ctrl.signal.aborted) return;
+        // The list that Try again brings replaces the focused button: it is read out.
+        loaded.current = true;
         const err = handleError(e);
         setList(err.code === 'forbidden' ? { state: 'denied' } : { state: 'failed', message: errorMessage(err) });
       },
@@ -124,10 +131,14 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
             enterKeyHint="search" name="q" maxLength={200} />
         </form>
         <div role="group" aria-label={t('admin.statusGroup')} className="filter-chips">
-          {FILTERS.map((f) => (
-            <Chip key={f} on={status === f} onToggle={() => setStatus(f)}>
-              {t(f === 'all' ? 'admin.all' : 'accountStatus.' + f)}
-            </Chip>
+          {FILTER_PAIRS.map((pair) => (
+            <span key={pair[0]} className="chip-pair">
+              {pair.map((f) => (
+                <Chip key={f} on={status === f} onToggle={() => setStatus(f)}>
+                  {t(f === 'all' ? 'admin.all' : 'accountStatus.' + f)}
+                </Chip>
+              ))}
+            </span>
           ))}
         </div>
       </div>

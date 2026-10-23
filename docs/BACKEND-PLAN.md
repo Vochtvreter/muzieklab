@@ -78,7 +78,7 @@ server/
     auth/
       passwords.ts      scrypt, the hash queue, the rules (§5.5); common-passwords.txt is the list
       sessions.ts       cookie, create, look up, refresh, replace (§5.4)
-      attempts.ts       too many tries: the three counters (§5.2); tries.ts runs one counted try
+      attempts.ts       too many tries: the four counters (§5.2); tries.ts runs one counted try
       links.ts          invite and new-password links (§5.1, §5.3)
       policy.ts         roles → permissions, can() (§4)
       guard.ts          deny by default: each route is public or needs a permission (§4.4)
@@ -345,14 +345,15 @@ only to that person. When links stop working is in §5.3.
 
 **Too many tries** slow down rather than lock: a hard lockout would let anyone lock someone else out. The first plan
 had one rule, 5 failures per email and per address. The test site showed that one school or office network, where
-many people sign in from one address, then slows everyone on it after a few mistyped passwords. Phase 1 has three
-counters, and a try must pass all three:
+many people sign in from one address, then slows everyone on it after a few mistyped passwords. Phase 1 has four
+counters. A try must pass the first three; the fourth, the network, never makes a try wait:
 
 | Counter | Free failures in 15 minutes | Then | Against |
 |---|---|---|---|
 | **The pair**: one email from one address | 5 | each further try waits: 2 s, 4 s, 8 s… up to 15 minutes. The waits go on doubling until the pair has been quiet for 15 minutes after its last wait. | guessing one account's password. It slows down the person guessing, not the account's owner on another network. |
 | **The address**, for all emails | 50 | the same doubling waits, counting only the failures of the last 15 minutes, so the waits stop soon after the failures do | one address trying many accounts |
 | **The email**, from all addresses | 50 | the same, counting only the last 15 minutes | guessing spread over many addresses. Keeping someone's account waiting takes dozens of tries every 15 minutes, not a handful. |
+| **The network**: the IPv4 /24 or IPv6 /48 the address is in, for all emails | 200 | no wait: the network only loses the hash queue's shared places (below), counting only the last 15 minutes | one network filling the hash queue with failures from many of its addresses (a /48 holds 65,536 /64s, and anyone can get one free from a tunnel broker). It never makes anyone wait, because a network is not one person's: an ISP may give each home a /56 or /60, so one /48 holds hundreds or thousands of homes; a mobile carrier gives each phone a /64 from /48s that thousands share; carrier NAT puts thousands of phones in one IPv4 /24. A wait for the network would let one of them keep all the others out. |
 
 - **An address** is an IPv4 address, or the **/64** an IPv6 address belongs to: one home, phone or server gets a whole
   /64, so counting each IPv6 address apart would count nothing. An IPv4 address written as IPv6 (`::ffff:…`) counts as
@@ -362,17 +363,43 @@ counters, and a try must pass all three:
 - A try counts as a failure from the moment it starts, and is taken back if it was right. Otherwise many tries sent at
   once would all be checked before the first failure counted. A class signing in at once is fine: ten right passwords
   from one address at the same moment all get in, because the address allows 50.
-- A good sign-in clears that pair's counter, not the address's or the email's. So does setting a new password from a
-  link.
-- Entering the current password to change it, to change the email or to delete the account goes through the same three
+- A good sign-in clears that pair's counter, not the address's, the network's or the email's. So does setting a new
+  password from a link.
+- Entering the current password to change it, to change the email or to delete the account goes through the same four
   counters, so a borrowed session cannot be used to guess the password quickly.
-- The link routes (check, accept and confirm) count wrong tokens against the address only, as there is no email to
-  count against.
-- **The hash queue:** at most 4 password hashes run at once (each takes 32 MiB, and the service has 512 MB), and at
-  most 32 wait their turn. Past that the server is too busy: the try gets 429 `too_many_attempts` with `retryAfter: 1`,
-  and it is not counted as a failure.
+- The link routes (check, accept and confirm) count wrong tokens against the address only. There is no email to count
+  against, and not the network: a wrong token costs no hash and a link (256 bits) cannot be guessed, so counting it
+  there would only let one address slow everyone on its network.
+- **The hash queue:** at most 4 password hashes run at once (each takes 32 MiB, and the service has 512 MB). The others
+  wait in one line per network (as above), and the lines take turns: a free slot goes to the line whose turn it is,
+  which then goes to the back. So a try waits behind at most one try of every other network that has some waiting,
+  however many each sends: a few seconds with 45 networks flooding. Any network may add to the waiting while fewer
+  than 32 wait in all (a class signing in at once); past that, each network may still have 2 waiting, so no flood can
+  keep another network out. A network past its 200 free failures gets only its 2, never the shared places. At most
+  512 wait in all (a backstop for memory: 256 networks). A try that may not wait gets 429 **`busy`** with
+  `retryAfter: 1` (also the `Retry-After` header), and it is not counted as a failure. It is not `too_many_attempts`:
+  whoever gets it may have typed their password once (someone on a network a flood has used up), so the app says
+  *Muzieklab is busy. Try again in a moment.*, not that they tried too often. A counter's wait in its last second also
+  says `retryAfter: 1`, so only the code tells the two apart. Every hash goes through the queue, also those of a new
+  password: Sign in, Accept invite, New password, and the current password on Account can all get `busy`.
+- **Places kept for clean tries.** A network's 2 places are first come, first served for everyone in it. Someone with
+  a few of its addresses (a /60 of an ISP's /48) could keep them full: a refused try costs nothing, so they take a
+  freed place again within milliseconds, and everyone else in that network would be turned away. So each network's
+  line also keeps **4 places for clean tries**: tries from an address that has made no other try in the last 15
+  minutes, wrong or right. A right password counts too (signing in to an account of one's own again and again does
+  not stay clean), and so does a wrong link token. A clean try waits there while one of the 4 is free, whether or not
+  its network is past its 200, and when the line's turn comes, its clean tries go first. Each address is clean for one
+  try in 15 minutes, so a /60 has 16 such tries in 15 minutes and a /56 256 (0.3 a second). That is too few to keep
+  the 4 places full while the line is served: about 16 times a second shared by the lines that have tries waiting. A
+  /56 manages it only if more than about 55 other networks keep tries waiting at the same time. Where many share one
+  address (a school's IPv4 address, carrier NAT), only its first try in 15 minutes is clean; the others wait as above.
+  At most 512 wait in the kept places in all; past that, a clean try waits as any other. The 32 shared places and the
+  512 above count only the other places, so filling the kept places takes no network's 2.
 - The counters are in memory. A restart forgets them, which only helps whoever was waiting, and they work for one
-  process (the API runs as one). They keep at most 100,000 entries, and old ones are dropped every minute.
+  process (the API runs as one). Old entries are dropped every minute. Each counter keeps its own entries, at most
+  100,000 (the network 10,000, as each may hold the times of hundreds of failures); past that its oldest go. So a flood
+  of one kind cannot push out another kind's: wrong link tokens, which cost no hash, from many addresses can only push
+  out address entries, never the pair and email entries that keep a guesser waiting.
 
 ### 5.3 Forgotten password, new email
 
@@ -495,14 +522,14 @@ Planned: `GET /progress` and `PUT /progress` (with `rev`; 409 with the server co
 /classes`, `GET /classes`, `GET /classes/:id`, `PATCH /classes/:id`, `POST /classes/join`, `GET /classes/:id/progress`
 and `DELETE /classes/:id/members/:accountId` in phase 3; content in phase 4, designed with it (§10).
 
-Errors are `{ "error": "code", "message": "…" }`, plus `retryAfter` with `too_many_attempts`. The `code` is stable, and
-the app shows its own English or Dutch text for it. The codes are in `ERROR_CODES` (`shared/api.ts`):
+Errors are `{ "error": "code", "message": "…" }`, plus `retryAfter` with `too_many_attempts` and `busy`. The `code` is
+stable, and the app shows its own English or Dutch text for it. The codes are in `ERROR_CODES` (`shared/api.ts`):
 `bad_request` (400), `unauthenticated`, `invalid_credentials` and `wrong_password` (401), `forbidden` and `bad_origin`
 (403), `not_found` (404), `email_taken`, `last_admin`, `own_account` and `wrong_status` (409), `link_invalid` (410),
-`password_length`, `password_common`, `password_has_email` and `email_invalid` (422), `too_many_attempts` (429) and
-`internal` (500). Fastify's own refusals (a body that is broken, too big, or not JSON) keep their status (400, 413,
-415) with the code `bad_request`. Phase 2 adds `rev_conflict`. When the API does not answer at all, the app uses its own
-code, `unavailable`.
+`password_length`, `password_common`, `password_has_email` and `email_invalid` (422), `too_many_attempts` (a counter's
+wait) and `busy` (the hash queue is full, §5.2) (429), and `internal` (500). Fastify's own refusals (a body that is
+broken, too big, or not JSON) keep their status (400, 413, 415) with the code `bad_request`. Phase 2 adds
+`rev_conflict`. When the API does not answer at all, the app uses its own code, `unavailable`.
 
 ## 8. Privacy and security
 

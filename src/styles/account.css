@@ -241,6 +241,8 @@
 }
 .offline-note p {
   flex: 1 1 180px;
+  /* No last word alone on its line ("… once it / can."). */
+  text-wrap: pretty;
 }
 .offline-note .small-btn {
   flex: none;
@@ -274,7 +276,8 @@
     flex: 1 1 auto;
   }
 }
-.small-btn:disabled {
+.small-btn:disabled,
+.small-btn[aria-disabled='true'] {
   opacity: 0.6;
 }
 /* A confirm that loses nothing (Sign out everywhere): the question in ink, not the danger red. */
@@ -555,32 +558,36 @@
 .admin-search .tfield-input::-webkit-search-cancel-button {
   cursor: pointer;
 }
-/* Pick one status: chips that wrap, so long words (Uitgenodigd, Geblokkeerd) never get cut. */
+/* Pick one status: chips that wrap, so long words (Uitgenodigd, Geblokkeerd) never get cut. They come in two pairs
+   (.chip-pair) and a line breaks only between the pairs: all four on one line where they fit, otherwise two and two,
+   in every language and at every width. Never three and a lone one, which reads as a separate wide button. */
 .filter-chips {
   display: flex;
   flex-wrap: wrap;
+  gap: 8px;
+}
+.chip-pair {
+  display: flex;
   gap: 8px;
 }
 .filter-chips .chip {
   font-weight: 700;
   font-size: 14px;
 }
-/* On a phone the chips fill the row under the search field: all four on one line where they fit. */
+/* On a phone the chips fill the row under the search field. Two and two is an even 2 × 2 grid: each pair takes the
+   row, and its chips share it equally (never narrower than their words). */
 @media (max-width: 699.98px) {
-  .filter-chips {
+  .filter-chips,
+  .chip-pair {
     gap: 6px;
   }
-  .filter-chips .chip {
+  .chip-pair {
     flex: 1 1 auto;
-    padding: 0 10px;
   }
-}
-/* Under 360 px an even 2 × 2 grid instead, in every language: four on one line no longer fit in Dutch (Uitgenodigd,
-   Geblokkeerd), and a lone chip on a second line reads as a separate wide button, not one option of four. */
-@media (max-width: 359.98px) {
-  .filter-chips {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .filter-chips .chip {
+    flex: 1 1 0;
+    min-width: max-content;
+    padding: 0 10px;
   }
 }
 .set-section.is-busy .set-card {
@@ -664,6 +671,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+/* While a newer link is being made: the old one is dimmed (and inert), in its place, so the page does not move. */
+.link-result--stale {
+  opacity: 0.45;
+  transition: opacity 0.18s ease-out;
 }
 .link-result .tfield-hint b {
   font-weight: 600;

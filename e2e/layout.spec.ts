@@ -9,20 +9,27 @@ import {
 } from './helpers';
 
 /**
- * The status filter's chips sit in rows of the same size: all four on one line, or two and two, never three and a lone
- * one that reads as a separate wide button.
+ * The status filter's chips sit in rows of the same size: all four on one line, or two and two as an even grid (the
+ * second line's chips under the first's, as wide), never three and a lone one that reads as a separate wide button.
  */
-async function expectEvenChipRows(page: Page): Promise<void> {
+async function expectEvenChipRows(page: Page, where = ''): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  const rows = await page.getByRole('group', { name: 'Status' }).getByRole('button').evaluateAll((els) => {
-    const lines = new Map<number, number>();
+  const lines = await page.getByRole('group', { name: 'Status' }).getByRole('button').evaluateAll((els) => {
+    const byTop = new Map<number, { left: number; width: number }[]>();
     for (const el of els) {
-      const top = Math.round(el.getBoundingClientRect().top);
-      lines.set(top, (lines.get(top) ?? 0) + 1);
+      const r = el.getBoundingClientRect();
+      const top = Math.round(r.top);
+      byTop.set(top, [...(byTop.get(top) ?? []), { left: r.left, width: r.width }]);
     }
-    return [...lines.values()];
+    return [...byTop.values()];
   });
-  expect(rows.length === 1 || rows.every((n) => n === 2), `chips per line: ${rows.join(' + ')}`).toBe(true);
+  const counts = lines.map((l) => l.length).join(' + ');
+  expect(lines.length === 1 || (lines.length === 2 && lines.every((l) => l.length === 2)), `${where} chips per line: ${counts}`.trim()).toBe(true);
+  if (lines.length === 2) {
+    const [a, b] = lines;
+    const off = Math.max(...a.map((c, i) => Math.max(Math.abs(c.left - b[i].left), Math.abs(c.width - b[i].width))));
+    expect(off, `${where} two and two is an even grid`.trim()).toBeLessThanOrEqual(1);
+  }
 }
 
 /** An invite link that works (POST /auth/invite/check), for the account screens. */
@@ -1043,10 +1050,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await me;
         const section = account(page);
         const retry = section.getByRole('button', { name: 'Try again' });
-        await expect(section.getByText(/^Offline: /)).toBeVisible();
+        const note = section.getByText(/^Muzieklab can't be reached right now\. /);
+        await expect(note).toBeVisible();
         await expectClickable(retry);
         await expectTouchHeight(retry);
-        await expectNoOverlap(section.getByText(/^Offline: /), retry);
+        await expectNoOverlap(note, retry);
         await expectNotSqueezed(section.locator('.set-card'));
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
@@ -1370,7 +1378,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         const me = page.waitForResponse('**/api/v1/me');
         await page.goto('./#/settings');
         await me;
-        await expect(page.getByText('Offline: je account wijzigen kan weer zodra Muzieklab bereikbaar is.')).toBeVisible();
+        await expect(page.getByText('Muzieklab is nu niet bereikbaar. Je kunt je account wijzigen zodra Muzieklab weer bereikbaar is.')).toBeVisible();
         await expectClickable(page.getByRole('button', { name: 'Opnieuw proberen' }));
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
@@ -1444,6 +1452,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     });
   });
 }
+
+test.describe('the status filter at every phone width', () => {
+  test.use({ serviceWorkers: 'block', hasTouch: true });
+  // The fixed sizes miss widths in between (an Android phone is often 360 px wide, where Dutch once broke 3 + 1).
+  for (const language of ['en', 'nl']) {
+    test(`${language}: all four chips on one line, or two and two, from 320 to 699 px`, async ({ page }) => {
+      await seed(page, { prefs: { language, seenHowTo: true, seenHold: true } });
+      await mockApi(page, adminApi());
+      await page.setViewportSize({ width: 320, height: 800 });
+      await page.goto('./#/admin');
+      await expect(page.getByRole('group', { name: 'Status' }).getByRole('button')).toHaveCount(4);
+      for (let width = 320; width < 700; width += 2) {
+        await page.setViewportSize({ width, height: 800 });
+        await expectEvenChipRows(page, `${width} px:`);
+      }
+      await expectNoSideScroll(page);
+    });
+  }
+});
 
 test('a touch screen at desktop width (tablet in landscape) gets the desktop layout without keyboard hints', async ({ browser }) => {
   for (const hasTouch of [true, false]) {

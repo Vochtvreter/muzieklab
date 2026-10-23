@@ -14,6 +14,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, ty
 import type { AccountStatus } from '../../../shared/api';
 import { t } from '../../i18n';
 import { useMounted } from '../hooks';
+import { announce } from '../lib/announce';
 import { SwitchTrack } from './Controls';
 import { Icon, type IconName } from './Icon';
 
@@ -169,13 +170,18 @@ export function ErrorRetry({ error, onRetry, quiet }: { error: string; onRetry()
 }
 
 /**
- * A done message (a green check): "Password changed. …". Renders nothing for null. role="status" next to the form
- * that was sent; `live={false}` where the screen announces it itself (ui/lib/announce.ts), e.g. after a route change.
+ * A done message (a green check): "Password changed. …". Renders nothing without a text. It is read out once, when it
+ * appears, by the app's one live region (ui/lib/announce.ts), not as a role="status" of its own: one inserted already
+ * holding its text is not read by every screen reader, and the button that was pressed was busy (focus left it) or is
+ * gone. `live={false}` where the screen announces it itself (the accounts list's line after Cancel invite).
  */
-export function FormDone({ children, live = true }: { children: ReactNode; live?: boolean }): JSX.Element | null {
+export function FormDone({ children, live = true }: { children: string | null | undefined; live?: boolean }): JSX.Element | null {
+  useEffect(() => {
+    if (live && children) announce(children);
+  }, [children, live]);
   if (!children) return null;
   return (
-    <div className="form-done m-in" role={live ? 'status' : undefined}>
+    <div className="form-done m-in">
       <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
       <span>{children}</span>
     </div>

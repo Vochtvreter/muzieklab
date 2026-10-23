@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '../../i18n';
+import { listenToAnnouncements } from '../lib/announce';
 import { ConfirmAction, CopyField, FormDone, FormError, PasswordField, StatusPill, SubmitButton, SwitchRow, TextField } from './Form';
 
 afterEach(() => {
@@ -182,12 +183,31 @@ describe('ConfirmAction', () => {
 });
 
 describe('FormDone', () => {
-  it('is a status next to its form, and plain text where the screen announces it itself', () => {
-    render(<FormDone>Saved.</FormDone>);
-    expect(screen.getByRole('status').textContent).toBe('Saved.');
-    cleanup();
+  it('is read out once when it appears, by the app\'s live region, not as an inserted role="status"', () => {
+    const said: string[] = [];
+    const stop = listenToAnnouncements((text) => said.push(text));
+    const { rerender } = render(<FormDone>Saved.</FormDone>);
+    expect(screen.getByText('Saved.')).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(said).toEqual(['Saved.']);
+    // A re-render with the same text (the form typed in again, a parent update) says nothing new.
+    rerender(<FormDone>Saved.</FormDone>);
+    expect(said).toEqual(['Saved.']);
+    // Gone, and back after the next save: said again.
+    rerender(<FormDone>{null}</FormDone>);
+    expect(screen.queryByText('Saved.')).toBeNull();
+    rerender(<FormDone>Saved.</FormDone>);
+    expect(said).toEqual(['Saved.', 'Saved.']);
+    stop();
+  });
+
+  it('says nothing itself where the screen announces it (live={false})', () => {
+    const said: string[] = [];
+    const stop = listenToAnnouncements((text) => said.push(text));
     render(<FormDone live={false}>The invite for Lies Bakker was canceled.</FormDone>);
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByText('The invite for Lies Bakker was canceled.')).toBeTruthy();
+    expect(said).toEqual([]);
+    stop();
   });
 });

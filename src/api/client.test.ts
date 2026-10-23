@@ -68,6 +68,28 @@ describe('api client', () => {
     expect(e.retryAfter).toBe(30);
   });
 
+  it('reads the busy answer as busy, never as too many tries: the code busy, or too_many_attempts with reason busy', async () => {
+    fetchMock.mockResolvedValueOnce(json(429, { error: 'busy', message: 'The server is busy', retryAfter: 1 }));
+    let e = await failure(api.post('/auth/sign-in', {}));
+    expect([e.status, e.code, e.retryAfter, e.message]).toEqual([429, 'busy', 1, 'The server is busy']);
+    fetchMock.mockResolvedValueOnce(json(429, { error: 'too_many_attempts', reason: 'busy', message: '', retryAfter: 1 }));
+    e = await failure(api.post('/auth/sign-in', {}));
+    expect([e.code, e.retryAfter]).toEqual(['busy', 1]);
+    // A counter's wait in its last second also says 1: it stays too many tries.
+    fetchMock.mockResolvedValueOnce(json(429, { error: 'too_many_attempts', message: '', retryAfter: 1 }));
+    expect((await failure(api.post('/auth/sign-in', {}))).code).toBe('too_many_attempts');
+    // A reason on another code is not read.
+    fetchMock.mockResolvedValueOnce(json(401, { error: 'invalid_credentials', reason: 'busy', message: '' }));
+    expect((await failure(api.post('/auth/sign-in', {}))).code).toBe('invalid_credentials');
+  });
+
+  it('reads a JSON error body that is not an object by its status', async () => {
+    fetchMock.mockResolvedValueOnce(json(502, null));
+    expect((await failure(api.get('/me'))).code).toBe('internal');
+    fetchMock.mockResolvedValueOnce(json(400, 'nope'));
+    expect((await failure(api.get('/me'))).code).toBe('bad_request');
+  });
+
   it('reads an error code it does not know as internal (5xx) or bad_request', async () => {
     fetchMock.mockResolvedValueOnce(json(503, { error: 'rev_conflict', message: '' }));
     expect((await failure(api.get('/x'))).code).toBe('internal');

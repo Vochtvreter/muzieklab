@@ -126,6 +126,25 @@ describe('Admin: Accounts', () => {
     await waitFor(() => expect(screen.getByText('No accounts match.')).toBeTruthy());
   });
 
+  it('reads out the list that Try again brings after a failed first load (the focused button is gone)', async () => {
+    let fail = true;
+    answer = (path) => (path === '/api/v1/me' ? json(200, ADMIN) : fail ? json(500, { error: 'internal', message: '' }) : json(200, { accounts: [LIES, ANN] }));
+    render(
+      <>
+        <StoreProvider>
+          <AdminAccounts />
+        </StoreProvider>
+        <Announcer />
+      </>,
+    );
+    const said = (): string => document.getElementById('announcer')?.textContent ?? '';
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Something went wrong on our side. Try again later.'));
+    fail = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: '2 accounts' })).toBeTruthy());
+    await waitFor(() => expect(said()).toBe('2 accounts'));
+  });
+
   it('a member has no access, and no request for the list goes out', async () => {
     answer = () => json(200, MEMBER);
     inStore(<AdminAccounts />);

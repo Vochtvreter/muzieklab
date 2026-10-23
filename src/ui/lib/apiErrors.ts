@@ -7,13 +7,19 @@ import { ERROR_CODES, PASSWORD_MAX, PASSWORD_MIN } from '../../../shared/api';
 import { ApiError, asApiError, type ClientErrorCode } from '../../api/client';
 import { t } from '../../i18n';
 
-/** Every code a request can fail with: the contract's, plus `unavailable` (no answer). Each has an apiError message. */
-export const CLIENT_ERROR_CODES: readonly ClientErrorCode[] = [...ERROR_CODES, 'unavailable'];
+/**
+ * Every code a request can fail with: the contract's, plus `unavailable` (no answer) and `busy` (the server is busy),
+ * each once. Each has an apiError message.
+ */
+export const CLIENT_ERROR_CODES: readonly ClientErrorCode[] = [...new Set<ClientErrorCode>([...ERROR_CODES, 'unavailable', 'busy'])];
 
 /** Up to this many seconds, a wait is said in seconds ("in 45 seconds"); above, in whole minutes, rounded up. */
 const SECONDS_UP_TO = 90;
 
-/** The message for a failed request (an ApiError, or anything else thrown: `internal`). */
+/**
+ * The message for a failed request (an ApiError, or anything else thrown: `internal`). Too many tries says how long to
+ * wait; `busy` (the server's line is full, nobody's tries counted) says only to try again in a moment.
+ */
 export function errorMessage(e: unknown): string {
   const err = asApiError(e);
   if (err.code === 'too_many_attempts' && err.retryAfter && err.retryAfter > 0) {

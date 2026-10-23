@@ -23,6 +23,8 @@ describe('API error messages', () => {
 
   it('includes unavailable and every code of the contract', () => {
     expect(CLIENT_ERROR_CODES).toContain('unavailable');
+    expect(CLIENT_ERROR_CODES).toContain('busy');
+    expect(new Set(CLIENT_ERROR_CODES).size).toBe(CLIENT_ERROR_CODES.length);
     expect(CLIENT_ERROR_CODES).toContain('too_many_attempts');
     expect(CLIENT_ERROR_CODES).toContain('link_invalid');
   });
@@ -43,6 +45,18 @@ describe('API error messages', () => {
     setLocale('nl');
     expect(wait(120)).toBe('Te veel pogingen. Probeer het over 2 minuten opnieuw.');
     expect(wait(1)).toBe('Te veel pogingen. Probeer het over 1 seconde opnieuw.');
+  });
+
+  it('says the server is busy without blaming anyone’s tries; a real wait of 1 second stays too many tries', () => {
+    // The server's line for password checks is full (BACKEND-PLAN.md §5.2): it sends retryAfter 1, as a counter's wait
+    // does in its last second, so only the code tells them apart.
+    expect(errorMessage(new ApiError(429, 'busy', '', 1))).toBe('Muzieklab is busy. Try again in a moment.');
+    expect(errorMessage(new ApiError(429, 'busy'))).toBe('Muzieklab is busy. Try again in a moment.');
+    expect(errorMessage(new ApiError(429, 'too_many_attempts', '', 1))).toBe('Too many tries. Try again in 1 second.');
+    expect(errorField('busy')).toBeNull();
+    setLocale('nl');
+    expect(errorMessage(new ApiError(429, 'busy', '', 1))).toBe('Muzieklab heeft het even druk. Probeer het zo opnieuw.');
+    expect(errorMessage(new ApiError(429, 'too_many_attempts', '', 1))).toBe('Te veel pogingen. Probeer het over 1 seconde opnieuw.');
   });
 
   it('names the password rules with their numbers', () => {

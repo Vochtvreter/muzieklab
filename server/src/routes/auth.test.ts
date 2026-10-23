@@ -1,8 +1,9 @@
 import type { FastifyContextConfig, RouteOptions } from 'fastify';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { InviteCreated, LinkCreated, Me } from '../../../shared/api.js';
 import { buildApp } from '../app.js';
-import { hashing } from '../auth/passwords.js';
+import { networkOf } from '../auth/attempts.js';
+import { SERVER_LANE, hashing } from '../auth/passwords.js';
 import { MAX_SESSIONS } from '../auth/sessions.js';
 import { collections } from '../db.js';
 import {
@@ -188,6 +189,235 @@ describe('POST /auth/sign-in', () => {
     expect((await from(100, PASSWORD)).statusCode).toBe(200);
   });
 
+  it('never keeps a right password waiting for the failures of others in its network, a /48 or a /24', async () => {
+    // Five addresses of one network (homes an ISP gave a /56 each in one /48, phones behind one carrier NAT) send
+    // wrong passwords for 5 minutes, each again as soon as its own wait ends: past the network's 200 free failures.
+    // A pupil elsewhere in that network signs in every 30 s.
+    const t = await makeApp(mongo);
+    for (let i = 0; i < 30; i++) await seedAccount(t.db, { email: `pupil${i}@example.com` });
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const from = (ip: string, email: string, password = 'wrong password!') =>
+      t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email, password }, headers: { 'x-forwarded-for': ip } });
+    const networks = [
+      { others: [1, 2, 3, 4, 5].map((i) => `2001:db8:abcd:${i}00::1`), pupil: '2001:db8:abcd:ff00::1' },
+      { others: [1, 2, 3, 4, 5].map((i) => `203.0.113.${i}`), pupil: '203.0.113.200' },
+    ];
+    const nextTry = new Map<string, number>();
+    let n = 0;
+    /** Wrong passwords from `ip`, one after the other, until it is told to wait: how many were checked. */
+    const fail = async (ip: string) => {
+      for (let failures = 0; ; failures++) {
+        const res = await from(ip, `pupil${n++ % 30}@example.com`);
+        if (res.statusCode === 429) {
+          nextTry.set(ip, t.clock.ms + res.json().retryAfter * 1000);
+          return failures;
+        }
+        expect(res.statusCode).toBe(401);
+      }
+    };
+    const failures = networks.map(() => 0);
+    const pupils: number[][] = networks.map(() => []);
+    for (let second = 0; second < 5 * 60; second++) {
+      // Both networks at once; the addresses of each at once too, as they are due.
+      await Promise.all(
+        networks.map(async ({ others }, i) => {
+          const due = others.filter((ip) => (nextTry.get(ip) ?? 0) <= t.clock.ms);
+          for (const count of await Promise.all(due.map(fail))) failures[i] += count;
+        }),
+      );
+      if (second % 30 === 0) {
+        for (const [i, { pupil }] of networks.entries()) {
+          pupils[i].push((await from(pupil, 'ann@example.com', PASSWORD)).statusCode);
+        }
+      }
+      t.clock.advance(1000);
+    }
+    for (const [i] of networks.entries()) {
+      expect(failures[i]).toBeGreaterThan(250);
+      expect(pupils[i]).toEqual(Array(10).fill(200));
+    }
+  }, 30_000);
+
+  it('keeps a network past 200 failures to its own 2 places in the hash queue, and makes none of its members wait', async () => {
+    // Someone with a /48 sends wrong passwords, each try for another email and from another /64: the pair, address
+    // and email counters see one failure each. Every try is checked, but the network then loses the hash queue's
+    // shared places, so it cannot fill the queue.
+    const t = await makeApp(mongo);
+    for (let i = 0; i < 10; i++) await seedAccount(t.db, { email: `pupil${i}@example.com` });
+    const from = (ip: string, i: number, password = 'wrong password!') =>
+      t.call({
+        method: 'POST',
+        url: '/api/v1/auth/sign-in',
+        payload: { email: `pupil${i % 10}@example.com`, password },
+        headers: { 'x-forwarded-for': ip },
+      });
+    const inNetwork = (i: number) => `2001:db8:abcd:${i.toString(16)}::1`;
+    // 200 tries, 20 at a time, then 100 more: all checked, none told to wait.
+    for (let batch = 0; batch < 10; batch++) {
+      const res = await Promise.all(Array.from({ length: 20 }, (_, j) => from(inNetwork(batch * 20 + j), batch * 20 + j)));
+      expect(res.map((r) => r.statusCode)).toEqual(Array(20).fill(401));
+    }
+    for (let i = 200; i < 300; i++) expect((await from(inNetwork(i), i)).statusCode).toBe(401);
+    // Three /64s of another network fail once each, so their next tries are not clean either (none get the places
+    // kept for those: the test after next).
+    const elsewhere = (i: number) => `2001:db8:abce:${i}::1`;
+    for (const i of [0, 1, 2]) expect((await from(elsewhere(i), i)).statusCode).toBe(401);
+    // While the hashes are busy, the network may have 2 tries waiting, not 3…
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const busy = Array.from({ length: 4 }, () => hashing.run(SERVER_LANE, () => held));
+    try {
+      const waiting = [from(inNetwork(0), 0), from(inNetwork(1), 1)];
+      await vi.waitFor(() => expect(hashing.waitingIn(networkOf(inNetwork(0)), 'other')).toBe(2));
+      const third = await from(inNetwork(2), 2);
+      expect(third.statusCode).toBe(429);
+      expect(third.json()).toMatchObject({ error: 'too_many_attempts', retryAfter: 1 });
+      // …while another network may use the shared places.
+      waiting.push(...[0, 1, 2].map((i) => from(elsewhere(i), i + 3)));
+      await vi.waitFor(() => expect(hashing.waitingIn(networkOf(elsewhere(0)), 'other')).toBe(3));
+      release();
+      expect((await Promise.all(waiting)).map((r) => r.statusCode)).toEqual(Array(5).fill(401));
+    } finally {
+      release();
+      await Promise.all(busy);
+    }
+    // Any /64 of the network signs in at once with a right password.
+    expect((await from('2001:db8:abcd:ffff::1', 2, PASSWORD)).statusCode).toBe(200);
+  }, 30_000);
+
+  it('keeps 4 places in its line for clean addresses: a /60 holding its /48’s 2 cannot keep a neighbour out', async () => {
+    // Someone with a /60 (16 /64s) of an ISP's /48, which the ISP shares out to many homes, puts the /48 past its 200
+    // free failures and keeps its 2 places in the hash queue full, sending again as soon as a try is turned away.
+    const t = await makeApp(mongo);
+    for (let i = 0; i < 30; i++) await seedAccount(t.db, { email: `attacker${i}@example.com` });
+    for (let i = 0; i < 10; i++) await seedAccount(t.db, { email: `pupil${i}@example.com` });
+    const from = (ip: string, email: string, password = 'wrong password!') =>
+      t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email, password }, headers: { 'x-forwarded-for': ip } });
+    const network = networkOf('2001:db8:abcd::1');
+    let sent = 0;
+    const attack = () => {
+      const n = sent++;
+      return from(`2001:db8:abcd:${(0x10 + (n % 16)).toString(16)}::1`, `attacker${n % 30}@example.com`);
+    };
+    // 13 wrong passwords from each /64: 192 at 16 at once, then the network is past its 200 and they go one by one.
+    for (let batch = 0; batch < 12; batch++) {
+      const res = await Promise.all(Array.from({ length: 16 }, attack));
+      expect(res.map((r) => r.statusCode)).toEqual(Array(16).fill(401));
+    }
+    for (let i = 0; i < 16; i++) expect((await attack()).statusCode).toBe(401);
+    /** Holds the 4 hashes and floods from the /60, until `stop`: each of 4 loops sends again once it has an answer. */
+    async function hold() {
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      let holding = 0;
+      const busy = Array.from({ length: 4 }, () =>
+        hashing.run(SERVER_LANE, async () => {
+          holding++;
+          await held;
+        }),
+      );
+      let flooding = true;
+      const statuses: number[] = [];
+      const flooders = Array.from({ length: 4 }, async () => {
+        while (flooding) statuses.push((await attack()).statusCode);
+      });
+      await vi.waitFor(() => expect(holding).toBe(4));
+      await vi.waitFor(() => expect(hashing.waitingIn(network, 'other')).toBe(2));
+      await vi.waitFor(() => expect(statuses.filter((code) => code === 429).length).toBeGreaterThan(10));
+      return {
+        release,
+        stop: async () => {
+          flooding = false;
+          release();
+          await Promise.all([...busy, ...flooders]);
+          // Turned away while the line's 2 were taken; checked when it was served.
+          expect(statuses).toContain(429);
+          expect(statuses).toContain(401);
+        },
+      };
+    }
+
+    const first = await hold();
+    try {
+      // A neighbour's /64, with no try in 15 minutes, gets one of the kept places…
+      const ann = from('2001:db8:abcd:ff00::1', 'pupil0@example.com', PASSWORD);
+      await vi.waitFor(() => expect(hashing.waitingIn(network, 'clean')).toBe(1));
+      // …and so do 3 more, but not a fifth: 4 for one network.
+      const others = [1, 2, 3].map((i) => from(`2001:db8:abcd:ff0${i}::1`, `pupil${i}@example.com`));
+      await vi.waitFor(() => expect(hashing.waitingIn(network, 'clean')).toBe(4));
+      const fifth = await from('2001:db8:abcd:ff04::1', 'pupil4@example.com', PASSWORD);
+      expect(fifth.statusCode).toBe(429);
+      expect(fifth.json()).toMatchObject({ error: 'too_many_attempts', retryAfter: 1 });
+      // The line's turn comes, and its clean tries go first.
+      first.release();
+      expect((await ann).statusCode).toBe(200);
+      expect((await Promise.all(others)).map((r) => r.statusCode)).toEqual([401, 401, 401]);
+    } finally {
+      await first.stop();
+    }
+
+    // A right password counts as a try too: the neighbour's /64 is not clean again for 15 minutes, so right passwords
+    // to an account of one's own cannot hold the kept places either. A /64 with no try still gets in.
+    const second = await hold();
+    try {
+      const again = from('2001:db8:abcd:ff00::2', 'pupil0@example.com', PASSWORD).then((r) => r.statusCode);
+      // Turned away at once, not given a kept place to wait in.
+      expect(await Promise.race([again, new Promise((resolve) => setTimeout(resolve, 2000, 'waiting'))])).toBe(429);
+      const bob = from('2001:db8:abcd:ff05::1', 'pupil5@example.com', PASSWORD);
+      await vi.waitFor(() => expect(hashing.waitingIn(network, 'clean')).toBe(1));
+      second.release();
+      expect((await bob).statusCode).toBe(200);
+    } finally {
+      await second.stop();
+    }
+    t.clock.advance(15 * 60_000 + 1);
+    expect((await from('2001:db8:abcd:ff00::2', 'pupil0@example.com', PASSWORD)).statusCode).toBe(200);
+  }, 30_000);
+
+  it('serves the networks in turn: 40 /48s keeping the hash queue full do not keep a right password out', async () => {
+    const t = await makeApp(mongo);
+    for (let i = 0; i < 40; i++) await seedAccount(t.db, { email: `pupil${i}@example.com` });
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const from = (ip: string, email: string, password = 'wrong password!') =>
+      t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email, password }, headers: { 'x-forwarded-for': ip } });
+    // 40 networks, more than the queue's 32 shared places, each sending wrong passwords from its /64s.
+    const inNetwork = (n: number, k: number) => `2001:db8:${(0x100 + n).toString(16)}:${k}::1`;
+    // Each of their /64s has failed once, so none of their tries is clean (those have places of their own).
+    for (let k = 0; k < 3; k++) {
+      const res = await Promise.all(Array.from({ length: 40 }, (_, n) => from(inNetwork(n, k), `pupil${n}@example.com`)));
+      expect(res.map((r) => r.statusCode)).toEqual(Array(40).fill(401));
+    }
+    const run = hashing.run.bind(hashing);
+    const started: string[] = [];
+    const spied = vi.spyOn(hashing, 'run').mockImplementation((lane, fn) =>
+      run(lane, () => {
+        started.push(lane.network);
+        return fn();
+      }),
+    );
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const busy = Array.from({ length: 4 }, () => run(SERVER_LANE, () => held));
+    try {
+      const flood = Array.from({ length: 80 }, (_, i) => from(inNetwork(i % 40, Math.floor(i / 40)), `pupil${i % 40}@example.com`));
+      await vi.waitFor(() => expect(hashing.waiting).toBe(80));
+      // The queue is full for them: a third try from any of them is turned away at once…
+      const more = await Promise.all(Array.from({ length: 40 }, (_, n) => from(inNetwork(n, 2), `pupil${n}@example.com`)));
+      expect(more.map((r) => [r.statusCode, r.json().retryAfter])).toEqual(Array(40).fill([429, 1]));
+      // …but Ann's network, with none waiting, gets a place, and her turn comes after one try of each of them.
+      const ann = from('198.51.100.7', 'ann@example.com', PASSWORD);
+      await vi.waitFor(() => expect(hashing.waiting).toBe(81));
+      release();
+      expect((await ann).statusCode).toBe(200);
+      expect(started.indexOf(networkOf('198.51.100.7'))).toBe(40);
+      expect((await Promise.all(flood)).map((r) => r.statusCode)).toEqual(Array(80).fill(401));
+    } finally {
+      release();
+      await Promise.all(busy);
+      spied.mockRestore();
+    }
+  }, 30_000);
+
   it('lets a class sign in at once from one address: 10 right passwords at the same moment all get in', async () => {
     const t = await makeApp(mongo);
     for (let i = 0; i < 10; i++) await seedAccount(t.db, { email: `pupil${i}@example.com` });
@@ -204,14 +434,18 @@ describe('POST /auth/sign-in', () => {
     expect(all.map((r) => r.statusCode)).toEqual(Array(10).fill(200));
   });
 
-  it('answers 429 (retry after 1 s) when 32 hashes wait already, and does not count that try', async () => {
+  it('answers 429 (retry after 1 s) when its network may not wait for a hash, and does not count that try', async () => {
     const t = await makeApp(mongo);
     await seedAccount(t.db, { email: 'ann@example.com' });
     const signInWith = (password: string) =>
       t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email: 'ann@example.com', password } });
     let release!: () => void;
     const held = new Promise<void>((resolve) => (release = resolve));
-    const busy = Array.from({ length: 4 + 32 }, () => hashing.run(() => held));
+    // 4 hashes running and 32 waiting, all from this network (the test's requests come from 127.0.0.1), and the 4
+    // places its line keeps for clean tries taken too.
+    const lane = { network: networkOf('127.0.0.1'), limited: false, clean: false };
+    const busy = Array.from({ length: 4 + 32 }, () => hashing.run(lane, () => held));
+    busy.push(...Array.from({ length: 4 }, () => hashing.run({ ...lane, clean: true }, () => held)));
     const refused = await signInWith('wrong password!');
     expect(refused.statusCode).toBe(429);
     expect(refused.json()).toEqual({ error: 'too_many_attempts', message: expect.any(String), retryAfter: 1 });
@@ -626,6 +860,51 @@ describe('invites', () => {
     expect(res.json()).toMatchObject({ error: 'too_many_attempts', retryAfter: 2 });
     expect((await check('127.0.0.1')).statusCode).toBe(429);
     expect((await check('198.51.100.1')).statusCode).toBe(200);
+  });
+
+  it('counts wrong tokens against the address only: they never slow the rest of its network', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const created = await invite(t, admin.cookie);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const check = (ip: string, token: string) =>
+      t.call({ method: 'POST', url: '/api/v1/auth/invite/check', payload: { token }, headers: { 'x-forwarded-for': ip } });
+    const signInFrom = (ip: string) =>
+      t.call({
+        method: 'POST',
+        url: '/api/v1/auth/sign-in',
+        payload: { email: 'ann@example.com', password: PASSWORD },
+        headers: { 'x-forwarded-for': ip },
+      });
+    const networks: [(i: number) => string, string][] = [
+      [(i) => `203.0.113.${i}`, '203.0.113.200'],
+      [(i) => `2001:db8:abcd:${i.toString(16)}00::1`, '2001:db8:abcd:ff00::1'],
+    ];
+    for (const [inNetwork, pupil] of networks) {
+      // Five addresses send wrong tokens until each is kept waiting: 250 failures in the network.
+      for (let i = 1; i <= 5; i++) {
+        for (let k = 0; k < 50; k++) expect((await check(inNetwork(i), `wrong-${i}-${k}`)).statusCode).toBe(410);
+        expect((await check(inNetwork(i), 'wrong')).statusCode).toBe(429);
+      }
+      // Another address of that network is not slowed, signing in or opening a link…
+      expect((await signInFrom(pupil)).statusCode).toBe(200);
+      expect((await check(pupil, tokenOf(created.link))).statusCode).toBe(200);
+      // …and the network keeps the hash queue's shared places: 3 sign-ins at once all wait while the hashes are busy
+      // (from addresses with a wrong token each, so not in the places kept for clean tries).
+      for (const i of [6, 7, 8]) expect((await check(inNetwork(i), 'wrong')).statusCode).toBe(410);
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      const busy = Array.from({ length: 4 }, () => hashing.run(SERVER_LANE, () => held));
+      try {
+        const signIns = [6, 7, 8].map((i) => signInFrom(inNetwork(i)));
+        await vi.waitFor(() => expect(hashing.waitingIn(networkOf(pupil), 'other')).toBe(3));
+        release();
+        expect((await Promise.all(signIns)).map((r) => r.statusCode)).toEqual([200, 200, 200]);
+      } finally {
+        release();
+        await Promise.all(busy);
+      }
+    }
   });
 });
 

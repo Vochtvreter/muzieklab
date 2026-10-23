@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { AccountDetail, AdminUpdateRequest, InviteRequest, Me } from '../shared/api';
 import {
-  ACCOUNTS, accountDetail, adminApi, announcer, apiError, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, RESET_LINK_CREATED, seedAccount,
-  SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
+  ACCOUNTS, accountDetail, adminApi, announcer, apiError, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, recordAnnouncements,
+  RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
 } from './helpers';
 
 /**
@@ -17,6 +17,11 @@ const LIES: Me = { ...ME_MEMBER, id: '6718f0c2a1b2c3d4e5f60003', email: LINK.ema
 const accountSection = (page: import('@playwright/test').Page) => page.getByRole('region', { name: 'Account' });
 /** The one-line message Settings → Account shows after an account change (also announced: see `announcer`). */
 const notice = (page: import('@playwright/test').Page) => accountSection(page).locator('.row-status');
+/**
+ * A form's done line (FormDone: a green check). It is plain text: the app's live region (#announcer) reads it out, so
+ * a test finds it by its class, and checks the announcement with `announcer`.
+ */
+const done = (scope: import('@playwright/test').Page | import('@playwright/test').Locator, text: string) => scope.locator('.form-done').filter({ hasText: text });
 
 test('sign in: a wrong password, then the right one; Settings shows the account; sign out', async ({ page }) => {
   const api = await mockApi(page, {
@@ -78,6 +83,37 @@ test('sign in: too many tries says how long to wait', async ({ page }) => {
   await page.getByLabel('Password', { exact: true }).fill('another guess');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('alert')).toHaveText('Too many tries. Try again in 2 minutes.');
+});
+
+test('sign in: a busy server says so, never "too many tries"; the next try gets in', async ({ page }) => {
+  // The server's line for password checks is full (BACKEND-PLAN.md §5.2): it took no try. It says retryAfter 1, as a
+  // counter's wait does in its last second, so only the code tells "busy" from "too many tries".
+  let tries = 0;
+  const api = await mockApi(page, {
+    ...SIGNED_OUT,
+    'POST /auth/sign-in': () =>
+      tries++ === 0 ? { status: 429, json: { error: 'busy', message: 'The server is busy', retryAfter: 1 }, headers: { 'retry-after': '1' } } : { json: ME_MEMBER },
+  });
+  await page.goto('./#/signin');
+  await page.getByLabel('Email').fill('sam@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('a good long password');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Muzieklab is busy. Try again in a moment.');
+  // Not a field's fault: nothing is marked invalid.
+  await expect(page.getByLabel('Password', { exact: true })).not.toHaveAttribute('aria-invalid', 'true');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  expect(api.callsTo('POST /auth/sign-in')).toHaveLength(2);
+});
+
+test('sign in, in Dutch: a busy server (too_many_attempts with reason busy) says so too', async ({ page }) => {
+  await seed(page, { prefs: { language: 'nl' } });
+  await mockApi(page, { ...SIGNED_OUT, 'POST /auth/sign-in': { status: 429, json: { error: 'too_many_attempts', reason: 'busy', message: 'The server is busy', retryAfter: 1 } } });
+  await page.goto('./#/signin');
+  await page.getByLabel('E-mailadres').fill('sam@example.com');
+  await page.getByLabel('Wachtwoord', { exact: true }).fill('een goed lang wachtwoord');
+  await page.getByRole('button', { name: 'Inloggen' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Muzieklab heeft het even druk. Probeer het zo opnieuw.');
 });
 
 test('sign in: no answer from the API says so', async ({ page }) => {
@@ -219,7 +255,9 @@ test('account: name, email and password', async ({ page }) => {
   await expect(save).toBeDisabled();
   await page.getByLabel('Name').fill('Sam J.');
   await save.click();
-  await expect(page.getByText('Name saved.')).toBeVisible();
+  await expect(done(page, 'Name saved.')).toBeVisible();
+  // Read out by the live region that was there all along (focus left the busy Save button).
+  await expect(announcer(page)).toHaveText('Name saved.');
   expect(api.callsTo('PATCH /me')[0].body).toEqual({ name: 'Sam J.' });
 
   // Email: a wrong password is said at the password field.
@@ -231,7 +269,8 @@ test('account: name, email and password', async ({ page }) => {
   await expect(page.getByText("That's not your current password.")).toBeVisible();
   await page.getByLabel('Current password').first().fill('my password here');
   await page.getByRole('button', { name: 'Save email' }).click();
-  await expect(page.getByText('Email changed. Sign in with it from now on.')).toBeVisible();
+  await expect(done(page, 'Email changed. Sign in with it from now on.')).toBeVisible();
+  await expect(announcer(page)).toHaveText('Email changed. Sign in with it from now on.');
   await expect(page.getByText('sam.j@example.com')).toBeVisible();
 
   // Password.
@@ -239,7 +278,10 @@ test('account: name, email and password', async ({ page }) => {
   await passwords.getByLabel('Current password').fill('my password here');
   await passwords.getByLabel('New password').fill('a tune in seven notes');
   await passwords.getByRole('button', { name: 'Change password' }).click();
-  await expect(passwords.getByRole('status')).toHaveText('Password changed. Your other devices are signed out.');
+  await expect(passwords.locator('.form-done')).toHaveText('Password changed. Your other devices are signed out.');
+  await expect(announcer(page)).toHaveText('Password changed. Your other devices are signed out.');
+  // Not a second live region of its own: the announcement is the one that is read (once).
+  await expect(passwords.locator('.form-done')).not.toHaveAttribute('role', 'status');
   await expect(passwords.getByLabel('Current password')).toHaveValue('');
   expect(api.callsTo('POST /me/password')[0].body).toEqual({ currentPassword: 'my password here', newPassword: 'a tune in seven notes' });
 
@@ -271,6 +313,12 @@ test('account: sign out everywhere, confirmed', async ({ page }) => {
   // The button that was pressed is gone: the result is read out by the live region that was there all along.
   await expect(announcer(page)).toHaveText('Signed out on every device.');
   expect(api.callsTo('POST /auth/sign-out-everywhere')).toHaveLength(1);
+  // Switching the language shows the line in Dutch, but does not read it out again as if it happened twice.
+  const said = await recordAnnouncements(page);
+  await page.getByRole('button', { name: 'Nederlands' }).click();
+  await expect(notice(page)).toHaveText('Op elk apparaat uitgelogd.');
+  await page.waitForTimeout(500);
+  expect(await said()).toEqual([]);
 });
 
 test('account: download my data', async ({ page }) => {
@@ -282,7 +330,8 @@ test('account: download my data', async ({ page }) => {
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: /^Download my data/ }).click();
   expect((await download).suggestedFilename()).toBe('muzieklab-account.json');
-  await expect(page.getByText('Downloaded: muzieklab-account.json.')).toBeVisible();
+  await expect(done(page, 'Downloaded: muzieklab-account.json.')).toBeVisible();
+  await expect(announcer(page)).toHaveText('Downloaded: muzieklab-account.json.');
 });
 
 test('account: delete, confirmed with the password', async ({ page }) => {
@@ -346,7 +395,10 @@ test('no API (production today): no Account section, and no request until Settin
   await expectClickable(page.getByRole('link', { name: /^Privacy/ }));
 });
 
-const OFFLINE = 'Offline: you can change your account again once Muzieklab can be reached.';
+// Not "Offline": the device may well be online, with the API restarting or answering 502 during a deploy.
+const OFFLINE = "Muzieklab can't be reached right now. You can change your account again once it can.";
+const STILL = "Muzieklab still can't be reached.";
+const BACK = 'Muzieklab can be reached again.';
 
 test('offline with a cached account: the account shows, read only; Try again picks it up once the API answers', async ({ page }) => {
   await seedAccount(page, ME_MEMBER);
@@ -360,17 +412,26 @@ test('offline with a cached account: the account shows, read only; Try again pic
   await expect(page.getByText('sam@example.com')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Change password' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete account' })).toHaveCount(0);
-  // Still no answer: the note stays, ready to try again.
+  // Still no answer (a 502 fails at once): Try again keeps its focus while it checks, shows that it does, says that
+  // there is still no answer, and is ready again.
   const api = await mockApi(page, { 'GET /me': { status: 502 } });
-  await page.getByRole('button', { name: 'Try again' }).click();
-  await expect.poll(() => api.callsTo('GET /me').length).toBe(1);
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeEnabled();
+  const retry = page.getByRole('button', { name: 'Try again' });
+  await retry.click();
+  const checking = page.getByRole('button', { name: 'Checking…' });
+  await expect(checking).toBeFocused();
+  await expect(checking).toHaveAttribute('aria-disabled', 'true');
+  await expect(announcer(page)).toHaveText(STILL);
+  await expect(retry).toBeFocused();
+  expect(api.callsTo('GET /me')).toHaveLength(1);
   await expect(page.getByText(OFFLINE)).toBeVisible();
-  // The API is back (no 'online' event: it was the API, not the network): Try again shows the forms.
+  // The API is back (no 'online' event: it was the API, not the network): Try again shows the forms, says so, and
+  // focus goes to the start of the profile instead of the page.
   api.set(MEMBER);
-  await page.getByRole('button', { name: 'Try again' }).click();
+  await retry.click();
   await expect(page.getByRole('button', { name: 'Change password' })).toBeVisible();
   await expect(page.getByText(OFFLINE)).toHaveCount(0);
+  await expect(announcer(page)).toHaveText(BACK);
+  await expect(page.getByRole('heading', { name: 'Profile' })).toBeFocused();
 });
 
 test('offline in Settings: Try again there, and Settings asks again by itself when it opens later', async ({ page }) => {
@@ -381,7 +442,10 @@ test('offline in Settings: Try again there, and Settings asks again by itself wh
   await expect(section.getByText(OFFLINE)).toBeVisible();
   const api = await mockApi(page, { 'GET /me': { status: 503 } });
   await section.getByRole('button', { name: 'Try again' }).click();
-  await expect.poll(() => api.callsTo('GET /me').length).toBe(1);
+  await expect(section.getByRole('button', { name: 'Checking…' })).toBeFocused();
+  await expect(announcer(page)).toHaveText(STILL);
+  await expect(section.getByRole('button', { name: 'Try again' })).toBeFocused();
+  expect(api.callsTo('GET /me')).toHaveLength(1);
   await expect(section.getByText(OFFLINE)).toBeVisible();
   // To Path and back soon after: not asked again yet (at most once every 10 s).
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Path' }).click();
@@ -396,6 +460,20 @@ test('offline in Settings: Try again there, and Settings asks again by itself wh
   await expect(section.getByRole('button', { name: 'Sign out' })).toBeVisible();
   await expect(section.getByText(OFFLINE)).toHaveCount(0);
   expect(api.callsTo('GET /me')).toHaveLength(2);
+});
+
+test('offline in Settings: Try again once the API is back says so, and focus goes to the account', async ({ page }) => {
+  await seedAccount(page, ME_MEMBER);
+  await page.goto('./#/settings');
+  const section = accountSection(page);
+  await expect(section.getByText(OFFLINE)).toBeVisible();
+  await mockApi(page, MEMBER);
+  await section.getByRole('button', { name: 'Try again' }).click();
+  await expect(section.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  await expect(section.getByText(OFFLINE)).toHaveCount(0);
+  await expect(announcer(page)).toHaveText(BACK);
+  // The note and its button are gone: focus is on the account, not the page.
+  await expect(section.getByRole('link', { name: /^Sam Jansen/ })).toBeFocused();
 });
 
 test('account with no API and nothing cached: says so, and Try again asks again', async ({ page }) => {
@@ -454,6 +532,17 @@ test('admin accounts: no answer offers Try again; a list the account may no long
   await expect(page.getByText("You don't have access to this page.")).toBeVisible();
   await page.locator('.acct-message').getByRole('link', { name: 'Back to settings' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+});
+
+test('admin accounts: the list that Try again brings after a failed first load is read out', async ({ page }) => {
+  const api = await mockApi(page, { ...adminApi(), 'GET /admin/accounts': { status: 502 } });
+  await page.goto('./#/admin');
+  await expect(page.getByRole('alert')).toHaveText("Can't reach Muzieklab right now. Check your connection and try again.");
+  api.set({ 'GET /admin/accounts': adminApi()['GET /admin/accounts'] });
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('section[aria-labelledby="h-accounts"]').getByRole('heading', { name: '4 accounts' })).toBeVisible();
+  // The focused Try again is gone: the live region says what came instead.
+  await expect(announcer(page)).toHaveText('4 accounts');
 });
 
 test('admin accounts as a member: no Accounts row, and the page says there is no access', async ({ page }) => {
@@ -613,6 +702,8 @@ test('admin one account: a role and premium are saved at once; a guard rail come
   await page.getByLabel('Last day (optional)').fill('2027-03-31');
   await page.getByRole('button', { name: 'Save date' }).click();
   await expect(premium).toContainText('Until March 31, 2027');
+  await expect(done(page.getByRole('region', { name: 'Premium' }), 'Saved.')).toBeVisible();
+  await expect(announcer(page)).toHaveText('Saved.');
   expect(await sent(4)).toEqual({ premium: { active: true, until: '2027-03-31' } });
   await expect(page.getByRole('button', { name: 'Save date' })).toBeDisabled();
   // A day in the past is refused before anything is sent; the field says so, and has focus.
@@ -650,7 +741,8 @@ test('admin one account: name and email are saved together; a taken email is sai
   await card.getByLabel('Email').fill('Sam.deJong@example.com');
   await save.click();
   await expect(page.getByRole('heading', { level: 1, name: 'Sam de Jong' })).toBeVisible();
-  await expect(card.getByRole('status')).toHaveText('Saved.');
+  await expect(card.locator('.form-done')).toHaveText('Saved.');
+  await expect(announcer(page)).toHaveText('Saved.');
   await expect(card.getByLabel('Email')).toHaveValue('sam.dejong@example.com');
   expect(api.callsTo('PATCH /admin/accounts/:id').at(-1)!.body).toEqual({ name: 'Sam de Jong', email: 'Sam.deJong@example.com' });
 });
@@ -666,7 +758,8 @@ test('admin one account: a new invite link with its message; Cancel invite, kept
   await expect(statusPill(page)).toHaveText('Invited');
   await expect(page.getByRole('region', { name: 'Details' })).toContainText('Invite link');
   await page.getByRole('button', { name: /^New invite link/ }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'New link ready. Send it yourself.' })).toBeVisible();
+  await expect(done(page, 'New link ready. Send it yourself.')).toBeVisible();
+  await expect(announcer(page)).toHaveText('New link ready. Send it yourself.');
   await expect(page.getByLabel('Invite link', { exact: true })).toHaveValue(INVITE_LINK_CREATED.link);
   await expect(page.getByLabel('Message to send')).toHaveValue(/^Hi Lies Bakker, I've made you an account for Muzieklab\./);
   expect(api.callsTo('POST /admin/accounts/:id/invite-link')[0].params.id).toBe(LIES_INVITED.id);
@@ -714,14 +807,59 @@ test('admin one account: Cancel invite after the invite was accepted meanwhile d
 });
 
 test('admin one account: a new password link for an active account, with its own message', async ({ page }) => {
-  await mockApi(page, { ...adminApi(), 'POST /admin/accounts/:id/reset-link': { json: RESET_LINK_CREATED } });
+  // A second press makes another link (the first stops working). Its answer is held back until `reply()`.
+  const second = { ...RESET_LINK_CREATED, link: RESET_LINK_CREATED.link.replace(/.$/, 'Z') };
+  let made = 0;
+  let reply = (): void => undefined;
+  const held = new Promise<void>((resolve) => (reply = resolve));
+  const api = await mockApi(page, {
+    ...adminApi(),
+    'POST /admin/accounts/:id/reset-link': async () => {
+      if (made++ === 0) return { json: RESET_LINK_CREATED };
+      await held;
+      return { json: second };
+    },
+  });
   await page.goto('./#/admin/account/' + SAM_ACTIVE.id);
-  await expect(page.getByRole('button', { name: /^New password link/ })).toContainText('Works for 24 hours, once.');
-  await page.getByRole('button', { name: /^New password link/ }).click();
+  // No scroll anchoring, as in Safari: the page itself must not move when the result is replaced.
+  await page.addStyleTag({ content: '* { overflow-anchor: none !important; }' });
+  // The same button while it says "Making a link…".
+  const button = page.getByRole('button', { name: /^(New password link|Making a link…)/ });
+  await expect(button).toContainText('Works for 24 hours, once.');
+  await button.click();
   await expect(page.getByLabel('New password link', { exact: true })).toHaveValue(RESET_LINK_CREATED.link);
   await expect(page.getByLabel('Message to send')).toHaveValue(
     new RegExp('^' + escaped(`Hi Sam Jansen, here's a link to choose a new password for Muzieklab: ${RESET_LINK_CREATED.link} — it works until October 24, 2026 at `)),
   );
+  await expect(done(page, 'New link ready. Send it yourself.')).toBeVisible();
+  await expect(announcer(page)).toHaveText('New link ready. Send it yourself.');
+  await page.getByRole('button', { name: 'Copy message' }).click();
+  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();
+
+  // The admin has scrolled down to the result (the page scrolls) and presses again: nothing moves, during or after.
+  await page.getByRole('button', { name: 'Copied' }).evaluate((el) => el.scrollIntoView({ block: 'end' }));
+  expect(await page.locator('.page').evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expectClickable(button);
+  const top = async (): Promise<number> => Math.round((await button.boundingBox())!.y);
+  const before = await top();
+  // The same words after the second press are read out again: the button was busy (focus left it), and only this
+  // says that a new link was made.
+  const said = await recordAnnouncements(page);
+  await button.click();
+  await expect(button).toHaveAccessibleName(/^Making a link…/);
+  expect(await top()).toBe(before);
+  // Meanwhile the old link keeps its place, dimmed, and cannot be copied.
+  await expect(page.locator('.link-result')).toHaveAttribute('inert', '');
+  await expect(page.locator('.link-result')).toHaveCSS('opacity', '0.45');
+  reply();
+  await expect(page.getByLabel('New password link', { exact: true })).toHaveValue(second.link);
+  await expect(page.getByLabel('Message to send')).toHaveValue(new RegExp(escaped(second.link)));
+  await expect(page.locator('.link-result')).not.toHaveAttribute('inert', /.*/);
+  await expect.poll(said).toEqual(['New link ready. Send it yourself.']);
+  expect(await top()).toBe(before);
+  // The new link can be copied.
+  await expectClickable(page.getByRole('button', { name: 'Copy message' }));
+  expect(api.callsTo('POST /admin/accounts/:id/reset-link')).toHaveLength(2);
 });
 
 test('admin one account: Delete account, confirmed; the list says so', async ({ page }) => {

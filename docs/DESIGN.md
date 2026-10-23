@@ -1390,12 +1390,17 @@ server.
   - Signed out: one row, *Sign in* (*Accounts are by invitation.*).
   - Signed in: the account (name and email) → Account; *Accounts* (*Invite people and manage roles*) → the admin
     screens, only with `accounts.read`; and *Sign out*.
-  - No answer from the API, with a cached account: the account row, then *Offline: you can change your account again
-    once Muzieklab can be reached.* with **Try again**. The app also asks again when Settings or an account screen
-    opens (at most once every 10 s), when it comes back into view, and when the device is back online.
+  - No answer from the API, with a cached account: the account row, then *Muzieklab can't be reached right now. You
+    can change your account again once it can.* with **Try again**. (Not "Offline": the device may be online while
+    the API restarts or answers 502.) Try again keeps its focus while it checks and shows *Checking…* for at least
+    0.6 s. The outcome is read out: *Muzieklab still can't be reached.* (Try again is ready again), or *Muzieklab can
+    be reached again.*, and focus goes to the account row (on Account, to the Profile heading). The app also asks
+    again when Settings or an account screen opens (at most once every 10 s), when it comes back into view, and when
+    the device is back online.
   - After an action that ends on Settings, one line with a green check says what happened: *Signed out.*, *Signed out
     on every device.*, *Your account was deleted.*, *You're signed in. Welcome to Muzieklab.*, or *Password saved. Your
-    other devices are signed out.* It is also read out, and it goes when Settings is left.
+    other devices are signed out.* It is read out once, when it happens (not again when the language is switched),
+    and it goes when Settings is left.
 - Settings → About has a **Privacy** row (*What stays on this device, and what an account stores*), with or without an
   API.
 
@@ -1418,10 +1423,10 @@ server.
 
 | Screen | Frame | What it shows | States |
 |---|---|---|---|
-| **Sign in** `#/signin` | form on its own | Email, Password (with Show), **Sign in**. Under the card: *Forgot your password? Ask the person who invited you.* and a Privacy link. | An empty field says what is missing. A wrong email or password: *Email or password is not right.*, with the password selected. Too many tries: *Too many tries. Try again in 2 seconds.* No answer. Already signed in: Account. Success: Settings. |
-| **Accept invite** `#/invite/<token>` | form on its own | *Checking the link…*, then *Welcome, {name}* over *Choose a password for {email}.* Name (filled in; it may be changed), New password with the rules (*At least 10 characters. Not a common password, and not your email.*), **Create account**. | A link that no longer works: the message and **Home**. No answer: the message and **Try again**. Success: Settings, with the welcome line. |
+| **Sign in** `#/signin` | form on its own | Email, Password (with Show), **Sign in**. Under the card: *Forgot your password? Ask the person who invited you.* and a Privacy link. | An empty field says what is missing. A wrong email or password: *Email or password is not right.*, with the password selected. Too many tries: *Too many tries. Try again in 2 seconds.* The server busy (its line for password checks is full, so it counted no try): *Muzieklab is busy. Try again in a moment.*, never "too many tries". Both are form errors. No answer. Already signed in: Account. Success: Settings. |
+| **Accept invite** `#/invite/<token>` | form on its own | *Checking the link…*, then *Welcome, {name}* over *Choose a password for {email}.* Name (filled in; it may be changed), New password with the rules (*At least 10 characters. Not a common password, and not your email.*), **Create account**. | A link that no longer works: the message and **Home**. No answer, or too many tries at checking the link: the message and **Try again**. Too many tries or the server busy when the form is sent: as Sign in, the form error. Success: Settings, with the welcome line. |
 | **New password** `#/reset/<token>` | form on its own | The same with one field, *Saving it signs out your other devices.*, and **Save password**. | As Accept invite. Success: Settings, with *Password saved…* |
-| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account. | Loading. Signed out: Sign in. Offline with a cached account: the offline note with Try again at the top, the profile read only, the other sections hidden. Offline with nothing cached: the message and Try again. A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*). |
+| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account. | Loading. Signed out: Sign in. No answer from the API with a cached account: the note (*Muzieklab can't be reached right now…*) with Try again at the top, the profile read only, the other sections hidden. No answer with nothing cached: the message and Try again. Too many tries and the server busy, where the current password is asked (Change email, Change password, Delete account): as Sign in, the form error. A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*). |
 | **Privacy** `#/privacy` | sub-page | A lead line, then *Without an account*, *With an account*, *Why*, *Where*, *How long*, *Your rights*, *Age*, and the day it was last updated. | None. Opened from Sign in (`?from=signin`), its back arrow goes to Sign in. |
 | **Accounts** `#/admin` | sub-page | **Invite someone**, the screen's one filled button: in the title row from 700 px, full width under the title on a phone. A search field (*Search*, *Name or email*; it searches once typing pauses for 250 ms, or on Enter), the status filter (All · Invited · Active · Blocked), then one section whose label counts (*4 accounts*, *1 account found*). Each row: the name (*(you)* after your own), the email, a status pill and the roles, and a chevron. | Checking; loading; *No accounts match.*; an error with Try again (outlined, as Invite someone is the filled button); no access (a lock, *You don't have access to this page.*, *Only admins manage accounts.*, Back to settings); no answer; signed out: Sign in. After Cancel invite or Delete account, a line saying so, once (*The invite for {name} was canceled.*). |
 | **Invite someone** `#/admin/invite` | sub-page | *Person*: Email, Name. *Roles* (only with `roles.grant`): a switch per role with what it does (*Makes classes and follows pupils (coming later).*), and *Without a role, they can practice and keep their own progress.* **Create invite**. Then a card: *Invite for {name} is ready* (it gets focus), *Send the link yourself, for example with the message below.*, the link with **Copy link**, *Works until {date and time}.* **This link is shown only now. Make a new one if it gets lost.**, and the message with **Copy message**. Under it *Invite someone else* (outlined) and **Done**. | An empty field. *There's already an account with this email.* under Email. No access; no answer. |
@@ -1444,7 +1449,8 @@ both work.
   taken, a new password that cannot be used, or a current password that is not right. Everything else is the **form
   error**: a wrong email or password on Sign in (which of the two is not told), and every request that failed (no
   answer, a server error). It is a box above the button in `--miss-soft` / `--miss-ink`, radius 12, 14 px / 600, with
-  the alert icon, and it is read out. A done message is a green check and one line, 14 px / 600.
+  the alert icon, and it is read out. A done message is a green check and one line, 14 px / 600, read out once by the
+  live region (below).
 - **Buttons:** one filled button per screen, as elsewhere: Sign in, Create account, Save password, Invite someone,
   Create invite, Done, Try again. A card's own small form (Save, Save email, Change password, Save date) has a
   **tonal** button: `--accent-soft` with `--accent-ink` text. A busy button says so (*Signing in…*) and cannot be
@@ -1458,12 +1464,17 @@ both work.
 - **Copy field:** the value, read only, with a 48 px Copy button that turns into a check and *Copied* for 2 s, as
   Results' Copy code does. A link is in JetBrains Mono; a message is in Figtree, as tall as its text. Where copying is
   not allowed, it selects the text instead: *Selected. Copy it with your device's copy command.*
-- **Status filter:** the foundations' chips, as one pick-one group (`aria-pressed`). On a phone they fill the row;
-  under 360 px they are an even 2 × 2 grid in every language (*Uitgenodigd*, *Geblokkeerd*). It is not a segmented
-  control: four statuses do not fit one track at 320 px, or at phone width in Dutch.
-- **Announcements:** one polite live region for the whole app (`#announcer`) reads out results whose button is gone or
-  far away: Settings' one-line notices, the accounts list's line after Cancel invite or Delete account, Block and
-  Unblock, and the count after a search or a filter.
+- **Status filter:** the foundations' chips, as one pick-one group (`aria-pressed`), in two pairs (All · Invited,
+  Active · Blocked). A line breaks only between the pairs, so the filter is all four on one line where they fit and
+  otherwise an even 2 × 2 grid, in every language and at every width (in Dutch, *Uitgenodigd* and *Geblokkeerd*, two
+  and two up to about 373 px). Never three and a lone one, which reads as a separate wide button. On a phone they
+  fill the row. It is not a segmented control: four statuses do not fit one track at 320 px, or at phone width in
+  Dutch.
+- **Announcements:** one polite live region for the whole app (`#announcer`) reads out results whose button is gone,
+  busy or far away: Settings' one-line notices, the accounts list's line after Cancel invite or Delete account, Block
+  and Unblock, the count after a search, a filter or Try again, the outcome of Try again on the note for no answer,
+  every form's done line (*Name saved.*, *Saved.*, *New link ready. Send it yourself.*) and Settings' *Progress was
+  reset.* Those lines are plain text, not a `role="status"` of their own, so nothing is read twice.
 
 **Destructive confirm** (`ConfirmAction`) is Settings' Reset progress pattern.
 - The row button (red words and icon) turns, in place, into the question in bold, one line on what happens, any field

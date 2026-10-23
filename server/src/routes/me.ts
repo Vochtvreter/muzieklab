@@ -15,7 +15,7 @@ import { toAuditEntry, toExportAccount, toMe } from '../accounts/views.js';
 import { signedIn } from '../auth/guard.js';
 import { hashPassword, passwordProblem } from '../auth/passwords.js';
 import { clearSessionCookie } from '../auth/sessions.js';
-import { confirmPassword } from '../auth/tries.js';
+import { confirmPassword, hashLane } from '../auth/tries.js';
 import type { AppContext } from '../context.js';
 import { inTransaction, isDuplicateKey, lockAdmins, type AccountDoc } from '../db.js';
 import { ApiError } from '../errors.js';
@@ -73,7 +73,7 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
       const problem = passwordProblem(request.body.newPassword, account.email);
       if (problem) throw new ApiError(problem, 'This password cannot be used');
       await confirmPassword(ctx, request, account, request.body.currentPassword);
-      const passwordHash = await hashPassword(request.body.newPassword);
+      const passwordHash = await hashPassword(request.body.newPassword, hashLane(ctx, request.ip));
       const now = ctx.now();
       await inTransaction(ctx.db, async (session) => {
         await c.accounts.updateOne(

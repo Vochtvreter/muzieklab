@@ -13,6 +13,7 @@ import { Segmented, SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { RowLink, Section } from '../components/Rows';
 import { useBreakpoint, useDocTitle, useReducedMotion } from '../hooks';
+import { announce } from '../lib/announce';
 import { RELEASES } from '../lib/changelog';
 import { signedMs } from '../lib/format';
 import { Link } from '../router';
@@ -162,13 +163,15 @@ export function SettingsScreen(): JSX.Element {
                     dispatch({ type: 'resetProgress' });
                     setConfirm(false);
                     setWiped(true);
+                    // The button that was pressed is gone: the line under it is read out (ui/lib/announce.ts).
+                    announce(t('settings.resetDone'));
                   }}>
                     {t('settings.resetConfirm')}
                   </button>
                 </div>
               )}
               {wiped && (
-                <div className="reset-done m-in" role="status">
+                <div className="reset-done m-in">
                   <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
                   {t('settings.resetDone')}
                 </div>

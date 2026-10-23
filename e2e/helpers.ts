@@ -331,3 +331,20 @@ export const RESET_LINK_CREATED = { link: 'https://vivanova.app/#/reset/' + TOKE
  * shows on another screen, or a search's count. It is in the page from the start; a text stays in it for a few seconds.
  */
 export const announcer = (page: Page): Locator => page.locator('#announcer');
+
+/**
+ * From now on, keeps every text the live region says (until the page reloads); the returned function reads them, in
+ * order. For checking that something is not read out (again): `announcer` only shows the latest text.
+ */
+export async function recordAnnouncements(page: Page): Promise<() => Promise<string[]>> {
+  await page.evaluate(() => {
+    const region = document.getElementById('announcer');
+    if (!region) throw new Error('no #announcer in the page');
+    const said: string[] = [];
+    (window as unknown as { muzieklabSaid: string[] }).muzieklabSaid = said;
+    new MutationObserver(() => {
+      if (region.textContent) said.push(region.textContent);
+    }).observe(region, { childList: true, subtree: true, characterData: true });
+  });
+  return () => page.evaluate(() => [...(window as unknown as { muzieklabSaid: string[] }).muzieklabSaid]);
+}

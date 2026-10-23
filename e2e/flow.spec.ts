@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { pad, pathUpTo, seed, SOL_DONE, VIEWPORTS } from './helpers';
+import { announcer, pad, pathUpTo, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
  * The main loop: Home → lesson 2.1 (rhythm: quarter notes, 60 BPM, 2 bars, one bar of count-in; after sol's unit) →
@@ -78,6 +78,17 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
     await expect(page.getByText(hits > 0 ? '1-day streak' : 'No streak yet')).toBeVisible();
   });
 }
+
+test('Settings: Reset progress, confirmed, says so; the line is read out, as the buttons are gone', async ({ page }) => {
+  await seed(page, { progress: { lessons: SOL_DONE } });
+  await page.goto('./#/settings');
+  await page.getByRole('button', { name: 'Reset progress' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(page.locator('.reset-done')).toHaveText('Progress was reset.');
+  await expect(page.locator('.reset-done')).not.toHaveAttribute('role', 'status');
+  await expect(announcer(page)).toHaveText('Progress was reset.');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('muzieklab.progress.v1') ?? '{}').lessons ?? {})).toEqual({});
+});
 
 test('a reload on Play keeps the lesson and waits for Start', async ({ page }) => {
   await seed(page, { progress: { lessons: SOL_DONE } });

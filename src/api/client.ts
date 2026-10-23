@@ -12,14 +12,17 @@ export const API_BASE = '/api/v1';
 /** A request that takes longer than this is given up (and is `unavailable`). */
 export const API_TIMEOUT_MS = 15_000;
 
-/** Every code the server sends, plus `unavailable`: no answer from the API (offline, timeout, or no API on this site). */
-export type ClientErrorCode = ErrorCode | 'unavailable';
+/**
+ * Every code the server sends, plus `unavailable`: no answer from the API (offline, timeout, or no API on this site),
+ * and `busy`: the server's line for password checks is full (BACKEND-PLAN.md §5.2), which counts nobody's tries.
+ */
+export type ClientErrorCode = ErrorCode | 'unavailable' | 'busy';
 
 /** A request that did not succeed. `code` is what the app translates (apiError.<code>, ui/lib/apiErrors.ts). */
 export class ApiError extends Error {
   readonly status: number;
   readonly code: ClientErrorCode;
-  /** With too_many_attempts: seconds until the next try (from the body, else the Retry-After header). */
+  /** With too_many_attempts (and busy): seconds until the next try (from the body, else the Retry-After header). */
   readonly retryAfter?: number;
 
   constructor(status: number, code: ClientErrorCode, message: string = code, retryAfter?: number) {
@@ -39,6 +42,16 @@ export interface RequestOptions {
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 const isCode = (v: unknown): v is ErrorCode => typeof v === 'string' && (ERROR_CODES as readonly string[]).includes(v);
+
+/** An error body as it arrives: nothing in it is trusted until checked. */
+type ErrorBodyIn = { [K in keyof ApiErrorBody]?: unknown } & { reason?: unknown };
+
+/**
+ * The server's "busy" answer: its line for password checks is full, so it took no try (BACKEND-PLAN.md §5.2). It is not
+ * "too many tries", which would blame someone who typed their password once. It comes as the code `busy`, and is also
+ * read as `too_many_attempts` with `reason: 'busy'`.
+ */
+const isBusy = (data: ErrorBodyIn): boolean => data.error === 'busy' || (data.error === 'too_many_attempts' && data.reason === 'busy');
 
 /** Sends one request; resolves with the response once it came within the timeout. */
 async function send(method: Method, path: string, body: unknown, opts: RequestOptions): Promise<Response> {
@@ -71,17 +84,18 @@ const isJson = (res: Response): boolean => /^application\/(.+\+)?json\b/i.test(r
 /** An error response as an ApiError: the body's code when it has one the contract knows. */
 async function failure(res: Response): Promise<ApiError> {
   if (!isJson(res)) return new ApiError(res.status, 'unavailable', `HTTP ${res.status} without a JSON body`);
-  let data: Partial<ApiErrorBody> | null = null;
+  let data: ErrorBodyIn;
   try {
-    data = (await res.json()) as Partial<ApiErrorBody>;
+    const body: unknown = await res.json();
+    data = body !== null && typeof body === 'object' ? (body as ErrorBodyIn) : {};
   } catch {
     return new ApiError(res.status, 'unavailable', `HTTP ${res.status} with a broken JSON body`);
   }
   const header = Number(res.headers.get('retry-after'));
-  const retryAfter = typeof data?.retryAfter === 'number' ? data.retryAfter : Number.isFinite(header) && header > 0 ? header : undefined;
+  const retryAfter = typeof data.retryAfter === 'number' ? data.retryAfter : Number.isFinite(header) && header > 0 ? header : undefined;
   // An error code this app does not know yet (a newer server): a server fault, or a request it did not take.
-  const code: ErrorCode = isCode(data?.error) ? data.error : res.status >= 500 ? 'internal' : 'bad_request';
-  return new ApiError(res.status, code, typeof data?.message === 'string' ? data.message : code, retryAfter);
+  const code: ClientErrorCode = isBusy(data) ? 'busy' : isCode(data.error) ? data.error : res.status >= 500 ? 'internal' : 'bad_request';
+  return new ApiError(res.status, code, typeof data.message === 'string' ? data.message : code, retryAfter);
 }
 
 async function request<T>(method: Method, path: string, body: unknown, opts: RequestOptions = {}): Promise<T> {

@@ -6,11 +6,14 @@ import type { ReactNode } from 'react';
 import { Link, type Route } from '../router';
 import { Icon } from './Icon';
 
-/** A Settings section: `h2.label` above `.set-card`. `id` makes the heading's id (`h-<id>`), which labels the section. */
-export function Section({ id, title, children, className }: { id: string; title: string; children: ReactNode; className?: string }): JSX.Element {
+/**
+ * A Settings section: `h2.label` above `.set-card`. `id` makes the heading's id (`h-<id>`), which labels the section.
+ * `focusable`: the heading can take focus from a script (tabIndex -1), to put focus at the section's start.
+ */
+export function Section({ id, title, children, className, focusable }: { id: string; title: string; children: ReactNode; className?: string; focusable?: boolean }): JSX.Element {
   return (
     <section aria-labelledby={'h-' + id} className={'set-section' + (className ? ' ' + className : '')}>
-      <h2 id={'h-' + id} className="label">
+      <h2 id={'h-' + id} className="label" tabIndex={focusable ? -1 : undefined}>
         {title}
       </h2>
       <div className="set-card">{children}</div>

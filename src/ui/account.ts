@@ -11,7 +11,26 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import type { Me, Permission } from '../../shared/api';
 import { api, asApiError, type ApiError } from '../api/client';
+import { t } from '../i18n';
+import { announce } from './lib/announce';
 import { useStore, type AccountNotice, type AccountState, type Action } from './store';
+
+/** What Settings → Account says after an account change (the message's key). */
+export const NOTICE_TEXT: Record<AccountNotice, string> = {
+  signedOut: 'settings.noticeSignedOut',
+  signedOutEverywhere: 'settings.noticeSignedOutEverywhere',
+  deleted: 'settings.noticeDeleted',
+  welcome: 'settings.noticeWelcome',
+  passwordReset: 'settings.noticePasswordReset',
+};
+
+/**
+ * Says what happened, once, when it happens: the button that led to it is gone (Delete account, Sign out everywhere)
+ * or replaced (Sign out). Not when Settings shows the line again (the language switch remounts it).
+ */
+function announceNotice(n: AccountNotice | undefined): void {
+  if (n) announce(t(NOTICE_TEXT[n]));
+}
 
 /** While the API did not answer, a screen that opens (or the app coming back into view) asks again at most this often. */
 export const RECHECK_MS = 10_000;
@@ -108,8 +127,11 @@ export interface UseAccount {
   signOut(notice?: AccountNotice): Promise<void>;
   /** POST /auth/sign-out-everywhere (every device of the account, this one too). */
   signOutEverywhere(): Promise<void>;
-  /** GET /me again now (Try again, or to pick up roles an admin changed). */
-  refresh(): Promise<void>;
+  /**
+   * GET /me again now (Try again, or to pick up roles an admin changed). Resolves with what the answer said: reachable,
+   * or unreachable (no answer).
+   */
+  refresh(): Promise<AccountState['api']>;
   /** An account a request answered with (PATCH /me, an accepted invite…): it is the signed-in account from now on. */
   setMe(me: Me, notice?: AccountNotice): void;
   /** Nobody is signed in any more (the account was deleted…). */
@@ -137,11 +159,13 @@ export function useAccount(): UseAccount {
     generation++;
     reach = 'reachable';
     dispatch({ type: 'signedIn', me: next, notice: n });
+    announceNotice(n);
   }, [dispatch]);
   const setSignedOut = useCallback((n?: AccountNotice) => {
     generation++;
     reach = 'reachable';
     dispatch({ type: 'signedOut', notice: n });
+    announceNotice(n);
   }, [dispatch]);
 
   const setNotice = useCallback((n: AccountNotice | null) => dispatch({ type: 'accountNotice', notice: n }), [dispatch]);
@@ -185,7 +209,7 @@ export function useAccount(): UseAccount {
       }
       setSignedOut('signedOutEverywhere');
     },
-    refresh: () => ask(dispatch),
+    refresh: () => ask(dispatch).then(() => reach),
     setMe,
     setSignedOut,
     setNotice,

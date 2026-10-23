@@ -18,7 +18,7 @@ import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { errorMessage, failureOf, fieldError, formError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { navigate } from '../../router';
-import { OfflineNote } from './AccountSection';
+import { OfflineNote, useRefocus } from './AccountSection';
 
 const NAME_MAX = 80;
 
@@ -29,6 +29,8 @@ export function AccountScreen(): JSX.Element {
     if (reach === 'reachable' && !me) navigate('/signin', { replace: true });
   }, [reach, me]);
   const offline = reach === 'unreachable';
+  // After Try again found the API: the start of the profile, which can be changed again.
+  const refocus = useRefocus(() => document.getElementById('h-profile'));
 
   return (
     <SubPage title={t('account.title')} back="/settings" backLabel={t('account.back')}>
@@ -39,8 +41,8 @@ export function AccountScreen(): JSX.Element {
         <p className="acct-wait">{t('account.loading')}</p>
       ) : (
         <>
-          {offline && <OfflineNote account={account} className="hint-box" />}
-          <Section id="profile" title={t('account.profile')}>
+          {offline && <OfflineNote account={account} className="hint-box" onBack={refocus} />}
+          <Section id="profile" title={t('account.profile')} focusable>
             {offline ? <Info label={t('account.name')} value={me.name} /> : <NameForm me={me} account={account} />}
             <EmailRow me={me} account={account} offline={offline} />
             <Facts me={me} />

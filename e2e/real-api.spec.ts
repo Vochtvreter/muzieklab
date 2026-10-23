@@ -240,7 +240,8 @@ test("a new-password link: set on another device, and the member's other devices
   const a = admin.page;
   await a.goto(`./#/admin/account/${member.me.id}`);
   await a.getByRole('button', { name: /^New password link/ }).click();
-  await expect(a.getByText('New link ready. Send it yourself.')).toBeVisible();
+  // The done line is plain text, read out by the live region (#announcer): found by its class.
+  await expect(a.locator('.form-done')).toHaveText('New link ready. Send it yourself.');
   const link = await a.getByLabel('New password link', { exact: true }).inputValue();
   expect(link).toMatch(new RegExp('^' + escapeRegExp(APP) + '#/reset/[A-Za-z0-9_-]{43}$'));
 
@@ -339,8 +340,12 @@ test('a member deletes their account: a wrong password first, then signed out fo
 
   // Gone from the admin's list, and its page says so.
   await a.reload();
+  // The first list first, so the search's answer is the one that is read out.
+  await expect(a.locator('section[aria-labelledby="h-accounts"]')).toBeVisible();
   await a.getByLabel('Search').fill(member.email);
-  await expect(a.getByText('No accounts match.')).toBeVisible();
+  // Found by its class: the live region (#announcer) says the same words.
+  await expect(a.locator('.acct-empty')).toHaveText('No accounts match.');
+  await expect(a.locator('#announcer')).toHaveText('No accounts match.');
   await a.goto(`./#/admin/account/${member.me.id}`);
   await expect(a.getByText("This account isn't there anymore. Another admin may have deleted it.")).toBeVisible();
 });

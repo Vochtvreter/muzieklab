@@ -3,7 +3,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import type { InjectOptions, LightMyRequestResponse } from 'fastify';
 import type { Role } from '../../../shared/api.js';
 import { buildApp } from '../app.js';
-import { hashPassword } from '../auth/passwords.js';
+import { SERVER_LANE, hashPassword } from '../auth/passwords.js';
 import { collections, ensureIndexes, type AccountDoc } from '../db.js';
 
 // Shared by the route tests: one MongoDB replica set per test file (transactions need one), a fresh database per
@@ -98,7 +98,7 @@ export async function seedAccount(
     createdAt: now,
     updatedAt: now,
     ...rest,
-    passwordHash: password === null ? null : await hashPassword(password, { N: 1024, r: 8, p: 1 }),
+    passwordHash: password === null ? null : await hashPassword(password, SERVER_LANE, { N: 1024, r: 8, p: 1 }),
   };
   await collections(db).accounts.insertOne(doc);
   return doc;
