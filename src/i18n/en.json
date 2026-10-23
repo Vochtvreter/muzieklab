@@ -305,7 +305,6 @@
     "holdOn": "Note lengths and rests count",
     "holdOff": "Only when each note starts counts",
     "meters": "Time signatures",
-    "meterSoon": "{meter} soon",
     "notes": "Notes",
     "rests": "Rests",
     "extras": "Extras",

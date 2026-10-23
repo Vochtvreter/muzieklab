@@ -47,6 +47,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/setup');
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
       await expectClickable(page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }));
+      // Only the time signatures that can be played: no disabled "6/8 soon" chip.
+      await expect(page.getByRole('button', { name: /6\/8/ })).toHaveCount(0);
       await expectNoSideScroll(page);
     });
 
