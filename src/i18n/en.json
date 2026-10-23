@@ -16,7 +16,6 @@
   "common": {
     "back": "Back",
     "ms": "{value} ms",
-    "bpm": "{value} BPM",
     "bars": "{count, plural, one {# bar} other {# bars}}",
     "percent": "{value}%",
     "cancel": "Cancel",
@@ -554,7 +553,7 @@
     "practiceDone": "Exercise done",
     "dailyDone": "Daily challenge done",
     "echoDone": "Echo done",
-    "dailySub": "{date} · same for everyone",
+    "dailySub": "{date}",
     "copyCode": "Copy code",
     "copied": "Copied",
     "copyTitle": "Copy the exercise code: {code}",

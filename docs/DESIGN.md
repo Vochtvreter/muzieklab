@@ -824,8 +824,8 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   cannot be entered yet): one quiet action that copies the exercise code (§4.2). It says *Copied* with a check for
   2 s and has the code in its title. On tablet and desktop it is the third ghost button, after Listen and Practice
   settings; on a phone (< 700 px) that row has no room, so it is a small muted link (13 px, 44 px target) at the very
-  bottom, under the main buttons. A daily challenge's date line (*Oct 22 · same for everyone*) sits under the title,
-  as on Round done.
+  bottom, under the main buttons. A daily challenge's date line (*Oct 22*) sits under the title, as on Round done; it
+  no longer says *same for everyone*, as the daily follows the player's unit (§3.4).
 - After a lesson (since 0.8.0), a badge under the score says what the run means for the Learning Path, and the main
   button follows it:
   - the lesson reached 2 stars for the first time: *Lesson 7.4 unlocked* (slate tint, an open lock), and **Next

@@ -16,7 +16,6 @@
   "common": {
     "back": "Terug",
     "ms": "{value} ms",
-    "bpm": "{value} BPM",
     "bars": "{count, plural, one {# maat} other {# maten}}",
     "percent": "{value}%",
     "cancel": "Annuleren",
@@ -554,7 +553,7 @@
     "practiceDone": "Oefening klaar",
     "dailyDone": "Uitdaging van de dag klaar",
     "echoDone": "Echo klaar",
-    "dailySub": "{date} · voor iedereen gelijk",
+    "dailySub": "{date}",
     "copyCode": "Kopieer code",
     "copied": "Gekopieerd",
     "copyTitle": "Kopieer de code van de oefening: {code}",
