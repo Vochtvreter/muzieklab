@@ -320,10 +320,10 @@ test('learn: a rhythm practice link starts the exercise for its section; Quit, R
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
 
-  // Played to the end: Results goes back to the section, and Retry keeps that.
+  // Played to the end: Results goes back to the section, and Try again (nothing was tapped) keeps that.
   await link.click();
   await expect(page).toHaveURL(/#\/results\?from=7\.1$/, { timeout: 10_000 });
-  await page.getByRole('button', { name: 'Retry' }).click();
+  await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page).toHaveURL(/#\/results\?from=7\.1$/, { timeout: 10_000 });
   await page.getByRole('link', { name: 'Back to chapter 7' }).click();
   await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);

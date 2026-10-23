@@ -747,7 +747,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'play-count-in');
       await seed(page, { prefs: { seenHowTo: true } });
       await page.goto('./');
-      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
       await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
       // The desktop layout from 1100 px wide (a tablet in landscape too).
       const desk = VIEWPORTS[name].width >= 1100;

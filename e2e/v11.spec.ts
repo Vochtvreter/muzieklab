@@ -86,5 +86,5 @@ test('daily challenge on day one: short and tap only, under the lesson card', as
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.getByRole('button', { name: 'Skip to results' }).click();
   await expect(page.getByRole('heading', { name: 'Daily challenge done' })).toBeVisible();
-  await expect(page.locator('#excode')).toHaveText(/^T44-[HQ]+-R-4B-(60|66|72)-/);
+  await expect(page.getByRole('button', { name: 'Copy code' })).toHaveAttribute('title', /^Copy the exercise code: T44-[HQ]+-R-4B-(60|66|72)-/);
 });

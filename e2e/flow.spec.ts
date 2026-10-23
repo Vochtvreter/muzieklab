@@ -201,9 +201,9 @@ test('Next lesson introduces what is new before the count-in, once; another less
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(countIn).toBeAttached({ timeout: 3000 });
 
-  // Shown once; Retry of the same lesson starts straight away.
+  // Shown once; playing the same lesson again (Try again: nothing was tapped) starts straight away.
   await page.getByRole('button', { name: 'Skip to results' }).click();
-  await page.getByRole('button', { name: 'Retry' }).click();
+  await page.getByRole('button', { name: 'Try again' }).click();
   await expect(countIn).toBeAttached({ timeout: 3000 });
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
