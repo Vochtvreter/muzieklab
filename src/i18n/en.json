@@ -764,6 +764,7 @@
       "inputPiano": "Piano",
       "inputMixed": "Mixed",
       "hintNames": "Do re mi fa sol la si, or A B C D E F G, each with ♭ ♮ ♯ keys. Switch any time.",
+      "hintNamesPlain": "Do re mi fa sol la si, or A B C D E F G. Switch any time.",
       "hintPiano": "One octave, white and black keys. The octave of the note does not matter.",
       "hintMixed": "Names and the piano take turns, 5 notes each. Switch any time.",
       "range": "Range",
@@ -791,6 +792,9 @@
       "summary": "{clefs} · {input}",
       "pool": "{count} staff positions per clef · {key}",
       "poolExtras": "{pool} · extra signs appear",
+      "sound": "Hear the notes",
+      "soundOn": "Piano keys as you press them, and the right note after each answer",
+      "soundOff": "Silent",
       "start": "Start · {count} notes"
     },
     "keys": {
@@ -847,6 +851,7 @@
       "blackKey": "{sharp} or {flat}",
       "withKey": "{name}, key {key}",
       "kbdNames": "Type the letter; press = for ♯, 0 for ♮ or − for ♭ first",
+      "kbdNamesPlain": "Type the letter of the note",
       "kbdPiano": "Play with A S D F G H J (white) and W E T Y U (black)",
       "idleNames": "Pick the sign if there is one, then the name.",
       "idleNamesKey": "Mind the key signature. Pick the sign, then the name.",

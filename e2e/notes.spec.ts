@@ -1,10 +1,29 @@
-import { expect, test } from '@playwright/test';
-import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
-import { letterOf } from '../src/core/pitch';
+import { expect, test, type Page } from '@playwright/test';
+import { DEFAULT_NOTE_SETTINGS, generateRound, noteMidi, pianoKeyMidi } from '../src/core/noteRound';
+import { LETTERS, letterOf, pitchClass } from '../src/core/pitch';
 import { noteLessonSettings } from '../src/game/notesPath';
 import { seed as seedStorage, VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
+
+/** Records every piano tone the page plays, as a MIDI number: the triangle body of each tone (not its octave above). */
+async function listenForTones(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as Window & { tones?: number[] };
+    w.tones = [];
+    const create = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function (this: AudioContext) {
+      const osc = create.call(this);
+      const set = osc.frequency.setValueAtTime.bind(osc.frequency);
+      osc.frequency.setValueAtTime = (value: number, time: number) => {
+        if (osc.type === 'triangle') w.tones!.push(Math.round(69 + 12 * Math.log2(value / 440)));
+        return set(value, time);
+      };
+      return osc;
+    };
+  });
+}
+const tones = (page: Page): Promise<number[]> => page.evaluate(() => (window as Window & { tones?: number[] }).tones ?? []);
 
 test('read notes: a G major round from Home to the summary, answered with the keyboard', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.desktop);
@@ -134,6 +153,81 @@ test('read notes: piano answers, a hint and skipping to the summary', async ({ p
   await page.getByRole('button', { name: 'Skip to summary' }).click();
   await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
   await expect(page.getByText(/^[01] of 1 note right/)).toBeVisible();
+});
+
+test('read notes: a piano key sounds when pressed, and after a wrong one the right note follows', async ({ page }) => {
+  const settings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano' as const, count: 10 };
+  const seed = 4242;
+  await listenForTones(page);
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes/play');
+  const [first, second] = generateRound(settings, seed);
+  const key = (L: string) => page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button', { name: new RegExp('^' + L + ', ') });
+  // Right: the key is the note on the staff, in its octave, so it sounds once.
+  await key(letterOf(first.step)).click();
+  await expect.poll(() => tones(page)).toEqual([noteMidi(first)]);
+  await expect(page.locator('.nplay-count')).toHaveText('2 / 10');
+  // Wrong: the key pressed, then the right note.
+  const wrong = LETTERS.find((L) => L !== letterOf(second.step))!;
+  await key(wrong).click();
+  await expect(page.locator('.nfeedback')).toHaveText(/^That was/);
+  await expect.poll(() => tones(page)).toEqual([noteMidi(first), pianoKeyMidi(second, pitchClass(wrong, 0)), noteMidi(second)]);
+  // After the answer a key only sounds, to compare.
+  await key(letterOf(second.step)).click();
+  await expect.poll(() => tones(page)).toHaveLength(4);
+  await expect(page.locator('.nplay-count')).toHaveText('2 / 10');
+});
+
+test('read notes: Hear the notes, on by default in a path lesson, and off for a lesson too once turned off', async ({ page }) => {
+  await listenForTones(page);
+  await page.setViewportSize(VIEWPORTS.phone);
+  await seedStorage(page, { prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+  const nameAnswer = async (): Promise<void> => {
+    await page.getByRole('group', { name: 'Note names' }).getByRole('button').first().click();
+    await expect(page.locator('.nfeedback')).toHaveText(/^(Right|That was)/);
+  };
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' }).click();
+  // A named answer sounds the note on the staff, right or wrong.
+  await nameAnswer();
+  await expect.poll(async () => (await tones(page)).length).toBe(1);
+
+  await page.goto('./#/notes');
+  const sound = page.getByRole('switch', { name: /^Hear the notes/ });
+  await expect(sound).toHaveAttribute('aria-checked', 'true');
+  await sound.click();
+  await expect(sound).toHaveAttribute('aria-checked', 'false');
+  await expect(sound).toHaveAccessibleName(/Silent$/);
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await nameAnswer();
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' }).click();
+  await nameAnswer();
+  expect(await tones(page)).toHaveLength(1);
+});
+
+test('read notes: the sign row only when a note can have a sign', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./#/notes');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page.getByText('Note 1 of 20')).toBeVisible();
+  await expect(page.getByRole('radiogroup', { name: 'Sharp or flat' })).toHaveCount(0);
+  await expect(page.getByText('Type the letter of the note')).toBeVisible();
+  await expect(page.locator('.nfeedback')).toHaveText('Which note is highlighted?');
+  // A sign key does nothing here: the next letter is a plain name.
+  await page.keyboard.press('=');
+  await page.keyboard.press('c');
+  await expect(page.locator('.nfeedback')).toHaveText(/^(Right: C \(do\)|That was )/);
+
+  await page.goto('./#/notes');
+  await page.getByRole('link', { name: /^Key: C major/ }).click();
+  await page.getByRole('button', { name: /^G major or E minor/ }).click();
+  await page.getByRole('button', { name: 'Use G major' }).click();
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page.getByRole('radiogroup', { name: 'Sharp or flat' })).toBeVisible();
+  await expect(page.getByText('Mind the key signature. Pick the sign, then the name.')).toBeVisible();
+  await expect(page.getByText('Type the letter; press = for ♯, 0 for ♮ or − for ♭ first')).toBeVisible();
 });
 
 test('learn: the Key screen links to key signatures; the quick check answers', async ({ page }) => {

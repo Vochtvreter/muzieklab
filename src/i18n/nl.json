@@ -764,6 +764,7 @@
       "inputPiano": "Piano",
       "inputMixed": "Gemengd",
       "hintNames": "Do re mi fa sol la si, of A B C D E F G, elk met ♭ ♮ ♯-knoppen. Wissel wanneer je wilt.",
+      "hintNamesPlain": "Do re mi fa sol la si, of A B C D E F G. Wissel wanneer je wilt.",
       "hintPiano": "Eén octaaf, witte en zwarte toetsen. Het octaaf van de noot maakt niet uit.",
       "hintMixed": "Namen en de piano wisselen elkaar af, steeds 5 noten. Wissel wanneer je wilt.",
       "range": "Bereik",
@@ -791,6 +792,9 @@
       "summary": "{clefs} · {input}",
       "pool": "{count} plekken op de balk per sleutel · {key}",
       "poolExtras": "{pool} · met extra tekens",
+      "sound": "Hoor de noten",
+      "soundOn": "Pianotoetsen als je ze indrukt, en na elk antwoord de juiste noot",
+      "soundOff": "Stil",
       "start": "Start · {count} noten"
     },
     "keys": {
@@ -847,6 +851,7 @@
       "blackKey": "{sharp} of {flat}",
       "withKey": "{name}, toets {key}",
       "kbdNames": "Typ de letter; druk eerst op = voor ♯, 0 voor ♮ of − voor ♭",
+      "kbdNamesPlain": "Typ de letter van de noot",
       "kbdPiano": "Speel met A S D F G H J (wit) en W E T Y U (zwart)",
       "idleNames": "Kies het teken als er een is, en dan de naam.",
       "idleNamesKey": "Let op de voortekening. Kies het teken, en dan de naam.",

@@ -256,12 +256,29 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
       await expect(names).toHaveCount(7);
       for (let i = 0; i < 7; i++) await expectClickable(names.nth(i));
-      await expectClickable(page.getByRole('radio', { name: 'sharp' }));
+      // C major without extra signs: no note can have a sign, so there is no sign row (and no line about it).
+      await expect(page.getByRole('radiogroup', { name: 'Sharp or flat' })).toHaveCount(0);
+      await expect(page.getByText('Pick the sign if there is one, then the name.')).toHaveCount(0);
+      await expectNoSideScroll(page);
       await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
       await expect(keys).toHaveCount(12);
       for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i));
       await expectClickable(page.getByRole('button', { name: 'Hint' }));
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: the sign row with extra signs', async ({ page }) => {
+      known(name, 'notes-signs');
+      await page.goto('./#/notes');
+      await page.getByRole('button', { name: 'Sharps ♯' }).click();
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.getByRole('img', { name: /staff in C major/ })).toBeVisible();
+      for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }));
+      const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
+      for (let i = 0; i < 7; i++) await expectClickable(names.nth(i));
+      await expectClickable(page.getByRole('button', { name: 'Hint' }));
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 
@@ -572,6 +589,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
       await page.goto('./#/notes');
+      await page.getByRole('button', { name: 'Kruisen ♯' }).click();
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /notenbalk in C majeur/ })).toBeVisible();
       await expectClickable(page.getByRole('radio', { name: 'kruis' }));
