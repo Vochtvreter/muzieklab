@@ -13,7 +13,9 @@ test('daily challenge: Home → Play → Results with Copy code', async ({ page,
   await expect(page.getByText('Daily challenge', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Skip to results' }).click();
   await expect(page.getByRole('heading', { name: 'Daily challenge done' })).toBeVisible();
-  await expect(page.getByText(/same for everyone$/)).toBeVisible();
+  // The date under the title, nothing more: the daily follows the player's unit, so it is not the same for everyone.
+  const today = await page.evaluate(() => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date()));
+  await expect(page.locator('.screen-head-text .muted-text')).toHaveText(today);
   // The code is not on screen: Copy code copies it, says Copied, and has it in its title.
   await expect(page.getByText(/^T(24|34|44)+-/)).toHaveCount(0);
   await page.getByRole('button', { name: 'Copy code' }).click();

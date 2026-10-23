@@ -672,8 +672,10 @@ codes are reproducible across devices.
   starts with *Measured over N taps*. The stored value is still the median offset. The Dutch start prompt is *TIK OM
   TE BEGINNEN*; it must fit on one line on a 320 px phone.
 - Calibrate opens from Settings, and from a coaching tip on Results (§6.4) as `#/calibrate?from=results`: then its
-  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. Opened any other way,
-  they return to Settings. After a reload the store has no last run, so Results falls back to Home as it always does.
+  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. When Results goes back
+  to a Learn section (`?from=7.3`), Calibrate carries it as `&learn=7.3` and returns to `#/results?from=7.3`, so the
+  way back to the section stays. Opened any other way, or after a reload (the store then has no last run to show),
+  they return to Settings (*Back to settings*).
 
 ### 6.2 Matching taps to notes
 
@@ -753,8 +755,9 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   tapping along to a beat naturally land tens of milliseconds early (*negative mean
   asynchrony*, Repp 2005), so a small early average is normal and is reported as
   *steady*. The rushing tip only appears beyond about −40 ms (tunable after playtesting);
-  dragging beyond about +30 ms. Device latency is removed separately by calibration (§6.1); when the offsets are
-  steady and the device is not calibrated, the tip points there (§6.4).
+  dragging beyond about +30 ms. Device latency is removed separately by calibration (§6.1); when a dragging player's
+  offsets are steady and the device is not calibrated, the tip points there (§6.4). A device delay only makes taps
+  late, so rushing is never blamed on it.
 - **Steadiness:** standard deviation of offsets.
 - **Combo:** consecutive notes started Perfect/Great **and** held right; a Good, Miss,
   cut-short or held-too-long note resets it. It shows during play; Results no longer shows the max combo (since
@@ -776,30 +779,40 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   0.10.0):
   1. No taps at all: *No taps came in. Tap the pad, or press any key, when each note starts.* The player did not know
      what to do, or the taps did not register; "read one beat ahead" would not help.
-  2. A steady delay: *Your taps came about 125 ms late (early) every time. That is usually the speaker or headphones:
+  2. A steady delay: *Your taps came about 125 ms late every time. That is usually the speaker or headphones:
      calibrate once and it is taken off every score.* A steady player 125 ms late (Bluetooth, an uncalibrated phone)
      gets 0% with every note Miss + Extra, and the old tip blamed their reading. The offsets are the hit notes'
      offsets plus, for each missed note, the nearest unpaired extra tap after it (late) or before it (early), within
      350 ms and before the neighbouring note. It is a delay when all of these hold: those offsets cover at least 60% of
      the notes (and at least 3); every one is at least 20 ms off the same way; the mean is at least 80 ms; the SD is at
      most 60 ms; and unpaired extra taps are at most a quarter of the notes. Sloppy timing spreads both ways and wider,
-     and mashing the pad leaves many unpaired extra taps.
+     and mashing the pad leaves many unpaired extra taps. On evenly spaced notes both ways can pass (at 120 BPM a tap
+     200 ms early is also the previous note's tap, 300 ms late): the way that pairs more notes wins, as the other
+     leaves the first or last note without a tap, then the nearer one. A device delay only makes taps late, so a steady
+     early offset never blames the speaker. On a run played with a calibration, that calibration no longer fits (made
+     with Bluetooth, now played on the speaker): *Your taps came about 110 ms early every time. If you calibrated with
+     other headphones or another speaker, calibrate again.* On a run played before any calibration it is the player
+     rushing: *You were rushing: on average 110 ms early. Wait for each note.*
   3. Off track (misses + extra taps add up to a quarter or more of the notes): timing advice is beside the point when
      the player lost their place, so it names the misses, with the bar that had the most (*You missed 3 notes, most in
      bar 2. Read one beat ahead.*) or, when bars tie, without a bar (*You missed 8 notes. Read one beat ahead.*); or
      the extra taps.
   4. The worst hold problem, e.g. "You let go of the dotted quarter in bar 2 too early".
-  5. The tendency (only from 4+ hit notes). When the hit offsets are steady (SD ≤ 60 ms) and the device is not
-     calibrated, it points to calibration instead of "press sooner" or "wait": *Your taps came on average 60 ms late,
-     about the same on every note. That is often the speaker or headphones: calibrate once and it is taken off every
-     score.* (early: *… Calibrate once and a steady offset like that is taken off every score.*)
+  5. The tendency (only from 4+ hit notes). When the player drags steadily (every hit at least 20 ms late, SD
+     ≤ 45 ms) on a run played before any calibration, it points to calibration instead of "press sooner": *Your taps
+     came on average 60 ms late, about the same on every note. That is often the speaker or headphones: calibrate
+     once and it is taken off every score.* Taps on both sides of the beat are the player, and so is rushing: *Wait
+     for each note.*
   6. Misses (the same tie rule), extra taps, unsteady, then praise. A perfect run that offers Next lesson says *Every
      note perfect. On to the next lesson.* (a lesson fixes tempo and bars); free practice and the daily keep *Every
      note perfect. Try a faster tempo or more bars.*
-- **Calibrate in the tip** (since 0.10.0): with the delay tip, or a rushing or dragging tip while the device is not
-  calibrated (`prefs.calibratedAt` is null), the tip box shows a quiet **Calibrate** action (a ghost button with the
+- **Calibrate in the tip** (since 0.10.0): with the delay tip, or a dragging tip on a run played before any
+  calibration (`prefs.calibratedAt` was null), the tip box shows a quiet **Calibrate** action (a ghost button with the
   metronome icon, titled *Measure the delay of your speaker or headphones*) under its text. It opens
   `#/calibrate?from=results`, which comes back to Results (§6.1).
+- The tip is about the run as it was played: the result keeps the calibration in force when the run finished, and
+  the tip reads that, not the current setting. After calibrating from the tip, Results shows the same tip, and one
+  line in place of Calibrate: *Calibrated. Your next exercise uses it.*
 - Buttons: **Listen** (correct playback) and **Practice settings** as quiet ghost buttons, then the main pair:
   - from 2 stars on: **Retry** (outline; the same exercise) and **Next exercise** (filled; a new exercise, same
     settings), or **Next lesson** after a lesson (below);
@@ -811,8 +824,8 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   cannot be entered yet): one quiet action that copies the exercise code (§4.2). It says *Copied* with a check for
   2 s and has the code in its title. On tablet and desktop it is the third ghost button, after Listen and Practice
   settings; on a phone (< 700 px) that row has no room, so it is a small muted link (13 px, 44 px target) at the very
-  bottom, under the main buttons. A daily challenge's date line (*Oct 22 · same for everyone*) sits under the title,
-  as on Round done.
+  bottom, under the main buttons. A daily challenge's date line (*Oct 22*) sits under the title, as on Round done; it
+  no longer says *same for everyone*, as the daily follows the player's unit (§3.4).
 - After a lesson (since 0.8.0), a badge under the score says what the run means for the Learning Path, and the main
   button follows it:
   - the lesson reached 2 stars for the first time: *Lesson 7.4 unlocked* (slate tint, an open lock), and **Next
@@ -1062,8 +1075,19 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 - **Phone browsers** (since 0.10.0). In Safari or Chrome the toolbars take about 180 px of a phone's screen, so the
   sizes to check include the visible area: 390 × 664 (an iPhone 14 in Safari) and 375 × 553 (an iPhone SE in Safari),
   `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens
-  must fit them without scrolling during play, with the pad, the piano and the answer buttons in view. On a short
-  screen the empty space above the pad, the piano or the answer buttons shrinks first, then the staff.
+  (Play, Echo, Read notes, Scales, Calibration) must fit them without scrolling during play, with the pad, the piano
+  and the answer buttons in view and at least 44 px tall. A phone in portrait has two short-screen steps (CSS
+  `max-height: 699.98px` and `599.98px`; the second is `SHORTER_PHONE` in `ui/hooks.ts`). 390 × 844, tablets, desktop
+  and phone landscape do not change.
+  - Under 700 px tall (390 × 664, 375 × 667): the gaps tighten to 10 px, and so do the page padding (10 px at the top,
+    12 px at the bottom) and the staff card's. Then the pad and the pianos give up height, down to 112 px for the pad
+    (214 px on the board), 120 px for the Read notes piano (200 px) and 140 px for the Scales piano (210 px). The pad
+    is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only *Tap* in the ring,
+    without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
+  - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
+    0.8, the Read notes staff at 1.15 (not 1.45) and the Scales staff at 1.1 (not 1.25). The floors are lower (pad
+    76 px, Read notes piano 80 px, Scales piano 110 px), and so are the name buttons (56 px), the feedback, the
+    degrees, the sign buttons, Echo's listen card and Calibration's intro.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
@@ -1198,7 +1222,8 @@ ABRSM, Trinity, RCM and Kodály.
   teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1).
 - Read notes links start the round.
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
-  to it, and Retry, Next, New round and Practice missed notes keep it.
+  to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip
+  (§6.1).
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
 - Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.

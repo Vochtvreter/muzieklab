@@ -1,7 +1,7 @@
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type ScaleSettings } from '../core/api';
 import { noteLessonSettings } from '../game/notesPath';
 import { defaultProgress, DEFAULT_PREFS } from '../game/storage';
-import { makeNoteRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type AppState } from './store';
+import { makeNoteRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -42,6 +42,17 @@ describe('reducer: finish', () => {
     expect(first.progress.lessons['1.1'].stars).toBe(2);
     expect(reducer(lesson(0), { type: 'finish', result: result(['good']), taps: [], today: '2026-10-17' }).last?.lessonStarsBefore).toBe(0);
     expect(reducer(state(), { type: 'finish', result: result(['good']), taps: [], today: '2026-10-17' }).last?.lessonStarsBefore).toBe(0);
+  });
+
+  it('keeps the calibration the run was played with, so calibrating from Results does not change its tip', () => {
+    const finish: Action = { type: 'finish', result: result(['good']), taps: [], today: '2026-10-17' };
+    const before = reducer(state(), finish).last;
+    expect(before).toMatchObject({ calibrationMs: 0, calibrated: false });
+    const calibrated = reducer({ ...state(), prefs: { ...DEFAULT_PREFS, calibrationMs: 120, calibratedAt: '2026-10-12' } }, finish).last;
+    expect(calibrated).toMatchObject({ calibrationMs: 120, calibrated: true });
+    // Calibrating afterwards changes the prefs, not the finished run.
+    const after = reducer({ ...state(), last: before }, { type: 'prefs', patch: { calibrationMs: 130, calibratedAt: '2026-10-17' } });
+    expect(after.last).toBe(before);
   });
 
   it('a run left to play out with nothing hit does not keep the streak', () => {

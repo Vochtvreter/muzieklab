@@ -1,7 +1,7 @@
 /**
  * Results (DESIGN.md §6.4): stars, accuracy and XP, the daily challenge's badges, counts, holds, the judged staff (in
- * Echo the notation's reveal), the timing and length lane, a tip (with Calibrate when the tip is about latency), the
- * actions with Copy code, and the level-up sheet.
+ * Echo the notation's reveal), the timing and length lane, a tip (with Calibrate when the tip is about latency, or a
+ * line once the player has calibrated since), the actions with Copy code, and the level-up sheet.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { coachTip, DIAMOND, encodeCode, MAX_STARS, SHOWN_STARS, type Judgement } from '../../core/api';
@@ -19,7 +19,7 @@ import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
 import { starsLabel } from '../lib/format';
-import { useLearnReturn } from '../lib/learnReturn';
+import { calibrateQuery, useLearnReturn } from '../lib/learnReturn';
 import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
@@ -51,7 +51,10 @@ export function Results(): JSX.Element | null {
   // A lesson: what this run means for the path (a lesson opened, or the stars still needed), and where Next goes.
   const outcome = last?.run.lessonId ? lessonOutcome(state.progress, last.run.lessonId, last.lessonStarsBefore) : null;
   const goOn = outcome?.continueId ? findLesson(outcome.continueId)?.lesson ?? null : null;
-  const uncalibrated = !state.prefs.calibratedAt;
+  // The calibration the run was played with: calibrating from its tip does not change what the tip says about it.
+  const uncalibrated = !last?.calibrated;
+  // Calibrated since this run (from its tip): the tip says the next run uses it, in place of Calibrate.
+  const recalibrated = !!last && (state.prefs.calibrationMs !== last.calibrationMs || !!state.prefs.calibratedAt !== last.calibrated);
 
   const leveledUp = !!last && levelInfo(last.reward.xpAfter).level > levelInfo(last.reward.xpBefore).level;
   const [levelUp, setLevelUp] = useState<'open' | null>(() => (last && leveledUp && !levelUpShown.has(last) ? 'open' : null));
@@ -102,8 +105,9 @@ export function Results(): JSX.Element | null {
   const { result, run } = last;
   const ex = run.exercise;
   const tip = coach ? tipText(coach) : null;
-  // A steady offset may be the speaker or headphones: calibrating takes it off every score.
-  const calibrate = !!coach && (coach.key === 'tip.latency' || (uncalibrated && /^tip\.(rushing|dragging)/.test(coach.key)));
+  // A steady offset may be the speaker or headphones: calibrating takes it off every score. A device delay only makes
+  // taps late, so rushing is the player's.
+  const calibrate = !!coach && (coach.key === 'tip.latency' || (uncalibrated && coach.key.startsWith('tip.dragging')));
   // Under 2 stars the filled button plays the same exercise again: moving on is not the next step yet.
   const again = result.stars < UNLOCK_STARS;
   const code = encodeCode(ex.settings, ex.seed);
@@ -257,12 +261,15 @@ export function Results(): JSX.Element | null {
             <Icon name="clock" size={20} />
             <div className="tip-body">
               <span>{tip}</span>
-              {calibrate && (
-                <Link to="/calibrate" query="from=results" className="ghost-btn tip-action" title={t('results.calibrateTitle')} onClick={() => engine().stop()}>
-                  <Icon name="metronome" size={18} />
-                  {t('results.calibrate')}
-                </Link>
-              )}
+              {calibrate &&
+                (recalibrated ? (
+                  <span className="tip-note">{t('results.calibrated')}</span>
+                ) : (
+                  <Link to="/calibrate" query={calibrateQuery(carry)} className="ghost-btn tip-action" title={t('results.calibrateTitle')} onClick={() => engine().stop()}>
+                    <Icon name="metronome" size={18} />
+                    {t('results.calibrate')}
+                  </Link>
+                ))}
             </div>
           </div>
         )}

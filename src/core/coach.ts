@@ -32,7 +32,10 @@ export const LATENCY_PAIR_MS = 350;
 export interface CoachContext {
   /** Every press of the run: an extra tap just after (or before) a missed note is that note, too late (or early). */
   taps?: Tap[];
-  /** No calibration yet (prefs.calibratedAt is null): a steady rushing or dragging points to calibration. */
+  /**
+   * The run was played before any calibration (prefs.calibratedAt was null): a steady dragging points to calibration,
+   * and a steady early offset is the player rushing (a device delay only makes taps late).
+   */
   uncalibrated?: boolean;
   /** A path lesson with a lesson to go on to: praise for a perfect run points there, not to tempo or bars. */
   nextLesson?: boolean;
@@ -61,12 +64,13 @@ function writtenValue(exercise: Exercise, index: number): string {
 
 /**
  * One-line coaching tip (§6.4). No taps at all, then a steady offset on most notes (latency: a late tapper's run is all
- * misses and extra taps), come first. Then, when many notes were missed or tapped extra (an off-track run), that:
- * timing advice is beside the point when the player lost their place. Otherwise the worst hold problem, then the
- * tendency (from enough hit notes), then misses, extra taps, steadiness, and praise. Keys and params:
+ * misses and extra taps; early only when the run was played calibrated, else it is rushing), come first. Then, when
+ * many notes were missed or tapped extra (an off-track run), that: timing advice is beside the point when the player
+ * lost their place. Otherwise the worst hold problem, then the tendency (from enough hit notes), then misses, extra
+ * taps, steadiness, and praise. Keys and params:
  * - tip.noTaps {}   tip.latency { ms, dir ('late' | 'early') }
  * - tip.cutShort / tip.heldLong { value (message key), bar (1-based), beat, liftBeat, liftPart (count.* key), count }
- * - tip.rushing / tip.dragging { ms }, or tip.rushingCalibrate / tip.draggingCalibrate when steady and uncalibrated
+ * - tip.rushing / tip.dragging { ms }, or tip.draggingCalibrate when steadily late and uncalibrated
  * - tip.missed { count, bar }, or tip.missedSpread { count } when bars tie   tip.extraTaps { count }   tip.unsteady { ms }
  * - tip.perfect {}, or tip.perfectLesson {} before a next lesson   tip.good {}
  */
@@ -75,6 +79,9 @@ export function coachTip(result: JudgeResult, timeline: Timeline, exercise: Exer
   // Nothing came in: the player did not know what to do, or the taps did not register. Reading ahead would not help.
   if (n > 0 && result.counts.miss === n && result.extraTaps === 0) return { key: 'tip.noTaps', params: {} };
   const latency = steadyOffset(result, timeline, context.taps ?? []);
+  // A device delay only makes taps late. Early every time is a calibration that no longer fits (made on Bluetooth, now
+  // played on the speaker), or, with none made, the player rushing.
+  if (latency?.dir === 'early' && context.uncalibrated) return { key: 'tip.rushing', params: { ms: latency.ms } };
   if (latency) return { key: 'tip.latency', params: latency };
   // Counts only: a low accuracy from cut-short holds is a hold problem, and the hold tip below says so.
   const offTrack = n > 0 && result.counts.miss + result.extraTaps >= Math.max(1, n * OFF_TRACK_SHARE);
@@ -105,9 +112,12 @@ export function coachTip(result: JudgeResult, timeline: Timeline, exercise: Exer
   }
   const hits = result.notes.filter((r) => r.offsetMs !== null).length;
   if (result.tendency !== 'steady' && hits >= MIN_TENDENCY_HITS) {
-    // The same offset on every note may be the device: before a calibration, say so rather than "press sooner".
-    const device = context.uncalibrated && result.sdOffsetMs <= LATENCY_SD_MS ? 'Calibrate' : '';
-    return { key: (result.tendency === 'rushing' ? 'tip.rushing' : 'tip.dragging') + device, params: { ms: Math.round(Math.abs(result.meanOffsetMs)) } };
+    const ms = Math.round(Math.abs(result.meanOffsetMs));
+    if (result.tendency === 'rushing') return { key: 'tip.rushing', params: { ms } };
+    // Late by about the same on every note may be the device: before a calibration, say so rather than "press sooner".
+    // Only when every hit is late and the spread is steady: taps on both sides of the beat are the player.
+    const steadyLate = result.sdOffsetMs <= UNSTEADY_SD_MS && result.notes.every((r) => r.offsetMs === null || r.offsetMs >= LATENCY_FLOOR_MS);
+    return { key: context.uncalibrated && steadyLate ? 'tip.draggingCalibrate' : 'tip.dragging', params: { ms } };
   }
   if (result.counts.miss > 0) return missedTip(result, timeline);
   if (result.extraTaps > 0) return { key: 'tip.extraTaps', params: { count: result.extraTaps } };
@@ -130,6 +140,8 @@ function missedTip(result: JudgeResult, timeline: Timeline): CoachTip {
  * A steady offset on most notes (latency), or null. Each way (late, then early) the offsets are the hit notes' and,
  * for a missed note, the nearest unpaired extra tap after (before) it, short of the next (previous) note and within
  * LATENCY_PAIR_MS. Extra taps left unpaired must stay few: a player mashing the pad also hits at a steady offset.
+ * On evenly spaced notes both ways can pass (a steady early tap is also the previous note's tap, late): the way that
+ * pairs more notes wins (the other leaves the first or last note without a tap), then the nearer one (smaller mean).
  */
 function steadyOffset(result: JudgeResult, timeline: Timeline, taps: Tap[]): { ms: number; dir: 'late' | 'early' } | null {
   const n = result.notes.length;
@@ -145,6 +157,7 @@ function steadyOffset(result: JudgeResult, timeline: Timeline, taps: Tap[]): { m
       taken.splice(i, 1);
       return false;
     });
+  let found: { ms: number; dir: 'late' | 'early'; count: number; mean: number } | null = null;
   for (const sign of [1, -1] as const) {
     const offsets: number[] = [];
     const paired = new Set<number>();
@@ -170,7 +183,10 @@ function steadyOffset(result: JudgeResult, timeline: Timeline, taps: Tap[]): { m
     if (offsets.some((o) => sign * o < LATENCY_FLOOR_MS)) continue;
     const mean = offsets.reduce((a, b) => a + b, 0) / offsets.length;
     const sd = Math.sqrt(offsets.reduce((a, b) => a + (b - mean) ** 2, 0) / offsets.length);
-    if (sign * mean >= LATENCY_MS && sd <= LATENCY_SD_MS) return { ms: Math.round(Math.abs(mean)), dir: sign > 0 ? 'late' : 'early' };
+    if (sign * mean < LATENCY_MS || sd > LATENCY_SD_MS) continue;
+    // Late passed too: keep the way that pairs more notes, then the nearer one.
+    if (found && (found.count > offsets.length || (found.count === offsets.length && Math.abs(found.mean) <= Math.abs(mean)))) continue;
+    found = { ms: Math.round(Math.abs(mean)), dir: sign > 0 ? 'late' : 'early', count: offsets.length, mean };
   }
-  return null;
+  return found && { ms: found.ms, dir: found.dir };
 }

@@ -206,6 +206,12 @@ export interface LastResult {
   reward: Reward;
   /** The lesson's best stars before this run (0 for free practice and the daily challenge): Results tells a first pass. */
   lessonStarsBefore: number;
+  /**
+   * The calibration the run was played with (prefs.calibrationMs, and whether one had been made): Results' tip is about
+   * this run, also after the player calibrates from it.
+   */
+  calibrationMs: number;
+  calibrated: boolean;
 }
 
 export interface NoteLast {
@@ -301,7 +307,8 @@ export function reducer(state: AppState, action: Action): AppState {
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
       const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest };
-      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore } };
+      const { calibrationMs, calibratedAt } = state.prefs;
+      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
     }
     case 'resetProgress':
       return {

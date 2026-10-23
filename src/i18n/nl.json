@@ -16,7 +16,6 @@
   "common": {
     "back": "Terug",
     "ms": "{value} ms",
-    "bpm": "{value} BPM",
     "bars": "{count, plural, one {# maat} other {# maten}}",
     "percent": "{value}%",
     "cancel": "Annuleren",
@@ -554,7 +553,7 @@
     "practiceDone": "Oefening klaar",
     "dailyDone": "Uitdaging van de dag klaar",
     "echoDone": "Echo klaar",
-    "dailySub": "{date} · voor iedereen gelijk",
+    "dailySub": "{date}",
     "copyCode": "Kopieer code",
     "copied": "Gekopieerd",
     "copyTitle": "Kopieer de code van de oefening: {code}",
@@ -597,6 +596,7 @@
     "newExercise": "Nieuwe oefening",
     "calibrate": "Kalibreren",
     "calibrateTitle": "Meet de vertraging van je speaker of koptelefoon",
+    "calibrated": "Gekalibreerd. Je volgende oefening houdt er rekening mee.",
     "laneLabel": "De lengte van elke noot naast hoe lang je hem vasthield"
   },
   "settings": {
@@ -705,10 +705,9 @@
     "cutShort": "Je liet de {value} in maat {bar} te vroeg los. {liftPartKey, select, count.beat {Houd hem vast tot vlak voor “{liftPart}”.} other {Houd hem vast tot en met “{liftBeat}”, tot vlak voor “{liftPart}”.}}",
     "heldLong": "Je hield de {value} in maat {bar} te lang vast. {liftPartKey, select, count.beat {Laat los op “{liftPart}”.} other {Laat los op “{liftPart}” na “{liftBeat}”.}}",
     "noTaps": "Er kwamen geen tikken binnen. Tik op het pad, of druk op een toets, als elke noot begint.",
-    "latency": "Je tikken kwamen elke keer zo’n {ms} ms {dir, select, early {te vroeg} other {te laat}}. Dat komt meestal door de speaker of koptelefoon: kalibreer één keer en het gaat van elke score af.",
+    "latency": "Je tikken kwamen elke keer zo’n {ms} ms {dir, select, early {te vroeg. Heb je met een andere koptelefoon of speaker gekalibreerd? Kalibreer dan opnieuw.} other {te laat. Dat komt meestal door de speaker of koptelefoon: kalibreer één keer en het gaat van elke score af.}}",
     "rushing": "Je jaagde: gemiddeld {ms} ms te vroeg. Wacht op elke noot.",
     "dragging": "Je sleepte: gemiddeld {ms} ms te laat. Druk iets eerder.",
-    "rushingCalibrate": "Je tikken kwamen gemiddeld {ms} ms te vroeg, bij elke noot ongeveer even veel. Kalibreer één keer en zo’n vaste afwijking gaat van elke score af.",
     "draggingCalibrate": "Je tikken kwamen gemiddeld {ms} ms te laat, bij elke noot ongeveer even veel. Dat komt vaak door de speaker of koptelefoon: kalibreer één keer en het gaat van elke score af.",
     "missed": "{count, plural, one {Je miste # noot} other {Je miste # noten}}, de meeste in maat {bar}. Lees één tel vooruit.",
     "missedSpread": "{count, plural, one {Je miste # noot} other {Je miste # noten}}. Lees één tel vooruit.",

@@ -51,6 +51,34 @@ async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number
   );
 }
 
+/**
+ * Calibrates on the keyboard: the first press starts the 16 clicks (90 BPM, the first 1 s later), then one press on each
+ * click. As in tapLate, each key event carries its own time stamp.
+ */
+async function calibrateAlong(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const key = (type: string, at: number): void => {
+          const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
+          Object.defineProperty(ev, 'timeStamp', { value: at });
+          window.dispatchEvent(ev);
+        };
+        const t0 = performance.now();
+        key('keydown', t0);
+        key('keyup', t0 + 80);
+        const clicks = Array.from({ length: 16 }, (_, k) => t0 + 1000 + (k * 60_000) / 90);
+        for (const at of clicks) {
+          window.setTimeout(() => {
+            key('keydown', at);
+            key('keyup', at + 80);
+          }, at + 80 - performance.now());
+        }
+        window.setTimeout(resolve, clicks[15] + 200 - performance.now());
+      }),
+  );
+}
+
 /** Every screen's main action can be reached and tapped, at every supported size, with no sideways scroll. */
 for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
   test.describe(name, () => {
@@ -307,6 +335,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await back.click();
       await expect(page).toHaveURL(/#\/results$/);
       await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+
+      // After a reload there is no run to go back to: then it is the way in from Settings.
+      await page.evaluate(() => {
+        window.location.hash = '#/calibrate?from=results';
+      });
+      await expect(page.getByRole('heading', { level: 1, name: 'Calibrate timing' })).toBeVisible();
+      await page.reload();
+      const toSettings = page.getByRole('link', { name: 'Back to settings' });
+      await expectClickable(toSettings, { scroll: false });
+      await toSettings.click();
+      await expect(page).toHaveURL(/#\/settings$/);
     });
 
     test('results: try again, new exercise and copy code', async ({ page }) => {
@@ -338,6 +377,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('results: a steady late tapper is told about latency, with Calibrate', async ({ page }) => {
       known(name, 'results-latency');
+      test.setTimeout(60_000);
       await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: QUARTERS } });
       await page.setViewportSize(VIEWPORTS.phone);
       await page.goto('./#/setup');
@@ -346,15 +386,39 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible({ timeout: 10_000 });
       await page.setViewportSize(VIEWPORTS[name]);
       // Every tap about 130 ms late: all Miss and Extra, and a tip that names the delay, not the reading.
-      await expect(page.getByText(/^Your taps came about \d+ ms late every time\./)).toBeVisible();
+      const tip = page.getByText(/^Your taps came about \d+ ms late every time\./);
+      await expect(tip).toBeVisible();
+      const tipText = await tip.textContent();
       const calibrate = page.getByRole('link', { name: 'Calibrate' });
       await expectClickable(calibrate);
       await expectClickable(page.getByRole('button', { name: 'Try again' }));
       await expectClickable(page.getByRole('button', { name: 'Copy code' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expect(calibrate).toHaveAttribute('href', '#/calibrate?from=results');
+      // Started from a Learn section's Practice link, the run ends on #/results?from=1.1 (notes.spec.ts, "learn: a rhythm
+      // practice link…"): Calibrate takes that along, and brings it back.
+      await page.evaluate(() => {
+        window.location.hash = '#/results?from=1.1';
+      });
+      await expect(page.getByRole('link', { name: 'Back to chapter 1' })).toBeVisible();
       await calibrate.click();
-      await expect(page).toHaveURL(/#\/calibrate\?from=results$/);
+      await expect(page).toHaveURL(/#\/calibrate\?from=results&learn=1\.1$/);
+      await expect(page.getByRole('link', { name: 'Back to results' })).toHaveAttribute('href', '#/results?from=1.1');
+
+      // Calibrated from the tip: Save returns to the same run, whose tip is still about how it was played. In place of
+      // Calibrate, one line says the next exercise uses the calibration.
+      await calibrateAlong(page);
+      const save = page.getByRole('button', { name: 'Save' });
+      await expectClickable(save);
+      await expectNoSideScroll(page);
+      await save.click();
+      await expect(page).toHaveURL(/#\/results\?from=1\.1$/);
+      await expect(page.getByRole('link', { name: 'Back to chapter 1' })).toBeVisible();
+      await expect(page.getByText(tipText!, { exact: true })).toBeVisible();
+      await expect(page.getByText('Calibrated. Your next exercise uses it.', { exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Calibrate' })).toHaveCount(0);
+      await expectNoSideScroll(page);
     });
 
     test('read notes: round done', async ({ page }) => {
