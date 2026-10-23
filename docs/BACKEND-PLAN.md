@@ -352,8 +352,10 @@ Security:
 
 The server runs Ubuntu 26.04 LTS on x86_64, with 3.7 GB of memory.
 
-- **MongoDB 8.0 in Docker** (the official image, `deploy/mongo/compose.yaml`): MongoDB publishes no packages for
-  Ubuntu 26.04 yet, and Docker works on any version. It listens on `127.0.0.1` only.
+- **MongoDB 9.0 in Docker** (the official image, `deploy/mongo/compose.yaml`): MongoDB publishes no packages for
+  Ubuntu 26.04 yet, and Docker works on any version. It is pinned to **9.0.4**: earlier 8.x and 9.0 releases refuse
+  to start on Ubuntu 26.04's kernel, because of a kernel bug (6.19 to 7.0.13) that Ubuntu's kernel already has the fix
+  for, but whose version number MongoDB misread (SERVER-121912, SERVER-136272). It listens on `127.0.0.1` only.
 - **Memory:** MongoDB would take about 1.4 GB for its cache by default; `--wiredTigerCacheSizeGB=0.5` is plenty for
   this data and leaves room for the API and Caddy.
 - **The API** is one bundled file (`server/build.mjs`), so the server needs only Node (Ubuntu's own package) and

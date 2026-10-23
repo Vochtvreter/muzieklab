@@ -25,5 +25,10 @@
     "tsx": "^4.23.15",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
+  },
+  "config": {
+    "mongodbMemoryServer": {
+      "version": "9.0.4"
+    }
   }
 }

@@ -6,7 +6,10 @@
 name: muzieklab
 services:
   mongo:
-    image: mongo:8.0
+    # 9.0.4 or newer: older 8.x and 9.0 releases refuse to start on Ubuntu 26.04's kernel (7.0.0-NN), reading it as
+    # one of the kernels (6.19 to 7.0.13) whose bug crashes MongoDB (SERVER-121912, SERVER-136272). Pinned, so an
+    # update is a deliberate change here; server/package.json tests against the same version.
+    image: mongo:9.0.4
     container_name: muzieklab-mongo
     restart: unless-stopped
     command:
