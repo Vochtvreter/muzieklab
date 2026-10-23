@@ -45,3 +45,28 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
+  real-api:
+    # The app against the real API: the API bundle on a throwaway MongoDB (mongodb-memory-server) and the production
+    # build in a real browser, nothing mocked: create-admin, invites, blocking, new passwords, too many tries, deleting
+    # an account (e2e/real-api.spec.ts, playwright.real.config.ts).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: server
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e:real
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: real-api-traces
+          path: test-results/
+          retention-days: 7
