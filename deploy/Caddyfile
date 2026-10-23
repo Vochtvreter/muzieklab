@@ -33,7 +33,15 @@ www.vivanova.app {
 
 # The test site: deploys from the test branch, or any branch by hand. Kept out of search engines.
 test.vivanova.app {
-	root * /var/www/muzieklab-test/current
-	import muzieklab
 	header X-Robots-Tag "noindex, nofollow"
+
+	# The API (muzieklab-api@test); it sets its own headers.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3001
+	}
+
+	handle {
+		root * /var/www/muzieklab-test/current
+		import muzieklab
+	}
 }

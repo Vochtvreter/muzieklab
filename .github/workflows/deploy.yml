@@ -20,4 +20,7 @@ jobs:
       environment: production
       path: ${{ vars.DEPLOY_PATH }}
       url: ${{ vars.PRODUCTION_URL }}
+      # The API, once it is set up on the server (docs/DEPLOY.md, The API); skipped while API_PATH is unset.
+      api-path: ${{ vars.API_PATH }}
+      api-service: muzieklab-api@production.service
     secrets: inherit

@@ -1,0 +1,41 @@
+# The Muzieklab API (server/), one instance per site: muzieklab-api@test and muzieklab-api@production
+# (docs/DEPLOY.md, The API). Copy to /etc/systemd/system/, then: sudo systemctl enable --now muzieklab-api@test
+#
+# The deploy uploads each release to /srv/muzieklab-api/<site>/releases/<commit>/, points current at it and restarts
+# this service (the deploy user may run exactly that restart with sudo).
+[Unit]
+Description=Muzieklab API (%i)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=muzieklab-api
+Group=muzieklab-api
+# PORT and MONGODB_URI; readable by root only (systemd reads it before dropping to the user above).
+EnvironmentFile=/etc/muzieklab-api/%i.env
+ExecStart=/usr/bin/node --enable-source-maps /srv/muzieklab-api/%i/current/server.cjs
+Restart=on-failure
+RestartSec=2
+MemoryMax=512M
+
+# The API only reads its own release and talks to MongoDB and Caddy on 127.0.0.1.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

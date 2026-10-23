@@ -1,0 +1,32 @@
+# MongoDB for the Muzieklab API (docs/DEPLOY.md, The API). On the server this lives in /opt/muzieklab-mongo, next to
+# .env (the root password) and keyfile; start it there with: sudo docker compose up -d
+#
+# One node, run as a replica set (rs0) so the API can use transactions; the keyfile is what a replica set with
+# passwords needs. It listens on 127.0.0.1 only: Docker's published ports skip ufw, so the address keeps it private.
+name: muzieklab
+services:
+  mongo:
+    # MongoDB 8.0 and later crash on Linux 6.19 to 7.0.13 (SERVER-121912) and refuse to start there. The kernel needs
+    # upstream 7.0.14 or newer: `cat /proc/version_signature` ends in it (Ubuntu 26.04's 7.0.0-38 and later have it,
+    # its first kernels did not). 9.0.4 is the first release that sees Ubuntu's patched kernels as fixed
+    # (SERVER-136272). Pinned, so an update is a deliberate change here; server/package.json tests the same version.
+    image: mongo:9.0.4
+    container_name: muzieklab-mongo
+    restart: unless-stopped
+    command:
+      - --replSet=rs0
+      - --keyFile=/etc/mongo/keyfile
+      # The data is small; the default cache (half of the memory minus 1 GB) would take 1.4 GB of the server's 3.7 GB.
+      - --wiredTigerCacheSizeGB=0.5
+      - --bind_ip_all
+    env_file: .env
+    ports:
+      - 127.0.0.1:27017:27017
+    volumes:
+      - ./data:/data/db
+      - ./keyfile:/etc/mongo/keyfile:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

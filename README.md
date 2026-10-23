@@ -27,6 +27,15 @@ npm run build      # type check + production build in dist/
 npm run e2e        # Playwright: layout at every screen size and a full lesson (builds first)
 ```
 
+The API (`server/`, accounts to come: [BACKEND-PLAN.md](docs/BACKEND-PLAN.md)) is its own package:
+
+```sh
+cd server && npm install
+npm test           # Vitest, against a throwaway MongoDB (mongodb-memory-server)
+MONGODB_URI=mongodb://127.0.0.1:27017/muzieklab_dev npm run dev   # http://127.0.0.1:3000/api/v1/health
+npm run build      # the bundle the server runs: dist/server.cjs
+```
+
 On a computer any key is the tap pad; on a phone, tap the pad on screen. Run
 Settings → Calibrate once per device so the timing scores match what you hear.
 

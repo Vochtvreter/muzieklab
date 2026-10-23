@@ -1,0 +1,8 @@
+# One MongoDB backup (backup.sh), started each night by muzieklab-backup.timer (docs/DEPLOY.md).
+[Unit]
+Description=Muzieklab MongoDB backup
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/muzieklab-mongo/backup.sh

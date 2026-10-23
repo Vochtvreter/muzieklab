@@ -15,6 +15,20 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+  api:
+    # The API (server/): types, tests against a throwaway MongoDB (mongodb-memory-server), and the bundle.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm, cache-dependency-path: server/package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
   e2e:
     # Layout at phone, landscape, tablet and desktop sizes, and one full lesson, against the production build.
     runs-on: ubuntu-latest

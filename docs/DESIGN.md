@@ -1530,7 +1530,7 @@ without code changes:
 5. **Counting aid:** show counting text under the notes ("1 & 2 &") as an optional help?
 6. **Tap vs hold:** decided: tap & hold is the default in v1; tap only stays as a setting
    for beginners (§3.1).
-7. **Accounts:** the open questions for accounts and permissions (email service, children's accounts, two-step
+7. **Accounts:** the open questions for accounts and permissions (children's accounts, two-step
    sign-in, content editing, premium, where the account sits in the shell) are in [BACKEND-PLAN.md](BACKEND-PLAN.md)
    §11.
 
