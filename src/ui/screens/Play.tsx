@@ -1,8 +1,9 @@
 /**
- * Play · tap the rhythm. Phone and tablet: top bar, lesson / bar / tempo line with the combo, the staff and length
- * lane, the beat counter, the judgement and the big pad. Desktop (≥ 1100 px): the exercise header, a wide staff card,
- * the key-cap pad and four small stat cards; sheets become dialogs. Echo: a listen phase first (Echo.tsx), then the
- * same screen with the staff and lane swapped for the tap-back card.
+ * Play · tap the rhythm. Phone: top bar, lesson / bar / tempo line with the combo, the staff and length lane, the beat
+ * counter, the judgement and the big pad. Tablet: the exercise header, a staff card across the width, the count and
+ * combo cards, the judgement and the big pad. Desktop (≥ 1100 px): the exercise header, a wide staff card, the key-cap
+ * pad and four small stat cards; sheets become dialogs. Echo: a listen phase first (Echo.tsx), then the same screen
+ * with the staff and lane swapped for the tap-back card.
  */
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import type { JudgeResult, Tap } from '../../core/api';
@@ -11,14 +12,13 @@ import { pathLessonOf } from '../../game/tracks';
 import type { Prefs } from '../../game/storage';
 import { LengthLane } from '../../render/LengthLane';
 import { t, tx } from '../../i18n';
-import { applyAudioPrefs, engine } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
 import { AnalogMetronome, BeatRow, StaffBox, TapPad } from '../components/Bits';
-import { SwitchTrack } from '../components/Controls';
+import { ExerciseHeader } from '../components/ExerciseHeader';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { exerciseView, type ExerciseView } from '../exerciseView';
-import { SHORTER_PHONE, useBreakpoint, useDocTitle, useKeyboardHints, useLingering, useMediaQuery, useReducedMotion } from '../hooks';
+import { SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering, useMediaQuery, useReducedMotion } from '../hooks';
 import { useLearnReturn } from '../lib/learnReturn';
 import { liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
@@ -26,6 +26,7 @@ import { metersLabel } from '../lib/format';
 import { Link, navigate } from '../router';
 import { todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
+import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
 import { HowToContent, IntroContent, PauseContent, ReadyContent, useListen } from './PlaySheets';
 import { howToEyebrow, usePlaySession } from './playSession';
 
@@ -81,6 +82,10 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
+  // A phone on its side is tablet-wide but keeps the phone layout (two columns, in the CSS).
+  const tablet = useExerciseLayout() === 'tablet';
+  // Tablet and desktop: the exercise header, four bars a row and the long lane legend.
+  const wide = desktop || tablet;
   const keys = useKeyboardHints(bp);
   const still = useReducedMotion();
   // A phone browser on a small phone (375 × 553): the staff is drawn smaller so the pad still fits (DESIGN.md §9).
@@ -151,7 +156,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const countIn = s.frame.countIn;
   const barText = echo ? t('play.echo.tapBack') : countIn ? t('play.countingIn') : t('play.barOf', { bar: curBar + 1, total: bars });
 
-  const perRow = desktop ? 4 : 2;
+  const perRow = wide ? 4 : 2;
   const from = windowStart(curBar, perRow, 2, bars);
   const shownBars = useMemo(() => view.bars.slice(from, from + perRow * 2), [view.bars, from, perRow]);
   const rhythm = useMemo(() => describeBars(shownBars, ex.meter.id, from + 1), [shownBars, ex.meter.id, from]);
@@ -173,11 +178,11 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
     <div className="lane-head">
       {ex.settings.hold ? (
         <span>
-          <b>{t('play.length')}</b> · {t(desktop ? 'play.lengthLegendLong' : 'play.lengthLegend')}
+          <b>{t('play.length')}</b> · {t(wide ? 'play.lengthLegendLong' : 'play.lengthLegend')}
         </span>
       ) : (
         <span>
-          <b>{t('play.tapTiming')}</b> · {t(desktop ? 'play.tapLegendLong' : 'play.tapLegend')}
+          <b>{t('play.tapTiming')}</b> · {t(wide ? 'play.tapLegendLong' : 'play.tapLegend')}
         </span>
       )}
       <span>{bars > 1 ? t('play.barsRange', { from: 1, to: bars }) : t('play.barsOne', { from: 1 })}</span>
@@ -232,97 +237,79 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
     </Sheet>
   );
 
+  const title = lesson && !echo ? t('play.lessonTitle', { id: pathLessonOf('rhythm', lesson.lesson.id)?.id ?? lesson.lesson.id, title: tx(lesson.lesson.title) }) : where;
+  const count: CountProps = { beats: ex.meter.beatsPerBar, beat, label: beatLabel, countIn, analog };
+  const staffContent = echoCard || (
+    <>
+      {staff}
+      {laneHead}
+      {lane}
+    </>
+  );
+  // Tablet and desktop: the exercise header. The keyboard shortcuts belong to the desktop layout (as before, also on a
+  // touch screen at desktop width); a tablet names the buttons as the phone does.
+  const header = wide && (
+    <ExerciseHeader tablet={tablet} eyebrow={title}
+      line={
+        <>
+          {barText} · {metersLabel([ex.meter.id])} · <span className="music">𝅘𝅥</span> {t('play.beatEquals', { bpm: ex.tempo })}
+        </>
+      }
+      progress={{ label: t('play.progress'), value: progress, max: 100, now: Math.round(progress * 100) }}>
+      <button type="button" className="icon-btn icon-btn--quiet" aria-haspopup="dialog" aria-keyshortcuts={desktop ? '?' : undefined}
+        aria-label={t(desktop ? 'play.helpShortcut' : 'play.help')} title={t(desktop ? 'play.helpTitle' : 'play.help')} onClick={() => s.openSheet('help')}>
+        <Icon name="help" size={20} strokeWidth={1.8} />
+      </button>
+      <button type="button" className="btn-outline" aria-haspopup="dialog" aria-keyshortcuts={desktop ? 'Escape' : undefined} title={desktop ? t('play.pauseTitle') : undefined}
+        onClick={() => s.openSheet('pause')}>
+        <Icon name="pause" size={16} />
+        {t('play.pause')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
+      </button>
+      <Link to={exit} query={back?.query} className="text-link-btn" onClick={quitLink}>
+        {t('play.quitShort')}
+      </Link>
+    </ExerciseHeader>
+  );
+  const skipLink = !echo && (
+    <button type="button" className="skip-link" onClick={s.skip} disabled={s.phase === 'intro'}>
+      {t('play.skip')}
+    </button>
+  );
+
   if (desktop) {
-    const metronomeOn = state.prefs.metronomeOn;
-    const toggleMetronome = (): void => {
-      const prefs = { ...state.prefs, metronomeOn: !metronomeOn };
-      dispatch({ type: 'prefs', patch: { metronomeOn: !metronomeOn } });
-      applyAudioPrefs(prefs, engine());
-    };
     return (
       <div className="dplay">
-        <header className="dplay-head">
-          <div className="brand brand--static">{t('app.name')}</div>
-          <div className="dplay-title">
-            <span className="eyebrow">{lesson && !echo ? t('play.lessonTitle', { id: pathLessonOf('rhythm', lesson.lesson.id)?.id ?? lesson.lesson.id, title: tx(lesson.lesson.title) }) : where}</span>
-            <span className="mono-line">
-              {barText} · {metersLabel([ex.meter.id])} · <span className="music">𝅘𝅥</span> {t('play.beatEquals', { bpm: ex.tempo })}
-            </span>
-          </div>
-          <div className="progress progress--grow" role="progressbar" aria-label={t('play.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
-            <div style={{ width: progress * 100 + '%' }} />
-          </div>
-          <div className="dplay-actions">
-            <button type="button" className="icon-btn icon-btn--quiet" aria-haspopup="dialog" aria-keyshortcuts="?" aria-label={t('play.helpShortcut')} title={t('play.helpTitle')}
-              onClick={() => s.openSheet('help')}>
-              <Icon name="help" size={20} strokeWidth={1.8} />
-            </button>
-            <button type="button" className="btn-outline" aria-haspopup="dialog" aria-keyshortcuts="Escape" title={t('play.pauseTitle')} onClick={() => s.openSheet('pause')}>
-              <Icon name="pause" size={16} />
-              {t('play.pause')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
-            </button>
-            <Link to={exit} query={back?.query} className="text-link-btn" onClick={quitLink}>
-              {t('play.quitShort')}
-            </Link>
-          </div>
-        </header>
+        {header}
         <h1 className="sr-only">{t('play.heading')}</h1>
         <main className="dplay-main">
           <div className="card dplay-staff">
-            <div className="dplay-staff-inner">
-              {echoCard || (
-                <>
-                  {staff}
-                  {laneHead}
-                  {lane}
-                </>
-              )}
-            </div>
+            <div className="dplay-staff-inner">{staffContent}</div>
           </div>
-          <div className="dplay-row">
-            <div className="dpad" ref={s.setPad as (el: HTMLDivElement | null) => void}>
-              <div aria-live="polite" className={fbClass}>
-                {fbText}
-              </div>
-              <button type="button" className={'keycap' + (s.frame.held ? ' is-held' : '')} aria-label={t('play.pad')}>
-                {t('play.padLabel')}
-                <span className="keycap-bar" aria-hidden="true">
-                  <span style={{ width: s.frame.ring * 100 + '%' }} />
-                </span>
-              </button>
-            </div>
-            <div className="dstats">
-              <div className="card stat">
-                <span className="label">{t(countIn ? 'play.countingIn' : 'play.count')}</span>
-                {analog || (
-                  <div className={'dbeats' + (beat.countIn ? ' is-count-in' : '')} role="img" aria-label={beatLabel}>
-                    {Array.from({ length: ex.meter.beatsPerBar }, (_, i) => (
-                      <span key={i} aria-hidden="true" className={i === beat.inBar ? 'is-on' : ''}>
-                        {i + 1}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="card stat">
-                <span className="label">{t('play.comboTitle')}</span>
-                <span className="stat-big">{t('play.comboValue', { count: s.combo })}</span>
-              </div>
-              <div className="card stat">
-                <span className="label">{t('play.soFar')}</span>
-                <span className="stat-mono">{soFar === null ? t('play.noScore') : t('common.percent', { value: soFar })}</span>
-              </div>
-              <div className="card stat">
-                <span className="label" id="dmetro">
-                  {t('play.metronome')}
-                </span>
-                <button type="button" role="switch" aria-checked={metronomeOn} aria-labelledby="dmetro" className="stat-switch" onClick={toggleMetronome}>
-                  <SwitchTrack on={metronomeOn} />
-                  {t(metronomeOn ? 'play.on' : 'play.off')}
-                </button>
-              </div>
-            </div>
+          <PlayDeskRow count={count} combo={s.combo} soFar={soFar} judgement={fbText} judgementClass={fbClass} held={s.frame.held} ring={s.frame.ring}
+            padRef={s.setPad as (el: HTMLDivElement | null) => void} />
+        </main>
+        {sheet}
+      </div>
+    );
+  }
+
+  // Tablet (App design canvas, PlayTablet): the header, the staff card across the width, the count and combo, then the
+  // big pad takes the height that is left.
+  if (tablet) {
+    return (
+      <div className="tframe">
+        {header}
+        <h1 className="sr-only">{t('play.heading')}</h1>
+        <main className="page tplay-main">
+          <div className={'card tplay-staff' + (echo ? ' tplay-staff--echo' : '')}>
+            <div className="dplay-staff-inner">{staffContent}</div>
           </div>
+          <PlayCountRow count={count} combo={s.combo} />
+          <div aria-live="polite" className={fbClass + ' judgement--tablet'}>
+            {fbText}
+          </div>
+          <TapPad ref={s.setPad as (el: HTMLButtonElement | null) => void} progress={s.frame.ring} held={s.frame.held} />
+          {skipLink}
         </main>
         {sheet}
       </div>
@@ -363,15 +350,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
           </div>
         </div>
 
-        <div className={'card play-staff' + (echo ? ' play-staff--echo' : '')}>
-          {echoCard || (
-            <>
-              {staff}
-              {laneHead}
-              {lane}
-            </>
-          )}
-        </div>
+        <div className={'card play-staff' + (echo ? ' play-staff--echo' : '')}>{staffContent}</div>
 
         {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />}
 
@@ -379,11 +358,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
           {fbText}
         </div>
         <TapPad ref={s.setPad as (el: HTMLButtonElement | null) => void} progress={s.frame.ring} held={s.frame.held} />
-        {!echo && (
-          <button type="button" className="skip-link" onClick={s.skip} disabled={s.phase === 'intro'}>
-            {t('play.skip')}
-          </button>
-        )}
+        {skipLink}
       </div>
       {sheet}
     </ExerciseFrame>
