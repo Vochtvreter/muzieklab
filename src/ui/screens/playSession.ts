@@ -87,6 +87,16 @@ export function howToIntro(prefs: Pick<Prefs, 'seenHowTo' | 'seenHold'>, hold: b
 }
 
 /**
+ * How to play's eyebrow (a message key): why it opened before the start (howToIntro), or *Paused* once the exercise has
+ * started. Null when it was not due and opened with ? from the intro sheet or Ready: Play then shows where the run comes
+ * from ("Lesson 3.1"), not *First time here*.
+ */
+export function howToEyebrow(phase: Phase, intro: 'first' | 'hold' | null): 'howto.firstTime' | 'howto.newHold' | 'howto.paused' | null {
+  if (phase !== 'intro') return 'howto.paused';
+  return intro === 'first' ? 'howto.firstTime' : intro === 'hold' ? 'howto.newHold' : null;
+}
+
+/**
  * The sheet Play opens with, before the count-in: How to play when it is due (howToIntro), else the intro sheet when
  * the lesson brings symbols the player was not shown yet, else Ready when no tap led here (`gated`) or the run is a
  * lesson other than the one finished last (`fresh`: read the new rhythm first). Null: count in straight away.

@@ -111,7 +111,8 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
       triplets). Under them is an action row: an outline *Listen*, as wide as its label, that plays this exercise once
       with the beat (as Results' Listen does; it reads *Stop* while playing), and an accent *Start* that fills the
       rest. Start marks the symbols as shown and starts the count-in. **?** on the sheet opens How to play and leads
-      back to it. When How to play is due as well, it comes first and *Got it* brings the intro sheet.
+      back to it; when How to play was not due, its eyebrow names the run (*Lesson 3.1*) instead of *First time here*
+      (also from Ready). When How to play is due as well, it comes first and *Got it* brings the intro sheet.
    3. **Ready**, when no tap led here (a reload, Back / Forward into Play), or when the run is a lesson other than the
       last finished run's (Results → *Next lesson*, another lesson from the Path or Home), so the new rhythm can be
       read first. Retry and Next exercise of the same lesson, free practice, and the first run of a session count in

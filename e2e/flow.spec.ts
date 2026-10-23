@@ -197,6 +197,13 @@ test('Next lesson introduces what is new before the count-in, once; another less
   await expect(sheet.getByRole('button', { name: 'Stop' })).toHaveAttribute('aria-pressed', 'true');
   await sheet.getByRole('button', { name: 'Stop' }).click();
   await expect(sheet.getByRole('button', { name: 'Listen' })).toHaveAttribute('aria-pressed', 'false');
+  // ? opens How to play, which was not due: it names the lesson, not "First time here", and leads back.
+  await page.keyboard.press('?');
+  const howTo = page.getByRole('dialog', { name: 'How to play' });
+  await expect(howTo.getByText('Lesson 1.2', { exact: true })).toBeVisible();
+  await expect(howTo.getByText('First time here')).toHaveCount(0);
+  await howTo.getByRole('button', { name: 'Got it' }).click();
+  await expect(sheet.getByText('New in this lesson')).toBeVisible();
   await sheet.getByRole('button', { name: 'Start' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(countIn).toBeAttached({ timeout: 3000 });

@@ -26,7 +26,7 @@ import { Link, navigate } from '../router';
 import { todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
 import { HowToContent, IntroContent, PauseContent, ReadyContent, useListen } from './PlaySheets';
-import { usePlaySession } from './playSession';
+import { howToEyebrow, usePlaySession } from './playSession';
 
 /** The staff's size on the shortest phone screens: two rows of notes take 139 px instead of 174. */
 const STAFF_SHORTER = 0.8;
@@ -210,12 +210,14 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   };
 
   const { shown: sheetShown, closing } = useLingering(s.sheet, 240);
+  // How to play says why it opened; opened with ? before the start when it was not due, it names the run.
+  const howToKey = howToEyebrow(s.phase, s.intro);
   const sheet = sheetShown && (
     <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey={sheetShown}
       labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'new' ? 'introtitle' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
       maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined} low={sheetShown === 'new' || sheetShown === 'ready'}>
       {sheetShown === 'help' ? (
-        <HowToContent eyebrow={t(echo ? 'howto.echo.eyebrow' : s.phase !== 'intro' ? 'howto.paused' : s.intro === 'hold' ? 'howto.newHold' : 'howto.firstTime')} desktop={keys} hold={ex.settings.hold} echo={!!echo}
+        <HowToContent eyebrow={echo ? t('howto.echo.eyebrow') : howToKey ? t(howToKey) : where} desktop={keys} hold={ex.settings.hold} echo={!!echo}
           onDone={closeSheet} />
       ) : sheetShown === 'new' ? (
         <IntroContent title={lesson ? tx(lesson.lesson.title) : where} intros={s.intros} listen={listen} onStart={closeSheet} />
