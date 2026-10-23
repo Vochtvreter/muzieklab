@@ -205,9 +205,12 @@ The API (`server/`, [BACKEND-PLAN.md](BACKEND-PLAN.md)) runs next to each site: 
 
 All of this runs on the server, as your own user. The files named come from this repository.
 
-1. **Docker and Node:**
+1. **The kernel, Docker and Node.** MongoDB needs a kernel of upstream version 7.0.14 or newer: older 6.19 and 7.0
+   kernels crash it, and it refuses to start on them. The end of `/proc/version_signature` shows the upstream
+   version; if it is older, `sudo apt full-upgrade` and a reboot bring a newer kernel.
 
    ```sh
+   cat /proc/version_signature                     # e.g. "Ubuntu 7.0.0-38.38-generic 7.0.14"
    sudo apt install -y docker.io docker-compose-v2 nodejs
    docker compose version; node --version          # Node must be v22 or newer
    ```
@@ -305,6 +308,8 @@ ln -sfn releases/<commit> current.tmp && mv -Tf current.tmp current
 - **Permission denied (publickey):** the public key is not in `/home/deploy/.ssh/authorized_keys`, the file or folder
   is not owned by `deploy`, or `DEPLOY_SSH_KEY` is not the whole private key.
 - **rsync: command not found:** install `rsync` on the server.
+- **MongoDB keeps restarting** with "Linux kernel versions 6.19.0 through 7.0.13 have a known incompatibility": the
+  kernel is too old for MongoDB (step 1 of *Set up the API*). Update it and reboot.
 - **Check the API fails:** the API did not answer with this commit within a minute, and the deploy switched it back.
   `journalctl -u muzieklab-api@test -n 50` on the server shows why (often MONGODB_URI, or MongoDB not running).
 - **sudo: a password is required:** `/etc/sudoers.d/muzieklab-deploy` is missing or names another service.
