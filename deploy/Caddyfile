@@ -1,6 +1,6 @@
 # Muzieklab on Caddy (docs/DEPLOY.md). Caddy gets and renews the HTTPS certificate on its own.
-# Replace the domain, copy this to /etc/caddy/Caddyfile and run: sudo systemctl reload caddy
-muzieklab.example.com {
+# Copy this to /etc/caddy/Caddyfile and run: sudo systemctl reload caddy
+vivanova.app {
 	# The deploy workflow points current at the newest release.
 	root * /var/www/muzieklab/current
 	encode zstd gzip

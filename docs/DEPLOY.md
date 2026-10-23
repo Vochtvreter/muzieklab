@@ -31,7 +31,7 @@ a domain (or subdomain) for the site.
 
 ### 1. Point the domain at the server
 
-Add an `A` record (and `AAAA` for IPv6) for your domain, for example `muzieklab.example.com`, with the server's IP
+Add an `A` record (and `AAAA` for IPv6) for the domain, `vivanova.app`, with the server's IP
 address.
 
 ### 2. Install a web server and rsync
@@ -82,7 +82,7 @@ sudo chown deploy:deploy /home/deploy/.ssh/authorized_keys && sudo chmod 600 /ho
 Then read the server's host key, so GitHub knows it is talking to your server and not an impostor:
 
 ```sh
-ssh-keyscan -t ed25519 muzieklab.example.com        # add -p 2222 if SSH is not on port 22
+ssh-keyscan -t ed25519 vivanova.app        # add -p 2222 if SSH is not on port 22
 ```
 
 Check that the key it prints is the server's own: on the server, `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`
@@ -90,18 +90,18 @@ shows its fingerprint, and `ssh-keyscan … | ssh-keygen -lf -` on your computer
 
 ### 5. Configure the web server
 
-Caddy: copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile`, change `muzieklab.example.com` to your domain, then:
+Caddy: copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile`, then:
 
 ```sh
 sudo systemctl reload caddy
 ```
 
-nginx: copy `deploy/nginx.conf` to `/etc/nginx/sites-available/muzieklab`, change the domain, then:
+nginx: copy `deploy/nginx.conf` to `/etc/nginx/sites-available/muzieklab`, then:
 
 ```sh
 sudo ln -s /etc/nginx/sites-available/muzieklab /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo apt install -y certbot python3-certbot-nginx && sudo certbot --nginx -d muzieklab.example.com
+sudo apt install -y certbot python3-certbot-nginx && sudo certbot --nginx -d vivanova.app
 ```
 
 Both configs cache the hashed files in `assets/` for a year and have browsers check everything else (the page, the
@@ -115,11 +115,11 @@ In the repository on GitHub: **Settings → Secrets and variables → Actions**.
 |---|---|---|
 | Secret | `DEPLOY_SSH_KEY` | The whole private key file `muzieklab-deploy`, including the `BEGIN` and `END` lines |
 | Secret | `DEPLOY_KNOWN_HOSTS` | The line `ssh-keyscan` printed in step 4 |
-| Variable | `DEPLOY_HOST` | The server's domain or IP address, for example `muzieklab.example.com` |
+| Variable | `DEPLOY_HOST` | `vivanova.app` |
 | Variable | `DEPLOY_USER` | `deploy` |
 | Variable | `DEPLOY_PATH` | `/var/www/muzieklab` |
 | Variable | `DEPLOY_PORT` | Only if SSH is not on port 22 |
-| Variable | `PRODUCTION_URL` | `https://muzieklab.example.com/` (optional: the deploy checks it answers, and links it) |
+| Variable | `PRODUCTION_URL` | `https://vivanova.app/` (the deploy checks it answers, and links it) |
 
 Add them under the **Repository** tabs (not an environment): the workflow is skipped until `DEPLOY_HOST` is set, so
 `main` stays green before the server is ready. Once the private key is in GitHub, delete it from your computer.
