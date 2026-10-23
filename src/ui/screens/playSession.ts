@@ -19,7 +19,7 @@ import {
 } from '../../core/api';
 import { attachTapInput } from '../../input/tapInput';
 import type { NoteMark } from '../../render/Staff';
-import { introId, unseenIntros, type Intro } from '../../game/intro';
+import { exerciseHas, introId, unseenIntros, type Intro } from '../../game/intro';
 import type { Prefs } from '../../game/storage';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import type { ExerciseView } from '../exerciseView';
@@ -110,7 +110,10 @@ export function firstSheet(howTo: 'first' | 'hold' | null, intros: number, gated
 export interface PlaySession {
   /** Why How to play opened before the start (see howToIntro), for its eyebrow. */
   intro: 'first' | 'hold' | null;
-  /** What this lesson introduces that the player has not been shown yet (the intro sheet); empty for other runs. */
+  /**
+   * What this lesson introduces that its exercise shows and the player has not been shown yet (the intro sheet); empty
+   * for other runs.
+   */
   intros: Intro[];
   phase: Phase;
   sheet: SheetKind;
@@ -159,7 +162,9 @@ export function usePlaySession(
   const [gated] = useState(() => !!run.needsGesture || played.has(run));
   // How to play opens first the very first time, and again the first time holding counts (unit 1 is tap only).
   const [intro] = useState(() => howToIntro(prefs, ex.settings.hold));
-  const [intros] = useState(() => (run.lessonId ? unseenIntros(run.lessonId, prefs.seenIntros) : []));
+  // Only what this exercise shows (a lesson start picks one with all of it: makeLessonRun), so the sheet never names,
+  // and marks as shown, a symbol the staff does not have.
+  const [intros] = useState(() => (run.lessonId ? unseenIntros(run.lessonId, prefs.seenIntros).filter((x) => exerciseHas(ex, [introId(x)])) : []));
   const [first] = useState(() => firstSheet(intro, intros.length, gated, fresh));
   const autoStart = first === null;
   const [phase, setPhase] = useState<Phase>(autoStart ? 'running' : 'intro');

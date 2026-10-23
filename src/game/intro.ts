@@ -3,7 +3,8 @@
  * dots, ties and triplets that no earlier lesson of the path used. The first lesson introduces nothing to show: its
  * quarter notes and four-four are what How to play covers.
  */
-import { METER_IDS, NOTE_VALUES, type MeterId, type NoteValue, type Settings } from '../core/types';
+import { spellExercise } from '../core/speller';
+import { METER_IDS, NOTE_VALUES, type Exercise, type MeterId, type NoteValue, type Settings } from '../core/types';
 import { ALL_LESSONS, lessonSettings } from './path';
 
 export type Intro = { kind: 'meter'; meter: MeterId } | { kind: 'note' | 'rest'; value: NoteValue } | { kind: 'dotted' | 'ties' | 'triplets' };
@@ -67,4 +68,25 @@ export function introsOf(lessonIds: Iterable<string>): string[] {
   const ids = new Set<string>();
   for (const id of lessonIds) for (const x of lessonIntros(id)) ids.add(introId(x));
   return [...ids];
+}
+
+/** The intro ids of what an exercise's staff shows: its time signature, note and rest values, dots, ties, triplets. */
+function shownIds(exercise: Exercise): Set<string> {
+  const ids = new Set<string>(['meter:' + exercise.meter.id]);
+  for (const bar of spellExercise(exercise)) {
+    for (const s of bar.symbols) {
+      // A whole-bar rest is drawn as the whole rest; a triplet's notes count as the triplet, not as eighths.
+      ids.add(s.tuplet ? 'triplets' : s.kind + ':' + s.value);
+      if (s.dots) ids.add('dotted');
+      if (s.tieToNext) ids.add('ties');
+    }
+  }
+  return ids;
+}
+
+/** Whether an exercise's staff shows every symbol given (intro ids), e.g. everything its lesson introduces. */
+export function exerciseHas(exercise: Exercise, ids: readonly string[]): boolean {
+  if (ids.length === 0) return true;
+  const shown = shownIds(exercise);
+  return ids.every((id) => shown.has(id));
 }

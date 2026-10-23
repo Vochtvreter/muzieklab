@@ -101,9 +101,14 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    1. *How to play*, when it is due (above).
    2. The **intro sheet**, when a lesson brings a symbol the player has not been shown yet. `game/intro.ts` works out
       what each lesson brings that no earlier lesson used (1.2 the half note, 2.2 the quarter rest, 3.1 three-four,
-      4.1 the eighth, 6.1 the tie, 7.1 the dot …); lesson 1.1 brings nothing, because How to play covers it. What was
-      shown is kept in `prefs.seenIntros`. The sheet has the eyebrow *New in this lesson* and the lesson title as its
-      heading. Each symbol gets a 72 px accent-soft tile with its glyph (Noto Music, as the Setup buttons draw it; a
+      4.1 the eighth, 6.1 the tie, 7.1 the dot …); lesson 1.1 brings nothing, because How to play covers it. Every
+      lesson run (Continue, the Path, *Next lesson*, *Next exercise*) has an exercise that shows all of what its lesson
+      brings: the start tries new seeds until the spelled exercise has each of them (`makeLessonRun` in `ui/store.tsx`,
+      `exerciseHas` in `game/intro.ts`; up to 200 seeds, because 3.4's whole rest is in only about 1 exercise in 22,
+      where most lessons need a few), and keeps the last one tried if none has. The sheet lists only what the
+      exercise shows, so it never names a symbol the staff does not have (nor saves it as shown). What was shown is
+      kept in `prefs.seenIntros`. The sheet has the eyebrow *New in this lesson* and the lesson title as its heading.
+      Each symbol gets a 72 px accent-soft tile with its glyph (Noto Music, as the Setup buttons draw it; a
       time signature as two stacked digits in the display face), its name and one fact (*Half note · 2 beats*,
       *Quarter rest · 1 beat of silence*, *Three-four · 3 beats in a bar*, *Tie · adds the second note's length*,
       *Dot · adds half the note's length*, *Triplet · 3 in the time of 2*), and *Learn more →* to its Learn section

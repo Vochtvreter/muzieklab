@@ -34,7 +34,9 @@ import {
   type Settings,
   type Tap,
 } from '../core/api';
+import { Rng } from '../core/rng';
 import { dailyTier } from '../game/daily';
+import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, isUnlocked, lessonSettings, recordLessonResult } from '../game/path';
 import { progressKey } from '../game/track';
@@ -435,6 +437,24 @@ export function makeRun(settings: Settings, seed: number, lessonId: string | nul
     console.error('generateExercise failed', e);
     return null;
   }
+}
+
+/**
+ * Seeds a lesson start tries for an exercise with everything the lesson introduces. Most lessons find one in the first
+ * few tries; 3.4's whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
+ */
+const INTRO_TRIES = 200;
+
+/**
+ * A lesson run whose exercise shows every symbol the lesson introduces (game/intro.ts), so the intro sheet never names
+ * one the staff does not have: from `seed`, other seeds are tried until the exercise has them all (else the last one).
+ */
+export function makeLessonRun(settings: Settings, seed: number, lessonId: string): Run | null {
+  const ids = lessonIntros(lessonId).map(introId);
+  const seeds = new Rng(seed);
+  let run = makeRun(settings, seed, lessonId);
+  for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(settings, seeds.int(0x7fffffff), lessonId);
+  return run;
 }
 
 function initialState(): AppState {

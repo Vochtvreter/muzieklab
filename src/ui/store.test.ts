@@ -1,7 +1,9 @@
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type ScaleSettings } from '../core/api';
+import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings } from '../game/notesPath';
+import { lessonSettings } from '../game/path';
 import { defaultProgress, DEFAULT_PREFS, type Prefs, type Progress } from '../game/storage';
-import { makeNoteRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type AppState } from './store';
+import { makeLessonRun, makeNoteRun, makeRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -269,5 +271,32 @@ describe('practice hold', () => {
     expect(runSettings({ ...s, progress: unit1Done }, null).hold).toBe(true);
     expect(runSettings(s, '1.1').hold).toBe(false);
     expect(runSettings(s, '2.1').hold).toBe(true);
+  });
+});
+
+describe('makeLessonRun', () => {
+  const ids = (lessonId: string): string[] => lessonIntros(lessonId).map(introId);
+  /** Start seeds as newSeed gives them: spread over 31 bits. */
+  const seeds = Array.from({ length: 150 }, (_, i) => (Math.imul(i + 1, 2654435761) >>> 1) || 1);
+
+  it('a lesson that introduces a symbol starts with an exercise that shows it (3.4 the whole rest, 7.1 the dot)', () => {
+    // 3.4 tries about 22 seeds a start (its whole rest is in about 1 exercise in 22), so it gets fewer starts here.
+    for (const [lessonId, starts] of [['3.4', seeds.slice(0, 50)], ['7.1', seeds]] as const) {
+      const settings = lessonSettings(lessonId);
+      // Without the search many would not.
+      expect(starts.filter((seed) => exerciseHas(makeRun(settings, seed, lessonId)!.exercise, ids(lessonId))).length).toBeLessThan(starts.length / 2);
+      for (const seed of starts) {
+        const run = makeLessonRun(settings, seed, lessonId)!;
+        expect(exerciseHas(run.exercise, ids(lessonId)), `${lessonId}, seed ${seed}`).toBe(true);
+        expect(run).toMatchObject({ lessonId, daily: null });
+        expect(run.exercise.settings).toEqual(settings);
+      }
+    }
+  });
+
+  it('keeps the first seed when the exercise already shows it all, or the lesson introduces nothing', () => {
+    for (const lessonId of ['1.1', '1.3', '1.2', '3.1']) {
+      for (const seed of seeds.slice(0, 20)) expect(makeLessonRun(lessonSettings(lessonId), seed, lessonId)!.exercise.seed).toBe(seed);
+    }
   });
 });

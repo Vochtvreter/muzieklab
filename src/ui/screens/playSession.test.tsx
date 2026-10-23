@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { DEFAULT_SETTINGS, generateExercise, type JudgeResult, type Settings } from '../../core/api';
+import { exerciseHas } from '../../game/intro';
 import { lessonSettings } from '../../game/path';
 import { DEFAULT_PREFS, type Prefs } from '../../game/storage';
 import { exerciseView } from '../exerciseView';
@@ -314,6 +315,15 @@ describe('sheets before the count-in', () => {
     expect(seen).toEqual([{ seenIntros: ['note:half'] }]);
     expect(starts.length).toBe(1);
     expect(hook.result.current.phase).toBe('running');
+  });
+
+  it('names only what the exercise shows: a symbol its staff lacks is neither shown nor saved as shown', () => {
+    // Lesson starts pick an exercise with the whole rest (makeLessonRun); this one, made directly, has none.
+    expect(exerciseHas(generateExercise(lessonSettings('3.4'), 7), ['rest:whole'])).toBe(false);
+    const { hook, seen } = lesson('3.4', { seenHowTo: true, seenHold: true });
+    expect(hook.result.current.intros).toEqual([]);
+    expect(hook.result.current.sheet).toBeNull();
+    expect(seen).toEqual([]);
   });
 
   it('a symbol shown before does not open it again', () => {
