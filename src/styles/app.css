@@ -3185,6 +3185,14 @@ button.lesson-stars:hover {
   font-size: 14px;
   font-weight: 600;
 }
+/* The test site's branch (VITE_DEPLOY_BRANCH), after the version: cut short when it is long. */
+.about-version .about-branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
 .offline {
   flex: none;
   display: inline-flex;
@@ -4202,4 +4210,27 @@ button.lesson-stars:hover {
 }
 .levelup-line .xp-next {
   text-align: right;
+}
+
+/* The test site's branch (VITE_DEPLOY_BRANCH), hung from the top edge on every screen. Taps go through it. */
+.branch-badge {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  max-width: min(60vw, 360px);
+  padding: 1px 8px 2px;
+  border-radius: 0 0 6px 6px;
+  background: var(--reward);
+  color: #161b1c;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0.9;
 }

@@ -696,6 +696,7 @@
     "hintAnalog": "Een slinger zwaait en raakt bij elke tel een kant.",
     "about": "Over",
     "version": "Versie",
+    "branch": "Branch",
     "offline": "Werkt offline",
     "online": "Heeft internet nodig",
     "reset": "Voortgang wissen",
@@ -2129,6 +2130,10 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_11_1": {
+      "title": "De testsite noemt zijn branch",
+      "branch": "De testsite laat de branch zien waaruit hij is gebouwd, bovenaan elk scherm en naast de versie in Instellingen → Over."
+    },
     "v0_11_0": {
       "title": "Eén leerpad: noten en ritme samen",
       "try": "Open het leerpad",
