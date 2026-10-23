@@ -933,7 +933,8 @@ it drops the glyphs so the names fit on one line.
   level) sits beside the streak chip. It opens the **level sheet** (`LevelContent` in `ui/components/Reward.tsx`): the
   badge, *Level N · Rank*, the next rank (*Count at level 3*, or *The top rank*), the rank ladder, one XP bar with one
   label (*100 XP to level 2*) and Close. Escape also closes it, and focus returns to the chip. Desktop Home keeps its
-  level card, with one label under the bar (§9).
+  level card, with one label under the bar (§9); the sheet closes when the layout becomes desktop (a tablet turned to
+  landscape), so it does not open again by itself when it is turned back.
 - The **level-up sheet** after a result uses the same layout with the *Level up* eyebrow. Its line names the new rank
   (*New rank: up from Tick*), or else the next rank (*Count at level 3*), instead of *Up from level N*. Its bar fills
   the old level, then the new one, and only then shows its one label.

@@ -100,6 +100,11 @@ export function Home(): JSX.Element {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [levelSheet]);
+  // Desktop has no sheet (its level card shows the details): an iPad turned to landscape closes it, so it does not pop
+  // up again on its own when turned back.
+  useEffect(() => {
+    if (bp === 'desktop') setLevelSheet(null);
+  }, [bp]);
 
   const dailyText = (
     <div className="daily-text">
