@@ -34,13 +34,15 @@ Settings → Calibrate once per device so the timing scores match what you hear.
 
 Every push to `main` runs the tests, builds and deploys the site to the production server over SSH
 (`.github/workflows/deploy.yml`). To redeploy without a change, run *Deploy to production* from the
-Actions tab. [docs/DEPLOY.md](docs/DEPLOY.md) explains how to set up the server, and how to roll back.
+Actions tab. To try a branch first, deploy it to https://test.vivanova.app with *Deploy to test* (or push it to the
+`test` branch). [docs/DEPLOY.md](docs/DEPLOY.md) explains how to set up the server, and how to roll back.
 
 The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`).
 
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
+- [Accounts and permissions](docs/BACKEND-PLAN.md): the planned back-end (design, nothing built yet).
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,
