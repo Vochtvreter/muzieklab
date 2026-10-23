@@ -205,6 +205,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectTouchHeight(pad(page));
         await expectFits(page);
       }
+      // Tablet and desktop: Play's layout while listening too, so the screen looks the same once the tapping starts: the
+      // exercise header, the listen card where the staff goes, and the pad (not taking taps yet).
+      if (desktopLayout || (tabletLayout && portraitLayout)) {
+        await expect(page.locator('.dplay-head .brand')).toBeVisible();
+        await expect(page.locator('.dplay-title .mono-line')).toHaveText(/^Listen · 4\/4 · /);
+        await expectClickable(page.getByRole('link', { name: 'Quit' }), { scroll: false });
+        await expect(page.locator(desktopLayout ? '.dplay-staff .echo-card' : '.tplay-staff .echo-card')).toBeVisible();
+        await expect(pad(page)).toBeDisabled();
+        await expect(page.getByRole('img', { name: 'Beats 1 to 4' })).toBeVisible();
+        if (tabletLayout) expect((await pad(page).boundingBox())!.height, 'the pad fills the tablet').toBeGreaterThan(300);
+      }
       await expectNoSideScroll(page);
     });
 
@@ -547,6 +558,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('radiogroup', { name: 'Sharp or flat' })).toHaveCount(0);
       await expect(page.getByText('Pick the sign if there is one, then the name.')).toHaveCount(0);
       if (portraitLayout) await expectFits(page);
+      // Tablet (App design canvas, NoteTablet): the exercise header with the brand and Quit, the question over a big
+      // staff card, and tall name keys in the answer card.
+      const tablet = tabletLayout && portraitLayout;
+      if (tablet) {
+        await expect(page.locator('.dplay-head--tablet .brand')).toBeVisible();
+        await expect(page.locator('.dplay-head--tablet .mono-line')).toHaveText('Note 1 of 20');
+        await expectClickable(page.getByRole('link', { name: 'Quit' }), inPlace);
+        await expect(page.locator('.nplay-ask')).toHaveText('Which note is highlighted?');
+        expect((await names.first().boundingBox())!.height, 'tall name keys').toBeGreaterThanOrEqual(150);
+        await expectNoOverlap(page.locator('.ntab-staff'), page.locator('.ntab-answer'));
+      }
       await expectNoSideScroll(page);
       await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
@@ -555,12 +577,21 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
       await expectTouchHeight(page.getByRole('button', { name: 'Hint' }));
+      if (tablet) expect((await keys.first().boundingBox())!.height, 'a tall piano').toBeGreaterThanOrEqual(200);
       // The hint takes two lines; the piano gives up the room, so nothing scrolls.
       await page.getByRole('button', { name: 'Hint' }).click();
       await expect(page.locator('.nfeedback')).toHaveText(/^.+\. This note is|^This is /);
       await expectClickable(keys.nth(0), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
       if (portraitLayout) await expectFits(page);
+      if (tablet) {
+        // A smaller tablet window (700 × 1000): the piano gives up height, and everything still fits.
+        await page.setViewportSize({ width: 700, height: 1000 });
+        for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i), inPlace);
+        await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+        await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
+        await expectFits(page);
+      }
       await expectNoSideScroll(page);
     });
 
@@ -576,6 +607,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
       if (portraitLayout) await expectFits(page);
+      // Tablet: the sign row's buttons are as tall as the board's, over tall name keys.
+      if (tabletLayout && portraitLayout) {
+        expect((await page.getByRole('radio', { name: 'flat' }).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+        expect((await names.first().boundingBox())!.height, 'tall name keys').toBeGreaterThanOrEqual(150);
+      }
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -664,6 +700,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
       await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
       if (portraitLayout) await expectFits(page);
+      // Tablet (Read notes' NoteTablet pattern): the exercise header, the degrees in the staff card, a tall piano.
+      if (tabletLayout && portraitLayout) {
+        await expect(page.locator('.dplay-head--tablet .brand')).toBeVisible();
+        await expect(page.locator('.dplay-head--tablet .mono-line')).toHaveText('Scale 1 of 1');
+        await expectClickable(page.getByRole('link', { name: 'Quit' }), inPlace);
+        await expect(page.locator('.stab-staff').getByRole('list', { name: 'Scale degrees going up' })).toBeVisible();
+        expect((await keys.first().boundingBox())!.height, 'a tall piano').toBeGreaterThanOrEqual(200);
+      }
       // Nothing to hear or start over before the first note.
       await expect(page.getByRole('button', { name: /^Hear it so far/ })).toBeHidden();
       await expect(page.getByRole('button', { name: /^Start over/ })).toBeHidden();
@@ -701,6 +745,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       for (let i = 0; i < 3; i++) await expectClickable(signs.nth(i), inPlace);
       await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
       if (portraitLayout) await expectFits(page);
+      // Tablet: the sign buttons as tall as on desktop, in the answer card with Hint and Next scale.
+      if (tabletLayout && portraitLayout) {
+        await expect(page.locator('.dplay-head--tablet .brand')).toBeVisible();
+        expect((await signs.first().boundingBox())!.height).toBeGreaterThanOrEqual(100);
+        await expect(page.locator('.stab-answer').getByRole('button', { name: 'Hint' })).toBeVisible();
+      }
       await signs.nth(1).click();
       await expectClickable(page.getByRole('button', { name: /^Hear it so far/ }));
       await expectClickable(page.getByRole('button', { name: /^Start over/ }));
@@ -886,6 +936,19 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // A phone in landscape has no Skip link: the pad takes the right column.
       if (portraitLayout) await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
       if (!desktopLayout) await expectFits(page);
+      // Tablet (App design canvas, PlayTablet): the exercise header with the brand, Pause and Quit, the count and combo
+      // cards, and a big pad. A phone on its side keeps the phone layout in two columns.
+      if (tabletLayout && portraitLayout) {
+        await expect(page.locator('.dplay-head--tablet .brand')).toBeVisible();
+        await expect(page.locator('.dplay-head--tablet .eyebrow')).toHaveText(/^Lesson 2\.1 · /);
+        await expectClickable(page.getByRole('button', { name: 'Pause' }), { scroll: false });
+        await expectClickable(page.getByRole('link', { name: 'Quit' }), { scroll: false });
+        await expect(page.locator('.tplay-count')).toBeInViewport({ ratio: 1 });
+        await expect(page.locator('.tplay-combo')).toHaveText(/^Combo×0$/);
+        expect((await pad(page).boundingBox())!.height, 'the pad fills the tablet').toBeGreaterThan(300);
+        await expectNoOverlap(pad(page), page.getByRole('button', { name: 'Skip to results' }));
+      }
+      if (name === 'phone-landscape') await expect(page.locator('.play-top')).toBeVisible();
       await expectNoSideScroll(page);
     });
 
@@ -898,8 +961,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
       await expect(page.locator('.staff-fallback')).toHaveCount(0);
       // A phone in landscape scrolls the staff card in its own column; the pad is beside it.
+      const tablet = tabletLayout && portraitLayout;
       if (portraitLayout) {
-        await expect(page.locator('.play-staff')).toBeInViewport({ ratio: 1 });
+        await expect(page.locator(tablet ? '.tplay-staff' : '.play-staff')).toBeInViewport({ ratio: 1 });
         await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
         await expect(page.locator('.beats')).toBeInViewport({ ratio: 1 });
         await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
@@ -907,6 +971,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (!desktopLayout) {
         await expectClickable(pad(page), { scroll: false });
         await expectTouchHeight(pad(page));
+        await expectFits(page);
+      }
+      if (tablet) {
+        // Tablet: four bars a row. A smaller tablet window (700 × 1000, a tablet-wide window on a laptop) still fits,
+        // with the pad tall enough.
+        expect((await pad(page).boundingBox())!.height, 'the pad fills the tablet').toBeGreaterThan(300);
+        await page.setViewportSize({ width: 700, height: 1000 });
+        await expect(page.locator('.tplay-staff')).toBeInViewport({ ratio: 1 });
+        await expectClickable(pad(page), { scroll: false });
+        expect((await pad(page).boundingBox())!.height).toBeGreaterThan(150);
+        await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
         await expectFits(page);
       }
       await expectNoSideScroll(page);
@@ -918,9 +993,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./');
       await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
       await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
-      // The desktop layout from 1100 px wide (a tablet in landscape too).
+      // The desktop layout from 1100 px wide (a tablet in landscape too); a tablet has the same exercise header.
       const desk = VIEWPORTS[name].width >= 1100;
-      const line = page.locator(desk ? '.dplay-title .mono-line' : '.play-info .mono-line');
+      const line = page.locator(desk || (tabletLayout && portraitLayout) ? '.dplay-title .mono-line' : '.play-info .mono-line');
       await expect(line).toContainText('Count-in');
       await expect(page.locator(desk ? '.dbeats.is-count-in' : '.beats.is-count-in')).toBeVisible();
       await expect(page.locator('rect[data-cursor]')).toHaveCount(0);
@@ -958,6 +1033,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.locator('.beats--analog')).toBeVisible();
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
+      // Tablet: the pendulum in the count card, and the page still fits.
+      if (tabletLayout && portraitLayout) {
+        await expect(page.locator('.tplay-count .beats--analog')).toBeVisible();
+        await expectFits(page);
+      }
       await expectNoSideScroll(page);
     });
   });
@@ -1027,7 +1107,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
       await sheet.getByRole('button', { name: 'Start' }).click();
-      await expect(page.locator(VIEWPORTS[name].width >= 1100 ? '.dplay-title .mono-line' : '.play-info .mono-line')).toContainText('Voortellen');
+      // The exercise header on tablet and desktop; a phone on its side (under 561 px tall) keeps the phone's info line.
+      const head = VIEWPORTS[name].width >= 700 && VIEWPORTS[name].height > 560;
+      await expect(page.locator(head ? '.dplay-title .mono-line' : '.play-info .mono-line')).toContainText('Voortellen');
       await expectNoSideScroll(page);
     });
 

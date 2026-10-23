@@ -42,6 +42,19 @@ export function useBreakpoint(): Breakpoint {
   return desktop ? 'desktop' : tablet ? 'tablet' : 'phone';
 }
 
+/** A phone on its side: tablet-wide, but too short for the tablet layout (DESIGN.md §9; the CSS uses the same query). */
+export const PHONE_LANDSCAPE = '(orientation: landscape) and (max-height: 560px)';
+
+/**
+ * The exercise screens' layout (Play, Echo, Read notes, Scales): the breakpoint, except that a phone on its side keeps
+ * the phone layout, which its CSS lays out in two columns.
+ */
+export function useExerciseLayout(): Breakpoint {
+  const bp = useBreakpoint();
+  const phoneLandscape = useMediaQuery(PHONE_LANDSCAPE);
+  return bp === 'tablet' && phoneLandscape ? 'phone' : bp;
+}
+
 /**
  * Keyboard hints (Esc, ?, the letter on each key) go with the desktop layout, but not on a touch-only screen that is
  * desktop-wide (a tablet in landscape): it gets the same layout with touch wording.
