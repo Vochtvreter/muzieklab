@@ -12,8 +12,9 @@ Every screen is designed on the canvases before it is built, on phone (390 × 84
 
 Before you add or change a screen, read its boards on the canvas and build what they show. A live screen needs all
 three versions: phone, tablet and desktop. Also check phone landscape (844 × 390) and a tablet in landscape
-(1180 × 820, touch), which the canvas does not draw. Then compare the result side by side with the boards. If a screen
-has no board yet, or the code has to differ from it, say so in the PR. Every screen gets a test in
+(1180 × 820, touch), which the canvas does not draw, and the phone browser sizes: the area a phone browser leaves
+between its toolbars (390 × 664 and 375 × 553, in `e2e/helpers.ts`). Then compare the result side by side with the
+boards. If a screen has no board yet, or the code has to differ from it, say so in the PR. Every screen gets a test in
 `e2e/layout.spec.ts`, which runs at every size in `e2e/helpers.ts`.
 
 ### Keep the designs consistent
