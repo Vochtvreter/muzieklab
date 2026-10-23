@@ -25,7 +25,7 @@ on:
         type: string
         default: ''
       show-branch:
-        description: Build the branch name into the site, which shows it (the test site, so a tester knows what is on it).
+        description: The test site's build. It shows the branch it was built from, so a tester knows what is on it, and has the gold icons.
         type: boolean
         default: false
 permissions:
@@ -54,6 +54,10 @@ jobs:
         run: |
           echo "VITE_DEPLOY_BRANCH=$BRANCH" >> "$GITHUB_ENV"
           echo "Deploys **$BRANCH** ($SHA)" >> "$GITHUB_STEP_SUMMARY"
+      # Gold icons (public-test/) in place of production's teal ones, so a tab or home-screen icon tells the sites apart.
+      - name: Use the test site's icons
+        if: inputs.show-branch
+        run: cp public-test/* public/
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:

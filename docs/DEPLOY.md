@@ -176,6 +176,10 @@ The test site shows which branch is on it: a small label at the top of every scr
 in *Settings → About*. The run's name and summary in the Actions tab name it too: `test` after a push to it, or the
 branch picked under *Use workflow from*. Production never shows a branch.
 
+Its icon is gold with a dark note, where production's is teal with a white note, so a browser tab or an icon on the
+home screen tells the two apart. The deploy copies the icons in `public-test/` over those in `public/` before it
+builds; when the icon changes, change both.
+
 ### Set up the test site (once)
 
 1. **DNS:** an `A` record with name `test` and the server's IP address (in Hetzner DNS: *Records → Add record*).
