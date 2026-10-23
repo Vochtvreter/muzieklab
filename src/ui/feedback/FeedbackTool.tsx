@@ -59,6 +59,15 @@ function FeedbackOn({ admin, onAdmin }: { admin: FeedbackAdmin; onAdmin(a: Feedb
   const bp = useBreakpoint();
   const { shown, closing } = useLingering(step === 'form' ? target : null, 240);
   // The desktop dialog stands beside the marked spot, on the side with more room, so the spot stays in view.
+  // Esc closes the tool, also when focus has left it (the form's button went away after sending).
+  useEffect(() => {
+    if (step === 'idle') return;
+    const esc = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setStep('idle');
+    };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [step]);
   const side = shown && bp === 'desktop' ? (shown.rect.x + shown.rect.width / 2 > window.innerWidth / 2 ? ' fb-root--left' : ' fb-root--right') : '';
 
   return (
@@ -99,7 +108,7 @@ function FeedbackOn({ admin, onAdmin }: { admin: FeedbackAdmin; onAdmin(a: Feedb
 
 const boxStyle = (r: Rect): CSSProperties => ({ left: r.x, top: r.y, width: r.width, height: r.height });
 
-/** The marking layer over the whole screen: a mouse shows what a click would mark; a drag draws a box. Esc cancels. */
+/** The marking layer over the whole screen: a mouse shows what a click would mark; a drag draws a box. */
 function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCancel(): void }): JSX.Element {
   const [hover, setHover] = useState<Rect | null>(null);
   const [drag, setDrag] = useState<Rect | null>(null);
@@ -109,12 +118,7 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
 
   useEffect(() => {
     cancelRef.current?.focus({ preventScroll: true });
-    const esc = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onCancel();
-    };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [onCancel]);
+  }, []);
 
   const down = (e: ReactPointerEvent<HTMLDivElement>): void => {
     start.current = { x: e.clientX, y: e.clientY };
@@ -221,7 +225,8 @@ function FeedbackForm({ target, admin, onAdmin, onClose, onRemark }: {
           <button type="button" className="btn btn--outline" onClick={onRemark}>
             {t('feedback.another')}
           </button>
-          <button type="button" className="btn btn--accent" data-autofocus onClick={onClose}>
+          {/* The sheet stays open, so its first focus does not run again: Close takes the focus from the gone Send. */}
+          <button type="button" className="btn btn--accent" autoFocus onClick={onClose}>
             {t('feedback.close')}
           </button>
         </div>
