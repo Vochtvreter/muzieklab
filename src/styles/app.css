@@ -187,6 +187,45 @@
     padding: 0 32px;
   }
 }
+/*
+ * Wide exercise screens (setups, Key, results, round done, calibration). On a phone the wrappers are not boxes, so the
+ * screen is the one column it always was. From 700 px the main content is on the left and a side panel on the right
+ * holds the summary and the screen's main button; it stays in view while the main content scrolls.
+ */
+.wide,
+.wide-main,
+.wide-side {
+  display: contents;
+}
+@media (min-width: 700px) {
+  .frame--wide .frame-column {
+    max-width: 1160px;
+  }
+  .wide {
+    flex: 1 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 24px;
+    align-items: start;
+  }
+  .wide-main,
+  .wide-side {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .wide-side {
+    position: sticky;
+    top: 0;
+  }
+}
+@media (min-width: 1100px) {
+  .wide {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 32px;
+  }
+}
 
 /* ---------- Pages ---------- */
 .page {
@@ -1872,6 +1911,23 @@ button.lesson-stars:hover {
   bottom: 0;
   /* A fade above, and the ground below over the page's bottom padding, so nothing scrolls into view under it. */
   box-shadow: 0 -18px 14px -6px var(--ground), 0 40px 0 24px var(--ground);
+}
+/* Tablet and desktop: the preview and Start are the side panel, which stays in view by itself. */
+@media (min-width: 700px) {
+  .setup .wide-side .start-btn {
+    position: static;
+    margin-top: 0;
+    box-shadow: none;
+  }
+  .wide-side .preview-card .staff-fallback,
+  .wide-side .preview-card > div[role='img'] {
+    max-width: none;
+  }
+  /* The tablet's side panel is narrow: the difficulty goes under the preview's title rather than squeezing it. */
+  .wide-side .preview-head {
+    flex-wrap: wrap;
+    white-space: nowrap;
+  }
 }
 .staff-fallback {
   margin: 0;
