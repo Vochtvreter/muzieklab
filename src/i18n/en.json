@@ -1108,6 +1108,7 @@
       "doneClean": "{scale}: done, no mistakes. {notes}",
       "doneMistakes": "{scale}: done with {count, plural, one {1 mistake} other {# mistakes}}. {notes}",
       "hear": "Hear it so far",
+      "hearAll": "Hear the scale",
       "space": "Space",
       "startOver": "Start over",
       "hint": "Hint",

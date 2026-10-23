@@ -1108,6 +1108,7 @@
       "doneClean": "{scale}: klaar, geen fouten. {notes}",
       "doneMistakes": "{scale}: klaar met {count, plural, one {1 fout} other {# fouten}}. {notes}",
       "hear": "Hoor tot nu toe",
+      "hearAll": "Hoor de ladder",
       "space": "Spatie",
       "startOver": "Opnieuw",
       "hint": "Tip",

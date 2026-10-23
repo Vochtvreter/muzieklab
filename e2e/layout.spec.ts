@@ -320,15 +320,21 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(keys).toHaveCount(15);
       for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i));
       await expect(page.locator('.spiano .piano-label')).toHaveText(['G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A']);
-      await expectClickable(page.getByRole('button', { name: /^Start over/ }));
       await expectClickable(page.getByRole('button', { name: 'Skip to summary' }));
+      // Nothing to hear or start over before the first note.
+      await expect(page.getByRole('button', { name: /^Hear it so far/ })).toBeHidden();
+      await expect(page.getByRole('button', { name: /^Start over/ })).toBeHidden();
       // G A B C D E F♯ G: the F♯ is the black key between F and G.
       const piano = page.getByRole('group', { name: /^Piano keyboard from G to A/ });
       const key = (name: string) => piano.getByRole('button', { name: new RegExp('^' + name + '(,|$)') });
-      for (const k of ['G', 'A', 'B', 'C', 'D', 'E']) await key(k).first().click();
+      await key('G').first().click();
+      await expectClickable(page.getByRole('button', { name: /^Hear it so far/ }));
+      await expectClickable(page.getByRole('button', { name: /^Start over/ }));
+      for (const k of ['A', 'B', 'C', 'D', 'E']) await key(k).first().click();
       await key('F sharp or G flat').click();
       await key('G').nth(1).click();
       await expect(page.locator('.nfeedback')).toHaveText(/^G major: done, no mistakes/);
+      await expectClickable(page.getByRole('button', { name: /^Hear the scale/ }));
       await expectClickable(page.getByRole('button', { name: /^See the round/ }));
       await expectNoSideScroll(page);
       await page.getByRole('button', { name: /^See the round/ }).click();
@@ -345,11 +351,15 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/scales/setup');
       await page.getByRole('button', { name: 'Start · 1 scale' }).click();
       await expect(page.getByText('E harmonic minor', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Hear it so far/ })).toBeHidden();
+      await expect(page.getByRole('button', { name: /^Start over/ })).toBeHidden();
       const signs = page.getByRole('group', { name: 'Sign for E' }).getByRole('button');
       await expect(signs).toHaveCount(3);
       for (let i = 0; i < 3; i++) await expectClickable(signs.nth(i));
       await expectClickable(page.getByRole('button', { name: 'Hint' }));
       await signs.nth(1).click();
+      await expectClickable(page.getByRole('button', { name: /^Hear it so far/ }));
+      await expectClickable(page.getByRole('button', { name: /^Start over/ }));
       await page.getByRole('group', { name: 'Sign for F' }).getByRole('button', { name: /^F sharp/ }).click();
       await page.getByRole('group', { name: 'Sign for G' }).getByRole('button').nth(2).click();
       await expect(page.locator('.nfeedback')).toHaveText(/^Not G♯\. From F♯, go up a half step/);

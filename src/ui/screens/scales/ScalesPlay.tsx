@@ -1,8 +1,9 @@
 /**
  * Scales · play or spell a scale (DESIGN.md §3.7). Piano: play the scale note by note on the 9-key window; each right
  * note is written on the staff and fills the next degree box, a wrong key flashes red and the feedback names the step.
- * Names: the letters are given, one per degree; pick ♭ ♮ ♯ (𝄪) for each. A scale with mistakes comes back once at the
- * end of the round. Desktop: the exercise header, a wide staff, the answer card with computer keys and the side panel.
+ * Names: the letters are given, one per degree; pick ♭ ♮ ♯ (𝄪) for each. Hear it so far and Start over show from the
+ * first note on (Hear the scale once it is done). A scale with mistakes comes back once at the end of the round.
+ * Desktop: the exercise header, a wide staff, the answer card with computer keys and the side panel.
  */
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import {
@@ -262,15 +263,17 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
       {kbd && <kbd className="kbd kbd--bare kbd--on-fill">↵</kbd>}
     </button>
   );
+  // Before the first note there is nothing to hear or start over: both wait, hidden, in their place (no jump when they come).
+  const idle = pos === 0 ? ' is-idle' : '';
   const hearBtn = (
-    <button type="button" className="btn btn--outline splay-hear" disabled={pos === 0} onClick={hear} aria-keyshortcuts="Space">
+    <button type="button" className={'btn btn--outline splay-hear' + idle} disabled={pos === 0} onClick={hear} aria-keyshortcuts="Space">
       <Icon name="play" size={14} />
-      {t('scales.play.hear')}
+      {t(done ? 'scales.play.hearAll' : 'scales.play.hear')}
       {kbd && <kbd className="kbd kbd--bare">{t('scales.play.space')}</kbd>}
     </button>
   );
   const overBtn = (
-    <button type="button" className="btn btn--outline" disabled={pos === 0 || done} onClick={startOver}>
+    <button type="button" className={'btn btn--outline' + idle} disabled={pos === 0 || done} onClick={startOver}>
       {t('scales.play.startOver')}
     </button>
   );
