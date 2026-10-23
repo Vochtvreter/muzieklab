@@ -3,7 +3,10 @@
 Status: **design, nothing built.** Written on 2026-10-23, after production moved to our own server
 ([DEPLOY.md](DEPLOY.md)). Decisions taken so far:
 
-- **Accounts are invite only** for now: an admin invites people by email. Open sign-up comes later.
+- **Accounts are invite only** for now: an admin invites people, and open sign-up comes later.
+- **No email service** for now: the app sends no email. Where a link is needed (an invite, a new password), the admin
+  screen shows it, and the admin sends it by hand (§5.1, §5.3). An email service can come later without changing the
+  model.
 - **Sign-in is email and password.** The model leaves room for passkeys or Google/Apple later (§5.6).
 - **Permissions cover four areas:** admin tools, teachers and classes, editing content, and premium features. They are
   built in that order of need, in phases (§10).
@@ -27,7 +30,6 @@ API service  127.0.0.1:3000                           Node 22 + TypeScript, syst
    ▼
 MongoDB      127.0.0.1:27017                          auth on, single-node replica set, nightly backups
 
-API ──► email service (invites, password resets, email changes)
 ```
 
 - **One domain.** The app calls `/api/…` on the same domain, so there are no CORS rules and the session cookie can be
@@ -60,7 +62,6 @@ server/
       sessions.ts       create, look up, revoke (§5.4)
       policy.ts         roles → permissions, can() (§4)
     routes/             one file per area: auth, me, progress, admin, classes, content
-    email/              templates (en, nl) and sending
   migrations/           numbered scripts, run before a release switches (§9.2)
   scripts/
     create-admin.ts     the first admin, run once on the server (§5.1)
@@ -100,7 +101,7 @@ that change also have `updatedAt`.
   entitlements: {                      // what the account has access to (§4.3)
     premium: { until: ISODate("2027-10-23"), source: "admin" }
   },
-  locale: "nl",                        // for emails
+  locale: "nl",                        // the account's language
   passwordChangedAt: ISODate("…"),
   lastSignInAt: ISODate("…"),
   createdAt: ISODate("…"), updatedAt: ISODate("…"),
@@ -113,8 +114,8 @@ that change also have `updatedAt`.
 // sessions: one per signed-in device
 { _id: "<sha256 of the cookie token>", accountId, createdAt, lastSeenAt, expiresAt, device: "Safari on iPhone" }
 
-// tokens: invites, password resets, email changes
-{ _id: "<sha256 of the emailed token>", kind: "invite" | "reset" | "email", accountId, email, expiresAt, usedAt }
+// tokens: invite and new-password links, which the admin sends by hand
+{ _id: "<sha256 of the link's token>", kind: "invite" | "reset", accountId, createdBy, expiresAt, usedAt }
 ```
 
 Only the **hash** of a token is stored, so a copy of the database cannot be used to sign in. A **TTL index** on
@@ -230,11 +231,13 @@ can(actor, 'class.progress.read', { classId })   // → true or false
 ### 5.1 The first admin and invites
 
 1. On the server, `node scripts/create-admin.js ann@example.com` creates the first admin and prints a one-time link.
-2. An admin invites someone: email, name and roles. The account is `invited`, and an email goes out with a link to
-   `https://vivanova.app/#/invite/<token>`, valid for 7 days.
+2. An admin invites someone: email, name and roles. The account is `invited`, and the admin screen shows a link,
+   `https://vivanova.app/#/invite/<token>`, valid for 7 days, with a **Copy** button and a ready-made message to
+   paste into an email or chat. The admin sends it themselves.
 3. The person opens the link, chooses a password, and is signed in. The account is now `active`.
 
-An admin can resend or cancel an invite. An expired invite can be sent again.
+The link is shown **once**: only its hash is stored (§3.2). An admin can cancel an invite, or make a new link, which
+cancels the old one. Anyone with the link can claim the account, so it goes only to that person.
 
 ### 5.2 Sign in, sign out
 
@@ -247,10 +250,12 @@ An admin can resend or cancel an invite. An expired invite can be sent again.
 
 ### 5.3 Forgotten password, new email
 
-- **Forgot password:** always answers "If there is an account for this email, we've sent a link", and sends a link
-  valid for 1 hour, usable once. Setting a new password signs out all other devices.
-- **Changing the password** asks for the current one. **Changing the email** sends a confirmation link to the new
-  address, and a notice to the old one.
+- **Forgot password:** the sign-in screen says to ask the person who invited you. An admin opens the account and
+  chooses **New password link**: a link valid for 24 hours, usable once, shown once to copy and send by hand. Setting
+  the new password signs out all other devices. The admin never sees or chooses the password.
+- **Changing the password** asks for the current one.
+- **Changing the email** asks for the current password, and the new address is the sign-in name from then on. Nothing
+  is sent to check it, because the app sends no email; an admin can correct a mistyped address.
 
 ### 5.4 Sessions
 
@@ -303,10 +308,10 @@ JSON over HTTPS, under `/api/v1`. Every response that is not public sends `Cache
 | Area | Requests |
 |---|---|
 | Health | `GET /health` (public: is the API up, and can it reach the database) |
-| Sign in | `POST /auth/sign-in`, `POST /auth/sign-out`, `POST /auth/sign-out-everywhere`, `POST /auth/reset/request`, `POST /auth/reset/confirm`, `POST /auth/invite/accept`, `POST /auth/email/confirm` |
+| Sign in | `POST /auth/sign-in`, `POST /auth/sign-out`, `POST /auth/sign-out-everywhere`, `POST /auth/invite/accept`, `POST /auth/reset/confirm` |
 | Own account | `GET /me` (account, permissions, entitlements), `PATCH /me` (name, locale), `POST /me/password`, `POST /me/email`, `GET /me/export`, `DELETE /me` |
 | Progress | `GET /progress`, `PUT /progress` (with `rev`; 409 with the server copy on a conflict) |
-| Admin | `GET /admin/accounts` (search, filter by role or status), `POST /admin/invites`, `GET /admin/accounts/:id`, `PATCH /admin/accounts/:id` (roles, status, entitlements), `DELETE /admin/accounts/:id`, `GET /admin/audit` |
+| Admin | `GET /admin/accounts` (search, filter by role or status), `POST /admin/invites` (returns the link), `GET /admin/accounts/:id`, `PATCH /admin/accounts/:id` (email, roles, status, entitlements), `POST /admin/accounts/:id/invite-link`, `POST /admin/accounts/:id/reset-link` (each returns a new link), `DELETE /admin/accounts/:id`, `GET /admin/audit` |
 | Classes (phase 3) | `POST /classes`, `GET /classes`, `GET /classes/:id`, `PATCH /classes/:id`, `POST /classes/join`, `GET /classes/:id/progress`, `DELETE /classes/:id/members/:accountId` |
 | Content (phase 4) | to be designed with phase 4 (§10) |
 
@@ -321,8 +326,8 @@ No IP addresses are stored, except briefly in memory for the sign-in limits.
 GDPR (in the Netherlands: AVG) needs, before the first invite goes out:
 
 - A **privacy statement** in the app (Settings → About, and on the sign-in screen): what is stored, why, for how long,
-  and who processes it (Hetzner for the server, in Helsinki, EU; the email service).
-- A **data processing agreement** with Hetzner (they offer one in the console) and with the email service.
+  and who processes it (Hetzner for the server, in Helsinki, EU).
+- A **data processing agreement** with Hetzner (they offer one in the console).
 - **Export** (`GET /me/export`, everything about the account as JSON) and **delete** (account, sessions, tokens,
   memberships and progress go; audit entries lose the name and email) from the Account screen, without asking an admin.
 - **Children:** in the Netherlands, under-16s need a parent's consent for an account. While accounts are invite only,
@@ -333,7 +338,7 @@ Security:
 - MongoDB listens on `127.0.0.1` only, with authentication on and its own user for the API, allowed only the
   `muzieklab` database.
 - The API runs as its own system user, `muzieklab-api`, with systemd hardening (`NoNewPrivileges`, `ProtectSystem`,
-  `PrivateTmp`). Its secrets (database password, email key) are in `/etc/muzieklab-api/env`, readable only by it.
+  `PrivateTmp`). Its secrets (the database password) are in `/etc/muzieklab-api/env`, readable only by it.
 - Logs never contain passwords, tokens or cookies.
 - Dependabot keeps both the app's and the server's dependencies current; `npm audit` runs in CI.
 - **Backups:** every night `mongodump` writes a compressed, encrypted archive; 14 are kept on the server and copied to
@@ -383,14 +388,14 @@ the previous release still works against the database if the deploy has to switc
 
 With a database, changes need a place to try them that is not real people's accounts. **test.vivanova.app** is set
 up for the app ([DEPLOY.md](DEPLOY.md), *The test site*): it deploys on every push to the `test` branch, or any branch
-by hand. With the API it gets its own API on port 3001, its own database `muzieklab_test`, and emails only to us.
+by hand. With the API it gets its own API on port 3001, and its own database `muzieklab_test`.
 
 ## 10. Phases
 
 | Phase | What | Visible in the app | Version |
 |---|---|---|---|
 | **0 · Groundwork** | test.vivanova.app; MongoDB with backups; the API with `/api/health`, deployed by the workflow; the Caddy `/api` block | Nothing | none (no app change) |
-| **1 · Accounts** | Create-admin script, invites, sign in and out, forgotten password, Account screen (name, email, password, sign out everywhere, export, delete), Admin: accounts, invite, roles, block; privacy statement | Settings → Account; Admin for admins | minor |
+| **1 · Accounts** | Create-admin script, invite and new-password links, sign in and out, Account screen (name, email, password, sign out everywhere, export, delete), Admin: accounts, invite, roles, block; privacy statement | Settings → Account; Admin for admins | minor |
 | **2 · Progress on the account** | Sync and merge (§6) | Progress on every device; sync status in Settings → Account | minor |
 | **3 · Teachers and classes** | Classes, join codes, the class view of pupils' progress, assignments | Teacher screens; Join a class | minor |
 | **4 · Editing content** | Editors change Learn chapters and Path units | Editor screens | minor |
@@ -411,7 +416,7 @@ these has a board yet:
 
 | Phase | Screens |
 |---|---|
-| 1 | Sign in · Forgot password · New password · Accept invite (choose a password) · Settings → Account, signed out and signed in · Account details (name, email, password, sign out everywhere, export, delete) · Admin: accounts list, invite, an account (roles, status, premium) · Privacy statement |
+| 1 | Sign in (with "Forgot your password? Ask the person who invited you") · Accept invite (choose a password) · New password (from a link) · Settings → Account, signed out and signed in · Account details (name, email, password, sign out everywhere, export, delete) · Admin: accounts list, invite (with the link to copy), an account (roles, status, premium, new password link) · Privacy statement |
 | 2 | Sync status and "first sign-in on a device with progress" · Signing out: keep or clear this device |
 | 3 | Join a class · Teacher: classes, a class (pupils, progress, assignments) · Pupil: assignments |
 | 4 | Content editor (depends on the approach above) |
@@ -423,9 +428,8 @@ every size, with **Admin** as a row in it that only admins see, and no new tab.
 
 ## 11. Open questions
 
-1. **Email service.** Invites and password resets need one, ideally in the EU: for example Brevo (France), Mailjet
-   (France) or Scaleway (France); Postmark (US) is known for reliable delivery. All need SPF, DKIM and DMARC records on
-   vivanova.app.
+1. **Email service:** decided: none for now; admins send invite and new-password links by hand (§5.1, §5.3). Later,
+   an EU service (Brevo, Mailjet or Scaleway) can send them; it needs SPF, DKIM and DMARC records on vivanova.app.
 2. **The server's Ubuntu version and processor.** `lsb_release -ds; uname -m` on the server decides MongoDB from apt
    or in Docker (§9.1), and how the server's dependencies are built.
 3. **Children's accounts** (before phase 3): pupils under 16 need a parent's consent, or the school is responsible for
