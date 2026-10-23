@@ -34,8 +34,11 @@ export interface Prefs {
    * practice only holds once the path has taught it (ui/store.tsx practiceHold).
    */
   holdMode: 'hold' | 'tap';
-  /** The setup's "Hold notes for their length" was turned on before the path taught holding (unit 2). */
-  holdEarly: boolean;
+  /**
+   * The setup's "Hold notes for their length" was turned on, also before the path teaches holding (unit 2): the Input
+   * mode it replaced, which turning it off before unit 2 puts back. Null when it is not on.
+   */
+  holdEarly: Prefs['holdMode'] | null;
   /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */
   metronomeLook: 'digital' | 'analog';
   /** Read notes: the name buttons show do re mi (fixed do) or letters. A new player gets their device language's usual one. */
@@ -95,7 +98,7 @@ export const DEFAULT_PREFS: Prefs = {
   seenEchoHowTo: false,
   seenIntros: [],
   holdMode: 'hold',
-  holdEarly: false,
+  holdEarly: null,
   metronomeLook: 'digital',
   noteNames: 'letters',
   pianoLabels: 'letters',
@@ -190,7 +193,8 @@ export function sanitizePrefs(raw: unknown): Prefs {
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),
     seenIntros: Array.isArray(raw.seenIntros) ? INTRO_IDS.filter((id) => (raw.seenIntros as unknown[]).includes(id)) : [],
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
-    holdEarly: bool(raw.holdEarly, d.holdEarly),
+    // Saved as true before it kept the mode it replaced: tap & hold, the default, so turning it off keeps Input as is.
+    holdEarly: raw.holdEarly === 'hold' || raw.holdEarly === 'tap' ? raw.holdEarly : raw.holdEarly === true ? 'hold' : null,
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
     noteNames: oneOf(raw.noteNames, ['solfege', 'letters'] as const, d.noteNames),
     pianoLabels: oneOf(raw.pianoLabels, ['letters', 'solfege', 'off'] as const, d.pianoLabels),

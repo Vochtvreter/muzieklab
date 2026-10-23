@@ -140,8 +140,10 @@ only, and the Learning Path switches holding on from unit 2 (lesson 2.1), where 
 the rest of the game follows the path, so the rules do not change when the player leaves it: free practice (Tap and
 Echo, and the Learn practice links) holds only once unit 2 is open (`practiceHold` in `ui/store.tsx`), and so does the
 daily challenge (§3.4). The setup's *Hold notes for their length* switch shows that state and can turn holding on
-earlier (`prefs.holdEarly`). Turning it off before unit 2 only takes that early choice back; after unit 2 it sets
-Input to tap only, as before. *Tap only* in Settings always wins. Echo's How to play has a tap-only step 2.
+earlier: it sets Input to *Tap & hold* and keeps the Input setting it replaced (`prefs.holdEarly`). Turning it off
+before unit 2 takes that early choice back and puts that Input setting back, so on and off again leaves *Tap only*
+as it was; after unit 2 it sets Input to tap only, as before. *Tap only* in Settings always wins. Echo's How to play
+has a tap-only step 2.
 
 ### 3.2 Rhythm Dictation — *listen & write*
 

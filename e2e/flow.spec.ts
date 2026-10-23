@@ -248,6 +248,21 @@ test('free practice follows the path: tap only until unit 2, unless the setup tu
   await expect(hold).toHaveAttribute('aria-checked', 'false');
 });
 
+test('the setup hold switch turned on and off again before unit 2 leaves Settings → Input on Tap only', async ({ page }) => {
+  await seed(page, { prefs: { holdMode: 'tap' } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  const hold = page.getByRole('switch', { name: /^Hold notes for their length/ });
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  // In the same document: a reload would seed Tap only again.
+  await page.evaluate(() => (location.hash = '#/settings'));
+  await expect(page.getByRole('group', { name: 'Rhythm input' }).getByRole('button', { name: 'Tap only' })).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('free practice holds by default once unit 2 is open', async ({ page }) => {
   const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2, bestAccuracy: 85 }]));
   await seed(page, { progress: { lessons, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true, seenHold: true } });

@@ -402,7 +402,7 @@ const FIRST_HOLD_LESSON = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson
  */
 export function practiceHold(prefs: Prefs, progress: Progress): boolean {
   if (prefs.holdMode !== 'hold') return false;
-  return prefs.holdEarly || isUnlocked(progress, FIRST_HOLD_LESSON);
+  return prefs.holdEarly !== null || isUnlocked(progress, FIRST_HOLD_LESSON);
 }
 
 /** Free-practice settings for a run: `settings` with the practice hold. Every start outside the path uses this. */
@@ -411,12 +411,14 @@ export function practiceSettings(state: Pick<AppState, 'prefs' | 'progress'>, se
 }
 
 /**
- * The setup's hold switch. On holds from now on, also before the path teaches it. Off before that only takes the
- * early choice back, so the lessons of unit 2 on still hold; after it, it sets the Input pref to tap only.
+ * The setup's hold switch. On holds from now on, also before the path teaches it, and remembers the Input pref it
+ * replaced. Off before that takes the early choice back and puts that Input pref back (on and off again leaves Tap only
+ * as it was), so the lessons of unit 2 on hold as before; after it, it sets the Input pref to tap only.
  */
-export function practiceHoldPatch(state: Pick<AppState, 'progress'>, on: boolean): Partial<Prefs> {
-  if (on) return { holdMode: 'hold', holdEarly: true };
-  return isUnlocked(state.progress, FIRST_HOLD_LESSON) ? { holdMode: 'tap', holdEarly: false } : { holdEarly: false };
+export function practiceHoldPatch(state: Pick<AppState, 'prefs' | 'progress'>, on: boolean): Partial<Prefs> {
+  if (on) return { holdMode: 'hold', holdEarly: state.prefs.holdMode };
+  if (isUnlocked(state.progress, FIRST_HOLD_LESSON)) return { holdMode: 'tap', holdEarly: null };
+  return { holdMode: state.prefs.holdEarly ?? state.prefs.holdMode, holdEarly: null };
 }
 
 /** Settings for a run: a lesson's, with its hold, or the free-practice setup with the practice hold. */

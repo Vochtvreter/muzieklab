@@ -50,7 +50,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const, seenIntros: ['meter:3/4', 'note:half'], holdEarly: true };
+    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const, seenIntros: ['meter:3/4', 'note:half'], holdEarly: 'tap' as const };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
@@ -199,7 +199,16 @@ describe('prefs and progress storage', () => {
   it('keeps known intro ids only', () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ seenIntros: ['note:half', 'note:half', 'x', 3, 'ties'], holdEarly: 'yes' }));
     expect(loadPrefs().seenIntros).toEqual(['note:half', 'ties']);
-    expect(loadPrefs().holdEarly).toBe(false);
+    expect(loadPrefs().holdEarly).toBeNull();
+  });
+
+  it('reads the setup hold switch saved as on (true, before it kept the Input it replaced) as replacing tap & hold', () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ holdMode: 'hold', holdEarly: true }));
+    expect(loadPrefs().holdEarly).toBe('hold');
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ holdMode: 'hold', holdEarly: false }));
+    expect(loadPrefs().holdEarly).toBeNull();
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ holdMode: 'hold', holdEarly: 'tap' }));
+    expect(loadPrefs().holdEarly).toBe('tap');
   });
 
   it('prefs saved before seenIntros count the symbols of the lessons played as shown', () => {
