@@ -32,10 +32,15 @@ export const PERMISSIONS = [
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
-/** Premium (BACKEND-PLAN.md §4.3): on while `until` is null (no end) or in the future. */
+/**
+ * Premium (BACKEND-PLAN.md §4.3): on with no end (`until` null), or through a last day.
+ *
+ * The last day is a calendar date (YYYY-MM-DD), not a moment, so it reads the same in every time zone. It counts as
+ * on through that whole day anywhere in the world: until the day after it, 12:00 UTC (the end of the day at UTC−12).
+ */
 export interface Premium {
   active: boolean;
-  /** The last day it is on (ISO date-time), or null for no end. Null too when not active. */
+  /** The last day it is on (YYYY-MM-DD), or null for no end. Null too when not active. */
   until: string | null;
 }
 
@@ -180,13 +185,15 @@ export interface AdminUpdateRequest {
   roles?: Role[];
   /** Block or unblock. An invited account cannot be set to active here: it becomes active by accepting the invite. */
   status?: 'active' | 'blocked';
-  /** Premium on (with an end, or null for none) or off. */
+  /** Premium on (through a last day, YYYY-MM-DD, or null for no end) or off. A last day already over is refused. */
   premium?: { active: true; until: string | null } | { active: false };
 }
 
 // POST /admin/accounts/:id/invite-link → LinkCreated (an invited account: a new invite link, the old one stops).
 // POST /admin/accounts/:id/reset-link → LinkCreated (an active account: a new-password link valid for 24 hours).
-// DELETE /admin/accounts/:id → 204 (cancels an invite, or deletes an account; never yourself or the last admin).
+// DELETE /admin/accounts/:id?expect=<status> → 204 (cancels an invite, or deletes an account; never yourself or the
+// last admin). With `expect` (invited, active or blocked), it is refused with 409 wrong_status when the account's
+// status is another one, so "Cancel invite" cannot delete an account whose invite was accepted meanwhile.
 
 /** GET /admin/audit?limit=&before= → { entries }, newest first. */
 export interface AuditEntry {
