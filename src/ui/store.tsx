@@ -34,8 +34,11 @@ import {
   type Settings,
   type Tap,
 } from '../core/api';
+import { Rng } from '../core/rng';
+import { dailyTier } from '../game/daily';
+import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings, type NoteTrackId } from '../game/notesPath';
-import { lessonSettings, recordLessonResult } from '../game/path';
+import { ALL_LESSONS, isUnlocked, lessonSettings, recordLessonResult } from '../game/path';
 import { progressKey } from '../game/track';
 import { xpForResult } from '../game/xp';
 import {
@@ -206,6 +209,12 @@ export interface LastResult {
   reward: Reward;
   /** The lesson's best stars before this run (0 for free practice and the daily challenge): Results tells a first pass. */
   lessonStarsBefore: number;
+  /**
+   * The calibration the run was played with (prefs.calibrationMs, and whether one had been made): Results' tip is about
+   * this run, also after the player calibrates from it.
+   */
+  calibrationMs: number;
+  calibrated: boolean;
 }
 
 export interface NoteLast {
@@ -293,7 +302,13 @@ export function reducer(state: AppState, action: Action): AppState {
         dailyBest = result.accuracy > progress.dailyBest;
         progress = {
           ...progress,
-          daily: { day, stars: prev && prev.stars > result.stars ? prev.stars : result.stars, accuracy: Math.max(prev?.accuracy ?? 0, result.accuracy) },
+          // The tier is fixed by the day's first play (dailyTier): the one this run was started at.
+          daily: {
+            day,
+            tier: dailyTier(progress, day),
+            stars: prev && prev.stars > result.stars ? prev.stars : result.stars,
+            accuracy: Math.max(prev?.accuracy ?? 0, result.accuracy),
+          },
           dailyBest: Math.max(progress.dailyBest, result.accuracy),
         };
       }
@@ -301,14 +316,15 @@ export function reducer(state: AppState, action: Action): AppState {
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
       const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest };
-      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore } };
+      const { calibrationMs, calibratedAt } = state.prefs;
+      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
     }
     case 'resetProgress':
       return {
         ...state,
         progress: defaultProgress(),
         // The free-practice setup comes from the progress (lastSettings), so it goes back to the defaults too.
-        settings: { ...DEFAULT_SETTINGS, hold: state.prefs.holdMode === 'hold' },
+        settings: practiceSettings({ prefs: state.prefs, progress: defaultProgress() }, DEFAULT_SETTINGS),
         last: null,
         noteLast: null,
         noteSettings: { ...DEFAULT_NOTE_SETTINGS },
@@ -379,16 +395,45 @@ export function reducer(state: AppState, action: Action): AppState {
   }
 }
 
-/** The hold setting an exercise uses: a lesson preset's `hold: false` wins, otherwise the Input pref. */
+/** The hold setting a lesson uses: its preset's `hold: false` wins, otherwise the Input pref. */
 export function effectiveHold(prefs: Prefs, lessonId: string | null): boolean {
   if (lessonId && lessonSettings(lessonId).hold === false) return false;
   return prefs.holdMode === 'hold';
 }
 
-/** Settings for a run, with the effective hold applied. */
-export function runSettings(state: Pick<AppState, 'prefs' | 'settings'>, lessonId: string | null): Settings {
-  const base = lessonId ? lessonSettings(lessonId) : state.settings;
-  return { ...base, hold: effectiveHold(state.prefs, lessonId) };
+/** The path's first lesson that judges holds (2.1: unit 1 is tap only). */
+const FIRST_HOLD_LESSON = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson.id).hold)?.lesson.id ?? '2.1';
+
+/**
+ * Whether free practice (Tap and Echo, Learn's practice links) judges holds. It follows the path, so the rules do not
+ * change when the player leaves it: the Input pref, once the path has taught holding (its first hold lesson is open),
+ * or earlier when the setup's "Hold notes for their length" was turned on.
+ */
+export function practiceHold(prefs: Prefs, progress: Progress): boolean {
+  if (prefs.holdMode !== 'hold') return false;
+  return prefs.holdEarly !== null || isUnlocked(progress, FIRST_HOLD_LESSON);
+}
+
+/** Free-practice settings for a run: `settings` with the practice hold. Every start outside the path uses this. */
+export function practiceSettings(state: Pick<AppState, 'prefs' | 'progress'>, settings: Settings): Settings {
+  return { ...settings, hold: practiceHold(state.prefs, state.progress) };
+}
+
+/**
+ * The setup's hold switch. On holds from now on, also before the path teaches it, and remembers the Input pref it
+ * replaced. Off before that takes the early choice back and puts that Input pref back (on and off again leaves Tap only
+ * as it was), so the lessons of unit 2 on hold as before; after it, it sets the Input pref to tap only.
+ */
+export function practiceHoldPatch(state: Pick<AppState, 'prefs' | 'progress'>, on: boolean): Partial<Prefs> {
+  if (on) return { holdMode: 'hold', holdEarly: state.prefs.holdMode };
+  if (isUnlocked(state.progress, FIRST_HOLD_LESSON)) return { holdMode: 'tap', holdEarly: null };
+  return { holdMode: state.prefs.holdEarly ?? state.prefs.holdMode, holdEarly: null };
+}
+
+/** Settings for a run: a lesson's, with its hold, or the free-practice setup with the practice hold. */
+export function runSettings(state: Pick<AppState, 'prefs' | 'progress' | 'settings'>, lessonId: string | null): Settings {
+  if (!lessonId) return practiceSettings(state, state.settings);
+  return { ...lessonSettings(lessonId), hold: effectiveHold(state.prefs, lessonId) };
 }
 
 /** Generates a run; null when the settings cannot make an exercise. */
@@ -401,6 +446,24 @@ export function makeRun(settings: Settings, seed: number, lessonId: string | nul
   }
 }
 
+/**
+ * Seeds a lesson start tries for an exercise with everything the lesson introduces. Most lessons find one in the first
+ * few tries; 3.4's whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
+ */
+const INTRO_TRIES = 200;
+
+/**
+ * A lesson run whose exercise shows every symbol the lesson introduces (game/intro.ts), so the intro sheet never names
+ * one the staff does not have: from `seed`, other seeds are tried until the exercise has them all (else the last one).
+ */
+export function makeLessonRun(settings: Settings, seed: number, lessonId: string): Run | null {
+  const ids = lessonIntros(lessonId).map(introId);
+  const seeds = new Rng(seed);
+  let run = makeRun(settings, seed, lessonId);
+  for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(settings, seeds.int(0x7fffffff), lessonId);
+  return run;
+}
+
 function initialState(): AppState {
   const prefs = loadPrefs();
   const progress = loadProgress();
@@ -411,7 +474,7 @@ function initialState(): AppState {
   return {
     prefs,
     progress,
-    settings: { ...settings, hold: prefs.holdMode === 'hold' },
+    settings: practiceSettings({ prefs, progress }, settings),
     run: route === '/play' ? restoreRun() : null,
     last: null,
     noteSettings: progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS },

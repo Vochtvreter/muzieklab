@@ -1,7 +1,9 @@
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type ScaleSettings } from '../core/api';
+import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings } from '../game/notesPath';
-import { defaultProgress, DEFAULT_PREFS } from '../game/storage';
-import { makeNoteRun, makeScaleRun, reducer, type AppState } from './store';
+import { lessonSettings } from '../game/path';
+import { defaultProgress, DEFAULT_PREFS, type Prefs, type Progress } from '../game/storage';
+import { makeLessonRun, makeNoteRun, makeRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -44,6 +46,17 @@ describe('reducer: finish', () => {
     expect(reducer(state(), { type: 'finish', result: result(['good']), taps: [], today: '2026-10-17' }).last?.lessonStarsBefore).toBe(0);
   });
 
+  it('keeps the calibration the run was played with, so calibrating from Results does not change its tip', () => {
+    const finish: Action = { type: 'finish', result: result(['good']), taps: [], today: '2026-10-17' };
+    const before = reducer(state(), finish).last;
+    expect(before).toMatchObject({ calibrationMs: 0, calibrated: false });
+    const calibrated = reducer({ ...state(), prefs: { ...DEFAULT_PREFS, calibrationMs: 120, calibratedAt: '2026-10-12' } }, finish).last;
+    expect(calibrated).toMatchObject({ calibrationMs: 120, calibrated: true });
+    // Calibrating afterwards changes the prefs, not the finished run.
+    const after = reducer({ ...state(), last: before }, { type: 'prefs', patch: { calibrationMs: 130, calibratedAt: '2026-10-17' } });
+    expect(after.last).toBe(before);
+  });
+
   it('a run left to play out with nothing hit does not keep the streak', () => {
     const next = reducer(state(), { type: 'finish', result: result(['miss', 'miss']), taps: [], today: '2026-10-17' });
     expect(next.progress.practiceDays).toEqual([]);
@@ -64,14 +77,27 @@ describe('reducer: rewards', () => {
 
   it('records the daily challenge, its first-play bonus and a new personal best', () => {
     const first = reducer(daily(), { type: 'finish', result: result(['good'], 70, 1), taps: [], today: '2026-10-17' });
-    expect(first.progress.daily).toEqual({ day: '2026-10-17', stars: 1, accuracy: 70 });
+    expect(first.progress.daily).toEqual({ day: '2026-10-17', tier: 1, stars: 1, accuracy: 70 });
     expect(first.last?.reward.dailyBest).toBe(true);
     const again = reducer({ ...first, run: daily().run }, { type: 'finish', result: result(['good'], 60, 2), taps: [], today: '2026-10-17' });
-    expect(again.progress.daily).toEqual({ day: '2026-10-17', stars: 2, accuracy: 70 });
+    expect(again.progress.daily).toEqual({ day: '2026-10-17', tier: 1, stars: 2, accuracy: 70 });
     expect(again.last?.reward.dailyBest).toBe(false);
     // The bonus (20 XP) comes once a day.
     expect(first.last!.reward.xp - again.last!.reward.xp).toBeGreaterThanOrEqual(20);
     expect(again.progress.dailyBest).toBe(70);
+  });
+
+  it('keeps the tier the daily was first played at that day, also after passing a unit', () => {
+    const first = reducer(daily(), { type: 'finish', result: result(['good'], 92, 3), taps: [], today: '2026-10-17' });
+    expect(first.progress.daily?.tier).toBe(1);
+    // Unit 1 passed that afternoon: the daily played again is still the tier-1 one, and so is its record.
+    const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2 as const, bestAccuracy: 80 }]));
+    const later = { ...first, run: daily().run, progress: { ...first.progress, lessons } };
+    const again = reducer(later, { type: 'finish', result: result(['good'], 60, 1), taps: [], today: '2026-10-17' });
+    expect(again.progress.daily).toEqual({ day: '2026-10-17', tier: 1, stars: 3, accuracy: 92 });
+    // The next day's daily is played at the new tier.
+    const next = reducer({ ...later, run: { exercise, lessonId: null, daily: '2026-10-18' } }, { type: 'finish', result: result(['good'], 80, 2), taps: [], today: '2026-10-18' });
+    expect(next.progress.daily?.tier).toBe(2);
   });
 
   it('daily and lesson runs leave the free-practice settings alone', () => {
@@ -194,7 +220,94 @@ describe('reducer: reset progress', () => {
   it('also puts the free-practice setup back to the defaults (it is kept with the progress)', () => {
     const custom = { ...state(), settings: { ...DEFAULT_SETTINGS, meters: ['3/4' as const], tempo: 132 } };
     const reset = reducer(custom, { type: 'resetProgress' });
-    expect(reset.settings).toEqual({ ...DEFAULT_SETTINGS, hold: true });
-    expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdMode: 'tap' } }, { type: 'resetProgress' }).settings.hold).toBe(false);
+    // Back at lesson 1.1: tap only until the path teaches holding again.
+    expect(reset.settings).toEqual({ ...DEFAULT_SETTINGS, hold: false });
+    expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdEarly: 'hold' } }, { type: 'resetProgress' }).settings.hold).toBe(true);
+    expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdMode: 'tap', holdEarly: 'hold' } }, { type: 'resetProgress' }).settings.hold).toBe(false);
+  });
+});
+
+describe('practice hold', () => {
+  const unit1Done = { ...defaultProgress(), lessons: Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2 as const, bestAccuracy: 80 }])) };
+  const unit1Half = { ...defaultProgress(), lessons: { '1.1': { stars: 3 as const, bestAccuracy: 95 }, '1.2': { stars: 2 as const, bestAccuracy: 80 } } };
+
+  it('follows the path: tap only until unit 2 (the unit that teaches holding) is open', () => {
+    expect(practiceHold(DEFAULT_PREFS, defaultProgress())).toBe(false);
+    expect(practiceHold(DEFAULT_PREFS, unit1Half)).toBe(false);
+    expect(practiceHold(DEFAULT_PREFS, unit1Done)).toBe(true);
+  });
+
+  it('tap only in Settings → Input always wins; the setup switch can turn holding on early', () => {
+    expect(practiceHold({ ...DEFAULT_PREFS, holdMode: 'tap' }, unit1Done)).toBe(false);
+    expect(practiceHold({ ...DEFAULT_PREFS, holdMode: 'tap', holdEarly: 'hold' }, unit1Done)).toBe(false);
+    expect(practiceHold({ ...DEFAULT_PREFS, holdEarly: 'tap' }, defaultProgress())).toBe(true);
+  });
+
+  it('the setup switch: on holds now and remembers the Input it replaced; off puts that back before unit 2, else sets tap only', () => {
+    const before = defaultProgress();
+    const tap: Prefs = { ...DEFAULT_PREFS, holdMode: 'tap' };
+    expect(practiceHoldPatch({ prefs: tap, progress: before }, true)).toEqual({ holdMode: 'hold', holdEarly: 'tap' });
+    expect(practiceHoldPatch({ prefs: { ...tap, holdMode: 'hold', holdEarly: 'tap' }, progress: before }, false)).toEqual({ holdMode: 'tap', holdEarly: null });
+    expect(practiceHoldPatch({ prefs: DEFAULT_PREFS, progress: before }, true)).toEqual({ holdMode: 'hold', holdEarly: 'hold' });
+    expect(practiceHoldPatch({ prefs: { ...DEFAULT_PREFS, holdEarly: 'hold' }, progress: before }, false)).toEqual({ holdMode: 'hold', holdEarly: null });
+    expect(practiceHoldPatch({ prefs: DEFAULT_PREFS, progress: unit1Done }, false)).toEqual({ holdMode: 'tap', holdEarly: null });
+    for (const progress of [before, unit1Done]) {
+      for (const prefs of [DEFAULT_PREFS, tap]) {
+        for (const on of [true, false]) {
+          expect(practiceHold({ ...prefs, ...practiceHoldPatch({ prefs, progress }, on) }, progress), `on: ${on}`).toBe(on);
+        }
+      }
+    }
+  });
+
+  it('turned on and off again, the switch leaves Settings → Input as it was (tap or hold, before or after unit 2)', () => {
+    const toggle = (prefs: Prefs, progress: Progress): Prefs => ({ ...prefs, ...practiceHoldPatch({ prefs, progress }, !practiceHold(prefs, progress)) });
+    for (const progress of [defaultProgress(), unit1Done]) {
+      for (const holdMode of ['tap', 'hold'] as const) {
+        const start: Prefs = { ...DEFAULT_PREFS, holdMode };
+        const once = toggle(start, progress);
+        const twice = toggle(once, progress);
+        const where = `${holdMode}, unit 2 ${progress === unit1Done ? 'open' : 'locked'}`;
+        expect(practiceHold(once, progress), where).toBe(!practiceHold(start, progress));
+        expect(twice.holdMode, where).toBe(holdMode);
+        expect(practiceHold(twice, progress), where).toBe(practiceHold(start, progress));
+      }
+    }
+  });
+
+  it('every free-practice start uses it; lessons keep their own hold', () => {
+    const s = { prefs: DEFAULT_PREFS, progress: defaultProgress(), settings: { ...DEFAULT_SETTINGS, hold: true } };
+    expect(practiceSettings(s, s.settings).hold).toBe(false);
+    expect(runSettings(s, null).hold).toBe(false);
+    expect(runSettings({ ...s, progress: unit1Done }, null).hold).toBe(true);
+    expect(runSettings(s, '1.1').hold).toBe(false);
+    expect(runSettings(s, '2.1').hold).toBe(true);
+  });
+});
+
+describe('makeLessonRun', () => {
+  const ids = (lessonId: string): string[] => lessonIntros(lessonId).map(introId);
+  /** Start seeds as newSeed gives them: spread over 31 bits. */
+  const seeds = Array.from({ length: 150 }, (_, i) => (Math.imul(i + 1, 2654435761) >>> 1) || 1);
+
+  it('a lesson that introduces a symbol starts with an exercise that shows it (3.4 the whole rest, 7.1 the dot)', () => {
+    // 3.4 tries about 22 seeds a start (its whole rest is in about 1 exercise in 22), so it gets fewer starts here.
+    for (const [lessonId, starts] of [['3.4', seeds.slice(0, 50)], ['7.1', seeds]] as const) {
+      const settings = lessonSettings(lessonId);
+      // Without the search many would not.
+      expect(starts.filter((seed) => exerciseHas(makeRun(settings, seed, lessonId)!.exercise, ids(lessonId))).length).toBeLessThan(starts.length / 2);
+      for (const seed of starts) {
+        const run = makeLessonRun(settings, seed, lessonId)!;
+        expect(exerciseHas(run.exercise, ids(lessonId)), `${lessonId}, seed ${seed}`).toBe(true);
+        expect(run).toMatchObject({ lessonId, daily: null });
+        expect(run.exercise.settings).toEqual(settings);
+      }
+    }
+  });
+
+  it('keeps the first seed when the exercise already shows it all, or the lesson introduces nothing', () => {
+    for (const lessonId of ['1.1', '1.3', '1.2', '3.1']) {
+      for (const seed of seeds.slice(0, 20)) expect(makeLessonRun(lessonSettings(lessonId), seed, lessonId)!.exercise.seed).toBe(seed);
+    }
   });
 });

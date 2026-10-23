@@ -719,6 +719,11 @@
 .splay-hear svg {
   color: var(--accent);
 }
+/* Hear it so far and Start over before the first note: hidden in their place, so nothing moves when they come. */
+.splay-tools .is-idle,
+.sstats > .is-idle {
+  visibility: hidden;
+}
 .splay .nplay-skip {
   margin: -6px 0 -6px;
 }
@@ -845,6 +850,42 @@
   gap: 4px;
 }
 
+/*
+ * A phone browser (DESIGN.md §9, see Play in app.css): tighter gaps, and the piano gives up height so its letters stay
+ * in view. On the shortest screens the staff is smaller (ScalesPlay), and so are the degrees and the sign buttons.
+ */
+@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+  .splay {
+    gap: 10px;
+  }
+  .splay .splay-inputs {
+    flex-shrink: 1;
+    min-height: 0;
+  }
+  .splay .spiano {
+    min-height: 140px;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  .splay {
+    gap: 8px;
+  }
+  .splay-staff {
+    padding: 6px 8px;
+  }
+  .splay .degree {
+    height: 40px;
+  }
+  .splay-tools .btn {
+    min-height: 44px;
+  }
+  .splay .spiano {
+    min-height: 110px;
+  }
+  .splay .ssign {
+    height: 64px;
+  }
+}
 /* Phone in landscape: the staff and the degrees on the left; the piano or the signs on the right. */
 @media (orientation: landscape) and (max-height: 560px) {
   .splay {

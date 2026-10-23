@@ -4,7 +4,7 @@ import { DEMO_44, DEMO_BARS_44, DEMO_LESSON } from './demoFixtures';
 import { getMeter } from '../core/api';
 import { plainSyllable } from './counting';
 import { parseBars } from './notationText';
-import { drawStaff, type StaffPalette } from './staffDraw';
+import { drawStaff, missMarkPath, type StaffPalette } from './staffDraw';
 
 const DARK: StaffPalette = { ink: '#e8eeed', staff: '#5d6a6b', hit: '#4cc38a', early: '#f0b429', miss: '#ff6b6b', cursor: '#8fbfc1' };
 const PALETTE = new Set(Object.values(DARK));
@@ -35,6 +35,20 @@ describe('drawStaff', () => {
     expect(draw({ bars: DEMO_LESSON, barsPerRow: 4, width: 1040, cursorSpace: true }).size.height).toBe(88);
   });
 
+  it('draws smaller at a scale below 1, still filling the width (Play on a short phone)', () => {
+    const { svg, size } = draw({ bars: DEMO_LESSON, cursorSpace: true, scale: 0.8, marks: { 5: 'miss' }, cursor: 2 });
+    expect(size.height).toBe(139); // 174 × 0.8
+    expect(svg.getAttribute('width')).toBe('342');
+    expect(svg.getAttribute('height')).toBe('139');
+    // Laid out 342 / 0.8 = 427.5 wide in the svg's own units, so the bars still span the whole width.
+    expect(svg.getAttribute('viewBox')).toBe('0 0 427.5 174');
+    // The cursor and the × are placed in those units too.
+    const cursor = svg.querySelector('rect[data-cursor]')!;
+    expect(Number(cursor.getAttribute('x'))).toBeGreaterThan(0);
+    expect(svg.querySelectorAll('.staff-miss path')).toHaveLength(1);
+    expect(draw({ bars: DEMO_LESSON, cursorSpace: true }).svg.getAttribute('viewBox')).toBe('0 0 342 174');
+  });
+
   it('colours marked notes and draws the cursor behind the current note', () => {
     const { svg } = draw({ bars: DEMO_LESSON, marks: { 0: 'perfect', 1: 'good', 5: 'miss' }, cursor: 2, cursorSpace: true });
     const notes = [...svg.querySelectorAll('g.vf-stavenote')];
@@ -45,6 +59,32 @@ describe('drawStaff', () => {
     const first = svg.firstElementChild!;
     expect(first.tagName).toBe('rect');
     expect(first.getAttribute('fill')).toBe(DARK.cursor);
+  });
+
+  it('marks a missed note with a × under its head, like the lane (colour plus shape)', () => {
+    expect(missMarkPath({ x: 100, y: 40 })).toBe('M96 53l8 8M104 53l-8 8');
+    const { svg, size } = draw({ bars: DEMO_LESSON, marks: { 0: 'perfect', 1: 'good', 5: 'miss', 9: 'miss' }, cursor: 2, cursorSpace: true });
+    const g = svg.querySelector('g.staff-miss')!;
+    expect(g.getAttribute('stroke')).toBe(DARK.miss);
+    expect(g.getAttribute('fill')).toBe('none');
+    const starts = [...g.querySelectorAll('path')].map((p) => p.getAttribute('d')!.match(/^M([\d.]+) ([\d.]+)/)!.slice(1).map(Number));
+    expect(starts).toHaveLength(2);
+    // Under the note it belongs to: within its width, just below its head (the bottom of a stems-up note's box).
+    [5, 9].forEach((onset, i) => {
+      const box = size.onsets.get(onset)!;
+      const [x, y] = starts[i];
+      expect(x + 4).toBeGreaterThan(box.x);
+      expect(x + 4).toBeLessThan(box.x + box.w);
+      expect(y).toBeGreaterThan(box.y + box.h);
+      expect(y + 8).toBeLessThan(size.height);
+    });
+    expect(draw({ bars: DEMO_LESSON, marks: { 0: 'good' } }).svg.querySelector('.staff-miss')).toBeNull();
+  });
+
+  it('gives a missed tied note one ×, on the note it starts on', () => {
+    const { svg } = draw({ marks: { 10: 'miss' } }); // bar 3: q q~ q q
+    expect(svg.querySelectorAll('.staff-miss path')).toHaveLength(1);
+    expect([...svg.querySelectorAll('g.vf-stavenote')].filter((n) => n.getAttribute('fill') === DARK.miss)).toHaveLength(2);
   });
 
   it('draws ties, a tuplet and beams', () => {

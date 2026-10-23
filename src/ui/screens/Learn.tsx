@@ -1,13 +1,14 @@
 /**
  * Learn (DESIGN.md §9.1): the chapter list with read status, and each chapter on its own page. The chapters are data
  * (`ui/learn/chapters.ts`); this file only lays them out. Each section ends with a quick check, and is marked read once
- * that is answered right; it may also end with a practice link that opens practice set up for it. A chapter ends with
- * a quick check of its own and previous / next.
+ * that is answered right; it may also end with a practice link that starts practice set up for it. A chapter ends
+ * with a quick check of its own and previous / next. Examples can be heard (learn/Listen.tsx); leaving the chapter stops
+ * the sound.
  *
  * Tablet and desktop use the full width: the chapter list puts its sections in two columns, and a chapter page gets the
  * big chapter number and wider sections. Tablet jumps to a section with a row of chips; desktop has a chapter sidebar.
  */
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import type { Letter } from '../../core/api';
 import { t } from '../../i18n';
 import { AppShell } from '../components/AppShell';
@@ -15,9 +16,12 @@ import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
 import { Blocks } from '../learn/Blocks';
 import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
+import { stopLearnSound } from '../learn/Listen';
 import { letterName } from '../lib/noteText';
 import { hashQuery, Link, useHash, type Route } from '../router';
 import { useStore } from '../store';
+import { useStartNotes } from './notes/start';
+import { useStartPractice } from './start';
 
 export const chapterRoute = (n: number): Route => `/learn/${n}`;
 const sectionTitle = (id: string): string => t(sectionKey(id, 'title'));
@@ -128,23 +132,36 @@ function SectionCheck({ section, read, onRight }: { section: Section; read: bool
 }
 
 /**
- * "Practice the treble clef →": Read notes, Free practice or the Scales setup, set up for the section on top of the
- * player's own setup.
+ * "Practice the treble clef →": a Read notes round or a rhythm exercise straight away, or the Scales setup, set up for
+ * the section on top of the player's own setup. Play and the summary carry ?from=8.2, so Quit and their back arrow
+ * return to the section, and the setup they open keeps the preset.
  */
 function PracticeLink({ section }: { section: Section }): JSX.Element {
   const { state, dispatch } = useStore();
+  const startPractice = useStartPractice();
+  const startNotes = useStartNotes();
   const p = section.practice!;
-  const start = (): void => {
-    if ('notes' in p) dispatch({ type: 'noteSettings', settings: { ...state.noteSettings, ...p.notes } });
-    else if ('scales' in p) {
+  const from = 'from=' + section.id;
+  const start = (e: MouseEvent): void => {
+    if ('scales' in p) {
       const settings = { ...state.scaleSettings, ...p.scales };
       dispatch({ type: 'scaleSettings', settings });
       if (settings.keyMode === 'one') dispatch({ type: 'scaleHub', hub: { ...state.scaleHub, key: settings.keys[0] } });
-    } else dispatch({ type: 'settings', settings: { ...state.settings, ...p.rhythm } });
+      return;
+    }
+    e.preventDefault();
+    if ('notes' in p) {
+      const settings = { ...state.noteSettings, ...p.notes };
+      dispatch({ type: 'noteSettings', settings });
+      startNotes(settings, [], { query: from });
+    } else {
+      const settings = { ...state.settings, ...p.rhythm };
+      dispatch({ type: 'settings', settings });
+      startPractice(settings, { query: from });
+    }
   };
   return (
-    <Link to={'notes' in p ? '/notes' : 'scales' in p ? '/scales/setup' : '/setup'} query={'from=' + section.id} className="text-btn text-btn--link learn-practice"
-      onClick={start}>
+    <Link to={'notes' in p ? '/notes/play' : 'scales' in p ? '/scales/setup' : '/play'} query={from} className="text-btn text-btn--link learn-practice" onClick={start}>
       {t(sectionKey(section.id, 'practice'))} →
     </Link>
   );
@@ -244,6 +261,8 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
   const next = CHAPTERS[at + 1];
   const ids = sectionIds(chapter);
   const route = chapterRoute(n);
+  // An example still sounding stops when another chapter opens or Learn closes.
+  useEffect(() => stopLearnSound, [n]);
 
   // #/learn/10?s=10.2 opens at that section.
   const target = hashQuery(hash).get('s');

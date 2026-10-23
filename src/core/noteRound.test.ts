@@ -7,7 +7,10 @@ import {
   missedIds,
   noteId,
   noteRoundXp,
+  noteMidi,
   noteStars,
+  pianoKeyMidi,
+  roundHasSigns,
   sanitizeNoteSettings,
   scoreRound,
   updateWeak,
@@ -26,6 +29,7 @@ const settingsArb: fc.Arbitrary<NoteSettings> = fc.record({
   extras: fc.constantFrom('none', 'sharps', 'both'),
   count: fc.integer({ min: 10, max: 50 }),
   timer: fc.constantFrom(0, 5, 3),
+  playNotes: fc.boolean(),
 });
 
 const corpus = fc.sample(fc.tuple(settingsArb, fc.integer({ min: 1, max: 2 ** 31 - 1 })), { numRuns: 400, seed: 7 });
@@ -125,6 +129,50 @@ describe('answers', () => {
   });
 });
 
+describe('the sign row', () => {
+  it('is left out only when no note can carry a sign: no key signature and no extra signs (§3.5)', () => {
+    expect(roundHasSigns(DEFAULT_NOTE_SETTINGS)).toBe(false);
+    expect(roundHasSigns({ ...DEFAULT_NOTE_SETTINGS, clefs: ['treble', 'bass'], range: 'ledger2', input: 'mixed' })).toBe(false);
+    expect(roundHasSigns({ ...DEFAULT_NOTE_SETTINGS, extras: 'sharps' })).toBe(true);
+    expect(roundHasSigns({ ...DEFAULT_NOTE_SETTINGS, extras: 'both' })).toBe(true);
+    expect(roundHasSigns({ ...DEFAULT_NOTE_SETTINGS, keys: ['G'] })).toBe(true);
+    expect(roundHasSigns({ ...DEFAULT_NOTE_SETTINGS, keys: ['F'] })).toBe(true);
+    // Only the first key counts without Mix keys; with it, any key with a signature brings the row back.
+    expect(roundHasSigns({ ...DEFAULT_NOTE_SETTINGS, keys: ['C', 'G'] })).toBe(false);
+    expect(roundHasSigns({ ...DEFAULT_NOTE_SETTINGS, keys: ['C', 'G'], mixKeys: true })).toBe(true);
+  });
+
+  it('holds for every note of a round it leaves out', () => {
+    for (const [s, seed] of corpus) if (!roundHasSigns(s)) for (const n of generateRound(s, seed)) expect([n.alter, n.sign]).toEqual([0, null]);
+  });
+});
+
+describe('the sound of a note', () => {
+  it('is the written note with the key signature and its own sign', () => {
+    expect(noteMidi({ ...fSharp5, step: 28, alter: 0, key: 'C' })).toBe(60);
+    expect(noteMidi(fSharp5)).toBe(78);
+    expect(noteMidi({ ...fSharp5, step: 38, alter: 0, sign: 0 })).toBe(77);
+    // The octave belongs to the letter: C♭5 sounds as B4, B♯4 as C5.
+    expect(noteMidi({ clef: 'treble', key: 'Cb', step: 35, alter: -1, sign: null, input: 'names' })).toBe(71);
+    expect(noteMidi({ clef: 'treble', key: 'C', step: 34, alter: 1, sign: 1, input: 'names' })).toBe(72);
+    expect(noteMidi({ clef: 'bass', key: 'C', step: 18, alter: 0, sign: null, input: 'names' })).toBe(43);
+  });
+
+  it('puts the answer piano in the octave of the note, so the right key sounds as the note', () => {
+    expect(pianoKeyMidi(fSharp5, 6)).toBe(78);
+    expect(pianoKeyMidi(fSharp5, 5)).toBe(77);
+    expect(pianoKeyMidi(fSharp5, 0)).toBe(72);
+    expect(pianoKeyMidi(fSharp5, 11)).toBe(83);
+    for (const [s, seed] of corpus.slice(0, 50)) {
+      for (const n of generateRound(s, seed)) {
+        const pc = ((noteMidi(n) % 12) + 12) % 12;
+        expect(isRight(n, { kind: 'piano', pc })).toBe(true);
+        expect(pianoKeyMidi(n, pc)).toBe(noteMidi(n));
+      }
+    }
+  });
+});
+
 describe('scoreRound', () => {
   const notes: RoundNote[] = [fSharp5, { ...fSharp5, step: 32, alter: 0 }, fSharp5, { ...fSharp5, step: 34, alter: 0 }];
   const a = (outcome: NoteAnswer['outcome'], ms: number, given: NoteAnswer['given'] = null): NoteAnswer => ({ outcome, ms, given });
@@ -185,5 +233,11 @@ describe('sanitizeNoteSettings', () => {
     expect(sanitizeNoteSettings({})).toEqual(DEFAULT_NOTE_SETTINGS);
     const s = sanitizeNoteSettings({ clefs: ['bass', 'alto'], keys: ['Eb', 'X', 'G', 'Eb'], count: 99, timer: 4, input: 'piano' });
     expect(s).toMatchObject({ clefs: ['bass'], keys: ['Eb', 'G'] as KeyId[], count: 50, timer: 0, input: 'piano' });
+  });
+
+  it('plays the notes unless the player turned it off (settings saved before the switch play them)', () => {
+    expect(sanitizeNoteSettings({})?.playNotes).toBe(true);
+    expect(sanitizeNoteSettings({ playNotes: 'no' })?.playNotes).toBe(true);
+    expect(sanitizeNoteSettings({ playNotes: false })?.playNotes).toBe(false);
   });
 });

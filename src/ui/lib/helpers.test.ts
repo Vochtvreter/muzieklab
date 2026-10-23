@@ -40,7 +40,7 @@ describe('formatting', () => {
     expect(starsText(5)).toBe('★★★★');
     expect(starsLabel(2)).toBe('2 of 3 stars');
     expect(starsLabel(4)).toBe('3 of 3 stars and the bonus 4th star');
-    expect(starsLabel(5)).toBe('Diamond star, all perfect');
+    expect(starsLabel(5)).toBe('Diamond: every note perfect');
     expect(difficultyLevel(0)).toBe(1);
     expect(difficultyLevel(5)).toBe(3);
     expect(difficultyLevel(10)).toBe(5);

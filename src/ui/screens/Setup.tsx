@@ -13,7 +13,7 @@ import { describeBars } from '../lib/notation';
 import { useLearnReturn } from '../lib/learnReturn';
 import { NO_NOTES_HINT_ID, meterHintId, setupHints, startBlockedKey } from '../lib/setupHints';
 import { Link } from '../router';
-import { makeRun, useStore } from '../store';
+import { makeRun, practiceHoldPatch, practiceSettings, useStore } from '../store';
 import { useStartPractice } from './start';
 
 const NOTE_GLYPH: Record<NoteValue, string> = { whole: '𝅝', half: '𝅗𝅥', quarter: '𝅘𝅥', eighth: '𝅘𝅥𝅮', sixteenth: '𝅘𝅥𝅯' };
@@ -31,8 +31,8 @@ export function Setup(): JSX.Element {
   const { back } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('setup.title') }));
 
-  const hold = state.prefs.holdMode === 'hold';
-  const s: Settings = { ...state.settings, hold };
+  const s: Settings = practiceSettings(state, state.settings);
+  const hold = s.hold;
   const update = (patch: Partial<Settings>): void => {
     dispatch({ type: 'settings', settings: { ...s, ...patch } });
     setPreviewSeed(newSeed());
@@ -84,7 +84,7 @@ export function Setup(): JSX.Element {
         </div>
 
         <button type="button" role="switch" aria-checked={hold} className="switch-row"
-          onClick={() => dispatch({ type: 'prefs', patch: { holdMode: hold ? 'tap' : 'hold' } })}>
+          onClick={() => dispatch({ type: 'prefs', patch: practiceHoldPatch(state, !hold) })}>
           <span className="switch-row-text">
             <b>{t('setup.holdTitle')}</b>
             <span className="muted-text">{t(hold ? 'setup.holdOn' : 'setup.holdOff')}</span>
@@ -105,9 +105,6 @@ export function Setup(): JSX.Element {
                 </Chip>
               );
             })}
-            <button type="button" className="chip chip--meter chip--soon" disabled>
-              {t('setup.meterSoon', { meter: '6/8' })}
-            </button>
           </div>
           {hints.length > 0 && (
             <div className="hint-box m-in" role="status">

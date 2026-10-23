@@ -68,6 +68,12 @@ describe('t()', () => {
     const onBeat = tipText({ key: 'tip.heldLong', params: { value: 'value.half', bar: 1, beat: 1, liftBeat: 3, liftPart: 'count.beat', count: 1 } });
     expect(onBeat).toBe('You held the half note in bar 1 too long. Lift on “3”.');
     expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 3 } })).toBe('You missed 1 note, most in bar 3. Read one beat ahead.');
+    expect(tipText({ key: 'tip.missedSpread', params: { count: 8 } })).toBe('You missed 8 notes. Read one beat ahead.');
+    expect(tipText({ key: 'tip.latency', params: { ms: 125, dir: 'late' } })).toMatch(/^Your taps came about 125 ms late every time\. /);
+    // Early is a calibration that no longer fits, never the speaker: a device delay only makes taps late.
+    expect(tipText({ key: 'tip.latency', params: { ms: 110, dir: 'early' } })).toBe(
+      'Your taps came about 110 ms early every time. If you calibrated with other headphones or another speaker, calibrate again.',
+    );
   });
 
   it('has every value and rest key the engine can produce', () => {
@@ -208,6 +214,10 @@ describe('Dutch', () => {
       params: { value: 'value.dottedQuarter', bar: 2, beat: 1, liftBeat: 2, liftPart: 'count.and', count: 1 },
     });
     expect(tip).toBe('Je liet de gepunteerde kwartnoot in maat 2 te vroeg los. Houd hem vast tot en met “2”, tot vlak voor “en”.');
+    expect(tipText({ key: 'tip.latency', params: { ms: 125, dir: 'late' } })).toMatch(/^Je tikken kwamen elke keer zo’n 125 ms te laat\. /);
+    expect(tipText({ key: 'tip.latency', params: { ms: 110, dir: 'early' } })).toBe(
+      'Je tikken kwamen elke keer zo’n 110 ms te vroeg. Heb je met een andere koptelefoon of speaker gekalibreerd? Kalibreer dan opnieuw.',
+    );
   });
 
   it('falls back to English for a key a catalog lacks', () => {

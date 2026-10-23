@@ -560,12 +560,6 @@
   font-weight: 500;
   font-size: 14px;
 }
-.chip--soon,
-.chip--soon:disabled {
-  border: 1.5px dashed var(--rule-strong);
-  background: transparent;
-  color: var(--faint);
-}
 .chip--glyph {
   height: 48px;
   padding: 0;
@@ -600,11 +594,20 @@
 }
 .home-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
-.streak-pill {
+/* The level and streak chips; on a narrow phone they go under the brand. */
+.home-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.streak-pill,
+.level-chip {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -621,6 +624,40 @@
   height: 10px;
   border-radius: 50%;
   background: var(--reward);
+}
+/* A button: the 44 px hit area reaches past the chip's 29 px. */
+.level-chip {
+  position: relative;
+  gap: 6px;
+  padding: 6px 11px 6px 8px;
+  color: var(--ink);
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+.level-chip::after {
+  content: '';
+  position: absolute;
+  inset: -8px 0;
+}
+@media (hover: hover) {
+  .level-chip:hover {
+    border-color: var(--rule);
+  }
+}
+.level-ring {
+  flex: none;
+  display: block;
+}
+.level-ring circle {
+  fill: none;
+  stroke-width: 2.6;
+}
+.level-ring-track {
+  stroke: var(--rule);
+}
+.level-ring-fill {
+  stroke: var(--reward);
 }
 .continue-card {
   /* Fills a tall screen, but never shrinks below its content: on a short screen the page scrolls instead. */
@@ -651,18 +688,14 @@
   background: var(--paper);
   color: var(--ink);
   border-radius: 14px;
-  padding: 12px 10px 6px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
 }
-.continue-meta {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 4px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
+/* Tablet: the card and its staff keep their own height instead of stretching to fill the tall screen. */
+.home--tablet .continue-card,
+.home--tablet .continue-staff {
+  flex: none;
 }
 .continue-staff-body {
   flex: 1;
@@ -963,15 +996,6 @@
 .level-block-head .muted-text {
   font-size: 14px;
 }
-.level-block-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-}
-.level-block-foot .xp-next {
-  align-self: auto;
-}
 .path-card {
   flex: 1;
   text-decoration: none;
@@ -1114,8 +1138,8 @@
 .path--tablet .track-chip-meta {
   font-size: 12.5px;
 }
-/* The smallest phones: the names alone, so a long one ("Toonsoorten") still fits. */
-@media (max-width: 359px) {
+/* Phones under 390 px: the names alone, so the long ones ("Read notes", "Toonsoorten") fit on one line. */
+@media (max-width: 389px) {
   .track-glyph {
     display: none;
   }
@@ -1269,6 +1293,10 @@ button.unit-head:active:not(:disabled) {
   transform: rotate(90deg);
   transition: transform 0.26s var(--ease-out-soft);
 }
+.unit-lock {
+  flex: none;
+  color: var(--muted);
+}
 .unit-head[aria-expanded='true'] .unit-chevron {
   transform: rotate(-90deg);
 }
@@ -1414,7 +1442,7 @@ button.lesson-stars:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-/* The diamond star (an all-perfect lesson), wherever stars show; it stands in for all four. */
+/* The diamond star (an all-perfect lesson): one big one on Results, four in place of the gold ones elsewhere. */
 .diamond-star {
   display: inline-block;
   font-size: 1.25em;
@@ -1426,15 +1454,17 @@ button.lesson-stars:hover {
   color: transparent;
   filter: drop-shadow(0 0 0.12em var(--diamond-glow));
 }
+.stars-diamond {
+  display: inline-flex;
+}
+.stars-diamond .diamond-star {
+  font-size: 1em;
+  letter-spacing: inherit;
+}
+/* What opens the locked units, once, under the first of them. */
 .unit-sub {
-  display: flex;
-  align-items: center;
-  gap: 5px;
   font-size: 13px;
   color: var(--muted);
-}
-.unit-sub svg {
-  flex: none;
 }
 .path-start {
   margin-top: auto;
@@ -1957,6 +1987,14 @@ button.lesson-stars:hover {
 .beats-dot.is-idle {
   opacity: 0;
 }
+/* The count-in is not bar 1 (§3.1): an outlined ring in place of the filled circle, the digit in slate. */
+.beats.is-count-in .beats-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.beats.is-count-in .beat.is-on {
+  color: var(--accent);
+}
 
 /*
  * Analog beat counter (Settings → Metronome style): a pyramid metronome whose rod reaches a side on every beat, and
@@ -2131,6 +2169,58 @@ button.lesson-stars:hover {
     width: min(150px, 60%);
     height: auto;
     max-height: 70%;
+  }
+}
+
+/*
+ * A phone browser (DESIGN.md §9): its toolbars leave 390 × 664 on an iPhone 14 and 375 × 553 on an iPhone SE, not the
+ * whole screen. Play still may not scroll, so the gaps and the page's padding tighten first, then the pad gives up
+ * height down to a smaller minimum; below 600 px the staff is drawn at 0.8 as well (Play.tsx, SHORTER_PHONE in
+ * hooks.ts). Calibration's pad follows the same rules (its own block below).
+ */
+@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+  .play {
+    --pt: 46px;
+    --pb: 24px;
+    gap: 10px;
+  }
+  .play-staff {
+    padding: 10px 8px 8px;
+  }
+  /* The pad is a size container: its ring follows its height, and a low pad keeps only the word (below). */
+  .play .pad,
+  .cal .pad {
+    min-height: 112px;
+    container-type: size;
+  }
+  .play .pad-ring,
+  .cal .pad-ring {
+    height: min(150px, 100cqh - 16px);
+    width: auto;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  .play {
+    --pt: 44px;
+    --pb: 22px;
+    gap: 8px;
+  }
+  .play-staff {
+    padding: 8px 8px 6px;
+  }
+  .play .pad,
+  .cal .pad {
+    min-height: 76px;
+  }
+  /* Play's Skip link; Read notes and Scales set their own margins (.nplay-skip). */
+  .skip-link {
+    margin-top: 0;
+  }
+}
+/* A pad squeezed under 104 px (8 bars on a short phone): the note glyph no longer fits in the ring, "Tap" does. */
+@container (max-height: 103.98px) {
+  .pad-glyph {
+    display: none;
   }
 }
 .judgement--cal {
@@ -2363,6 +2453,11 @@ button.lesson-stars:hover {
   font-size: 34px;
   color: var(--accent);
 }
+/* Count-in: the beat in outline, as the phone's ring. */
+.dbeats.is-count-in span.is-on {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--accent);
+}
 .stat-big {
   font-family: var(--font-display);
   font-weight: 700;
@@ -2407,6 +2502,11 @@ button.lesson-stars:hover {
   align-items: center;
   justify-content: center;
   padding: 24px;
+}
+/* Ready and the intro sheet before the count-in: under the staff, which the player reads first. */
+.overlay--dialog.overlay--low {
+  align-items: flex-end;
+  padding-bottom: 48px;
 }
 .sheet {
   width: 100%;
@@ -2529,6 +2629,107 @@ button.lesson-stars:hover {
   flex: none;
   gap: 10px;
 }
+/* The intro sheet (§3.1): each new symbol's glyph on a soft tile, its name, one fact and Learn more; Listen and Start. */
+.intro-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.intro-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.intro-glyph {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-music);
+  font-size: 40px;
+  line-height: 1;
+}
+/* A time signature: the two numbers stacked, in the display face. */
+.intro-glyph--meter {
+  flex-direction: column;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 0.95;
+}
+.intro-glyph--tie,
+.intro-glyph--triplet {
+  position: relative;
+  font-size: 30px;
+}
+.intro-glyph--tie {
+  gap: 10px;
+}
+.intro-glyph--triplet {
+  gap: 2px;
+  padding-top: 8px;
+}
+/* Under the two note heads (stems up, so the tie curves below). */
+.intro-tie {
+  position: absolute;
+  left: calc(50% - 3px);
+  bottom: 8px;
+  width: 22px;
+  height: 9px;
+  transform: translateX(-50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.intro-three {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+}
+.intro-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.intro-learn {
+  /* A 44 px target that takes 36 px of the line, so the sheet is no taller. */
+  min-height: 44px;
+  padding: 10px 0;
+  margin: -4px 0;
+}
+/* Listen as wide as its label (Dutch "Luisteren" too), Start takes the rest. */
+.intro-actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+}
+.intro-actions .btn {
+  min-height: 54px;
+}
+.intro-actions .btn--outline {
+  padding-inline: 20px;
+}
+.intro-actions .btn--outline.is-on {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent-ink);
+}
 .menu {
   border: 1px solid var(--divider);
   border-radius: 18px;
@@ -2584,6 +2785,8 @@ button.lesson-stars:hover {
   --pb: 30px;
   --px: 16px;
   gap: 10px;
+  /* Scrolling to a control (Tab to Calibrate, or a script) leaves it above the sticky actions. */
+  scroll-padding-bottom: 140px;
 }
 .score {
   display: flex;
@@ -2702,10 +2905,26 @@ button.lesson-stars:hover {
   font-size: 14px;
   line-height: 1.45;
 }
-.tip svg {
+.tip > svg {
   flex: none;
   margin-top: 1px;
   color: var(--reward-ink);
+}
+.tip-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+/* Calibrate under a latency tip: a quiet action, its text in line with the tip's. */
+.tip-action {
+  margin: 0 0 -8px -14px;
+}
+/* In its place once the player has calibrated since this run. */
+.tip-note {
+  margin-top: 4px;
+  font-weight: 600;
 }
 .results-actions {
   margin-top: auto;
@@ -2726,6 +2945,25 @@ button.lesson-stars:hover {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
   gap: 10px;
+}
+/* Under 2 stars: New exercise and the filled Try again, side by side at the same width. */
+.results-main--again {
+  grid-template-columns: 1fr 1fr;
+}
+.copy-btn.is-copied {
+  color: var(--good-ink);
+}
+/* Phone: Copy code as a small muted link under the main buttons, its 44 px target eating into the gap and padding. */
+.copy-link {
+  align-self: center;
+  margin: -8px 0 -10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+}
+.copy-link:hover {
+  color: var(--ink);
 }
 /*
  * Results and the round summaries scroll when they are taller than the screen (8 bars, a 1280 × 800 laptop, a small
@@ -3574,6 +3812,58 @@ button.lesson-stars:hover {
   }
 }
 
+/* A phone browser (see Play): tighter gaps first, then a smaller intro and card on the shortest screens; the pad shrinks. */
+@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+  .cal {
+    --pt: 46px;
+    --pb: 24px;
+    gap: 10px;
+  }
+  /*
+   * The result: Save and Try again side by side, and kept in view at the bottom as on Results (the narrowest screens
+   * scroll the result card a little under them).
+   */
+  .cal-actions {
+    flex-direction: row;
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--ground);
+    box-shadow: 0 -18px 14px -6px var(--ground), 0 40px 0 24px var(--ground);
+  }
+  .cal-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  .cal {
+    --pt: 44px;
+    --pb: 22px;
+    gap: 8px;
+  }
+  .cal-intro {
+    gap: 4px;
+  }
+  .cal-intro p {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .cal-intro .muted-text {
+    font-size: 12.5px;
+  }
+  .cal-card {
+    padding: 12px 14px 8px;
+    gap: 8px;
+  }
+  .cal-result {
+    padding: 14px;
+  }
+  .cal-result-n {
+    font-size: 36px;
+  }
+}
+
 /* ---------- Crash screen ---------- */
 .crash {
   min-height: 100dvh;
@@ -3591,23 +3881,6 @@ button.lesson-stars:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-.xp-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  font-size: 14px;
-}
-.xp-level b {
-  font-weight: 700;
-}
-.xp-of {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
 }
 .xp-bar {
   height: 8px;
@@ -3703,60 +3976,7 @@ button.lesson-stars:hover {
   gap: 14px;
 }
 
-/* ---------- v1.1 · Results: code, Copy, XP badges ---------- */
-.code-row {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-left: 48px;
-}
-.code-row-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.code-line {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  min-width: 0;
-}
-.code-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-.code-text {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 11.5px;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  user-select: all;
-}
-.copy-btn {
-  flex: none;
-  min-width: 92px;
-  height: 44px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1.5px solid var(--line);
-  background: var(--paper);
-  color: var(--accent-ink);
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-.copy-btn.is-copied {
-  color: var(--good-ink);
-}
+/* ---------- v1.1 · Results: XP badges ---------- */
 .badges {
   flex: none;
   display: flex;
@@ -3853,8 +4073,9 @@ button.lesson-stars:hover {
 .ranks li + li.is-current::before {
   margin-left: -8px;
 }
+/* Room for the bar and its label, which appears once the bar has filled. */
 .levelup-line {
-  min-height: 64px;
+  min-height: 30px;
 }
 
 /* ---------- v1.1 · Setup mode ---------- */
@@ -3964,6 +4185,20 @@ button.lesson-stars:hover {
 }
 .pad:disabled {
   opacity: 0.5;
+}
+/* The shortest phone browsers (375 × 553): a smaller play button and card, so the pad keeps its glyph. */
+@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+  /* Later than .play-staff--echo, so the listen card gets this padding too (room for the play button's halo). */
+  .echo-card {
+    min-height: 200px;
+    padding: 14px 16px;
+    gap: 4px;
+  }
+  .echo-play {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 6px;
+  }
 }
 .levelup-line .xp-next {
   text-align: right;

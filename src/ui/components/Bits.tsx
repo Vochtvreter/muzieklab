@@ -1,6 +1,6 @@
 /** Small shared pieces: lesson tiles, the staff with a safety net, the tap pad, the beat counters (digital, analog). */
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
-import { DIAMOND, type Meter, type NotatedBar } from '../../core/api';
+import { DIAMOND, MAX_STARS, type Meter, type NotatedBar } from '../../core/api';
 import { isUnlocked, type Unit } from '../../game/path';
 import type { Progress } from '../../game/storage';
 import { Staff, type NoteMark } from '../../render/Staff';
@@ -50,9 +50,22 @@ export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
   );
 }
 
-/** A lesson's stars as text, or the one diamond star in their place. */
+/**
+ * A lesson's stars, drawn one way wherever lessons show (Home tiles, the Path; DESIGN.md §6.3): three slots (★★☆), four
+ * stars for the 4th, and four diamond-blue stars for the diamond, so a better result never shows fewer stars. The gold
+ * comes from where they sit; the tile or button around them carries the label (`starsLabel`).
+ */
 export function StarsMark({ stars }: { stars: number }): JSX.Element {
-  return stars === DIAMOND ? <span className="diamond-star">★</span> : <>{starsText(stars)}</>;
+  if (stars !== DIAMOND) return <>{starsText(stars)}</>;
+  return (
+    <span className="stars-diamond">
+      {Array.from({ length: MAX_STARS }, (_, i) => (
+        <span key={i} className="diamond-star">
+          ★
+        </span>
+      ))}
+    </span>
+  );
 }
 
 interface StaffBoxProps {
@@ -62,6 +75,7 @@ interface StaffBoxProps {
   label: string;
   marks?: Record<number, NoteMark>;
   cursor?: number | null;
+  scale?: number;
 }
 
 /** The VexFlow staff; if drawing fails, the text alternative is shown instead of breaking the screen. */
@@ -83,7 +97,7 @@ interface PadProps {
   disabled?: boolean;
 }
 
-/** Phone / tablet tap pad: a quarter-note glyph and "Rhythm", with a ring that fills while you hold. */
+/** Phone / tablet tap pad: a quarter-note glyph and "Tap", with a ring that fills while you hold. */
 export const TapPad = forwardRef<HTMLButtonElement, PadProps>(function TapPad({ progress, held, label, disabled }, ref) {
   const dash = (RING_C * Math.max(0, Math.min(1, progress))).toFixed(1);
   return (
@@ -103,11 +117,14 @@ export const TapPad = forwardRef<HTMLButtonElement, PadProps>(function TapPad({ 
   );
 });
 
-/** Beat counter. Phone: digits with a slate circle that moves to the current beat (120 ms). */
-export function BeatRow({ beats, active, label }: { beats: number; active: number | null; label: string }): JSX.Element {
+/**
+ * Beat counter. Phone: digits with a slate circle that moves to the current beat (120 ms). In the count-in the circle
+ * is an outlined ring, so the count-in does not look like bar 1.
+ */
+export function BeatRow({ beats, active, countIn = false, label }: { beats: number; active: number | null; countIn?: boolean; label: string }): JSX.Element {
   const style = { '--beat': active ?? 0 } as CSSProperties;
   return (
-    <div className="beats" role="img" aria-label={label} style={style}>
+    <div className={'beats' + (countIn ? ' is-count-in' : '')} role="img" aria-label={label} style={style}>
       <span className={'beats-dot' + (active === null ? ' is-idle' : '')} aria-hidden="true" />
       {Array.from({ length: beats }, (_, i) => (
         <span key={i} aria-hidden="true" className={'beat' + (i === active ? ' is-on' : '')}>

@@ -27,6 +27,11 @@ export interface DrawStaffOptions {
   timeSig?: string;
   /** Counting under the notes (Learn): the word for each count, and the colour of held and silent counts. */
   counts?: { text(mark: CountMark): string; held: string };
+  /**
+   * Size of the notation (default 1). Below 1 the bars are laid out wider and the drawing is shown at `width`, so the
+   * notes are smaller and the rows lower while the bars still fill the width (Play on a short phone).
+   */
+  scale?: number;
 }
 
 // Layout constants from the design's notation images (vf/render2.js).
@@ -39,6 +44,7 @@ const COUNT_H = 18; // extra row height for the counts under the notes
 const COUNT_Y = 36; // baseline of the counts below the staff line
 const COUNT_TOP = 12;
 const COUNT_GAP = 24; // least room between a held count and the counts beside it
+const MISS_DY = 17; // a missed note's × sits this far below its head: clear of ties and the cursor, inside the row
 
 const DURATION: Record<NoteValue, string> = { whole: 'w', half: 'h', quarter: 'q', eighth: '8', sixteenth: '16' };
 
@@ -112,13 +118,16 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
   // Learn staves (with counts) keep room above for a triplet's 3.
   const top = o.cursorSpace ? CURSOR_TOP : o.counts ? COUNT_TOP : 0;
   const rowH = ROW_H + (o.counts ? COUNT_H : 0);
+  // Drawn in the svg's own units (`layoutW` × `height`), shown `scale` times that size.
+  const scale = o.scale ?? 1;
+  const layoutW = width / scale;
   const height = rows * rowH + top - 6;
 
   const renderer = new Renderer(host as HTMLDivElement, Renderer.Backends.SVG);
-  renderer.resize(width, height);
+  renderer.resize(layoutW, height);
   const ctx = renderer.getContext();
 
-  const barW = (width - TS_EXTRA - 2) / per;
+  const barW = (layoutW - TS_EXTRA - 2) / per;
   const colourById = new Map<string, string>(); // VexFlow note id -> mark colour
   let cursorNote: StaveNote | null = null;
   const onsetNotes: [number, StaveNote][] = [];
@@ -126,6 +135,7 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
   let colourOnset = -1; // onset index whose colour tied continuations inherit
   const ties: StaveTie[] = [];
   const counts: { x: number; y: number; text: string; held: boolean }[] = [];
+  const missed: StaveNote[] = []; // the note that starts each missed onset (a tied continuation gets no second ×)
 
   bars.forEach((bar, i) => {
     const row = Math.floor(i / per);
@@ -150,6 +160,7 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
         }
         if (o.cursor != null && sym.onsetIndex === o.cursor) cursorNote = note;
         if (sym.onsetIndex >= 0) onsetNotes.push([sym.onsetIndex, note]);
+        if (sym.onsetIndex >= 0 && o.marks?.[sym.onsetIndex] === 'miss') missed.push(note);
         if (tieFrom) {
           if (tieFrom.row === row) {
             ties.push(new StaveTie({ first_note: tieFrom.note, last_note: note, first_indices: [0], last_indices: [0] }));
@@ -198,19 +209,21 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
   ties.forEach((t) => t.setContext(ctx).draw());
 
   for (const [i, note] of onsetNotes) onsets.set(i, boxOf(note));
+  const shownH = Math.round(height * scale);
   const svg = host.querySelector('svg');
-  if (!svg) return { width, height, onsets };
+  if (!svg) return { width, height: shownH, onsets };
   paintSvg(svg, pal, colourById);
+  if (missed.length) addMissMarks(svg, missed.map((n) => ({ x: centreX(n), y: n.getYs()[0] })), pal.miss);
   if (cursorNote) placeCursor(host, boxOf(cursorNote), pal.cursor);
   if (o.counts) addCounts(svg, counts, pal.ink, o.counts.held);
 
   svg.removeAttribute('style');
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('viewBox', `0 0 ${layoutW} ${height}`);
   svg.setAttribute('width', String(width));
-  svg.setAttribute('height', String(height));
+  svg.setAttribute('height', String(shownH));
   svg.setAttribute('aria-hidden', 'true');
   svg.style.display = 'block';
-  return { width, height, onsets };
+  return { width, height: shownH, onsets };
 }
 
 /**
@@ -278,6 +291,31 @@ function addCounts(svg: SVGSVGElement, counts: { x: number; y: number; text: str
     el.setAttribute('fill', c.held ? held : ink);
     el.textContent = c.text;
     g.appendChild(el);
+  }
+  svg.appendChild(g);
+}
+
+/**
+ * The × under a missed note's head (colour plus shape, DESIGN.md §9), drawn like the lane's miss marks (LengthLane):
+ * 8 px across. Below the head because the stems go up: above are the beams, tuplet numbers and the play cursor.
+ */
+export function missMarkPath(head: { x: number; y: number }): string {
+  const r = (n: number): number => Math.round(n * 10) / 10;
+  const y = head.y + MISS_DY;
+  return `M${r(head.x - 4)} ${r(y - 4)}l8 8M${r(head.x + 4)} ${r(y - 4)}l-8 8`;
+}
+
+function addMissMarks(svg: SVGSVGElement, heads: { x: number; y: number }[], colour: string): void {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'staff-miss');
+  g.setAttribute('fill', 'none');
+  g.setAttribute('stroke', colour);
+  g.setAttribute('stroke-width', '2');
+  g.setAttribute('stroke-linecap', 'round');
+  for (const h of heads) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', missMarkPath(h));
+    g.appendChild(p);
   }
   svg.appendChild(g);
 }

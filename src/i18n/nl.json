@@ -16,7 +16,6 @@
   "common": {
     "back": "Terug",
     "ms": "{value} ms",
-    "bpm": "{value} BPM",
     "bars": "{count, plural, one {# maat} other {# maten}}",
     "percent": "{value}%",
     "cancel": "Annuleren",
@@ -30,7 +29,7 @@
     "label": "{count} van {total} sterren",
     "of3": "{count} van 3 sterren",
     "fourth": "3 van 3 sterren en de bonusster, de 4e",
-    "diamond": "Diamanten ster, alles perfect"
+    "diamond": "Diamant: elke noot perfect"
   },
   "streak": {
     "pill": "{count, plural, =0 {Nog geen reeks} one {# dag op rij} other {# dagen op rij}}",
@@ -40,7 +39,6 @@
   "xp": {
     "level": "Level {level}",
     "rankLine": " · {rank}",
-    "ofSpan": "{into} / {span} XP",
     "toNext": "Nog {count} XP tot level {next}",
     "bar": "XP-balk: {into} van {span}",
     "label": "Level en XP",
@@ -58,25 +56,27 @@
     "eyebrow": "Level omhoog",
     "title": "Level {level} · {rank}",
     "newRank": "Nieuwe rang: een stap hoger dan {rank}",
-    "sameRank": "Een stap hoger dan level {level}",
+    "nextRank": "{rank} vanaf level {level}",
+    "topRank": "De hoogste rang",
     "ranks": "Rangen",
-    "into": "{count} XP in level {level}",
-    "continue": "Verder"
+    "continue": "Verder",
+    "close": "Sluiten"
   },
   "home": {
     "title": "Start",
-    "continueEyebrow": "Verder · Hoofdstuk {unit} · Les {lesson} van {total}",
-    "replayEyebrow": "Leerpad klaar · Hoofdstuk {unit} · Les {lesson} van {total}",
+    "continueEyebrow": "Verder · Blok {unit} · Les {lesson} van {total}",
+    "replayEyebrow": "Leerpad klaar · Blok {unit} · Les {lesson} van {total}",
     "continueButton": "Verder met de les",
+    "startEyebrow": "Blok {unit} · Les {lesson} van {total}",
+    "startButton": "Begin de les",
     "replayButton": "Nog een keer",
-    "previewMeta": "{meter} · {bars}",
     "pathEyebrow": "Leerpad",
-    "pathUnitOf": "Hoofdstuk {unit} van {total}",
+    "pathUnitOf": "Blok {unit} van {total}",
     "pathView": "Bekijk leerpad →",
-    "pathLocked": "2 sterren op elke les van hoofdstuk {unit}",
+    "pathLocked": "2 sterren op elke les van blok {unit}",
     "unitStars": "{count} ★",
     "dailyTitle": "Uitdaging van de dag",
-    "dailyMeta": "{meter} · {bars} · {bpm} BPM · voor iedereen gelijk",
+    "dailyMeta": "{bars} · elke dag nieuw",
     "dailyPlay": "Spelen",
     "dailyAgain": "Nog een keer",
     "dailyDone": "Vandaag gedaan · {accuracy}%",
@@ -101,7 +101,7 @@
     "totalsLabel": "{stars} van {total} sterren",
     "unitTitle": "{id} · {title}",
     "next": "Volgende: les {lesson} · {title} · {bpm} BPM",
-    "unlocks": "Gaat open met 2 sterren op elke les van hoofdstuk {unit}",
+    "unlocks": "Gaat open met 2 sterren op elke les van blok {unit}",
     "start": "Begin les {id}",
     "playLesson": "Speel les {id} · {title}: {stars}",
     "lockedLesson": "Les {id}, op slot",
@@ -176,16 +176,11 @@
       "notes": "Noten lezen",
       "keys": "Toonsoorten"
     },
-    "trackShort": {
-      "rhythm": "Ritme",
-      "notes": "Noten",
-      "keys": "Toonsoorten"
-    },
-    "trackMeta": "Hoofdstuk {unit} van {total}",
+    "trackMeta": "Blok {unit} van {total}",
     "trackDone": "Alles klaar",
     "trackLocked": "Op slot",
-    "cardMeta": "Hoofdstuk {unit} van {total} · {title}",
-    "trackStars": "Hoofdstuk {unit} van {total} · {stars} / {max} ★",
+    "cardMeta": "Blok {unit} van {total} · {title}",
+    "trackStars": "Blok {unit} van {total} · {stars} / {max} ★",
     "trackStarsDone": "Alles klaar · {stars} / {max} ★",
     "trackStarsLabel": "{stars} van {max} sterren",
     "theory": {
@@ -195,8 +190,7 @@
     },
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} van {max} sterren",
-    "nextNotes": "Volgende: les {lesson} · {title} · {count} noten",
-    "opensAfter": "Gaat open na hoofdstuk {unit} van Noten lezen",
+    "opensAfter": "Gaat open na blok {unit} van Noten lezen",
     "lockedLessonTitled": "Les {id} · {title}, op slot",
     "notes": {
       "u1": {
@@ -290,7 +284,7 @@
         "l5": "Herhaling"
       }
     },
-    "units": "Hoofdstukken",
+    "units": "Blokken",
     "toTrack": "Naar {track}"
   },
   "setup": {
@@ -305,7 +299,6 @@
     "holdOn": "Notenlengtes en rusten tellen mee",
     "holdOff": "Alleen het begin van elke noot telt",
     "meters": "Maatsoorten",
-    "meterSoon": "{meter} binnenkort",
     "notes": "Noten",
     "rests": "Rusten",
     "extras": "Extra’s",
@@ -412,6 +405,7 @@
     "comboValue": "×{count}",
     "countingBeat": "Tel {beat} van {total}",
     "countIn": "Voortellen, tel {beat} van {total}",
+    "countingIn": "Voortellen",
     "beats": "Tel 1 tot {total}",
     "count": "Tel",
     "soFar": "Tot nu toe",
@@ -428,8 +422,8 @@
     "tapLegendLong": "grijs = elke noot, streep = wanneer je tikte",
     "barsRange": "{from, select, other {maat {from}–{to}}}",
     "barsOne": "maat {from}",
-    "pad": "Ritmepad",
-    "padLabel": "Ritme",
+    "pad": "Tikpad",
+    "padLabel": "Tik",
     "staffLabel": "{rhythm} Cursor op noot {note}.",
     "staffLabelIdle": "{rhythm}",
     "echo": {
@@ -476,16 +470,16 @@
     "hold": "vast",
     "nextNote": "volgende noot",
     "oneNote": "één noot",
-    "step1": "Druk op het ritmepad als een noot begint.",
+    "step1": "Druk op het tikpad als een noot begint.",
     "step2": "Houd vast zo lang de noot duurt. Laat los als de noot ophoudt.",
     "step3": "Bij een rust blijf je van het pad af. Bij een overbinding houd je vast.",
-    "computer": "Op een computer werkt elke toets als ritmepad. Tik bovenaan op ? om dit nog eens te zien.",
-    "desktop": "Elke toets werkt als ritmepad. Druk op ? om dit nog eens te zien.",
+    "computer": "Op een computer werkt elke toets als tikpad. Tik bovenaan op ? om dit nog eens te zien.",
+    "desktop": "Elke toets werkt als tikpad. Druk op ? om dit nog eens te zien.",
     "gotIt": "Begrepen",
     "tap": {
       "diagram": "Tik als elke noot begint; hoe lang je vasthoudt telt niet",
       "tap": "tik",
-      "step1": "Tik op het ritmepad als een noot begint.",
+      "step1": "Tik op het pad als een noot begint.",
       "step2": "Hier telt alleen het begin: je hoeft de noot niet vast te houden.",
       "step3": "Bij een rust tik je niet."
     },
@@ -493,7 +487,8 @@
     "echo": {
       "eyebrow": "Echo",
       "step1": "Luister naar het ritme. Je kunt het twee keer horen.",
-      "step2": "Tik het uit je hoofd na op het ritmepad. Houd elke noot vast zo lang hij duurt.",
+      "step2": "Tik het uit je hoofd na op het pad. Houd elke noot vast zo lang hij duurt.",
+      "step2Tap": "Tik het uit je hoofd na op het pad. Alleen het begin van elke noot telt.",
       "step3": "Aan het eind zie je de noten, met je timing op elke noot."
     }
   },
@@ -501,6 +496,42 @@
     "title": "Klaar?",
     "detail": "{bars} in {meter} op {bpm} BPM. Het voortellen begint als je op Start drukt.",
     "start": "Start"
+  },
+  "intro": {
+    "eyebrow": "Nieuw in deze les",
+    "listen": "Luisteren",
+    "listenTitle": "Hoor deze oefening met de tel",
+    "stop": "Stop",
+    "learnMore": "Meer uitleg",
+    "learnMoreLabel": "Meer uitleg: {name}",
+    "name": {
+      "meter2": "Tweekwartsmaat",
+      "meter3": "Driekwartsmaat",
+      "meter4": "Vierkwartsmaat",
+      "dotted": "Punt",
+      "ties": "Overbinding",
+      "triplets": "Triool"
+    },
+    "fact": {
+      "note": {
+        "whole": "4 tellen",
+        "half": "2 tellen",
+        "quarter": "1 tel",
+        "eighth": "een halve tel",
+        "sixteenth": "een kwart tel"
+      },
+      "rest": {
+        "whole": "een hele maat stilte",
+        "half": "2 tellen stilte",
+        "quarter": "1 tel stilte",
+        "eighth": "een halve tel stilte",
+        "sixteenth": "een kwart tel stilte"
+      },
+      "meter": "{count} tellen in een maat",
+      "dotted": "maakt de noot de helft langer",
+      "ties": "telt de lengte van de tweede noot erbij",
+      "triplets": "3 in de tijd van 2"
+    }
   },
   "pause": {
     "title": "Gepauzeerd",
@@ -522,14 +553,13 @@
     "practiceDone": "Oefening klaar",
     "dailyDone": "Uitdaging van de dag klaar",
     "echoDone": "Echo klaar",
-    "dailySub": "{date} · voor iedereen gelijk",
-    "code": "Code",
-    "copy": "Kopieer",
+    "dailySub": "{date}",
+    "copyCode": "Kopieer code",
     "copied": "Gekopieerd",
-    "copyTitle": "Kopieer de code van de oefening",
+    "copyTitle": "Kopieer de code van de oefening: {code}",
     "backHome": "Terug naar start",
     "accuracy": "{value}%",
-    "summary": "nauwkeurigheid · hoogste combo {combo}",
+    "summary": "nauwkeurigheid",
     "streakKept": "Reeks gehouden · {count, plural, one {# dag} other {# dagen}}",
     "newBest": "Nieuw persoonlijk record",
     "newBestTitle": "Je beste score op een uitdaging van de dag tot nu toe",
@@ -561,7 +591,12 @@
     "listenTitle": "Hoor het juiste ritme",
     "settings": "Oefeninstellingen",
     "retry": "Opnieuw",
+    "tryAgain": "Nog een keer",
     "next": "Volgende oefening",
+    "newExercise": "Nieuwe oefening",
+    "calibrate": "Kalibreren",
+    "calibrateTitle": "Meet de vertraging van je speaker of koptelefoon",
+    "calibrated": "Gekalibreerd. Je volgende oefening houdt er rekening mee.",
     "laneLabel": "De lengte van elke noot naast hoe lang je hem vasthield"
   },
   "settings": {
@@ -585,9 +620,9 @@
     "strict": "Streng",
     "normal": "Normaal",
     "relaxed": "Ruim",
-    "hintStrict": "Smallere marges, voor zekere spelers.",
-    "hintNormal": "Perfect binnen 35 ms, Super 70 ms, Goed 120 ms.",
-    "hintRelaxed": "Marges 1,5× zo ruim, voor jonge beginners.",
+    "hintStrict": "Strakke timing, voor zekere spelers.",
+    "hintNormal": "Eerlijke timing voor de meeste spelers.",
+    "hintRelaxed": "Ruime timing, voor jonge beginners.",
     "playing": "Spelen",
     "input": "Invoer",
     "inputGroup": "Ritme-invoer",
@@ -604,8 +639,8 @@
     "hintThemeSystem": "Volgt de lichte of donkere stand van je apparaat.",
     "hintThemeLight": "Altijd licht.",
     "hintThemeDark": "Altijd donker.",
-    "metronomeLook": "Metronoom",
-    "metronomeLookGroup": "Stijl van de metronoom",
+    "metronomeLook": "Telteller",
+    "metronomeLookGroup": "Stijl van de telteller",
     "lookDigital": "Digitaal",
     "lookAnalog": "Analoog",
     "hintDigital": "Het nummer van de tel licht op bij elke tel.",
@@ -623,26 +658,26 @@
   "calibrate": {
     "title": "Timing kalibreren",
     "back": "Terug naar instellingen",
-    "intro": "Tik mee met 16 klikken. Muzieklab meet hoe ver elke tik van zijn klik af zit en houdt de middelste waarde, zodat de vertraging van dit apparaat van elke score af gaat.",
+    "backResults": "Terug naar de uitslag",
+    "intro": "Tik mee met 16 klikken. Muzieklab meet hoe laat of vroeg je tikken vallen en haalt dat van elke score af.",
     "tip": "Gebruik de speaker of koptelefoon waarmee je normaal speelt.",
     "click": "Klik",
     "of": "van {total}",
-    "median": "Mediaan",
+    "delay": "Jouw vertraging",
     "early": "vroeg",
     "late": "laat",
     "axisMin": "−100",
     "axisZero": "0",
     "axisMax": "+100 ms",
-    "lineAria": "{count, plural, one {# tik gemeten} other {# tikken gemeten}}, van {min} tot {max}, mediaan {median}",
+    "lineAria": "{count, plural, one {# tik gemeten} other {# tikken gemeten}}, van {min} tot {max}, jouw vertraging {delay}",
     "lineEmpty": "Nog geen tikken gemeten",
     "lastTap": "LAATSTE TIK {offset}",
     "tapEach": "TIK OP ELKE KLIK",
-    "pressToStart": "DRUK OP HET PAD OM TE BEGINNEN",
-    "anyKey": "Op een computer werkt elke toets als pad.",
-    "yourOffset": "Jouw afwijking",
-    "resultLate": "Mediaan van {count} tikken. Je tikken komen {ms} ms na de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
-    "resultEarly": "Mediaan van {count} tikken. Je tikken komen {ms} ms voor de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
-    "resultZero": "Mediaan van {count} tikken. Je tikken vallen precies op de klik, dus er hoeft niets te verschuiven.",
+    "pressToStart": "TIK OM TE BEGINNEN",
+    "anyKey": "Op een computer werkt elke toets als tikpad.",
+    "resultLate": "Gemeten over {count} tikken. Je tikken komen {ms} ms na de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
+    "resultEarly": "Gemeten over {count} tikken. Je tikken komen {ms} ms voor de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
+    "resultZero": "Gemeten over {count} tikken. Je tikken vallen precies op de klik, dus er hoeft niets te verschuiven.",
     "tooFew": "Maar {count, plural, one {# tik viel} other {# tikken vielen}} dicht bij een klik. Probeer het opnieuw en tik op elke klik.",
     "save": "Bewaren",
     "again": "Opnieuw"
@@ -669,12 +704,17 @@
   "tip": {
     "cutShort": "Je liet de {value} in maat {bar} te vroeg los. {liftPartKey, select, count.beat {Houd hem vast tot vlak voor “{liftPart}”.} other {Houd hem vast tot en met “{liftBeat}”, tot vlak voor “{liftPart}”.}}",
     "heldLong": "Je hield de {value} in maat {bar} te lang vast. {liftPartKey, select, count.beat {Laat los op “{liftPart}”.} other {Laat los op “{liftPart}” na “{liftBeat}”.}}",
+    "noTaps": "Er kwamen geen tikken binnen. Tik op het pad, of druk op een toets, als elke noot begint.",
+    "latency": "Je tikken kwamen elke keer zo’n {ms} ms {dir, select, early {te vroeg. Heb je met een andere koptelefoon of speaker gekalibreerd? Kalibreer dan opnieuw.} other {te laat. Dat komt meestal door de speaker of koptelefoon: kalibreer één keer en het gaat van elke score af.}}",
     "rushing": "Je jaagde: gemiddeld {ms} ms te vroeg. Wacht op elke noot.",
     "dragging": "Je sleepte: gemiddeld {ms} ms te laat. Druk iets eerder.",
+    "draggingCalibrate": "Je tikken kwamen gemiddeld {ms} ms te laat, bij elke noot ongeveer even veel. Dat komt vaak door de speaker of koptelefoon: kalibreer één keer en het gaat van elke score af.",
     "missed": "{count, plural, one {Je miste # noot} other {Je miste # noten}}, de meeste in maat {bar}. Lees één tel vooruit.",
+    "missedSpread": "{count, plural, one {Je miste # noot} other {Je miste # noten}}. Lees één tel vooruit.",
     "extraTaps": "{count, plural, one {# extra tik kostte} other {# extra tikken kostten}} punten. Blijf bij rusten van het pad af.",
     "unsteady": "Je timing zwierf zo’n {ms} ms heen en weer. Tel zachtjes mee om gelijk te blijven.",
     "perfect": "Elke noot perfect. Probeer een sneller tempo of meer maten.",
+    "perfectLesson": "Elke noot perfect. Door naar de volgende les.",
     "good": "Goed gedaan. Houd de tel gelijk en probeer de volgende."
   },
   "count": {
@@ -726,7 +766,6 @@
       "doubleFlat": "dubbelmol"
     },
     "name": "{main} ({sub})",
-    "withOctave": "{name}{octave}",
     "spoken": "{sign, select, kruis {{letter, select, C {cis} D {dis} E {eis} F {fis} G {gis} A {ais} B {bis} other {{letter} kruis}}} mol {{letter, select, C {ces} D {des} E {es} F {fes} G {ges} A {as} B {bes} other {{letter} mol}}} dubbelkruis {{letter, select, C {cisis} D {disis} E {eisis} F {fisis} G {gisis} A {aisis} B {bisis} other {{letter} dubbelkruis}}} dubbelmol {{letter, select, C {ceses} D {deses} E {eses} F {feses} G {geses} A {ases} B {beses} other {{letter} dubbelmol}}} other {{letter} {sign}}}",
     "clef": {
       "treble": "Viool",
@@ -764,6 +803,7 @@
       "inputPiano": "Piano",
       "inputMixed": "Gemengd",
       "hintNames": "Do re mi fa sol la si, of A B C D E F G, elk met ♭ ♮ ♯-knoppen. Wissel wanneer je wilt.",
+      "hintNamesPlain": "Do re mi fa sol la si, of A B C D E F G. Wissel wanneer je wilt.",
       "hintPiano": "Eén octaaf, witte en zwarte toetsen. Het octaaf van de noot maakt niet uit.",
       "hintMixed": "Namen en de piano wisselen elkaar af, steeds 5 noten. Wissel wanneer je wilt.",
       "range": "Bereik",
@@ -791,6 +831,9 @@
       "summary": "{clefs} · {input}",
       "pool": "{count} plekken op de balk per sleutel · {key}",
       "poolExtras": "{pool} · met extra tekens",
+      "sound": "Hoor de noten",
+      "soundOn": "Pianotoetsen als je ze indrukt, en na elk antwoord de juiste noot",
+      "soundOff": "Stil",
       "start": "Start · {count} noten"
     },
     "keys": {
@@ -847,6 +890,7 @@
       "blackKey": "{sharp} of {flat}",
       "withKey": "{name}, toets {key}",
       "kbdNames": "Typ de letter; druk eerst op = voor ♯, 0 voor ♮ of − voor ♭",
+      "kbdNamesPlain": "Typ de letter van de noot",
       "kbdPiano": "Speel met A S D F G H J (wit) en W E T Y U (zwart)",
       "idleNames": "Kies het teken als er een is, en dan de naam.",
       "idleNamesKey": "Let op de voortekening. Kies het teken, en dan de naam.",
@@ -877,15 +921,15 @@
       "timeLeft": "Tijd over",
       "staffLabel": "{clef}, notenbalk in {key}, één hele noot per maat. Noot {n} van {total} is gemarkeerd.",
       "hintOn": "Dit is {landmark}: {name}.",
-      "hintNear": "{count, plural, one {Eén stap} other {# stappen}} {dir, select, up {boven} other {onder}} {landmark}, {name}.",
+      "hintNear": "{Landmark} is {name}. Deze noot ligt {count, plural, one {één stap} other {# stappen}} {dir, select, up {hoger} other {lager}}.",
       "hintKey": "{text} Kijk naar de voortekening na de sleutel.",
       "hintSign": "{text} Let op het teken voor de noot.",
       "landmark": {
         "bottom": "de onderste lijn",
         "top": "de bovenste lijn",
         "middle": "de middelste lijn",
-        "gLine": "de G-lijn, waar de sleutel omkrult",
-        "fLine": "de F-lijn, tussen de puntjes van de sleutel",
+        "gLine": "de G-lijn waar de sleutel omheen krult",
+        "fLine": "de F-lijn tussen de puntjes van de sleutel",
         "middleC": "de centrale C",
         "ledgerAbove1": "de eerste hulplijn erboven",
         "ledgerAbove2": "de tweede hulplijn erboven",
@@ -931,6 +975,7 @@
       "missed": "Gemist",
       "slow": "Langzaam",
       "missedChip": "{note}, {count, plural, one {één keer gemist} other {# keer gemist}}",
+      "chipNote": "{name} op {pos} ({clef})",
       "times": "×{count}",
       "slowChip": "{note}, {value} seconden",
       "comeBack": "Deze noten komen de volgende ronde vaker terug.",
@@ -1108,6 +1153,7 @@
       "doneClean": "{scale}: klaar, geen fouten. {notes}",
       "doneMistakes": "{scale}: klaar met {count, plural, one {1 fout} other {# fouten}}. {notes}",
       "hear": "Hoor tot nu toe",
+      "hearAll": "Hoor de ladder",
       "space": "Spatie",
       "startOver": "Opnieuw",
       "hint": "Tip",
@@ -1212,6 +1258,8 @@
     "next": "Volgende",
     "check": "Snelle check",
     "checkHint": "Beantwoord hem goed, dan is dit deel gelezen.",
+    "play": "Afspelen",
+    "stop": "Stoppen",
     "ch1": {
       "intro": "Muziek beweegt op een vaste puls. Dit hoofdstuk laat zien hoe snel die puls gaat, hoe hij in maten wordt verdeeld, en waarom sommige tellen sterker voelen dan andere. Alle volgende hoofdstukken tellen in deze tellen.",
       "s1": {
@@ -1365,7 +1413,7 @@
         "placeAlt": "Twee maten 4/4 op de balk met één lijn: een hele rust die onder de lijn hangt, geteld (1 2 3 4), dan een halve rust die op de lijn staat, geteld (1 2), en een halve noot geteld 3 (4)",
         "count": "Blijf door elke rust heen tellen. Stille tellen staan tussen grijze haakjes:",
         "countAlt": "Een maat 4/4: een kwartnoot op 1, een kwartrust op (2), een kwartnoot op 3, een kwartrust op (4); dan een halve rust op (1 2) en een halve noot op 3 (4)",
-        "game": "In het spel: laat los als een noot afloopt en blijf eraf tijdens de rust. Met Houd noten vast zo lang ze duren aan, zoals in het Leerpad vanaf hoofdstuk 2, telt ook het moment van loslaten mee.",
+        "game": "In het spel: laat los als een noot afloopt en blijf eraf tijdens de rust. Met Houd noten vast zo lang ze duren aan, zoals in het Leerpad vanaf blok 2, telt ook het moment van loslaten mee.",
         "practice": "Oefen rusten",
         "check": {
           "question": "Welke rust hangt op de balk met één lijn in het spel onder de lijn?",
@@ -1622,7 +1670,7 @@
     "meta": {
       "start": "Begin hier",
       "builds": "{count, plural, one {Bouwt voort op hoofdstuk {list}} other {Bouwt voort op hoofdstukken {list}}}",
-      "units": "{count, plural, one {Leerpad, hoofdstuk {list}} other {Leerpad, hoofdstukken {list}}}",
+      "units": "{count, plural, one {Leerpad, blok {list}} other {Leerpad, blokken {list}}}",
       "and": " en "
     },
     "accent": {
@@ -1634,6 +1682,7 @@
     },
     "pulse": {
       "bpm": "{bpm} BPM",
+      "play": "{bpm} BPM afspelen",
       "time": "tijd",
       "sec": "{s} s"
     },
@@ -2009,6 +2058,18 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_10_0": {
+      "title": "Hoor de muziek, en een rustiger begin",
+      "try": "Beluister hoofdstuk 1",
+      "learn": "Elk voorbeeld in Leren heeft een afspeelknop: de tel, de ritmes, de notenboom, de toonladders en de piano. Een oefenlink start de oefening nu meteen.",
+      "notes": "Noten lezen speelt elke noot nadat je antwoordt, en elke pianotoets terwijl je hem indrukt. Met Hoor de noten in de instellingen van Noten lezen zet je het uit.",
+      "intro": "Voor een les met een nieuw teken toont een kaart wat het is en hoe lang het duurt, met Luisteren en een link naar Leren. Een nieuwe les wacht op Start, zodat je hem eerst kunt lezen, en het voortellen lijkt niet meer op maat 1.",
+      "coach": "Komt elke tik net te laat, dan zegt de uitslag dat het waarschijnlijk aan je speaker of koptelefoon ligt, met een knop Kalibreren. Kwamen er geen tikken binnen, dan zegt hij hoe je tikt. Onder twee sterren is Nog een keer de hoofdknop.",
+      "home": "Een rustiger Start en Leerpad: je level is een klein label naast je reeks, Verder met de les is de enige hoofdknop, de uitdaging van de dag past bij waar je in het leerpad bent, en elke regel om iets te openen staat er maar één keer. Vrij oefenen telt pas mee hoe lang je een noot vasthoudt als het leerpad dat heeft uitgelegd.",
+      "readNotes": "Noten lezen toont geen tekenknoppen als geen enkele noot een teken kan hebben, de hints lezen niet meer als het antwoord, en Ronde klaar toont gemiste noten op een kleine notenbalk, in je eigen notennamen.",
+      "fit": "Spelen, Noten lezen en Toonladders passen nu op een telefoon, ook met de werkbalken van de browser in beeld.",
+      "misc": "Kleinere verbeteringen: het pad zegt Tik, Instellingen en Kalibreren gebruiken gewone woorden, de oefencode is een kleine knop Kopieer code, een gemiste noot krijgt een × op de notenbalk, het label “6/8 binnenkort” is weg, en een deel van het leerpad heet nu een blok in plaats van een hoofdstuk."
+    },
     "v0_9_0": {
       "title": "Leerpaden voor Noten lezen en Toonsoorten",
       "try": "Open de leerpaden",

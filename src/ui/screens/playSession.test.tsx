@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { DEFAULT_SETTINGS, generateExercise, type JudgeResult, type Settings } from '../../core/api';
-import { DEFAULT_PREFS } from '../../game/storage';
+import { exerciseHas } from '../../game/intro';
+import { lessonSettings } from '../../game/path';
+import { DEFAULT_PREFS, type Prefs } from '../../game/storage';
 import { exerciseView } from '../exerciseView';
-import { howToIntro, usePlaySession } from './playSession';
+import { firstSheet, howToEyebrow, howToIntro, usePlaySession } from './playSession';
 
 /*
  * The play session against a fake audio engine. Two clocks, as on a real device: `clock.now` is the scheduling clock
@@ -205,6 +207,26 @@ describe('usePlaySession', () => {
     }
   });
 
+  it('the count-in is not bar 1: no note highlighted until the first beat, also in the count-in after a pause', () => {
+    const { hook, view, origin } = setup();
+    expect(hook.result.current.frame.cursor).toBeNull();
+    let o = origin(0, 0);
+    at(o - 0.5);
+    expect(hook.result.current.frame).toMatchObject({ countIn: true, cursor: null, beat: { countIn: true } });
+    at(o + 0.01);
+    expect(hook.result.current.frame).toMatchObject({ countIn: false, cursor: 0, beat: { inBar: 0, countIn: false } });
+    at(o + 2.5 * view.barSeconds);
+    act(() => hook.result.current.openSheet('pause'));
+    const resumedAt = clock.heard;
+    act(() => hook.result.current.closeSheet());
+    o = origin(resumedAt, 2);
+    at(o + 2 * view.barSeconds - 0.5);
+    expect(hook.result.current.frame).toMatchObject({ countIn: true, cursor: null });
+    at(o + 2 * view.barSeconds + 0.01);
+    expect(hook.result.current.frame.countIn).toBe(false);
+    expect(view.timeline.notes[hook.result.current.frame.cursor!].bar).toBe(2);
+  });
+
   it('count-in "Silent" still gives one bar of lead, without clicks', () => {
     setup({ countIn: 0 });
     expect(starts[0]).toMatchObject({ countInBars: 1, silentCountIn: true });
@@ -273,6 +295,84 @@ describe('usePlaySession', () => {
   });
 });
 
+describe('sheets before the count-in', () => {
+  /** A lesson run, the prefs saved by its sheets, and its starts. */
+  function lesson(lessonId: string, prefs: Partial<Prefs>, fresh = false) {
+    starts.length = 0;
+    const ex = generateExercise(lessonSettings(lessonId), 7);
+    const run = { exercise: ex, lessonId, daily: null };
+    const seen: Partial<Prefs>[] = [];
+    const hook = renderHook(() => usePlaySession(run, exerciseView(ex)!, { ...DEFAULT_PREFS, ...prefs }, (p) => seen.push(p), () => undefined, fresh));
+    return { hook, seen };
+  }
+
+  it('a lesson with a new symbol opens the intro sheet; Start saves it as shown and counts in', () => {
+    const { hook, seen } = lesson('1.2', { seenHowTo: true });
+    expect(hook.result.current.sheet).toBe('new');
+    expect(hook.result.current.intros).toEqual([{ kind: 'note', value: 'half' }]);
+    expect(starts.length).toBe(0);
+    act(() => hook.result.current.closeSheet());
+    expect(seen).toEqual([{ seenIntros: ['note:half'] }]);
+    expect(starts.length).toBe(1);
+    expect(hook.result.current.phase).toBe('running');
+  });
+
+  it('names only what the exercise shows: a symbol its staff lacks is neither shown nor saved as shown', () => {
+    // Lesson starts pick an exercise with the whole rest (makeLessonRun); this one, made directly, has none.
+    expect(exerciseHas(generateExercise(lessonSettings('3.4'), 7), ['rest:whole'])).toBe(false);
+    const { hook, seen } = lesson('3.4', { seenHowTo: true, seenHold: true });
+    expect(hook.result.current.intros).toEqual([]);
+    expect(hook.result.current.sheet).toBeNull();
+    expect(seen).toEqual([]);
+  });
+
+  it('a symbol shown before does not open it again', () => {
+    const { hook } = lesson('1.2', { seenHowTo: true, seenIntros: ['note:half'] });
+    expect(hook.result.current.sheet).toBeNull();
+    expect(starts.length).toBe(1);
+  });
+
+  it('How to play first, then the intro sheet: one sheet, one tap at a time', () => {
+    const { hook, seen } = lesson('1.2', {});
+    expect(hook.result.current.sheet).toBe('help');
+    act(() => hook.result.current.closeSheet());
+    expect(hook.result.current.sheet).toBe('new');
+    expect(starts.length).toBe(0);
+    act(() => hook.result.current.closeSheet());
+    expect(seen).toEqual([{ seenHowTo: true }, { seenIntros: ['note:half'] }]);
+    expect(starts.length).toBe(1);
+  });
+
+  it('How to play opened with ? from the intro sheet leads back to it', () => {
+    const { hook } = lesson('1.2', { seenHowTo: true });
+    act(() => hook.result.current.openSheet('help'));
+    expect(hook.result.current.sheet).toBe('help');
+    // It was not due: no "First time here" (Play names the run instead).
+    expect(howToEyebrow(hook.result.current.phase, hook.result.current.intro)).toBeNull();
+    act(() => hook.result.current.closeSheet());
+    expect(hook.result.current.sheet).toBe('new');
+    expect(starts.length).toBe(0);
+  });
+
+  it('a lesson other than the one finished last waits on Ready; Start counts in', () => {
+    const { hook } = lesson('1.3', { seenHowTo: true, seenIntros: ['note:half'] }, true);
+    expect(hook.result.current.sheet).toBe('ready');
+    // A tap led here (Next lesson), so Esc may start it.
+    expect(hook.result.current.needsTap).toBe(false);
+    expect(starts.length).toBe(0);
+    act(() => hook.result.current.closeSheet());
+    expect(starts.length).toBe(1);
+  });
+
+  it('firstSheet: How to play, then the intro sheet, then Ready, else straight away', () => {
+    expect(firstSheet('first', 1, true, true)).toBe('help');
+    expect(firstSheet(null, 1, true, true)).toBe('new');
+    expect(firstSheet(null, 0, true, false)).toBe('ready');
+    expect(firstSheet(null, 0, false, true)).toBe('ready');
+    expect(firstSheet(null, 0, false, false)).toBeNull();
+  });
+});
+
 describe('howToIntro', () => {
   it('opens How to play the very first time, tap only or not', () => {
     expect(howToIntro({ seenHowTo: false, seenHold: false }, false)).toBe('first');
@@ -283,5 +383,18 @@ describe('howToIntro', () => {
     expect(howToIntro({ seenHowTo: true, seenHold: false }, true)).toBe('hold');
     expect(howToIntro({ seenHowTo: true, seenHold: false }, false)).toBeNull();
     expect(howToIntro({ seenHowTo: true, seenHold: true }, true)).toBeNull();
+  });
+});
+
+describe('howToEyebrow', () => {
+  it('says why How to play opened before the start, and Paused once the exercise has started', () => {
+    expect(howToEyebrow('intro', 'first')).toBe('howto.firstTime');
+    expect(howToEyebrow('intro', 'hold')).toBe('howto.newHold');
+    expect(howToEyebrow('paused', null)).toBe('howto.paused');
+    expect(howToEyebrow('paused', 'first')).toBe('howto.paused');
+  });
+
+  it('opened with ? from the intro sheet or Ready when it was not due: no eyebrow of its own', () => {
+    expect(howToEyebrow('intro', null)).toBeNull();
   });
 });

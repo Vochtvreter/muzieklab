@@ -10,10 +10,8 @@ import {
   keySigns,
   letterOf,
   missKind,
-  octaveOf,
   placeKind,
   staffOffset,
-  type Alter,
   type Clef,
   type Given,
   type KeyId,
@@ -22,7 +20,7 @@ import {
   type ScaleAlter,
   type Step,
 } from '../../core/api';
-import { t } from '../../i18n';
+import { getLocale, t } from '../../i18n';
 
 export type NameSystem = 'solfege' | 'letters';
 
@@ -46,10 +44,6 @@ export function fullName(letter: Letter, alter: ScaleAlter, system: NameSystem =
   const l = letterName(letter, alter);
   const s = solfegeName(letter, alter);
   return system === 'solfege' ? t('notes.name', { main: s, sub: l }) : t('notes.name', { main: l, sub: s });
-}
-/** "F♯5": the written name with its octave (C4 = middle C). */
-export function octaveName(step: Step, alter: Alter): string {
-  return t('notes.withOctave', { name: letterName(letterOf(step), alter), octave: octaveOf(step) });
 }
 /** For screen readers: "F sharp". */
 export function spokenName(letter: Letter, alter: ScaleAlter): string {
@@ -113,7 +107,11 @@ function landmarks(clef: Clef): { step: Step; key: string }[] {
   return [...common, { step: b + 6, key: 'fLine' }, { step: MIDDLE_C, key: 'middleC' }, { step: b + 12, key: 'ledgerAbove2' }, { step: b - 2, key: 'ledgerBelow1' }, { step: b - 4, key: 'ledgerBelow2' }];
 }
 
-/** The hint: the nearest landmark and its name, and, where the key changes the letter, a pointer to the signature. */
+/**
+ * The hint: the nearest landmark and its name, and, where the key changes the letter, a pointer to the signature. Off
+ * the landmark, its name and the way to the note are two sentences ("The top line is fa (F). This note is one step
+ * higher."), so the landmark's name does not read as the answer.
+ */
 export function hintText(n: RoundNote, system: NameSystem): string {
   const marks = landmarks(n.clef);
   let best = marks[0];
@@ -121,7 +119,12 @@ export function hintText(n: RoundNote, system: NameSystem): string {
   const diff = n.step - best.step;
   const landmark = t('notes.play.landmark.' + best.key);
   const name = fullName(letterOf(best.step), 0, system);
-  const text = diff === 0 ? t('notes.play.hintOn', { landmark, name }) : t('notes.play.hintNear', { count: Math.abs(diff), dir: diff > 0 ? 'up' : 'down', landmark, name });
+  // The landmark can start the sentence: {Landmark} is it capitalised.
+  const Landmark = landmark.charAt(0).toLocaleUpperCase(getLocale()) + landmark.slice(1);
+  const text =
+    diff === 0
+      ? t('notes.play.hintOn', { landmark, name })
+      : t('notes.play.hintNear', { count: Math.abs(diff), dir: diff > 0 ? 'up' : 'down', Landmark, name });
   if (n.sign !== null) return t('notes.play.hintSign', { text });
   const k = keyAlter(n.key, letterOf(n.step));
   return k !== 0 ? t('notes.play.hintKey', { text, signWord: signWord(k) }) : text;

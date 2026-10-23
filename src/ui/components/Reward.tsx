@@ -1,30 +1,81 @@
-/** v1.1 rewards: the level and XP line, the daily challenge's date tile, the exercise code with Copy and the level-up sheet. */
-import { useEffect, useState, type ReactNode } from 'react';
+/**
+ * v1.1 rewards: the XP bar, the daily challenge's date tile, Copy code, and the level sheet (Home's level details, and
+ * the level-up after a result).
+ */
+import { useEffect, useState } from 'react';
 import { UNLOCK_STARS, type LessonOutcome } from '../../game/track';
-import { levelInfo, RANKS, type LevelInfo } from '../../game/xp';
+import { levelInfo, rankOf, RANKS, type LevelInfo } from '../../game/xp';
 import { dateParts, t } from '../../i18n';
 import { useReducedMotion } from '../hooks';
 import { Icon } from './Icon';
 
 const rankName = (info: LevelInfo): string => t('rank.' + info.rank);
 
-/** "Level 7 · Measure   1445 / 1500 XP", the gold XP bar and "55 XP to level 8". */
-export function XpLine({ info, fill, hideToNext }: { info: LevelInfo; fill?: number; hideToNext?: boolean }): JSX.Element {
+/** The gold XP bar and its one label, "55 XP to level 8" (`next`: false while a level-up still fills the bar). */
+export function XpBar({ info, fill, next = true }: { info: LevelInfo; fill?: number; next?: boolean }): JSX.Element {
   const pct = fill ?? (info.span > 0 ? info.into / info.span : 0);
   return (
     <div className="xp">
-      <div className="xp-row">
-        <span className="xp-level">
-          <b>{t('xp.level', { level: info.level })}</b>
-          {t('xp.rankLine', { rank: rankName(info) })}
-        </span>
-        <span className="xp-of">{t('xp.ofSpan', { into: info.into, span: info.span })}</span>
-      </div>
       <div className="xp-bar" role="img" aria-label={t('xp.bar', { into: info.into, span: info.span })}>
         <div style={{ width: Math.max(0, Math.min(1, pct)) * 100 + '%' }} />
       </div>
-      {!hideToNext && <div className="xp-next">{t('xp.toNext', { count: info.span - info.into, next: info.level + 1 })}</div>}
+      {next && <div className="xp-next">{t('xp.toNext', { count: info.span - info.into, next: info.level + 1 })}</div>}
     </div>
+  );
+}
+
+/** The next rank and the level it starts at, or null at the top rank. */
+function nextRank(info: LevelInfo): { rank: string; level: number } | null {
+  if (info.rank === RANKS[RANKS.length - 1]) return null;
+  let level = info.level + 1;
+  while (rankOf(level) === info.rank) level++;
+  return { rank: t('rank.' + rankOf(level)), level };
+}
+
+/** "Count at level 3": what the next rank is and when it comes. */
+const nextRankText = (info: LevelInfo): string => {
+  const n = nextRank(info);
+  return n ? t('levelUp.nextRank', n) : t('levelUp.topRank');
+};
+
+/** The level sheet's top: the badge, "Level 2 · Tick" and one line under it, then the rank ladder. */
+function LevelHead({ info, eyebrow, sub }: { info: LevelInfo; eyebrow?: string; sub: string }): JSX.Element {
+  return (
+    <>
+      <div className="levelup-head">
+        <span className="level-badge" aria-hidden="true">
+          {info.level}
+        </span>
+        <span className="levelup-text">
+          {eyebrow && <span className="eyebrow levelup-eyebrow">{eyebrow}</span>}
+          <h2 id="leveluptitle" className="sheet-title">
+            {t('levelUp.title', { level: info.level, rank: rankName(info) })}
+          </h2>
+          <span className="muted-text levelup-sub">{sub}</span>
+        </span>
+      </div>
+      <ol className="ranks" aria-label={t('levelUp.ranks')}>
+        {RANKS.map((r) => (
+          <li key={r} aria-current={r === info.rank ? 'step' : undefined} className={r === info.rank ? 'is-current' : ''}>
+            {t('rank.' + r)}
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+/** Home's level details (bottom sheet / dialog): the level-up sheet without the celebration, and a Close button. */
+export function LevelContent({ xp, onDone }: { xp: number; onDone(): void }): JSX.Element {
+  const info = levelInfo(xp);
+  return (
+    <>
+      <LevelHead info={info} sub={nextRankText(info)} />
+      <XpBar info={info} />
+      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onDone}>
+        {t('levelUp.close')}
+      </button>
+    </>
   );
 }
 
@@ -43,8 +94,11 @@ export function DateTile({ day }: { day: string }): JSX.Element {
   );
 }
 
-/** "Code T44-HQE-RQ-4B-80-7K2QF" (below any `children` lines) and a Copy button that says Copied for two seconds. */
-export function CodeCopy({ code, children }: { code: string; children?: ReactNode }): JSX.Element {
+/**
+ * Copy code: a quiet button that copies the exercise code (T44-HQE-RQ-4B-80-7K2QF) and says Copied for two seconds.
+ * The code is not shown; its title has it.
+ */
+export function CodeCopy({ code, className }: { code: string; className: string }): JSX.Element {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -57,31 +111,21 @@ export function CodeCopy({ code, children }: { code: string; children?: ReactNod
       const p = navigator.clipboard?.writeText(code);
       if (p) p.then(done, () => undefined);
     } catch {
-      /* no clipboard: the code stays on screen to copy by hand */
+      /* no clipboard: nothing to copy to */
     }
   };
   return (
-    <div className="code-row">
-      <span className="code-row-text">
-        {children}
-        <span className="code-line">
-          <span className="code-label">{t('results.code')} </span>
-          <span id="excode" className="code-text">
-            {code}
-          </span>
-        </span>
-      </span>
-      <button type="button" className={'copy-btn' + (copied ? ' is-copied' : '')} title={t('results.copyTitle')} aria-describedby="excode" onClick={copy}>
-        {copied ? <Icon name="check" size={16} strokeWidth={2.6} className="m-in" /> : <Icon name="copy" size={16} />}
-        <span aria-live="polite">{t(copied ? 'results.copied' : 'results.copy')}</span>
-      </button>
-    </div>
+    <button type="button" className={className + ' copy-btn' + (copied ? ' is-copied' : '')} title={t('results.copyTitle', { code })} onClick={copy}>
+      {copied ? <Icon name="check" size={18} strokeWidth={2.6} className="m-in" /> : <Icon name="copy" size={18} />}
+      <span aria-live="polite">{t(copied ? 'results.copied' : 'results.copyCode')}</span>
+    </button>
   );
 }
 
 /**
- * Level up (bottom sheet / dialog): the new level's badge, the rank ladder and the XP line, which fills the old
- * level, then starts the new one (520 ms, 1200 ms; at once with reduced motion).
+ * Level up (bottom sheet / dialog): the new level's badge, the new rank or the next one, the rank ladder and the XP
+ * bar, which fills the old level, then starts the new one with its label (520 ms, 1200 ms; at once with reduced
+ * motion).
  */
 export function LevelUpContent({ xpBefore, xpAfter, onDone }: { xpBefore: number; xpAfter: number; onDone(): void }): JSX.Element {
   const before = levelInfo(xpBefore);
@@ -104,35 +148,14 @@ export function LevelUpContent({ xpBefore, xpAfter, onDone }: { xpBefore: number
   const line =
     stage === 2 ? (
       <div key="after" className="m-in">
-        <XpLine info={after} hideToNext />
-        <div className="xp-next">{t('levelUp.into', { count: after.into, level: after.level })}</div>
+        <XpBar info={after} />
       </div>
     ) : (
-      <XpLine info={stage === 1 ? { ...before, into: before.span } : before} fill={stage === 1 ? 1 : undefined} hideToNext />
+      <XpBar info={stage === 1 ? { ...before, into: before.span } : before} fill={stage === 1 ? 1 : undefined} next={false} />
     );
   return (
     <>
-      <div className="levelup-head">
-        <span className="level-badge" aria-hidden="true">
-          {after.level}
-        </span>
-        <span className="levelup-text">
-          <span className="eyebrow levelup-eyebrow">{t('levelUp.eyebrow')}</span>
-          <h2 id="leveluptitle" className="sheet-title">
-            {t('levelUp.title', { level: after.level, rank: rankName(after) })}
-          </h2>
-          <span className="muted-text levelup-sub">
-            {newRank ? t('levelUp.newRank', { rank: rankName(before) }) : t('levelUp.sameRank', { level: before.level })}
-          </span>
-        </span>
-      </div>
-      <ol className="ranks" aria-label={t('levelUp.ranks')}>
-        {RANKS.map((r) => (
-          <li key={r} aria-current={r === after.rank ? 'step' : undefined} className={r === after.rank ? 'is-current' : ''}>
-            {t('rank.' + r)}
-          </li>
-        ))}
-      </ol>
+      <LevelHead info={after} eyebrow={t('levelUp.eyebrow')} sub={newRank ? t('levelUp.newRank', { rank: rankName(before) }) : nextRankText(after)} />
       <div className="levelup-line">{line}</div>
       <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onDone}>
         {t('levelUp.continue')}

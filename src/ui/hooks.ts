@@ -28,6 +28,13 @@ export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(subscribe, () => mq(query)?.matches ?? false, () => false);
 }
 
+/**
+ * A phone in portrait under 600 px tall: what a phone browser leaves of a small phone under its toolbars (DESIGN.md §9:
+ * 375 × 553 on an iPhone SE in Safari). Exercise screens draw their staff smaller there; the CSS tightens the rest with
+ * the same query, and from 700 px down already tightens gaps and paddings.
+ */
+export const SHORTER_PHONE = '(max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait)';
+
 /** DESIGN.md §9 breakpoints: phone < 700 px, tablet 700–1099 px, desktop ≥ 1100 px. */
 export function useBreakpoint(): Breakpoint {
   const desktop = useMediaQuery('(min-width: 1100px)');

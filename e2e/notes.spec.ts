@@ -1,10 +1,30 @@
-import { expect, test } from '@playwright/test';
-import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
-import { letterOf } from '../src/core/pitch';
+import { expect, test, type Page } from '@playwright/test';
+import { DEFAULT_NOTE_SETTINGS, generateRound, noteMidi, pianoKeyMidi } from '../src/core/noteRound';
+import { LETTERS, letterOf, pitchClass } from '../src/core/pitch';
 import { noteLessonSettings } from '../src/game/notesPath';
-import { seed as seedStorage, VIEWPORTS } from './helpers';
+import { DEFAULT_SETTINGS } from '../src/core/defaults';
+import { pad, seed as seedStorage, VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
+
+/** Records every piano tone the page plays, as a MIDI number: the triangle body of each tone (not its octave above). */
+async function listenForTones(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as Window & { tones?: number[] };
+    w.tones = [];
+    const create = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function (this: AudioContext) {
+      const osc = create.call(this);
+      const set = osc.frequency.setValueAtTime.bind(osc.frequency);
+      osc.frequency.setValueAtTime = (value: number, time: number) => {
+        if (osc.type === 'triangle') w.tones!.push(Math.round(69 + 12 * Math.log2(value / 440)));
+        return set(value, time);
+      };
+      return osc;
+    };
+  });
+}
+const tones = (page: Page): Promise<number[]> => page.evaluate(() => (window as Window & { tones?: number[] }).tones ?? []);
 
 test('read notes: a G major round from Home to the summary, answered with the keyboard', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.desktop);
@@ -128,12 +148,107 @@ test('read notes: piano answers, a hint and skipping to the summary', async ({ p
   await page.getByRole('button', { name: /^Start · / }).click();
   await expect(page.getByText('Play the highlighted note')).toBeVisible();
   await page.getByRole('button', { name: 'Hint' }).click();
-  await expect(page.locator('.nfeedback')).toHaveText(/(This is|steps? (above|below)) /);
+  await expect(page.locator('.nfeedback')).toHaveText(/^(This is .+: .+\.|.+ is .+\. This note is (one step|\d steps) (higher|lower)\.)/);
   await page.getByRole('button', { name: 'C, do' }).click();
   await expect(page.locator('.nfeedback')).toHaveText(/^(Right|That was)/);
   await page.getByRole('button', { name: 'Skip to summary' }).click();
   await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
   await expect(page.getByText(/^[01] of 1 note right/)).toBeVisible();
+});
+
+test('read notes: a piano key sounds when pressed, and after a wrong one the right note follows', async ({ page }) => {
+  const settings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano' as const, count: 10 };
+  const seed = 4242;
+  await listenForTones(page);
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes/play');
+  const [first, second] = generateRound(settings, seed);
+  const key = (L: string) => page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button', { name: new RegExp('^' + L + ', ') });
+  // Right: the key is the note on the staff, in its octave, so it sounds once.
+  await key(letterOf(first.step)).click();
+  await expect.poll(() => tones(page)).toEqual([noteMidi(first)]);
+  await expect(page.locator('.nplay-count')).toHaveText('2 / 10');
+  // Wrong: the key pressed, then the right note.
+  const wrong = LETTERS.find((L) => L !== letterOf(second.step))!;
+  await key(wrong).click();
+  await expect(page.locator('.nfeedback')).toHaveText(/^That was/);
+  await expect.poll(() => tones(page)).toEqual([noteMidi(first), pianoKeyMidi(second, pitchClass(wrong, 0)), noteMidi(second)]);
+  // After the answer a key only sounds, to compare.
+  await key(letterOf(second.step)).click();
+  await expect.poll(() => tones(page)).toHaveLength(4);
+  await expect(page.locator('.nplay-count')).toHaveText('2 / 10');
+});
+
+test('read notes: Hear the notes, on by default in a path lesson, and off for a lesson too once turned off', async ({ page }) => {
+  await listenForTones(page);
+  await page.setViewportSize(VIEWPORTS.phone);
+  await seedStorage(page, { prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+  const nameAnswer = async (): Promise<void> => {
+    await page.getByRole('group', { name: 'Note names' }).getByRole('button').first().click();
+    await expect(page.locator('.nfeedback')).toHaveText(/^(Right|That was)/);
+  };
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' }).click();
+  // A named answer sounds the note on the staff, right or wrong.
+  await nameAnswer();
+  await expect.poll(async () => (await tones(page)).length).toBe(1);
+
+  await page.goto('./#/notes');
+  const sound = page.getByRole('switch', { name: /^Hear the notes/ });
+  await expect(sound).toHaveAttribute('aria-checked', 'true');
+  await sound.click();
+  await expect(sound).toHaveAttribute('aria-checked', 'false');
+  await expect(sound).toHaveAccessibleName(/Silent$/);
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await nameAnswer();
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' }).click();
+  await nameAnswer();
+  expect(await tones(page)).toHaveLength(1);
+});
+
+test('read notes: the sign row only when a note can have a sign', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./#/notes');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page.getByText('Note 1 of 20')).toBeVisible();
+  await expect(page.getByRole('radiogroup', { name: 'Sharp or flat' })).toHaveCount(0);
+  await expect(page.getByText('Type the letter of the note')).toBeVisible();
+  await expect(page.locator('.nfeedback')).toHaveText('Which note is highlighted?');
+  // A sign key does nothing here: the next letter is a plain name.
+  await page.keyboard.press('=');
+  await page.keyboard.press('c');
+  await expect(page.locator('.nfeedback')).toHaveText(/^(Right: C \(do\)|That was )/);
+
+  await page.goto('./#/notes');
+  await page.getByRole('link', { name: /^Key: C major/ }).click();
+  await page.getByRole('button', { name: /^G major or E minor/ }).click();
+  await page.getByRole('button', { name: 'Use G major' }).click();
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page.getByRole('radiogroup', { name: 'Sharp or flat' })).toBeVisible();
+  await expect(page.getByText('Mind the key signature. Pick the sign, then the name.')).toBeVisible();
+  await expect(page.getByText('Type the letter; press = for ♯, 0 for ♮ or − for ♭ first')).toBeVisible();
+});
+
+test('read notes: round done names the missed notes in do re mi after a round in do re mi', async ({ page }) => {
+  const settings = { ...DEFAULT_NOTE_SETTINGS, count: 10 };
+  const seed = 4242;
+  await seedStorage(page, { prefs: { noteNames: 'solfege' } });
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes/play');
+  const [first] = generateRound(settings, seed);
+  const wrong = letterOf(first.step) === 'C' ? 'D' : 'C';
+  await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(', ' + wrong + '$') }).click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  const solfege: Record<string, string> = { C: 'do', D: 're', E: 'mi', F: 'fa', G: 'sol', A: 'la', B: 'si' };
+  const chip = page.getByRole('list', { name: 'Missed' }).getByRole('listitem');
+  await expect(chip).toHaveCount(1);
+  await expect(chip).toHaveText(solfege[letterOf(first.step)]);
+  await expect(chip).toHaveAccessibleName(new RegExp(`^${solfege[letterOf(first.step)]}, ${letterOf(first.step)} on the .+ \\(treble clef\\), missed once$`));
+  await expect(chip.locator('.pitch-staff svg')).toBeVisible();
 });
 
 test('learn: the Key screen links to key signatures; the quick check answers', async ({ page }) => {
@@ -158,14 +273,30 @@ test('learn: the Key screen links to key signatures; the quick check answers', a
   await expect(page.getByRole('link', { name: 'Learn' })).toHaveAttribute('aria-current', 'page');
 });
 
-test('learn: a practice link opens Read notes set up for its section', async ({ page }) => {
+test('learn: a practice link starts a Read notes round for its section; Quit and Round done return to it', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/learn/8?s=8.3');
-  await page.getByRole('link', { name: 'Practice the bass clef →' }).click();
+  const link = page.getByRole('link', { name: 'Practice the bass clef →' });
+  await link.click();
+  await expect(page).toHaveURL(/#\/notes\/play\?from=8\.3$/);
+  await page.getByRole('link', { name: 'Quit' }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
+
+  // Round done's back arrow returns to the section.
+  await link.click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/notes\/done\?from=8\.3$/);
+  await page.getByRole('link', { name: 'Back to chapter 8' }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
+
+  // Change setup shows the section's preset; its Back returns to the section, also after a visit to the Key screen.
+  await link.click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await page.getByRole('link', { name: 'Change setup' }).click();
   await expect(page).toHaveURL(/#\/notes\?from=8\.3$/);
   await expect(page.getByRole('button', { name: /Treble/ })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: /Bass/ })).toHaveAttribute('aria-pressed', 'true');
-  // Back returns to the section, also after a visit to the Key screen.
   await page.getByRole('link', { name: /^Key: / }).click();
   await page.getByRole('link', { name: 'Back to setup' }).click();
   await expect(page).toHaveURL(/#\/notes\?from=8\.3$/);
@@ -173,14 +304,38 @@ test('learn: a practice link opens Read notes set up for its section', async ({ 
   await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
 });
 
-test('learn: a rhythm practice link opens Free practice set up for its section', async ({ page }) => {
+test('learn: a rhythm practice link starts the exercise for its section; Quit, Results and the setup return to it', async ({ page }) => {
+  test.setTimeout(45_000);
+  // The player's last setup: Echo, one bar at 200 BPM. The link plays in Tap mode with the section's preset.
+  await seedStorage(page, {
+    prefs: { seenHowTo: true, seenHold: true },
+    progress: { lessons: {}, practiceDays: [], lastSettings: { ...DEFAULT_SETTINGS, mode: 'echo', bars: 1, tempo: 200 } },
+  });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/learn/7');
-  await page.getByRole('link', { name: 'Practice triplets →' }).click();
+  const link = page.getByRole('link', { name: 'Practice triplets →' });
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?from=7\.1$/);
+  await expect(pad(page)).toBeVisible();
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
+
+  // Played to the end: Results goes back to the section, and Try again (nothing was tapped) keeps that.
+  await link.click();
+  await expect(page).toHaveURL(/#\/results\?from=7\.1$/, { timeout: 10_000 });
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page).toHaveURL(/#\/results\?from=7\.1$/, { timeout: 10_000 });
+  await page.getByRole('link', { name: 'Back to chapter 7' }).click();
+  await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
+
+  // Practice settings opens the setup with the preset; its Back returns to the section.
+  await link.click();
+  await page.getByRole('link', { name: 'Practice settings' }).click({ timeout: 10_000 });
   await expect(page).toHaveURL(/#\/setup\?from=7\.1$/);
   await expect(page.getByRole('button', { name: 'Triplets', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Dotted', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: 'Ties', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Tap' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('link', { name: 'Back to chapter 7' }).click();
   await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
 });

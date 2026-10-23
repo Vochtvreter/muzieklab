@@ -11,7 +11,9 @@ levels, exercise codes with Copy, and Echo mode: hear it, tap it back from memor
 notes: name notes in treble and bass clef in any of the 15 keys, with names (do re mi or letters)
 or on a one-octave piano, and a round summary. v1.4 Scales (0.7.0): major and minor scales in all 15
 keys around the circle of fifths, played on the piano or spelled with ♭ ♮ ♯. The Learn tab has chapters 1–11, from
-pulse and meter to scales. On phone, tablet and desktop, in light and dark. In English and
+pulse and meter to scales. 0.10.0 follows a UX test: the examples in Learn and the notes in Read notes can be heard, a
+lesson shows its new symbols before it starts, Results tells a steady late tapper to calibrate, and the exercise
+screens fit a phone browser. On phone, tablet and desktop, in light and dark. In English and
 Dutch (Settings → Language); adding a language is one new catalog, see [DESIGN.md §11](docs/DESIGN.md).
 
 ## Run it

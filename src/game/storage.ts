@@ -6,6 +6,7 @@ import { parseScaleId, type ScaleStars } from '../core/scale';
 import { sanitizeScaleSettings, type ScaleSettings } from '../core/scaleRound';
 import type { Volumes } from '../audio/engine';
 import { isLocale } from '../i18n';
+import { INTRO_IDS, introsOf } from './intro';
 import { TRACK_IDS, type TrackId } from './track';
 
 export interface Prefs {
@@ -26,11 +27,22 @@ export interface Prefs {
   seenHold: boolean;
   /** The Echo mode's How to play was shown once. */
   seenEchoHowTo: boolean;
-  /** Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold'. */
+  /** The new symbols a lesson's intro sheet has shown ("note:half", "meter:3/4"; game/intro.ts), so each shows once. */
+  seenIntros: string[];
+  /**
+   * Settings → Input: tap & hold (default) or tap only. A lesson preset's `hold: false` wins over 'hold', and free
+   * practice only holds once the path has taught it (ui/store.tsx practiceHold).
+   */
   holdMode: 'hold' | 'tap';
+  /**
+   * The setup's "Hold notes for their length" was turned on, also before the path teaches holding (unit 2): the Input
+   * mode it replaced, which turning it off before unit 2 puts back. Null until it is turned on, and again once it is
+   * turned off or Input is picked in Settings.
+   */
+  holdEarly: Prefs['holdMode'] | null;
   /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */
   metronomeLook: 'digital' | 'analog';
-  /** Read notes: the name buttons show do re mi (fixed do) or letters. */
+  /** Read notes: the name buttons show do re mi (fixed do) or letters. A new player gets their device language's usual one. */
   noteNames: 'solfege' | 'letters';
   /** Read notes: the piano keys' labels. */
   pianoLabels: 'letters' | 'solfege' | 'off';
@@ -43,9 +55,11 @@ export interface LessonProgress {
   bestAccuracy: number;
 }
 
-/** The daily challenge most recently played: its date and the best result that day. */
+/** The daily challenge most recently played: its date, its tier and the best result that day. */
 export interface DailyProgress {
   day: string; // yyyy-mm-dd
+  /** The tier (game/daily.ts) it was first played at, which it keeps for the rest of the day; missing in older saves. */
+  tier?: number;
   stars: Stars;
   accuracy: number;
 }
@@ -83,9 +97,11 @@ export const DEFAULT_PREFS: Prefs = {
   seenHowTo: false,
   seenHold: false,
   seenEchoHowTo: false,
+  seenIntros: [],
   holdMode: 'hold',
+  holdEarly: null,
   metronomeLook: 'digital',
-  noteNames: 'solfege',
+  noteNames: 'letters',
   pianoLabels: 'letters',
   pathTrack: 'rhythm',
 };
@@ -158,7 +174,7 @@ function writeJson(key: string, value: unknown): void {
 
 export function sanitizePrefs(raw: unknown): Prefs {
   const d = DEFAULT_PREFS;
-  if (!isObj(raw)) return { ...d, volumes: { ...d.volumes } };
+  if (!isObj(raw)) return { ...d, volumes: { ...d.volumes }, seenIntros: [] };
   const v = isObj(raw.volumes) ? raw.volumes : {};
   return {
     language: raw.language === 'system' || isLocale(raw.language) ? raw.language : d.language,
@@ -176,7 +192,10 @@ export function sanitizePrefs(raw: unknown): Prefs {
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
     seenHold: bool(raw.seenHold, d.seenHold),
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),
+    seenIntros: Array.isArray(raw.seenIntros) ? INTRO_IDS.filter((id) => (raw.seenIntros as unknown[]).includes(id)) : [],
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
+    // Saved as true before it kept the mode it replaced: tap & hold, the default, so turning it off keeps Input as is.
+    holdEarly: raw.holdEarly === 'hold' || raw.holdEarly === 'tap' ? raw.holdEarly : raw.holdEarly === true ? 'hold' : null,
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
     noteNames: oneOf(raw.noteNames, ['solfege', 'letters'] as const, d.noteNames),
     pianoLabels: oneOf(raw.pianoLabels, ['letters', 'solfege', 'off'] as const, d.pianoLabels),
@@ -227,7 +246,12 @@ export function sanitizeProgress(raw: unknown): Progress {
   const d = isObj(raw.daily) ? raw.daily : null;
   const daily: DailyProgress | null =
     d && typeof d.day === 'string' && ISO_DATE.test(d.day)
-      ? { day: d.day, stars: oneOf(d.stars, [0, 1, 2, 3, 4, DIAMOND] as const, 0), accuracy: num(d.accuracy, 0, 0, 100) }
+      ? {
+          day: d.day,
+          ...(typeof d.tier === 'number' && Number.isInteger(d.tier) && d.tier >= 1 ? { tier: d.tier } : {}),
+          stars: oneOf(d.stars, [0, 1, 2, 3, 4, DIAMOND] as const, 0),
+          accuracy: num(d.accuracy, 0, 0, 100),
+        }
       : null;
   return {
     lessons,
@@ -273,11 +297,33 @@ export function playedHolds(p: Progress): boolean {
   return Object.keys(p.lessons).some((id) => !id.startsWith('1.')) || p.lastSettings !== null || p.daily !== null;
 }
 
+/** Languages where music lessons name notes do re mi (fixed do): French, Italian, Spanish, Portuguese, Romanian. */
+const SOLFEGE_LANGUAGES = ['fr', 'it', 'es', 'pt', 'ro'];
+
+/** Note names for a new player: do re mi where it is the norm (those languages, and Dutch in Belgium), else letters. */
+export function defaultNoteNames(language: string | undefined): Prefs['noteNames'] {
+  const tag = (language ?? '').toLowerCase().replace('_', '-');
+  return tag.startsWith('nl-be') || SOLFEGE_LANGUAGES.includes(tag.split('-')[0]) ? 'solfege' : 'letters';
+}
+
+const deviceLanguage = (): string | undefined => (typeof navigator === 'undefined' ? undefined : navigator.language);
+
 export function loadPrefs(): Prefs {
   const raw = readJson(PREFS_KEY);
   const prefs = sanitizePrefs(raw);
+  if (!isObj(raw)) {
+    // No prefs saved yet (the store saves them when one changes). Nothing saved at all: a new player, who gets the
+    // device language's note names. Progress without prefs: a player from before who never changed one, and had do re
+    // mi. Saved now, so a new player's names stay once there is progress.
+    prefs.noteNames = isEmptyProgress(loadProgress()) ? defaultNoteNames(deviceLanguage()) : 'solfege';
+    savePrefs(prefs);
+  }
+  // Saved prefs keep their note names (do re mi, everyone's default before, if unset).
+  else if (raw.noteNames !== 'letters' && raw.noteNames !== 'solfege') prefs.noteNames = 'solfege';
   // Saved before seenHold (0.8.0): a player who has seen How to play and has played holds since knows them already.
   if (isObj(raw) && typeof raw.seenHold !== 'boolean' && prefs.seenHowTo) prefs.seenHold = playedHolds(loadProgress());
+  // Saved before seenIntros: the symbols of the lessons played already were met there.
+  if (isObj(raw) && !Array.isArray(raw.seenIntros)) prefs.seenIntros = introsOf(Object.keys(loadProgress().lessons));
   return prefs;
 }
 export function savePrefs(p: Prefs): void {

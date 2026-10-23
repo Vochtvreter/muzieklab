@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import type { JudgeResult, Tap } from '../../core/api';
 import { findLesson } from '../../game/path';
+import type { Prefs } from '../../game/storage';
 import { LengthLane } from '../../render/LengthLane';
 import { t, tx } from '../../i18n';
 import { applyAudioPrefs, engine } from '../audio';
@@ -16,15 +17,19 @@ import { SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { exerciseView, type ExerciseView } from '../exerciseView';
-import { useBreakpoint, useDocTitle, useKeyboardHints, useLingering, useReducedMotion } from '../hooks';
+import { SHORTER_PHONE, useBreakpoint, useDocTitle, useKeyboardHints, useLingering, useMediaQuery, useReducedMotion } from '../hooks';
+import { useLearnReturn } from '../lib/learnReturn';
 import { liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
 import { Link, navigate } from '../router';
 import { todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
-import { HowToContent, PauseContent, ReadyContent } from './PlaySheets';
-import { usePlaySession } from './playSession';
+import { HowToContent, IntroContent, PauseContent, ReadyContent, useListen } from './PlaySheets';
+import { howToEyebrow, usePlaySession } from './playSession';
+
+/** The staff's size on the shortest phone screens: two rows of notes take 139 px instead of 174. */
+const STAFF_SHORTER = 0.8;
 
 export function Play(): JSX.Element | null {
   const { state } = useStore();
@@ -77,8 +82,13 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const desktop = bp === 'desktop';
   const keys = useKeyboardHints(bp);
   const still = useReducedMotion();
+  // A phone browser on a small phone (375 × 553): the staff is drawn smaller so the pad still fits (DESIGN.md §9).
+  const shorter = useMediaQuery(SHORTER_PHONE);
   const ex = run.exercise;
   const lesson = run.lessonId ? findLesson(run.lessonId) : null;
+  // Started from a Learn section (?from=1.1): Quit returns there, and Results and the setup keep it.
+  const { back, carry } = useLearnReturn();
+  const exit = back?.to ?? '/';
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
 
   const onFinish = useCallback(
@@ -89,16 +99,29 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   );
   // Go to Results once the store holds this run's result (not before, or Results would see the old state).
   useEffect(() => {
-    if (state.last?.run === run) navigate('/results', { replace: true });
-  }, [state.last, run]);
-  const hold = ex.settings.hold;
-  const onIntroDone = useCallback(() => dispatch({ type: 'prefs', patch: hold ? { seenHowTo: true, seenHold: true } : { seenHowTo: true } }), [dispatch, hold]);
+    if (state.last?.run === run) navigate('/results', { replace: true, query: carry });
+  }, [state.last, run, carry]);
+  const onSeen = useCallback((patch: Partial<Prefs>) => dispatch({ type: 'prefs', patch }), [dispatch]);
   // Echo has its own How to play in the listen phase, so tapping starts straight away.
   const isEcho = !!echo;
   const prefs = useMemo(() => (isEcho ? { ...state.prefs, seenHowTo: true, seenHold: true } : state.prefs), [isEcho, state.prefs]);
-  const s = usePlaySession(run, view, prefs, onIntroDone, onFinish);
+  // A lesson other than the one finished last waits on Ready, so its rhythm can be read first; Retry and Next exercise
+  // of the same lesson start straight away.
+  const [fresh] = useState(() => !isEcho && !!run.lessonId && !!state.last && state.last.run.lessonId !== run.lessonId);
+  const s = usePlaySession(run, view, prefs, onSeen, onFinish, fresh);
+  const listen = useListen(ex, view.timeline, state.prefs);
+  // Every way out of a sheet: Start's count-in takes the audio over from the intro sheet's Listen.
+  const closeSheet = (): void => {
+    listen.halt();
+    s.closeSheet();
+  };
+  const help = (): void => {
+    listen.stop();
+    s.openSheet('help');
+  };
 
-  // Esc closes an open sheet (Resume / Got it); ? swaps to How to play.
+  // Esc closes an open sheet (Resume / Got it / Start); ? swaps to How to play. Attached again on each render, which
+  // is rare while a sheet is open, so it calls the current closeSheet and help.
   useEffect(() => {
     if (!s.sheet) return;
     const onKey = (e: KeyboardEvent): void => {
@@ -107,15 +130,15 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       if (e.key === 'Escape') {
         e.preventDefault();
         // Esc may not start audio (it is not a user-activation key), so it does not start or resume from here.
-        if (!s.needsTap) s.closeSheet();
+        if (!s.needsTap) closeSheet();
       } else if (e.key === '?' && s.sheet !== 'help') {
         e.preventDefault();
-        s.openSheet('help');
+        help();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [s.sheet, s.closeSheet, s.openSheet, s.needsTap]);
+  });
 
   const bars = ex.bars.length;
   const total = view.timeline.totalSeconds;
@@ -123,7 +146,9 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const curBar = Math.min(bars - 1, Math.floor(tg / view.barSeconds));
   const progress = total > 0 ? Math.min(1, tg / total) : 0;
   const where = echo ? echoWhere(runWhere(run)) : runWhere(run);
-  const barText = echo ? t('play.echo.tapBack') : t('play.barOf', { bar: curBar + 1, total: bars });
+  // The count-in does not look like bar 1 (§3.1): the line says Count-in until the music's first beat.
+  const countIn = s.frame.countIn;
+  const barText = echo ? t('play.echo.tapBack') : countIn ? t('play.countingIn') : t('play.barOf', { bar: curBar + 1, total: bars });
 
   const perRow = desktop ? 4 : 2;
   const from = windowStart(curBar, perRow, 2, bars);
@@ -137,7 +162,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       }} />
   );
   const staff = (
-    <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} />
+    <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={shorter ? STAFF_SHORTER : 1} />
   );
   const lane = (
     <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={4} taps={s.taps} result={s.liveResult}
@@ -169,10 +194,10 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const fbClass = 'judgement' + (s.feedback ? ' tone-' + s.feedback.tone : '');
   const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : echo && s.phase === 'running' ? t('play.echo.yourTurnCue') : ' ';
 
-  // Quit swaps Play for Home in the history, so Back does not walk into the exercise again.
+  // Quit swaps Play for Home (or the Learn section) in the history, so Back does not walk into the exercise again.
   const quit = (): void => {
     s.stop();
-    navigate('/', { replace: true });
+    navigate(exit, { replace: true, query: back?.query });
   };
   const quitLink = (e: MouseEvent): void => {
     e.preventDefault();
@@ -181,23 +206,27 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const toSettings = (): void => {
     s.stop();
     dispatch({ type: 'settings', settings: ex.settings });
-    navigate('/setup');
+    navigate('/setup', { query: carry });
   };
 
   const { shown: sheetShown, closing } = useLingering(s.sheet, 240);
+  // How to play says why it opened; opened with ? before the start when it was not due, it names the run.
+  const howToKey = howToEyebrow(s.phase, s.intro);
   const sheet = sheetShown && (
     <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey={sheetShown}
-      labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
-      maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined}>
+      labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'new' ? 'introtitle' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
+      maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined} low={sheetShown === 'new' || sheetShown === 'ready'}>
       {sheetShown === 'help' ? (
-        <HowToContent eyebrow={t(echo ? 'howto.echo.eyebrow' : s.phase !== 'intro' ? 'howto.paused' : s.intro === 'hold' ? 'howto.newHold' : 'howto.firstTime')} desktop={keys} hold={ex.settings.hold} echo={!!echo}
-          onDone={s.closeSheet} />
+        <HowToContent eyebrow={echo ? t('howto.echo.eyebrow') : howToKey ? t(howToKey) : where} desktop={keys} hold={ex.settings.hold} echo={!!echo}
+          onDone={closeSheet} />
+      ) : sheetShown === 'new' ? (
+        <IntroContent title={lesson ? tx(lesson.lesson.title) : where} intros={s.intros} listen={listen} onStart={closeSheet} />
       ) : sheetShown === 'ready' ? (
-        <ReadyContent context={where} onStart={s.closeSheet}
+        <ReadyContent context={where} onStart={closeSheet}
           detail={t('ready.detail', { bars: t('common.bars', { count: bars }), meter: metersLabel([ex.meter.id]), bpm: ex.tempo })} />
       ) : (
         <PauseContent context={t('pause.context', { where, bar: curBar + 1, total: bars })} desktop={keys} lesson={!!lesson} interrupted={s.interrupted}
-          onResume={s.closeSheet} onRestart={s.restart} onHelp={() => s.openSheet('help')} onSettings={toSettings} onQuit={quit} />
+          onResume={closeSheet} onRestart={s.restart} onHelp={help} onSettings={toSettings} onQuit={quit} />
       )}
     </Sheet>
   );
@@ -231,7 +260,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
               <Icon name="pause" size={16} />
               {t('play.pause')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
             </button>
-            <Link to="/" className="text-link-btn" onClick={quitLink}>
+            <Link to={exit} query={back?.query} className="text-link-btn" onClick={quitLink}>
               {t('play.quitShort')}
             </Link>
           </div>
@@ -263,9 +292,9 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
             </div>
             <div className="dstats">
               <div className="card stat">
-                <span className="label">{t('play.count')}</span>
+                <span className="label">{t(countIn ? 'play.countingIn' : 'play.count')}</span>
                 {analog || (
-                  <div className="dbeats" role="img" aria-label={beatLabel}>
+                  <div className={'dbeats' + (beat.countIn ? ' is-count-in' : '')} role="img" aria-label={beatLabel}>
                     {Array.from({ length: ex.meter.beatsPerBar }, (_, i) => (
                       <span key={i} aria-hidden="true" className={i === beat.inBar ? 'is-on' : ''}>
                         {i + 1}
@@ -304,7 +333,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       <div className="page play">
         <h1 className="sr-only">{t('play.heading')}</h1>
         <div className="play-top">
-          <Link to="/" aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
+          <Link to={exit} query={back?.query} aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('play.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
@@ -343,7 +372,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
           )}
         </div>
 
-        {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} label={beatLabel} />}
+        {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />}
 
         <div aria-live="polite" className={fbClass + ' judgement--phone'}>
           {fbText}

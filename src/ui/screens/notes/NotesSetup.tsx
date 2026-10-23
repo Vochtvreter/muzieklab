@@ -1,9 +1,12 @@
-/** Read notes setup (DESIGN.md §3.5 Settings): clefs, key, answer with, range, extra signs, notes per round and time. */
-import { CLEFS, DEFAULT_NOTE_SETTINGS, MAX_NOTES, MIN_NOTES, rangeSteps, roundKeys, type Clef, type Extras, type NoteInput, type NoteSettings, type NoteTimer, type Range } from '../../../core/api';
+/**
+ * Read notes setup (DESIGN.md §3.5 Settings): clefs, key, answer with, range, extra signs, notes per round and time,
+ * and whether the notes sound.
+ */
+import { CLEFS, DEFAULT_NOTE_SETTINGS, MAX_NOTES, MIN_NOTES, rangeSteps, roundHasSigns, roundKeys, type Clef, type Extras, type NoteInput, type NoteSettings, type NoteTimer, type Range } from '../../../core/api';
 import { PitchStaff } from '../../../render/PitchStaff';
 import { t } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
-import { Segmented } from '../../components/Controls';
+import { Segmented, SwitchTrack } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useDocTitle } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
@@ -96,7 +99,8 @@ export function NotesSetup(): JSX.Element {
               { value: 'mixed', label: t('notes.setup.inputMixed') },
             ]} />
           <span className="muted-text input-hint" aria-live="polite">
-            {t(s.input === 'piano' ? 'notes.setup.hintPiano' : s.input === 'mixed' ? 'notes.setup.hintMixed' : 'notes.setup.hintNames')}
+            {/* No ♭ ♮ ♯ keys to mention when no note of the round can have a sign. */}
+            {t(s.input === 'piano' ? 'notes.setup.hintPiano' : s.input === 'mixed' ? 'notes.setup.hintMixed' : roundHasSigns(s) ? 'notes.setup.hintNames' : 'notes.setup.hintNamesPlain')}
           </span>
         </div>
 
@@ -144,6 +148,17 @@ export function NotesSetup(): JSX.Element {
                 { value: 3, label: t('notes.setup.timerSec', { count: 3 }) },
               ]} />
           </div>
+        </div>
+
+        {/* As in the Scales setup; a path lesson keeps this choice too. */}
+        <div className="card ssw">
+          <button type="button" role="switch" aria-checked={s.playNotes} className="ssw-row" onClick={() => update({ playNotes: !s.playNotes })}>
+            <span className="ssw-text">
+              <b>{t('notes.setup.sound')}</b>
+              <span>{t(s.playNotes ? 'notes.setup.soundOn' : 'notes.setup.soundOff')}</span>
+            </span>
+            <SwitchTrack on={s.playNotes} />
+          </button>
         </div>
 
         <div className="nsetup-summary">

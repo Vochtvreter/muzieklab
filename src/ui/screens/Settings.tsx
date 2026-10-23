@@ -1,5 +1,5 @@
 /**
- * Settings: language, sound, timing (calibrate, leniency), playing (input), display (theme, metronome look), about
+ * Settings: language, sound, timing (calibrate, leniency), playing (input), display (theme, beat counter), about
  * (what's new, version, offline, reset).
  */
 import { useEffect, useState, type ReactNode } from 'react';
@@ -88,7 +88,8 @@ export function SettingsScreen(): JSX.Element {
           </Section>
 
           <Section id="playing" title={t('settings.playing')}>
-            <SegRow label={t('settings.input')} group={t('settings.inputGroup')} value={prefs.holdMode} onChange={(v: Prefs['holdMode']) => set({ holdMode: v })}
+            {/* A choice here replaces whatever the Setup's early-hold switch would put back (holdEarly). */}
+            <SegRow label={t('settings.input')} group={t('settings.inputGroup')} value={prefs.holdMode} onChange={(v: Prefs['holdMode']) => set({ holdMode: v, holdEarly: null })}
               hint={t(prefs.holdMode === 'hold' ? 'settings.hintHold' : 'settings.hintTap')}
               options={[
                 { value: 'hold', label: t('settings.inputHold') },
@@ -285,7 +286,7 @@ function LanguageRow({ onChange }: { onChange(code: string): void }): JSX.Elemen
 const PREVIEW_BPM = 80;
 const PREVIEW_BEATS = 4;
 
-/** Metronome look: the chosen beat counter ticking silently in 4/4 at 80 BPM, as it will look on Play. */
+/** Beat counter: the chosen look ticking silently in 4/4 at 80 BPM, as it will look on Play. */
 function LookPreview({ look }: { look: Prefs['metronomeLook'] }): JSX.Element {
   const still = useReducedMotion();
   const [at, setAt] = useState(0);

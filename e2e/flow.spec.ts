@@ -30,7 +30,7 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
 
     await page.goto('./');
     await expect(page.getByText('No streak yet')).toBeVisible();
-    await page.getByRole('button', { name: 'Continue lesson' }).click();
+    await page.getByRole('button', { name: 'Start lesson' }).click();
     await expect(page).toHaveURL(/#\/play$/);
     await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
     await page.getByRole('button', { name: 'Got it' }).click();
@@ -64,10 +64,14 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
     }
     await expect(page).toHaveURL(/#\/results$/, { timeout: 10_000 });
     await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+    // Retry, or Try again under 2 stars: these taps are untimed.
+    await expect(page.getByRole('button', { name: /^(Retry|Try again)$/ })).toBeVisible();
 
     // A run with at least one hit note keeps the streak; these taps are untimed, so read what Results counted.
     const hits = await page.locator('.counts .count-n').evaluateAll((els) => els.slice(0, 3).reduce((s, el) => s + Number(el.textContent), 0));
+    // Each missed note has a × on the staff as well as the miss colour (colour plus shape, DESIGN.md §9).
+    const misses = Number(await page.locator('.counts .count-n').nth(3).textContent());
+    await expect(page.locator('.results-staff .staff-miss path')).toHaveCount(misses);
     await page.goto('./#/');
     await expect(page.getByText(hits > 0 ? '1-day streak' : 'No streak yet')).toBeVisible();
   });
@@ -76,7 +80,7 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
 test('a reload on Play keeps the lesson and waits for Start', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.reload();
   await expect(page).toHaveURL(/#\/play$/);
@@ -90,7 +94,7 @@ test('a reload on Play keeps the lesson and waits for Start', async ({ page }) =
 test('after quitting, Back does not walk into the exercise again', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   await expect(page).toHaveURL(/#\/$/);
@@ -102,7 +106,7 @@ test('after quitting, Back does not walk into the exercise again', async ({ page
 test('Esc does not start the Ready sheet (browsers do not let Esc start audio); Start does', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.desktop);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.reload();
   await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
@@ -169,4 +173,112 @@ test('the first lesson that judges holds shows How to play again, with holding, 
   await page.getByRole('button', { name: 'Continue lesson' }).click();
   await expect(page.getByText('Lesson 2.1', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('Next lesson introduces what is new before the count-in, once; another lesson waits on Ready', async ({ page }) => {
+  test.setTimeout(60_000);
+  await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } }, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  const countIn = page.getByRole('img', { name: /^Count-in, beat/ });
+  // The first run of the session starts straight away.
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: /^Play lesson 1\.1/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('button', { name: /^Next lesson/ }).click();
+
+  // Lesson 1.2 brings the half note: its card, Listen, Learn more and Start, before any count-in.
+  const sheet = page.getByRole('dialog', { name: 'Half notes' });
+  await expect(sheet.getByText('New in this lesson')).toBeVisible();
+  await expect(sheet.getByText('· 2 beats')).toBeVisible();
+  await expect(sheet.getByRole('link', { name: 'Learn more: Half note' })).toHaveAttribute('href', '#/learn/2?s=2.1');
+  await expect(countIn).toHaveCount(0);
+  await sheet.getByRole('button', { name: 'Listen' }).click();
+  await expect(sheet.getByRole('button', { name: 'Stop' })).toHaveAttribute('aria-pressed', 'true');
+  await sheet.getByRole('button', { name: 'Stop' }).click();
+  await expect(sheet.getByRole('button', { name: 'Listen' })).toHaveAttribute('aria-pressed', 'false');
+  // ? opens How to play, which was not due: it names the lesson, not "First time here", and leads back.
+  await page.keyboard.press('?');
+  const howTo = page.getByRole('dialog', { name: 'How to play' });
+  await expect(howTo.getByText('Lesson 1.2', { exact: true })).toBeVisible();
+  await expect(howTo.getByText('First time here')).toHaveCount(0);
+  await howTo.getByRole('button', { name: 'Got it' }).click();
+  await expect(sheet.getByText('New in this lesson')).toBeVisible();
+  await sheet.getByRole('button', { name: 'Start' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(countIn).toBeAttached({ timeout: 3000 });
+
+  // Shown once; playing the same lesson again (Try again: nothing was tapped) starts straight away.
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(countIn).toBeAttached({ timeout: 3000 });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Another lesson than the one finished last: Ready first, so the rhythm can be read; Start counts in.
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: /^Play lesson 1\.1/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
+  await expect(countIn).toHaveCount(0);
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await expect(countIn).toBeAttached({ timeout: 3000 });
+});
+
+test('the intro sheet comes after How to play, the first time both are due', async ({ page }) => {
+  await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } }, practiceDays: [], lastSettings: null }, prefs: {} });
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
+  await page.getByRole('button', { name: /^Got it/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Half notes' })).toBeVisible();
+  // Learn more opens the section; Back returns to the lesson, still waiting on its intro.
+  await page.getByRole('link', { name: 'Learn more: Half note' }).click();
+  await expect(page).toHaveURL(/#\/learn\/2\?s=2\.1$/);
+  // Wait for Learn itself: the URL changes before the screen does, and Back must leave Learn, not the old sheet.
+  await expect(page.getByRole('heading', { level: 1, name: /Note values/ })).toBeVisible();
+  await page.goBack();
+  const intro = page.getByRole('dialog', { name: 'Half notes' });
+  await expect(intro).toBeVisible();
+  // The sheet puts focus on Start, so Enter starts the count-in.
+  await expect(intro.getByRole('button', { name: 'Start', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+});
+
+test('free practice follows the path: tap only until unit 2, unless the setup turns holding on', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  const hold = page.getByRole('switch', { name: /^Hold notes for their length/ });
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await page.reload();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+});
+
+test('the setup hold switch turned on and off again before unit 2 leaves Settings → Input on Tap only', async ({ page }) => {
+  await seed(page, { prefs: { holdMode: 'tap' } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  const hold = page.getByRole('switch', { name: /^Hold notes for their length/ });
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  // In the same document: a reload would seed Tap only again.
+  await page.evaluate(() => (location.hash = '#/settings'));
+  await expect(page.getByRole('group', { name: 'Rhythm input' }).getByRole('button', { name: 'Tap only' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('free practice holds by default once unit 2 is open', async ({ page }) => {
+  const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2, bestAccuracy: 85 }]));
+  await seed(page, { progress: { lessons, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  await expect(page.getByRole('switch', { name: /^Hold notes for their length/ })).toHaveAttribute('aria-checked', 'true');
 });

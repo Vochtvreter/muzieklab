@@ -1,10 +1,11 @@
 /**
- * Results (DESIGN.md §6.4): the exercise code, stars, accuracy and XP, the daily challenge's badges, counts, holds, the
- * judged staff (in Echo the notation's reveal), the timing and length lane, a tip, and the level-up sheet.
+ * Results (DESIGN.md §6.4): stars, accuracy and XP, the daily challenge's badges, counts, holds, the judged staff (in
+ * Echo the notation's reveal), the timing and length lane, a tip (with Calibrate when the tip is about latency, or a
+ * line once the player has calibrated since), the actions with Copy code, and the level-up sheet.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { coachTip, DIAMOND, encodeCode, MAX_STARS, SHOWN_STARS, type Judgement } from '../../core/api';
-import { findLesson } from '../../game/path';
+import { findLesson, UNLOCK_STARS } from '../../game/path';
 import { levelInfo } from '../../game/xp';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
@@ -18,6 +19,7 @@ import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
 import { starsLabel } from '../lib/format';
+import { calibrateQuery, useLearnReturn } from '../lib/learnReturn';
 import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
@@ -41,9 +43,18 @@ export function Results(): JSX.Element | null {
   const startLesson = useStartLesson();
   const bp = useBreakpoint();
   const [playing, setPlaying] = useState(false);
+  // An exercise started from a Learn section (?from=1.1): Back returns there; Retry, Next and the setup keep it.
+  const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('results.docTitle') }));
   const last = state.last;
   const view = last ? exerciseView(last.run.exercise) : null;
+  // A lesson: what this run means for the path (a lesson opened, or the stars still needed), and where Next goes.
+  const outcome = last?.run.lessonId ? lessonOutcome(state.progress, last.run.lessonId, last.lessonStarsBefore) : null;
+  const goOn = outcome?.continueId ? findLesson(outcome.continueId)?.lesson ?? null : null;
+  // The calibration the run was played with: calibrating from its tip does not change what the tip says about it.
+  const uncalibrated = !last?.calibrated;
+  // Calibrated since this run (from its tip): the tip says the next run uses it, in place of Calibrate.
+  const recalibrated = !!last && (state.prefs.calibrationMs !== last.calibrationMs || !!state.prefs.calibratedAt !== last.calibrated);
 
   const leveledUp = !!last && levelInfo(last.reward.xpAfter).level > levelInfo(last.reward.xpBefore).level;
   const [levelUp, setLevelUp] = useState<'open' | null>(() => (last && leveledUp && !levelUpShown.has(last) ? 'open' : null));
@@ -79,20 +90,27 @@ export function Results(): JSX.Element | null {
     return m;
   }, [last]);
 
-  const tip = useMemo(() => {
+  const nextLesson = !!goOn;
+  const coach = useMemo(() => {
     if (!last || !view) return null;
     try {
-      const c = coachTip(last.result, view.timeline, last.run.exercise);
-      return tipText(c);
+      return coachTip(last.result, view.timeline, last.run.exercise, { taps: last.taps, uncalibrated, nextLesson });
     } catch (e) {
       console.error('coachTip failed', e);
       return null;
     }
-  }, [last, view]);
+  }, [last, view, uncalibrated, nextLesson]);
 
   if (!last || !view) return null;
   const { result, run } = last;
   const ex = run.exercise;
+  const tip = coach ? tipText(coach) : null;
+  // A steady offset may be the speaker or headphones: calibrating takes it off every score. A device delay only makes
+  // taps late, so rushing is the player's.
+  const calibrate = !!coach && (coach.key === 'tip.latency' || (uncalibrated && coach.key.startsWith('tip.dragging')));
+  // Under 2 stars the filled button plays the same exercise again: moving on is not the next step yet.
+  const again = result.stars < UNLOCK_STARS;
+  const code = encodeCode(ex.settings, ex.seed);
 
   const listen = (): void => {
     const eng = engine();
@@ -122,25 +140,38 @@ export function Results(): JSX.Element | null {
       : echo
         ? t('results.echoDone')
         : t('results.practiceDone');
-  // A lesson: what this run means for the path (a lesson opened, or the stars still needed), and where Next goes.
-  const outcome = run.lessonId ? lessonOutcome(state.progress, run.lessonId, last.lessonStarsBefore) : null;
-  const goOn = outcome?.continueId ? findLesson(outcome.continueId)?.lesson ?? null : null;
   const outcomeBadge = outcome && outcome.kind !== 'passed' ? <OutcomeBadge outcome={outcome} /> : null;
   const badges = (run.daily && (reward.streak !== null || reward.dailyBest)) || outcomeBadge;
   const countOf = (k: Judgement | 'extra'): number => (k === 'extra' ? result.extraTaps : result.counts[k]);
+  /** Next lesson when the path goes on, else a new exercise with the same settings (Next exercise; New exercise under 2 stars). */
+  const moveOn = (className: string): JSX.Element =>
+    goOn ? (
+      <button type="button" className={className} aria-label={t('results.nextLessonLabel', { id: goOn.id, title: tx(goOn.title) })}
+        onClick={() => {
+          engine().stop();
+          startLesson(goOn.id, { replace: true });
+        }}>
+        {t('results.nextLesson')}
+      </button>
+    ) : (
+      <button type="button" className={className} onClick={() => replay(run, false, carry)}>
+        {t(again ? 'results.newExercise' : 'results.next')}
+      </button>
+    );
 
   return (
     <ExerciseFrame className="frame--results">
       <div className="page results no-scrollbar">
         <div className="screen-head">
-          <Link to="/" aria-label={t('results.backHome')} className="icon-btn icon-btn--edge-sm">
+          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('results.backHome')}
+            className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
-          <h1 className="screen-title">{title}</h1>
+          <div className="screen-head-text">
+            <h1 className="screen-title">{title}</h1>
+            {run.daily && <span className="muted-text">{t('results.dailySub', { date: dateParts(run.daily).short })}</span>}
+          </div>
         </div>
-        <CodeCopy code={encodeCode(ex.settings, ex.seed)}>
-          {run.daily && <span className="muted-text">{t('results.dailySub', { date: dateParts(run.daily).short })}</span>}
-        </CodeCopy>
 
         <div className="score">
           {/* Three slots; the 4th star turns them into a small arc over one big star; a flawless run shows the diamond instead (§6.3). */}
@@ -168,7 +199,7 @@ export function Results(): JSX.Element | null {
           {diamond && <div className="score-bonus">{t('results.allPerfect')}</div>}
           <div className="score-pct">{t('results.accuracy', { value: Math.round(result.accuracy) })}</div>
           <div className="muted-text score-sub">
-            {t('results.summary', { combo: result.maxCombo })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
+            {t('results.summary')} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
           </div>
         </div>
 
@@ -228,7 +259,18 @@ export function Results(): JSX.Element | null {
         {tip && (
           <div className="tip">
             <Icon name="clock" size={20} />
-            <span>{tip}</span>
+            <div className="tip-body">
+              <span>{tip}</span>
+              {calibrate &&
+                (recalibrated ? (
+                  <span className="tip-note">{t('results.calibrated')}</span>
+                ) : (
+                  <Link to="/calibrate" query={calibrateQuery(carry)} className="ghost-btn tip-action" title={t('results.calibrateTitle')} onClick={() => engine().stop()}>
+                    <Icon name="metronome" size={18} />
+                    {t('results.calibrate')}
+                  </Link>
+                ))}
+            </div>
           </div>
         )}
 
@@ -238,29 +280,32 @@ export function Results(): JSX.Element | null {
               {playing ? <Icon name="stop" size={18} className="m-in" /> : <Icon name="speaker" size={18} />}
               {t(playing ? 'results.playing' : 'results.listen')}
             </button>
-            <Link to="/setup" className="ghost-btn" title={t('results.settings')} onClick={toSettings}>
+            <Link to="/setup" query={carry} className="ghost-btn" title={t('results.settings')} onClick={toSettings}>
               <Icon name="sliders" size={18} />
               {t('results.settings')}
             </Link>
+            {bp !== 'phone' && <CodeCopy code={code} className="ghost-btn" />}
           </div>
-          <div className="results-main">
-            <button type="button" className="btn btn--outline" onClick={() => replay(run, true)}>
-              {t('results.retry')}
-            </button>
-            {goOn ? (
-              <button type="button" className="btn btn--accent" aria-label={t('results.nextLessonLabel', { id: goOn.id, title: tx(goOn.title) })}
-                onClick={() => {
-                  engine().stop();
-                  startLesson(goOn.id, { replace: true });
-                }}>
-                {t('results.nextLesson')}
-              </button>
+          {/* The filled button on the right: Try again under 2 stars, else on to the next. */}
+          <div className={'results-main' + (again ? ' results-main--again' : '')}>
+            {again ? (
+              <>
+                {moveOn('btn btn--outline')}
+                <button type="button" className="btn btn--accent" onClick={() => replay(run, true, carry)}>
+                  {t('results.tryAgain')}
+                </button>
+              </>
             ) : (
-              <button type="button" className="btn btn--accent" onClick={() => replay(run, false)}>
-                {t('results.next')}
-              </button>
+              <>
+                <button type="button" className="btn btn--outline" onClick={() => replay(run, true, carry)}>
+                  {t('results.retry')}
+                </button>
+                {moveOn('btn btn--accent')}
+              </>
             )}
           </div>
+          {/* A phone has no room for it next to Listen and Practice settings: a small muted link at the very bottom. */}
+          {bp === 'phone' && <CodeCopy code={code} className="ghost-btn copy-link" />}
         </div>
       </div>
       {levelUpSheet && (
