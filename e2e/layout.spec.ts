@@ -121,6 +121,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'settings');
       await page.goto('./#/settings');
       await expectClickable(page.getByText('Leniency', { exact: true }));
+      // Leniency in words, not milliseconds; one Metronome row (the volume), the look is the Beat counter.
+      await expect(page.getByText('Fair timing for most players.')).toBeVisible();
+      await expect(page.getByText('Metronome', { exact: true })).toHaveCount(1);
+      await expectClickable(page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }));
       await expectClickable(page.getByRole('button', { name: 'Reset progress' }));
       await expectNoSideScroll(page);
     });
@@ -492,7 +496,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('play with the analog metronome: pendulum and the pad', async ({ page }) => {
       known(name, 'play-analog');
       await page.goto('./#/settings');
-      await page.getByRole('group', { name: 'Metronome style' }).getByRole('button', { name: 'Analog' }).click();
+      await page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }).click();
       await page.goto('./');
       await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
       await page.getByRole('button', { name: 'Got it' }).click();
