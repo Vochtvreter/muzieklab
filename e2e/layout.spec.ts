@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
@@ -16,6 +16,13 @@ const known = (vp: string, screen: string): void => {
   const why = KNOWN[`${vp}/${screen}`];
   test.fail(!!why, why);
 };
+
+/** Tablet and desktop: a wide screen's side panel (summary and main button) is beside its main column, not under it. */
+async function expectBeside(main: Locator, side: Locator): Promise<void> {
+  const [m, s] = [(await main.boundingBox())!, (await side.boundingBox())!];
+  expect(s.x, 'the side panel is right of the main column').toBeGreaterThanOrEqual(m.x + m.width - 1);
+  expect(Math.abs(s.y - m.y), 'the side panel starts level with the main column').toBeLessThan(40);
+}
 
 /** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
 const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
@@ -184,6 +191,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }));
       // Only the time signatures that can be played: no disabled "6/8 soon" chip.
       await expect(page.getByRole('button', { name: /6\/8/ })).toHaveCount(0);
+      // Tablet and desktop: the options on the left, the preview and Start in a side panel beside them.
+      if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
       await expectNoSideScroll(page);
     });
 
@@ -260,6 +269,24 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByText('Metronome', { exact: true })).toHaveCount(1);
       await expectClickable(page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }));
       await expectClickable(page.getByRole('button', { name: 'Reset progress' }));
+      const sections = page.getByRole('navigation', { name: 'Settings sections' });
+      if (desktopLayout || tabletLayout) {
+        // Tablet and desktop (App design canvas, SettingsTablet and SettingsDesktop): the sections listed on the left,
+        // the cards in two columns beside the list. A section picked in the list gets the focus.
+        const cols = page.locator('.set-col');
+        await expect(cols).toHaveCount(2);
+        await expectNoOverlap(page.locator('.set-side'), cols.first());
+        await expectNoOverlap(cols.first(), cols.last());
+        const about = sections.getByRole('button', { name: 'About' });
+        await expectClickable(about);
+        await about.click();
+        await expect(about).toHaveAttribute('aria-current', 'true');
+        await expect(page.locator('#set-about')).toBeFocused();
+        await expectClickable(page.getByRole('button', { name: 'Reset progress' }));
+        await expectNoClippedLabels(page);
+      } else {
+        await expect(sections).toHaveCount(0);
+      }
       await expectNoSideScroll(page);
     });
 
@@ -525,7 +552,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'notes-setup');
       await page.goto('./#/notes');
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
+      if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
       await page.getByRole('link', { name: /^Key: / }).click();
+      if (desktopLayout || tabletLayout) {
+        // The keys on the left; the chosen key's signature, large, with what it means and Use beside them.
+        await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
+        await expect(page.locator('.key-big')).toBeVisible();
+        await page.getByRole('group', { name: 'Key' }).getByRole('button', { name: 'Mix keys' }).click();
+        await expect(page.locator('.key-big')).toHaveCount(0);
+        await page.getByRole('group', { name: 'Key' }).getByRole('button', { name: 'One key' }).click();
+      } else {
+        await expect(page.locator('.key-big')).toHaveCount(0);
+      }
       // The last row of keys is reachable above the sticky Use button once the list is scrolled to its end.
       await page.locator('.nkeys').evaluate((el) => el.scrollTo(0, el.scrollHeight));
       await expectClickable(page.getByRole('button', { name: /^C♯ major or A♯ minor/ }), { scroll: false });
@@ -641,6 +679,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: /^Melodic minor/ }));
       await expectClickable(page.getByRole('switch', { name: /^Play each note/ }));
       await expectClickable(page.getByRole('button', { name: 'Start · 1 scale' }));
+      if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
       await page.getByRole('group', { name: 'Keys' }).getByRole('button', { name: 'All 15' }).click();
       await expect(page.getByRole('button', { name: 'Start · 15 scales' })).toBeVisible();
       await expectNoClippedLabels(page);

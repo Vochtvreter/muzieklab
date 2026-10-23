@@ -94,6 +94,37 @@ const PATHS = {
       <path d="M12 7v5l3 2" />
     </>
   ),
+  /** Settings sections on tablet and desktop (App design canvas, SettingsDesktop). */
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </>
+  ),
+  stopwatch: (
+    <>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l2.5 2.5M10 2h4" />
+    </>
+  ),
+  pad: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="4" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  contrast: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5M12 8h.01" />
+    </>
+  ),
 } as const;
 
 const FILLED = {

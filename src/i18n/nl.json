@@ -650,6 +650,7 @@
   },
   "settings": {
     "title": "Instellingen",
+    "sections": "Onderdelen van de instellingen",
     "language": "Taal",
     "languageGroup": "Taal van de app",
     "hintLanguage": "Alle tekst, de notennamen en het tellen, en hoe datums en getallen worden geschreven.",

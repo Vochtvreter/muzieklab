@@ -1,8 +1,9 @@
 /**
  * Settings: language, sound, timing (calibrate, leniency), playing (input), display (theme, beat counter), about
- * (what's new, version, offline, reset).
+ * (what's new, version, offline, reset). Phone: one column. Tablet and desktop: the sections listed on the left and the
+ * cards in two columns (App design canvas, SettingsTablet and SettingsDesktop).
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Leniency } from '../../core/api';
 import type { Prefs } from '../../game/storage';
 import { formatShortDate, getLocale, LOCALES, t } from '../../i18n';
@@ -10,7 +11,7 @@ import { applyAudioPrefs } from '../audio';
 import { AppShell } from '../components/AppShell';
 import { AnalogMetronome, BeatRow } from '../components/Bits';
 import { Segmented, SwitchTrack } from '../components/Controls';
-import { Icon } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
 import { useBreakpoint, useDocTitle, useReducedMotion } from '../hooks';
 import { RELEASES } from '../lib/changelog';
 import { signedMs } from '../lib/format';
@@ -43,6 +44,158 @@ export function SettingsScreen(): JSX.Element {
 
   const offline = useOfflineReady();
 
+  const wide = bp !== 'phone';
+  const language = (
+    <Section id="language" wide={wide} title={t('settings.language')}>
+      <LanguageRow onChange={(code) => set({ language: code })} />
+    </Section>
+  );
+  const sound = (
+    <Section id="sound" wide={wide} title={t('settings.sound')}>
+      <VolumeRow label={t('settings.metronome')} aria={t('settings.metronomeVolume')} value={prefs.volumes.metronome} on={prefs.metronomeOn}
+        onChange={(v) => setVol('metronome', v, 'metronomeOn')} onToggle={() => set({ metronomeOn: !prefs.metronomeOn })} />
+      <VolumeRow label={t('settings.playback')} aria={t('settings.playbackVolume')} value={prefs.volumes.rhythm} on onChange={(v) => setVol('rhythm', v)} />
+      <VolumeRow label={t('settings.tapSound')} aria={t('settings.tapVolume')} value={prefs.volumes.tap} on={prefs.tapSoundOn}
+        onChange={(v) => setVol('tap', v, 'tapSoundOn')} onToggle={() => set({ tapSoundOn: !prefs.tapSoundOn })} />
+    </Section>
+  );
+  const timing = (
+    <Section id="timing" wide={wide} title={t('settings.timing')}>
+      <Link to="/calibrate" className="row-link">
+        <span className="row-link-text">
+          <b>{t('settings.calibrate')}</b>
+          <span className="row-sub">
+            {prefs.calibratedAt ? (
+              <>
+                <span className="mono-accent">{signedMs(prefs.calibrationMs)}</span> · {t('settings.calibrated', { date: formatShortDate(prefs.calibratedAt) })}
+              </>
+            ) : (
+              t('settings.notCalibrated')
+            )}
+          </span>
+        </span>
+        <Icon name="chevron" size={20} className="row-chevron" />
+      </Link>
+      <SegRow label={t('settings.leniency')} group={t('settings.leniencyGroup')} value={prefs.leniency} onChange={(v: Leniency) => set({ leniency: v })}
+        hint={t({ strict: 'settings.hintStrict', normal: 'settings.hintNormal', relaxed: 'settings.hintRelaxed' }[prefs.leniency])}
+        options={[
+          { value: 'strict', label: t('settings.strict') },
+          { value: 'normal', label: t('settings.normal') },
+          { value: 'relaxed', label: t('settings.relaxed') },
+        ]} />
+    </Section>
+  );
+  const playing = (
+    <Section id="playing" wide={wide} title={t('settings.playing')}>
+      {/* A choice here replaces whatever the Setup's early-hold switch would put back (holdEarly). */}
+      <SegRow label={t('settings.input')} group={t('settings.inputGroup')} value={prefs.holdMode} onChange={(v: Prefs['holdMode']) => set({ holdMode: v, holdEarly: null })}
+        hint={t(prefs.holdMode === 'hold' ? 'settings.hintHold' : 'settings.hintTap')}
+        options={[
+          { value: 'hold', label: t('settings.inputHold') },
+          { value: 'tap', label: t('settings.inputTap') },
+        ]} first />
+    </Section>
+  );
+  const display = (
+    <Section id="display" wide={wide} title={t('settings.display')}>
+      <SegRow label={t('settings.theme')} group={t('settings.themeGroup')} value={prefs.theme} onChange={(v: Prefs['theme']) => set({ theme: v })}
+        hint={t({ system: 'settings.hintThemeSystem', light: 'settings.hintThemeLight', dark: 'settings.hintThemeDark' }[prefs.theme])}
+        options={[
+          { value: 'system', label: t('settings.themeSystem') },
+          { value: 'light', label: t('settings.themeLight') },
+          { value: 'dark', label: t('settings.themeDark') },
+        ]} first />
+      <SegRow label={t('settings.metronomeLook')} group={t('settings.metronomeLookGroup')} value={prefs.metronomeLook}
+        onChange={(v: Prefs['metronomeLook']) => set({ metronomeLook: v })}
+        hint={t(prefs.metronomeLook === 'analog' ? 'settings.hintAnalog' : 'settings.hintDigital')}
+        options={[
+          { value: 'digital', label: t('settings.lookDigital') },
+          { value: 'analog', label: t('settings.lookAnalog') },
+        ]}>
+        <LookPreview look={prefs.metronomeLook} />
+      </SegRow>
+    </Section>
+  );
+  const about = (
+    <Section id="about" wide={wide} title={t('settings.about')}>
+      <Link to="/changelog" className="row-link">
+        <span className="row-link-text">
+          <b>{t('changelog.title')}</b>
+          <span className="row-sub">{t('common.join', { a: t(RELEASES[0].title), b: formatShortDate(RELEASES[0].date) })}</span>
+        </span>
+        <Icon name="chevron" size={20} className="row-chevron" />
+      </Link>
+      <div className="about-row">
+        <span className="about-version">
+          <b>{t('settings.version')}</b>
+          <span className="mono-muted">{pkg.version}</span>
+          {import.meta.env.VITE_DEPLOY_BRANCH && (
+            <span className="mono-muted about-branch" title={t('settings.branch')}>{import.meta.env.VITE_DEPLOY_BRANCH}</span>
+          )}
+        </span>
+        <span className={'offline' + (offline ? '' : ' is-off')}>
+          {offline && <Icon name="check" size={16} strokeWidth={2.6} className="tone-good" />}
+          {t(offline ? 'settings.offline' : 'settings.online')}
+        </span>
+      </div>
+      <div className="reset-row">
+        {!confirm && !wiped && (
+          <button type="button" className="reset-btn" onClick={() => setConfirm(true)}>
+            <Icon name="trash" size={18} />
+            <span>{t('settings.reset')}</span>
+          </button>
+        )}
+        {confirm && (
+          <div className="reset-confirm m-in" role="alertdialog" aria-labelledby="reset-q" aria-describedby="reset-d">
+            <p className="reset-text">
+              <b id="reset-q">{t('settings.resetQuestion')}</b>
+              <span id="reset-d">{t('settings.resetDetail')}</span>
+            </p>
+            <button type="button" className="small-btn" autoFocus onClick={() => setConfirm(false)}>
+              {t('common.cancel')}
+            </button>
+            <button type="button" className="small-btn small-btn--danger" onClick={() => {
+              dispatch({ type: 'resetProgress' });
+              setConfirm(false);
+              setWiped(true);
+            }}>
+              {t('settings.resetConfirm')}
+            </button>
+          </div>
+        )}
+        {wiped && (
+          <div className="reset-done m-in" role="status">
+            <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
+            {t('settings.resetDone')}
+          </div>
+        )}
+      </div>
+    </Section>
+  );
+
+  if (wide) {
+    return (
+      <AppShell bp={bp} active="/settings" fill>
+        <div className="page settings-wide no-scrollbar">
+          <aside className="set-side">
+            <h1 className="page-title">{t('settings.title')}</h1>
+            <SectionNav />
+          </aside>
+          <div className="set-col">
+            {language}
+            {sound}
+            {timing}
+          </div>
+          <div className="set-col">
+            {playing}
+            {display}
+            {about}
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell bp={bp} active="/settings">
       <div className="page settings no-scrollbar">
@@ -50,133 +203,32 @@ export function SettingsScreen(): JSX.Element {
           <h1 className="page-title">{t('settings.title')}</h1>
         </div>
         <div className="settings-body">
-          <Section id="language" title={t('settings.language')}>
-            <LanguageRow onChange={(code) => set({ language: code })} />
-          </Section>
-
-          <Section id="sound" title={t('settings.sound')}>
-            <VolumeRow label={t('settings.metronome')} aria={t('settings.metronomeVolume')} value={prefs.volumes.metronome} on={prefs.metronomeOn}
-              onChange={(v) => setVol('metronome', v, 'metronomeOn')} onToggle={() => set({ metronomeOn: !prefs.metronomeOn })} />
-            <VolumeRow label={t('settings.playback')} aria={t('settings.playbackVolume')} value={prefs.volumes.rhythm} on onChange={(v) => setVol('rhythm', v)} />
-            <VolumeRow label={t('settings.tapSound')} aria={t('settings.tapVolume')} value={prefs.volumes.tap} on={prefs.tapSoundOn}
-              onChange={(v) => setVol('tap', v, 'tapSoundOn')} onToggle={() => set({ tapSoundOn: !prefs.tapSoundOn })} />
-          </Section>
-
-          <Section id="timing" title={t('settings.timing')}>
-            <Link to="/calibrate" className="row-link">
-              <span className="row-link-text">
-                <b>{t('settings.calibrate')}</b>
-                <span className="row-sub">
-                  {prefs.calibratedAt ? (
-                    <>
-                      <span className="mono-accent">{signedMs(prefs.calibrationMs)}</span> · {t('settings.calibrated', { date: formatShortDate(prefs.calibratedAt) })}
-                    </>
-                  ) : (
-                    t('settings.notCalibrated')
-                  )}
-                </span>
-              </span>
-              <Icon name="chevron" size={20} className="row-chevron" />
-            </Link>
-            <SegRow label={t('settings.leniency')} group={t('settings.leniencyGroup')} value={prefs.leniency} onChange={(v: Leniency) => set({ leniency: v })}
-              hint={t({ strict: 'settings.hintStrict', normal: 'settings.hintNormal', relaxed: 'settings.hintRelaxed' }[prefs.leniency])}
-              options={[
-                { value: 'strict', label: t('settings.strict') },
-                { value: 'normal', label: t('settings.normal') },
-                { value: 'relaxed', label: t('settings.relaxed') },
-              ]} />
-          </Section>
-
-          <Section id="playing" title={t('settings.playing')}>
-            {/* A choice here replaces whatever the Setup's early-hold switch would put back (holdEarly). */}
-            <SegRow label={t('settings.input')} group={t('settings.inputGroup')} value={prefs.holdMode} onChange={(v: Prefs['holdMode']) => set({ holdMode: v, holdEarly: null })}
-              hint={t(prefs.holdMode === 'hold' ? 'settings.hintHold' : 'settings.hintTap')}
-              options={[
-                { value: 'hold', label: t('settings.inputHold') },
-                { value: 'tap', label: t('settings.inputTap') },
-              ]} first />
-          </Section>
-
-          <Section id="display" title={t('settings.display')}>
-            <SegRow label={t('settings.theme')} group={t('settings.themeGroup')} value={prefs.theme} onChange={(v: Prefs['theme']) => set({ theme: v })}
-              hint={t({ system: 'settings.hintThemeSystem', light: 'settings.hintThemeLight', dark: 'settings.hintThemeDark' }[prefs.theme])}
-              options={[
-                { value: 'system', label: t('settings.themeSystem') },
-                { value: 'light', label: t('settings.themeLight') },
-                { value: 'dark', label: t('settings.themeDark') },
-              ]} first />
-            <SegRow label={t('settings.metronomeLook')} group={t('settings.metronomeLookGroup')} value={prefs.metronomeLook}
-              onChange={(v: Prefs['metronomeLook']) => set({ metronomeLook: v })}
-              hint={t(prefs.metronomeLook === 'analog' ? 'settings.hintAnalog' : 'settings.hintDigital')}
-              options={[
-                { value: 'digital', label: t('settings.lookDigital') },
-                { value: 'analog', label: t('settings.lookAnalog') },
-              ]}>
-              <LookPreview look={prefs.metronomeLook} />
-            </SegRow>
-          </Section>
-
-          <Section id="about" title={t('settings.about')}>
-            <Link to="/changelog" className="row-link">
-              <span className="row-link-text">
-                <b>{t('changelog.title')}</b>
-                <span className="row-sub">{t('common.join', { a: t(RELEASES[0].title), b: formatShortDate(RELEASES[0].date) })}</span>
-              </span>
-              <Icon name="chevron" size={20} className="row-chevron" />
-            </Link>
-            <div className="about-row">
-              <span className="about-version">
-                <b>{t('settings.version')}</b>
-                <span className="mono-muted">{pkg.version}</span>
-                {import.meta.env.VITE_DEPLOY_BRANCH && (
-                  <span className="mono-muted about-branch" title={t('settings.branch')}>{import.meta.env.VITE_DEPLOY_BRANCH}</span>
-                )}
-              </span>
-              <span className={'offline' + (offline ? '' : ' is-off')}>
-                {offline && <Icon name="check" size={16} strokeWidth={2.6} className="tone-good" />}
-                {t(offline ? 'settings.offline' : 'settings.online')}
-              </span>
-            </div>
-            <div className="reset-row">
-              {!confirm && !wiped && (
-                <button type="button" className="reset-btn" onClick={() => setConfirm(true)}>
-                  <Icon name="trash" size={18} />
-                  <span>{t('settings.reset')}</span>
-                </button>
-              )}
-              {confirm && (
-                <div className="reset-confirm m-in" role="alertdialog" aria-labelledby="reset-q" aria-describedby="reset-d">
-                  <p className="reset-text">
-                    <b id="reset-q">{t('settings.resetQuestion')}</b>
-                    <span id="reset-d">{t('settings.resetDetail')}</span>
-                  </p>
-                  <button type="button" className="small-btn" autoFocus onClick={() => setConfirm(false)}>
-                    {t('common.cancel')}
-                  </button>
-                  <button type="button" className="small-btn small-btn--danger" onClick={() => {
-                    dispatch({ type: 'resetProgress' });
-                    setConfirm(false);
-                    setWiped(true);
-                  }}>
-                    {t('settings.resetConfirm')}
-                  </button>
-                </div>
-              )}
-              {wiped && (
-                <div className="reset-done m-in" role="status">
-                  <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
-                  {t('settings.resetDone')}
-                </div>
-              )}
-            </div>
-          </Section>
+          {language}
+          {sound}
+          {timing}
+          {playing}
+          {display}
+          {about}
         </div>
       </div>
     </AppShell>
   );
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }): JSX.Element {
+/** Phone: the title above the card. Tablet and desktop: the title in the card, which the section list can move to. */
+function Section({ id, title, wide, children }: { id: string; title: string; wide: boolean; children: ReactNode }): JSX.Element {
+  if (wide) {
+    return (
+      <section id={'set-' + id} tabIndex={-1} aria-labelledby={'h-' + id} className="set-section set-section--card">
+        <div className="set-card">
+          <h2 id={'h-' + id} className="set-card-title">
+            {title}
+          </h2>
+          {children}
+        </div>
+      </section>
+    );
+  }
   return (
     <section aria-labelledby={'h-' + id} className="set-section">
       <h2 id={'h-' + id} className="label">
@@ -184,6 +236,64 @@ function Section({ id, title, children }: { id: string; title: string; children:
       </h2>
       <div className="set-card">{children}</div>
     </section>
+  );
+}
+
+const SECTIONS: { id: string; icon: IconName }[] = [
+  { id: 'language', icon: 'globe' },
+  { id: 'sound', icon: 'speaker' },
+  { id: 'timing', icon: 'stopwatch' },
+  { id: 'playing', icon: 'pad' },
+  { id: 'display', icon: 'contrast' },
+  { id: 'about', icon: 'info' },
+];
+const NAV_PAD = 6;
+const NAV_ITEM = 46;
+const NAV_GAP = 4;
+
+/**
+ * Tablet and desktop: the sections listed on the left (App design canvas, SettingsTablet and SettingsDesktop). A pick
+ * brings its card into view and moves focus to it; the highlight slides there like any pick-one group (DESIGN.md §9).
+ */
+function SectionNav(): JSX.Element {
+  const still = useReducedMotion();
+  const [at, setAt] = useState(0);
+  const move = useRef({ at: 0, n: 0, fy: '0px' });
+  const m = move.current;
+  if (m.at !== at) {
+    m.fy = `calc(${m.at - at} * (100% + ${NAV_GAP}px))`;
+    m.n += 1;
+    m.at = at;
+  }
+  const blob: CSSProperties = { left: NAV_PAD, right: NAV_PAD, top: `calc(${NAV_PAD}px + ${at} * ${NAV_ITEM + NAV_GAP}px)`, height: NAV_ITEM };
+  const skin = {
+    '--fx': '0px',
+    '--fy': m.fy,
+    '--sw': 1,
+    '--sh': 1,
+    animation: m.n ? `${m.n % 2 ? 'm-slide-a' : 'm-slide-b'} .26s cubic-bezier(.2,0,0,1)` : undefined,
+  } as CSSProperties;
+  const pick = (i: number): void => {
+    setAt(i);
+    const el = document.getElementById('set-' + SECTIONS[i].id);
+    el?.scrollIntoView?.({ block: 'nearest', behavior: still ? 'auto' : 'smooth' });
+    el?.focus({ preventScroll: true });
+  };
+  return (
+    <nav aria-label={t('settings.sections')} className="set-nav" style={{ padding: NAV_PAD, gap: NAV_GAP }}>
+      <div aria-hidden="true" className="m-goo">
+        <div className="m-blob" style={blob}>
+          <div className="m-skin set-nav-thumb" style={skin} />
+        </div>
+      </div>
+      {SECTIONS.map((sec, i) => (
+        <button key={sec.id} type="button" aria-current={i === at ? 'true' : undefined} className={'set-nav-item' + (i === at ? ' is-current' : '')}
+          style={{ height: NAV_ITEM }} onClick={() => pick(i)}>
+          <Icon name={sec.icon} size={20} />
+          {t('settings.' + sec.id)}
+        </button>
+      ))}
+    </nav>
   );
 }
 

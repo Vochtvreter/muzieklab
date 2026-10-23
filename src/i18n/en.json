@@ -650,6 +650,7 @@
   },
   "settings": {
     "title": "Settings",
+    "sections": "Settings sections",
     "language": "Language",
     "languageGroup": "App language",
     "hintLanguage": "Every text, note names and counting, and how dates and numbers are written.",

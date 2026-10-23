@@ -3071,6 +3071,127 @@ button.lesson-stars:hover {
 .set-card > * + * {
   border-top: 1px solid var(--divider);
 }
+/*
+ * Tablet and desktop (App design canvas, SettingsTablet and SettingsDesktop): the title and the list of sections on the
+ * left, the cards in two columns, each card with its title inside.
+ */
+.settings-wide {
+  --pt: 32px;
+  --pb: 32px;
+  --px: 24px;
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.shell--desktop .settings-wide {
+  --pt: 24px;
+  --pb: 40px;
+  --px: max(40px, calc((100% - 1160px) / 2));
+  grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px 24px;
+}
+.set-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* A phone in landscape: the list is taller than the screen, so it scrolls with the page. */
+@media (max-height: 560px) {
+  .set-side {
+    position: static;
+  }
+}
+.set-side .page-title {
+  padding: 4px 4px 0;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+}
+.shell--desktop .set-side .page-title {
+  font-size: 30px;
+}
+.set-nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border-radius: 20px;
+}
+.set-nav-thumb {
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+.set-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+}
+.set-nav-item svg {
+  flex: none;
+}
+.set-nav-item.is-current {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.set-nav-item:hover {
+  color: var(--accent-ink);
+}
+.set-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.set-section--card {
+  border-radius: 20px;
+  scroll-margin: 16px;
+}
+.set-card-title {
+  margin: 0;
+  padding: 16px 16px 6px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 19px;
+}
+.set-card > .set-card-title + * {
+  border-top: 0;
+}
+/* Tablet: the columns are narrow, so a row's control goes under its label and a volume's slider under its name. */
+.shell--tablet .settings-wide .seg-row-line {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.shell--tablet .settings-wide .seg--settings,
+.shell--tablet .settings-wide .lang-select {
+  width: auto;
+}
+.shell--tablet .settings-wide .vol-row {
+  flex-wrap: wrap;
+  padding-top: 8px;
+  padding-bottom: 6px;
+  row-gap: 0;
+}
+.shell--tablet .settings-wide .vol-label {
+  flex: 1;
+  width: auto;
+}
+.shell--tablet .settings-wide .vol-slider {
+  order: 3;
+  flex-basis: 100%;
+  padding-right: 8px;
+}
 .vol-row {
   padding: 4px 8px 4px 16px;
   min-height: 50px;
@@ -4217,6 +4338,79 @@ button.lesson-stars:hover {
     align-self: center;
     margin-top: 0;
     padding: 14px;
+  }
+  .cal-actions {
+    grid-column: 2;
+    grid-row: 4;
+  }
+}
+
+/*
+ * Tablet: the whole width, and the pad fills the height under the plot, as on Play (App design canvas, PlayTablet).
+ * Desktop: the intro and the plot on the left, the pad (or the result) on the right, as on a phone in landscape, so a
+ * laptop shows it all without scrolling. The ring and its words grow with the pad.
+ */
+@media (min-width: 700px) and (min-height: 561px) {
+  .frame--cal .frame-column {
+    max-width: 1160px;
+  }
+  .cal .pad {
+    flex: 1 1 236px;
+    max-height: 640px;
+  }
+  .cal .pad-ring {
+    width: 210px;
+    height: 210px;
+  }
+  .cal .pad-glyph {
+    font-size: 56px;
+  }
+  .cal .pad-label {
+    font-size: 20px;
+  }
+}
+@media (min-width: 1100px) and (min-height: 561px) {
+  .cal {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 16px 32px;
+  }
+  .cal > .screen-head {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .cal-intro {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .cal-card {
+    grid-column: 1;
+    grid-row: 3 / -1;
+    align-self: start;
+  }
+  .judgement--cal {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    margin-top: 0;
+  }
+  .cal .pad {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+  }
+  .cal-anykey {
+    grid-column: 2;
+    grid-row: 4;
+  }
+  .cal-result {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    align-self: center;
+    margin-top: 0;
   }
   .cal-actions {
     grid-column: 2;
