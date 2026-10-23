@@ -1,0 +1,23 @@
+name: Deploy to test
+# Every push to the test branch deploys https://test.vivanova.app. To try any other branch there, run this from the
+# Actions tab and pick the branch under "Use workflow from". The steps are in deploy-site.yml; setup: docs/DEPLOY.md.
+on:
+  push:
+    branches: [test]
+  workflow_dispatch:
+permissions:
+  contents: read
+# One deploy at a time; a newer push waits for the running one, so releases switch in order.
+concurrency:
+  group: test
+  cancel-in-progress: false
+jobs:
+  deploy:
+    # Skipped until the test site is set up (the TEST_DEPLOY_PATH repository variable).
+    if: vars.DEPLOY_HOST != '' && vars.TEST_DEPLOY_PATH != ''
+    uses: ./.github/workflows/deploy-site.yml
+    with:
+      environment: test
+      path: ${{ vars.TEST_DEPLOY_PATH }}
+      url: ${{ vars.TEST_URL }}
+    secrets: inherit

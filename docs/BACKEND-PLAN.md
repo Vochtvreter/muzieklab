@@ -381,9 +381,9 @@ the previous release still works against the database if the deploy has to switc
 
 ### 9.3 A test site first
 
-With a database, changes need a place to try them that is not real people's accounts. **test.vivanova.app** comes
-before accounts go live: its own copy of the app, its own API on port 3001, its own database `muzieklab_test`, and
-emails only to us. It deploys on every push to a `test` branch (or by hand from a pull request).
+With a database, changes need a place to try them that is not real people's accounts. **test.vivanova.app** is set
+up for the app ([DEPLOY.md](DEPLOY.md), *The test site*): it deploys on every push to the `test` branch, or any branch
+by hand. With the API it gets its own API on port 3001, its own database `muzieklab_test`, and emails only to us.
 
 ## 10. Phases
 

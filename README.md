@@ -33,7 +33,8 @@ Settings → Calibrate once per device so the timing scores match what you hear.
 
 Every push to `main` runs the tests, builds and deploys the site to the production server over SSH
 (`.github/workflows/deploy.yml`). To redeploy without a change, run *Deploy to production* from the
-Actions tab. [docs/DEPLOY.md](docs/DEPLOY.md) explains how to set up the server, and how to roll back.
+Actions tab. To try a branch first, deploy it to https://test.vivanova.app with *Deploy to test* (or push it to the
+`test` branch). [docs/DEPLOY.md](docs/DEPLOY.md) explains how to set up the server, and how to roll back.
 
 The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`).
 

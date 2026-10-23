@@ -1,0 +1,92 @@
+name: Deploy site
+# The deploy itself, shared by deploy.yml (production) and deploy-test.yml (test): run the tests, build, upload the
+# build over SSH to <path>/releases/<commit>/ and switch <path>/current to it. Server setup: docs/DEPLOY.md.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: The GitHub environment the deploy is recorded under (production, test).
+        type: string
+        required: true
+      path:
+        description: The site's folder on the server, which holds releases/ and current.
+        type: string
+        required: true
+      url:
+        description: The site's address, checked after the switch.
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Tests gate the deploy, so a broken build never reaches the site.
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.url }}
+    env:
+      DEPLOY_PATH: ${{ inputs.path }}
+      RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # The server's own host key, so the runner only ever talks to that server.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host server
+            HostName $DEPLOY_HOST
+            Port ${DEPLOY_PORT:-22}
+            User $DEPLOY_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            BatchMode yes
+            StrictHostKeyChecking yes
+          EOF
+      # Each deploy is a new folder in releases/; the site only switches once the whole build is on the server.
+      - name: Upload the release
+        run: |
+          ssh server "mkdir -p '$DEPLOY_PATH/releases/$RELEASE'"
+          rsync -rlptz --delete dist/ "server:$DEPLOY_PATH/releases/$RELEASE/"
+      # current is a symlink the web server serves; mv -T replaces it in one step, so no request sees a half-new site.
+      # The five newest releases stay for a rollback (docs/DEPLOY.md).
+      - name: Switch to the release
+        run: |
+          ssh server "set -e
+            cd '$DEPLOY_PATH'
+            ln -sfn 'releases/$RELEASE' current.tmp
+            mv -Tf current.tmp current
+            ls -1dt releases/*/ | tail -n +6 | xargs -r rm -rf"
+      - name: Check the live site
+        if: inputs.url != ''
+        env:
+          SITE_URL: ${{ inputs.url }}
+        run: curl -fsS --retry 3 --retry-all-errors -o /dev/null "$SITE_URL"

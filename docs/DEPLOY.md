@@ -1,8 +1,13 @@
 # Deploying to your own server
 
 Muzieklab is a static site: `npm run build` writes it to `dist/`, and any web server can serve those files. The app
-routes with `#` hashes, so the server needs no rewrite rules. Production runs on your own server:
-`.github/workflows/deploy.yml` deploys every push to `main`.
+routes with `#` hashes, so the server needs no rewrite rules. Two sites run on our own server, deployed the same way
+(`.github/workflows/deploy-site.yml`):
+
+| Site | Folder on the server | Deploys | Workflow |
+|---|---|---|---|
+| https://vivanova.app (production) | `/var/www/muzieklab` | every push to `main` | `deploy.yml`, *Deploy to production* |
+| https://test.vivanova.app (test) | `/var/www/muzieklab-test` | every push to `test`, or any branch by hand | `deploy-test.yml`, *Deploy to test* |
 
 ## How a deploy works
 
@@ -129,13 +134,49 @@ Add them under the **Repository** tabs (not an environment): the workflow is ski
 **Actions → Deploy to production → Run workflow** deploys `main` right away. After that, every push to `main` deploys
 by itself. The run's summary links the live site.
 
+## The test site
+
+https://test.vivanova.app is a second copy of the app on the same server, for trying a change before it reaches
+`main`. It has its own folder and its own releases, and search engines are told to leave it out (`X-Robots-Tag`).
+Progress and settings are kept per site in the browser, so playing on the test site never touches production's.
+
+**Deploy a branch to it** in either of two ways:
+
+- **Actions → Deploy to test → Run workflow**, and pick the branch under *Use workflow from*.
+- Push it to the `test` branch: `git push --force origin my-branch:test`. Every push to `test` deploys by itself.
+
+Only one version is on the test site at a time: the latest deploy wins.
+
+### Set up the test site (once)
+
+1. **DNS:** an `A` record with name `test` and the server's IP address (in Hetzner DNS: *Records → Add record*).
+2. **Folder**, on the server:
+
+   ```sh
+   sudo mkdir -p /var/www/muzieklab-test
+   sudo chown deploy:deploy /var/www/muzieklab-test
+   ```
+
+3. **Caddy:** copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile` (it has production, `www` and test), then
+   `sudo systemctl reload caddy`. Caddy gets the certificate for test.vivanova.app by itself.
+4. **GitHub**, under *Settings → Secrets and variables → Actions → Variables*, two more repository variables. The SSH
+   key, host key and server variables are the same as production's.
+
+   | Variable | Value |
+   |---|---|
+   | `TEST_DEPLOY_PATH` | `/var/www/muzieklab-test` |
+   | `TEST_URL` | `https://test.vivanova.app/` |
+
+5. **Deploy:** *Actions → Deploy to test → Run workflow* with `main`, to check it works.
+
 ## Roll back
 
 Each run deploys the commit it was started for, so the quickest rollback is to open an older successful run (from the
 last 30 days) of *Deploy to production* in the Actions tab and choose **Re-run all jobs**. The next push to `main`
 deploys as usual.
 
-Without GitHub, on the server (as `deploy`, or with `sudo -u deploy`), point `current` at one of the kept releases:
+Without GitHub, on the server (as `deploy`, or with `sudo -u deploy`), point `current` at one of the kept releases
+(`/var/www/muzieklab-test` for the test site):
 
 ```sh
 cd /var/www/muzieklab
