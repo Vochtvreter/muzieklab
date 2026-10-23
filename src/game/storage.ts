@@ -30,7 +30,7 @@ export interface Prefs {
   holdMode: 'hold' | 'tap';
   /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */
   metronomeLook: 'digital' | 'analog';
-  /** Read notes: the name buttons show do re mi (fixed do) or letters. */
+  /** Read notes: the name buttons show do re mi (fixed do) or letters. A new player gets their device language's usual one. */
   noteNames: 'solfege' | 'letters';
   /** Read notes: the piano keys' labels. */
   pianoLabels: 'letters' | 'solfege' | 'off';
@@ -85,7 +85,7 @@ export const DEFAULT_PREFS: Prefs = {
   seenEchoHowTo: false,
   holdMode: 'hold',
   metronomeLook: 'digital',
-  noteNames: 'solfege',
+  noteNames: 'letters',
   pianoLabels: 'letters',
   pathTrack: 'rhythm',
 };
@@ -273,9 +273,23 @@ export function playedHolds(p: Progress): boolean {
   return Object.keys(p.lessons).some((id) => !id.startsWith('1.')) || p.lastSettings !== null || p.daily !== null;
 }
 
+/** Languages where music lessons name notes do re mi (fixed do): French, Italian, Spanish, Portuguese, Romanian. */
+const SOLFEGE_LANGUAGES = ['fr', 'it', 'es', 'pt', 'ro'];
+
+/** Note names for a new player: do re mi where it is the norm (those languages, and Dutch in Belgium), else letters. */
+export function defaultNoteNames(language: string | undefined): Prefs['noteNames'] {
+  const tag = (language ?? '').toLowerCase().replace('_', '-');
+  return tag.startsWith('nl-be') || SOLFEGE_LANGUAGES.includes(tag.split('-')[0]) ? 'solfege' : 'letters';
+}
+
+const deviceLanguage = (): string | undefined => (typeof navigator === 'undefined' ? undefined : navigator.language);
+
 export function loadPrefs(): Prefs {
   const raw = readJson(PREFS_KEY);
   const prefs = sanitizePrefs(raw);
+  // Nothing saved yet: a new player. Saved prefs keep their note names (do re mi, everyone's default before, if unset).
+  if (!isObj(raw)) prefs.noteNames = defaultNoteNames(deviceLanguage());
+  else if (raw.noteNames !== 'letters' && raw.noteNames !== 'solfege') prefs.noteNames = 'solfege';
   // Saved before seenHold (0.8.0): a player who has seen How to play and has played holds since knows them already.
   if (isObj(raw) && typeof raw.seenHold !== 'boolean' && prefs.seenHowTo) prefs.seenHold = playedHolds(loadProgress());
   return prefs;
