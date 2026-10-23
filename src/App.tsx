@@ -27,6 +27,9 @@ import { StoreProvider, useStore } from './ui/store';
 /** The notation test page: development builds only, so it is not shipped. */
 const RenderDemo = import.meta.env.DEV ? lazy(() => import('./render/RenderDemo').then((m) => ({ default: m.RenderDemo }))) : null;
 
+/** The test site names the branch it was built from (deploy-test.yml), so a tester knows what they are trying. */
+const BRANCH = import.meta.env.VITE_DEPLOY_BRANCH;
+
 /** data-theme on <html> overrides the system scheme (the staff redraws when it changes). */
 function useTheme(theme: 'system' | 'light' | 'dark'): void {
   useEffect(() => {
@@ -135,6 +138,9 @@ export function App(): JSX.Element {
       <StoreProvider>
         <Screens />
       </StoreProvider>
+      {BRANCH && (
+        <div className="branch-badge">{BRANCH}</div>
+      )}
     </ErrorBoundary>
   );
 }

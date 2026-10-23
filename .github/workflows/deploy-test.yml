@@ -1,6 +1,8 @@
 name: Deploy to test
 # Every push to the test branch deploys https://test.vivanova.app. To try any other branch there, run this from the
 # Actions tab and pick the branch under "Use workflow from". The steps are in deploy-site.yml; setup: docs/DEPLOY.md.
+# The site shows the branch it was built from; the run's summary names it too.
+run-name: Deploy ${{ github.ref_name }} to test
 on:
   push:
     branches: [test]
@@ -20,4 +22,5 @@ jobs:
       environment: test
       path: ${{ vars.TEST_DEPLOY_PATH }}
       url: ${{ vars.TEST_URL }}
+      show-branch: true
     secrets: inherit
