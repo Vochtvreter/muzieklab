@@ -2,7 +2,8 @@ name: Deploy to test
 # Every push to the test branch (each PR merged into it) deploys https://test.vivanova.app. To try a branch there before
 # merging it, run this from the Actions tab and pick the branch under "Use workflow from"; the next push to test
 # replaces it. The steps are in deploy-site.yml; branches and setup: docs/DEPLOY.md.
-# The site shows the branch it was built from; the run's summary names it too.
+# The site shows the branch it was built from, and has gold icons where production's are teal; the run's summary names
+# the branch too.
 run-name: Deploy ${{ github.ref_name }} to test
 on:
   push:

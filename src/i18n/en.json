@@ -2144,6 +2144,11 @@
       "results": "Results and the round summaries show your score and the buttons beside the staff and the details, so nothing is far below.",
       "play": "On a tablet, Play, Echo, Read notes and Scales have a layout of their own: the progress at the top, a big staff, and a big pad, piano or answer buttons. On a computer, Echo looks like Play while you listen too.",
       "calibrate": "Calibrate uses the whole screen: a big pad under the timing on a tablet, and beside it on a computer."
+
+    },
+    "v0_11_3": {
+      "title": "The test site has a gold icon",
+      "icon": "The test site's icon is gold with a dark note, so a browser tab or a home-screen icon tells it apart from the real Muzieklab."
     },
     "v0_11_2": {
       "title": "The test site names its branch",

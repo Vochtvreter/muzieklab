@@ -2144,6 +2144,11 @@
       "results": "Resultaten en de samenvattingen van een ronde tonen je score en de knoppen naast de balk en de details, zodat niets ver naar beneden staat.",
       "play": "Op een tablet hebben Spelen, Echo, Noten lezen en Toonladders een eigen indeling: de voortgang bovenaan, een grote balk, en een groot tikpad, piano of grote antwoordknoppen. Op een computer lijkt Echo ook tijdens het luisteren op Spelen.",
       "calibrate": "Kalibreren gebruikt het hele scherm: een groot tikpad onder de timing op een tablet, en ernaast op een computer."
+
+    },
+    "v0_11_3": {
+      "title": "De testsite heeft een gouden icoon",
+      "icon": "Het icoon van de testsite is goud met een donkere noot, zodat je hem aan een browsertabblad of een icoon op je beginscherm onderscheidt van de echte Muzieklab."
     },
     "v0_11_2": {
       "title": "De testsite noemt zijn branch",
