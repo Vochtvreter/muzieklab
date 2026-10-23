@@ -2135,6 +2135,10 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_11_3": {
+      "title": "De testsite heeft een gouden icoon",
+      "icon": "Het icoon van de testsite is goud met een donkere noot, zodat je hem aan een browsertabblad of een icoon op je beginscherm onderscheidt van de echte Muzieklab."
+    },
     "v0_11_2": {
       "title": "De testsite noemt zijn branch",
       "branch": "De testsite laat de branch zien waaruit hij is gebouwd, bovenaan elk scherm en naast de versie in Instellingen → Over."
