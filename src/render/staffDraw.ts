@@ -27,6 +27,11 @@ export interface DrawStaffOptions {
   timeSig?: string;
   /** Counting under the notes (Learn): the word for each count, and the colour of held and silent counts. */
   counts?: { text(mark: CountMark): string; held: string };
+  /**
+   * Size of the notation (default 1). Below 1 the bars are laid out wider and the drawing is shown at `width`, so the
+   * notes are smaller and the rows lower while the bars still fill the width (Play on a short phone).
+   */
+  scale?: number;
 }
 
 // Layout constants from the design's notation images (vf/render2.js).
@@ -113,13 +118,16 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
   // Learn staves (with counts) keep room above for a triplet's 3.
   const top = o.cursorSpace ? CURSOR_TOP : o.counts ? COUNT_TOP : 0;
   const rowH = ROW_H + (o.counts ? COUNT_H : 0);
+  // Drawn in the svg's own units (`layoutW` × `height`), shown `scale` times that size.
+  const scale = o.scale ?? 1;
+  const layoutW = width / scale;
   const height = rows * rowH + top - 6;
 
   const renderer = new Renderer(host as HTMLDivElement, Renderer.Backends.SVG);
-  renderer.resize(width, height);
+  renderer.resize(layoutW, height);
   const ctx = renderer.getContext();
 
-  const barW = (width - TS_EXTRA - 2) / per;
+  const barW = (layoutW - TS_EXTRA - 2) / per;
   const colourById = new Map<string, string>(); // VexFlow note id -> mark colour
   let cursorNote: StaveNote | null = null;
   const onsetNotes: [number, StaveNote][] = [];
@@ -201,20 +209,21 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
   ties.forEach((t) => t.setContext(ctx).draw());
 
   for (const [i, note] of onsetNotes) onsets.set(i, boxOf(note));
+  const shownH = Math.round(height * scale);
   const svg = host.querySelector('svg');
-  if (!svg) return { width, height, onsets };
+  if (!svg) return { width, height: shownH, onsets };
   paintSvg(svg, pal, colourById);
   if (missed.length) addMissMarks(svg, missed.map((n) => ({ x: centreX(n), y: n.getYs()[0] })), pal.miss);
   if (cursorNote) placeCursor(host, boxOf(cursorNote), pal.cursor);
   if (o.counts) addCounts(svg, counts, pal.ink, o.counts.held);
 
   svg.removeAttribute('style');
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('viewBox', `0 0 ${layoutW} ${height}`);
   svg.setAttribute('width', String(width));
-  svg.setAttribute('height', String(height));
+  svg.setAttribute('height', String(shownH));
   svg.setAttribute('aria-hidden', 'true');
   svg.style.display = 'block';
-  return { width, height, onsets };
+  return { width, height: shownH, onsets };
 }
 
 /**

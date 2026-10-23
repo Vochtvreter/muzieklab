@@ -21,11 +21,13 @@ export interface StaffProps {
   countText?: (mark: CountMark) => string;
   /** The time signature as drawn, when not the meter's numbers: 'C' for common time. */
   timeSig?: string;
+  /** Size of the notation, 1 by default; Play draws it smaller on a short phone (the bars still fill the width). */
+  scale?: number;
 }
 
 /** VexFlow staff (one-line percussion staff), coloured from the theme tokens (§3.1, §9 notation colour rule). */
 export function Staff(props: StaffProps): JSX.Element {
-  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig } = props;
+  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig, scale } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(hostRef);
   const themeVersion = useThemeVersion();
@@ -47,6 +49,7 @@ export function Staff(props: StaffProps): JSX.Element {
       cursorSpace: cursor !== undefined,
       barsPerRow,
       width,
+      scale,
       timeSig,
       counts: countText && { text: countText, held: readToken(el, 'muted') },
       palette: {
@@ -60,7 +63,7 @@ export function Staff(props: StaffProps): JSX.Element {
     });
     drawn.current = { onsets, colour };
     // cursor is left out on purpose (the effect below moves it); `cursor !== undefined` only sets the room above.
-  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, themeVersion, countText, timeSig]);
+  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, scale, themeVersion, countText, timeSig]);
 
   // Play moves the cursor once per note: swap the highlight box instead of drawing VexFlow again.
   useLayoutEffect(() => {

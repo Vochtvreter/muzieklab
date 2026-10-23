@@ -75,6 +75,7 @@ interface StaffBoxProps {
   label: string;
   marks?: Record<number, NoteMark>;
   cursor?: number | null;
+  scale?: number;
 }
 
 /** The VexFlow staff; if drawing fails, the text alternative is shown instead of breaking the screen. */
