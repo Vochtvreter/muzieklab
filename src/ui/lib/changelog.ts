@@ -32,6 +32,7 @@ export const RELEASES: Release[] = [
       { kind: 'new', text: 'changelog.v0_12_0.settings' },
       { kind: 'better', text: 'changelog.v0_12_0.setups' },
       { kind: 'better', text: 'changelog.v0_12_0.results' },
+      { kind: 'better', text: 'changelog.v0_12_0.play' },
       { kind: 'better', text: 'changelog.v0_12_0.calibrate' },
     ],
     action: { to: '/settings', label: 'changelog.v0_12_0.try' },

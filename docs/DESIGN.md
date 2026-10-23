@@ -1192,7 +1192,27 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   on the App design canvas's PlayTablet); on desktop the intro and the plot are on the left and the pad or the result
   on the right, as on a phone in landscape.
 - Exercise screens swap that header for the exercise header: title, progress, and
-  Pause / Quit. It has its own spacing (20 px × 40 px) and is not the tab header.
+  Pause / Quit. It has its own spacing (20 px × 40 px) and is not the tab header. On tablet (since 0.12.0) it is
+  18 px × 32 px with the progress bar under the row, as on the App design canvas's PlayTablet and NoteTablet boards.
+- The play screens on tablet (since 0.12.0; before, the phone layout in a 640 px column). A tablet-wide screen that is
+  also a phone on its side (landscape, ≤ 560 px tall) keeps the phone layout and its two columns (`useExerciseLayout`
+  in `ui/hooks.ts`).
+  - Play (App design canvas, PlayTablet): the exercise header with help, Pause and Quit; the staff and lane across the
+    width (four bars a row); the Count and Combo cards (the pendulum in the Count card with the analog look); the
+    judgement; a big pad that fills the rest of the height (its ring grows with it, up to 230 px); Skip to results.
+    Echo's tap-back phase is the same.
+  - Echo's listen phase, on tablet like Play with the listen card where the staff goes, the Count and Combo cards, *Listen
+    first* and the pad off; on desktop Play's desktop layout with the listen card in the staff card and a key cap that is
+    off. Its header has help and Quit, no Pause.
+  - Read notes (App design canvas, NoteTablet): the exercise header; the eyebrow, the question and the correct count; a
+    big staff card (six bars, not the board's eight: eight leave no room for a sign before the last note); the feedback;
+    the answer card with the input switch, the sign row, 200 px name keys or the piano, and Hint / Next note; Skip to
+    summary.
+  - Scales (no board; as Read notes): the exercise header; the scale's name and mistakes; the staff card with the degree
+    rows and Hear it so far / Start over; the feedback; the answer card with the piano, or the signs with Hint / Next
+    scale; Skip to summary.
+  - A shorter tablet window tightens the gaps (Play under 900 px tall, Read notes and Scales under 1100 px); under
+    960 px Read notes' and Scales' keys keep their height and the page scrolls, as the desktop layout does on a laptop.
 - Large screens show the same content and data as mobile, laid out side by side. They add no
   extra features.
 
