@@ -242,8 +242,10 @@ like the rhythm notation.
   **W E T Y U** = C♯ D♯ F♯ G♯ A♯.
 - **Do re mi or letters** on the name buttons is a saved preference, switched on the play screen. A new player gets
   do re mi when the device language is French, Italian, Spanish, Portuguese, Romanian or Dutch in Belgium (`nl-BE`),
-  and letters otherwise (since 0.10.0; before, do re mi for everyone). Players with saved preferences keep their
-  choice, and preferences saved before the choice existed keep do re mi.
+  and letters otherwise (since 0.10.0; before, do re mi for everyone). A new player is one with nothing saved at all,
+  no preferences and no progress; their names are saved at once. Players with saved preferences keep their choice.
+  Preferences saved before the choice existed keep do re mi, and so does a player with progress but no saved
+  preferences (they are saved only when one changes, so a player who only ever played Read notes from Home has none).
 - A **Hint** marks the note as assisted. Off a landmark it names the landmark first and then the way to the note, in
   two sentences, so the landmark's name does not read as the answer: *The top line is fa (F). This note is one step
   higher.* (nl *De bovenste lijn is fa (F). Deze noot ligt één stap hoger.*; since 0.10.0, before *One step above the

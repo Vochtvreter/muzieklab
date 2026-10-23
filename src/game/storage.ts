@@ -310,8 +310,14 @@ const deviceLanguage = (): string | undefined => (typeof navigator === 'undefine
 export function loadPrefs(): Prefs {
   const raw = readJson(PREFS_KEY);
   const prefs = sanitizePrefs(raw);
-  // Nothing saved yet: a new player. Saved prefs keep their note names (do re mi, everyone's default before, if unset).
-  if (!isObj(raw)) prefs.noteNames = defaultNoteNames(deviceLanguage());
+  if (!isObj(raw)) {
+    // No prefs saved yet (the store saves them when one changes). Nothing saved at all: a new player, who gets the
+    // device language's note names. Progress without prefs: a player from before who never changed one, and had do re
+    // mi. Saved now, so a new player's names stay once there is progress.
+    prefs.noteNames = isEmptyProgress(loadProgress()) ? defaultNoteNames(deviceLanguage()) : 'solfege';
+    savePrefs(prefs);
+  }
+  // Saved prefs keep their note names (do re mi, everyone's default before, if unset).
   else if (raw.noteNames !== 'letters' && raw.noteNames !== 'solfege') prefs.noteNames = 'solfege';
   // Saved before seenHold (0.8.0): a player who has seen How to play and has played holds since knows them already.
   if (isObj(raw) && typeof raw.seenHold !== 'boolean' && prefs.seenHowTo) prefs.seenHold = playedHolds(loadProgress());

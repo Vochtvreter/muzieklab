@@ -114,6 +114,7 @@ describe('prefs and progress storage', () => {
     const lang = vi.spyOn(navigator, 'language', 'get');
     lang.mockReturnValue('fr-FR');
     expect(loadPrefs().noteNames).toBe('solfege');
+    localStorage.clear();
     lang.mockReturnValue('en-GB');
     expect(loadPrefs().noteNames).toBe('letters');
     localStorage.setItem(PREFS_KEY, JSON.stringify({ ...DEFAULT_PREFS, noteNames: 'letters' }));
@@ -123,6 +124,25 @@ describe('prefs and progress storage', () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: 'dark' }));
     lang.mockReturnValue('en-US');
     expect(loadPrefs().noteNames).toBe('solfege');
+    lang.mockRestore();
+  });
+
+  it('a player with progress but no saved prefs is not new: do re mi, as they had it', () => {
+    // Prefs are saved only when one changes: a player who only played Read notes from Home has progress and no prefs.
+    const lang = vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-US');
+    saveProgress({ ...defaultProgress(), xp: 40, notes: { settings: null, weak: { 'treble:38': 2 } } });
+    expect(loadPrefs().noteNames).toBe('solfege');
+    // Nothing saved at all: a new player gets the device's usual names.
+    localStorage.clear();
+    expect(loadPrefs().noteNames).toBe('letters');
+    lang.mockRestore();
+  });
+
+  it('saves a new player\'s note names at once, so they stay once there is progress', () => {
+    const lang = vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-US');
+    expect(loadPrefs().noteNames).toBe('letters');
+    saveProgress({ ...defaultProgress(), xp: 40 });
+    expect(loadPrefs().noteNames).toBe('letters');
     lang.mockRestore();
   });
 
