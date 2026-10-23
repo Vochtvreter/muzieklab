@@ -37,7 +37,7 @@ export interface Prefs {
   /**
    * The setup's "Hold notes for their length" was turned on, also before the path teaches holding (unit 2): the Input
    * mode it replaced, which turning it off before unit 2 puts back. Null until it is turned on, and again once it is
-   * turned off.
+   * turned off or Input is picked in Settings.
    */
   holdEarly: Prefs['holdMode'] | null;
   /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */

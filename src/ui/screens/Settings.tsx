@@ -88,7 +88,8 @@ export function SettingsScreen(): JSX.Element {
           </Section>
 
           <Section id="playing" title={t('settings.playing')}>
-            <SegRow label={t('settings.input')} group={t('settings.inputGroup')} value={prefs.holdMode} onChange={(v: Prefs['holdMode']) => set({ holdMode: v })}
+            {/* A choice here replaces whatever the Setup's early-hold switch would put back (holdEarly). */}
+            <SegRow label={t('settings.input')} group={t('settings.inputGroup')} value={prefs.holdMode} onChange={(v: Prefs['holdMode']) => set({ holdMode: v, holdEarly: null })}
               hint={t(prefs.holdMode === 'hold' ? 'settings.hintHold' : 'settings.hintTap')}
               options={[
                 { value: 'hold', label: t('settings.inputHold') },
