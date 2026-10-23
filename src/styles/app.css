@@ -3032,6 +3032,43 @@ button.lesson-stars:hover {
   background: var(--ground);
   box-shadow: 0 -18px 14px -6px var(--ground), 0 40px 0 24px var(--ground);
 }
+/*
+ * Tablet and desktop (Results and the round summaries of Read notes and Scales): the score and the actions are the side
+ * panel. Listen, Practice settings and Copy code wrap in its narrow column. The panel stays in view by itself, so the
+ * actions sit under the score; only a phone in landscape, too short for the whole panel, keeps them at the bottom.
+ */
+@media (min-width: 700px) {
+  .wide-side .results-secondary {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  /* The tablet's panel is narrow: the outline button keeps its words on one line (Change setup), the filled one takes the rest. */
+  .wide-side .results-main:not(.results-main--again) {
+    grid-template-columns: minmax(max-content, 1fr) 1.5fr;
+  }
+}
+@media (min-width: 700px) and (min-height: 560.02px) {
+  .results .wide-side .results-actions {
+    position: static;
+    margin-top: 0;
+    box-shadow: none;
+  }
+}
+/*
+ * A phone in landscape: less room above and below, so more of the side panel is in view. Results' panel is taller than
+ * the screen: it scrolls with the page until its end is in view, then stays there while a long staff scrolls on.
+ */
+@media (min-width: 700px) and (max-height: 560px) {
+  .results {
+    --pt: 20px;
+    --pb: 16px;
+  }
+  .results-side {
+    align-self: end;
+    top: auto;
+    bottom: 0;
+  }
+}
 
 /* ---------- Settings ---------- */
 .settings {
