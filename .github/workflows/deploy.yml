@@ -1,6 +1,6 @@
 name: Deploy to production
-# Every push to main (each merged PR) builds the site and uploads it to the production server over SSH; run it by hand
-# from the Actions tab to redeploy without a change. Server setup and the secrets it needs: docs/DEPLOY.md.
+# Every push to main (each merged PR) deploys https://vivanova.app; run it by hand from the Actions tab to redeploy
+# without a change. The steps are in deploy-site.yml; server setup and the settings it needs: docs/DEPLOY.md.
 on:
   push:
     branches: [main]
@@ -12,74 +12,12 @@ concurrency:
   group: production
   cancel-in-progress: false
 jobs:
-  build:
+  deploy:
     # Skipped until the server is set up (the DEPLOY_HOST repository variable), so main stays green before then.
     if: vars.DEPLOY_HOST != ''
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      # Tests gate the deploy, so a broken main never reaches the live site.
-      - run: npm test
-      - run: npm run build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 7
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: production
+    uses: ./.github/workflows/deploy-site.yml
+    with:
+      environment: production
+      path: ${{ vars.DEPLOY_PATH }}
       url: ${{ vars.PRODUCTION_URL }}
-    env:
-      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
-      RELEASE: ${{ github.sha }}
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Set up SSH
-        env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          # The server's own host key, so the runner only ever talks to that server.
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          cat > ~/.ssh/config <<EOF
-          Host production
-            HostName $DEPLOY_HOST
-            Port ${DEPLOY_PORT:-22}
-            User $DEPLOY_USER
-            IdentityFile ~/.ssh/deploy_key
-            IdentitiesOnly yes
-            BatchMode yes
-            StrictHostKeyChecking yes
-          EOF
-      # Each deploy is a new folder in releases/; the site only switches once the whole build is on the server.
-      - name: Upload the release
-        run: |
-          ssh production "mkdir -p '$DEPLOY_PATH/releases/$RELEASE'"
-          rsync -rlptz --delete dist/ "production:$DEPLOY_PATH/releases/$RELEASE/"
-      # current is a symlink the web server serves; mv -T replaces it in one step, so no request sees a half-new site.
-      # The five newest releases stay for a rollback (docs/DEPLOY.md).
-      - name: Switch to the release
-        run: |
-          ssh production "set -e
-            cd '$DEPLOY_PATH'
-            ln -sfn 'releases/$RELEASE' current.tmp
-            mv -Tf current.tmp current
-            ls -1dt releases/*/ | tail -n +6 | xargs -r rm -rf"
-      - name: Check the live site
-        if: vars.PRODUCTION_URL != ''
-        run: curl -fsS --retry 3 --retry-all-errors -o /dev/null "${{ vars.PRODUCTION_URL }}"
+    secrets: inherit

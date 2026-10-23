@@ -1,8 +1,8 @@
-# Muzieklab on Caddy (docs/DEPLOY.md). Caddy gets and renews the HTTPS certificate on its own.
+# Muzieklab on Caddy (docs/DEPLOY.md). Caddy gets and renews the HTTPS certificates on its own.
 # Copy this to /etc/caddy/Caddyfile and run: sudo systemctl reload caddy
-vivanova.app {
-	# The deploy workflow points current at the newest release.
-	root * /var/www/muzieklab/current
+
+# What production and the test site share: compression, files, and the headers.
+(muzieklab) {
 	encode zstd gzip
 	file_server
 
@@ -19,4 +19,21 @@ vivanova.app {
 	header @other Cache-Control "no-cache"
 
 	header /manifest.webmanifest Content-Type application/manifest+json
+}
+
+# Production: deploys from main. The deploy workflow points current at the newest release.
+vivanova.app {
+	root * /var/www/muzieklab/current
+	import muzieklab
+}
+
+www.vivanova.app {
+	redir https://vivanova.app{uri} permanent
+}
+
+# The test site: deploys from the test branch, or any branch by hand. Kept out of search engines.
+test.vivanova.app {
+	root * /var/www/muzieklab-test/current
+	import muzieklab
+	header X-Robots-Tag "noindex, nofollow"
 }
