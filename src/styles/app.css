@@ -3558,7 +3558,8 @@ button.lesson-stars:hover {
     border-radius: 28px;
   }
   .cl-latest-title {
-    font-size: 28px;
+    font-size: 30px;
+    line-height: 1.12;
   }
   .cl-groups {
     padding-top: 0;
@@ -3567,6 +3568,353 @@ button.lesson-stars:hover {
   .cl-try {
     align-self: end;
   }
+}
+/* Changes on the accent card: the kind chips are a light wash of the card's text colour, with no rules between. */
+.cl-fill-changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 12px;
+}
+.cl-fill-changes .cl-change {
+  padding: 0;
+  border-top: 0;
+}
+.cl-fill-changes .cl-kind {
+  background: color-mix(in srgb, var(--on-fill) 14%, transparent);
+  color: var(--on-fill);
+}
+
+/* Tablet (MVP canvas, Tablet · What's new): the full width under the header, with larger rows and type. */
+.changelog--wide {
+  --pt: 28px;
+  --px: 32px;
+  --pb: 36px;
+  gap: 20px;
+}
+.changelog--wide .screen-title {
+  font-size: 24px;
+}
+.changelog--wide .cl-current {
+  font-size: 14.5px;
+}
+.changelog--wide .cl-latest-head {
+  gap: 4px;
+}
+.cl-latest-staff {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  height: auto;
+  margin-top: 8px;
+  color: var(--on-fill);
+}
+.changelog--wide .cl-fill-changes {
+  padding-top: 2px;
+}
+.changelog--wide .cl-fill-changes .cl-change {
+  font-size: 15px;
+  line-height: 1.45;
+  gap: 12px;
+}
+.changelog--wide .cl-kind {
+  width: 56px;
+}
+.changelog--wide .cl-earlier {
+  gap: 10px;
+}
+.changelog--wide .cl-timeline {
+  padding-left: 26px;
+  gap: 12px;
+}
+.changelog--wide .cl-timeline::before {
+  left: 7px;
+  top: 32px;
+  bottom: 32px;
+}
+.changelog--wide .cl-release {
+  border-radius: 20px;
+}
+.changelog--wide .cl-release::before {
+  left: -25px;
+  top: 25px;
+  width: 14px;
+  height: 14px;
+}
+.changelog--wide .cl-release-row {
+  padding: 12px 18px;
+  min-height: 64px;
+  gap: 14px;
+  border-radius: 20px;
+}
+.changelog--wide .cl-release-row .cl-ver {
+  min-width: 58px;
+  font-size: 13.5px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+.changelog--wide .cl-release-text {
+  gap: 2px;
+}
+.changelog--wide .cl-release-text b {
+  font-size: 16px;
+}
+.changelog--wide .cl-release-text .row-sub {
+  font-size: 13px;
+}
+/* An opened release's changes line up under its title, past the version pill. */
+.changelog--wide .cl-changes {
+  padding: 0 18px 8px 90px;
+}
+.changelog--wide .cl-changes .cl-change {
+  gap: 12px;
+  padding: 11px 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+.changelog--wide .cl-try-inline {
+  margin: 0 18px 8px 90px;
+}
+.changelog--wide .cl-footer {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/*
+ * Desktop (MVP and App design canvases, Desktop · What's new): every release in a list on the left, the chosen one on
+ * a card on the right. Like a Learn chapter's list, the left column stays put while the card scrolls.
+ */
+.changelog--desk {
+  --pt: 20px;
+  --px: max(40px, calc((100% - 1160px) / 2));
+  --pb: 40px;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 28px;
+}
+.cl-side {
+  flex: none;
+  width: 300px;
+  position: sticky;
+  top: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cl-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin-left: -6px;
+  padding: 0 8px 0 2px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+}
+.cl-back:hover {
+  color: var(--ink);
+}
+.cl-side .screen-title {
+  flex: none;
+  padding: 0 4px;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+}
+.cl-side .cl-current,
+.cl-side .cl-footer {
+  padding: 0 4px;
+}
+.cl-side .cl-footer {
+  line-height: 1.45;
+}
+/* On a short screen only the list scrolls: the way back and the title stay in view. */
+.cl-nav {
+  flex: 0 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 20px;
+  background: var(--paper);
+}
+.cl-nav-item {
+  width: 100%;
+  min-height: 60px;
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+}
+.cl-nav-item:hover {
+  background: var(--ground);
+}
+.cl-nav-item.is-current {
+  background: var(--accent-soft);
+}
+.cl-nav-item .cl-ver {
+  min-width: 54px;
+}
+.cl-nav-item.is-current .cl-ver {
+  background: var(--accent);
+  color: var(--on-fill);
+}
+.cl-nav-item .cl-release-text b {
+  font-size: 14.5px;
+}
+.cl-detail {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cl-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 32px;
+  border-radius: 28px;
+  background: var(--paper);
+}
+.cl-card--latest {
+  background: var(--accent);
+  color: var(--on-fill);
+}
+.cl-card-staff {
+  position: absolute;
+  top: 28px;
+  right: -20px;
+  width: 300px;
+  height: 96px;
+  color: var(--on-fill);
+}
+.cl-card .cl-latest-tag {
+  position: relative;
+  margin-bottom: 0;
+}
+.cl-card .cl-latest-ver {
+  font-size: 13px;
+}
+.cl-card-head {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cl-card-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 30px;
+  line-height: 1.12;
+}
+/* The staff drawing keeps the top right corner: a long title wraps before it instead of running under it. */
+.cl-card--latest .cl-card-head {
+  padding-right: min(240px, 25%);
+}
+.cl-card--latest .cl-card-title {
+  font-weight: 600;
+  font-size: 36px;
+  line-height: 1.1;
+}
+.cl-card-meta {
+  font-size: 14px;
+  color: var(--muted);
+}
+.cl-card--latest .cl-card-meta {
+  color: var(--on-fill-muted);
+}
+.cl-card-changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+}
+.cl-card-changes .cl-change {
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 15.5px;
+  line-height: 1.45;
+}
+.cl-card-changes .cl-kind {
+  width: 58px;
+  margin-top: 2px;
+}
+.cl-card-changes.cl-fill-changes {
+  max-width: 640px;
+}
+.cl-card-changes.cl-fill-changes .cl-change {
+  padding: 0;
+}
+.cl-card .cl-try {
+  align-self: flex-start;
+  padding: 0 22px;
+}
+.cl-card .cl-try-inline {
+  align-self: flex-start;
+  margin: -8px 0 -10px;
+}
+.cl-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.cl-step {
+  min-height: 56px;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  padding: 8px 16px 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  background: var(--paper);
+  color: var(--ink);
+}
+.cl-step > svg {
+  flex: none;
+  color: var(--muted);
+}
+.cl-step--older {
+  margin-left: auto;
+  padding: 8px 10px 8px 16px;
+  text-align: right;
+}
+.cl-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cl-step-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cl-step b {
+  font-size: 14.5px;
+}
+.cl-step-ver {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent-ink);
 }
 
 /* ---------- Calibration ---------- */

@@ -1163,6 +1163,11 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   on the left; Continue (the lesson title over its staff) and the Free practice tiles on the right.
 - A Learn chapter on desktop has the top header, a chapter list on the left and the chapter's
   sections as cards on the right (App design canvas, Desktop · chapter 5 page).
+- What's new (Settings → About) on tablet uses the full width under the header: the latest release on a two-column
+  accent card (title and Try on the left, each change with its kind chip on the right), then the timeline of earlier
+  releases. On desktop the releases are a list on the left and the chosen one is a card on the right, with Newer and
+  Older under it; the list scrolls on its own on a short screen. The desktop boards have no All · New · Fixes filter
+  (MVP canvas, Settings page; App design canvas, ChangelogTablet and ChangelogDesktop).
 - Exercise screens swap that header for the exercise header: title, progress, and
   Pause / Quit. It has its own spacing (20 px × 40 px) and is not the tab header.
 - Large screens show the same content and data as mobile, laid out side by side. They add no
