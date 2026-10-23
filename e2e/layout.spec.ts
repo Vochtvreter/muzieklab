@@ -203,6 +203,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
       // Nothing was played: the badge says what opens lesson 1.2, and Next stays on this lesson.
       await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
+      // Every note was missed: each has a × under it on the staff as well as the miss colour (DESIGN.md §9).
+      const misses = Number(await page.locator('.counts .count-n').nth(3).textContent());
+      expect(misses).toBeGreaterThan(0);
+      await expect(page.locator('.results-staff .staff-miss path')).toHaveCount(misses);
       await expectClickable(page.getByRole('button', { name: 'Copy' }));
       await expectClickable(page.getByRole('button', { name: 'Retry' }));
       await expectClickable(page.getByRole('button', { name: 'Next exercise' }));
