@@ -128,6 +128,9 @@ export function SettingsScreen(): JSX.Element {
               <span className="about-version">
                 <b>{t('settings.version')}</b>
                 <span className="mono-muted">{pkg.version}</span>
+                {import.meta.env.VITE_DEPLOY_BRANCH && (
+                  <span className="mono-muted about-branch" title={t('settings.branch')}>{import.meta.env.VITE_DEPLOY_BRANCH}</span>
+                )}
               </span>
               <span className={'offline' + (offline ? '' : ' is-off')}>
                 {offline && <Icon name="check" size={16} strokeWidth={2.6} className="tone-good" />}

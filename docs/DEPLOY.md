@@ -149,6 +149,12 @@ Progress and settings are kept per site in the browser, so playing on the test s
 
 Only one version is on the test site at a time: the latest deploy wins.
 
+The test site shows which branch is on it: a small label at the top of every screen, and the branch after the version
+in *Settings → About*. The run's name and summary in the Actions tab name it too. A run started by hand names the
+branch picked under *Use workflow from*; a push to `test` names the branch whose latest commit it is (so
+`git push --force origin my-branch:test` shows `my-branch`), or `test` when no other branch is at that commit.
+Production never shows a branch.
+
 ### Set up the test site (once)
 
 1. **DNS:** an `A` record with name `test` and the server's IP address (in Hetzner DNS: *Records → Add record*).

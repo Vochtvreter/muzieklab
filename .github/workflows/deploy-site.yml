@@ -16,14 +16,18 @@ on:
         description: The site's address, checked after the switch.
         type: string
         required: true
-      api_path:
+      api-path:
         description: The API's folder on the server (releases/ and current); empty while the site has no API.
         type: string
         default: ''
-      api_service:
+      api-service:
         description: The API's systemd service, restarted after its switch (muzieklab-api@<site>.service).
         type: string
         default: ''
+      show-branch:
+        description: Build the branch name into the site, which shows it (the test site, so a tester knows what is on it).
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -41,6 +45,21 @@ jobs:
       - run: npm ci
       # Tests gate the deploy, so a broken build never reaches the site.
       - run: npm test
+      # A run started by hand builds the branch picked under "Use workflow from". A push to test names only test, so
+      # the branch is the one whose head is the same commit (after git push origin my-branch:test); else it stays test.
+      - name: Name the branch
+        if: inputs.show-branch
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          branch="$REF_NAME"
+          if [ "$branch" = test ]; then
+            match=$(git ls-remote --heads origin | awk -v sha="$SHA" '$1 == sha { sub("refs/heads/", "", $2); print $2 }' | grep -vx test | head -n 1 || true)
+            branch="${match:-$branch}"
+          fi
+          echo "VITE_DEPLOY_BRANCH=$branch" >> "$GITHUB_ENV"
+          echo "Deploys **$branch** ($SHA)" >> "$GITHUB_STEP_SUMMARY"
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
@@ -49,13 +68,13 @@ jobs:
           retention-days: 7
       # The API is one bundled file (server/build.mjs) that reports this commit from /api/v1/health.
       - name: Test and build the API
-        if: inputs.api_path != ''
+        if: inputs.api-path != ''
         working-directory: server
         run: |
           npm ci
           npm test
           npm run build
-      - if: inputs.api_path != ''
+      - if: inputs.api-path != ''
         uses: actions/upload-artifact@v4
         with:
           name: api
@@ -69,8 +88,8 @@ jobs:
       url: ${{ inputs.url }}
     env:
       DEPLOY_PATH: ${{ inputs.path }}
-      API_PATH: ${{ inputs.api_path }}
-      API_SERVICE: ${{ inputs.api_service }}
+      API_PATH: ${{ inputs.api-path }}
+      API_SERVICE: ${{ inputs.api-service }}
       SITE_URL: ${{ inputs.url }}
       RELEASE: ${{ github.sha }}
     steps:
@@ -78,7 +97,7 @@ jobs:
         with:
           name: dist
           path: dist/
-      - if: inputs.api_path != ''
+      - if: inputs.api-path != ''
         uses: actions/download-artifact@v4
         with:
           name: api
@@ -109,13 +128,13 @@ jobs:
       # The API goes first, so the app never switches to a release whose API is not running. Its releases sit in
       # releases/ like the app's; previous records what current pointed at, for the rollback below.
       - name: Upload the API release
-        if: inputs.api_path != ''
+        if: inputs.api-path != ''
         run: |
           ssh server "mkdir -p '$API_PATH/releases/$RELEASE'"
           rsync -rlptz --delete api/ "server:$API_PATH/releases/$RELEASE/"
       - name: Switch the API and restart it
         id: api_switch
-        if: inputs.api_path != ''
+        if: inputs.api-path != ''
         run: |
           ssh server "set -e
             cd '$API_PATH'
@@ -125,7 +144,7 @@ jobs:
             sudo -n systemctl restart '$API_SERVICE'"
       # Waits until the API answers as this release with the database reachable (a minute at most).
       - name: Check the API
-        if: inputs.api_path != ''
+        if: inputs.api-path != ''
         run: |
           health="${SITE_URL%/}/api/v1/health"
           for _ in $(seq 1 30); do
@@ -151,7 +170,7 @@ jobs:
             sudo -n systemctl restart '$API_SERVICE'
             echo \"Back on \$prev.\""
       - name: Remove old API releases
-        if: inputs.api_path != ''
+        if: inputs.api-path != ''
         run: ssh server "cd '$API_PATH' && ls -1dt releases/*/ | tail -n +6 | xargs -r rm -rf"
       # Each deploy is a new folder in releases/; the site only switches once the whole build is on the server.
       - name: Upload the release
