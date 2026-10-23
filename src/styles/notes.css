@@ -478,6 +478,62 @@
   font-size: 11px;
   opacity: 0.6;
 }
+/* A lesson's own notes (fewer than seven): the buttons share the row, centred, and do not grow into bars. */
+.name-grid--few {
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ---------- Write it, hear it (path lessons) ---------- */
+/* The staff takes the note to write: point at it or drag along it; it does not scroll the page while dragging. */
+.nwrite-staff {
+  width: 100%;
+  align-self: stretch;
+  touch-action: none;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.nwrite {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 76px;
+}
+.nwrite-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nwrite-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 1.2;
+}
+.nwrite-moves {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.nwrite-moves .btn {
+  width: 64px;
+  min-height: 56px;
+  padding: 0;
+}
+.nwrite-up {
+  transform: rotate(-90deg);
+}
+.nwrite-down {
+  transform: rotate(90deg);
+}
+.nhear-btn {
+  align-self: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 18px;
+}
 
 /* One octave: 7 white keys in a grid, 5 black keys placed on the boundaries after C, D, F, G and A. */
 .piano {
@@ -590,8 +646,12 @@
   box-shadow: 0 1px 0 var(--line);
   align-items: center;
 }
-.nplay-staff--desk .pitch-staff {
+.nplay-staff--desk .pitch-staff,
+.nplay-staff--desk .nwrite-staff {
   max-width: 900px;
+}
+.nplay-staff--desk .nwrite-staff {
+  margin: 0 auto;
 }
 .nplay-staff--desk .ntimer {
   width: 100%;

@@ -1,26 +1,35 @@
 /**
- * Read notes · name it (DESIGN.md §3.5). A staff of whole notes, one per bar, with the current one highlighted; answer
- * with names (sign first, then the name; no sign row when no note can have one) or on the piano, switchable
- * mid-round. With Hear the notes on, a piano key sounds when pressed and the right note after every answer. Right
- * answers move on by themselves; after a wrong one the feedback says why and Next note goes on. Desktop: the exercise
- * header, a wide staff, the answer card with computer keys and three stat cards.
+ * Read notes · name it, write it, hear it (DESIGN.md §3.5). A staff of whole notes, one per bar, with the current one
+ * highlighted; answer with names (sign first, then the name; no sign row when no note can have one) or on the piano,
+ * switchable mid-round. With Hear the notes on, a piano key sounds when pressed and the right note after every answer.
+ * Path lessons also write and hear: a note to write is put on the staff (point, drag, ▲ ▼ or the arrow keys, then
+ * Check); a note to hear plays after sol and stays hidden until it is named. A lesson's name buttons are the notes it
+ * has learned. Right answers move on by themselves; after a wrong one the feedback says why and Next note goes on.
+ * Desktop: the exercise header, a wide staff, the answer card with computer keys and three stat cards.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import {
+  BOTTOM_LINE,
+  HEAR_REFERENCE,
   isRight,
   keySigns,
   letterOf,
   noteId,
   noteMidi,
   pianoKeyMidi,
+  rangeSteps,
   roundHasSigns,
+  roundLetters,
   type Alter,
   type Given,
   type Letter,
   type NoteAnswer,
   type RoundNote,
+  type Step,
 } from '../../../core/api';
-import { PitchStaff, type PitchMark } from '../../../render/PitchStaff';
+import { pathLessonOf } from '../../../game/tracks';
+import { PitchStaff, type PitchMark, type PitchNote } from '../../../render/PitchStaff';
+import { stepAtY } from '../../../render/pitchDraw';
 import { t } from '../../../i18n';
 import { engine, unlockAudio } from '../../audio';
 import { ExerciseFrame } from '../../components/AppShell';
@@ -29,7 +38,20 @@ import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
 import { SHORTER_PHONE, useBreakpoint, useDocTitle, useKeyboardHints, useMediaQuery } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
-import { feedbackText, hintText, keySignsText, majorName, positionText, letterName, solfegeName, type NameSystem } from '../../lib/noteText';
+import {
+  feedbackText,
+  fullName,
+  hearFeedback,
+  hearHint,
+  hintText,
+  keySignsText,
+  letterName,
+  majorName,
+  positionText,
+  solfegeName,
+  writeFeedback,
+  type NameSystem,
+} from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
 
@@ -37,6 +59,8 @@ import { todayIso, useStore, type NoteRun } from '../../store';
 const AUTO_NEXT_MS = 700;
 /** After a wrong piano key, the right note follows this long after it (seconds). */
 const CORRECTION_GAP = 0.5;
+/** A note to hear: sol, then the note this long after it (seconds). */
+const HEAR_GAP = 0.9;
 const BLACK_PCS = [1, 3, 6, 8, 10];
 const WHITE_PCS: Record<Letter, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const WHITE_ORDER = [0, 2, 4, 5, 7, 9, 11];
@@ -89,9 +113,24 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const [sign, setSign] = useState<Alter>(0);
   const [mode, setMode] = useState<Mode>(() => (notes[0]?.input === 'piano' ? 'piano' : state.prefs.noteNames));
   const [left, setLeft] = useState(timer * 1000);
+  /** Where the note being written sits now (null: not put on the staff yet). */
+  const [ghost, setGhost] = useState<Step | null>(null);
   const shownAt = useRef(performance.now());
   const note = notes[i];
+  const task = note.task;
   const system: NameSystem = mode === 'solfege' ? 'solfege' : 'letters';
+  // A note to write is named in the player's names (the piano has none).
+  const nameSystem: NameSystem = task === 'write' ? state.prefs.noteNames : system;
+  // A path lesson's name buttons are the notes it has learned.
+  const letters = useMemo(() => roundLetters(run.settings), [run.settings]);
+  const writing = task === 'write' && !done;
+  const steps = useMemo(() => rangeSteps(note.clef, run.settings.range), [note.clef, run.settings.range]);
+  const place = useCallback((st: Step) => setGhost(Math.max(steps[0], Math.min(steps[steps.length - 1], st))), [steps]);
+  // ▲ ▼ and the arrow keys: one line or space; the first press puts the note on the middle line.
+  const move = useCallback(
+    (d: number) => setGhost((g) => (g === null ? BOTTOM_LINE[note.clef] + 4 : Math.max(steps[0], Math.min(steps[steps.length - 1], g + d)))),
+    [steps, note.clef],
+  );
 
   // Mixed rounds: names and piano take turns every 5 notes (the player can still switch any time).
   useEffect(() => {
@@ -107,6 +146,15 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     },
     [run.settings.playNotes],
   );
+  // A note to hear: sol, then the note. It always sounds (Hear the notes only turns the other sounds off).
+  const hearIt = useCallback(() => {
+    if (!note) return;
+    unlockAudio();
+    engine().pitches([noteMidi({ ...note, step: HEAR_REFERENCE, alter: 0 }), noteMidi(note)], HEAR_GAP);
+  }, [note]);
+  useEffect(() => {
+    if (note?.task === 'hear') hearIt();
+  }, [i]);
 
   const finish = useCallback(
     (list: NoteAnswer[]) => {
@@ -131,6 +179,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     setDone(false);
     setHinted(false);
     setSign(0);
+    setGhost(null);
     setLeft(timer * 1000);
     shownAt.current = performance.now();
   }, [done, i, total, answers, finish, timer]);
@@ -211,6 +260,20 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         if (done) {
           e.preventDefault();
           next();
+        } else if (writing && ghost !== null) {
+          e.preventDefault();
+          answer({ kind: 'place', step: ghost });
+        }
+        return;
+      }
+      // Writing: the arrow keys move the note a line or space.
+      if (task === 'write') {
+        if (writing && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+          e.preventDefault();
+          move(e.key === 'ArrowUp' ? 1 : -1);
+        } else if (e.key === 'Escape' && desktop) {
+          e.preventDefault();
+          quit();
         }
         return;
       }
@@ -229,18 +292,33 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       else if (signs && (e.key === '-' || e.key === '_')) setSign(-1);
       else if (signs && e.key === '0') setSign(0);
       else if (signs && (e.key === '=' || e.key === '+')) setSign(1);
-      else if (/^[A-G]$/.test(k)) answer({ kind: 'name', letter: k as Letter, alter: sign });
+      else if (/^[A-G]$/.test(k) && letters.includes(k as Letter)) answer({ kind: 'name', letter: k as Letter, alter: sign });
       else return;
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [mode, done, sign, signs, answer, pressKey, next, desktop]);
+  }, [mode, done, sign, signs, answer, pressKey, next, desktop, task, writing, ghost, move, letters]);
 
-  const size = desktop ? 8 : 6;
+  // A round that writes notes draws a taller staff with fewer bars, so a line or space is easy to point at.
+  const big = useMemo(() => notes.some((n) => n.task === 'write'), [notes]);
+  const size = desktop ? 8 : big && bp === 'phone' ? 4 : 6;
   const page = staffPage(notes, i, size);
-  const shown = useMemo(() => notes.slice(page.from, page.to).map((n) => ({ step: n.step, sign: n.sign })), [notes, page.from, page.to]);
-  const marks = useMemo(() => notes.slice(page.from, page.to).map((_, j) => markOf(answers[page.from + j])), [notes, page.from, page.to, answers]);
+  // Notes to hear or write stay hidden until answered (an empty slot); the one being written shows where it sits now.
+  const shown = useMemo(
+    () =>
+      notes.slice(page.from, page.to).map((n, j): PitchNote | null => {
+        const at = page.from + j;
+        const open = at > i || (at === i && !done);
+        if (!open || n.task === 'read') return { step: n.step, sign: n.sign };
+        return at === i && n.task === 'write' && ghost !== null ? { step: ghost, sign: null } : null;
+      }),
+    [notes, page.from, page.to, i, done, ghost],
+  );
+  const marks = useMemo(
+    () => notes.slice(page.from, page.to).map((_, j) => markOf(answers[page.from + j]) ?? (page.from + j === i && ghost !== null && !done ? 'ghost' : undefined)),
+    [notes, page.from, page.to, answers, i, ghost, done],
+  );
   const room = run.settings.range === 'staff' ? 1.5 : run.settings.range === 'ledger1' ? 2.5 : 3.5;
 
   const right = answers.filter((a) => a.outcome === 'right').length;
@@ -249,7 +327,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const keyHasSigns = keySigns(note.key).length > 0;
   // A path lesson says which one ("Lesson 4.3 · Treble clef · C major"); free practice names the clef and key.
   const where = run.lesson
-    ? t('notes.play.eyebrowLesson', { id: run.lesson.id, clef: t('notes.clefLong.' + note.clef), key: majorName(note.key) })
+    ? t('notes.play.eyebrowLesson', { id: pathLessonOf(run.lesson.track, run.lesson.id)?.id ?? run.lesson.id, clef: t('notes.clefLong.' + note.clef), key: majorName(note.key) })
     : t('notes.play.eyebrow', { clef: t('notes.clefLong.' + note.clef), key: majorName(note.key) });
 
   // The feedback line: the answer's verdict, the hint, a new key or clef, or what to do.
@@ -257,11 +335,15 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   let tone = '';
   if (done) {
     const ok = last?.outcome === 'right' || last?.outcome === 'hinted';
-    feedback = feedbackText(note, given, ok, system);
+    feedback = (task === 'write' ? writeFeedback : task === 'hear' ? hearFeedback : feedbackText)(note, given, ok, nameSystem);
     tone = last?.outcome === 'right' ? 'right' : last?.outcome === 'hinted' ? 'hint' : 'wrong';
   } else if (hinted) {
-    feedback = hintText(note, system);
+    feedback = task === 'hear' ? hearHint(note, nameSystem) : hintText(note, nameSystem);
     tone = 'hint';
+  } else if (task === 'write') {
+    feedback = t(ghost === null ? 'notes.play.idleWrite' : 'notes.play.idleWriteCheck');
+  } else if (task === 'hear') {
+    feedback = t('notes.play.idleHear');
   } else if (i > 0 && notes[i - 1].key !== note.key) {
     feedback = t('notes.play.newKey', { key: majorName(note.key), signs: keySignsText(note.key) });
     tone = 'news';
@@ -289,6 +371,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         nameMarks[given.letter] = 'wrong';
         nameMarks[L] = 'right';
       }
+    } else if (task === 'write') {
+      // Written on the staff: no buttons to mark.
     } else if (given === null && mode !== 'piano') {
       nameMarks[L] = 'right';
     } else {
@@ -298,17 +382,56 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     }
   }
 
-  const staffLabel = t('notes.play.staffLabel', { clef: t('notes.clefLong.' + note.clef), key: majorName(note.key), n: i + 1, total });
-  const staff = (
-    <PitchStaff clef={note.clef} keyId={note.key} notes={shown} slots={size} marks={marks} cursor={i - page.from} scale={desktop ? 1.6 : bp === 'tablet' ? 2 : shorter ? 1.15 : 1.45}
-      room={room} label={staffLabel} className="nplay-staff-svg" />
+  const staffLabel = t(task !== 'read' && !done ? 'notes.play.staffLabelOpen' : 'notes.play.staffLabel', {
+    clef: t('notes.clefLong.' + note.clef),
+    key: majorName(note.key),
+    n: i + 1,
+    total,
+  });
+  const target = fullName(letterOf(note.step), note.alter, nameSystem);
+  // Writing: point at (or drag along) the staff to put the note on the nearest line or space.
+  const staffBox = useRef<HTMLDivElement>(null);
+  const pointAt = (e: PointerEvent<HTMLDivElement>): void => {
+    const svg = staffBox.current?.querySelector('svg');
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const h = svg.viewBox.baseVal.height;
+    if (r.height <= 0 || h <= 0) return;
+    place(stepAtY(note.clef, room, ((e.clientY - r.top) / r.height) * h));
+  };
+  const staffSvg = (
+    <PitchStaff clef={note.clef} keyId={note.key} notes={shown} slots={size} marks={marks} cursor={i - page.from} scale={big ? (desktop ? 2 : bp === 'tablet' ? 2.6 : shorter ? 1.5 : 2.1) : desktop ? 1.6 : bp === 'tablet' ? 2 : shorter ? 1.15 : 1.45}
+      room={room} label={writing ? undefined : staffLabel} className="nplay-staff-svg" />
+  );
+  // A slider for screen readers and the keyboard: its value is where the note sits.
+  const staff = writing ? (
+    <div ref={staffBox} className="nwrite-staff" role="slider" tabIndex={0} aria-label={t('notes.play.writeSlider', { name: target })}
+      aria-valuemin={steps[0]} aria-valuemax={steps[steps.length - 1]} aria-valuenow={ghost ?? undefined}
+      aria-valuetext={ghost === null ? t('notes.play.writeNone') : positionText(note.clef, ghost)}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        pointAt(e);
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons) pointAt(e);
+      }}>
+      {staffSvg}
+    </div>
+  ) : (
+    staffSvg
+  );
+  const hearButton = task === 'hear' && (
+    <button type="button" className="btn btn--outline nhear-btn" onClick={hearIt}>
+      <Icon name="speaker" size={18} />
+      {t('notes.play.hearAgain')}
+    </button>
   );
   const timerBar = timer > 0 && (
     <div className="ntimer" role="progressbar" aria-label={t('notes.play.timeLeft')} aria-valuemin={0} aria-valuemax={timer} aria-valuenow={Math.ceil(left / 1000)}>
       <div style={{ width: (left / (timer * 1000)) * 100 + '%' }} />
     </div>
   );
-  const modeSeg = (
+  const modeSeg = task !== 'write' && (
     <Segmented<Mode> label={t('notes.play.modes')} value={mode} className="nmode"
       onChange={(v) => {
         setMode(v);
@@ -320,7 +443,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         { value: 'piano', label: t('notes.play.modePiano') },
       ]} />
   );
-  const labelsSeg = mode === 'piano' && (
+  const labelsSeg = mode === 'piano' && task !== 'write' && (
     <div className="nlabels">
       <span>{t('notes.play.anyOctave')}</span>
       <Segmented label={t('notes.play.labels')} value={state.prefs.pianoLabels} className="seg--small" pad={3} gap={4}
@@ -333,12 +456,27 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     </div>
   );
   const inputs =
-    mode === 'piano' ? (
+    task === 'write' ? (
+      <div className="nwrite">
+        <div className="nwrite-ask">
+          <span className="label">{t('notes.play.writeLabel')}</span>
+          <span className="nwrite-name">{target}</span>
+        </div>
+        <div className="nwrite-moves">
+          <button type="button" className="btn btn--outline" disabled={done} aria-label={t('notes.play.lower')} onClick={() => move(-1)}>
+            <Icon name="chevronSmall" size={22} strokeWidth={2.4} className="nwrite-down" />
+          </button>
+          <button type="button" className="btn btn--outline" disabled={done} aria-label={t('notes.play.higher')} onClick={() => move(1)}>
+            <Icon name="chevronSmall" size={22} strokeWidth={2.4} className="nwrite-up" />
+          </button>
+        </div>
+      </div>
+    ) : mode === 'piano' ? (
       <Piano labels={state.prefs.pianoLabels} marks={keyMarks} onPick={pressKey} kbd={keys} />
     ) : (
       <>
         {signs && <SignRow value={sign} onChange={setSign} disabled={done} kbd={keys} />}
-        <NameButtons system={system} sign={sign} marks={nameMarks} onPick={(L) => answer({ kind: 'name', letter: L, alter: sign })} kbd={keys} />
+        <NameButtons system={system} sign={sign} marks={nameMarks} onPick={(L) => answer({ kind: 'name', letter: L, alter: sign })} kbd={keys} letters={letters} />
       </>
     );
   const feedbackBox = (
@@ -351,17 +489,31 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       <button type="button" className="btn btn--outline" disabled={done || hinted} onClick={() => setHinted(true)}>
         {t('notes.play.hint')}
       </button>
-      <button type="button" className={'btn ' + (done ? 'btn--accent' : 'btn--blocked')} disabled={!done} onClick={next}>
-        {t(i + 1 >= total ? 'notes.play.finish' : 'notes.play.next')}
-        {keys && <kbd className="kbd kbd--bare">↵</kbd>}
-      </button>
+      {writing ? (
+        // Writing: Check takes the note where it sits; then it is Next note as after any answer.
+        <button type="button" className={'btn ' + (ghost !== null ? 'btn--accent' : 'btn--blocked')} disabled={ghost === null}
+          onClick={() => ghost !== null && answer({ kind: 'place', step: ghost })}>
+          {t('notes.play.check')}
+          {keys && <kbd className="kbd kbd--bare">↵</kbd>}
+        </button>
+      ) : (
+        <button type="button" className={'btn ' + (done ? 'btn--accent' : 'btn--blocked')} disabled={!done} onClick={next}>
+          {t(i + 1 >= total ? 'notes.play.finish' : 'notes.play.next')}
+          {keys && <kbd className="kbd kbd--bare">↵</kbd>}
+        </button>
+      )}
     </div>
   );
   const quitLink = (e: MouseEvent): void => {
     e.preventDefault();
     quit();
   };
-  const ask = t(mode === 'piano' ? 'notes.play.askPiano' : 'notes.play.askNames');
+  const ask =
+    task === 'write'
+      ? t('notes.play.askWrite', { name: target })
+      : task === 'hear'
+        ? t(mode === 'piano' ? 'notes.play.askHearPiano' : 'notes.play.askHear')
+        : t(mode === 'piano' ? 'notes.play.askPiano' : 'notes.play.askNames');
 
   if (desktop) {
     const needs = answers
@@ -397,12 +549,17 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
           <div className="card nplay-staff nplay-staff--desk">
             {staff}
             {timerBar}
+            {hearButton}
           </div>
           <div className="dplay-row">
             <section className="card nanswer" aria-label={ask}>
               <div className="nanswer-head">
                 {modeSeg}
-                {keys && <span className="muted-text">{t(mode === 'piano' ? 'notes.play.kbdPiano' : signs ? 'notes.play.kbdNames' : 'notes.play.kbdNamesPlain')}</span>}
+                {keys && (
+                  <span className="muted-text">
+                    {t(task === 'write' ? 'notes.play.kbdWrite' : mode === 'piano' ? 'notes.play.kbdPiano' : signs ? 'notes.play.kbdNames' : 'notes.play.kbdNamesPlain')}
+                  </span>
+                )}
               </div>
               {labelsSeg}
               {inputs}
@@ -468,6 +625,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         <div className="card nplay-staff">
           {staff}
           {timerBar}
+          {hearButton}
         </div>
 
         {feedbackBox}

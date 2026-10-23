@@ -1,33 +1,21 @@
 import { generateRound, sanitizeNoteSettings, type NoteSettings } from '../core/noteRound';
 import en from '../i18n/en.json';
 import nl from '../i18n/nl.json';
-import { KEYS_UNITS, NOTES_UNITS, noteLessonSettings, type NoteTrackId } from './notesPath';
-import { defaultProgress, type LessonProgress, type Progress } from './storage';
-import { lessonOpen, nextIn, outcomeIn, progressKey, trackLessons, trackStarsIn } from './track';
-import { allStars, continueIn, trackById, trackLessonOpen, trackOpen } from './tracks';
+import { FIRST_NOTES, KEYS_UNITS, NOTES_UNITS, PITCH_UNITS, noteLessonSettings, type NoteTrackId } from './notesPath';
 
 /** A message in one catalog, without the English fallback that t() and hasMessage() use. */
 const message = (catalog: object, key: string): unknown =>
   key.split('.').reduce<unknown>((node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined), catalog);
 
 const PATHS: Array<[NoteTrackId, typeof NOTES_UNITS]> = [
+  ['pitch', PITCH_UNITS],
   ['notes', NOTES_UNITS],
   ['keys', KEYS_UNITS],
 ];
 
-function withStars(entries: Record<string, LessonProgress['stars']>): Progress {
-  const p = defaultProgress();
-  for (const [key, stars] of Object.entries(entries)) p.lessons[key] = { stars, bestAccuracy: 90 };
-  return p;
-}
-/** Every lesson of a path up to and including `lastId`, at `stars`, under its progress key. */
-const upTo = (track: NoteTrackId, lastId: string, stars: LessonProgress['stars'] = 2): Record<string, LessonProgress['stars']> => {
-  const ids = trackLessons(trackById(track)).map((x) => x.lesson.id);
-  return Object.fromEntries(ids.slice(0, ids.indexOf(lastId) + 1).map((id) => [progressKey(track, id), stars]));
-};
-
-describe('Read notes and Keys paths (MVP canvas, Learning paths)', () => {
-  it('have the units of the design, five lessons each, ids "u.l" and every title in both catalogs', () => {
+describe('First notes, Read notes and Keys units (DESIGN.md §8.2)', () => {
+  it('have their units, five lessons each, ids "u.l" and every title in both catalogs', () => {
+    expect(PITCH_UNITS.map((u) => u.id)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(NOTES_UNITS.map((u) => u.id)).toEqual([1, 2, 3, 4, 5]);
     expect(KEYS_UNITS.map((u) => u.id)).toEqual([1, 2, 3, 4, 5, 6]);
     for (const [name, catalog] of [['en', en], ['nl', nl]] as const) {
@@ -54,6 +42,34 @@ describe('Read notes and Keys paths (MVP canvas, Learning paths)', () => {
           expect(new Set(notes.map((n) => n.clef))).toEqual(new Set(s.clefs));
         }
       }
+    }
+  });
+
+  it('brings in sol, mi, fa, la, do, re, si one at a time, on the treble staff', () => {
+    expect(FIRST_NOTES.map((n) => n.name)).toEqual(['sol', 'mi', 'fa', 'la', 'do', 're', 'si']);
+    // G4 E4 F4 A4 C5 D5 B4: all inside the staff.
+    expect(FIRST_NOTES.map((n) => n.step)).toEqual([32, 30, 31, 33, 35, 36, 34]);
+    PITCH_UNITS.forEach((u, i) => {
+      const known = FIRST_NOTES.slice(0, i + 1).map((n) => n.step);
+      expect(u.glyph).toBe(FIRST_NOTES[i].name);
+      for (const l of u.lessons) {
+        const s = noteLessonSettings('pitch', l.id)!;
+        expect(s, l.id).toMatchObject({ clefs: ['treble'], keys: ['C'], range: 'staff', extras: 'none' });
+        expect([...s.only].sort(), l.id).toEqual([...known].sort());
+        for (const n of generateRound(s, 3)) expect(known, l.id).toContain(n.step);
+      }
+    });
+  });
+
+  it('reads, writes and hears every new note, and reviews all three (sol: read and write)', () => {
+    const tasks = (id: string): string[] => noteLessonSettings('pitch', id)!.tasks;
+    expect(PITCH_UNITS[0].lessons.map((l) => tasks(l.id))).toEqual([['read'], ['write'], ['read'], ['write'], ['read', 'write']]);
+    for (const u of PITCH_UNITS.slice(1)) {
+      expect(u.lessons.map((l) => tasks(l.id)), `unit ${u.id}`).toEqual([['read'], ['write'], ['hear'], ['read'], ['read', 'write', 'hear']]);
+      // The new note comes up more often, except in the review.
+      const step = FIRST_NOTES[u.id - 1].step;
+      for (const l of u.lessons.slice(0, 4)) expect(noteLessonSettings('pitch', l.id)!.stress).toEqual([step]);
+      expect(noteLessonSettings('pitch', u.lessons[4].id)!.stress).toEqual([]);
     }
   });
 
@@ -87,41 +103,3 @@ describe('Read notes and Keys paths (MVP canvas, Learning paths)', () => {
   });
 });
 
-describe('opening lessons and paths', () => {
-  const notes = trackById('notes');
-
-  it('keeps each path’s stars apart: Read notes 1.1 is "notes:1.1", rhythm 1.1 stays "1.1"', () => {
-    expect(progressKey('rhythm', '1.1')).toBe('1.1');
-    expect(progressKey('notes', '1.1')).toBe('notes:1.1');
-    const rhythmOnly = withStars({ '1.1': 3, '1.2': 3 });
-    expect(lessonOpen(rhythmOnly, notes, '1.2')).toBe(false);
-    expect(lessonOpen(withStars({ 'notes:1.1': 2 }), notes, '1.2')).toBe(true);
-  });
-
-  it('opens Read notes from the start and Keys after every Read notes unit 3 lesson has two stars', () => {
-    const p = defaultProgress();
-    expect(trackOpen(p, 'rhythm')).toBe(true);
-    expect(trackOpen(p, 'notes')).toBe(true);
-    expect(trackOpen(p, 'keys')).toBe(false);
-    expect(trackLessonOpen(p, 'keys', '1.1')).toBe(false);
-    expect(continueIn(p, 'keys')).toBeNull();
-    expect(trackOpen(withStars(upTo('notes', '3.4')), 'keys')).toBe(false);
-    const open = withStars(upTo('notes', '3.5'));
-    expect(trackOpen(open, 'keys')).toBe(true);
-    expect(trackLessonOpen(open, 'keys', '1.1')).toBe(true);
-    expect(continueIn(open, 'keys')?.id).toBe('1.1');
-  });
-
-  it('continues each path with its first lesson under two stars, and counts stars per path and over all', () => {
-    const p = withStars({ ...upTo('notes', '2.2', 3), 'notes:2.3': 1, '1.1': 2 });
-    expect(nextIn(p, notes)?.id).toBe('2.3');
-    expect(trackStarsIn(p, notes)).toEqual({ earned: 7 * 3 + 1, max: 25 * 3 });
-    expect(allStars(p)).toEqual({ earned: 22 + 2, max: (40 + 25 + 30) * 3 });
-  });
-
-  it('says what a Read notes lesson opened, as Results does for rhythm', () => {
-    expect(outcomeIn(withStars({ 'notes:1.1': 2 }), notes, '1.1', 0)).toMatchObject({ kind: 'unlocked', continueId: '1.2' });
-    expect(outcomeIn(withStars({ 'notes:1.1': 1 }), notes, '1.1', 0)).toMatchObject({ kind: 'needStars', next: { id: '1.2' } });
-    expect(outcomeIn(withStars(upTo('notes', '5.5')), notes, '5.5', 1)).toMatchObject({ kind: 'pathDone' });
-  });
-});

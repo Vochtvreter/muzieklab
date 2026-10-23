@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import type { NoteSettings } from '../../../core/api';
 import { noteLessonSettings, type NoteTrackId } from '../../../game/notesPath';
-import { trackLessonOpen } from '../../../game/tracks';
+import { pathLessonOpen } from '../../../game/tracks';
 import { unlockAudio } from '../../audio';
 import { newSeed } from '../../lib/format';
 import { navigate } from '../../router';
@@ -15,7 +15,7 @@ export function useStartNotes(): (settings: NoteSettings, focus?: string[], opts
   return useCallback(
     (settings: NoteSettings, focus: string[] = [], opts: { replace?: boolean; query?: string } = {}) => {
       // Inside the tap, so iOS lets the notes sound.
-      if (settings.playNotes) unlockAudio();
+      if (settings.playNotes || settings.tasks.includes('hear')) unlockAudio();
       dispatch({ type: 'noteStart', run: makeNoteRun(settings, newSeed(), weak, focus) });
       navigate('/notes/play', opts);
     },
@@ -24,8 +24,9 @@ export function useStartNotes(): (settings: NoteSettings, focus?: string[], opts
 }
 
 /**
- * A Read notes or Keys lesson by id (Path, Round done's Next lesson). Its preset is the whole setup, except for the
- * sound: the player's Hear the notes choice holds here too. The player's own Read notes setup is left as it is.
+ * A note lesson of the Learning path by its kind and own id (First notes, Read notes or Keys; the Path, Round done's
+ * Next lesson). Its preset is the whole setup, except for the sound: the player's Hear the notes choice holds here
+ * too (a note to hear always sounds). The player's own Read notes setup is left as it is.
  * `replace` swaps Round done for Play, so Back does not return to it.
  */
 export function useStartNoteLesson(): (track: NoteTrackId, lessonId: string, opts?: { replace?: boolean }) => void {
@@ -35,9 +36,9 @@ export function useStartNoteLesson(): (track: NoteTrackId, lessonId: string, opt
   return useCallback(
     (track: NoteTrackId, lessonId: string, opts: { replace?: boolean } = {}) => {
       const preset = noteLessonSettings(track, lessonId);
-      if (!preset || !trackLessonOpen(progress, track, lessonId)) return;
+      if (!preset || !pathLessonOpen(progress, track, lessonId)) return;
       const settings = { ...preset, playNotes };
-      if (playNotes) unlockAudio();
+      if (playNotes || preset.tasks.includes('hear')) unlockAudio();
       dispatch({ type: 'noteStart', run: makeNoteRun(settings, newSeed(), progress.notes.weak, [], { track, id: lessonId }) });
       navigate('/notes/play', opts);
     },

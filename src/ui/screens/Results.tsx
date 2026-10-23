@@ -5,7 +5,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { coachTip, DIAMOND, encodeCode, MAX_STARS, SHOWN_STARS, type Judgement } from '../../core/api';
-import { findLesson, UNLOCK_STARS } from '../../game/path';
+import { UNLOCK_STARS } from '../../game/track';
+import { findPathLesson, pathLessonOf } from '../../game/tracks';
 import { levelInfo } from '../../game/xp';
 import type { NoteMark } from '../../render/Staff';
 import { LengthLane } from '../../render/LengthLane';
@@ -24,7 +25,7 @@ import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
 import { useStore, type LastResult } from '../store';
-import { useReplay, useStartLesson } from './start';
+import { useReplay, useStartPathLesson } from './start';
 
 const COUNTS: { key: Judgement | 'extra'; tone: string }[] = [
   { key: 'perfect', tone: 'good' },
@@ -40,7 +41,7 @@ const levelUpShown = new WeakSet<LastResult>();
 export function Results(): JSX.Element | null {
   const { state, dispatch } = useStore();
   const replay = useReplay();
-  const startLesson = useStartLesson();
+  const startLesson = useStartPathLesson();
   const bp = useBreakpoint();
   const [playing, setPlaying] = useState(false);
   // An exercise started from a Learn section (?from=1.1): Back returns there; Retry, Next and the setup keep it.
@@ -50,7 +51,8 @@ export function Results(): JSX.Element | null {
   const view = last ? exerciseView(last.run.exercise) : null;
   // A lesson: what this run means for the path (a lesson opened, or the stars still needed), and where Next goes.
   const outcome = last?.run.lessonId ? lessonOutcome(state.progress, last.run.lessonId, last.lessonStarsBefore) : null;
-  const goOn = outcome?.continueId ? findLesson(outcome.continueId)?.lesson ?? null : null;
+  // Next lesson goes by the Learning path, so it may be a note lesson.
+  const goOn = outcome?.continueId ? findPathLesson(outcome.continueId)?.lesson ?? null : null;
   // The calibration the run was played with: calibrating from its tip does not change what the tip says about it.
   const uncalibrated = !last?.calibrated;
   // Calibrated since this run (from its tip): the tip says the next run uses it, in place of Calibrate.
@@ -136,7 +138,7 @@ export function Results(): JSX.Element | null {
   const title = run.daily
     ? t('results.dailyDone')
     : run.lessonId
-      ? t('results.lessonDone', { id: run.lessonId })
+      ? t('results.lessonDone', { id: pathLessonOf('rhythm', run.lessonId)?.id ?? run.lessonId })
       : echo
         ? t('results.echoDone')
         : t('results.practiceDone');

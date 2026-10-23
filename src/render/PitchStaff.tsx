@@ -8,7 +8,8 @@ export type { PitchMark, PitchNote };
 export interface PitchStaffProps {
   clef: Clef;
   keyId: KeyId;
-  notes: PitchNote[];
+  /** null: an empty slot (a note still to hear or to write). */
+  notes: (PitchNote | null)[];
   /** Bars per staff (default: one per note). 0 draws the clef and key signature only, fitted to the width. */
   slots?: number;
   marks?: (PitchMark | undefined)[];
@@ -24,7 +25,7 @@ export interface PitchStaffProps {
   className?: string;
 }
 
-const NO_NOTES: PitchNote[] = [];
+const NO_NOTES: (PitchNote | null)[] = [];
 
 /** A five-line staff in treble or bass clef with a key signature and whole notes (Read notes, Scales, Learn chapters 8–11). */
 export function PitchStaff(props: PitchStaffProps): JSX.Element {

@@ -1,12 +1,15 @@
 /**
- * The Read notes and Keys learning paths (MVP canvas, Path page, "Learning paths"; DESIGN.md §8.2). Every lesson is a
- * Read notes preset on top of its unit's base, as rhythm lessons are rhythm presets (path.ts). Read notes follows
- * Learn chapter 8: one clef at a time, then both, then ledger lines, then speed. Keys follows chapters 9 and 10: signs
- * next to notes, then one key signature at a time (G, then F), then two and three signs, then mixed keys. Keys opens
- * once every Read notes unit 3 lesson has two stars (tracks.ts).
+ * The note units of the Learning path (DESIGN.md §8.2; tracks.ts puts them in path order). Every lesson is a Read notes
+ * preset on top of its unit's base, as rhythm lessons are rhythm presets (path.ts).
+ * - First notes ('pitch') brings in the notes of the treble staff one at a time, sol, mi, fa, la, do, re, si, and each
+ *   unit reads, writes and hears them.
+ * - Read notes ('notes') follows Learn chapter 8: the whole treble staff, the bass clef, both, ledger lines, speed.
+ * - Keys ('keys') follows chapters 9 and 10: signs next to notes, then one key signature at a time (G, then F), then
+ *   two and three signs, then mixed keys.
  * Titles are message keys: path.{track}.u{unit}.title and path.{track}.u{unit}.l{lesson}.
  */
 import { DEFAULT_NOTE_SETTINGS, type NoteSettings } from '../core/noteRound';
+import type { Step } from '../core/pitch';
 import type { Track, TrackLesson, TrackUnit } from './track';
 
 export interface NoteLesson extends TrackLesson {
@@ -17,7 +20,7 @@ export interface NoteUnit extends TrackUnit<NoteLesson> {
   base: Partial<NoteSettings>;
 }
 
-export type NoteTrackId = 'notes' | 'keys';
+export type NoteTrackId = 'pitch' | 'notes' | 'keys';
 
 function unit(track: NoteTrackId, id: number, glyph: string, base: Partial<NoteSettings>, lessons: Partial<NoteSettings>[]): NoteUnit {
   return {
@@ -29,8 +32,55 @@ function unit(track: NoteTrackId, id: number, glyph: string, base: Partial<NoteS
   };
 }
 
+/**
+ * First notes, in the order they are learned: sol, the note the treble (G) clef curls around, then mi and fa below it,
+ * then la, do, re and si above. All seven sit on the staff (E4–D5): no ledger lines, no key signature.
+ */
+export const FIRST_NOTES: { name: string; step: Step }[] = [
+  { name: 'sol', step: 32 },
+  { name: 'mi', step: 30 },
+  { name: 'fa', step: 31 },
+  { name: 'la', step: 33 },
+  { name: 'do', step: 35 },
+  { name: 're', step: 36 },
+  { name: 'si', step: 34 },
+];
+
+const PITCH_BASE: Partial<NoteSettings> = {
+  clefs: ['treble'], keys: ['C'], mixKeys: false, input: 'names', range: 'staff', extras: 'none', count: 10, timer: 0, tasks: ['read'], stress: [],
+};
+
+/**
+ * A First notes unit: the notes learned so far, the new one coming up more often. Read it, write it, hear it (after
+ * sol), find it on the piano, then a review that takes turns at all three. Sol alone cannot be heard against itself, so
+ * unit 1 writes it against the clock instead, and its review reads and writes.
+ */
+function pitchUnit(n: number): NoteUnit {
+  const known = FIRST_NOTES.slice(0, n).map((x) => x.step);
+  const step = FIRST_NOTES[n - 1].step;
+  const lessons: Partial<NoteSettings>[] =
+    n === 1
+      ? [
+          {}, // Meet sol
+          { tasks: ['write'] }, // Write sol
+          { input: 'piano' }, // Sol on the piano
+          { tasks: ['write'], timer: 5 }, // Write sol, quickly
+          { tasks: ['read', 'write'], count: 20 }, // Unit review
+        ]
+      : [
+          { stress: [step] }, // Meet the new note
+          { tasks: ['write'], stress: [step] }, // Write it
+          { tasks: ['hear'], stress: [step] }, // Hear it
+          { input: 'piano', stress: [step], count: 15 }, // On the piano
+          { tasks: ['read', 'write', 'hear'], count: 30 }, // Unit review
+        ];
+  return unit('pitch', n, FIRST_NOTES[n - 1].name, { ...PITCH_BASE, only: known }, lessons);
+}
+
+export const PITCH_UNITS: NoteUnit[] = FIRST_NOTES.map((_, i) => pitchUnit(i + 1));
+
 /** Every Read notes lesson spells out each setting, so nothing from the player's own setup leaks in. */
-const NOTES_BASE: Partial<NoteSettings> = { keys: ['C'], mixKeys: false, input: 'names', range: 'staff', extras: 'none', count: 10, timer: 0 };
+const NOTES_BASE: Partial<NoteSettings> = { keys: ['C'], mixKeys: false, input: 'names', range: 'staff', extras: 'none', count: 10, timer: 0, tasks: ['read'], only: [], stress: [] };
 const BOTH: NoteSettings['clefs'] = ['treble', 'bass'];
 
 export const NOTES_UNITS: NoteUnit[] = [
@@ -72,7 +122,7 @@ export const NOTES_UNITS: NoteUnit[] = [
 ];
 
 /** Keys lessons read in treble clef unless they say otherwise; the key signature is the point. */
-const KEYS_BASE: Partial<NoteSettings> = { clefs: ['treble'], mixKeys: false, input: 'names', range: 'staff', extras: 'none', count: 20, timer: 0 };
+const KEYS_BASE: Partial<NoteSettings> = { clefs: ['treble'], mixKeys: false, input: 'names', range: 'staff', extras: 'none', count: 20, timer: 0, tasks: ['read'], only: [], stress: [] };
 
 export const KEYS_UNITS: NoteUnit[] = [
   // Signs next to the notes first (chapter 9), in C: the piano shows what a sharp and a flat are.
@@ -120,19 +170,23 @@ export const KEYS_UNITS: NoteUnit[] = [
   ]),
 ];
 
+export const PITCH_TRACK: Track<NoteLesson> = { id: 'pitch', units: PITCH_UNITS };
 export const NOTES_TRACK: Track<NoteLesson> = { id: 'notes', units: NOTES_UNITS };
 export const KEYS_TRACK: Track<NoteLesson> = { id: 'keys', units: KEYS_UNITS };
 
-export const noteTrack = (id: NoteTrackId): Track<NoteLesson> => (id === 'notes' ? NOTES_TRACK : KEYS_TRACK);
+const NOTE_TRACKS: Record<NoteTrackId, Track<NoteLesson>> = { pitch: PITCH_TRACK, notes: NOTES_TRACK, keys: KEYS_TRACK };
+const NOTE_UNITS: Record<NoteTrackId, NoteUnit[]> = { pitch: PITCH_UNITS, notes: NOTES_UNITS, keys: KEYS_UNITS };
+export const noteTrack = (id: NoteTrackId): Track<NoteLesson> => NOTE_TRACKS[id];
+export const isNoteTrack = (id: unknown): id is NoteTrackId => id === 'pitch' || id === 'notes' || id === 'keys';
 
 /** The full Read notes settings of a lesson: defaults ← unit base ← lesson preset. Unknown id → null. */
 export function noteLessonSettings(track: NoteTrackId, lessonId: string): NoteSettings | null {
-  for (const u of track === 'notes' ? NOTES_UNITS : KEYS_UNITS) {
+  for (const u of NOTE_UNITS[track]) {
     const l = u.lessons.find((x) => x.id === lessonId);
     if (!l) continue;
     const s: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, ...u.base, ...l.settings };
     // Fresh arrays: callers may edit the result without touching the path.
-    return { ...s, clefs: [...s.clefs], keys: [...s.keys] };
+    return { ...s, clefs: [...s.clefs], keys: [...s.keys], tasks: [...s.tasks], only: [...s.only], stress: [...s.stress] };
   }
   return null;
 }

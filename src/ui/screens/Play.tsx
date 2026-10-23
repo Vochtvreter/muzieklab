@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import type { JudgeResult, Tap } from '../../core/api';
 import { findLesson } from '../../game/path';
+import { pathLessonOf } from '../../game/tracks';
 import type { Prefs } from '../../game/storage';
 import { LengthLane } from '../../render/LengthLane';
 import { t, tx } from '../../i18n';
@@ -45,7 +46,7 @@ export function Play(): JSX.Element | null {
 
 /** Where the run comes from: "Lesson 2.3", "Daily challenge", "Free practice". */
 function runWhere(run: Run): string {
-  if (run.lessonId) return t('play.lesson', { id: run.lessonId });
+  if (run.lessonId) return t('play.lesson', { id: pathLessonOf('rhythm', run.lessonId)?.id ?? run.lessonId });
   if (run.daily) return t('home.dailyTitle');
   return t('play.free');
 }
@@ -243,7 +244,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
         <header className="dplay-head">
           <div className="brand brand--static">{t('app.name')}</div>
           <div className="dplay-title">
-            <span className="eyebrow">{lesson && !echo ? t('play.lessonTitle', { id: lesson.lesson.id, title: tx(lesson.lesson.title) }) : where}</span>
+            <span className="eyebrow">{lesson && !echo ? t('play.lessonTitle', { id: pathLessonOf('rhythm', lesson.lesson.id)?.id ?? lesson.lesson.id, title: tx(lesson.lesson.title) }) : where}</span>
             <span className="mono-line">
               {barText} · {metersLabel([ex.meter.id])} · <span className="music">𝅘𝅥</span> {t('play.beatEquals', { bpm: ex.tempo })}
             </span>

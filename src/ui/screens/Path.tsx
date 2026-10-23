@@ -1,13 +1,14 @@
 /**
- * Learning path (DESIGN.md §8.2; MVP canvas, Path page, Learning paths): three paths, Rhythm, Read notes and Keys,
- * picked with a switcher (phone, tablet) or path cards (desktop); the app remembers the last one. Each path shows its
- * stars and theory link, the unit spine (done, current, locked) and Start for its next lesson. A unit opens to show its
- * lessons by name, as rows on phone and five tiles on tablet and desktop; the current unit is open. Locked units show a
- * lock and their title; what opens them is said once, under the first. Keys opens after Read notes unit 3.
+ * Learning path (DESIGN.md §8.2; MVP canvas, Path page): one path that learns notes and rhythm together. The header
+ * counts its stars; under it the current unit and the theory link, the unit spine (done, current, locked) and Start for
+ * the next lesson. A note unit brings in one note (sol, mi, fa, la, do, re, si) to read, write and hear; rhythm units
+ * take turns with them. A unit opens to show its lessons by name, as rows on phone and five tiles on tablet and
+ * desktop; the current unit is open. Locked units show a lock and their title; what opens them is said once, under the
+ * first. Desktop: the header and a summary card beside the units.
  */
 import { useEffect, useRef, useState } from 'react';
-import { trackLessons, starsIn, trackStarsIn, unitStarsIn, unitStatesIn, lessonOpen, type Track, type TrackId, type TrackLesson, type UnitState } from '../../game/track';
-import { allStars, continueIn, OPENS_AFTER, trackById, trackOpen, TRACKS } from '../../game/tracks';
+import { lessonOpen, starsOf, trackLessons, unitStatesIn, unitStarsIn, type Track, type UnitState } from '../../game/track';
+import { allStars, LEARNING_PATH, pathNext, type PathLesson, type PathUnit } from '../../game/tracks';
 import type { Progress } from '../../game/storage';
 import { SHOWN_STARS } from '../../core/api';
 import { t, tx } from '../../i18n';
@@ -16,89 +17,53 @@ import { StarsMark } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
 import { starsLabel } from '../lib/format';
-import { Link, type Route } from '../router';
+import { Link } from '../router';
 import { useStore } from '../store';
-import { useStartNoteLesson } from './notes/start';
-import { useStartLesson } from './start';
+import { useStartPathLesson } from './start';
 
-const GLYPH: Record<TrackId, string> = { rhythm: '𝅘𝅥𝅮', notes: '𝄞', keys: '♯' };
-const THEORY: Record<TrackId, Route> = { rhythm: '/learn', notes: '/learn/8', keys: '/learn/9' };
-
-/** One path as the screen shows it. */
-interface TrackView {
-  track: Track;
-  open: boolean;
+/** The path as the screen shows it. */
+interface PathView {
+  track: Track<PathLesson>;
   states: UnitState[];
-  /** The lesson to continue with; null when the path is done or closed. */
-  next: TrackLesson | null;
+  /** The lesson to continue with; null when the path is done. */
+  next: PathLesson | null;
   /** What Start plays: the next lesson, or the last one once the path is done (to play it again). */
-  start: TrackLesson | null;
-  /** The current unit's number (the last unit once the path is done). */
-  unit: number;
+  start: PathLesson | null;
+  /** The current unit (the last unit once the path is done). */
+  unit: PathUnit;
   stars: { earned: number; max: number };
 }
 
-function trackView(p: Progress, id: TrackId): TrackView {
-  const track = trackById(id);
-  const open = trackOpen(p, id);
-  const next = continueIn(p, id);
+function pathView(p: Progress): PathView {
+  const track = LEARNING_PATH;
+  const next = pathNext(p);
   const all = trackLessons(track);
-  const states: UnitState[] = open ? unitStatesIn(p, track) : track.units.map(() => 'locked');
-  // A closed path stands at its first unit; a finished one at its last.
-  const cur = next ? all.find((x) => x.lesson.id === next.id)?.unit : open ? track.units[track.units.length - 1] : track.units[0];
-  return {
-    track,
-    open,
-    states,
-    next,
-    start: next ?? (open ? all[all.length - 1]?.lesson ?? null : null),
-    unit: cur?.id ?? 1,
-    stars: trackStarsIn(p, track),
-  };
+  const cur = (next ? all.find((x) => x.lesson.id === next.id)?.unit : track.units[track.units.length - 1]) as PathUnit;
+  return { track, states: unitStatesIn(p, track), next, start: next ?? all[all.length - 1]?.lesson ?? null, unit: cur, stars: allStars(p) };
 }
 
 export function PathScreen(): JSX.Element {
-  const { state, dispatch } = useStore();
+  const { state } = useStore();
   const bp = useBreakpoint();
-  const startRhythm = useStartLesson();
-  const startNotes = useStartNoteLesson();
+  const play = useStartPathLesson();
   useDocTitle(t('app.docTitle', { page: t('path.title') }));
   const p = state.progress;
-  const id = state.prefs.pathTrack;
-  const views = TRACKS.map((x) => trackView(p, x.id));
-  const cur = views.find((v) => v.track.id === id) ?? views[0];
-  const totals = allStars(p);
-  const pick = (to: TrackId): void => dispatch({ type: 'prefs', patch: { pathTrack: to } });
-  const play = (lessonId: string): void => (id === 'rhythm' ? startRhythm(lessonId) : startNotes(id, lessonId));
-  // On a short screen the page scrolls to the current unit when the units appear (the Path opens, or the shell
-  // changes on a rotation), but not when another path is picked: the switcher and the focused chip stay in view.
-  const shownId = useRef(id);
-  const switched = shownId.current !== id;
-  useEffect(() => {
-    shownId.current = id;
-  });
+  const v = pathView(p);
 
   const head = (
     <div className="path-head">
       <h1 className="page-title">{t('path.title')}</h1>
-      <span className="mono-muted" role="img" aria-label={t('path.allTotalsLabel', { stars: totals.earned, total: totals.max })}>
-        {t('path.totals', { stars: totals.earned, total: totals.max })}
+      <span className="mono-muted" role="img" aria-label={t('path.totalsLabel', { stars: v.stars.earned, total: v.stars.max })}>
+        {t('path.totals', { stars: v.stars.earned, total: v.stars.max })}
       </span>
     </div>
   );
-  const units = <Units key={id} view={cur} progress={p} tiles={bp !== 'phone'} scrollPage={!switched} onPlay={play} />;
-  // Start, or (Keys while it is closed) the way to the path that opens it. One <button> in both cases, so keyboard
-  // focus stays on it when Go to Read notes switches the path.
-  const after = OPENS_AFTER[id];
-  const action = cur.start ? (
-    <button type="button" className="btn btn--accent path-start" onClick={() => play(cur.start!.id)}>
-      {t('path.start', { id: cur.start.id })}
+  const units = <Units view={v} progress={p} tiles={bp !== 'phone'} onPlay={(id) => play(id)} />;
+  const action = v.start && (
+    <button type="button" className="btn btn--accent path-start" onClick={() => play(v.start!.id)}>
+      {t('path.start', { id: v.start.id })}
     </button>
-  ) : after ? (
-    <button type="button" className="btn btn--outline path-start" onClick={() => pick(after.track)}>
-      {t('path.toTrack', { track: t('path.track.' + after.track) })}
-    </button>
-  ) : null;
+  );
 
   if (bp === 'desktop') {
     return (
@@ -106,19 +71,15 @@ export function PathScreen(): JSX.Element {
         <div className="page path path--desk">
           <div className="path-side">
             {head}
-            <div role="group" aria-label={t('path.paths')} className="track-cards">
-              {views.map((v) => (
-                <TrackCard key={v.track.id} view={v} on={v === cur} onPick={pick} />
-              ))}
-            </div>
+            <PathCard view={v} />
           </div>
           <section className="path-main" aria-labelledby="track-title">
             <div className="path-main-head">
               <div className="path-main-text">
                 <h2 id="track-title" className="path-track-title">
-                  {t('path.track.' + id)}
+                  {t('path.unitTitle', { id: v.unit.id, title: tx(v.unit.titleKey) })}
                 </h2>
-                <TrackInfo view={cur} />
+                <PathInfo view={v} />
               </div>
               {action}
             </div>
@@ -133,12 +94,7 @@ export function PathScreen(): JSX.Element {
     <AppShell bp={bp} active="/path" fill>
       <div className={'page path' + (bp === 'tablet' ? ' path--tablet' : '')}>
         {head}
-        <div role="group" aria-label={t('path.paths')} className="track-switch">
-          {views.map((v) => (
-            <TrackChip key={v.track.id} view={v} on={v === cur} onPick={pick} />
-          ))}
-        </div>
-        <TrackInfo view={cur} />
+        <PathInfo view={v} />
         {units}
         {action}
       </div>
@@ -146,48 +102,18 @@ export function PathScreen(): JSX.Element {
   );
 }
 
-/** "Unit 7 of 8", "All done" or "Locked": where a path stands, for the switcher and the cards. */
-function trackMeta(v: TrackView, long: boolean): string {
-  if (!v.open) return t('path.trackLocked');
-  if (!v.next) return t('path.trackDone');
-  const n = { unit: v.unit, total: v.track.units.length };
-  const u = v.track.units.find((x) => x.id === v.unit);
-  return long && u ? t('path.cardMeta', { ...n, title: tx(u.titleKey) }) : t('path.trackMeta', n);
-}
-
-function TrackChip({ view: v, on, onPick }: { view: TrackView; on: boolean; onPick(id: TrackId): void }): JSX.Element {
-  const id = v.track.id;
-  return (
-    <button type="button" aria-pressed={on} className={'track-chip' + (on ? ' is-on' : '')} onClick={() => onPick(id)}>
-      <span className="track-chip-name">
-        <span aria-hidden="true" className="track-glyph">
-          {GLYPH[id]}
-        </span>
-        {t('path.track.' + id)}
-      </span>
-      <span className="track-chip-meta">
-        {!v.open && <Icon name="lock" size={12} strokeWidth={2.4} />}
-        {trackMeta(v, false)}
-      </span>
-    </button>
-  );
-}
-
-function TrackCard({ view: v, on, onPick }: { view: TrackView; on: boolean; onPick(id: TrackId): void }): JSX.Element {
-  const id = v.track.id;
+/** Desktop: where the path stands, with a bar of its stars, and what it practises. */
+function PathCard({ view: v }: { view: PathView }): JSX.Element {
   const pct = v.stars.max ? (v.stars.earned / v.stars.max) * 100 : 0;
   return (
-    <button type="button" aria-pressed={on} className={'track-card' + (on ? ' is-on' : '')} onClick={() => onPick(id)}>
+    <div className="track-card is-on path-card-desk">
       <span className="track-card-top">
         <span aria-hidden="true" className="track-card-glyph">
-          {GLYPH[id]}
+          𝄞
         </span>
         <span className="track-card-text">
-          <b>{t('path.track.' + id)}</b>
-          <span className="track-card-meta">
-            {!v.open && <Icon name="lock" size={12} strokeWidth={2.4} />}
-            {v.open ? trackMeta(v, true) : t('path.opensAfter', { unit: OPENS_AFTER[id]?.unit ?? 0 })}
-          </span>
+          <b>{t('path.summaryTitle')}</b>
+          <span className="track-card-meta">{t('path.summary')}</span>
         </span>
       </span>
       <span className="track-card-bottom">
@@ -195,41 +121,31 @@ function TrackCard({ view: v, on, onPick }: { view: TrackView; on: boolean; onPi
           <span style={{ width: pct + '%' }} />
         </span>
         <span className="mono-muted" aria-hidden="true">
-          {t('path.totals', { stars: v.stars.earned, total: v.stars.max })}
+          {v.next ? t('path.trackMeta', { unit: v.unit.id, total: v.track.units.length }) : t('path.trackDone')}
         </span>
-        <span className="sr-only">{t('path.trackStarsLabel', { stars: v.stars.earned, max: v.stars.max })}</span>
       </span>
-    </button>
+    </div>
   );
 }
 
-/** The chosen path's stars and its theory link. */
-function TrackInfo({ view: v }: { view: TrackView }): JSX.Element {
-  const id = v.track.id;
-  const n = { unit: v.unit, total: v.track.units.length, stars: v.stars.earned, max: v.stars.max };
+/** Where the path stands ("Unit 5 of 26 · 40 / 390 ★") and the Learn link. */
+function PathInfo({ view: v }: { view: PathView }): JSX.Element {
+  const n = { unit: v.unit.id, total: v.track.units.length, stars: v.stars.earned, max: v.stars.max };
   return (
     <div className="track-info">
       <span className="mono-muted" role="img" aria-label={t('path.trackStarsLabel', n)}>
-        {v.open && !v.next ? t('path.trackStarsDone', n) : t('path.trackStars', n)}
+        {v.next ? t('path.trackStars', n) : t('path.trackStarsDone', n)}
       </span>
-      <Link to={THEORY[id]} className="track-theory">
-        {t('path.theory.' + id)}
+      <Link to="/learn" className="track-theory">
+        {t('path.theoryAll')}
         <Icon name="chevronSmall" size={15} strokeWidth={2.4} />
       </Link>
     </div>
   );
 }
 
-function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
-  view: TrackView;
-  progress: Progress;
-  tiles: boolean;
-  /** The list does not scroll (a short screen): scroll the page instead. */
-  scrollPage: boolean;
-  onPlay(id: string): void;
-}): JSX.Element {
+function Units({ view: v, progress: p, tiles, onPlay }: { view: PathView; progress: Progress; tiles: boolean; onPlay(id: string): void }): JSX.Element {
   const { track, states } = v;
-  const id = track.id;
   const curUnit = states.indexOf('current');
   // The current unit is open; any open unit can be opened instead, or closed.
   const [openUnit, setOpenUnit] = useState<number | null>(curUnit >= 0 ? track.units[curUnit].id : null);
@@ -238,11 +154,10 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
   useEffect(() => {
     const box = list.current;
     const el = box?.querySelector('.unit--current');
-    const scroller = box && box.scrollHeight > box.clientHeight ? box : scrollPage ? box?.closest<HTMLElement>('.page') : null;
+    const scroller = box && box.scrollHeight > box.clientHeight ? box : box?.closest<HTMLElement>('.page');
     if (!el || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
     scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
   }, []);
-  const after = OPENS_AFTER[id];
   // What opens the locked units is said once, under the first of them; the others show a lock and their title.
   const firstLocked = states.indexOf('locked');
 
@@ -256,7 +171,7 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
         const isPair = !isText && [...u.glyph].length === 2;
         const title = t('path.unitTitle', { id: u.id, title: tx(u.titleKey) });
         const score = { stars: unitStarsIn(p, track, u.id), max: u.lessons.length * SHOWN_STARS };
-        const panel = `unit-${id}-${u.id}`;
+        const panel = `unit-${u.id}`;
         return (
           <li key={u.id} className={'unit unit--' + st}>
             <div className="unit-rail">
@@ -285,7 +200,7 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
               {st !== 'locked' && !isOpen && (
                 <div className="unit-stars">
                   {u.lessons.map((l) => {
-                    const n = starsIn(p, id, l.id);
+                    const n = starsOf(p, track, l);
                     const label = t('path.playLesson', { id: l.id, title: tx(l.title), stars: starsLabel(n) });
                     // Open lessons can be played again, e.g. to turn two stars into three.
                     return lessonOpen(p, track, l.id) ? (
@@ -308,11 +223,7 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
                   </div>
                 </div>
               )}
-              {i === firstLocked && (i > 0 || after) && (
-                <div className="unit-sub">
-                  {i === 0 && after ? t('path.opensAfter', { unit: after.unit }) : t('path.unlocks', { unit: track.units[i - 1]?.id ?? u.id })}
-                </div>
-              )}
+              {i === firstLocked && i > 0 && <div className="unit-sub">{t('path.unlocks', { unit: track.units[i - 1].id })}</div>}
             </div>
           </li>
         );
@@ -323,17 +234,16 @@ function Units({ view: v, progress: p, tiles, scrollPage, onPlay }: {
 
 /** A unit's lessons by name: rows (phone) or five tiles (tablet, desktop). Open lessons start on a tap. */
 function Lessons({ unit, view: v, progress: p, tiles, onPlay }: {
-  unit: Track['units'][number];
-  view: TrackView;
+  unit: Track<PathLesson>['units'][number];
+  view: PathView;
   progress: Progress;
   tiles: boolean;
   onPlay(id: string): void;
 }): JSX.Element {
-  const id = v.track.id;
   return (
     <ol className={tiles ? 'lesson-tiles' : 'lesson-rows'}>
       {unit.lessons.map((l) => {
-        const n = starsIn(p, id, l.id);
+        const n = starsOf(p, v.track, l);
         const title = tx(l.title);
         const open = lessonOpen(p, v.track, l.id);
         const st = !open ? 'locked' : l.id === v.next?.id ? 'current' : n > 0 ? 'done' : 'open';

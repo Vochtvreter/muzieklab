@@ -1,7 +1,7 @@
 /**
  * Read notes · round done (DESIGN.md §3.5 Scoring): stars, correct / total, the average time and XP; time per note;
  * the notes that need practice (missed, slow), each on a small staff with its name as the player reads it (do re mi
- * or letters); right answers by sign; and New round / Practice missed notes. After a Read notes or Keys lesson
+ * or letters); right answers by sign; and New round / Practice missed notes. After a note lesson of the Learning path
  * (§8.2): the lesson and its unit, what it did for the path, and Next lesson once it has two stars.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -18,9 +18,7 @@ import {
   type NoteChip,
   type RoundResult,
 } from '../../../core/api';
-import { noteTrack } from '../../../game/notesPath';
-import { findTrackLesson, outcomeIn, UNLOCK_STARS } from '../../../game/track';
-import { OPENS_AFTER, trackOpen } from '../../../game/tracks';
+import { findPathLesson, pathLessonOf, pathOutcome } from '../../../game/tracks';
 import { levelInfo } from '../../../game/xp';
 import { PitchStaff } from '../../../render/PitchStaff';
 import { useElementWidth } from '../../../render/theme';
@@ -35,6 +33,7 @@ import { useLearnReturn } from '../../lib/learnReturn';
 import { letterName, majorName, positionText, signWord, solfegeName, spokenName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
 import { useStore, type NoteLast } from '../../store';
+import { useStartPathLesson } from '../start';
 import { useStartNoteLesson, useStartNotes } from './start';
 
 const shownLevelUp = new WeakSet<NoteLast>();
@@ -45,6 +44,7 @@ export function NotesDone(): JSX.Element | null {
   const bp = useBreakpoint();
   const start = useStartNotes();
   const startLesson = useStartNoteLesson();
+  const startPath = useStartPathLesson();
   // A round started from a Learn section (?from=8.2): Back returns there; a new round and the setup keep it.
   const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('notes.done.docTitle') }));
@@ -81,18 +81,15 @@ export function NotesDone(): JSX.Element | null {
   const practise = (): void => start(s, missed, { replace: true, query: carry });
   const change = (): void => dispatch({ type: 'noteSettings', settings: s });
   // A lesson: what the round did for its path, and the lesson Next starts.
+  // A lesson goes by its number in the Learning path ("Lesson 4.2"); Next lesson may be a rhythm lesson.
   const lesson = run.lesson;
-  const track = lesson && noteTrack(lesson.track);
-  const where = lesson && track ? findTrackLesson(track, lesson.id) : null;
-  const outcome = lesson && track ? outcomeIn(state.progress, track, lesson.id, last.lessonStarsBefore) : null;
-  const goOn = outcome?.continueId && track ? findTrackLesson(track, outcome.continueId)?.lesson ?? null : null;
-  const replay = (id: string): void => {
-    if (lesson) startLesson(lesson.track, id, { replace: true });
+  const pathLesson = lesson ? pathLessonOf(lesson.track, lesson.id) : null;
+  const where = pathLesson ? findPathLesson(pathLesson.id) : null;
+  const outcome = lesson ? pathOutcome(state.progress, lesson.track, lesson.id, last.lessonStarsBefore) : null;
+  const goOn = outcome?.continueId ? findPathLesson(outcome.continueId)?.lesson ?? null : null;
+  const replayLesson = (): void => {
+    if (lesson) startLesson(lesson.track, lesson.id, { replace: true });
   };
-  // Two stars on the last lesson the Keys path waits for open it (it was closed before this round).
-  const keysAfter = OPENS_AFTER.keys;
-  const opensKeys =
-    !!keysAfter && lesson?.track === keysAfter.track && where?.unit.id === keysAfter.unit && last.lessonStarsBefore < UNLOCK_STARS && trackOpen(state.progress, 'keys');
   const outcomeBadge = outcome && outcome.kind !== 'passed' ? <OutcomeBadge outcome={outcome} /> : null;
 
   return (
@@ -104,10 +101,10 @@ export function NotesDone(): JSX.Element | null {
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">
-            <h1 className="screen-title">{lesson ? t('notes.done.lessonTitle', { id: lesson.id }) : t('notes.done.title')}</h1>
+            <h1 className="screen-title">{pathLesson ? t('notes.done.lessonTitle', { id: pathLesson.id }) : t('notes.done.title')}</h1>
             <span className="muted-text">
               {lesson && where
-                ? t('notes.done.lessonSub', { track: t('path.track.' + lesson.track), unit: tx(where.unit.titleKey) })
+                ? t('notes.done.lessonSub', { unit: where.unit.id, title: tx(where.unit.titleKey) })
                 : t('notes.done.sub', { clefs, keys: keyText })}
             </span>
           </div>
@@ -130,17 +127,7 @@ export function NotesDone(): JSX.Element | null {
           </div>
         </div>
 
-        {(outcomeBadge || opensKeys) && (
-          <div className="badges">
-            {outcomeBadge}
-            {opensKeys && (
-              <span className="badge badge--unlock">
-                <Icon name="unlock" size={15} />
-                {t('notes.done.keysOpen')}
-              </span>
-            )}
-          </div>
-        )}
+        {outcomeBadge && <div className="badges">{outcomeBadge}</div>}
 
         {d.total > 0 && <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />}
         {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
@@ -152,7 +139,7 @@ export function NotesDone(): JSX.Element | null {
           <div className="results-actions">
             <div className="results-main">
               {goOn ? (
-                <button type="button" className="btn btn--outline" onClick={() => replay(lesson.id)}>
+                <button type="button" className="btn btn--outline" onClick={replayLesson}>
                   {t('notes.done.newRound')}
                 </button>
               ) : (
@@ -162,11 +149,11 @@ export function NotesDone(): JSX.Element | null {
               )}
               {goOn ? (
                 <button type="button" className="btn btn--accent" aria-label={t('results.nextLessonLabel', { id: goOn.id, title: tx(goOn.title) })}
-                  onClick={() => replay(goOn.id)}>
+                  onClick={() => startPath(goOn.id, { replace: true })}>
                   {t('results.nextLesson')}
                 </button>
               ) : (
-                <button type="button" className="btn btn--accent" onClick={() => replay(lesson.id)}>
+                <button type="button" className="btn btn--accent" onClick={replayLesson}>
                   {t('notes.done.newRound')}
                 </button>
               )}

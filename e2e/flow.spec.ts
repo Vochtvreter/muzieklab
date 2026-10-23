@@ -1,13 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { pad, seed, VIEWPORTS } from './helpers';
+import { pad, pathUpTo, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
- * The main loop: Home → lesson 1.1 (quarter notes, 60 BPM, 2 bars, one bar of count-in) → How to play → tap along →
- * pause → resume → Results → Home. Taps are not timed precisely; the test checks the screens, not the score.
+ * The main loop: Home → lesson 2.1 (rhythm: quarter notes, 60 BPM, 2 bars, one bar of count-in; after sol's unit) →
+ * How to play → tap along → pause → resume → Results → Home. Taps are not timed precisely; the test checks the screens,
+ * not the score.
  */
 for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
   test(`play a lesson to the end (${name})`, async ({ page }) => {
     test.setTimeout(60_000);
+    await seed(page, { progress: { lessons: SOL_DONE } });
     await page.setViewportSize(VIEWPORTS[name]);
     /** One tap; false when the pad is gone (the run ended and Results replaced Play between checks). */
     const tap = async (): Promise<boolean> => {
@@ -30,7 +32,7 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
 
     await page.goto('./');
     await expect(page.getByText('No streak yet')).toBeVisible();
-    await page.getByRole('button', { name: 'Start lesson' }).click();
+    await page.getByRole('button', { name: 'Continue lesson' }).click();
     await expect(page).toHaveURL(/#\/play$/);
     await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
     await page.getByRole('button', { name: 'Got it' }).click();
@@ -63,7 +65,7 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
       await page.waitForTimeout(850);
     }
     await expect(page).toHaveURL(/#\/results$/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Lesson 2.1 done' })).toBeVisible();
     // Retry, or Try again under 2 stars: these taps are untimed.
     await expect(page.getByRole('button', { name: /^(Retry|Try again)$/ })).toBeVisible();
 
@@ -78,13 +80,14 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
 }
 
 test('a reload on Play keeps the lesson and waits for Start', async ({ page }) => {
+  await seed(page, { progress: { lessons: SOL_DONE } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Start lesson' }).click();
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.reload();
   await expect(page).toHaveURL(/#\/play$/);
-  await expect(page.getByRole('dialog', { name: 'Ready?' }).getByText('Lesson 1.1', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Ready?' }).getByText('Lesson 2.1', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
   await page.getByRole('button', { name: /^Start/ }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -92,9 +95,10 @@ test('a reload on Play keeps the lesson and waits for Start', async ({ page }) =
 });
 
 test('after quitting, Back does not walk into the exercise again', async ({ page }) => {
+  await seed(page, { progress: { lessons: SOL_DONE } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Start lesson' }).click();
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   await expect(page).toHaveURL(/#\/$/);
@@ -104,9 +108,10 @@ test('after quitting, Back does not walk into the exercise again', async ({ page
 });
 
 test('Esc does not start the Ready sheet (browsers do not let Esc start audio); Start does', async ({ page }) => {
+  await seed(page, { progress: { lessons: SOL_DONE } });
   await page.setViewportSize(VIEWPORTS.desktop);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Start lesson' }).click();
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.reload();
   await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
@@ -118,45 +123,46 @@ test('Esc does not start the Ready sheet (browsers do not let Esc start audio); 
 
 test('a finished lesson can be played again from Home and from the Path', async ({ page }) => {
   await seed(page, {
-    progress: { lessons: { '1.1': { stars: 2, bestAccuracy: 85 }, '1.2': { stars: 1, bestAccuracy: 65 } }, practiceDays: [], lastSettings: null },
+    progress: { lessons: { ...SOL_DONE, '1.1': { stars: 2, bestAccuracy: 85 }, '1.2': { stars: 1, bestAccuracy: 65 } }, practiceDays: [], lastSettings: null },
     prefs: { seenHowTo: true, seenHold: true },
   });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await page.getByRole('button', { name: /^Play lesson 1\.1/ }).click();
+  await page.getByRole('button', { name: /^Play lesson 2\.1/ }).click();
   await expect(page).toHaveURL(/#\/play$/);
-  await expect(page.getByText('Lesson 1.1', { exact: true })).toBeVisible();
+  await expect(page.getByText('Lesson 2.1', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   await page.goto('./#/path');
-  await expect(page.getByRole('img', { name: 'Lesson 1.3 · Halves and quarters, locked' })).toBeVisible();
-  await page.getByRole('button', { name: 'Play lesson 1.2 · Half notes: 1 of 3 stars' }).click();
-  await expect(page.getByText('Lesson 1.2', { exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Lesson 2.3 · Halves and quarters, locked' })).toBeVisible();
+  await page.getByRole('button', { name: 'Play lesson 2.2 · Half notes: 1 of 3 stars' }).click();
+  await expect(page.getByText('Lesson 2.2', { exact: true })).toBeVisible();
 });
 
 test('the Path keeps the current unit in view when a phone turns to landscape', async ({ page }) => {
-  const lessons: Record<string, { stars: number; bestAccuracy: number }> = {};
-  for (let u = 1; u <= 6; u++) for (let l = 1; l <= 5; l++) lessons[`${u}.${l}`] = { stars: 2, bestAccuracy: 88 };
-  await seed(page, { progress: { lessons }, prefs: { seenHowTo: true, seenHold: true } });
+  // Up to si (unit 13) passed: unit 14, rhythm's dotted notes, is current, far down the path.
+  await seed(page, { progress: { lessons: pathUpTo('13.5') }, prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/path');
-  const unit7 = page.getByRole('button', { name: /^7 · Dotted notes/ });
+  const unit7 = page.getByRole('button', { name: /^14 · Dotted notes/ });
   await expect(unit7).toBeInViewport();
   await page.setViewportSize(VIEWPORTS['phone-landscape']);
   await expect(unit7).toBeInViewport();
 });
 
-test('desktop Home: the learning-path card opens the rhythm path it shows, whichever path was picked last', async ({ page }) => {
-  await seed(page, { prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+test('desktop Home: the learning-path card opens the Path at the unit it shows', async ({ page }) => {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.desktop);
   await page.goto('./');
+  await expect(page.getByRole('link', { name: /^Learning path/ })).toContainText('1 · Sol: the G line');
   await page.getByRole('link', { name: /^Learning path/ }).click();
   await expect(page).toHaveURL(/#\/path$/);
-  await expect(page.getByRole('heading', { level: 2, name: 'Rhythm' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: '1 · Sol: the G line' })).toBeVisible();
 });
 
 test('the first lesson that judges holds shows How to play again, with holding, once', async ({ page }) => {
-  // Unit 1 (tap only) done, its How to play seen: lesson 2.1 is the first where holding counts.
-  const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 3, bestAccuracy: 92 }]));
+  // Rhythm unit 1 (tap only, the path's unit 2) and mi done, its How to play seen: lesson 4.1 (rhythm 2.1) is the
+  // first where holding counts.
+  const lessons = pathUpTo('3.5', 3, 92);
   await seed(page, { progress: { lessons, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
@@ -171,23 +177,23 @@ test('the first lesson that judges holds shows How to play again, with holding, 
   // Only once: the next hold lesson starts straight away.
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   await page.getByRole('button', { name: 'Continue lesson' }).click();
-  await expect(page.getByText('Lesson 2.1', { exact: true })).toBeVisible();
+  await expect(page.getByText('Lesson 4.1', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('Next lesson introduces what is new before the count-in, once; another lesson waits on Ready', async ({ page }) => {
   test.setTimeout(60_000);
-  await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } }, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true } });
+  await seed(page, { progress: { lessons: { ...SOL_DONE, '1.1': { stars: 3, bestAccuracy: 95 } }, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true } });
   await page.setViewportSize(VIEWPORTS.phone);
   const countIn = page.getByRole('img', { name: /^Count-in, beat/ });
   // The first run of the session starts straight away.
   await page.goto('./#/path');
-  await page.getByRole('button', { name: /^Play lesson 1\.1/ }).click();
+  await page.getByRole('button', { name: /^Play lesson 2\.1/ }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Skip to results' }).click();
   await page.getByRole('button', { name: /^Next lesson/ }).click();
 
-  // Lesson 1.2 brings the half note: its card, Listen, Learn more and Start, before any count-in.
+  // Lesson 2.2 (rhythm 1.2) brings the half note: its card, Listen, Learn more and Start, before any count-in.
   const sheet = page.getByRole('dialog', { name: 'Half notes' });
   await expect(sheet.getByText('New in this lesson')).toBeVisible();
   await expect(sheet.getByText('· 2 beats')).toBeVisible();
@@ -200,7 +206,7 @@ test('Next lesson introduces what is new before the count-in, once; another less
   // ? opens How to play, which was not due: it names the lesson, not "First time here", and leads back.
   await page.keyboard.press('?');
   const howTo = page.getByRole('dialog', { name: 'How to play' });
-  await expect(howTo.getByText('Lesson 1.2', { exact: true })).toBeVisible();
+  await expect(howTo.getByText('Lesson 2.2', { exact: true })).toBeVisible();
   await expect(howTo.getByText('First time here')).toHaveCount(0);
   await howTo.getByRole('button', { name: 'Got it' }).click();
   await expect(sheet.getByText('New in this lesson')).toBeVisible();
@@ -217,7 +223,7 @@ test('Next lesson introduces what is new before the count-in, once; another less
   // Another lesson than the one finished last: Ready first, so the rhythm can be read; Start counts in.
   await page.getByRole('button', { name: 'Skip to results' }).click();
   await page.goto('./#/path');
-  await page.getByRole('button', { name: /^Play lesson 1\.1/ }).click();
+  await page.getByRole('button', { name: /^Play lesson 2\.1/ }).click();
   await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
   await expect(countIn).toHaveCount(0);
   await page.getByRole('button', { name: /^Start/ }).click();
@@ -225,7 +231,7 @@ test('Next lesson introduces what is new before the count-in, once; another less
 });
 
 test('the intro sheet comes after How to play, the first time both are due', async ({ page }) => {
-  await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } }, practiceDays: [], lastSettings: null }, prefs: {} });
+  await seed(page, { progress: { lessons: { ...SOL_DONE, '1.1': { stars: 3, bestAccuracy: 95 } }, practiceDays: [], lastSettings: null }, prefs: {} });
   await page.setViewportSize(VIEWPORTS.desktop);
   await page.goto('./');
   await page.getByRole('button', { name: 'Continue lesson' }).click();
@@ -275,10 +281,61 @@ test('the setup hold switch turned on and off again before unit 2 leaves Setting
   await expect(page.getByRole('group', { name: 'Rhythm input' }).getByRole('button', { name: 'Tap only' })).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('free practice holds by default once unit 2 is open', async ({ page }) => {
-  const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2, bestAccuracy: 85 }]));
+test('free practice holds by default once rhythm unit 2 is open', async ({ page }) => {
+  const lessons = pathUpTo('3.5');
   await seed(page, { progress: { lessons, practiceDays: [], lastSettings: null }, prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/setup');
   await expect(page.getByRole('switch', { name: /^Hold notes for their length/ })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('a new player starts with sol: meet it, write it, and Next lesson goes on', async ({ page }) => {
+  await seed(page, { prefs: { noteNames: 'solfege' } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./');
+  // Home's Continue shows the first note on the staff, with its name.
+  await expect(page.getByRole('img', { name: 'The notes so far: sol' })).toBeVisible();
+  await page.getByRole('button', { name: 'Start lesson' }).click();
+  await expect(page).toHaveURL(/#\/notes\/play$/);
+  await expect(page.getByText('Lesson 1.1 · Treble clef · C major')).toBeVisible();
+  // One note learned: one name button.
+  const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
+  await expect(names).toHaveCount(1);
+  for (let i = 0; i < 10; i++) {
+    await names.first().click();
+    await page.getByRole('button', { name: /^(Next note|See summary)/ }).click();
+  }
+  await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+  await expect(page.getByText('Unit 1 · Sol: the G line')).toBeVisible();
+  await page.getByRole('button', { name: /^Next lesson/ }).click();
+
+  // Lesson 1.2 writes sol: tap the staff, move it with the arrows, Check.
+  await expect(page.getByText('Write sol (G) on the staff')).toBeVisible();
+  const staff = page.getByRole('slider', { name: 'Where sol (G) goes on the staff' });
+  await expect(page.getByRole('button', { name: 'Check' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Higher' }).click();
+  await expect(staff).toHaveAttribute('aria-valuetext', 'the middle line');
+  await page.getByRole('button', { name: 'Lower' }).click();
+  await expect(staff).toHaveAttribute('aria-valuetext', 'the 2nd space');
+  await page.getByRole('button', { name: 'Lower' }).click();
+  await expect(staff).toHaveAttribute('aria-valuetext', 'the 2nd line');
+  await page.getByRole('button', { name: 'Check' }).click();
+  await expect(page.getByText('Right: sol (G) is on the 2nd line.')).toBeVisible();
+});
+
+test('hearing a note: sol, then the note, named from the notes learned so far', async ({ page }) => {
+  // Sol, rhythm unit 1 and mi's first two lessons done: lesson 3.3 hears mi.
+  await seed(page, { progress: { lessons: pathUpTo('3.2') }, prefs: { seenHowTo: true, seenHold: true, noteNames: 'solfege' } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Start lesson 3.3' }).click();
+  await expect(page.getByText('Which note comes after sol?')).toBeVisible();
+  // The note stays hidden until it is named; the staff says its slot is empty.
+  await expect(page.getByRole('img', { name: /Note 1 of 10 is still empty/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hear it again' })).toBeVisible();
+  const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
+  await expect(names).toHaveCount(2);
+  await names.first().click();
+  await expect(page.locator('.nfeedback')).toHaveText(/^(Right: mi \(E\), 2 steps below sol\.|That was sol \(G\), the same as sol\.)$/);
+  await expect(page.getByRole('img', { name: /Note 1 of 10 is highlighted/ })).toBeVisible();
 });

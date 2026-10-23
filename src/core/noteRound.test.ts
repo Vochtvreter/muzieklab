@@ -2,6 +2,7 @@ import fc from 'fast-check';
 import {
   DEFAULT_NOTE_SETTINGS,
   generateRound,
+  HEAR_REFERENCE,
   isRight,
   missKind,
   missedIds,
@@ -11,6 +12,7 @@ import {
   noteStars,
   pianoKeyMidi,
   roundHasSigns,
+  roundLetters,
   sanitizeNoteSettings,
   scoreRound,
   updateWeak,
@@ -30,6 +32,9 @@ const settingsArb: fc.Arbitrary<NoteSettings> = fc.record({
   count: fc.integer({ min: 10, max: 50 }),
   timer: fc.constantFrom(0, 5, 3),
   playNotes: fc.boolean(),
+  tasks: fc.constant(['read' as const]),
+  only: fc.constant([]),
+  stress: fc.constant([]),
 });
 
 const corpus = fc.sample(fc.tuple(settingsArb, fc.integer({ min: 1, max: 2 ** 31 - 1 })), { numRuns: 400, seed: 7 });
@@ -106,7 +111,7 @@ describe('generateRound (property tests)', () => {
   });
 });
 
-const fSharp5: RoundNote = { clef: 'treble', key: 'G', step: 38, alter: 1, sign: null, input: 'names' };
+const fSharp5: RoundNote = { clef: 'treble', key: 'G', step: 38, alter: 1, sign: null, input: 'names', task: 'read' };
 
 describe('answers', () => {
   it('needs the written spelling for names, and the sounding key on the piano', () => {
@@ -114,7 +119,7 @@ describe('answers', () => {
     expect(isRight(fSharp5, { kind: 'name', letter: 'F', alter: 0 })).toBe(false);
     expect(isRight(fSharp5, { kind: 'name', letter: 'G', alter: -1 })).toBe(false);
     expect(isRight(fSharp5, { kind: 'piano', pc: 6 })).toBe(true);
-    const cFlat: RoundNote = { clef: 'treble', key: 'Cb', step: 35, alter: -1, sign: null, input: 'piano' };
+    const cFlat: RoundNote = { clef: 'treble', key: 'Cb', step: 35, alter: -1, sign: null, input: 'piano', task: 'read' };
     expect(isRight(cFlat, { kind: 'piano', pc: 11 })).toBe(true);
   });
 
@@ -124,7 +129,7 @@ describe('answers', () => {
     expect(missKind(fSharp5, { kind: 'name', letter: 'E', alter: 0 })).toBe('letter');
     const fNat: RoundNote = { ...fSharp5, alter: 0, sign: 0 };
     expect(missKind(fNat, { kind: 'name', letter: 'F', alter: 1 })).toBe('noteSign');
-    const c: RoundNote = { clef: 'bass', key: 'C', step: 21, alter: 0, sign: null, input: 'names' };
+    const c: RoundNote = { clef: 'bass', key: 'C', step: 21, alter: 0, sign: null, input: 'names', task: 'read' };
     expect(missKind(c, { kind: 'name', letter: 'C', alter: 1 })).toBe('extraSign');
   });
 });
@@ -153,9 +158,9 @@ describe('the sound of a note', () => {
     expect(noteMidi(fSharp5)).toBe(78);
     expect(noteMidi({ ...fSharp5, step: 38, alter: 0, sign: 0 })).toBe(77);
     // The octave belongs to the letter: C♭5 sounds as B4, B♯4 as C5.
-    expect(noteMidi({ clef: 'treble', key: 'Cb', step: 35, alter: -1, sign: null, input: 'names' })).toBe(71);
-    expect(noteMidi({ clef: 'treble', key: 'C', step: 34, alter: 1, sign: 1, input: 'names' })).toBe(72);
-    expect(noteMidi({ clef: 'bass', key: 'C', step: 18, alter: 0, sign: null, input: 'names' })).toBe(43);
+    expect(noteMidi({ clef: 'treble', key: 'Cb', step: 35, alter: -1, sign: null, input: 'names', task: 'read' })).toBe(71);
+    expect(noteMidi({ clef: 'treble', key: 'C', step: 34, alter: 1, sign: 1, input: 'names', task: 'read' })).toBe(72);
+    expect(noteMidi({ clef: 'bass', key: 'C', step: 18, alter: 0, sign: null, input: 'names', task: 'read' })).toBe(43);
   });
 
   it('puts the answer piano in the octave of the note, so the right key sounds as the note', () => {
@@ -224,6 +229,45 @@ describe('scoreRound', () => {
     expect(weak['treble:34']).toBe(1);
     expect(updateWeak({ 'treble:38': 5 }, notes, answers)['treble:38']).toBe(5);
     expect(missedIds(notes, answers).sort()).toEqual(['treble:34', 'treble:38']);
+  });
+});
+
+describe('path lessons: some notes, and read, write and hear', () => {
+  // sol (G4), mi (E4), fa (F4): the notes of the first three units.
+  const s: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, clefs: ['treble'], only: [32, 30, 31], count: 30 };
+
+  it('draws only the notes learned so far, and the name buttons are theirs', () => {
+    for (const seed of [1, 2, 3, 4, 5]) for (const n of generateRound(s, seed)) expect([30, 31, 32]).toContain(n.step);
+    expect(roundLetters(s)).toEqual(['E', 'F', 'G']);
+    expect(roundLetters(DEFAULT_NOTE_SETTINGS)).toHaveLength(7);
+    // Positions outside the clef's range leave the whole range.
+    expect(roundLetters({ ...s, clefs: ['bass'] })).toHaveLength(7);
+  });
+
+  it('repeats the one note of a one-note lesson', () => {
+    const one = generateRound({ ...s, only: [32] }, 9);
+    expect(one).toHaveLength(30);
+    expect(one.every((n) => n.step === 32)).toBe(true);
+  });
+
+  it('brings the new note up more often', () => {
+    // No note comes twice in a row, so with three notes even a stressed one is at most every other note.
+    const count = (x: NoteSettings): number => [1, 2, 3, 4, 5].reduce((n, seed) => n + generateRound(x, seed).filter((y) => y.step === 31).length, 0);
+    expect(count({ ...s, stress: [31] })).toBeGreaterThan(count(s) * 1.25);
+  });
+
+  it('takes turns between tasks every 5 notes', () => {
+    const r = generateRound({ ...s, tasks: ['read', 'write', 'hear'], count: 20 }, 3);
+    expect(r.map((n) => n.task)).toEqual([...Array(5).fill('read'), ...Array(5).fill('write'), ...Array(5).fill('hear'), ...Array(5).fill('read')]);
+    expect(generateRound(s, 3).every((n) => n.task === 'read')).toBe(true);
+  });
+
+  it('judges a written note by its place on the staff', () => {
+    const g: RoundNote = { clef: 'treble', key: 'C', step: 32, alter: 0, sign: null, input: 'names', task: 'write' };
+    expect(isRight(g, { kind: 'place', step: 32 })).toBe(true);
+    expect(isRight(g, { kind: 'place', step: 33 })).toBe(false);
+    expect(missKind(g, { kind: 'place', step: 30 })).toBe('letter');
+    expect(HEAR_REFERENCE).toBe(32);
   });
 });
 

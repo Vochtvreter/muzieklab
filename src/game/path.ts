@@ -1,7 +1,7 @@
 import type { Settings } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import type { LessonProgress, Progress } from './storage';
-import { lessonOpen, nextIn, trackStarsIn, unitStarsIn, type Track, type TrackLesson, type TrackUnit } from './track';
+import type { Track, TrackLesson, TrackUnit } from './track';
 
 export { UNLOCK_STARS } from './track';
 
@@ -24,7 +24,7 @@ function unit(id: number, glyph: string, base: Partial<Settings>, lessons: Parti
 }
 
 /*
- * Learning Path units 1–8 (§8.2). Each unit's base spells out every musical setting, so nothing
+ * Rhythm units 1–8 of the Learning path (§8.2; the path numbers them in its own order, tracks.ts). Each unit's base spells out every musical setting, so nothing
  * leaks in from DEFAULT_SETTINGS; lessons add one thing at a time, and lesson 5 reviews the unit
  * with more bars and a faster tempo. Tap only (`hold: false`) in unit 1, tap & hold from unit 2.
  * Titles are message keys: path.u{unit}.title and path.u{unit}.l{lesson}; the comments give the English.
@@ -102,7 +102,7 @@ export const UNITS: Unit[] = [
   ]),
 ];
 
-/** The rhythm path, for the rules every path shares (track.ts). */
+/** The rhythm units, as one kind of unit of the Learning path (tracks.ts puts the path together; track.ts has its rules). */
 export const RHYTHM_TRACK: Track<Lesson> = { id: 'rhythm', units: UNITS };
 
 export const ALL_LESSONS: Array<{ unit: Unit; lesson: Lesson; index: number }> = UNITS.flatMap((unit) =>
@@ -120,22 +120,6 @@ export function lessonSettings(lessonId: string): Settings {
   // Fresh arrays: callers may edit the result without touching UNITS.
   return { ...s, meters: [...s.meters], notes: [...s.notes], rests: [...s.rests] };
 }
-
-/**
- * Lesson 1.1 is always open; any other lesson opens with 2 stars on the one before it.
- * The first lesson of a unit needs 2 stars on every lesson of the previous unit (the Path's
- * "Unlocks with 2 stars on every unit N lesson").
- */
-export const isUnlocked = (progress: Progress, lessonId: string): boolean => lessonOpen(progress, RHYTHM_TRACK, lessonId);
-
-/** The lesson to continue with: the first one, in path order, without 2 stars yet. Null when the path is done. */
-export const nextLesson = (progress: Progress): Lesson | null => nextIn(progress, RHYTHM_TRACK);
-
-/** Stars earned in a unit (max 3 per lesson: the hidden 4th star and the diamond count as three). */
-export const unitStars = (progress: Progress, unitId: number): number => unitStarsIn(progress, RHYTHM_TRACK, unitId);
-
-/** Stars over the whole path, for the "79 / 120 ★" header. */
-export const pathStars = (progress: Progress): { earned: number; max: number } => trackStarsIn(progress, RHYTHM_TRACK);
 
 /** Progress with a finished lesson recorded (by its progress key, track.ts), keeping the best stars and accuracy. */
 export function recordLessonResult(progress: Progress, lessonId: string, stars: LessonProgress['stars'], accuracy: number): Progress {

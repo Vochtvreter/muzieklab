@@ -1,6 +1,7 @@
 import { checkSettings } from '../core/feasibility';
 import { generateExercise } from '../core/generator';
 import { dailyChallenge, dailyTier, reachedUnit } from './daily';
+import { PATH_UNITS, pathUnitOf } from './tracks';
 import { lessonSettings, UNITS } from './path';
 import { defaultProgress, type Progress } from './storage';
 
@@ -9,8 +10,10 @@ const days = (n: number): string[] => Array.from({ length: n }, (_, i) => new Da
 
 /** Progress with two stars on every lesson of units 1 … n. */
 function passedUnits(n: number): Progress {
+  // Rhythm unit n + 1 opens after the note unit before it in the Learning path: every path unit up to there passed.
+  const stop = pathUnitOf('rhythm', n + 1) ?? pathUnitOf('rhythm', n)! + 1;
   const lessons: Progress['lessons'] = {};
-  for (const u of UNITS.slice(0, n)) for (const l of u.lessons) lessons[l.id] = { stars: 2, bestAccuracy: 80 };
+  for (const u of PATH_UNITS.filter((x) => x.id < stop)) for (const l of u.lessons) lessons[l.key] = { stars: 2, bestAccuracy: 80 };
   return { ...defaultProgress(), lessons };
 }
 

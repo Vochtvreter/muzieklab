@@ -3,7 +3,8 @@ import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import {
-  expectClickable, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, expectTouchHeight, pad, seed, VIEWPORTS, type ViewportName,
+  expectClickable, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, expectTouchHeight, pad, pathUpTo, seed, SOL_DONE, VIEWPORTS,
+  type ViewportName,
 } from './helpers';
 
 /**
@@ -97,9 +98,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('home: start the first lesson and free practice', async ({ page }) => {
       known(name, 'home');
       await page.goto('./');
-      // Nothing played yet: the card starts lesson 1.1 (no "Continue"), with no meter, bars or tempo over the staff.
+      // Nothing played yet: the card starts lesson 1.1, sol (no "Continue"), with the note on the staff and no meter,
+      // bars or tempo.
       await expect(page.getByText('Unit 1 · Lesson 1 of 5', { exact: true })).toBeVisible();
       await expect(page.locator('.continue-card')).not.toContainText('BPM');
+      // A new English player reads letters: sol is G.
+      await expect(page.getByRole('img', { name: 'The notes so far: G' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'Start lesson' }));
       // It is the one filled button on Home: the daily challenge's is outlined.
       await expect(page.locator('.home-desk, .home').locator('.btn--accent, .btn--ink')).toHaveCount(0);
@@ -150,10 +154,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('home and path: lesson stars, with the diamond as four diamond stars', async ({ page }) => {
       known(name, 'home-stars');
-      const lessons = { '1.1': { stars: 5, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 }, '1.3': { stars: 2, bestAccuracy: 80 } };
+      // Sol's unit passed; rhythm unit 1 (the path's unit 2) with a diamond, a 4th star and two stars.
+      const lessons = { ...SOL_DONE, '1.1': { stars: 5, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 }, '1.3': { stars: 2, bestAccuracy: 80 } };
       await seed(page, { progress: { lessons }, prefs: { seenHowTo: true, seenHold: true } });
       await page.goto('./');
-      await expect(page.getByText('Continue · Unit 1 · Lesson 4 of 5', { exact: true })).toBeVisible();
+      await expect(page.getByText('Continue · Unit 2 · Lesson 4 of 5', { exact: true })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'Continue lesson' }));
       const tiles = page.locator(desktopLayout ? '.path-card .tile' : '.continue-card .tile');
       await expect(tiles.nth(0).locator('.diamond-star')).toHaveCount(4);
@@ -161,14 +166,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(tiles.nth(2)).toContainText('★★☆');
       if (desktopLayout) {
         await expect(page.getByRole('img', { name: 'Diamond: every note perfect' })).toBeVisible();
-        await expect(page.getByText('Next: lesson 1.4 · A little faster · 80 BPM')).toBeVisible();
+        await expect(page.getByText('Next: lesson 2.4 · A little faster · 80 BPM')).toBeVisible();
       } else {
-        await expect(page.getByRole('button', { name: 'Play lesson 1.1, Diamond: every note perfect' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Play lesson 2.1, Diamond: every note perfect' })).toBeVisible();
       }
       await page.goto('./#/path');
-      const diamond = page.getByRole('button', { name: 'Play lesson 1.1 · Quarter notes: Diamond: every note perfect' });
+      const diamond = page.getByRole('button', { name: 'Play lesson 2.1 · Quarter notes: Diamond: every note perfect' });
       await expect(diamond.locator('.diamond-star')).toHaveCount(4);
-      await expect(page.getByRole('button', { name: 'Play lesson 1.2 · Half notes: 3 of 3 stars and the bonus 4th star' })).toContainText('★★★★');
+      await expect(page.getByRole('button', { name: 'Play lesson 2.2 · Half notes: 3 of 3 stars and the bonus 4th star' })).toContainText('★★★★');
       await expectNoSideScroll(page);
     });
 
@@ -210,55 +215,40 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('path: three paths, a unit open with its lessons by name, Keys locked', async ({ page }) => {
+    test('path: one path, a unit open with its lessons by name, notes and rhythm taking turns', async ({ page }) => {
       known(name, 'path-tracks');
       await page.goto('./#/path');
-      const paths = page.getByRole('group', { name: 'Paths' }).getByRole('button');
-      await expect(paths).toHaveCount(3);
-      await expect(paths.nth(0)).toHaveAttribute('aria-pressed', 'true');
-      // The current unit is open: its lessons by name, the first one to play.
-      await expect(page.getByRole('button', { name: /^1 · Quarter and half notes/ })).toHaveAttribute('aria-expanded', 'true');
-      await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Quarter notes: 0 of 3 stars' }));
-      await expect(page.getByRole('img', { name: 'Lesson 1.2 · Half notes, locked' })).toBeVisible();
-      // What opens the locked units is said once, under the first; no Next line repeats Start.
+      // One path since 0.11.0: no switcher.
+      await expect(page.getByRole('group', { name: 'Paths' })).toHaveCount(0);
+      await expect(page.getByText('Unit 1 of 26 · 0 / 390 ★')).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: 'Theory: Learn' }));
+      // The current unit is open: sol's lessons by name, the first one to play.
+      const sol = page.getByRole('button', { name: /^1 · Sol: the G line/ });
+      await expect(sol).toHaveAttribute('aria-expanded', 'true');
+      await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Meet sol: 0 of 3 stars' }));
+      await expect(page.getByRole('img', { name: 'Lesson 1.2 · Write sol, locked' })).toBeVisible();
+      // Then rhythm, then the next note.
       const units = page.getByRole('list', { name: 'Units' });
+      await expect(units.getByText('2 · Quarter and half notes')).toBeVisible();
+      await expect(units.getByText('3 · Mi: the bottom line')).toBeAttached();
+      // What opens the locked units is said once, under the first; no Next line repeats Start.
       await expect(units.getByText('Opens with 2 stars on every unit 1 lesson')).toHaveCount(1);
       await expect(units.getByText(/^Opens with/)).toHaveCount(1);
       await expect(units.getByText(/^Next: lesson/)).toHaveCount(0);
-      await expect(paths.nth(1)).toContainText('Read notes');
-
-      await expectClickable(paths.nth(1));
-      await paths.nth(1).click();
-      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.getByRole('link', { name: 'Theory: chapter 8' })).toBeVisible();
-      await expectClickable(page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' }));
       await expectClickable(page.getByRole('button', { name: 'Start lesson 1.1' }));
-      // Closing the open unit shows its lessons as stars again.
-      await page.getByRole('button', { name: /^1 · Treble clef/ }).click();
-      await expect(page.getByRole('button', { name: /^1 · Treble clef/ })).toHaveAttribute('aria-expanded', 'false');
-      await expect(page.locator('#unit-notes-1')).toBeHidden();
-      await expect(page.locator('.unit-stars').getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 0 of 3 stars' })).toBeVisible();
-      // A tap low on the header, right above the stars, opens the unit (it does not start lesson 1.1).
-      const head = page.getByRole('button', { name: /^1 · Treble clef/ });
-      const headBox = (await head.boundingBox())!;
-      await head.click({ position: { x: 30, y: headBox.height - 5 } });
-      await expect(head).toHaveAttribute('aria-expanded', 'true');
-      await expect(page).toHaveURL(/#\/path$/);
-
-      await paths.nth(2).click();
-      await expect(page.getByText('Opens after Read notes unit 3').first()).toBeVisible();
-      await expect(units.getByText(/^Opens/)).toHaveCount(1);
-      await expectClickable(page.getByRole('button', { name: 'Go to Read notes' }));
+      // Checked before a unit opens or closes: its chevron turns, which overflows the header for a moment.
       await expectNoClippedLabels(page);
+      // Closing the open unit shows its lessons as stars again.
+      await sol.click();
+      await expect(sol).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.locator('#unit-1')).toBeHidden();
+      await expect(page.locator('.unit-stars').getByRole('button', { name: 'Play lesson 1.1 · Meet sol: 0 of 3 stars' })).toBeVisible();
+      // A tap low on the header, right above the stars, opens the unit (it does not start lesson 1.1).
+      const headBox = (await sol.boundingBox())!;
+      await sol.click({ position: { x: 30, y: headBox.height - 5 } });
+      await expect(sol).toHaveAttribute('aria-expanded', 'true');
+      await expect(page).toHaveURL(/#\/path$/);
       await expectNoSideScroll(page);
-      // With the keyboard: the focus stays on the button, which becomes Start for Read notes.
-      await page.getByRole('button', { name: 'Go to Read notes' }).focus();
-      await page.keyboard.press('Enter');
-      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.getByRole('button', { name: 'Start lesson 1.1' })).toBeFocused();
-      // The app remembers the path picked last.
-      await page.reload();
-      await expect(paths.nth(1)).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('settings: leniency and reset progress', async ({ page }) => {
@@ -316,13 +306,15 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('calibration from results: your delay, and back to results', async ({ page }) => {
       known(name, 'calibration-results');
+      // Sol's unit passed: Continue starts the first rhythm lesson, the path's 2.1.
+      await seed(page, { progress: { lessons: SOL_DONE } });
       await page.setViewportSize(VIEWPORTS.phone);
       await page.goto('./');
-      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
       await page.getByRole('button', { name: 'Got it' }).click();
       await page.getByRole('button', { name: 'Skip to results' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
-      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lesson 2.1 done' })).toBeVisible();
       await page.evaluate(() => {
         window.location.hash = '#/calibrate?from=results';
       });
@@ -334,7 +326,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
       await back.click();
       await expect(page).toHaveURL(/#\/results$/);
-      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lesson 2.1 done' })).toBeVisible();
 
       // After a reload there is no run to go back to: then it is the way in from Settings.
       await page.evaluate(() => {
@@ -351,16 +343,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('results: try again, new exercise and copy code', async ({ page }) => {
       known(name, 'results');
       // Desktop Play has no Skip link: finish on a phone-sized window, then show Results at this size.
+      await seed(page, { progress: { lessons: SOL_DONE } });
       await page.setViewportSize(VIEWPORTS.phone);
       await page.goto('./');
-      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
       await page.getByRole('button', { name: 'Got it' }).click();
       await page.getByRole('button', { name: 'Skip to results' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
-      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
-      // Nothing was played: the badge says what opens lesson 1.2, the tip says no taps came in, and under 2 stars the
+      await expect(page.getByRole('heading', { name: 'Lesson 2.1 done' })).toBeVisible();
+      // Nothing was played: the badge says what opens lesson 2.2, the tip says no taps came in, and under 2 stars the
       // filled button plays the same exercise again. The code is not shown, only copied.
-      await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
+      await expect(page.getByText('Get 2 stars to open lesson 2.2')).toBeVisible();
       await expect(page.getByText(/^No taps came in\./)).toBeVisible();
       await expect(page.getByText(/max combo|T44-/)).toHaveCount(0);
       await expect(page.locator('.results-main .btn--accent')).toHaveText('Try again');
@@ -435,23 +428,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('path: the current unit is in view, and long Dutch titles stay inside their boxes', async ({ page }) => {
       known(name, 'path-current');
-      // Rhythm up to lesson 7.2 with two stars: unit 7 is current, below the fold on most screens.
-      const lessons: Record<string, { stars: number; bestAccuracy: number }> = {};
-      for (let u = 1; u <= 6; u++) for (let l = 1; l <= 5; l++) lessons[`${u}.${l}`] = { stars: 2, bestAccuracy: 88 };
-      lessons['7.1'] = lessons['7.2'] = { stars: 2, bestAccuracy: 88 };
-      await seed(page, { progress: { lessons }, prefs: { language: 'nl', seenHowTo: true, seenHold: true } });
+      // The path up to lesson 14.2 with two stars: unit 14 (rhythm's dotted notes) is current, below the fold.
+      await seed(page, { progress: { lessons: pathUpTo('14.2') }, prefs: { language: 'nl', seenHowTo: true, seenHold: true } });
       await page.goto('./#/path');
-      await expect(page.getByRole('button', { name: /^7 · Gepunteerde noten/ })).toBeInViewport();
-      // Picking another path keeps the paths (and the focused one) in view, on a short screen too.
-      const notesPath = page.getByRole('group', { name: 'Paden' }).getByRole('button').nth(1);
-      await notesPath.focus();
-      await page.keyboard.press('Enter');
-      await expect(notesPath).toHaveAttribute('aria-pressed', 'true');
-      await expect(notesPath).toBeInViewport();
-      await page.getByRole('group', { name: 'Paden' }).getByRole('button').nth(0).click();
-      await expect(page.getByRole('button', { name: /^7 · Gepunteerde noten/ })).toBeVisible();
-      await expectClickable(page.getByRole('button', { name: /^Begin les 7\.3/ }));
-      // "5 · Tweekwartsmaat, achtste rusten": a long word breaks instead of running into the unit's stars.
+      await expect(page.getByRole('button', { name: /^14 · Gepunteerde noten/ })).toBeInViewport();
+      await expectClickable(page.getByRole('button', { name: /^Begin les 14\.3/ }));
+      // "10 · Tweekwartsmaat, achtste rusten", "5 · Fa: de onderste tussenruimte": a long word breaks instead of running
+      // into the unit's stars.
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
       const spill = await page.evaluate(() =>
         [...document.querySelectorAll<HTMLElement>('.unit-head .unit-title, .lesson-title')]
@@ -464,14 +447,58 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('read notes lesson: round done with Next lesson', async ({ page }) => {
       known(name, 'notes-lesson-done');
-      await seed(page, { progress: { lessons: { 'notes:1.1': { stars: 3, bestAccuracy: 96 } } }, prefs: { pathTrack: 'notes', seenHowTo: true, seenHold: true } });
+      // Read notes unit 1 is the path's unit 15.
+      await seed(page, { progress: { lessons: { ...pathUpTo('14.5'), 'notes:1.1': { stars: 3, bestAccuracy: 96 } } }, prefs: { seenHowTo: true, seenHold: true } });
       await page.goto('./#/path');
-      await page.getByRole('button', { name: 'Play lesson 1.1 · Name the notes: 3 of 3 stars' }).click();
+      await page.getByRole('button', { name: 'Play lesson 15.1 · Name the notes: 3 of 3 stars' }).click();
       await page.getByRole('button', { name: 'Skip to summary' }).click();
-      await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lesson 15.1 done' })).toBeVisible();
       await expectClickable(page.getByRole('link', { name: 'Back to the path' }));
       await expectClickable(page.getByRole('button', { name: 'New round' }));
-      await expectClickable(page.getByRole('button', { name: 'Next lesson: 1.2 · Twenty notes' }));
+      await expectClickable(page.getByRole('button', { name: 'Next lesson: 15.2 · Twenty notes' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('path lesson: write a note on the staff', async ({ page }) => {
+      known(name, 'notes-write');
+      // Sol, rhythm unit 1 and Meet mi passed: lesson 3.2 writes mi (and sol).
+      await seed(page, { progress: { lessons: pathUpTo('3.1') }, prefs: { seenHowTo: true, seenHold: true } });
+      await page.goto('./#/path');
+      await page.getByRole('button', { name: 'Start lesson 3.2' }).click();
+      const staff = page.getByRole('slider', { name: /^Where (mi \(E\)|sol \(G\)|E \(mi\)|G \(sol\)) goes on the staff$/ });
+      await expect(staff).toBeVisible();
+      await expect(staff).toHaveAttribute('aria-valuetext', 'Not on the staff yet');
+      for (const label of ['Lower', 'Higher', 'Hint']) await expectClickable(page.getByRole('button', { name: label }), inPlace);
+      await expect(page.getByRole('button', { name: 'Check' })).toBeDisabled();
+      // A tap on the staff puts the note on the nearest line or space; Check takes it.
+      const svg = (await staff.locator('svg').boundingBox())!;
+      await page.mouse.click(svg.x + svg.width / 2, svg.y + svg.height / 2);
+      await expect(staff).toHaveAttribute('aria-valuetext', 'the middle line');
+      await expectClickable(page.getByRole('button', { name: 'Check' }), inPlace);
+      // A line or space is easy to point at: at least 7 px apart (the drawing is 14 steps high).
+      expect(svg.height / 14, 'staff steps too close together to point at').toBeGreaterThanOrEqual(7);
+      if (portraitLayout) await expectFits(page);
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await page.getByRole('button', { name: 'Check' }).click();
+      await expect(page.locator('.nfeedback')).toHaveText(/^(Right|You wrote)/);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+    });
+
+    test('path lesson: hear a note after sol', async ({ page }) => {
+      known(name, 'notes-hear');
+      await seed(page, { progress: { lessons: pathUpTo('3.2') }, prefs: { seenHowTo: true, seenHold: true } });
+      await page.goto('./#/path');
+      await page.getByRole('button', { name: 'Start lesson 3.3' }).click();
+      await expect(page.getByRole('img', { name: /Note 1 of 10 is still empty/ })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Hear it again' }), inPlace);
+      // Two notes learned: two name buttons, side by side.
+      const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
+      await expect(names).toHaveCount(2);
+      for (let i = 0; i < 2; i++) await expectClickable(names.nth(i), inPlace);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+      if (portraitLayout) await expectFits(page);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -721,7 +748,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'learn-rhythm');
       await page.goto('./#/learn/1');
       await expect(page.getByRole('heading', { level: 1, name: /Pulse and meter/ })).toBeVisible();
-      await expect(page.getByText('Start here · Path units 1, 3, 5')).toBeVisible();
+      await expect(page.getByText('Start here · Path units 2, 6, 10')).toBeVisible();
       // 1.2: two bars of 4/4 counted 1 2 3 4 | 1 (2) 3 (4).
       const bars = page.getByRole('img', { name: /^Two bars of 4\/4: four quarter notes/ });
       await expect(bars.locator('.staff-counts text')).toHaveText(['1', '2', '3', '4', '1', '(2)', '3', '(4)']);
@@ -831,8 +858,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('play: how to play, then the pad', async ({ page }) => {
       known(name, 'play');
+      await seed(page, { progress: { lessons: SOL_DONE } });
       await page.goto('./');
-      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
       await expectClickable(page.getByRole('button', { name: 'Got it' }));
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -868,9 +896,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('play: the count-in says Count-in, with no note highlighted, then bar 1', async ({ page }) => {
       known(name, 'play-count-in');
-      await seed(page, { prefs: { seenHowTo: true } });
+      await seed(page, { prefs: { seenHowTo: true }, progress: { lessons: SOL_DONE } });
       await page.goto('./');
-      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
       await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
       // The desktop layout from 1100 px wide (a tablet in landscape too).
       const desk = VIEWPORTS[name].width >= 1100;
@@ -878,7 +906,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(line).toContainText('Count-in');
       await expect(page.locator(desk ? '.dbeats.is-count-in' : '.beats.is-count-in')).toBeVisible();
       await expect(page.locator('rect[data-cursor]')).toHaveCount(0);
-      // Lesson 1.1: one bar of 4/4 at 60 BPM.
+      // Lesson 2.1 (rhythm 1.1): one bar of 4/4 at 60 BPM.
       await expect(page.getByRole('img', { name: /^Counting beat/ })).toBeAttached({ timeout: 6000 });
       await expect(line).toContainText('Bar 1 of 2');
       await expect(page.locator('.is-count-in')).toHaveCount(0);
@@ -888,7 +916,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('play: what a lesson introduces, before the count-in', async ({ page }) => {
       known(name, 'play-intro');
-      await seed(page, { prefs: { seenHowTo: true }, progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } } });
+      await seed(page, { prefs: { seenHowTo: true }, progress: { lessons: { ...SOL_DONE, '1.1': { stars: 3, bestAccuracy: 95 } } } });
       await page.goto('./');
       await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
       const sheet = page.getByRole('dialog', { name: 'Half notes' });
@@ -904,10 +932,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('play with the analog metronome: pendulum and the pad', async ({ page }) => {
       known(name, 'play-analog');
+      await seed(page, { progress: { lessons: SOL_DONE } });
       await page.goto('./#/settings');
       await page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }).click();
       await page.goto('./');
-      await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.locator('.beats--analog')).toBeVisible();
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
@@ -971,7 +1000,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('play: the intro sheet and the count-in', async ({ page }) => {
       known(name, 'nl-play-intro');
-      await seed(page, { progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } } });
+      await seed(page, { progress: { lessons: { ...SOL_DONE, '1.1': { stars: 3, bestAccuracy: 95 } } } });
       await page.goto('./');
       await page.getByRole('button', { name: 'Verder met de les' }).dispatchEvent('click');
       const sheet = page.getByRole('dialog', { name: 'Halve noten' });
@@ -986,9 +1015,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('play, results and read notes', async ({ page }) => {
       known(name, 'nl-play');
+      await seed(page, { progress: { lessons: SOL_DONE } });
       await page.setViewportSize(VIEWPORTS.phone);
       await page.goto('./');
-      await page.getByRole('button', { name: 'Begin de les' }).dispatchEvent('click');
+      await page.getByRole('button', { name: 'Verder met de les' }).dispatchEvent('click');
       await page.setViewportSize(VIEWPORTS[name]);
       await expect(page.getByRole('heading', { name: 'Tik het ritme' })).toBeAttached();
       await expectNoClippedLabels(page);
@@ -996,7 +1026,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.setViewportSize(VIEWPORTS.phone);
       await page.getByRole('button', { name: 'Naar de uitslag' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
-      await expect(page.getByRole('heading', { name: 'Les 1.1 klaar' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Les 2.1 klaar' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'Nog een keer' }));
       await expectClickable(page.getByRole('button', { name: 'Nieuwe oefening' }));
       await expectClickable(page.getByRole('button', { name: 'Kopieer code' }));
@@ -1016,8 +1046,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 test('a touch screen at desktop width (tablet in landscape) gets the desktop layout without keyboard hints', async ({ browser }) => {
   for (const hasTouch of [true, false]) {
     const page = await browser.newPage({ viewport: VIEWPORTS['tablet-landscape'], hasTouch });
+    await seed(page, { progress: { lessons: SOL_DONE } });
     await page.goto('./');
-    await page.getByRole('button', { name: 'Start lesson' }).dispatchEvent('click');
+    await page.getByRole('button', { name: 'Continue lesson' }).dispatchEvent('click');
     await expect(page.getByText(hasTouch ? /^On a computer, any key works/ : /^Any key works/)).toBeVisible();
     await page.getByRole('button', { name: 'Got it' }).click();
     await expect(page.locator('.dplay')).toBeVisible();

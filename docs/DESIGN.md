@@ -186,7 +186,7 @@ engine as 3.1 and 3.2, so it's cheap to add.
 |---|---|
 | **Free Practice** | Full custom settings (§4). Always available. |
 | **Learning Path** | Curated units that unlock step by step (§8.2). Each lesson is just a preset of settings + a pass requirement. |
-| **Daily Challenge** | One exercise per day at the player's place on the rhythm path, seeded by the date and the highest open unit, so everyone at the same unit gets the same one (below). Keeps the streak alive. |
+| **Daily Challenge** | One exercise per day at the player's place among the rhythm units of the Learning path, seeded by the date and the highest open unit, so everyone at the same unit gets the same one (below). Keeps the streak alive. |
 | **Weak Spots** | Adaptive: the generator boosts cells/meters the player scores worst on (§8.4). |
 | **Learn** | Theory library: one topic per thing you can practise (§9.1), each with notation examples, counting and a quick check, linking straight to a matching practice preset. |
 
@@ -264,6 +264,27 @@ its own sign applied. After a wrong piano key, the right note follows half a sec
 the piano keys only sound, so the player can compare them. The sound is the Scales piano tone, at the Playback volume.
 Read notes and Keys path lessons keep the player's choice (the lesson presets do not set it). Audio is unlocked from the
 Start tap and from every answer tap.
+
+**Write it, hear it** (path lessons, since 0.11.0; §8.2). A round's notes can ask three things, set by the lesson
+(`tasks`; with more than one they take turns every 5 notes, in order):
+
+- **Read it** (all of the above): name the highlighted note.
+- **Write it**: the question names the note (*Write la (A) on the staff*; the name in the player's names, the other
+  system in brackets) and its slot on the staff is empty, with the cursor. The player taps the staff where the note
+  goes: the nearest line or space gets a note in the cursor's slate, which can be dragged, moved a line or space at a
+  time with ▲ ▼ (or ↑ ↓ on a keyboard), and is taken with **Check** (Enter). The staff is drawn taller in a round
+  that writes (4 bars on a phone) so a line or space is easy to point at, and does not scroll the page while
+  dragging. Screen readers get the staff as a slider whose value is the place (*the 2nd space*). After Check the note
+  is drawn where it belongs, green or red as when reading; a wrong one says where it went: *You wrote sol (G), on the
+  2nd line; la (A) goes on the 2nd space.* The hint is the reading hint (the nearest landmark and the way from it).
+- **Hear it**: sol (G4) sounds, then the note, 0.9 s apart; the slot stays empty until the note is named, and *Hear
+  it again* plays both again. The note always sounds, also with *Hear the notes* off. Answers are the name buttons (or
+  the piano), and the feedback places the note from sol: *Right: mi (E), 2 steps below sol.* The hint says only that:
+  *Hint: it is 2 steps below sol.*
+
+A lesson can also narrow the notes (`only`: the positions it draws from; the name buttons show just their names, one
+to seven, centred and no wider than 96 px each) and stress one (`stress`: three times as often). A note that has
+only one position to come from repeats (sol in unit 1).
 
 **Keys.** The player chooses which key to read in, on its own screen (*Key*, opened from
 the setup). All 15 standard key signatures are offered: C major (no signs), then sharps
@@ -901,41 +922,68 @@ lengthened beat with a divided beat.
 
 Each unit offers both *Tap* and *Dictation* lessons.
 
-**Three learning paths (since 0.9.0).** The Path tab holds three paths, each with its own units, stars and Start
-button: **Rhythm** (the units above; Learn chapters 1–7), **Read notes** (chapter 8) and **Keys** (chapters 9 and 10).
-A switcher picks the path on phone and tablet, cards with a progress bar on desktop; the app remembers the last one
-(`prefs.pathTrack`). The header counts the stars on every path. The switcher shows the full path names, *Rhythm ·
-Read notes · Keys* (since 0.10.0; before, *Notes*, while Home, Learn and the setup said Read notes); below 390 px wide
-it drops the glyphs so the names fit on one line.
+**One Learning path (since 0.11.0).** The Path tab holds one path that learns notes and rhythm together. The notes
+of the treble staff come in one at a time, in the order **sol → mi → fa → la → do → re → si**, and each note unit
+takes turns with a rhythm unit (the units above), so the player reads, writes and hears notes from the first day.
+After si come the rest of Read notes and then Keys. Before 0.11.0 the Path held three separate paths (Rhythm, Read
+notes and Keys, picked with a switcher; Keys opened after Read notes unit 3); one path replaced them because a new
+player saw only the rhythm path (Home's Continue card followed it, and the switcher was easy to miss).
 
-| Path | Units |
+| Path units | What |
 |---|---|
-| Read notes | 1 Treble clef · 2 Bass clef · 3 Both clefs · 4 Middle C and ledger lines · 5 Quick reading |
-| Keys | 1 Sharps and flats · 2 G major · 3 F major · 4 Two and three sharps · 5 Two and three flats · 6 Mix the keys |
+| 1 Sol · 3 Mi · 5 Fa · 7 La · 9 Do · 11 Re · 13 Si | First notes: one new note each (below) |
+| 2 · 4 · 6 · 8 · 10 · 12 · 14 · 16 | Rhythm units 1–8 (the table above) |
+| 15 · 17 · 18 · 19 · 20 | Read notes: the whole treble staff, the bass clef, both clefs, middle C and ledger lines, quick reading |
+| 21–26 | Keys: sharps and flats, G major, F major, two and three sharps, two and three flats, mix the keys |
 
-- A Read notes or Keys lesson is a Read notes preset (clefs, keys, mix keys, answer with, range, extra signs, notes,
-  timer) on top of its unit's base (`src/game/notesPath.ts`), as a rhythm lesson is a rhythm preset. The preset is the
-  whole setup: the player's own Read notes setup is left as it is.
-- The rules are the same on every path (`src/game/track.ts`): two stars open the next lesson, and two stars on every
-  lesson of a unit open the next unit. Rhythm and Read notes are open from the start; Keys opens with two stars on
-  every Read notes unit 3 lesson. Until then its tab shows a lock and "Locked", its units are locked, and Start becomes
-  "Go to Read notes".
-- Results are kept per path in `progress.lessons`: rhythm under the lesson id ("7.3", as since 0.1), the others with
-  the path in front ("notes:4.3", "keys:2.1").
+**First notes** (`PITCH_UNITS` in `src/game/notesPath.ts`). Sol comes first because the treble (G) clef curls around
+its line; mi and fa sit just below it, then la, do, re and si above. All seven are on the staff (E4–D5: the bottom
+line to the 4th line), so there are no ledger lines and no key signature, and with all seven learned the next unit
+reads the whole treble staff. A note unit's lessons draw only the notes learned so far (the name buttons show just
+those), and the new note comes up three times as often:
+
+| Lesson | Task |
+|---|---|
+| 1 Meet the note | read it: name the note on the staff (10 notes) |
+| 2 Write it | write it: put the named note on the staff (10 notes) |
+| 3 Hear it | hear it: sol sounds, then the note; name it (10 notes) |
+| 4 On the piano | read it, answering on the piano (15 notes) |
+| 5 Unit review | read, write and hear, taking turns every 5 notes (30 notes) |
+
+Sol alone cannot be heard against itself, so unit 1 has *Meet sol*, *Write sol*, *Sol on the piano*, *Write sol,
+quickly* (5 s a note) and a review that reads and writes; hearing starts with mi, the classic first interval (sol–mi).
+How write and hear work is in §3.5, *Write it, hear it*.
+
+- Every lesson is a preset on top of its unit's base: a rhythm preset (`src/game/path.ts`) or a Read notes preset
+  (`src/game/notesPath.ts`: clefs, keys, mix keys, answer with, range, extra signs, notes, timer, and since 0.11.0 the
+  tasks, the notes it draws from and the note it stresses). The preset is the whole setup: the player's own setup is
+  left as it is.
+- `src/game/tracks.ts` puts the units in path order and numbers them 1, 2, 3, …; that number is what the player sees
+  everywhere (*Lesson 4.2*, *Unit 4 of 26*, Results, Round done, the Learn chapter headers). The rules are those of
+  `src/game/track.ts`: two stars open the next lesson, and two stars on every lesson of a unit open the next unit.
+- Results stay where they were kept: rhythm lessons under their own rhythm id ("7.3", as since 0.1), the others with
+  their kind in front ("pitch:2.3", "notes:4.3", "keys:2.1"). A lesson that already has stars stays open, so lessons
+  played before 0.11.0 can be played again; the path goes on from its first lesson without two stars (for a player
+  with rhythm progress: sol).
 - Every open unit is a button that opens and closes it (the current unit is open). An open unit shows its lessons by
   name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars; any open lesson can
   be played again. The current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already
-  says it.
+  says it. A note unit's node shows its note (*sol*), a rhythm unit's its glyph.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
-  said once, under the first locked unit: *Opens with 2 stars on every unit N lesson*, or on a closed Keys path *Opens
-  after Read notes unit 3* (since 0.10.0; before, every locked unit repeated it, 63 of the Path's 94 words on day one).
+  said once, under the first locked unit: *Opens with 2 stars on every unit N lesson* (since 0.10.0; before, every
+  locked unit repeated it).
+- Under the header: *Unit N of 26 · stars* and *Theory: Learn*. Desktop: the title and a *Notes and rhythm* card with
+  a progress bar on the left; the current unit's name, the same line and Start over the units on the right.
 - In Dutch a path unit is a *blok* (*Blok 3 · Les 1 van 5*, *Blok 1 van 8*, *Leerpad, blokken 1, 3, 5*), so it is not
   confused with a Learn chapter, which stays a *hoofdstuk* (since 0.10.0, §11).
 - A lesson round counts every note: skipping to the summary counts the notes left as missed, so a lesson cannot be
-  passed on its first few notes. Play names the lesson; Quit goes back to the Path. Round done names the lesson and
-  its unit, shows what the round did for the path (§6.4) and offers Next lesson once the lesson has two stars.
-- Not yet: Home's Continue card follows the rhythm path only, and the Progress screen (§8.5) does not count the other
-  paths.
+  passed on its first few notes. Play names the lesson; Quit goes back to the Path. Results and Round done name the
+  lesson and its unit, show what the run did for the path (§6.4) and offer Next lesson once the lesson has two stars;
+  Next lesson starts the next lesson of either kind.
+- Home's Continue card follows the Learning path (since 0.11.0): a rhythm lesson shows a bar of its rhythm, a First
+  notes lesson the notes learned so far with their names (the new one highlighted), and a later note lesson a few
+  notes of its round. The daily challenge follows the highest open rhythm unit (§3.4).
+- Not yet: the Progress screen (§8.5) counts rhythm only, and free practice cannot write or hear notes yet.
 
 ### 8.3 Progression & rewards
 
@@ -1197,7 +1245,7 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 | **Play (Tap)** | Top bar: bar x/y (*Count-in* until the music's first beat), tempo, combo, pause. Notation (wraps 2 bars/line on phone, 4 on desktop, auto-scrolls). Beat dots. Big tap pad (mobile) / "press any key" hint (desktop). |
 | **Dictation** | Play/replay button with plays left; staff showing what you've entered; bar fill meter; note palette; *Check*. |
 | **Results** | Stars, accuracy, timing strip, tips (with Calibrate when it may be the device), Retry / Next, or Try again under 2 stars (§6.4). |
-| **Path** | Three learning paths (Rhythm, Read notes, Keys) behind a switcher; units as a vertical path that open to show their lessons by name, with stars and locks (§8.2). |
+| **Path** | One Learning path (since 0.11.0; before, three paths behind a switcher): note units and rhythm units taking turns, as a vertical path whose units open to show their lessons by name, with stars and locks (§8.2). |
 | **Progress** | Charts, skill map, achievements. |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
 | **Settings** | Language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
@@ -1205,8 +1253,8 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 **Home** (since 0.10.0). On phone and tablet the order is the brand or title, then the level and streak chips (they
 wrap under the brand on narrow phones, and in Dutch on a new profile), Continue, the daily challenge and Free practice.
 There is no XP block: XP, level and rank are in the level sheet that the chip opens (§8.3). The Continue card has the
-lesson title over its staff and no meter, bars or BPM line (nor on desktop). When no rhythm lesson has been played,
-it reads *Unit 1 · Lesson 1 of 5* with **Start lesson**; after that *Continue · Unit N · Lesson M of 5* with **Continue
+lesson title over its staff and no meter, bars or BPM line (nor on desktop); a note lesson shows its notes instead
+of a rhythm (§8.2). When no lesson of the path has been played, it reads *Unit 1 · Lesson 1 of 5* with **Start lesson**; after that *Continue · Unit N · Lesson M of 5* with **Continue
 lesson**. Continue is the only filled button on Home: the daily's Play is outlined (§3.4). On tablet the Continue card
 and its staff keep their own height (about 110 px for one line of notes) and do not stretch to fill the screen; on a
 phone the card still fills the screen. The lesson tiles show their stars as on the Path (§6.3).
@@ -1263,18 +1311,22 @@ While it plays, the icon becomes a stop square and the circle gets an accent-hal
 
 `docs/ADDING-CONTENT.md` (*Sound*) says which blocks get a button and what each plays.
 
+The table counts rhythm units in their own order (§8.2's first table, including the ones not built yet). In the
+Learning path rhythm unit *n* is path unit *2n* (since 0.11.0), and a chapter's header shows those path numbers
+(*Path units 2, 6, 10*).
+
 | Chapter | Sections | Practice |
 |---|---|---|
-| **1 · Pulse and meter** | 1.1 The beat and tempo (BPM, tempo words, ♩ = 80) · 1.2 Bars and time signatures (barlines, final barline, 2/4 3/4 4/4, C = common time) · 1.3 Strong and weak beats · 1.4 The upbeat (no practice yet) | Path units 1, 3, 5 |
-| **2 · Note values** | 2.1 Reading the shape (from the quarter: half, whole, then eighth and sixteenth) · 2.2 The note tree | Path units 1, 3, 4, 8 |
-| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly (centred whole-bar rest in any meter, half-rest placement, dotted rests, no ties) | Path units 2, 3, 5 |
-| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & (and the eighth rest) · 4.2 Sixteenths: 1 e & a (and eighth + two sixteenths) · 4.3 Beams show the beat | Path units 4, 5, 8 |
-| **5 · Making notes longer** | 5.1 Ties (not slurs) · 5.2 Dotted notes (a dot as a shortcut for a tie) · 5.3 Dotted eighth + sixteenth | Path units 6, 7, 10 |
-| **6 · Off the beat** | 6.1 Syncopation (eighth–quarter–eighth, quarter–half–quarter) | Path unit 9 |
-| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight (counted in two; *later*, no practice until 6/8 is playable) | Path units 11, 12 |
-| **8 · Notes on the staff** | 8.1 The staff and two clefs (landmark notes) · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) | Read notes: clefs, range · Read notes path units 1–5 |
-| **9 · Sharps, flats and naturals** | 9.1 The piano octave (groups of 2 and 3 black keys) · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural (two names for a black key; E♯ = F, C♭ = B) · 9.4 A sign lasts for the bar (same line or space, same octave) | Read notes: piano, extra signs · Keys path unit 1 |
-| **10 · Key signatures** | 10.1 The key signature (every octave; a sign next to a note wins until the bar line) · 10.2 The order of sharps F C G D A E B and flats B E A D G C F (start with up to three signs) · 10.3 Naming the key · 10.4 Major and minor (relative minor) | Read notes: keys, mix keys · Keys path units 2–6 |
+| **1 · Pulse and meter** | 1.1 The beat and tempo (BPM, tempo words, ♩ = 80) · 1.2 Bars and time signatures (barlines, final barline, 2/4 3/4 4/4, C = common time) · 1.3 Strong and weak beats · 1.4 The upbeat (no practice yet) | Rhythm units 1, 3, 5 |
+| **2 · Note values** | 2.1 Reading the shape (from the quarter: half, whole, then eighth and sixteenth) · 2.2 The note tree | Rhythm units 1, 3, 4, 8 |
+| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly (centred whole-bar rest in any meter, half-rest placement, dotted rests, no ties) | Rhythm units 2, 3, 5 |
+| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & (and the eighth rest) · 4.2 Sixteenths: 1 e & a (and eighth + two sixteenths) · 4.3 Beams show the beat | Rhythm units 4, 5, 8 |
+| **5 · Making notes longer** | 5.1 Ties (not slurs) · 5.2 Dotted notes (a dot as a shortcut for a tie) · 5.3 Dotted eighth + sixteenth | Rhythm units 6, 7, 10 |
+| **6 · Off the beat** | 6.1 Syncopation (eighth–quarter–eighth, quarter–half–quarter) | Rhythm unit 9 |
+| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight (counted in two; *later*, no practice until 6/8 is playable) | Rhythm units 11, 12 |
+| **8 · Notes on the staff** | 8.1 The staff and two clefs (landmark notes) · 8.2 Treble clef (lines E G B D F, spaces F A C E) · 8.3 Bass clef (lines G B D F A, spaces A C E G) · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes (C–B = do–si) | Read notes: clefs, range · Path units 1, 3, 5, 7, 9, 11, 13 (sol to si), 15 and 17–20 |
+| **9 · Sharps, flats and naturals** | 9.1 The piano octave (groups of 2 and 3 black keys) · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural (two names for a black key; E♯ = F, C♭ = B) · 9.4 A sign lasts for the bar (same line or space, same octave) | Read notes: piano, extra signs · Path unit 21 |
+| **10 · Key signatures** | 10.1 The key signature (every octave; a sign next to a note wins until the bar line) · 10.2 The order of sharps F C G D A E B and flats B E A D G C F (start with up to three signs) · 10.3 Naming the key · 10.4 Major and minor (relative minor) | Read notes: keys, mix keys · Path units 22–26 |
 | **11 · Scales** | 11.1 The major scale (W W H W W W H) · 11.2 Major scales in every key (each letter once; the scale's signs = its key signature) · 11.3 The circle of fifths (15 key signatures, 12 sounding keys) · 11.4 Minor scales (natural W H W W H W W, harmonic with raised 7th, melodic with raised 6th and 7th going up) · 11.5 Scale degrees and intervals (tonic … leading tone, intervals by number, the tonic triad; fixed do in this app) | Scales |
 
 Chapters 8–10 are built (0.3.4); they were one chapter 8 with seven sections before, and the canvas still draws that

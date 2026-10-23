@@ -37,8 +37,9 @@ import {
 import { Rng } from '../core/rng';
 import { dailyTier } from '../game/daily';
 import { exerciseHas, introId, lessonIntros } from '../game/intro';
-import { noteLessonSettings, type NoteTrackId } from '../game/notesPath';
-import { ALL_LESSONS, isUnlocked, lessonSettings, recordLessonResult } from '../game/path';
+import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
+import { ALL_LESSONS, lessonSettings, recordLessonResult } from '../game/path';
+import { pathLessonOpen } from '../game/tracks';
 import { progressKey } from '../game/track';
 import { xpForResult } from '../game/xp';
 import {
@@ -104,7 +105,7 @@ export function restoreRun(): Run | null {
   }
 }
 
-/** A Read notes or Keys path lesson: its path and its id there ("4.3"). */
+/** A note lesson of the Learning path: its kind (First notes, Read notes, Keys) and its id there ("4.3"). */
 export interface NoteLessonRef {
   track: NoteTrackId;
   id: string;
@@ -147,7 +148,7 @@ export function restoreNoteRun(weak: Record<string, number>): NoteRun | null {
     const focus = Array.isArray(v.focus) ? v.focus.filter((x): x is string => typeof x === 'string') : [];
     const l = v.lesson;
     const lesson =
-      l && (l.track === 'notes' || l.track === 'keys') && typeof l.id === 'string' && noteLessonSettings(l.track, l.id) ? { track: l.track as NoteTrackId, id: l.id } : null;
+      l && isNoteTrack(l.track) && typeof l.id === 'string' && noteLessonSettings(l.track, l.id) ? { track: l.track, id: l.id } : null;
     return makeNoteRun(settings, v.seed, weak, focus, lesson);
   } catch {
     return null;
@@ -401,7 +402,7 @@ export function effectiveHold(prefs: Prefs, lessonId: string | null): boolean {
   return prefs.holdMode === 'hold';
 }
 
-/** The path's first lesson that judges holds (2.1: unit 1 is tap only). */
+/** The first rhythm lesson that judges holds (rhythm 2.1, the path's 4.1: rhythm unit 1 is tap only). */
 const FIRST_HOLD_LESSON = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson.id).hold)?.lesson.id ?? '2.1';
 
 /**
@@ -411,7 +412,7 @@ const FIRST_HOLD_LESSON = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson
  */
 export function practiceHold(prefs: Prefs, progress: Progress): boolean {
   if (prefs.holdMode !== 'hold') return false;
-  return prefs.holdEarly !== null || isUnlocked(progress, FIRST_HOLD_LESSON);
+  return prefs.holdEarly !== null || pathLessonOpen(progress, 'rhythm', FIRST_HOLD_LESSON);
 }
 
 /** Free-practice settings for a run: `settings` with the practice hold. Every start outside the path uses this. */
@@ -426,7 +427,7 @@ export function practiceSettings(state: Pick<AppState, 'prefs' | 'progress'>, se
  */
 export function practiceHoldPatch(state: Pick<AppState, 'prefs' | 'progress'>, on: boolean): Partial<Prefs> {
   if (on) return { holdMode: 'hold', holdEarly: state.prefs.holdMode };
-  if (isUnlocked(state.progress, FIRST_HOLD_LESSON)) return { holdMode: 'tap', holdEarly: null };
+  if (pathLessonOpen(state.progress, 'rhythm', FIRST_HOLD_LESSON)) return { holdMode: 'tap', holdEarly: null };
   return { holdMode: state.prefs.holdEarly ?? state.prefs.holdMode, holdEarly: null };
 }
 

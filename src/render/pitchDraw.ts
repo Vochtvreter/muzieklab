@@ -1,10 +1,13 @@
 import { Accidental, Barline, Formatter, GhostNote, Renderer, Stave, StaveNote, Voice } from 'vexflow/bravura';
-import { letterOf, octaveOf, type Clef, type KeyId, type Step } from '../core/pitch';
+import { BOTTOM_LINE, letterOf, octaveOf, type Clef, type KeyId, type Step } from '../core/pitch';
 import type { ScaleAlter } from '../core/scale';
 import { paintSvg, type StaffPalette } from './staffDraw';
 
-/** right / wrong / right with a hint: the answered notes' colours (§3.5, as in the rhythm notation). */
-export type PitchMark = 'right' | 'wrong' | 'hinted';
+/**
+ * right / wrong / right with a hint: the answered notes' colours (§3.5, as in the rhythm notation); ghost: a note being
+ * written, in the cursor's slate until it is checked.
+ */
+export type PitchMark = 'right' | 'wrong' | 'hinted' | 'ghost';
 
 export interface PitchNote {
   step: Step;
@@ -17,7 +20,8 @@ export interface PitchNote {
 export interface DrawPitchOptions {
   clef: Clef;
   key: KeyId;
-  notes: PitchNote[];
+  /** null: an empty slot (a note still to hear or to write). */
+  notes: (PitchNote | null)[];
   /** Bars to draw, one whole note each; empty bars keep a short page as wide as a full one. 0 = clef and key only. */
   slots: number;
   marks?: (PitchMark | undefined)[];
@@ -46,6 +50,15 @@ const SIGN: Record<ScaleAlter, string> = { [-2]: 'bb', [-1]: 'b', 0: 'n', 1: '#'
 
 const vfKey = (step: Step): string => `${letterOf(step).toLowerCase()}/${octaveOf(step)}`;
 
+/**
+ * The staff position at height `y` of a drawing (in its viewBox units, from the top), for writing a note by pointing at
+ * the staff: the nearest line or space, counted from the bottom line `room` spaces + 4 below the top.
+ */
+export function stepAtY(clef: Clef, room: number, y: number): Step {
+  const bottom = (room + 4) * SPACE;
+  return BOTTOM_LINE[clef] + Math.round((bottom - y) / (SPACE / 2));
+}
+
 /** Width of the clef and key signature at the start of the staff (VexFlow units). */
 function headWidth(clef: Clef, key: KeyId): number {
   const probe = new Stave(0, 0, 400);
@@ -62,7 +75,7 @@ export function drawPitchStaff(host: HTMLElement, o: DrawPitchOptions): { width:
   host.innerHTML = '';
   if (o.width <= 0) return { width: o.width, height: 0 };
   const head = headWidth(o.clef, o.key);
-  const labels = o.notes.some((n) => n.label);
+  const labels = o.notes.some((n) => n?.label);
   const staffH = (o.room * 2 + 4) * SPACE + (labels ? LABEL_GAP : 0);
   // Fitted staves share one scale: as wide as the widest signature (7 signs), so every key lines up at the same size.
   const logicalW = o.fit ? Math.max(head, headWidth(o.clef, 'C#')) + 8 : o.width / o.scale;
@@ -86,7 +99,8 @@ export function drawPitchStaff(host: HTMLElement, o: DrawPitchOptions): { width:
     const note = new StaveNote({ clef: o.clef, keys: [vfKey(n.step)], duration: 'w' });
     if (n.sign !== null) note.addModifier(new Accidental(SIGN[n.sign]), 0);
     const mark = o.marks?.[i];
-    const colour = mark === 'right' ? o.palette.hit : mark === 'wrong' ? o.palette.miss : mark === 'hinted' ? o.palette.early : null;
+    const colour =
+      mark === 'right' ? o.palette.hit : mark === 'wrong' ? o.palette.miss : mark === 'hinted' ? o.palette.early : mark === 'ghost' ? o.palette.cursor : null;
     if (colour) {
       note.setStyle({ fillStyle: colour, strokeStyle: colour });
       colourById.set(note.getAttribute('id') as string, colour);
@@ -137,7 +151,11 @@ export function drawPitchStaff(host: HTMLElement, o: DrawPitchOptions): { width:
       }
       stave.setContext(ctx).draw();
       const n = o.notes[i];
-      if (!n) continue;
+      if (!n) {
+        // An empty slot under the cursor (a note to hear or write) still shows where it is.
+        if (i === o.cursor) emptyCursorX = (stave.getNoteStartX() + stave.getNoteEndX()) / 2 - NOTE_W / 2;
+        continue;
+      }
       const note = makeNote(n, i);
       const voice = new Voice({ num_beats: 4, beat_value: 4 }).setMode(Voice.Mode.SOFT);
       voice.addTickables([note]);
@@ -168,7 +186,7 @@ export function drawPitchStaff(host: HTMLElement, o: DrawPitchOptions): { width:
   if (emptyCursorX !== null) cursorRect(emptyCursorX - CURSOR_PAD, topLine - CURSOR_PAD, NOTE_W + CURSOR_PAD * 2, bottomLine - topLine + CURSOR_PAD * 2);
   for (const { note, index } of drawn) {
     const bb = note.getBoundingBox();
-    const n = o.notes[index];
+    const n = o.notes[index]!;
     if (index === o.cursor) {
       const signRoom = n.sign !== null ? 14 : 0;
       const top = Math.min(bb.getY(), topLine) - CURSOR_PAD;

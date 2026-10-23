@@ -1,7 +1,8 @@
-/** How the Learning Path looks for a given progress: unit states and the lesson tiles. Pure. */
+/** How the Learning path looks for a given progress: unit states, the lesson tiles and the rhythm previews. Pure. */
 import type { NotatedBar, Settings } from '../../core/api';
-import { ALL_LESSONS, RHYTHM_TRACK, UNITS, findLesson, lessonSettings, nextLesson, type Lesson, type Unit } from '../../game/path';
-import { outcomeIn, type LessonOutcome } from '../../game/track';
+import { ALL_LESSONS, lessonSettings } from '../../game/path';
+import { starsOf, unitStatesIn, type LessonOutcome } from '../../game/track';
+import { findPathLesson, LEARNING_PATH, PATH_UNITS, pathNext, pathOutcome, type PathLesson, type PathUnit } from '../../game/tracks';
 import type { Progress } from '../../game/storage';
 import { exerciseView } from '../exerciseView';
 import { makeRun, type Run } from '../store';
@@ -10,31 +11,26 @@ import { seedFromString } from './format';
 export type UnitState = 'done' | 'current' | 'locked';
 export type TileState = 'done' | 'current' | 'upcoming';
 
-export const lessonStars = (p: Progress, id: string): number => p.lessons[id]?.stars ?? 0;
+/** The best stars on a lesson of the Learning path. */
+export const lessonStars = (p: Progress, lesson: PathLesson): number => starsOf(p, LEARNING_PATH, lesson);
 
 /** The lesson to continue: the next one without 2 stars, or the very last lesson once the path is done. */
-export function continueLesson(p: Progress, units: Unit[] = UNITS): { unit: Unit; lesson: Lesson; index: number; done: boolean } | null {
-  const next = nextLesson(p);
-  if (next) {
-    const f = findLesson(next.id);
-    if (f) return { ...f, done: false };
-  }
-  const unit = units[units.length - 1];
+export function continueLesson(p: Progress): { unit: PathUnit; lesson: PathLesson; index: number; done: boolean } | null {
+  const next = pathNext(p);
+  const f = next ? findPathLesson(next.id) : null;
+  if (f) return { unit: f.unit as PathUnit, lesson: f.lesson, index: f.index, done: false };
+  const unit = PATH_UNITS[PATH_UNITS.length - 1];
   if (!unit || unit.lessons.length === 0) return null;
   const index = unit.lessons.length - 1;
   return { unit, lesson: unit.lessons[index], index, done: true };
 }
 
 /** Units before the current one are done, after it locked. With the path finished, every unit is done. */
-export function unitStates(p: Progress, units: Unit[] = UNITS): UnitState[] {
-  const next = nextLesson(p);
-  const cur = next ? units.findIndex((u) => u.lessons.some((l) => l.id === next.id)) : units.length;
-  return units.map((_, i) => (i < cur ? 'done' : i === cur ? 'current' : 'locked'));
-}
+export const unitStates = (p: Progress): UnitState[] => unitStatesIn(p, LEARNING_PATH);
 
 /** Tile state for each lesson of a unit (the 7.1–7.5 strip). */
-export function tileStates(p: Progress, unit: Unit, currentId: string | null): TileState[] {
-  return unit.lessons.map((l) => (l.id === currentId ? 'current' : lessonStars(p, l.id) > 0 ? 'done' : 'upcoming'));
+export function tileStates(p: Progress, unit: PathUnit, currentId: string | null): TileState[] {
+  return unit.lessons.map((l) => (l.id === currentId ? 'current' : lessonStars(p, l) > 0 ? 'done' : 'upcoming'));
 }
 
 /** Lesson number inside its unit, from the "u.l" id. */
@@ -102,6 +98,6 @@ function makeLessonPreview(lessonId: string): { run: Run; bar: number } | null {
   return first;
 }
 
-/** What a finished rhythm lesson means for the path, for Results (§6.4): see outcomeIn (track.ts). */
-export const lessonOutcome = (after: Progress, lessonId: string, starsBefore: number): LessonOutcome<Lesson> | null =>
-  outcomeIn(after, RHYTHM_TRACK, lessonId, starsBefore);
+/** What a finished rhythm lesson (by its rhythm id) means for the Learning path, for Results (§6.4): see outcomeIn (track.ts). */
+export const lessonOutcome = (after: Progress, lessonId: string, starsBefore: number): LessonOutcome<PathLesson> | null =>
+  pathOutcome(after, 'rhythm', lessonId, starsBefore);

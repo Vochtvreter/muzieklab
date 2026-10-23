@@ -1,7 +1,8 @@
 /** Small shared pieces: lesson tiles, the staff with a safety net, the tap pad, the beat counters (digital, analog). */
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import { DIAMOND, MAX_STARS, type Meter, type NotatedBar } from '../../core/api';
-import { isUnlocked, type Unit } from '../../game/path';
+import { lessonOpen } from '../../game/track';
+import { LEARNING_PATH, type PathUnit } from '../../game/tracks';
 import type { Progress } from '../../game/storage';
 import { Staff, type NoteMark } from '../../render/Staff';
 import { t } from '../../i18n';
@@ -14,7 +15,7 @@ import { ErrorBoundary } from './ErrorBoundary';
  * With `onPick`, unlocked lessons are buttons that start that lesson (replay one for more stars).
  */
 export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
-  unit: Unit;
+  unit: PathUnit;
   progress: Progress;
   currentId: string | null;
   onFill: boolean;
@@ -24,10 +25,10 @@ export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
   return (
     <div className={'tiles' + (onFill ? ' tiles--fill' : ' tiles--paper')} style={{ gridTemplateColumns: `repeat(${unit.lessons.length}, minmax(0, 1fr))` }}>
       {unit.lessons.map((l, i) => {
-        const n = lessonStars(progress, l.id);
+        const n = lessonStars(progress, l);
         const st = states[i];
         const aria = st === 'current' ? (n ? t('tile.nextStars', { stars: starsLabel(n) }) : t('tile.next')) : st === 'done' ? starsLabel(n) : t('tile.notStarted');
-        if (onPick && isUnlocked(progress, l.id)) {
+        if (onPick && lessonOpen(progress, LEARNING_PATH, l.id)) {
           return (
             <button key={l.id} type="button" className={'tile tile--' + st + ' tile--btn'} aria-label={t('tile.play', { id: l.id, state: aria })} onClick={() => onPick(l.id)}>
               <span className="tile-id" aria-hidden="true">{l.id}</span>

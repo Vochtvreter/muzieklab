@@ -1,14 +1,14 @@
 /**
- * A learning path as data and rules (DESIGN.md §8.2): units of lessons that open one after another. Rhythm, Read notes
- * and Keys all follow the same rules: lesson 1.1 is open; two stars on a lesson open the next; a unit opens with two
- * stars on every lesson of the unit before it. Pure: the paths themselves are in path.ts and notesPath.ts, and
- * tracks.ts puts them together.
+ * A learning path as data and rules (DESIGN.md §8.2): units of lessons that open one after another. Lesson 1.1 is
+ * open; two stars on a lesson open the next; a unit opens with two stars on every lesson of the unit before it. Pure:
+ * the units are in path.ts (rhythm) and notesPath.ts (First notes, Read notes, Keys), and tracks.ts puts them together
+ * into the one Learning path.
  */
 import { SHOWN_STARS } from '../core/types';
 import type { Progress } from './storage';
 
-export type TrackId = 'rhythm' | 'notes' | 'keys';
-export const TRACK_IDS: readonly TrackId[] = ['rhythm', 'notes', 'keys'];
+/** The kinds of units the Learning path is made of; each keeps its own lesson ids ("3.2") and progress keys. */
+export type TrackId = 'rhythm' | 'pitch' | 'notes' | 'keys';
 
 /** Stars on a lesson needed to open the next one (§8.2). */
 export const UNLOCK_STARS = 2;
@@ -18,6 +18,8 @@ export interface TrackLesson {
   id: string;
   /** Message key (or plain text) of the lesson's name. */
   title: string;
+  /** Where its result is kept in `progress.lessons`, when not under its own path's key (the Learning path's lessons). */
+  key?: string;
 }
 
 export interface TrackUnit<L extends TrackLesson = TrackLesson> {
@@ -29,15 +31,21 @@ export interface TrackUnit<L extends TrackLesson = TrackLesson> {
 }
 
 export interface Track<L extends TrackLesson = TrackLesson> {
-  id: TrackId;
+  /** 'path': the Learning path, whose lessons carry their progress key. */
+  id: TrackId | 'path';
   units: TrackUnit<L>[];
 }
 
 /**
  * Where a lesson's result is kept in `progress.lessons`: rhythm lessons under their plain id ("7.3", as since 0.1),
- * the other paths with the path in front ("notes:4.3", "keys:2.1").
+ * the others with their kind in front ("pitch:2.3", "notes:4.3", "keys:2.1").
  */
 export const progressKey = (track: TrackId, lessonId: string): string => (track === 'rhythm' ? lessonId : `${track}:${lessonId}`);
+
+const keyIn = (track: Track, lesson: TrackLesson): string => lesson.key ?? (track.id === 'path' ? lesson.id : progressKey(track.id, lesson.id));
+
+/** The best stars on a lesson of a path so far (0 when never played). */
+export const starsOf = (progress: Progress, track: Track, lesson: TrackLesson): number => progress.lessons[keyIn(track, lesson)]?.stars ?? 0;
 
 /** Every lesson of a path in order, with its unit and its place in the unit. */
 export function trackLessons<L extends TrackLesson>(track: Track<L>): Array<{ unit: TrackUnit<L>; lesson: L; index: number }> {
@@ -51,26 +59,30 @@ export function findTrackLesson<L extends TrackLesson>(track: Track<L>, lessonId
 /** The best stars on a lesson so far (0 when never played). */
 export const starsIn = (progress: Progress, track: TrackId, lessonId: string): number => progress.lessons[progressKey(track, lessonId)]?.stars ?? 0;
 
-/** Lesson 1.1 is open; any other lesson opens with 2 stars on the one before it, a unit's first with 2 on every lesson of the unit before. */
+/**
+ * Lesson 1.1 is open; any other lesson opens with 2 stars on the one before it, a unit's first with 2 on every lesson
+ * of the unit before. A lesson with stars stays open (played before the paths became one, 0.11.0).
+ */
 export function lessonOpen(progress: Progress, track: Track, lessonId: string): boolean {
   const all = trackLessons(track);
   const pos = all.findIndex((x) => x.lesson.id === lessonId);
   if (pos < 0) return false;
   if (pos === 0) return true;
-  const { unit, index } = all[pos];
-  if (index > 0) return starsIn(progress, track.id, unit.lessons[index - 1].id) >= UNLOCK_STARS;
-  return all[pos - 1].unit.lessons.every((l) => starsIn(progress, track.id, l.id) >= UNLOCK_STARS);
+  const { unit, index, lesson } = all[pos];
+  if (starsOf(progress, track, lesson) > 0) return true;
+  if (index > 0) return starsOf(progress, track, unit.lessons[index - 1]) >= UNLOCK_STARS;
+  return all[pos - 1].unit.lessons.every((l) => starsOf(progress, track, l) >= UNLOCK_STARS);
 }
 
 /** The lesson to continue with: the first one, in path order, without 2 stars. Null when the path is done. */
 export function nextIn<L extends TrackLesson>(progress: Progress, track: Track<L>): L | null {
-  return trackLessons(track).find((x) => starsIn(progress, track.id, x.lesson.id) < UNLOCK_STARS)?.lesson ?? null;
+  return trackLessons(track).find((x) => starsOf(progress, track, x.lesson) < UNLOCK_STARS)?.lesson ?? null;
 }
 
 /** Stars earned in a unit (at most 3 a lesson: the hidden 4th star and the diamond count as three). */
 export function unitStarsIn(progress: Progress, track: Track, unitId: number): number {
   const u = track.units.find((x) => x.id === unitId);
-  return u ? u.lessons.reduce((sum, l) => sum + Math.min(SHOWN_STARS, starsIn(progress, track.id, l.id)), 0) : 0;
+  return u ? u.lessons.reduce((sum, l) => sum + Math.min(SHOWN_STARS, starsOf(progress, track, l)), 0) : 0;
 }
 
 /** Stars over a whole path, for "42 / 75 ★". */
@@ -109,7 +121,7 @@ export function outcomeIn<L extends TrackLesson>(after: Progress, track: Track<L
   const pos = all.findIndex((x) => x.lesson.id === lessonId);
   if (pos < 0) return null;
   const following = all[pos + 1]?.lesson ?? null;
-  const starsNow = starsIn(after, track.id, lessonId);
+  const starsNow = starsOf(after, track, all[pos].lesson);
   const cont = nextIn(after, track);
   const continueId = starsNow >= UNLOCK_STARS && cont && cont.id !== lessonId ? cont.id : null;
   if (starsNow < UNLOCK_STARS) return { kind: 'needStars', next: following, continueId: null };

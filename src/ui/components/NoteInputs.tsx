@@ -57,13 +57,17 @@ interface NameButtonsProps {
   onPick(letter: Letter): void;
   disabled?: boolean;
   kbd?: boolean;
+  /** Only these names (a path lesson: the notes learned so far); default all seven. */
+  letters?: readonly Letter[];
 }
 
-/** Seven name buttons showing the chosen sign: do re mi … in scale order, or A B C … in alphabetical order. */
-export function NameButtons({ system, sign, marks, onPick, disabled, kbd }: NameButtonsProps): JSX.Element {
-  const order = system === 'solfege' ? LETTERS : ALPHA;
+/** Seven name buttons (or the round's own, fewer) showing the chosen sign: do re mi … in scale order, or A B C … in alphabetical order. */
+export function NameButtons({ system, sign, marks, onPick, disabled, kbd, letters }: NameButtonsProps): JSX.Element {
+  const order = (system === 'solfege' ? LETTERS : ALPHA).filter((L) => !letters || letters.includes(L));
+  const few = order.length < 7;
   return (
-    <div className={'name-grid' + (system === 'solfege' ? ' name-grid--solfege' : '')} role="group" aria-label={t('notes.play.names')}>
+    <div className={'name-grid' + (system === 'solfege' ? ' name-grid--solfege' : '') + (few ? ' name-grid--few' : '')} role="group"
+      aria-label={t('notes.play.names')} style={few ? { gridTemplateColumns: `repeat(${order.length}, minmax(0, 1fr))`, maxWidth: order.length * 96 } : undefined}>
       {order.map((L) => {
         const mark = marks[L];
         const main = system === 'solfege' ? solfegeName(L, sign) : letterName(L, sign);

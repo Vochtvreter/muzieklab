@@ -2,10 +2,12 @@
 import { useCallback } from 'react';
 import type { Settings } from '../../core/api';
 import { dailyChallenge, dailyTier } from '../../game/daily';
+import { findPathLesson } from '../../game/tracks';
 import { unlockAudio } from '../audio';
 import { newSeed } from '../lib/format';
 import { navigate } from '../router';
 import { makeLessonRun, makeRun, practiceSettings, runSettings, todayIso, useStore, type Run } from '../store';
+import { useStartNoteLesson } from './notes/start';
 
 /**
  * A lesson by id, with an exercise that shows what the lesson introduces (makeLessonRun); `replace` swaps the current
@@ -22,6 +24,24 @@ export function useStartLesson(): (lessonId: string, opts?: { replace?: boolean 
       navigate('/play', { replace: opts.replace });
     },
     [state, dispatch],
+  );
+}
+
+/**
+ * A lesson of the Learning path by its number there ("4.2"): a rhythm lesson on Play, a note lesson (read, write, hear)
+ * on the Read notes Play screen. `replace` swaps the current screen for it (Results, Round done: Next lesson).
+ */
+export function useStartPathLesson(): (id: string, opts?: { replace?: boolean }) => void {
+  const startRhythm = useStartLesson();
+  const startNotes = useStartNoteLesson();
+  return useCallback(
+    (id: string, opts: { replace?: boolean } = {}) => {
+      const l = findPathLesson(id)?.lesson;
+      if (!l) return;
+      if (l.track === 'rhythm') startRhythm(l.ref, opts);
+      else startNotes(l.track, l.ref, opts);
+    },
+    [startRhythm, startNotes],
   );
 }
 

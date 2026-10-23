@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pad, seed, VIEWPORTS } from './helpers';
+import { pad, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
  * iOS, back from the background (most often as a Home Screen app): the AudioContext the page had can stay
@@ -37,7 +37,8 @@ test.beforeEach(async ({ page }) => {
       for (const c of made) c.broken = { mode, t: c.currentTime };
     };
   });
-  await seed(page, { prefs: { seenHowTo: true, seenHold: true } });
+  // Sol's unit passed, so Continue starts a rhythm lesson.
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true }, progress: { lessons: SOL_DONE } });
   await page.setViewportSize(VIEWPORTS.phone);
 });
 
@@ -76,13 +77,13 @@ for (const mode of ['frozen', 'interrupted'] as const) {
     test.setTimeout(60_000);
     await page.goto('./');
     // Play once so the page has an AudioContext, as after any earlier exercise.
-    await page.getByRole('button', { name: 'Start lesson' }).click();
+    await page.getByRole('button', { name: 'Continue lesson' }).click();
     await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
     await page.getByRole('link', { name: 'Quit exercise' }).click();
     await expect(page).toHaveURL(/#\/$/);
 
     await background(page, mode);
-    await page.getByRole('button', { name: 'Start lesson' }).click();
+    await page.getByRole('button', { name: 'Continue lesson' }).click();
     await playToResults(page);
   });
 }
@@ -90,7 +91,7 @@ for (const mode of ['frozen', 'interrupted'] as const) {
 test('back from the background mid-exercise, Resume plays on', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Start lesson' }).click();
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
   await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
   await background(page, 'frozen');
   await expect(page.getByRole('dialog', { name: 'Paused' })).toBeVisible();
@@ -101,7 +102,7 @@ test('back from the background mid-exercise, Resume plays on', async ({ page }) 
 test('a clock that freezes without the page being hidden pauses with a note, and Resume plays on', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Start lesson' }).click();
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
   await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
   await page.evaluate(() => (window as unknown as { breakAudio(mode: string): void }).breakAudio('frozen'));
   await expect(page.getByRole('dialog', { name: 'Paused' })).toBeVisible({ timeout: 3000 });
