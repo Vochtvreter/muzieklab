@@ -45,21 +45,15 @@ jobs:
       - run: npm ci
       # Tests gate the deploy, so a broken build never reaches the site.
       - run: npm test
-      # A run started by hand builds the branch picked under "Use workflow from". A push to test names only test, so
-      # the branch is the one whose head is the same commit (after git push origin my-branch:test); else it stays test.
+      # test after a push to it, or the branch picked under "Use workflow from" for a run started by hand.
       - name: Name the branch
         if: inputs.show-branch
         env:
-          REF_NAME: ${{ github.ref_name }}
+          BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
         run: |
-          branch="$REF_NAME"
-          if [ "$branch" = test ]; then
-            match=$(git ls-remote --heads origin | awk -v sha="$SHA" '$1 == sha { sub("refs/heads/", "", $2); print $2 }' | grep -vx test | head -n 1 || true)
-            branch="${match:-$branch}"
-          fi
-          echo "VITE_DEPLOY_BRANCH=$branch" >> "$GITHUB_ENV"
-          echo "Deploys **$branch** ($SHA)" >> "$GITHUB_STEP_SUMMARY"
+          echo "VITE_DEPLOY_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          echo "Deploys **$BRANCH** ($SHA)" >> "$GITHUB_STEP_SUMMARY"
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:

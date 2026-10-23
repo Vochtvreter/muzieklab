@@ -39,6 +39,13 @@ Learn chapters (`src/ui/learn/chapters.ts`) and Learning Path units (`src/game/p
 `src/i18n/en.json`. [docs/ADDING-CONTENT.md](docs/ADDING-CONTENT.md) explains how to add them; the plan for the chapters is
 in [docs/LEARN-CHAPTERS.md](docs/LEARN-CHAPTERS.md).
 
+## Branches
+
+`main` runs on https://vivanova.app and `test` on https://test.vivanova.app ([DEPLOY.md](docs/DEPLOY.md), Branches).
+Start every branch from `test` (`git fetch origin test && git checkout -b my-branch origin/test`) and open its PR into
+`test`, never into `main`. Only two PRs go into `main`: the release PR from `test`, merged with a merge commit (never
+squash or rebase), and an urgent production fix, which then goes into `test` too. Never push over `test` itself.
+
 ## Versioning
 
 The version lives in `package.json` (Settings → About shows it) and follows major.minor.patch. Bump it in the same PR
