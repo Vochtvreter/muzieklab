@@ -119,6 +119,14 @@ export function formatShortDate(iso: string): string {
   return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(d);
 }
 
+/** Locale-aware long date, e.g. "October 12, 2026". */
+export function formatLongDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', year: 'numeric' }).format(d);
+}
+
 /** Params whose values are message keys (e.g. an engine's `value: 'value.dottedQuarter'`) translated to text. */
 export function translateParams(params: Record<string, string | number>): MessageParams {
   const out: MessageParams = {};
