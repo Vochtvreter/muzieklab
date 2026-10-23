@@ -1,6 +1,7 @@
 /** Routes and app-wide effects (theme, language). */
 import { lazy, Suspense, useEffect } from 'react';
 import { resolveLocale, setLocale, t } from './i18n';
+import { Announcer } from './ui/components/Announcer';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { routeParam, useRoute } from './ui/router';
 import { AccountScreen } from './ui/screens/account/Account';
@@ -162,6 +163,8 @@ export function App(): JSX.Element {
       <StoreProvider>
         <Screens />
       </StoreProvider>
+      {/* Screen-reader announcements (ui/lib/announce.ts): outside the screens, so it is there before any text. */}
+      <Announcer />
       {BRANCH && (
         <div className="branch-badge">{BRANCH}</div>
       )}

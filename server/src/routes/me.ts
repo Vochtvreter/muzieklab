@@ -81,8 +81,9 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
           { $set: { passwordHash, passwordChangedAt: now, updatedAt: now } },
           { session },
         );
-        // Every other device is signed out; this one stays.
+        // Every other device is signed out; this one stays. A new-password link stops working too.
         await c.sessions.deleteMany({ accountId: account._id, _id: { $ne: current._id } }, { session });
+        await c.tokens.deleteMany({ accountId: account._id, kind: 'reset' }, { session });
         await writeAudit(c, now, { actorId: account._id, action: 'account.change_password', targetId: account._id }, session);
       });
       return reply.code(204).send();
@@ -107,6 +108,8 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
             { $set: { email, updatedAt: now } },
             { session, returnDocument: 'after' },
           );
+          // A new-password link made for the old address stops working.
+          await c.tokens.deleteMany({ accountId: account._id, kind: 'reset' }, { session });
           await writeAudit(
             c,
             now,

@@ -5,6 +5,7 @@ import { COMMIT } from './commit.js';
 import { createAdmin } from './commands/create-admin.js';
 import { loadConfig, type Config } from './config.js';
 import { ensureIndexes } from './db.js';
+import { loggerOptions } from './log.js';
 
 // `node server.cjs` runs the API; `node server.cjs create-admin …` runs that command (commands/create-admin.ts).
 
@@ -43,12 +44,9 @@ function serve(config: Config): void {
     db: client.db(),
     commit: COMMIT,
     cookieSecure: config.cookieSecure,
-    // JSON lines to stdout, which systemd keeps in the journal (journalctl -u muzieklab-api@test). Request bodies are
-    // never logged; the headers that carry a session are redacted in case a log line ever includes them.
-    logger: {
-      level: process.env.LOG_LEVEL ?? 'info',
-      redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]'],
-    },
+    // JSON lines to stdout, which systemd keeps in the journal (journalctl -u muzieklab-api@test); log.ts says what
+    // a line may hold.
+    logger: loggerOptions(process.env.LOG_LEVEL),
   });
   app.addHook('onClose', async () => {
     await client.close();

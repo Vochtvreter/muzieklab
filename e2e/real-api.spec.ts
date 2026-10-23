@@ -106,6 +106,8 @@ async function aMember(person: (size?: keyof typeof SIZES) => Promise<Person>, a
 }
 
 const accountSection = (page: Page) => page.getByRole('region', { name: 'Account' });
+// The one-line results (Settings → Account's notice, Block and Unblock) are plain text: the app's live region
+// (#announcer) reads them out, so they are found by their class, not as role="status".
 const accountRow = (page: Page, name: string) => accountSection(page).getByRole('link', { name: new RegExp('^' + name) });
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -134,7 +136,7 @@ test('the first admin: the create-admin link, a weak password, then signed in wi
   await password.fill(ADMIN_PASSWORD);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page).toHaveURL(/#\/settings$/);
-  await expect(accountSection(page).getByRole('status')).toHaveText("You're signed in. Welcome to Muzieklab.");
+  await expect(accountSection(page).locator('.row-status')).toHaveText("You're signed in. Welcome to Muzieklab.");
   await expect(accountRow(page, name)).toContainText(email);
   await accountSection(page).getByRole('link', { name: /^Accounts/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Accounts' })).toBeVisible();
@@ -210,7 +212,7 @@ test('blocking signs a member out at their next request and refuses sign-in unti
   await expect(confirm).toContainText(`Block ${member.name}?`);
   await confirm.getByRole('button', { name: 'Block', exact: true }).click();
   const access = a.getByRole('region', { name: 'Access' });
-  await expect(access.getByRole('status')).toHaveText("Blocked. They're signed out.");
+  await expect(access.locator('.row-status')).toHaveText("Blocked. They're signed out.");
 
   // The member's next request finds the session gone: signed out, to Sign in.
   await m.getByLabel('Name').fill(member.name + ' B.');
@@ -222,7 +224,7 @@ test('blocking signs a member out at their next request and refuses sign-in unti
   await expect(m.getByRole('alert')).toHaveText('Email or password is not right.');
 
   await access.getByRole('button', { name: /^Unblock/ }).click();
-  await expect(access.getByRole('status')).toHaveText('Unblocked. They can sign in again.');
+  await expect(access.locator('.row-status')).toHaveText('Unblocked. They can sign in again.');
   await m.getByRole('button', { name: 'Sign in' }).click();
   await expect(m).toHaveURL(/#\/settings$/);
   await expect(accountRow(m, member.name)).toBeVisible();
@@ -250,7 +252,7 @@ test("a new-password link: set on another device, and the member's other devices
   await other.getByLabel('New password').fill(NEW_PASSWORD);
   await other.getByRole('button', { name: 'Save password' }).click();
   await expect(other).toHaveURL(/#\/settings$/);
-  await expect(accountSection(other).getByRole('status')).toHaveText('Password saved. Your other devices are signed out.');
+  await expect(accountSection(other).locator('.row-status')).toHaveText('Password saved. Your other devices are signed out.');
   await expect(accountRow(other, member.name)).toBeVisible();
 
   // The first device is signed out; the old password no longer works, the new one does.
@@ -329,7 +331,7 @@ test('a member deletes their account: a wrong password first, then signed out fo
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
 
   await expect(m).toHaveURL(/#\/settings$/);
-  await expect(accountSection(m).getByRole('status')).toHaveText('Your account was deleted.');
+  await expect(accountSection(m).locator('.row-status')).toHaveText('Your account was deleted.');
   await expect(accountSection(m).getByRole('link', { name: /^Sign in/ })).toBeVisible();
   await expect.poll(() => m.evaluate(() => localStorage.getItem('muzieklab.account.v1'))).toBeNull();
   await signIn(m, member.email, member.password);

@@ -15,6 +15,7 @@ import {
   type Role,
 } from '../../../shared/api.js';
 import { writeAudit, type AuditInput } from '../accounts/audit.js';
+import { isDay, lastDayOf, premiumEnd } from '../accounts/premium.js';
 import { isActiveAdmin, otherActiveAdmins, removeAccount } from '../accounts/remove.js';
 import { normalizeEmail, validName } from '../accounts/validate.js';
 import { toAuditEntry, toDetail, toSummary } from '../accounts/views.js';
@@ -23,7 +24,15 @@ import { createLink, inviteExpiresAt } from '../auth/links.js';
 import { siteOrigin } from '../auth/origin.js';
 import { can } from '../auth/policy.js';
 import type { AppContext } from '../context.js';
-import { inTransaction, isDuplicateKey, lockAdmins, parseId, type AccountDoc, type AuditDoc } from '../db.js';
+import {
+  inTransaction,
+  isDuplicateKey,
+  lockAdmins,
+  parseId,
+  type AccountDoc,
+  type AuditDoc,
+  type LinkKind,
+} from '../db.js';
 import { ApiError } from '../errors.js';
 import * as s from './schemas.js';
 
@@ -43,7 +52,8 @@ const premium = {
     {
       type: 'object',
       additionalProperties: false,
-      properties: { active: { const: true }, until: { type: ['string', 'null'], maxLength: 40 } },
+      // The last day, YYYY-MM-DD (whether it is a real date, and not over yet, is checked in code).
+      properties: { active: { const: true }, until: { type: ['string', 'null'], pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' } },
       required: ['active', 'until'],
     },
     {
@@ -65,11 +75,12 @@ function sortRoles(list: readonly Role[]): Role[] {
   return ROLES.filter((role) => list.includes(role));
 }
 
-function parseUntil(until: string | null): Date | null {
+/** Premium's last day as sent: null for no end, or a real date (YYYY-MM-DD) that is not over yet anywhere. */
+function parseLastDay(until: string | null, now: Date): string | null {
   if (until === null) return null;
-  const at = new Date(until);
-  if (Number.isNaN(at.getTime())) throw new ApiError('bad_request', 'premium.until is not a date');
-  return at;
+  if (!isDay(until)) throw new ApiError('bad_request', 'premium.until is not a date (YYYY-MM-DD)');
+  if (premiumEnd(until) <= now.getTime()) throw new ApiError('bad_request', 'premium.until is a day that is over');
+  return until;
 }
 
 /** The permissions a PATCH needs: each field its own (BACKEND-PLAN.md §4.2). */
@@ -88,7 +99,7 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
   async function detail(account: AccountDoc): Promise<AccountDetail> {
     const now = ctx.now();
     const [expires, sessions] = await Promise.all([
-      inviteExpiresAt(c, account),
+      inviteExpiresAt(c, account, now),
       c.sessions.countDocuments({ accountId: account._id, expiresAt: { $gt: now } }),
     ]);
     return toDetail(account, now, expires, sessions);
@@ -216,9 +227,13 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       if (!targetId) throw notFound();
       const name = body.name === undefined ? undefined : validName(body.name);
       const email = body.email === undefined ? undefined : normalizeEmail(body.email);
-      const newPremium =
-        body.premium === undefined ? undefined : body.premium.active ? { until: parseUntil(body.premium.until) } : null;
       const now = ctx.now();
+      const newPremium =
+        body.premium === undefined
+          ? undefined
+          : body.premium.active
+            ? { until: parseLastDay(body.premium.until, now) }
+            : null;
 
       try {
         const updated = await inTransaction(ctx.db, async (session) => {
@@ -276,12 +291,12 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
             const before = target.premium;
             const same =
               (before === null && newPremium === null) ||
-              (before !== null && newPremium !== null && before.until?.getTime() === newPremium.until?.getTime());
+              (before !== null && newPremium !== null && lastDayOf(before.until) === newPremium.until);
             if (!same) {
               set.premium = newPremium;
               audit.push(
                 newPremium
-                  ? { action: 'premium.grant', details: { until: newPremium.until?.toISOString() ?? null } }
+                  ? { action: 'premium.grant', details: { until: newPremium.until } }
                   : { action: 'premium.revoke' },
               );
             }
@@ -295,6 +310,12 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
           );
           // A blocked account is signed out everywhere at once.
           if (set.status === 'blocked') await c.sessions.deleteMany({ accountId: target._id }, { session });
+          // A link sent to the old address stops working: a new-password link, and an invited account's invite (the
+          // admin makes a new one for the corrected address).
+          if (set.email !== undefined) {
+            const kinds: LinkKind[] = target.status === 'invited' ? ['reset', 'invite'] : ['reset'];
+            await c.tokens.deleteMany({ accountId: target._id, kind: { $in: kinds } }, { session });
+          }
           await writeAudit(
             c,
             now,
@@ -352,9 +373,15 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
     );
   }
 
-  app.delete<{ Params: { id: string } }>(
+  app.delete<{ Params: { id: string }; Querystring: { expect?: AccountStatus } }>(
     '/admin/accounts/:id',
-    { config: { permission: 'accounts.delete' }, schema: { params: s.idParams } },
+    {
+      config: { permission: 'accounts.delete' },
+      schema: {
+        params: s.idParams,
+        querystring: { type: 'object', additionalProperties: false, properties: { expect: { enum: ACCOUNT_STATUSES } } },
+      },
+    },
     async (request, reply) => {
       const actor = signedIn(request).account;
       const targetId = parseId(request.params.id);
@@ -368,6 +395,11 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
         await actorStillCan(actor._id, ['accounts.delete'], session);
         const target = await c.accounts.findOne({ _id: targetId }, { session });
         if (!target) throw notFound();
+        // "Cancel invite" expects an invited account: one whose invite was accepted meanwhile stays.
+        const expected = request.query.expect;
+        if (expected !== undefined && target.status !== expected) {
+          throw new ApiError('wrong_status', `The account is ${target.status}, not ${expected}`);
+        }
         if (isActiveAdmin(target) && (await otherActiveAdmins(c, target._id, session)) === 0) {
           throw new ApiError('last_admin', 'This would leave no active admin');
         }

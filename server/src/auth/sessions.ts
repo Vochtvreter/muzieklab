@@ -12,6 +12,8 @@ export const SESSION_DAYS = 30;
 const SESSION_MS = SESSION_DAYS * 24 * 60 * 60_000;
 /** lastSeenAt (and the end) move at most this often, so a busy session writes at most once an hour. */
 const REFRESH_MS = 60 * 60_000;
+/** Sessions an account has at most: a new one past this ends the one used longest ago. */
+export const MAX_SESSIONS = 20;
 
 /** 32 random bytes, base64url: what goes in a cookie or a link. */
 export function newToken(): string {
@@ -54,7 +56,11 @@ export function sessionToken(request: FastifyRequest, settings: CookieSettings):
   return token && /^[A-Za-z0-9_-]{43}$/.test(token) ? token : undefined;
 }
 
-/** Signs an account in on this device: a new session, its cookie, and the device's name from the User-Agent. */
+/**
+ * Signs an account in on this device: a new session, its cookie, and the device's name from the User-Agent. An account
+ * keeps at most MAX_SESSIONS: past that, the ones used longest ago (lastSeenAt) end, so a loop of sign-ins cannot fill
+ * the database. The new one always stays.
+ */
 export async function createSession(
   c: Collections,
   reply: FastifyReply,
@@ -74,8 +80,32 @@ export async function createSession(
     device: deviceName(userAgent).slice(0, 100),
   };
   await c.sessions.insertOne(doc, { session });
+  const over = await c.sessions
+    .find({ accountId, _id: { $ne: doc._id } }, { session, projection: { _id: 1 } })
+    .sort({ lastSeenAt: -1, createdAt: -1 })
+    .skip(MAX_SESSIONS - 1)
+    .toArray();
+  if (over.length > 0) await c.sessions.deleteMany({ _id: { $in: over.map((s) => s._id) } }, { session });
   setSessionCookie(reply, settings, token);
   return doc._id;
+}
+
+/**
+ * Signs an account in on this device in place of the session the browser had, if any: that one ends first, whoever's
+ * it was and whether or not it still works, so no session is left behind that no device holds any more. For sign-in,
+ * accepting an invite and setting a new password.
+ */
+export async function replaceSession(
+  c: Collections,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  settings: CookieSettings,
+  accountId: ObjectId,
+  now: Date,
+): Promise<string> {
+  const previous = sessionToken(request, settings);
+  if (previous) await c.sessions.deleteOne({ _id: hashToken(previous) });
+  return createSession(c, reply, settings, accountId, now, request.headers['user-agent']);
 }
 
 /**

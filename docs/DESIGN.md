@@ -26,14 +26,16 @@ game rather than homework.
    switched on or off, plus the number of bars.
 3. **Accurate timing** on desktop *and* mobile, so feedback is fair to the millisecond range.
 4. **Game feel**: short rounds, scores, stars, combos, XP, streaks, a progression path.
-5. **Works offline**, installable on a phone (PWA), no account needed.
+5. **Works offline**, installable on a phone (PWA), no account needed. Accounts (since 0.12.0) are optional and by
+   invitation; everything else works without one.
 
 ### Non-goals (for v1)
 
 - Pitch reading / melodic dictation (see §13, possible later module).
 - Multiplayer.
-- Accounts, cloud sync and teacher dashboards: planned after v1, optional next to the account-free app
-  ([BACKEND-PLAN.md](BACKEND-PLAN.md)).
+- Cloud sync and teacher dashboards: planned after v1 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). Accounts came first,
+  in 0.12.0: optional and by invitation, next to the account-free app. The app needs no account, and a site without
+  the API shows no account at all (§9.2).
 
 ---
 
@@ -1200,6 +1202,11 @@ reserved for feedback; gold only for rewards (stars, streak, XP).
 | Perfect / great text (`--good-ink`) | `#176c47` | `#7ad9a8` |
 | Good (early/late) | `#b7791f` | `#f0b429` |
 | Miss | `#d64545` | `#ff6b6b` |
+| Field border (`--field-line`, since 0.12.0) | `#7a8687` | `#738080` |
+
+A text field's border (§9.2) is `--field-line`, not Line. Line is 1.2–1.4:1 against paper and ground, under the 3:1
+that WCAG 1.4.11 asks of a field's edge. `--field-line` is 3.76:1 on paper and 3.31:1 on ground in light, and 4.08:1
+and 4.53:1 in dark (`src/styles/fieldContrast.test.ts` checks it). The Foundations boards do not have it yet.
 
 Type: **Unbounded** (display, scores, counts), **Figtree** (UI and body),
 **JetBrains Mono** (numbers, ms, BPM, codes), **Noto Music** (note and rest glyphs on
@@ -1254,7 +1261,7 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 | **Path** | One Learning path (since 0.11.0; before, three paths behind a switcher): note units and rhythm units taking turns, as a vertical path whose units open to show their lessons by name, with stars and locks (§8.2). |
 | **Progress** | Charts, skill map, achievements. |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
-| **Settings** | Language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
+| **Settings** | Account first, once the API answers (since 0.12.0; §9.2), language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
 
 **Home** (since 0.10.0). On phone and tablet the order is the brand or title, then the level and streak chips (they
 wrap under the brand on narrow phones, and in Dutch on a new profile), Continue, the daily challenge and Free practice.
@@ -1367,6 +1374,123 @@ Both use the full width (up to 1160 px of content) instead of the 640 px column,
 
 The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings. The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
 
+### 9.2 Accounts: the account and admin screens
+
+Since 0.12.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md)). **No board exists yet** for any of these screens, on either canvas.
+They were built from the built Settings screen (§9) and the foundations, and this section describes them as built.
+Their boards are still to be drawn (phone, tablet and desktop, in light and dark), and so are the components below,
+on Foundations. The Settings boards they would extend disagree with each other: the App design canvas draws tablet
+and desktop Settings with a list of sections and two columns of cards, while the built app and the MVP canvas's
+Settings row use one 640 px column. The account screens follow the built Settings until that is settled.
+
+**Where accounts are.** Accounts are optional and by invitation. The app needs none, and nothing in it waits for the
+server.
+- Settings has an **Account** section first, on every size, once the API has answered or an account is cached on the
+  device. A site without an API shows no Account section at all.
+  - Signed out: one row, *Sign in* (*Accounts are by invitation.*).
+  - Signed in: the account (name and email) → Account; *Accounts* (*Invite people and manage roles*) → the admin
+    screens, only with `accounts.read`; and *Sign out*.
+  - No answer from the API, with a cached account: the account row, then *Offline: you can change your account again
+    once Muzieklab can be reached.* with **Try again**. The app also asks again when Settings or an account screen
+    opens (at most once every 10 s), when it comes back into view, and when the device is back online.
+  - After an action that ends on Settings, one line with a green check says what happened: *Signed out.*, *Signed out
+    on every device.*, *Your account was deleted.*, *You're signed in. Welcome to Muzieklab.*, or *Password saved. Your
+    other devices are signed out.* It is also read out, and it goes when Settings is left.
+- Settings → About has a **Privacy** row (*What stays on this device, and what an account stores*), with or without an
+  API.
+
+**Two frames.**
+- **A Settings sub-page** (Account, Privacy and the three admin screens) keeps the shell, with Settings current. That
+  is the bottom tab bar on phone, and the top header on tablet (icons, on the right) and desktop (words, after the
+  brand). The page starts with a back arrow (*Back to settings*; *Back to accounts* from Invite someone and from one
+  account), the title (`.screen-title`, Unbounded 500) and, on some screens, a muted line under it. Then come
+  Settings' sections, 12 px apart: an uppercase label above a paper card, with hairlines between rows. On tablet and
+  desktop the page is Settings' centred 640 px column, 40 px from the top. It scrolls as one page.
+- **A form on its own** (Sign in, Accept invite, New password) has no tab bar or header at any size, like Calibrate. It
+  shows a back arrow and the title, then the form on one paper card (radius 20). On a phone it takes the width, with
+  Calibrate's top space (52 px on a board, status bar included); from 700 px it is a centred 480 px column, 64 px from
+  the top.
+- **Other sizes.** A phone in landscape (844 × 390) starts the page nearer the top (20 px; 16 px for a form on its
+  own). The phone browser sizes (390 × 664, 375 × 553) keep the phone layout and scroll. Fields stay 48 px tall and
+  buttons at least 44 px everywhere. A tablet in landscape (1180 × 820, touch) gets the desktop layout.
+
+**The screens.**
+
+| Screen | Frame | What it shows | States |
+|---|---|---|---|
+| **Sign in** `#/signin` | form on its own | Email, Password (with Show), **Sign in**. Under the card: *Forgot your password? Ask the person who invited you.* and a Privacy link. | An empty field says what is missing. A wrong email or password: *Email or password is not right.*, with the password selected. Too many tries: *Too many tries. Try again in 2 seconds.* No answer. Already signed in: Account. Success: Settings. |
+| **Accept invite** `#/invite/<token>` | form on its own | *Checking the link…*, then *Welcome, {name}* over *Choose a password for {email}.* Name (filled in; it may be changed), New password with the rules (*At least 10 characters. Not a common password, and not your email.*), **Create account**. | A link that no longer works: the message and **Home**. No answer: the message and **Try again**. Success: Settings, with the welcome line. |
+| **New password** `#/reset/<token>` | form on its own | The same with one field, *Saving it signs out your other devices.*, and **Save password**. | As Accept invite. Success: Settings, with *Password saved…* |
+| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account. | Loading. Signed out: Sign in. Offline with a cached account: the offline note with Try again at the top, the profile read only, the other sections hidden. Offline with nothing cached: the message and Try again. A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*). |
+| **Privacy** `#/privacy` | sub-page | A lead line, then *Without an account*, *With an account*, *Why*, *Where*, *How long*, *Your rights*, *Age*, and the day it was last updated. | None. Opened from Sign in (`?from=signin`), its back arrow goes to Sign in. |
+| **Accounts** `#/admin` | sub-page | **Invite someone**, the screen's one filled button: in the title row from 700 px, full width under the title on a phone. A search field (*Search*, *Name or email*; it searches once typing pauses for 250 ms, or on Enter), the status filter (All · Invited · Active · Blocked), then one section whose label counts (*4 accounts*, *1 account found*). Each row: the name (*(you)* after your own), the email, a status pill and the roles, and a chevron. | Checking; loading; *No accounts match.*; an error with Try again (outlined, as Invite someone is the filled button); no access (a lock, *You don't have access to this page.*, *Only admins manage accounts.*, Back to settings); no answer; signed out: Sign in. After Cancel invite or Delete account, a line saying so, once (*The invite for {name} was canceled.*). |
+| **Invite someone** `#/admin/invite` | sub-page | *Person*: Email, Name. *Roles* (only with `roles.grant`): a switch per role with what it does (*Makes classes and follows pupils (coming later).*), and *Without a role, they can practice and keep their own progress.* **Create invite**. Then a card: *Invite for {name} is ready* (it gets focus), *Send the link yourself, for example with the message below.*, the link with **Copy link**, *Works until {date and time}.* **This link is shown only now. Make a new one if it gets lost.**, and the message with **Copy message**. Under it *Invite someone else* (outlined) and **Done**. | An empty field. *There's already an account with this email.* under Email. No access; no answer. |
+| **One account** `#/admin/account/<id>` | sub-page | The name as the title, with the status pill and email under it. *Details*: Added, Last signed in, Devices signed in, and for an invite when its link stops working (*No working link. Make a new one below.*). *Name and email* (Save). *Roles*: switches, saved at once. *Premium*: a switch, and *Last day (optional)*, a date field with **Save date**. Then by status: invited, *New invite link* and *Cancel invite*; active, *New password link*, *Block* and *Delete account*; blocked, *Unblock* and *Delete account*. A new link shows as in Invite someone. | Each part shows only with its permission. On your own account the role switches are disabled, with *You can't change your own roles.*, and one row to Account (*This is your account*) replaces the links, Block and Delete. Loading; an error with Try again; *This account isn't there anymore…* with Back to accounts; no access. An invite accepted meanwhile: *{name} accepted the invite meanwhile, so the account was not removed.*, and the account reloads. |
+
+**Components** (`src/ui/components/Form.tsx`, `src/styles/account.css`). They use tokens only, so light and dark
+both work.
+- **Text field** (`TextField`, `PasswordField`):
+  - The label sits above it: 14.5 px, 700, Ink.
+  - The field: Paper, a 1.5 px `--field-line` border (below), radius 14, at least 48 px tall, 11 × 14 px inside, and
+    16 px / 500 text, so iOS does not zoom in.
+  - Focus: an accent border and the gold focus ring (3 px, 2 px away).
+  - A hint under it: 12.5 px, Muted.
+  - An error under it: 13.5 px / 600 in `--miss-ink`, with an alert icon, and the border turns Miss. It is read out
+    when it appears (`role="alert"`), and it is the field's description (`aria-describedby`, `aria-invalid`).
+  - Read only: a Ground fill. Disabled: Track, with `--disabled` text.
+  - A password field has *Show* / *Hide* inside it, on the right (accent ink, 700; *Show password* for screen readers).
+  - Types: text, email, search and date.
+- **Which error goes where:** a field error is only about what was typed in that field: it is empty, not an address,
+  taken, a new password that cannot be used, or a current password that is not right. Everything else is the **form
+  error**: a wrong email or password on Sign in (which of the two is not told), and every request that failed (no
+  answer, a server error). It is a box above the button in `--miss-soft` / `--miss-ink`, radius 12, 14 px / 600, with
+  the alert icon, and it is read out. A done message is a green check and one line, 14 px / 600.
+- **Buttons:** one filled button per screen, as elsewhere: Sign in, Create account, Save password, Invite someone,
+  Create invite, Done, Try again. A card's own small form (Save, Save email, Change password, Save date) has a
+  **tonal** button: `--accent-soft` with `--accent-ink` text. A busy button says so (*Signing in…*) and cannot be
+  pressed twice.
+- **Rows** in Settings' cards, with hairlines between them:
+  - a row button: 54 px, an icon, the words in Ink, or red for Delete account;
+  - a switch row, for roles and premium: 56 px, with Settings' switch (`role="switch"`);
+  - label and value rows (Email, Details).
+- **Status pill:** 11.5 px / 700, fully rounded. Invited is `--reward-soft` / `--reward-ink`, Active `--good-soft` /
+  `--good-ink`, and Blocked `--miss-soft` / `--miss-ink`.
+- **Copy field:** the value, read only, with a 48 px Copy button that turns into a check and *Copied* for 2 s, as
+  Results' Copy code does. A link is in JetBrains Mono; a message is in Figtree, as tall as its text. Where copying is
+  not allowed, it selects the text instead: *Selected. Copy it with your device's copy command.*
+- **Status filter:** the foundations' chips, as one pick-one group (`aria-pressed`). On a phone they fill the row;
+  under 360 px they are an even 2 × 2 grid in every language (*Uitgenodigd*, *Geblokkeerd*). It is not a segmented
+  control: four statuses do not fit one track at 320 px, or at phone width in Dutch.
+- **Announcements:** one polite live region for the whole app (`#announcer`) reads out results whose button is gone or
+  far away: Settings' one-line notices, the accounts list's line after Cancel invite or Delete account, Block and
+  Unblock, and the count after a search or a filter.
+
+**Destructive confirm** (`ConfirmAction`) is Settings' Reset progress pattern.
+- The row button (red words and icon) turns, in place, into the question in bold, one line on what happens, any field
+  it needs, then *Cancel* (outlined) and the verb, on the right. On a phone the two buttons share the row.
+- Only the confirm step has the red fill: `--miss`, with `--on-fill` text.
+- It is a form (`role="alertdialog"`): Enter confirms from its field, and Escape or Cancel closes it, putting focus
+  back on the row button.
+- Used for Delete account (your own, with your password), Block, Cancel invite and an admin's Delete account. Cancel
+  invite's other button says *Keep invite*, as its verb is Cancel.
+- Sign out everywhere uses the same confirm without red: the question in Ink and a tonal button, because it loses
+  nothing. Unblock and a new link need no confirm.
+
+**Copy.** The same rules as the rest of the app: sentence case, second person, no exclamation marks, and errors say
+what to do. For accounts:
+- One answer for a wrong email and a wrong password: *Email or password is not right.* There is no "forgot password"
+  flow: *Forgot your password? Ask the person who invited you.* Signed out, the Account section says *Accounts are by
+  invitation.* (nl *Alleen met een uitnodiging.*).
+- A confirm asks a question and says in one line what happens. Where nothing brings it back, that line ends with *No
+  undo.* (*Delete your account?* / *Your account and everything stored with it are deleted. Progress on this device
+  stays. No undo.*). A done line says what happened (*Blocked. They're signed out.*).
+- A link says *Works until {date and time}.*: a new-password link lasts 24 hours, so the time counts. It adds *This
+  link is shown only now.* The message to send is in the admin's app language and uses the person's full name (*Hi
+  {name}, I've made you an account for Muzieklab. Open this link to choose your password: …*).
+- Premium's last day is a calendar day, shown as that day in every time zone (*Premium until December 31, 2026*).
+- Dutch uses *inloggen*, *uitloggen*, *account* and *wachtwoord*. For one person it says *deze persoon* or the name,
+  never *ze* or *hun*, and *Je kunt dit niet ongedaan maken.* for "No undo."
+
 ### UX principles
 
 - **One-thumb mobile**: primary actions at the bottom; tap pad is huge; no scroll during play.
@@ -1389,11 +1513,11 @@ The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · S
 | UI | **React** + small store (Zustand) | Familiar, enough for a handful of screens. |
 | Notation | **VexFlow** (SVG) | Mature engraving: beams, ties, tuplets, rests. |
 | Audio | **Web Audio API**, own scheduler | Sample-accurate timing, zero dependencies. |
-| Storage | `localStorage` (settings) + **IndexedDB** (history, stats) | Offline, no account. |
+| Storage | `localStorage` (settings) + **IndexedDB** (history, stats); the signed-in account's cache, `muzieklab.account.v1` | Offline, no account needed. The cache holds only what `GET /me` returns (never a password or a token), so a signed-in device shows its account offline. |
 | Offline / install | **PWA** (`vite-plugin-pwa`) | Home-screen app on phones. |
 | Tests | **Vitest** + **fast-check** (property tests) | Generator correctness over thousands of seeds. |
-| Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)) | The app needs no backend. |
-| Accounts (planned) | **Node** API + **MongoDB** on the same server ([BACKEND-PLAN.md](BACKEND-PLAN.md)) | Optional accounts, roles and progress across devices. |
+| Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)), with an optional API on the same server under `/api` | The app needs no backend: it works fully without the API, and shows no account then. |
+| Accounts (since 0.12.0) | **Node** API (Fastify, one bundled file) + **MongoDB** on the same server ([BACKEND-PLAN.md](BACKEND-PLAN.md)); the contract `shared/api.ts`; the app's client `src/api/client.ts` | Optional, invite-only accounts with roles; progress across devices from phase 2. |
 
 ### 10.2 Module layout
 
@@ -1423,11 +1547,19 @@ src/
     notationText.ts     # rhythm written as text ('q [8 8] h') -> NotatedBar[]
   game/
     xp.ts  path.ts  achievements.ts  skills.ts  storage.ts
+  api/
+    client.ts           # fetch to /api/v1: JSON, a 15 s timeout, errors as stable codes ('unavailable': no answer)
   ui/
     screens/ Home, Setup, Play, Dictation, Results, Path, Progress, Settings, Learn
+    screens/account/    # Settings → Account section, Sign in, Accept invite, New password, Account, Privacy (§9.2)
+    screens/admin/      # Accounts, Invite someone, one account (§9.2)
+    account.ts          # useAccount(): who is signed in, GET /me, the account cache
     learn/ chapters.ts  # the Learn chapters as data (docs/ADDING-CONTENT.md); Blocks.tsx draws them
-    components/ ...
+    components/ ...     # Form.tsx: text fields, confirm, copy field (§9.2)
   i18n/ en.json nl.json # every user-facing string, one catalog per locale (found automatically)
+shared/
+  api.ts                # the API's contract: request and response types, error codes, permissions (types only)
+server/                 # the API (Fastify + MongoDB), its own package and tests (BACKEND-PLAN.md §1.2)
 ```
 
 ### 10.3 Testing strategy
@@ -1511,7 +1643,7 @@ without code changes:
 | M5 | **Game layer** | XP, levels, Learning Path, daily challenge, streaks, achievements. |
 | M5b | **Read notes** | Note generator, treble and bass clef rendering, names / piano input, setup, scoring, Learn chapter 8. |
 | M6 | **Polish** | Calibration, PWA/offline, mobile tuning, localization-ready check (all strings in the catalog), progress screen, Weak Spots. |
-| M7 | **Accounts** (planned) | Invite-only accounts with roles, then progress on the account, classes, content editing and premium ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). |
+| M7 | **Accounts** (phase 1 done in 0.12.0; phases 2–5 planned) | Invite-only accounts with roles: sign-in, invite and new-password links, the Account screen, the admin screens and the privacy statement (done, 0.12.0). Then progress on the account, classes, content editing and premium ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). |
 
 ---
 
@@ -1530,9 +1662,10 @@ without code changes:
 5. **Counting aid:** show counting text under the notes ("1 & 2 &") as an optional help?
 6. **Tap vs hold:** decided: tap & hold is the default in v1; tap only stays as a setting
    for beginners (§3.1).
-7. **Accounts:** the open questions for accounts and permissions (children's accounts, two-step
-   sign-in, content editing, premium, where the account sits in the shell) are in [BACKEND-PLAN.md](BACKEND-PLAN.md)
-   §11.
+7. **Accounts:** where the account sits in the shell is decided: an Account section at the top of Settings, on every
+   size, with Accounts inside it for admins, and no new tab (built in 0.12.0, §9.2). Its boards are still to be drawn
+   on both canvases. The questions still open (children's accounts, two-step sign-in for admins, content editing,
+   premium) are in [BACKEND-PLAN.md](BACKEND-PLAN.md) §11.
 
 ---
 

@@ -1,11 +1,14 @@
 /**
  * Form controls for the account and admin screens. No board draws them yet (map-designs: none on either canvas); they
- * take the foundations' field vocabulary: a paper field with a 1.5 px line border, radius 14, at least 48 px tall, a
- * 14.5 px bold label above, a 12.5 px muted hint under it, and errors in the miss ink with an icon. Text is 16 px so iOS
- * does not zoom in on focus; the gold focus ring is base.css's `:focus-visible` rule.
+ * take the foundations' field vocabulary: a paper field with a 1.5 px border, radius 14, at least 48 px tall, a
+ * 14.5 px bold label above, a 12.5 px muted hint under it, and errors in the miss ink with an icon. The border is
+ * --field-line (tokens.css), not the foundations' --line: --line is 1.2–1.4:1, under WCAG 1.4.11's 3:1. Text is 16 px so
+ * iOS does not zoom in on focus; the gold focus ring is base.css's `:focus-visible` rule.
  *
  * Forms are real <form onSubmit> elements, so Enter submits. The submit button (SubmitButton) shows a busy label and is
- * disabled while the request runs. A field error goes in the field's `error`; anything else in a FormError.
+ * disabled while the request runs. A field error goes in the field's `error` (only what is wrong with what was typed
+ * there); anything else, a network or server failure too, in a FormError. Both are announced (role="alert"), and a
+ * field's error is also its description (aria-describedby, with aria-invalid), read again when the field gets focus.
  */
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from 'react';
 import type { AccountStatus } from '../../../shared/api';
@@ -19,7 +22,10 @@ interface FieldProps {
   label: string;
   /** A help line under the field (12.5 px, muted): the password rules, a format. Linked with aria-describedby. */
   hint?: ReactNode;
-  /** The error under the field (miss ink, with an icon). Sets aria-invalid and is read with the field. */
+  /**
+   * What is wrong with what was typed here (miss ink, with an icon): announced when it appears (role="alert"), and read
+   * with the field (aria-describedby, aria-invalid). Not for a failed request: that is the form's FormError.
+   */
   error?: string | null;
   /** The input's id; a generated one by default. */
   id?: string;
@@ -39,7 +45,7 @@ function FieldShell({ id, label, hint, error, className, children }: FieldProps 
       </label>
       {children(describedBy)}
       {error && (
-        <span id={errorId} className="tfield-error m-in">
+        <span id={errorId} className="tfield-error m-in" role="alert">
           <Icon name="alert" size={16} strokeWidth={2.2} />
           <span>{error}</span>
         </span>
@@ -162,11 +168,14 @@ export function ErrorRetry({ error, onRetry, quiet }: { error: string; onRetry()
   );
 }
 
-/** A done message (role="status", a green check): "Password changed. …". Renders nothing for null. */
-export function FormDone({ children }: { children: ReactNode }): JSX.Element | null {
+/**
+ * A done message (a green check): "Password changed. …". Renders nothing for null. role="status" next to the form
+ * that was sent; `live={false}` where the screen announces it itself (ui/lib/announce.ts), e.g. after a route change.
+ */
+export function FormDone({ children, live = true }: { children: ReactNode; live?: boolean }): JSX.Element | null {
   if (!children) return null;
   return (
-    <div className="form-done m-in" role="status">
+    <div className="form-done m-in" role={live ? 'status' : undefined}>
       <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
       <span>{children}</span>
     </div>
@@ -383,18 +392,21 @@ export interface ConfirmActionProps {
   label: string;
   sub?: ReactNode;
   icon?: IconName;
-  /** danger (default): the row's words are red, for what deletes or blocks. plain: ink (Sign out everywhere). */
+  /**
+   * danger (default), for what deletes or blocks: the row's words, the question and the confirm button are red.
+   * plain, for what loses nothing (Sign out everywhere): ink words and a soft accent confirm button.
+   */
   tone?: 'plain' | 'danger';
-  /** The question ("Delete your account?"), in red. */
+  /** The question ("Delete your account?"); red with the danger tone. */
   question: string;
   /** One line on what it does ("… No undo."). */
   detail: string;
-  /** The red button's verb ("Delete"). */
+  /** The confirm button's verb ("Delete"). */
   confirmLabel: string;
-  /** Shown on the red button while `onConfirm` runs ("Deleting…"). */
+  /** Shown on the confirm button while `onConfirm` runs ("Deleting…"). */
   busyLabel: string;
   /**
-   * Runs on the red button, or Enter in a field of the confirm. Return false (or a promise of false) to keep the
+   * Runs on the confirm button, or Enter in a field of the confirm. Return false (or a promise of false) to keep the
    * confirm open, e.g. after an error the caller shows with `error`.
    */
   onConfirm(): boolean | void | Promise<boolean | void>;
@@ -410,9 +422,9 @@ export interface ConfirmActionProps {
 }
 
 /**
- * A destructive action, confirmed in place (Settings → Reset progress, DESIGN.md: red words, and the red fill only on
- * the confirm step): the row button turns into the question, one line on what happens, optional fields, then Cancel
- * and the red verb. It is a form (Enter confirms from a field), with role="alertdialog".
+ * An action confirmed in place (Settings → Reset progress, DESIGN.md: red words, and the red fill only on the confirm
+ * step): the row button turns into the question, one line on what happens, optional fields, then Cancel and the verb.
+ * It is a form (Enter confirms from a field), with role="alertdialog". Red only for the danger tone.
  */
 export function ConfirmAction(props: ConfirmActionProps): JSX.Element {
   const { label, sub, icon = 'trash', tone = 'danger', question, detail, confirmLabel, busyLabel, onConfirm, children, error, onCancel, cancelLabel, disabled } = props;
@@ -453,7 +465,7 @@ export function ConfirmAction(props: ConfirmActionProps): JSX.Element {
           onKeyDown={(e) => {
             if (e.key === 'Escape' && !busy) cancel();
           }}>
-          <p className="reset-text">
+          <p className={'reset-text' + (tone === 'plain' ? ' is-plain' : '')}>
             <b id={id + '-q'}>{question}</b>
             <span id={id + '-d'}>{detail}</span>
           </p>
@@ -463,7 +475,7 @@ export function ConfirmAction(props: ConfirmActionProps): JSX.Element {
             <button type="button" className="small-btn" autoFocus={!children} onClick={cancel} disabled={busy}>
               {cancelLabel ?? t('common.cancel')}
             </button>
-            <button type="submit" className="small-btn small-btn--danger" disabled={busy} aria-busy={busy || undefined}>
+            <button type="submit" className={'small-btn ' + (tone === 'plain' ? 'small-btn--tonal' : 'small-btn--danger')} disabled={busy} aria-busy={busy || undefined}>
               {busy ? busyLabel : confirmLabel}
             </button>
           </div>

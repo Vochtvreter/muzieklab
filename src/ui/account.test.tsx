@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Me } from '../../shared/api';
 import { ACCOUNT_KEY } from '../game/storage';
-import { resetAccountCheck, useAccount, type UseAccount } from './account';
+import { RECHECK_MS, resetAccountCheck, useAccount, type UseAccount } from './account';
 import { StoreProvider } from './store';
 
 const ME: Me = {
@@ -160,5 +160,108 @@ describe('useAccount', () => {
       answer(json(401, { error: 'unauthenticated', message: '' }));
     });
     expect(shown()).toBe('reachable Ann de Vries');
+  });
+
+  describe('after no answer, asks again', () => {
+    let now = 1_000_000;
+    beforeEach(() => {
+      now = 1_000_000;
+      vi.spyOn(Date, 'now').mockImplementation(() => now);
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    const offlineThenSettings = async (): Promise<() => void> => {
+      localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+      const first = render(
+        <StoreProvider>
+          <Probe />
+        </StoreProvider>,
+      );
+      await waitFor(() => expect(shown()).toBe('unreachable Ann de Vries'));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      return first.unmount;
+    };
+
+    it('when a screen that needs the account opens again, at most once every RECHECK_MS', async () => {
+      localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+      const { rerender } = render(
+        <StoreProvider>
+          <Probe key="settings" />
+        </StoreProvider>,
+      );
+      await waitFor(() => expect(shown()).toBe('unreachable Ann de Vries'));
+      // Path, then Settings again soon after: no new request.
+      rerender(<StoreProvider>{null}</StoreProvider>);
+      now += RECHECK_MS - 1;
+      rerender(
+        <StoreProvider>
+          <Probe key="settings-again" />
+        </StoreProvider>,
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      // The API is back (it restarted; no 'online' event): the next visit after the wait asks, and the account is live.
+      fetchMock.mockResolvedValue(json(200, ME));
+      rerender(<StoreProvider>{null}</StoreProvider>);
+      now += 1;
+      rerender(
+        <StoreProvider>
+          <Probe key="settings-later" />
+        </StoreProvider>,
+      );
+      await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(latest.can('accounts.read')).toBe(true);
+    });
+
+    it('when the device is back online, even with no account screen open', async () => {
+      const unmount = await offlineThenSettings();
+      unmount();
+      fetchMock.mockResolvedValue(json(200, ME));
+      window.dispatchEvent(new Event('online'));
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    });
+
+    it('when the app comes back into view, after the wait', async () => {
+      await offlineThenSettings();
+      fetchMock.mockResolvedValue(json(200, ME));
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      now += RECHECK_MS;
+      document.dispatchEvent(new Event('visibilitychange'));
+      await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('not while the API answers: a signed-in account is not asked about again', async () => {
+      fetchMock.mockResolvedValue(json(200, ME));
+      const { unmount } = render(
+        <StoreProvider>
+          <Probe />
+        </StoreProvider>,
+      );
+      await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+      unmount();
+      now += RECHECK_MS * 10;
+      window.dispatchEvent(new Event('online'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      render(
+        <StoreProvider>
+          <Probe />
+        </StoreProvider>,
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('Try again (refresh) asks at once', async () => {
+      await offlineThenSettings();
+      fetchMock.mockResolvedValue(json(401, { error: 'unauthenticated', message: '' }));
+      await act(async () => {
+        await latest.refresh();
+      });
+      expect(shown()).toBe('reachable nobody');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
   });
 });

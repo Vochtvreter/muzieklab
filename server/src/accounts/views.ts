@@ -4,20 +4,12 @@ import type {
   AccountSummary,
   AuditEntry,
   Me,
-  Premium,
 } from '../../../shared/api.js';
 import type { AccountDoc, AuditDoc } from '../db.js';
 import { permissionsFor } from '../auth/policy.js';
+import { premiumOf } from './premium.js';
 
 // From stored documents to the bodies of shared/api.ts: ids as hex strings, dates as ISO strings.
-
-/** Premium is on while it is set and has no end, or ends in the future (BACKEND-PLAN.md §4.3). */
-export function premiumOf(account: AccountDoc, now: Date): Premium {
-  const premium = account.premium;
-  if (!premium) return { active: false, until: null };
-  if (premium.until === null) return { active: true, until: null };
-  return premium.until > now ? { active: true, until: premium.until.toISOString() } : { active: false, until: null };
-}
 
 export function toMe(account: AccountDoc, now: Date): Me {
   return {

@@ -58,11 +58,14 @@ export async function findLink(
   return account ? { token: doc, account } : null;
 }
 
-/** When the account's newest invite link stops working, or null when there is none (or it was used). */
-export async function inviteExpiresAt(c: Collections, account: AccountDoc): Promise<Date | null> {
+/**
+ * When the account's newest invite link stops working, or null when none works: there is none, it was used, or it
+ * has expired (at once, not only when MongoDB's TTL monitor deletes it about a minute later).
+ */
+export async function inviteExpiresAt(c: Collections, account: AccountDoc, now: Date): Promise<Date | null> {
   if (account.status !== 'invited') return null;
   const newest = await c.tokens.findOne(
-    { accountId: account._id, kind: 'invite', usedAt: null },
+    { accountId: account._id, kind: 'invite', usedAt: null, expiresAt: { $gt: now } },
     { sort: { createdAt: -1 } },
   );
   return newest?.expiresAt ?? null;

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { AccountExport, Me } from '../../../shared/api.js';
+import type { AccountExport, LinkCreated, Me } from '../../../shared/api.js';
 import { collections } from '../db.js';
 import {
   PASSWORD,
@@ -10,6 +10,7 @@ import {
   signedInAdmin,
   startMongo,
   stopMongo,
+  tokenOf,
   type Mongo,
   type TestApp,
 } from '../test/helpers.js';
@@ -27,6 +28,15 @@ const NEW_PASSWORD = 'a melody in d minor';
 async function annSignedIn(t: TestApp) {
   const account = await seedAccount(t.db, { email: 'ann@example.com', name: 'Ann' });
   return { account, cookie: await signIn(t, 'ann@example.com') };
+}
+
+/** An admin makes a new-password link for the account; returns a check of whether it still works (200 or 410). */
+async function resetLink(t: TestApp, accountId: string) {
+  const admin = await signedInAdmin(t);
+  const made = await t.call({ method: 'POST', url: `/api/v1/admin/accounts/${accountId}/reset-link`, cookie: admin.cookie });
+  expect(made.statusCode).toBe(200);
+  const token = tokenOf(made.json<LinkCreated>().link);
+  return async () => (await t.call({ method: 'POST', url: '/api/v1/auth/reset/check', payload: { token } })).statusCode;
 }
 
 describe('PATCH /me', () => {
@@ -100,6 +110,16 @@ describe('POST /me/password', () => {
     expect(await collections(t.db).audit.countDocuments({ action: 'account.change_password', targetId: account._id })).toBe(1);
   });
 
+  it('makes a new-password link stop working', async () => {
+    const t = await makeApp(mongo);
+    const { account, cookie } = await annSignedIn(t);
+    const check = await resetLink(t, account._id.toHexString());
+    expect(await check()).toBe(200);
+    const res = await t.call({ method: 'POST', url: '/api/v1/me/password', cookie, payload: { currentPassword: PASSWORD, newPassword: NEW_PASSWORD } });
+    expect(res.statusCode).toBe(204);
+    expect(await check()).toBe(410);
+  });
+
   it('slows down guesses of the current password', async () => {
     const t = await makeApp(mongo);
     const { cookie } = await annSignedIn(t);
@@ -141,6 +161,16 @@ describe('POST /me/email', () => {
     expect(old.statusCode).toBe(401);
     const entry = await collections(t.db).audit.findOne({ action: 'account.change_email', targetId: account._id });
     expect(entry?.details).toEqual({ email: 'ann@new.example', previousEmail: 'ann@example.com' });
+  });
+
+  it('makes a new-password link stop working', async () => {
+    const t = await makeApp(mongo);
+    const { account, cookie } = await annSignedIn(t);
+    const check = await resetLink(t, account._id.toHexString());
+    expect(await check()).toBe(200);
+    const res = await t.call({ method: 'POST', url: '/api/v1/me/email', cookie, payload: { password: PASSWORD, email: 'ann@new.example' } });
+    expect(res.statusCode).toBe(200);
+    expect(await check()).toBe(410);
   });
 });
 

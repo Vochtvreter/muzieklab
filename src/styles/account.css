@@ -231,6 +231,24 @@
 .row-pad {
   padding: 10px 16px 12px;
 }
+/* No answer from the API: the note, and Try again beside it (under it when the words need the room). In Settings' card
+   it is a row note; on Account the note box at the top. */
+.offline-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.offline-note p {
+  flex: 1 1 180px;
+}
+.offline-note .small-btn {
+  flex: none;
+}
+.hint-box.offline-note {
+  flex-direction: row;
+  padding: 8px 8px 8px 12px;
+}
 
 /* ---------- Destructive confirm (ConfirmAction): Settings' reset pattern, as a form ---------- */
 .confirm-row {
@@ -258,6 +276,10 @@
 }
 .small-btn:disabled {
   opacity: 0.6;
+}
+/* A confirm that loses nothing (Sign out everywhere): the question in ink, not the danger red. */
+.reset-text.is-plain b {
+  color: var(--ink);
 }
 /* A card's own small form: a soft accent button, so the screen's one filled button stays the main action. */
 .small-btn--tonal {
@@ -289,7 +311,8 @@
   min-height: 48px;
   margin: 0;
   padding: 11px 14px;
-  border: 1.5px solid var(--line);
+  /* --field-line: the edge is visible against the card and against the page (the accounts search is on the page). */
+  border: 1.5px solid var(--field-line);
   border-radius: 14px;
   background: var(--paper);
   color: var(--ink);
@@ -542,7 +565,7 @@
   font-weight: 700;
   font-size: 14px;
 }
-/* On a phone the chips fill the row under the search field, all four on one line in English down to 320 px. */
+/* On a phone the chips fill the row under the search field: all four on one line where they fit. */
 @media (max-width: 699.98px) {
   .filter-chips {
     gap: 6px;
@@ -550,6 +573,14 @@
   .filter-chips .chip {
     flex: 1 1 auto;
     padding: 0 10px;
+  }
+}
+/* Under 360 px an even 2 × 2 grid instead, in every language: four on one line no longer fit in Dutch (Uitgenodigd,
+   Geblokkeerd), and a lone chip on a second line reads as a separate wide button, not one option of four. */
+@media (max-width: 359.98px) {
+  .filter-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .set-section.is-busy .set-card {

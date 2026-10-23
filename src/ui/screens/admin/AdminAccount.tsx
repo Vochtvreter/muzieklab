@@ -13,14 +13,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { INVITE_DAYS, RESET_HOURS, ROLES, type AccountDetail, type AdminUpdateRequest, type LinkCreated, type Role } from '../../../../shared/api';
 import { api } from '../../../api/client';
-import { formatDateTime, formatLongDate, t } from '../../../i18n';
+import { formatDateTime, formatDay, formatLongDate, t } from '../../../i18n';
 import { useAccount, type UseAccount } from '../../account';
 import { ConfirmAction, ErrorRetry, FormDone, FormError, onSubmit, RowButton, StatusPill, SubmitButton, SwitchRow, TextField } from '../../components/Form';
 import { Icon } from '../../components/Icon';
 import { RowLink, Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
-import { dayOfUntil, setListNotice, today, untilOfDay, type LinkKind } from '../../lib/admin';
+import { dayOfUntil, setListNotice, today, type LinkKind } from '../../lib/admin';
+import { announce } from '../../lib/announce';
 import { errorMessage, failureOf, fieldError, formError, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
 import { GateMessage, LinkResult, NoAccess, RoleSwitches, useAdminGate } from './AdminParts';
@@ -146,7 +147,7 @@ interface CardProps {
 function Cards(props: CardProps): JSX.Element {
   return (
     <>
-      <Facts detail={props.detail} />
+      <Facts detail={props.detail} account={props.account} />
       <ProfileCard {...props} />
       <RolesCard {...props} />
       <PremiumCard {...props} />
@@ -156,14 +157,16 @@ function Cards(props: CardProps): JSX.Element {
 }
 
 /** Added, last signed in, devices signed in, and for an invite how long its link works. */
-function Facts({ detail }: { detail: AccountDetail }): JSX.Element {
+function Facts({ detail, account }: { detail: AccountDetail; account: UseAccount }): JSX.Element {
   const rows: [string, string][] = [
     [t('admin.added'), formatLongDate(detail.createdAt)],
     [t('admin.lastSignIn'), detail.lastSignInAt ? formatLongDate(detail.lastSignInAt) : t('admin.never')],
     [t('admin.devices'), t('admin.deviceCount', { count: detail.sessions })],
   ];
   if (detail.status === 'invited') {
-    rows.push([t('admin.inviteLink'), detail.inviteExpiresAt ? t('admin.until', { date: formatDateTime(detail.inviteExpiresAt) }) : t('admin.noLink')]);
+    // No link that works (it expired, or the email was changed): an admin who may invite makes a new one under Invite.
+    const none = t(account.can('accounts.invite') ? 'admin.noLinkMake' : 'admin.noLink');
+    rows.push([t('admin.inviteLink'), detail.inviteExpiresAt ? t('admin.until', { date: formatDateTime(detail.inviteExpiresAt) }) : none]);
   }
   return (
     <Section id="details" title={t('admin.details')}>
@@ -280,7 +283,10 @@ function RolesCard({ detail, self, account, onChange, fail }: CardProps): JSX.El
   );
 }
 
-/** Premium on or off (entitlements.grant), and when on, an optional last day. */
+/**
+ * Premium on or off (entitlements.grant), and when on, an optional last day: a calendar day (yyyy-mm-dd), sent as the
+ * date field has it and shown as that day, so it reads the same in every time zone.
+ */
 function PremiumCard({ detail, account, onChange, fail }: CardProps): JSX.Element {
   const canGrant = account.can('entitlements.grant');
   const savedDay = dayOfUntil(detail.premium.until);
@@ -290,6 +296,7 @@ function PremiumCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
   const [error, setError] = useState<string | null>(null);
   const [past, setPast] = useState(false);
   const [done, setDone] = useState(false);
+  const dayRef = useRef<HTMLInputElement>(null);
   const mounted = useMounted();
   useEffect(() => setDay(savedDay), [savedDay]);
   const on = pendingOn ?? detail.premium.active;
@@ -311,18 +318,22 @@ function PremiumCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
     setPendingOn(next);
     setPast(false);
     // Switched on: with the day in the field, if it is one premium can end on; else no end.
-    await send(next ? { active: true, until: day && day >= today() ? untilOfDay(day) : null } : { active: false });
+    await send(next ? { active: true, until: day && day >= today() ? day : null } : { active: false });
     if (!mounted.current) return;
     setPendingOn(null);
     setBusy(false);
   };
   const saveDay = async (): Promise<void> => {
     if (busy) return;
+    // A day already over is refused here, before anything is sent; the field says so and gets focus.
     const tooEarly = !!day && day < today();
     setPast(tooEarly);
-    if (tooEarly) return;
+    if (tooEarly) {
+      dayRef.current?.focus();
+      return;
+    }
     setBusy(true);
-    const ok = await send({ active: true, until: untilOfDay(day) });
+    const ok = await send({ active: true, until: day || null });
     if (!mounted.current) return;
     setBusy(false);
     setDone(ok);
@@ -331,14 +342,14 @@ function PremiumCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
   const status = !on
     ? t('admin.premiumOff')
     : detail.premium.active && detail.premium.until
-      ? t('admin.premiumUntil', { date: formatLongDate(detail.premium.until) })
+      ? t('admin.premiumUntil', { date: formatDay(detail.premium.until) })
       : t('admin.premiumNoEnd');
   return (
     <Section id="premium" title={t('admin.premium')}>
       <SwitchRow label={t('admin.premium')} description={status} on={on} onChange={(v) => void toggle(v)} disabled={!canGrant} />
       {on && canGrant && (
         <form className="card-pad" noValidate onSubmit={onSubmit(() => void saveDay(), busy)}>
-          <TextField label={t('admin.premiumDay')} type="date" name="premium-until" value={day} min={today()} onChange={(v) => {
+          <TextField label={t('admin.premiumDay')} type="date" name="premium-until" value={day} min={today()} inputRef={dayRef} onChange={(v) => {
             setDay(v);
             setDone(false);
             setPast(false);
@@ -382,7 +393,9 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
     setDone(null);
     try {
       onChange(await api.patch<AccountDetail>(path, { status: next }));
-      if (mounted.current) setDone(t(next === 'blocked' ? 'admin.blockedDone' : 'admin.unblockedDone'));
+      const message = t(next === 'blocked' ? 'admin.blockedDone' : 'admin.unblockedDone');
+      announce(message);
+      if (mounted.current) setDone(message);
       return true;
     } catch (e) {
       if (mounted.current) onError(fail(e).message);
@@ -397,13 +410,24 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   };
   const remove = async (): Promise<boolean> => {
     setRemoveError(null);
+    setError(null);
+    const invited = status === 'invited';
     try {
-      await api.del<void>(path);
-      setListNotice(t(status === 'invited' ? 'admin.inviteCancelled' : 'admin.deleted', { name }));
+      // Cancel invite deletes only an account that is still invited: one whose invite was accepted meanwhile is
+      // refused (409 wrong_status) instead of deleted.
+      await api.del<void>(invited ? `${path}?expect=invited` : path);
+      setListNotice(t(invited ? 'admin.inviteCancelled' : 'admin.deleted', { name }));
       navigate('/admin', { replace: true });
       return true;
     } catch (e) {
-      if (mounted.current) setRemoveError(fail(e).message);
+      if (!mounted.current) return false;
+      const f = fail(e);
+      if (invited && f.code === 'wrong_status') {
+        // The account is reloaded (fail): it shows as active now, with this message instead of the question.
+        setError(t('admin.inviteAccepted', { name }));
+        return true;
+      }
+      setRemoveError(f.message);
       return false;
     }
   };
@@ -414,7 +438,7 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   if (status === 'active' && can('accounts.block')) {
     rows.push(
       <ConfirmAction key="block" label={t('admin.block')} sub={t('admin.blockSub')} icon="lock" question={t('admin.blockQuestion', { name })}
-        detail={t('admin.blockDetail')} confirmLabel={t('admin.blockConfirm')} busyLabel={t('admin.blocking')} error={blockError}
+        detail={t('admin.blockDetail', { name })} confirmLabel={t('admin.blockConfirm')} busyLabel={t('admin.blocking')} error={blockError}
         onCancel={() => setBlockError(null)} onConfirm={() => {
           setBlockError(null);
           setError(null);
@@ -429,11 +453,11 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   if (can('accounts.delete')) {
     rows.push(
       status === 'invited' ? (
-        <ConfirmAction key="remove" label={t('admin.cancelInvite')} sub={t('admin.cancelInviteSub')} icon="close" question={t('admin.cancelInviteQuestion', { name })}
+        <ConfirmAction key="cancel-invite" label={t('admin.cancelInvite')} sub={t('admin.cancelInviteSub')} icon="close" question={t('admin.cancelInviteQuestion', { name })}
           detail={t('admin.cancelInviteDetail')} confirmLabel={t('admin.cancelInvite')} cancelLabel={t('admin.keepInvite')} busyLabel={t('admin.cancelling')}
           error={removeError} onCancel={() => setRemoveError(null)} onConfirm={remove} />
       ) : (
-        <ConfirmAction key="remove" label={t('admin.delete')} icon="trash" question={t('admin.deleteQuestion', { name })} detail={t('admin.deleteDetail')}
+        <ConfirmAction key="delete" label={t('admin.delete')} icon="trash" question={t('admin.deleteQuestion', { name })} detail={t('admin.deleteDetail')}
           confirmLabel={t('admin.deleteConfirm')} busyLabel={t('admin.deleting')} error={removeError} onCancel={() => setRemoveError(null)} onConfirm={remove} />
       ),
     );
@@ -449,7 +473,7 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
         </div>
       )}
       {done && (
-        <div className="row-status m-in" role="status">
+        <div className="row-status m-in">
           <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
           {done}
         </div>

@@ -2,43 +2,96 @@
  * useAccount(): who is signed in, for Settings → Account and the account and admin screens (BACKEND-PLAN.md §5).
  *
  * The app stays offline first: no request goes out until a screen that needs the account is opened. The first such
- * screen of an app session asks GET /me once: 200 → signed in; 401 → signed out; no answer (offline, or a site with no
- * API, like production today) → `unreachable`, and a cached account is shown as offline. Everything else that changes
- * the account goes through the functions here, so the store and the cache (muzieklab.account.v1) stay right.
+ * screen of an app session asks GET /me: 200 → signed in; 401 → signed out; no answer (offline, the API restarting, or
+ * a site with no API) → `unreachable`, and a cached account is shown as offline. While it is unreachable, GET /me is
+ * asked again when such a screen opens (at most once every RECHECK_MS), when the app comes back into view
+ * (visibilitychange), when the device is back online, and on Try again. Everything else that changes the account goes
+ * through the functions here, so the store and the cache (muzieklab.account.v1) stay right.
  */
 import { useCallback, useEffect, useMemo } from 'react';
 import type { Me, Permission } from '../../shared/api';
 import { api, asApiError, type ApiError } from '../api/client';
 import { useStore, type AccountNotice, type AccountState, type Action } from './store';
 
-/** The GET /me of this app session: started by the first screen that needs it, answered once. */
+/** While the API did not answer, a screen that opens (or the app coming back into view) asks again at most this often. */
+export const RECHECK_MS = 10_000;
+
+/** The latest GET /me of this app session (null until the first screen that needs it); `asking` while it runs. */
 let check: Promise<void> | null = null;
+let asking: Promise<void> | null = null;
+let askedAt = -Infinity;
 /**
  * Bumped by every account change made here (sign in, sign out…): a GET /me that was sent before one answers about the
  * old state, so its answer is dropped.
  */
 let generation = 0;
+/** What the last answer said, for the listeners below (set wherever the account state is dispatched from here). */
+let reach: AccountState['api'] = 'unknown';
+/** The store's dispatch, for the listeners (the latest screen that used the account). */
+let dispatchTo: ((a: Action) => void) | null = null;
+let listening = false;
 
 /** Tests only: forget this session's GET /me, as a reload would. */
 export function resetAccountCheck(): void {
   check = null;
+  asking = null;
+  askedAt = -Infinity;
   generation = 0;
+  reach = 'unknown';
 }
 
 function askMe(dispatch: (a: Action) => void): Promise<void> {
   const asked = generation;
   return api.get<Me>('/me').then(
     (me) => {
-      if (asked === generation) dispatch({ type: 'signedIn', me });
+      if (asked !== generation) return;
+      reach = 'reachable';
+      dispatch({ type: 'signedIn', me });
     },
     (e: unknown) => {
       if (asked !== generation) return;
       const err = asApiError(e);
       // 401: nobody is signed in (or the session ended). Anything else: no usable answer, keep what is cached.
-      if (err.code === 'unauthenticated') dispatch({ type: 'signedOut' });
-      else dispatch({ type: 'apiUnreachable' });
+      if (err.code === 'unauthenticated') {
+        reach = 'reachable';
+        dispatch({ type: 'signedOut' });
+      } else {
+        reach = 'unreachable';
+        dispatch({ type: 'apiUnreachable' });
+      }
     },
   );
+}
+
+/** GET /me now (one at a time: a request that is still running is the answer). */
+function ask(dispatch: (a: Action) => void): Promise<void> {
+  if (asking) return asking;
+  askedAt = Date.now();
+  const p = askMe(dispatch).finally(() => {
+    if (asking === p) asking = null;
+  });
+  asking = p;
+  check = p;
+  listen();
+  return p;
+}
+
+/** GET /me again if the last answer was none, and it was not asked in the last RECHECK_MS. */
+function askAgain(dispatch: (a: Action) => void): void {
+  if (reach === 'unreachable' && !asking && Date.now() - askedAt >= RECHECK_MS) void ask(dispatch);
+}
+
+/** From the first GET /me on: ask again when the device is back online, or the app comes back into view. */
+function listen(): void {
+  if (listening || typeof window === 'undefined') return;
+  listening = true;
+  window.addEventListener('online', () => {
+    // The network is back: no wait (the last try had no network).
+    if (dispatchTo && reach === 'unreachable') void ask(dispatchTo);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (dispatchTo && document.visibilityState === 'visible') askAgain(dispatchTo);
+  });
 }
 
 export interface UseAccount {
@@ -55,7 +108,7 @@ export interface UseAccount {
   signOut(notice?: AccountNotice): Promise<void>;
   /** POST /auth/sign-out-everywhere (every device of the account, this one too). */
   signOutEverywhere(): Promise<void>;
-  /** GET /me again (after coming back online, or to pick up roles an admin changed). */
+  /** GET /me again now (Try again, or to pick up roles an admin changed). */
   refresh(): Promise<void>;
   /** An account a request answered with (PATCH /me, an accepted invite…): it is the signed-in account from now on. */
   setMe(me: Me, notice?: AccountNotice): void;
@@ -71,28 +124,23 @@ export interface UseAccount {
 
 export function useAccount(): UseAccount {
   const { state, dispatch } = useStore();
-  const { me, api: reach, notice } = state.account;
+  const { me, api: reached, notice } = state.account;
 
+  // A screen that needs the account opened: the first one asks GET /me; later ones ask again while it did not answer.
   useEffect(() => {
-    if (!check) check = askMe(dispatch);
+    dispatchTo = dispatch;
+    if (!check) void ask(dispatch);
+    else askAgain(dispatch);
   }, [dispatch]);
-
-  // Unreachable at first (offline): ask again when the device is back online.
-  useEffect(() => {
-    if (reach !== 'unreachable') return;
-    const again = (): void => {
-      check = askMe(dispatch);
-    };
-    window.addEventListener('online', again);
-    return () => window.removeEventListener('online', again);
-  }, [reach, dispatch]);
 
   const setMe = useCallback((next: Me, n?: AccountNotice) => {
     generation++;
+    reach = 'reachable';
     dispatch({ type: 'signedIn', me: next, notice: n });
   }, [dispatch]);
   const setSignedOut = useCallback((n?: AccountNotice) => {
     generation++;
+    reach = 'reachable';
     dispatch({ type: 'signedOut', notice: n });
   }, [dispatch]);
 
@@ -108,9 +156,9 @@ export function useAccount(): UseAccount {
 
   return useMemo<UseAccount>(() => ({
     me,
-    api: reach,
+    api: reached,
     notice,
-    can: (p) => !!me && reach !== 'unreachable' && me.permissions.includes(p),
+    can: (p) => !!me && reached !== 'unreachable' && me.permissions.includes(p),
     signIn: async (email, password) => {
       // A wrong password is a 401 too, but not a session that ended: a failure changes nothing here.
       const next = await api.post<Me>('/auth/sign-in', { email, password }).catch((e: unknown) => {
@@ -137,13 +185,10 @@ export function useAccount(): UseAccount {
       }
       setSignedOut('signedOutEverywhere');
     },
-    refresh: () => {
-      check = askMe(dispatch);
-      return check;
-    },
+    refresh: () => ask(dispatch),
     setMe,
     setSignedOut,
     setNotice,
     handleError,
-  }), [me, reach, notice, dispatch, setMe, setSignedOut, setNotice, handleError]);
+  }), [me, reached, notice, dispatch, setMe, setSignedOut, setNotice, handleError]);
 }

@@ -1,5 +1,6 @@
 import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from 'node:crypto';
 import { PASSWORD_MAX, PASSWORD_MIN, type ErrorCode } from '../../../shared/api.js';
+import { ApiError } from '../errors.js';
 import commonPasswordsText from './common-passwords-text.js';
 
 // Passwords are hashed with scrypt from node:crypto (not argon2, as BACKEND-PLAN.md §1.1 first said: a native module
@@ -19,31 +20,57 @@ const SALT_LENGTH = 16;
 const MAX_MEM = 128 * 1024 * 1024;
 /** Hashes running at once: each takes 32 MiB and a libuv thread, and the service has 512 MB (MemoryMax). */
 export const MAX_PARALLEL_HASHES = 4;
+/**
+ * Hashes waiting for their turn at most. Past this the server is too busy (a flood of sign-ins), and a try is refused
+ * with 429 and `retryAfter: 1` instead of waiting behind thousands of others until the app gives up. 32 waiting is
+ * about 2 s of work at 4 hashes a quarter second.
+ */
+export const MAX_WAITING_HASHES = 32;
 
-/** A tiny counting semaphore: callers past the limit wait their turn, first come first served. */
-class Semaphore {
+const busy = () => new ApiError('too_many_attempts', 'The server is busy: try again in a second', 1);
+
+/**
+ * A small counting semaphore: callers past the limit wait their turn, first come first served, and past `maxWaiting`
+ * waiting ones it refuses (too_many_attempts) instead of queueing.
+ */
+export class Semaphore {
   private free: number;
-  private readonly waiting: (() => void)[] = [];
+  private readonly queue: (() => void)[] = [];
 
-  constructor(size: number) {
+  constructor(
+    private readonly size: number,
+    private readonly maxWaiting = Infinity,
+  ) {
     this.free = size;
+  }
+
+  /** Callers running now. */
+  get running(): number {
+    return this.size - this.free;
+  }
+
+  /** Callers waiting for their turn. */
+  get waiting(): number {
+    return this.queue.length;
   }
 
   async run<T>(fn: () => Promise<T>): Promise<T> {
     if (this.free > 0) this.free--;
-    else await new Promise<void>((resolve) => this.waiting.push(resolve));
+    else if (this.queue.length >= this.maxWaiting) throw busy();
+    else await new Promise<void>((resolve) => this.queue.push(resolve));
     try {
       return await fn();
     } finally {
       // Hand the slot straight to the next caller, or give it back.
-      const next = this.waiting.shift();
+      const next = this.queue.shift();
       if (next) next();
       else this.free++;
     }
   }
 }
 
-const hashing = new Semaphore(MAX_PARALLEL_HASHES);
+/** The one queue every hash goes through (exported for the tests). */
+export const hashing = new Semaphore(MAX_PARALLEL_HASHES, MAX_WAITING_HASHES);
 
 function derive(password: string, salt: Buffer, { N, r, p }: ScryptParams, keyLength: number): Promise<Buffer> {
   const options: ScryptOptions = { N, r, p, maxmem: MAX_MEM };
@@ -83,14 +110,18 @@ function parseHash(stored: string): ParsedHash | null {
   return { N, r, p, salt, key };
 }
 
-/** True when `password` matches `stored`. A malformed hash is a mismatch, never an error. */
+/**
+ * True when `password` matches `stored`. A malformed hash is a mismatch, never an error; a full hash queue is the
+ * error it is (429), not a wrong password.
+ */
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parsed = parseHash(stored);
   if (!parsed) return false;
   let key: Buffer;
   try {
     key = await derive(password, parsed.salt, parsed, parsed.key.length);
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     return false;
   }
   return timingSafeEqual(key, parsed.key);
@@ -100,7 +131,11 @@ let dummy: Promise<string> | undefined;
 
 /** Makes the dummy hash below once per process; app.ts starts it early, so the first unknown email is not slower. */
 export function dummyHash(): Promise<string> {
-  dummy ??= hashPassword(randomBytes(32).toString('base64'));
+  // A refusal (the hash queue was full) is not kept: the next call tries again.
+  dummy ??= hashPassword(randomBytes(32).toString('base64')).catch((err: unknown) => {
+    dummy = undefined;
+    throw err;
+  });
   return dummy;
 }
 

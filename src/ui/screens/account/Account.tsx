@@ -4,12 +4,13 @@
  * - Password: the current one and a new one; the other devices are signed out.
  * - Devices: Sign out everywhere (confirmed).
  * - Your data: Download my data (the export) and Delete account (confirmed with the password).
- * Signed out: Sign in instead. Offline with a cached account: the profile, and a note that changes wait.
+ * Signed out: Sign in instead. No answer from the API with a cached account: the profile, and a note that it cannot be
+ * changed now, with Try again.
  */
 import { useEffect, useRef, useState } from 'react';
 import { PASSWORD_MIN, type Me } from '../../../../shared/api';
 import { api, downloadExport, EXPORT_FILE } from '../../../api/client';
-import { formatLongDate, t } from '../../../i18n';
+import { formatDay, t } from '../../../i18n';
 import { useAccount, type UseAccount } from '../../account';
 import { ConfirmAction, ErrorRetry, FormDone, FormError, HiddenUsername, onSubmit, PasswordField, RowButton, SubmitButton, TextField } from '../../components/Form';
 import { Section } from '../../components/Rows';
@@ -17,6 +18,7 @@ import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { errorMessage, failureOf, fieldError, formError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { navigate } from '../../router';
+import { OfflineNote } from './AccountSection';
 
 const NAME_MAX = 80;
 
@@ -37,7 +39,7 @@ export function AccountScreen(): JSX.Element {
         <p className="acct-wait">{t('account.loading')}</p>
       ) : (
         <>
-          {offline && <p className="hint-box">{t('account.offline')}</p>}
+          {offline && <OfflineNote account={account} className="hint-box" />}
           <Section id="profile" title={t('account.profile')}>
             {offline ? <Info label={t('account.name')} value={me.name} /> : <NameForm me={me} account={account} />}
             <EmailRow me={me} account={account} offline={offline} />
@@ -79,12 +81,17 @@ function Info({ label, value, children }: { label: string; value: string; childr
   );
 }
 
-/** The name, saved with its own Save button (PATCH /me). */
+/**
+ * The name, saved with its own Save button (PATCH /me). Only an empty name is the field's error; a request that fails
+ * (no answer, a server error) is the form's, so a valid name is never marked invalid.
+ */
 function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
   const [name, setName] = useState(me.name);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [empty, setEmpty] = useState(false);
+  const [fail, setFail] = useState<Failure | null>(null);
   const [saved, setSaved] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
   const mounted = useMounted();
   const changed = name.trim() !== me.name;
   // The name as saved (the server trims it), or as another screen changed it.
@@ -92,19 +99,20 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
 
   const submit = async (): Promise<void> => {
     setSaved(false);
+    setFail(null);
+    setEmpty(!name.trim());
     if (!name.trim()) {
-      setError(t('account.nameEmpty'));
+      nameRef.current?.focus();
       return;
     }
     if (!changed) return;
-    setError(null);
     setBusy(true);
     try {
       const next = await api.patch<Me>('/me', { name: name.trim() });
       account.setMe(next);
       if (mounted.current) setSaved(true);
     } catch (e) {
-      if (mounted.current) setError(errorMessage(account.handleError(e)));
+      if (mounted.current) setFail(failureOf(account.handleError(e)));
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -115,7 +123,8 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
       <TextField label={t('account.name')} autoComplete="name" name="name" value={name} onChange={(v) => {
         setName(v);
         setSaved(false);
-      }} maxLength={NAME_MAX} error={error} />
+      }} maxLength={NAME_MAX} inputRef={nameRef} error={empty ? t('account.nameEmpty') : null} />
+      <FormError error={fail?.message} />
       <div className="form-actions">
         {saved && <FormDone>{t('account.nameSaved')}</FormDone>}
         <SubmitButton variant="tonal" label={t('form.save')} busyLabel={t('form.saving')} busy={busy} disabled={!changed} />
@@ -131,6 +140,7 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState<Failure | null>(null);
+  const [empty, setEmpty] = useState<{ email?: boolean; password?: boolean }>({});
   const [saved, setSaved] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -142,16 +152,16 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
     setEmail('');
     setPassword('');
     setFail(null);
+    setEmpty({});
     requestAnimationFrame(() => opener.current?.focus());
   };
   const submit = async (): Promise<void> => {
+    // An empty field says what is missing, as Sign in does.
+    const missing = { email: !email.trim(), password: !password };
+    setEmpty(missing);
     setFail(null);
-    if (!email.trim()) {
-      emailRef.current?.focus();
-      return;
-    }
-    if (!password) {
-      passwordRef.current?.focus();
+    if (missing.email || missing.password) {
+      (missing.email ? emailRef : passwordRef).current?.focus();
       return;
     }
     setBusy(true);
@@ -196,9 +206,9 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
           if (e.key === 'Escape' && !busy) close();
         }}>
           <TextField label={t('account.newEmail')} type="email" autoComplete="email" inputMode="email" name="email" value={email} onChange={setEmail}
-            inputRef={emailRef} autoFocus error={fieldError(fail, 'email')} />
+            inputRef={emailRef} autoFocus error={empty.email ? t('form.emailEmpty') : fieldError(fail, 'email')} />
           <PasswordField label={t('account.currentPassword')} autoComplete="current-password" name="password" value={password} onChange={setPassword}
-            inputRef={passwordRef} error={fieldError(fail, 'currentPassword')} />
+            inputRef={passwordRef} error={empty.password ? t('form.passwordEmpty') : fieldError(fail, 'currentPassword')} />
           <FormError error={formError(fail)} />
           <div className="form-actions">
             <button type="button" className="small-btn" onClick={close} disabled={busy}>
@@ -215,7 +225,7 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
 /** The roles ("Admin · Teacher") and premium, as a muted line, when there are any. */
 function Facts({ me }: { me: Me }): JSX.Element | null {
   const parts = me.roles.map((r) => t('accountRole.' + r));
-  if (me.premium.active) parts.push(me.premium.until ? t('account.premiumUntil', { date: formatLongDate(me.premium.until) }) : t('account.premium'));
+  if (me.premium.active) parts.push(me.premium.until ? t('account.premiumUntil', { date: formatDay(me.premium.until) }) : t('account.premium'));
   if (!parts.length) return null;
   return <p className="row-note">{parts.reduce((a, b) => t('common.join', { a, b }))}</p>;
 }

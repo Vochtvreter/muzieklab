@@ -217,7 +217,7 @@ export const apiError = (error: ErrorCode, status: number, extra: Partial<ApiErr
   json: { error, message: error, ...extra } satisfies ApiErrorBody,
 });
 
-/** A signed-in member: no roles, premium until the end of January 2027. */
+/** A signed-in member: no roles, premium through January 31, 2027 (a calendar day, the same in every time zone). */
 export const ME_MEMBER: Me = {
   id: '6718f0c2a1b2c3d4e5f60001',
   email: 'sam@example.com',
@@ -225,7 +225,7 @@ export const ME_MEMBER: Me = {
   locale: null,
   roles: [],
   permissions: ['self.manage', 'progress.own', 'class.join'],
-  premium: { active: true, until: '2027-01-31T00:00:00.000Z' },
+  premium: { active: true, until: '2027-01-31' },
   createdAt: '2026-10-20T09:00:00.000Z',
 };
 
@@ -325,3 +325,9 @@ export function adminApi(accounts: AccountSummary[] = ACCOUNTS, me: Me = ME_ADMI
 /** A link as POST /admin/invites, …/invite-link and …/reset-link answer with it. */
 export const INVITE_LINK_CREATED = { link: 'https://vivanova.app/#/invite/' + TOKEN, expiresAt: '2026-10-30T10:00:00.000Z' };
 export const RESET_LINK_CREATED = { link: 'https://vivanova.app/#/reset/' + TOKEN.split('').reverse().join(''), expiresAt: '2026-10-24T15:10:00.000Z' };
+
+/**
+ * The app's polite live region (components/Announcer.tsx): what a screen reader is told after an action whose result
+ * shows on another screen, or a search's count. It is in the page from the start; a text stays in it for a few seconds.
+ */
+export const announcer = (page: Page): Locator => page.locator('#announcer');

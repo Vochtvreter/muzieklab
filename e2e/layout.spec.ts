@@ -4,9 +4,26 @@ import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import {
   ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll,
-  expectNotSqueezed, expectTouchHeight, INVITE_LINK_CREATED, MEMBER, mockApi, pad, pathUpTo, RESET_LINK_CREATED, seed, SIGNED_OUT, SOL_DONE, TOKEN, VIEWPORTS,
-  type MockRoutes, type ViewportName,
+  expectNotSqueezed, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, SOL_DONE,
+  TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
+
+/**
+ * The status filter's chips sit in rows of the same size: all four on one line, or two and two, never three and a lone
+ * one that reads as a separate wide button.
+ */
+async function expectEvenChipRows(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const rows = await page.getByRole('group', { name: 'Status' }).getByRole('button').evaluateAll((els) => {
+    const lines = new Map<number, number>();
+    for (const el of els) {
+      const top = Math.round(el.getBoundingClientRect().top);
+      lines.set(top, (lines.get(top) ?? 0) + 1);
+    }
+    return [...lines.values()];
+  });
+  expect(rows.length === 1 || rows.every((n) => n === 2), `chips per line: ${rows.join(' + ')}`).toBe(true);
+}
 
 /** An invite link that works (POST /auth/invite/check), for the account screens. */
 const INVITE_LINK = { email: 'lies@example.com', name: 'Lies Bakker', expiresAt: '2026-10-29T10:00:00.000Z' };
@@ -1018,6 +1035,29 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('settings and account with no answer from the API: the note, and Try again in reach', async ({ page }) => {
+        known(name, 'account-offline');
+        await seedAccount(page, ME_MEMBER);
+        const me = page.waitForResponse('**/api/v1/me');
+        await page.goto('./#/settings');
+        await me;
+        const section = account(page);
+        const retry = section.getByRole('button', { name: 'Try again' });
+        await expect(section.getByText(/^Offline: /)).toBeVisible();
+        await expectClickable(retry);
+        await expectTouchHeight(retry);
+        await expectNoOverlap(section.getByText(/^Offline: /), retry);
+        await expectNotSqueezed(section.locator('.set-card'));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+        await section.getByRole('link', { name: /^Sam Jansen/ }).click();
+        await expect(page.getByRole('heading', { level: 1, name: 'Account' })).toBeVisible();
+        await expectClickable(page.getByRole('button', { name: 'Try again' }));
+        await expectNoOverlap(page.locator('.offline-note p'), page.getByRole('button', { name: 'Try again' }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
       test('sign in: a form on its own, with the fields and the button in reach', async ({ page }) => {
         known(name, 'signin');
         await mockApi(page, { ...SIGNED_OUT, 'POST /auth/sign-in': apiError('invalid_credentials', 401) });
@@ -1143,12 +1183,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNotSqueezed(list.locator('.set-card'));
         const filter = page.getByRole('group', { name: 'Status' });
         for (const label of ['All', 'Invited', 'Active', 'Blocked']) await expectTouchHeight(filter.getByRole('button', { name: label }));
+        await expectEvenChipRows(page);
         await expectClickable(filter.getByRole('button', { name: 'Blocked' }));
         await filter.getByRole('button', { name: 'Blocked' }).click();
         await expect(list.getByRole('heading', { name: '1 account found' })).toBeVisible();
         await expectClickable(page.getByLabel('Search'));
         await page.getByLabel('Search').fill('nobody');
-        await expect(page.getByText('No accounts match.')).toBeVisible();
+        await expect(page.locator('.acct-empty')).toHaveText('No accounts match.');
         await expectFieldsFit(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
@@ -1312,12 +1353,32 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
             await page.getByRole('button', { name: 'Account verwijderen' }).click();
             await expectClickable(page.getByRole('button', { name: 'Verwijderen' }));
           }
-          if (hash === '#/admin') await expectClickable(page.getByRole('link', { name: 'Iemand uitnodigen' }));
+          if (hash === '#/admin') {
+            await expectClickable(page.getByRole('link', { name: 'Iemand uitnodigen' }));
+            // Uitgenodigd and Geblokkeerd are long: on a small phone two and two, not three and a lone one.
+            await expectEvenChipRows(page);
+          }
           await expectFieldsFit(page);
           await expectNoClippedLabels(page);
           await expectNoSideScroll(page);
         });
       }
+
+      test('settings and account, offline: the note and Opnieuw proberen', async ({ page }) => {
+        known(name, 'nl-account-offline');
+        await seedAccount(page, ME_MEMBER);
+        const me = page.waitForResponse('**/api/v1/me');
+        await page.goto('./#/settings');
+        await me;
+        await expect(page.getByText('Offline: je account wijzigen kan weer zodra Muzieklab bereikbaar is.')).toBeVisible();
+        await expectClickable(page.getByRole('button', { name: 'Opnieuw proberen' }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+        await page.goto('./#/account');
+        await expectClickable(page.getByRole('button', { name: 'Opnieuw proberen' }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
 
       test('admin invite, the result: Uitnodiging voor … is klaar', async ({ page }) => {
         known(name, 'nl-admin-invite-result');
@@ -1328,7 +1389,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.getByLabel('Naam').fill('Noor Hendriks');
         await page.getByRole('button', { name: 'Uitnodiging maken' }).click();
         await expect(page.getByRole('heading', { level: 2, name: 'Uitnodiging voor Noor Hendriks is klaar' })).toBeVisible();
-        const message = page.getByLabel('Bericht om te sturen');
+        const message = page.getByLabel('Bericht om te versturen');
         await expect(message).toHaveValue(/^Hoi Noor Hendriks, ik heb een account voor je gemaakt bij Muzieklab\. .* hij werkt tot 30 oktober 2026 om \d\d:\d\d\.$/);
         await expectNotSqueezed(message);
         await expectClickable(page.getByRole('button', { name: 'Kopieer bericht' }));

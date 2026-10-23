@@ -2,6 +2,8 @@ import type { FastifyContextConfig, RouteOptions } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { InviteCreated, LinkCreated, Me } from '../../../shared/api.js';
 import { buildApp } from '../app.js';
+import { hashing } from '../auth/passwords.js';
+import { MAX_SESSIONS } from '../auth/sessions.js';
 import { collections } from '../db.js';
 import {
   COOKIE,
@@ -99,7 +101,7 @@ describe('POST /auth/sign-in', () => {
     }
   });
 
-  it('slows down after 5 failures: the 6th try waits, even with the right password, and works after the wait', async () => {
+  it('slows an email from one address after 5 failures: the 6th try waits, even with the right password', async () => {
     const t = await makeApp(mongo);
     await seedAccount(t.db, { email: 'ann@example.com' });
     const signInWith = (password: string) =>
@@ -115,22 +117,121 @@ describe('POST /auth/sign-in', () => {
     expect(right.json().retryAfter).toBe(1);
     t.clock.advance(1000);
     expect((await signInWith(PASSWORD)).statusCode).toBe(200);
-    // The good sign-in cleared the email's counter.
-    expect((await signInWith('wrong password!')).statusCode).toBe(401);
+    // The good sign-in cleared the counter for this email from this address.
+    for (let i = 0; i < 5; i++) expect((await signInWith('wrong password!')).statusCode).toBe(401);
   });
 
-  it('counts failures per address too, across emails', async () => {
+  it('lets the right password in from another address while one address is kept waiting, for hours', async () => {
+    // Someone who knows Ann's email guesses each time their wait ends; Ann, elsewhere, is never kept waiting.
     const t = await makeApp(mongo);
-    const from = (ip: string, email: string) =>
+    await seedAccount(t.db, { email: 'ann@example.com', roles: ['admin'] });
+    const from = (ip: string, password: string) =>
       t.call({
         method: 'POST',
         url: '/api/v1/auth/sign-in',
-        payload: { email, password: 'wrong password!' },
+        payload: { email: 'ann@example.com', password },
         headers: { 'x-forwarded-for': ip },
       });
-    for (let i = 0; i < 5; i++) expect((await from('203.0.113.7', `person${i}@example.com`)).statusCode).toBe(401);
-    expect((await from('203.0.113.7', 'someone-else@example.com')).statusCode).toBe(429);
-    expect((await from('198.51.100.1', 'someone-else@example.com')).statusCode).toBe(401);
+    const start = t.clock.ms;
+    let guesses = 0;
+    while (t.clock.ms < start + 3 * 60 * 60_000) {
+      const guess = await from('203.0.113.7', 'wrong password!');
+      if (guess.statusCode === 429) t.clock.advance(guess.json().retryAfter * 1000);
+      else {
+        expect(guess.statusCode).toBe(401);
+        guesses++;
+      }
+      if (guesses % 3 === 0) expect((await from('198.51.100.1', PASSWORD)).statusCode).toBe(200);
+    }
+    expect(guesses).toBeGreaterThan(10);
+    // The guesser's own address is still kept waiting.
+    await from('203.0.113.7', 'wrong password!');
+    expect((await from('203.0.113.7', PASSWORD)).statusCode).toBe(429);
+    expect((await from('198.51.100.1', PASSWORD)).statusCode).toBe(200);
+  });
+
+  it('slows an address after 50 failures across emails, an IPv6 address by its /64', async () => {
+    const t = await makeApp(mongo);
+    for (let i = 0; i < 52; i++) await seedAccount(t.db, { email: `pupil${i}@example.com` });
+    const from = (ip: string, i: number, password = 'wrong password!') =>
+      t.call({
+        method: 'POST',
+        url: '/api/v1/auth/sign-in',
+        payload: { email: `pupil${i}@example.com`, password },
+        headers: { 'x-forwarded-for': ip },
+      });
+    // 50 mistyped passwords on one school network are not enough to slow anyone there.
+    for (let i = 0; i < 50; i++) expect((await from(`2001:db8:5c:1::${(i + 1).toString(16)}`, i)).statusCode).toBe(401);
+    // The 51st try from that /64, from any of its addresses, waits, even with a right password…
+    expect((await from('2001:db8:5c:1:ffff::1', 50, PASSWORD)).statusCode).toBe(429);
+    // …another /64 does not, and a minute later the network may try again.
+    expect((await from('2001:db8:5c:2::1', 50, PASSWORD)).statusCode).toBe(200);
+    t.clock.advance(60_000);
+    expect((await from('2001:db8:5c:1::1', 51, PASSWORD)).statusCode).toBe(200);
+    // IPv4 written as IPv6 is the IPv4 address.
+    expect((await from('::ffff:203.0.113.9', 0)).statusCode).toBe(401);
+  });
+
+  it('slows an email after 50 failures from any addresses, and not before', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const from = (i: number, password = 'wrong password!') =>
+      t.call({
+        method: 'POST',
+        url: '/api/v1/auth/sign-in',
+        payload: { email: 'ann@example.com', password },
+        headers: { 'x-forwarded-for': `198.51.100.${i}` },
+      });
+    for (let i = 1; i <= 50; i++) expect((await from(i)).statusCode).toBe(401);
+    expect((await from(100, PASSWORD)).statusCode).toBe(429);
+    t.clock.advance(2000);
+    expect((await from(100, PASSWORD)).statusCode).toBe(200);
+  });
+
+  it('lets a class sign in at once from one address: 10 right passwords at the same moment all get in', async () => {
+    const t = await makeApp(mongo);
+    for (let i = 0; i < 10; i++) await seedAccount(t.db, { email: `pupil${i}@example.com` });
+    const all = await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        t.call({
+          method: 'POST',
+          url: '/api/v1/auth/sign-in',
+          payload: { email: `pupil${i}@example.com`, password: PASSWORD },
+          headers: { 'x-forwarded-for': '203.0.113.9' },
+        }),
+      ),
+    );
+    expect(all.map((r) => r.statusCode)).toEqual(Array(10).fill(200));
+  });
+
+  it('answers 429 (retry after 1 s) when 32 hashes wait already, and does not count that try', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const signInWith = (password: string) =>
+      t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email: 'ann@example.com', password } });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const busy = Array.from({ length: 4 + 32 }, () => hashing.run(() => held));
+    const refused = await signInWith('wrong password!');
+    expect(refused.statusCode).toBe(429);
+    expect(refused.json()).toEqual({ error: 'too_many_attempts', message: expect.any(String), retryAfter: 1 });
+    expect(refused.headers['retry-after']).toBe('1');
+    release();
+    await Promise.all(busy);
+    // Five failures are still free: the refused try was not one.
+    for (let i = 0; i < 5; i++) expect((await signInWith('wrong password!')).statusCode).toBe(401);
+    expect((await signInWith(PASSWORD)).statusCode).toBe(429);
+  });
+
+  it('refuses what is not an email address at once, without counting it', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    for (const email of Array.from({ length: 60 }, (_, i) => `${'x'.repeat(300)}${i}@example.com`).concat(['nobody', 'a@b'])) {
+      const res = await t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email, password: 'wrong password!' } });
+      expect(res.statusCode).toBe(401);
+      expect(res.json()).toEqual({ error: 'invalid_credentials', message: 'Email or password is not right' });
+    }
+    expect((await t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email: 'ann@example.com', password: PASSWORD } })).statusCode).toBe(200);
   });
 
   it('refuses a body that is not the contract', async () => {
@@ -191,6 +292,33 @@ describe('sessions', () => {
     expect(res.statusCode).toBe(200);
     expect(sessionCookie(res)).not.toBe(first);
     expect(await collections(t.db).sessions.countDocuments()).toBe(1);
+  });
+
+  it(`keeps at most ${MAX_SESSIONS} sessions an account, ending the ones used longest ago`, async () => {
+    expect(MAX_SESSIONS).toBe(20);
+    const t = await makeApp(mongo);
+    const ann = await seedAccount(t.db, { email: 'ann@example.com' });
+    const cookies: string[] = [];
+    for (let i = 0; i < 25; i++) {
+      cookies.push(await signIn(t, 'ann@example.com'));
+      t.clock.advance(1000);
+    }
+    const sessions = collections(t.db).sessions;
+    expect(await sessions.countDocuments({ accountId: ann._id })).toBe(20);
+    const me = async (cookie: string) => (await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode;
+    for (const [i, cookie] of cookies.entries()) expect(await me(cookie), `session ${i}`).toBe(i < 5 ? 401 : 200);
+
+    // By last use, not by age: the oldest session, used again an hour later, stays; the next oldest ends.
+    t.clock.advance(60 * 60_000 + 1);
+    expect(await me(cookies[5])).toBe(200);
+    await signIn(t, 'ann@example.com');
+    expect(await sessions.countDocuments({ accountId: ann._id })).toBe(20);
+    expect(await me(cookies[5])).toBe(200);
+    expect(await me(cookies[6])).toBe(401);
+    // Another account's sessions are its own.
+    await seedAccount(t.db, { email: 'bob@example.com' });
+    await signIn(t, 'bob@example.com');
+    expect(await sessions.countDocuments({ accountId: ann._id })).toBe(20);
   });
 
   it('refuses a session 30 days after its last use', async () => {
@@ -429,11 +557,31 @@ describe('invites', () => {
     expect((await check(tokenOf(created.link))).statusCode).toBe(410);
     expect((await check(tokenOf(fresh.link))).statusCode).toBe(200);
 
+    const detail = () => t.call({ method: 'GET', url: `/api/v1/admin/accounts/${created.account.id}`, cookie: admin.cookie });
+    expect((await detail()).json().inviteExpiresAt).toBe(fresh.expiresAt);
     t.clock.advance(7 * DAY + 1);
     expect((await check(tokenOf(fresh.link))).statusCode).toBe(410);
-    // The admin screen still shows when it stopped working.
-    const detail = await t.call({ method: 'GET', url: `/api/v1/admin/accounts/${created.account.id}`, cookie: admin.cookie });
-    expect(detail.json().inviteExpiresAt).toBe(fresh.expiresAt);
+    // An expired link is none at once ("None works now"), as it is once MongoDB's TTL monitor has deleted it.
+    expect((await detail()).json().inviteExpiresAt).toBeNull();
+  });
+
+  it('accepting one ends the session the browser had, whoever it was for', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const created = await invite(t, admin.cookie);
+    const token = tokenOf(created.link);
+    const sessions = collections(t.db).sessions;
+    // A refused try leaves it alone.
+    const weak = await t.call({ method: 'POST', url: '/api/v1/auth/invite/accept', cookie: admin.cookie, payload: { token, password: 'qwertyuiop' } });
+    expect(weak.statusCode).toBe(422);
+    expect(await sessions.countDocuments({ accountId: admin.account._id })).toBe(1);
+
+    const accepted = await t.call({ method: 'POST', url: '/api/v1/auth/invite/accept', cookie: admin.cookie, payload: { token, password: NEW_PASSWORD } });
+    expect(accepted.statusCode).toBe(200);
+    expect(await sessions.countDocuments({ accountId: admin.account._id })).toBe(0);
+    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: admin.cookie })).statusCode).toBe(401);
+    const me = await t.call({ method: 'GET', url: '/api/v1/me', cookie: sessionCookie(accepted) });
+    expect(me.json<Me>().email).toBe('bob@example.com');
   });
 
   it('refuses an invite for an email that has an account, whatever its status', async () => {
@@ -459,15 +607,25 @@ describe('invites', () => {
     expect(res.statusCode).toBe(403);
   });
 
-  it('counts wrong tokens against the address', async () => {
+  it('counts wrong tokens against the address: 50 are free', async () => {
     const t = await makeApp(mongo);
-    for (let i = 0; i < 5; i++) {
-      const res = await t.call({ method: 'POST', url: '/api/v1/auth/invite/check', payload: { token: `wrong-${i}` } });
-      expect(res.statusCode).toBe(410);
+    const admin = await signedInAdmin(t);
+    const created = await invite(t, admin.cookie);
+    const kinds = ['invite/check', 'reset/check', 'invite/accept', 'reset/confirm'];
+    for (let i = 0; i < 50; i++) {
+      const kind = kinds[i % 4];
+      const payload = kind.endsWith('check') ? { token: `wrong-${i}` } : { token: `wrong-${i}`, password: NEW_PASSWORD };
+      const res = await t.call({ method: 'POST', url: `/api/v1/auth/${kind}`, payload });
+      expect(res.statusCode, `try ${i}`).toBe(410);
     }
+    // A right link from that address waits too; from another address it works.
+    const check = (ip: string) =>
+      t.call({ method: 'POST', url: '/api/v1/auth/invite/check', payload: { token: tokenOf(created.link) }, headers: { 'x-forwarded-for': ip } });
     const res = await t.call({ method: 'POST', url: '/api/v1/auth/reset/confirm', payload: { token: 'wrong', password: NEW_PASSWORD } });
     expect(res.statusCode).toBe(429);
     expect(res.json()).toMatchObject({ error: 'too_many_attempts', retryAfter: 2 });
+    expect((await check('127.0.0.1')).statusCode).toBe(429);
+    expect((await check('198.51.100.1')).statusCode).toBe(200);
   });
 });
 
@@ -517,6 +675,36 @@ describe('new-password links', () => {
     const old = await t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email: 'ann@example.com', password: PASSWORD } });
     expect(old.statusCode).toBe(401);
     await signIn(t, 'ann@example.com', NEW_PASSWORD);
+    expect((await t.call({ method: 'POST', url: '/api/v1/auth/reset/confirm', payload: { token, password: NEW_PASSWORD } })).statusCode).toBe(410);
+  });
+
+  it('setting the new password ends the session the browser had, whoever it was for', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const ann = await seedAccount(t.db, { email: 'ann@example.com' });
+    await seedAccount(t.db, { email: 'bob@example.com' });
+    const bob = await signIn(t, 'bob@example.com');
+    const made = await t.call({ method: 'POST', url: `/api/v1/admin/accounts/${ann._id}/reset-link`, cookie: admin.cookie });
+    const token = tokenOf(made.json<LinkCreated>().link);
+    // Bob's browser opens Ann's link (a shared computer).
+    const confirmed = await t.call({ method: 'POST', url: '/api/v1/auth/reset/confirm', cookie: bob, payload: { token, password: NEW_PASSWORD } });
+    expect(confirmed.statusCode).toBe(200);
+    const c = collections(t.db);
+    const bobAccount = await c.accounts.findOne({ email: 'bob@example.com' });
+    expect(await c.sessions.countDocuments({ accountId: bobAccount!._id })).toBe(0);
+    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: sessionCookie(confirmed) })).json<Me>().email).toBe('ann@example.com');
+  });
+
+  it('stop working when the account signs out everywhere', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const ann = await seedAccount(t.db, { email: 'ann@example.com' });
+    const made = await t.call({ method: 'POST', url: `/api/v1/admin/accounts/${ann._id}/reset-link`, cookie: admin.cookie });
+    const token = tokenOf(made.json<LinkCreated>().link);
+    const cookie = await signIn(t, 'ann@example.com');
+    expect((await t.call({ method: 'POST', url: '/api/v1/auth/reset/check', payload: { token } })).statusCode).toBe(200);
+    expect((await t.call({ method: 'POST', url: '/api/v1/auth/sign-out-everywhere', cookie })).statusCode).toBe(204);
+    expect((await t.call({ method: 'POST', url: '/api/v1/auth/reset/check', payload: { token } })).statusCode).toBe(410);
     expect((await t.call({ method: 'POST', url: '/api/v1/auth/reset/confirm', payload: { token, password: NEW_PASSWORD } })).statusCode).toBe(410);
   });
 

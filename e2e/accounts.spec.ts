@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { AccountDetail, AdminUpdateRequest, InviteRequest, Me } from '../shared/api';
 import {
-  ACCOUNTS, accountDetail, adminApi, apiError, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, RESET_LINK_CREATED, seedAccount, SIGNED_OUT,
-  signedInAs, TOKEN, VIEWPORTS,
+  ACCOUNTS, accountDetail, adminApi, announcer, apiError, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, RESET_LINK_CREATED, seedAccount,
+  SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
 } from './helpers';
 
 /**
@@ -15,6 +15,8 @@ test.use({ viewport: VIEWPORTS.phone, hasTouch: true, serviceWorkers: 'block' })
 const LINK = { email: 'lies@example.com', name: 'Lies Bakker', expiresAt: '2026-10-29T10:00:00.000Z' };
 const LIES: Me = { ...ME_MEMBER, id: '6718f0c2a1b2c3d4e5f60003', email: LINK.email, name: LINK.name };
 const accountSection = (page: import('@playwright/test').Page) => page.getByRole('region', { name: 'Account' });
+/** The one-line message Settings → Account shows after an account change (also announced: see `announcer`). */
+const notice = (page: import('@playwright/test').Page) => accountSection(page).locator('.row-status');
 
 test('sign in: a wrong password, then the right one; Settings shows the account; sign out', async ({ page }) => {
   const api = await mockApi(page, {
@@ -62,7 +64,8 @@ test('sign in: a wrong password, then the right one; Settings shows the account;
   expect(cached).not.toContain('a good long password');
 
   await section.getByRole('button', { name: 'Sign out' }).click();
-  await expect(section.getByRole('status')).toHaveText('Signed out.');
+  await expect(notice(page)).toHaveText('Signed out.');
+  await expect(announcer(page)).toHaveText('Signed out.');
   await expect(section.getByRole('link', { name: /^Sign in/ })).toBeVisible();
   expect(api.callsTo('POST /auth/sign-out')).toHaveLength(1);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('muzieklab.account.v1'))).toBeNull();
@@ -140,7 +143,8 @@ test('accept invite: a weak password is refused at the field; then signed in, an
   await field.fill('a tune in seven notes');
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page).toHaveURL(/#\/settings$/);
-  await expect(accountSection(page).getByRole('status')).toHaveText("You're signed in. Welcome to Muzieklab.");
+  await expect(notice(page)).toHaveText("You're signed in. Welcome to Muzieklab.");
+  await expect(announcer(page)).toHaveText("You're signed in. Welcome to Muzieklab.");
   await expect(accountSection(page).getByRole('link', { name: /^Lies B\./ })).toBeVisible();
   expect(api.callsTo('POST /auth/invite/accept')[1].body).toEqual({ token: TOKEN, password: 'a tune in seven notes', name: 'Lies B.' });
   // The token was replaced in the history: Back goes to where the person was before the link.
@@ -180,12 +184,12 @@ test('new password: saved, signed in, and Settings says the other devices are si
   await page.getByLabel('New password').fill('a tune in seven notes');
   await page.getByRole('button', { name: 'Save password' }).click();
   await expect(page).toHaveURL(/#\/settings$/);
-  await expect(accountSection(page).getByRole('status')).toHaveText('Password saved. Your other devices are signed out.');
+  await expect(notice(page)).toHaveText('Password saved. Your other devices are signed out.');
   expect(api.callsTo('POST /auth/reset/confirm')[0].body).toEqual({ token: TOKEN, password: 'a tune in seven notes' });
   // The notice is for that visit of Settings only.
   await page.getByRole('link', { name: /^What's new/ }).click();
   await page.getByRole('link', { name: 'Back to settings' }).click();
-  await expect(accountSection(page).getByRole('status')).toHaveCount(0);
+  await expect(notice(page)).toHaveCount(0);
 });
 
 test('account: name, email and password', async ({ page }) => {
@@ -250,13 +254,22 @@ test('account: sign out everywhere, confirmed', async ({ page }) => {
   await page.getByRole('button', { name: /^Sign out everywhere/ }).click();
   const confirm = page.getByRole('alertdialog', { name: 'Sign out everywhere?' });
   await expect(confirm).toContainText('Every device with this account is signed out, this one too.');
+  // Signing out loses nothing: no red question and no red button (that is for Delete account).
+  const ink = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ink').trim());
+  const miss = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--miss').trim());
+  const rgb = (hex: string): string => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+  await expect(confirm.getByText('Sign out everywhere?')).toHaveCSS('color', rgb(ink));
+  await expect(confirm.getByRole('button', { name: 'Sign out' })).not.toHaveCSS('background-color', rgb(miss));
+  await expect(confirm.getByRole('button', { name: 'Sign out' })).toHaveClass(/small-btn--tonal/);
   await confirm.getByRole('button', { name: 'Cancel' }).click();
   await expect(confirm).toHaveCount(0);
   expect(api.callsTo('POST /auth/sign-out-everywhere')).toHaveLength(0);
   await page.getByRole('button', { name: /^Sign out everywhere/ }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/#\/settings$/);
-  await expect(accountSection(page).getByRole('status')).toHaveText('Signed out on every device.');
+  await expect(notice(page)).toHaveText('Signed out on every device.');
+  // The button that was pressed is gone: the result is read out by the live region that was there all along.
+  await expect(announcer(page)).toHaveText('Signed out on every device.');
   expect(api.callsTo('POST /auth/sign-out-everywhere')).toHaveLength(1);
 });
 
@@ -298,7 +311,8 @@ test('account: delete, confirmed with the password', async ({ page }) => {
   await password.fill('right');
   await confirm.getByRole('button', { name: 'Delete' }).click();
   await expect(page).toHaveURL(/#\/settings$/);
-  await expect(accountSection(page).getByRole('status')).toHaveText('Your account was deleted.');
+  await expect(notice(page)).toHaveText('Your account was deleted.');
+  await expect(announcer(page)).toHaveText('Your account was deleted.');
   await expect(accountSection(page).getByRole('link', { name: /^Sign in/ })).toBeVisible();
   expect(api.callsTo('DELETE /me').map((c) => c.body)).toEqual([{ password: 'wrong' }, { password: 'last' }, { password: 'right' }]);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('muzieklab.account.v1'))).toBeNull();
@@ -332,18 +346,56 @@ test('no API (production today): no Account section, and no request until Settin
   await expectClickable(page.getByRole('link', { name: /^Privacy/ }));
 });
 
-test('offline with a cached account: the account shows, changes wait', async ({ page }) => {
+const OFFLINE = 'Offline: you can change your account again once Muzieklab can be reached.';
+
+test('offline with a cached account: the account shows, read only; Try again picks it up once the API answers', async ({ page }) => {
   await seedAccount(page, ME_MEMBER);
   await page.goto('./#/settings');
   const section = accountSection(page);
   await expect(section.getByRole('link', { name: /^Sam Jansen/ })).toBeVisible();
-  await expect(section.getByText("Offline: account changes wait until you're online.")).toBeVisible();
+  await expect(section.getByText(OFFLINE)).toBeVisible();
   await expect(section.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
   await section.getByRole('link', { name: /^Sam Jansen/ }).click();
-  await expect(page.getByText("Offline: account changes wait until you're online.")).toBeVisible();
+  await expect(page.getByText(OFFLINE)).toBeVisible();
   await expect(page.getByText('sam@example.com')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Change password' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete account' })).toHaveCount(0);
+  // Still no answer: the note stays, ready to try again.
+  const api = await mockApi(page, { 'GET /me': { status: 502 } });
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect.poll(() => api.callsTo('GET /me').length).toBe(1);
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeEnabled();
+  await expect(page.getByText(OFFLINE)).toBeVisible();
+  // The API is back (no 'online' event: it was the API, not the network): Try again shows the forms.
+  api.set(MEMBER);
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('button', { name: 'Change password' })).toBeVisible();
+  await expect(page.getByText(OFFLINE)).toHaveCount(0);
+});
+
+test('offline in Settings: Try again there, and Settings asks again by itself when it opens later', async ({ page }) => {
+  await seedAccount(page, ME_MEMBER);
+  await page.clock.install();
+  await page.goto('./#/settings');
+  const section = accountSection(page);
+  await expect(section.getByText(OFFLINE)).toBeVisible();
+  const api = await mockApi(page, { 'GET /me': { status: 503 } });
+  await section.getByRole('button', { name: 'Try again' }).click();
+  await expect.poll(() => api.callsTo('GET /me').length).toBe(1);
+  await expect(section.getByText(OFFLINE)).toBeVisible();
+  // To Path and back soon after: not asked again yet (at most once every 10 s).
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Path' }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
+  await expect(section.getByText(OFFLINE)).toBeVisible();
+  expect(api.callsTo('GET /me')).toHaveLength(1);
+  // The API comes back while the player is on Path; opening Settings later asks again, and Sign out is back.
+  api.set(MEMBER);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Path' }).click();
+  await page.clock.fastForward(10_000);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
+  await expect(section.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  await expect(section.getByText(OFFLINE)).toHaveCount(0);
+  expect(api.callsTo('GET /me')).toHaveLength(2);
 });
 
 test('account with no API and nothing cached: says so, and Try again asks again', async ({ page }) => {
@@ -493,27 +545,30 @@ test('admin one account: your own roles are off limits; Block is confirmed, then
   await expect(page.getByRole('button', { name: /^Block/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete account' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: /^This is your account/ })).toHaveAttribute('href', '#/account');
+  await expect(page.getByRole('link', { name: /^This is your account/ })).toContainText('Change your password or delete your account in Account.');
 
   await page.goto('./#/admin/account/' + sam.id);
   await expect(page.getByRole('heading', { level: 1, name: 'Sam Jansen' })).toBeVisible();
   await expect(statusPill(page)).toHaveText('Active');
   await page.getByRole('button', { name: /^Block/ }).click();
   const confirm = page.getByRole('alertdialog', { name: 'Block Sam Jansen?' });
-  await expect(confirm).toContainText("They're signed out and can't sign in until you unblock them.");
+  await expect(confirm).toContainText("Sam Jansen is signed out and can't sign in until you unblock them.");
   await confirm.getByRole('button', { name: 'Cancel' }).click();
   await expect(confirm).toHaveCount(0);
   expect(api.callsTo('PATCH /admin/accounts/:id')).toHaveLength(0);
 
   await page.getByRole('button', { name: /^Block/ }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Block' }).click();
-  await expect(page.getByRole('status').filter({ hasText: "Blocked. They're signed out." })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Access' }).locator('.row-status')).toHaveText("Blocked. They're signed out.");
+  await expect(announcer(page)).toHaveText("Blocked. They're signed out.");
   await expect(statusPill(page)).toHaveText('Blocked');
   expect(api.callsTo('PATCH /admin/accounts/:id')[0].body).toEqual({ status: 'blocked' });
   // A blocked account gets no new-password link.
   await expect(page.getByRole('button', { name: /^New password link/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: /^Unblock/ }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Unblocked. They can sign in again.' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Access' }).locator('.row-status')).toHaveText('Unblocked. They can sign in again.');
+  await expect(announcer(page)).toHaveText('Unblocked. They can sign in again.');
   await expect(statusPill(page)).toHaveText('Active');
   expect(api.callsTo('PATCH /admin/accounts/:id')[1].body).toEqual({ status: 'active' });
 });
@@ -533,10 +588,16 @@ test('admin one account: a role and premium are saved at once; a guard rail come
     },
   });
   await page.goto('./#/admin/account/' + sam.id);
+  // The switches show the new state before the request has gone out: wait for each request before reading it.
+  const patches = () => api.callsTo('PATCH /admin/accounts/:id');
+  const sent = async (n: number) => {
+    await expect.poll(() => patches().length).toBe(n);
+    return patches()[n - 1].body;
+  };
   const admin = page.getByRole('switch', { name: 'Admin' });
   await admin.click();
   await expect(admin).toHaveAttribute('aria-checked', 'true');
-  expect(api.callsTo('PATCH /admin/accounts/:id')[0].body).toEqual({ roles: ['admin'] });
+  expect(await sent(1)).toEqual({ roles: ['admin'] });
   await admin.click();
   await expect(page.getByRole('region', { name: 'Roles' }).getByRole('alert')).toHaveText("You're the last admin. Make someone else admin first.");
   await expect(admin).toHaveAttribute('aria-checked', 'true');
@@ -547,26 +608,23 @@ test('admin one account: a role and premium are saved at once; a guard rail come
   await premium.click();
   await expect(premium).toHaveAttribute('aria-checked', 'true');
   await expect(premium).toContainText('No end date');
-  expect(api.callsTo('PATCH /admin/accounts/:id').at(-1)!.body).toEqual({ premium: { active: true, until: null } });
+  expect(await sent(3)).toEqual({ premium: { active: true, until: null } });
+  // The last day is a calendar day: sent as the field has it, and shown as that day.
   await page.getByLabel('Last day (optional)').fill('2027-03-31');
   await page.getByRole('button', { name: 'Save date' }).click();
   await expect(premium).toContainText('Until March 31, 2027');
-  const until = (api.callsTo('PATCH /admin/accounts/:id').at(-1)!.body as { premium: { until: string } }).premium.until;
-  // The end of that day where the admin is, so the day itself still counts.
-  expect(await page.evaluate((u) => {
-    const d = new Date(u);
-    return [d.getFullYear(), d.getMonth() + 1, d.getDate(), d.getHours(), d.getMinutes()];
-  }, until)).toEqual([2027, 3, 31, 23, 59]);
+  expect(await sent(4)).toEqual({ premium: { active: true, until: '2027-03-31' } });
   await expect(page.getByRole('button', { name: 'Save date' })).toBeDisabled();
-  // A day in the past is refused before anything is sent.
-  const calls = api.callsTo('PATCH /admin/accounts/:id').length;
+  // A day in the past is refused before anything is sent; the field says so, and has focus.
   await page.getByLabel('Last day (optional)').fill('2020-01-01');
   await page.getByRole('button', { name: 'Save date' }).click();
-  await expect(page.getByText('Pick today or a later day.')).toBeVisible();
-  expect(api.callsTo('PATCH /admin/accounts/:id')).toHaveLength(calls);
+  await expect(page.getByRole('alert').filter({ hasText: 'Pick today or a later day.' })).toBeVisible();
+  await expect(page.getByLabel('Last day (optional)')).toBeFocused();
+  await expect(page.getByLabel('Last day (optional)')).toHaveAttribute('aria-invalid', 'true');
+  expect(patches()).toHaveLength(4);
   await premium.click();
   await expect(premium).toHaveAttribute('aria-checked', 'false');
-  expect(api.callsTo('PATCH /admin/accounts/:id').at(-1)!.body).toEqual({ premium: { active: false } });
+  expect(await sent(5)).toEqual({ premium: { active: false } });
 });
 
 test('admin one account: name and email are saved together; a taken email is said at the field', async ({ page }) => {
@@ -625,8 +683,34 @@ test('admin one account: a new invite link with its message; Cancel invite, kept
   await page.getByRole('button', { name: /^Cancel invite/ }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel invite' }).click();
   await expect(page).toHaveURL(/#\/admin$/);
-  await expect(page.getByRole('status').filter({ hasText: 'The invite for Lies Bakker was canceled.' })).toBeVisible();
-  expect(api.callsTo('DELETE /admin/accounts/:id')[0].params.id).toBe(LIES_INVITED.id);
+  await expect(page.locator('.acct-card--status')).toHaveText('The invite for Lies Bakker was canceled.');
+  await expect(announcer(page)).toHaveText('The invite for Lies Bakker was canceled.');
+  const [cancel] = api.callsTo('DELETE /admin/accounts/:id');
+  expect(cancel.params.id).toBe(LIES_INVITED.id);
+  // Only an account that is still invited: the API refuses it if the invite was accepted meanwhile.
+  expect(cancel.query.get('expect')).toBe('invited');
+});
+
+test('admin one account: Cancel invite after the invite was accepted meanwhile deletes nothing, and says so', async ({ page }) => {
+  let lies: AccountDetail = accountDetail(LIES_INVITED);
+  const api = await mockApi(page, {
+    ...adminApi(),
+    'GET /admin/accounts/:id': () => ({ json: lies }),
+    'DELETE /admin/accounts/:id': ({ query }) => (query.get('expect') && query.get('expect') !== lies.status ? apiError('wrong_status', 409) : { status: 204 }),
+  });
+  await page.goto('./#/admin/account/' + LIES_INVITED.id);
+  await expect(statusPill(page)).toHaveText('Invited');
+  // Lies opens her link and sets a password while the admin's screen still says Invited.
+  lies = { ...lies, status: 'active', inviteExpiresAt: null, sessions: 1, lastSignInAt: '2026-10-23T12:00:00.000Z' };
+  await page.getByRole('button', { name: /^Cancel invite/ }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel invite' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Lies Bakker accepted the invite meanwhile, so the account was not removed.');
+  await expect(statusPill(page)).toHaveText('Active');
+  await expect(page).toHaveURL(new RegExp('#/admin/account/' + LIES_INVITED.id + '$'));
+  // The question is gone, not turned into Delete account's.
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Delete account' })).toBeVisible();
+  expect(api.callsTo('DELETE /admin/accounts/:id').map((c) => c.query.get('expect'))).toEqual(['invited']);
 });
 
 test('admin one account: a new password link for an active account, with its own message', async ({ page }) => {
@@ -647,10 +731,11 @@ test('admin one account: Delete account, confirmed; the list says so', async ({ 
   await expect(page.getByRole('button', { name: /^Unblock/ })).toBeVisible();
   await page.getByRole('button', { name: 'Delete account' }).click();
   const confirm = page.getByRole('alertdialog', { name: "Delete Piet Visser's account?" });
-  await expect(confirm).toContainText('No undo.');
+  await expect(confirm).toContainText('Their account and everything stored with it are deleted. No undo.');
   await confirm.getByRole('button', { name: 'Delete' }).click();
   await expect(page).toHaveURL(/#\/admin$/);
-  await expect(page.getByRole('status').filter({ hasText: "Piet Visser's account was deleted." })).toBeVisible();
+  await expect(page.locator('.acct-card--status')).toHaveText("Piet Visser's account was deleted.");
+  await expect(announcer(page)).toHaveText("Piet Visser's account was deleted.");
   expect(api.callsTo('DELETE /admin/accounts/:id').map((c) => c.params.id)).toEqual([PIET_BLOCKED.id]);
 });
 
@@ -661,3 +746,143 @@ test('admin one account: an account that is not there anymore says so, with the 
   await page.locator('.acct-message').getByRole('link', { name: 'Back to accounts' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Accounts' })).toBeVisible();
 });
+
+// --- what goes wrong: field errors, links that stopped working, other admins, no answer -----------------------------
+
+test('account: a failed save is the form error, never the name field; an empty field says what is missing', async ({ page }) => {
+  const api = await mockApi(page, { ...MEMBER, 'PATCH /me': { status: 500, json: { error: 'internal', message: 'boom' } } });
+  await page.goto('./#/account');
+  const name = page.getByLabel('Name');
+  await name.fill('Sam J.');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Profile' }).getByRole('alert')).toHaveText('Something went wrong on our side. Try again later.');
+  // The name itself is fine: not marked invalid, and the message is not its description.
+  await expect(name).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(name).not.toHaveAttribute('aria-describedby', /.+/);
+  expect(api.callsTo('PATCH /me')).toHaveLength(1);
+
+  // An empty name: said at the field (announced, and its description), and the field gets focus.
+  await name.fill('');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const empty = page.getByRole('alert').filter({ hasText: 'Type your name.' });
+  await expect(empty).toBeVisible();
+  await expect(name).toBeFocused();
+  await expect(name).toHaveAttribute('aria-invalid', 'true');
+  expect(await name.getAttribute('aria-describedby')).toBe(await empty.getAttribute('id'));
+  expect(api.callsTo('PATCH /me')).toHaveLength(1);
+
+  // Change email with nothing typed: each field says what is missing, as Sign in does; nothing is sent.
+  await page.getByRole('button', { name: 'Change email' }).click();
+  await page.getByRole('button', { name: 'Save email' }).click();
+  await expect(page.getByText('Type your email.')).toBeVisible();
+  await expect(page.getByLabel('New email')).toBeFocused();
+  await page.getByLabel('New email').fill('sam.j@example.com');
+  await page.getByRole('button', { name: 'Save email' }).click();
+  await expect(page.getByText('Type your password.')).toBeVisible();
+  await expect(page.getByLabel('Current password').first()).toBeFocused();
+  expect(api.callsTo('POST /me/email')).toHaveLength(0);
+});
+
+test('accept invite: a link that stopped working after the check (a new one was made) says so, with the way Home', async ({ page }) => {
+  await mockApi(page, { ...SIGNED_OUT, 'POST /auth/invite/check': { json: LINK }, 'POST /auth/invite/accept': apiError('link_invalid', 410) });
+  await page.goto('./#/invite/' + TOKEN);
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome, Lies Bakker' })).toBeVisible();
+  await page.getByLabel('New password').fill('a tune in seven notes');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByRole('alert')).toHaveText("This link doesn't work anymore. Ask the person who invited you for a new one.");
+  await expect(page.getByLabel('New password')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
+});
+
+test('new password: a link that stopped working after the check says so, with the way Home', async ({ page }) => {
+  await mockApi(page, {
+    ...SIGNED_OUT,
+    'POST /auth/reset/check': { json: { ...LINK, email: ME_MEMBER.email, name: ME_MEMBER.name } },
+    'POST /auth/reset/confirm': apiError('link_invalid', 410),
+  });
+  await page.goto('./#/reset/' + TOKEN);
+  await page.getByLabel('New password').fill('a tune in seven notes');
+  await page.getByRole('button', { name: 'Save password' }).click();
+  await expect(page.getByRole('alert')).toHaveText("This link doesn't work anymore. Ask the person who invited you for a new one.");
+  await expect(page.getByLabel('New password')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
+});
+
+test('accept invite: too many tries at the link check says how long to wait, and Try again checks again', async ({ page }) => {
+  const api = await mockApi(page, { ...SIGNED_OUT, 'POST /auth/invite/check': apiError('too_many_attempts', 429, { retryAfter: 30 }) });
+  await page.goto('./#/invite/' + TOKEN);
+  await expect(page.getByRole('alert')).toHaveText('Too many tries. Try again in 30 seconds.');
+  await expect(page.getByLabel('New password')).toHaveCount(0);
+  api.set({ 'POST /auth/invite/check': { json: LINK } });
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome, Lies Bakker' })).toBeVisible();
+});
+
+test('admin one account: another admin changed the status meanwhile (wrong_status): the message, and the account as it is now', async ({ page }) => {
+  const api = await mockApi(page, { ...adminApi(), 'POST /admin/accounts/:id/reset-link': apiError('wrong_status', 409) });
+  await page.goto('./#/admin/account/' + SAM_ACTIVE.id);
+  await expect(statusPill(page)).toHaveText('Active');
+  expect(api.callsTo('GET /admin/accounts/:id')).toHaveLength(1);
+  // Bob blocks Sam while Ann has him open.
+  api.set({ 'GET /admin/accounts/:id': { json: accountDetail({ ...SAM_ACTIVE, status: 'blocked' }) } });
+  await page.getByRole('button', { name: /^New password link/ }).click();
+  await expect(statusPill(page)).toHaveText('Blocked');
+  await expect(page.getByRole('button', { name: /^Unblock/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^New password link/ })).toHaveCount(0);
+  expect(api.callsTo('GET /admin/accounts/:id')).toHaveLength(2);
+});
+
+test('admin screens with no answer from the API: Try again, then the screen', async ({ page }) => {
+  await seedAccount(page, ME_ADMIN);
+  const me = page.waitForResponse('**/api/v1/me');
+  await page.goto('./#/admin');
+  await me;
+  await expect(page.getByRole('alert')).toHaveText("Can't reach Muzieklab right now. Check your connection and try again.");
+  await expect(page.getByRole('link', { name: 'Invite someone' })).toHaveCount(0);
+  await mockApi(page, adminApi());
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('section[aria-labelledby="h-accounts"]').getByRole('heading', { name: '4 accounts' })).toBeVisible();
+});
+
+for (const hash of ['#/admin', '#/admin/invite', '#/admin/account/' + ACCOUNTS[0].id]) {
+  test(`admin screens signed out (${hash}): Sign in instead`, async ({ page }) => {
+    const api = await mockApi(page, SIGNED_OUT);
+    await page.goto('./' + hash);
+    await expect(page).toHaveURL(/#\/signin$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+    expect(api.calls.map((c) => c.method + ' ' + c.path)).toEqual(['GET /me']);
+  });
+}
+
+test('admin accounts: what a search or filter found is read out', async ({ page }) => {
+  await mockApi(page, adminApi());
+  await page.goto('./#/admin');
+  const list = page.locator('section[aria-labelledby="h-accounts"]');
+  await expect(list.getByRole('heading', { name: '4 accounts' })).toBeVisible();
+  await page.getByLabel('Search').fill('piet');
+  await expect(list.getByRole('heading', { name: '1 account found' })).toBeVisible();
+  await expect(announcer(page)).toHaveText('1 account found');
+  await page.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'Invited' }).click();
+  await expect(page.locator('.acct-empty')).toHaveText('No accounts match.');
+  await expect(announcer(page)).toHaveText('No accounts match.');
+});
+
+/**
+ * Premium's last day is a calendar day: the same day on every screen, wherever it is (finding: a date-time at midnight
+ * UTC showed the day before west of UTC). Run far west and far east of UTC.
+ */
+for (const timezoneId of ['Pacific/Pago_Pago', 'America/Los_Angeles', 'Pacific/Kiritimati']) {
+  test.describe(`premium's last day in ${timezoneId}`, () => {
+    test.use({ timezoneId });
+
+    test('Account and the admin screen show the day as it was saved', async ({ page }) => {
+      const sam = accountDetail({ ...SAM_ACTIVE, premium: { active: true, until: '2027-01-01' } });
+      await mockApi(page, { ...adminApi(ACCOUNTS, { ...ME_ADMIN, premium: { active: true, until: '2027-01-01' } }), 'GET /admin/accounts/:id': { json: sam } });
+      await page.goto('./#/account');
+      await expect(page.getByText('Admin · Premium until January 1, 2027')).toBeVisible();
+      await page.goto('./#/admin/account/' + sam.id);
+      await expect(page.getByRole('switch', { name: 'Premium' })).toContainText('Until January 1, 2027');
+      await expect(page.getByLabel('Last day (optional)')).toHaveValue('2027-01-01');
+    });
+  });
+}

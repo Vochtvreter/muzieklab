@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { setLocale } from '../../i18n';
-import { clearListNotice, dayOfUntil, linkMessage, peekListNotice, rolesText, setListNotice, today, untilOfDay } from './admin';
+import { formatDay, setLocale } from '../../i18n';
+import { clearListNotice, dayOfUntil, linkMessage, peekListNotice, rolesText, setListNotice, today } from './admin';
 
 afterEach(() => {
   setLocale('en');
@@ -30,22 +30,33 @@ describe('linkMessage', () => {
 });
 
 describe("premium's last day", () => {
-  it('is the end of the chosen day here, and reads back as that day', () => {
-    const until = untilOfDay('2027-03-31')!;
-    const d = new Date(until);
-    expect([d.getFullYear(), d.getMonth() + 1, d.getDate(), d.getHours(), d.getMinutes()]).toEqual([2027, 3, 31, 23, 59]);
-    expect(dayOfUntil(until)).toBe('2027-03-31');
+  it('is a calendar day: the field shows it as it is, with no time zone in between', () => {
+    expect(dayOfUntil('2027-03-31')).toBe('2027-03-31');
+    expect(dayOfUntil('2027-01-01')).toBe('2027-01-01');
   });
 
-  it('is null for an empty field (no end), and an empty field for no end', () => {
-    expect(untilOfDay('')).toBeNull();
+  it('an older date-time (saved before premium ended on a day) reads as its UTC day, as the API reads it', () => {
+    expect(dayOfUntil('2027-03-31T21:59:59.999Z')).toBe('2027-03-31');
+    expect(dayOfUntil('2027-01-31T00:00:00.000Z')).toBe('2027-01-31');
+  });
+
+  it('is an empty field for no end, or for something that is not a day', () => {
     expect(dayOfUntil(null)).toBe('');
     expect(dayOfUntil('not a date')).toBe('');
   });
 
-  it('today is yyyy-mm-dd, the earliest day the field takes', () => {
+  it('is shown as that day in the app language, the same in every time zone', () => {
+    // Midnight UTC: a local Date would show December 31 west of UTC.
+    expect(formatDay('2027-01-01')).toBe('January 1, 2027');
+    setLocale('nl');
+    expect(formatDay('2027-01-01')).toBe('1 januari 2027');
+  });
+
+  it('today is yyyy-mm-dd where the admin is, the earliest day the field takes', () => {
     expect(today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(new Date(untilOfDay(today())!).getTime()).toBeGreaterThan(Date.now());
+    // 23:30 local on March 31 is still March 31 here, whatever day it is in UTC.
+    expect(today(new Date(2027, 2, 31, 23, 30))).toBe('2027-03-31');
+    expect(today(new Date(2027, 0, 1, 0, 30))).toBe('2027-01-01');
   });
 });
 

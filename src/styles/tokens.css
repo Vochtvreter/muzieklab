@@ -9,6 +9,9 @@
   --ground: #eef1f0;
   --paper: #ffffff;
   --line: #d8dfde;
+  /* A text field's border (account and admin forms, search, dates): 3:1 or more against both paper and ground, in
+     light and dark (WCAG 1.4.11), where --line is a quiet 1.2–1.4:1. Light 3.76:1 paper, 3.31:1 ground. */
+  --field-line: #7a8687;
   --divider: #e7eceb;
   --grid: #e3e8e7;
   --track: #dde4e3;
@@ -102,6 +105,8 @@
     --ground: #101415;
     --paper: #191f20;
     --line: #2f3839;
+    /* Dark: 4.08:1 on paper, 4.53:1 on ground. */
+    --field-line: #738080;
     --divider: #262e2f;
     --grid: #262e2f;
     --track: #222a2b;
@@ -180,6 +185,7 @@
   --ground: #101415;
   --paper: #191f20;
   --line: #2f3839;
+  --field-line: #738080;
   --divider: #262e2f;
   --grid: #262e2f;
   --track: #222a2b;

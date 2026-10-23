@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, type AccountDetail, type AccountSummary, type Me } from '../../../../shared/api';
 import { setLocale } from '../../../i18n';
 import { resetAccountCheck } from '../../account';
+import { Announcer } from '../../components/Announcer';
 import { StoreProvider } from '../../store';
 import { AdminAccount } from './AdminAccount';
 import { AdminAccounts, SEARCH_DELAY_MS } from './AdminAccounts';
@@ -85,6 +86,34 @@ describe('Admin: Accounts', () => {
 
     fireEvent.click(within(screen.getByRole('group', { name: 'Status' })).getByRole('button', { name: 'Invited' }));
     await waitFor(() => expect(paths().at(-1)).toBe('/api/v1/admin/accounts?q=lies&status=invited'));
+  });
+
+  it('reads out what a search or filter found (the list heading is not a live region), not the first load', async () => {
+    answer = (path) => {
+      if (path === '/api/v1/me') return json(200, ADMIN);
+      const url = new URL(path, 'http://x');
+      if (url.searchParams.get('status') === 'blocked') return json(200, { accounts: [] });
+      return json(200, { accounts: url.searchParams.get('q') ? [LIES] : [LIES, ANN] });
+    };
+    render(
+      <>
+        <StoreProvider>
+          <AdminAccounts />
+        </StoreProvider>
+        <Announcer />
+      </>,
+    );
+    const said = (): string => document.getElementById('announcer')?.textContent ?? '';
+    await waitFor(() => expect(screen.getByRole('heading', { name: '2 accounts' })).toBeTruthy());
+    await new Promise((r) => setTimeout(r, 200));
+    expect(said()).toBe('');
+    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'lies' } });
+    await waitFor(() => expect(said()).toBe('1 account found'), { timeout: SEARCH_DELAY_MS * 8 });
+    fireEvent.change(screen.getByLabelText('Search'), { target: { value: '' } });
+    fireEvent.click(within(screen.getByRole('group', { name: 'Status' })).getByRole('button', { name: 'Blocked' }));
+    await waitFor(() => expect(said()).toBe('No accounts match.'), { timeout: SEARCH_DELAY_MS * 8 });
+    // Shown, but not a second live region: the announcement is the one that is read.
+    expect(screen.getByText('No accounts match.', { selector: '.acct-empty' }).getAttribute('role')).toBeNull();
   });
 
   it('says when nothing matches, and offers Try again when the list does not come', async () => {

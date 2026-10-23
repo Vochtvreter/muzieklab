@@ -7,10 +7,15 @@ const EMAIL_MAX = 254;
 /** One @, something before it, a dot in the domain, no spaces. Deliverability is the admin's to check. */
 const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
+/** Whether a trimmed, lower-cased `email` is an address the API would store. */
+export function isEmail(email: string): boolean {
+  return email.length <= EMAIL_MAX && EMAIL.test(email);
+}
+
 /** The email to store and look up: trimmed and lower-cased. Throws email_invalid when it is not an address. */
 export function normalizeEmail(value: string): string {
   const email = value.trim().toLowerCase();
-  if (email.length > EMAIL_MAX || !EMAIL.test(email)) throw new ApiError('email_invalid', 'Not an email address');
+  if (!isEmail(email)) throw new ApiError('email_invalid', 'Not an email address');
   return email;
 }
 

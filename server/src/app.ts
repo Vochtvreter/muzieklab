@@ -1,5 +1,5 @@
 import cookie from '@fastify/cookie';
-import Fastify, { type FastifyError, type FastifyServerOptions } from 'fastify';
+import Fastify, { LogController, type FastifyError, type FastifyServerOptions } from 'fastify';
 import type { Db } from 'mongodb';
 import type { ApiErrorBody } from '../../shared/api.js';
 import { AttemptLimiter } from './auth/attempts.js';
@@ -8,6 +8,7 @@ import { dummyHash } from './auth/passwords.js';
 import type { AppContext } from './context.js';
 import { collections } from './db.js';
 import { ApiError } from './errors.js';
+import { requestLine } from './log.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
@@ -28,6 +29,8 @@ const PREFIX = '/api/v1';
 export function buildApp({ db, commit, logger = false, cookieSecure = true, now = () => new Date() }: AppOptions) {
   const app = Fastify({
     logger,
+    // Fastify's request lines hold the visitor's address, the Host and the whole URL: log.ts writes its own.
+    logController: new LogController({ disableRequestLogging: true }),
     // Caddy, on the same server, is the only client; its X-Forwarded-For holds the visitor's address.
     trustProxy: '127.0.0.1',
     // The API only takes small JSON bodies.
@@ -63,6 +66,10 @@ export function buildApp({ db, commit, logger = false, cookieSecure = true, now 
   app.removeContentTypeParser('text/plain');
   app.register(cookie);
   installGuard(app, ctx);
+
+  app.addHook('onResponse', async (request, reply) => {
+    request.log.info(requestLine(request, reply), 'request');
+  });
 
   // Answers hold someone's own data, so no browser or proxy may keep a copy.
   app.addHook('onSend', async (_request, reply) => {

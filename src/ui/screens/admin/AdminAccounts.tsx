@@ -1,9 +1,10 @@
 /**
  * Admin: Accounts (#/admin; BACKEND-PLAN.md §5.1, §7; no board yet): every account, newest first, to search by name or
  * email and filter by status, with Invite someone as the screen's one filled button. A row opens the account.
- * Needs `accounts.read`; without it the screen says so, with the way back to Settings.
+ * Needs `accounts.read`; without it the screen says so, with the way back to Settings. A search or filter's result, and
+ * the message from the one-account screen ("The invite for … was canceled."), are announced (ui/lib/announce.ts).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AccountListResponse, AccountStatus, AccountSummary } from '../../../../shared/api';
 import { api } from '../../../api/client';
 import { t } from '../../../i18n';
@@ -15,6 +16,7 @@ import { RowLink, Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useBreakpoint } from '../../hooks';
 import { clearListNotice, peekListNotice, rolesText } from '../../lib/admin';
+import { announce } from '../../lib/announce';
 import { errorMessage } from '../../lib/apiErrors';
 import { Link } from '../../router';
 import { GateMessage, NoAccess, useAdminGate } from './AdminParts';
@@ -58,9 +60,15 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
   const [status, setStatus] = useState<Filter>('all');
   const [attempt, setAttempt] = useState(0);
   const [list, setList] = useState<List>({ state: 'loading' });
+  // Set once the first list came: from then on, each answer (a search, a filter, Try again) is read out.
+  const loaded = useRef(false);
   // A message from the one-account screen ("…'s account was deleted."), shown once.
   const [notice] = useState(peekListNotice);
-  useEffect(() => clearListNotice(), []);
+  useEffect(() => {
+    clearListNotice();
+    // Read out: the screen it came from (and its button) is gone.
+    if (notice) announce(notice);
+  }, [notice]);
 
   // The search, once typing pauses.
   useEffect(() => {
@@ -80,7 +88,13 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
     setList((l) => (l.state === 'ready' ? { ...l, busy: true } : { state: 'loading' }));
     api.get<AccountListResponse>('/admin/accounts' + (query ? '?' + query : ''), { signal: ctrl.signal }).then(
       (res) => {
-        if (!ctrl.signal.aborted) setList({ state: 'ready', accounts: res.accounts, busy: false });
+        if (ctrl.signal.aborted) return;
+        setList({ state: 'ready', accounts: res.accounts, busy: false });
+        // How many it found (the list's heading is not a live region); not on the first load, which the screen's own
+        // heading covers.
+        const n = res.accounts.length;
+        if (loaded.current) announce(n ? t(q || status !== 'all' ? 'admin.countFound' : 'admin.count', { count: n }) : t('admin.empty'));
+        loaded.current = true;
       },
       (e: unknown) => {
         // Typed over, or the screen was left: a newer request (or none) answers instead.
@@ -94,13 +108,14 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
 
   if (list.state === 'denied') return <NoAccess />;
   const filtered = !!q || status !== 'all';
+  const countText = (n: number): string => t(filtered ? 'admin.countFound' : 'admin.count', { count: n });
 
   return (
     <>
       {invite}
       {notice && (
         <div className="acct-card acct-card--status">
-          <FormDone>{notice}</FormDone>
+          <FormDone live={false}>{notice}</FormDone>
         </div>
       )}
       <div className="admin-tools">
@@ -120,7 +135,7 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
       {list.state === 'failed' && <ErrorRetry error={list.message} onRetry={() => setAttempt((n) => n + 1)} quiet={quiet} />}
       {list.state === 'ready' &&
         (list.accounts.length ? (
-          <Section id="accounts" title={t(filtered ? 'admin.countFound' : 'admin.count', { count: list.accounts.length })} className={list.busy ? 'is-busy' : undefined}>
+          <Section id="accounts" title={countText(list.accounts.length)} className={list.busy ? 'is-busy' : undefined}>
             {list.accounts.map((a) => (
               <RowLink key={a.id} to={`/admin/account/${a.id}`} className="acct-row" title={a.id === me?.id ? t('admin.you', { name: a.name }) : a.name} sub={a.email}
                 meta={
@@ -132,7 +147,7 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
             ))}
           </Section>
         ) : (
-          <p className="acct-empty" role="status">
+          <p className="acct-empty">
             {t('admin.empty')}
           </p>
         ))}

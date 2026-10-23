@@ -32,6 +32,8 @@ describe("What's new", () => {
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Accounts' })).toBeTruthy();
     expect(within(screen.getByRole('article')).getByText('Oct 23 · 3 new')).toBeTruthy();
+    // Accounts are by invitation: the release promises no sign-up (and no more than a site with accounts shows).
+    expect(within(screen.getByRole('article')).getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
 
@@ -66,6 +68,7 @@ describe("What's new", () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Accounts' })).toBeTruthy();
     expect(within(screen.getByRole('article')).getByText('23 okt · 3 nieuw')).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
 

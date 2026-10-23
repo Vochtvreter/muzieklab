@@ -279,7 +279,7 @@ describe('account storage (muzieklab.account.v1)', () => {
     locale: 'nl',
     roles: ['admin'],
     permissions: ['self.manage', 'accounts.read'],
-    premium: { active: true, until: '2027-01-31T00:00:00.000Z' },
+    premium: { active: true, until: '2027-01-31' },
     createdAt: '2026-10-01T09:00:00.000Z',
   };
   beforeEach(() => localStorage.clear());

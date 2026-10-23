@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '../../i18n';
-import { ConfirmAction, CopyField, FormError, PasswordField, StatusPill, SubmitButton, SwitchRow, TextField } from './Form';
+import { ConfirmAction, CopyField, FormDone, FormError, PasswordField, StatusPill, SubmitButton, SwitchRow, TextField } from './Form';
 
 afterEach(() => {
   cleanup();
@@ -20,6 +20,8 @@ describe('TextField', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     const ids = (input.getAttribute('aria-describedby') ?? '').split(' ');
     expect(ids.map((id) => document.getElementById(id)?.textContent)).toEqual(['Type an email address.', 'The one you were invited with.']);
+    // The error is announced when it appears, not only read once the field gets focus.
+    expect(screen.getByRole('alert').id).toBe(ids[0]);
     // No capital letter or spelling fixes in an email address.
     expect(input.getAttribute('autocapitalize')).toBe('none');
   });
@@ -29,6 +31,7 @@ describe('TextField', () => {
     const input = screen.getByLabelText('Name');
     expect(input.getAttribute('aria-invalid')).toBeNull();
     expect(input.getAttribute('aria-describedby')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 
@@ -154,6 +157,20 @@ describe('ConfirmAction', () => {
     expect(screen.getByRole('alert').textContent).toBe("That's not your current password.");
   });
 
+  it('is red for what deletes (danger, the default), and not for what loses nothing (plain: Sign out everywhere)', () => {
+    render(<ConfirmAction {...props} onConfirm={() => undefined} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete account' }));
+    expect(screen.getByRole('button', { name: 'Delete' }).className).toContain('small-btn--danger');
+    expect(screen.getByText('Delete your account?').closest('p')?.className).toBe('reset-text');
+    cleanup();
+    render(<ConfirmAction {...props} label="Sign out everywhere" question="Sign out everywhere?" confirmLabel="Sign out" tone="plain" onConfirm={() => undefined} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out everywhere' }));
+    const confirm = screen.getByRole('button', { name: 'Sign out' });
+    expect(confirm.className).not.toContain('danger');
+    expect(confirm.className).toContain('small-btn--tonal');
+    expect(screen.getByText('Sign out everywhere?').closest('p')?.className).toBe('reset-text is-plain');
+  });
+
   it('closes when it is done', async () => {
     render(<ConfirmAction {...props} onConfirm={() => Promise.resolve()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Delete account' }));
@@ -161,5 +178,16 @@ describe('ConfirmAction', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     });
     expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+});
+
+describe('FormDone', () => {
+  it('is a status next to its form, and plain text where the screen announces it itself', () => {
+    render(<FormDone>Saved.</FormDone>);
+    expect(screen.getByRole('status').textContent).toBe('Saved.');
+    cleanup();
+    render(<FormDone live={false}>The invite for Lies Bakker was canceled.</FormDone>);
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByText('The invite for Lies Bakker was canceled.')).toBeTruthy();
   });
 });

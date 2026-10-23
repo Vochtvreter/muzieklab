@@ -12,8 +12,11 @@ export interface AccountDoc {
   passwordHash: string | null;
   status: AccountStatus;
   roles: Role[];
-  /** null: off. `{ until: null }`: on with no end. */
-  premium: { until: Date | null } | null;
+  /**
+   * null: off. `{ until: null }`: on with no end. `{ until: 'YYYY-MM-DD' }`: on through that last day
+   * (accounts/premium.ts). Accounts saved by the first test-site release hold a Date, read as its UTC calendar day.
+   */
+  premium: { until: string | Date | null } | null;
   locale: AccountLocale | null;
   passwordChangedAt: Date | null;
   lastSignInAt: Date | null;

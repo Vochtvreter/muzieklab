@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type {
   AccountDetail,
+  AccountExport,
   AccountListResponse,
   AuditListResponse,
   InviteCreated,
+  LinkCreated,
   Me,
   Permission,
   Role,
@@ -33,6 +35,12 @@ afterAll(async () => {
 });
 
 const DAY = 24 * 60 * 60_000;
+/**
+ * A year ahead, for the tests that set the clock to a date: the sessions and links they make then end in the future,
+ * so MongoDB's TTL monitor (which goes by the real time) leaves them alone however much later the tests run.
+ */
+const Y = new Date().getUTCFullYear() + 1;
+const LEAP = [Y + 1, Y + 2, Y + 3, Y + 4].find((y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0)!;
 
 /** Gives editors some admin permissions for one test, to check each permission on its own. */
 async function withEditorPermissions(extra: Permission[], fn: () => Promise<void>) {
@@ -157,19 +165,26 @@ describe('PATCH /admin/accounts/:id', () => {
     }
   });
 
-  it('turns premium on with or without an end, and off', async () => {
+  it('turns premium on through a last day or with no end, and off', async () => {
     const t = await makeApp(mongo);
+    t.clock.ms = Date.UTC(Y, 9, 23, 18); // 23 October, 18:00 UTC
     const admin = await signedInAdmin(t);
     const ann = await seedAccount(t.db, { email: 'ann@example.com' });
     const cookie = await signIn(t, 'ann@example.com');
     const me = async () => (await t.call({ method: 'GET', url: '/api/v1/me', cookie })).json<Me>().premium;
     const id = ann._id.toHexString();
 
-    const until = new Date(t.clock.ms + 10 * DAY).toISOString();
-    expect((await patch(t, admin.cookie, id, { premium: { active: true, until } })).json<AccountDetail>().premium).toEqual({ active: true, until });
-    expect(await me()).toEqual({ active: true, until });
-    t.clock.advance(11 * DAY);
+    const res = await patch(t, admin.cookie, id, { premium: { active: true, until: `${Y}-11-02` } });
+    expect(res.json<AccountDetail>().premium).toEqual({ active: true, until: `${Y}-11-02` });
+    expect((await collections(t.db).accounts.findOne({ _id: ann._id }))?.premium).toEqual({ until: `${Y}-11-02` });
+    expect(await me()).toEqual({ active: true, until: `${Y}-11-02` });
+    // On through that whole day anywhere: until the next day, 12:00 UTC (the day's end at UTC−12).
+    t.clock.ms = Date.UTC(Y, 10, 3, 11, 59, 59, 999);
+    expect(await me()).toEqual({ active: true, until: `${Y}-11-02` });
+    t.clock.ms = Date.UTC(Y, 10, 3, 12);
     expect(await me()).toEqual({ active: false, until: null });
+    const list = await t.call({ method: 'GET', url: '/api/v1/admin/accounts?q=ann', cookie: admin.cookie });
+    expect(list.json<AccountListResponse>().accounts[0].premium).toEqual({ active: false, until: null });
 
     await patch(t, admin.cookie, id, { premium: { active: true, until: null } });
     expect(await me()).toEqual({ active: true, until: null });
@@ -177,16 +192,55 @@ describe('PATCH /admin/accounts/:id', () => {
     expect(await me()).toEqual({ active: false, until: null });
     expect((await collections(t.db).accounts.findOne({ _id: ann._id }))?.premium).toBeNull();
 
-    for (const premium of [{ active: true }, { active: true, until: 'soon' }, { active: false, until: null }]) {
-      const res = await patch(t, admin.cookie, id, { premium });
-      expect(res.statusCode, JSON.stringify(premium)).toBe(400);
-    }
     const audit = await collections(t.db).audit.find({ targetId: ann._id }).sort({ _id: 1 }).toArray();
     expect(audit.map((e) => [e.action, e.details])).toEqual([
-      ['premium.grant', { until }],
+      ['premium.grant', { until: `${Y}-11-02` }],
       ['premium.grant', { until: null }],
       ['premium.revoke', {}],
     ]);
+  });
+
+  it('takes a real date as the last day, and refuses one that is over everywhere', async () => {
+    const t = await makeApp(mongo);
+    t.clock.ms = Date.UTC(Y, 9, 23, 18); // 23 October, 18:00 UTC
+    const admin = await signedInAdmin(t);
+    const id = (await seedAccount(t.db, { email: 'ann@example.com' }))._id.toHexString();
+    const premium = (until: unknown) => patch(t, admin.cookie, id, { premium: { active: true, until } });
+    for (const until of ['soon', `${Y}-11-2`, `${Y}-11-02T00:00:00.000Z`, `${LEAP - 1}-02-29`, `${Y}-13-01`, `${Y}-04-31`, `${Y}-00-10`, 20261102]) {
+      const res = await premium(until);
+      expect(res.statusCode, String(until)).toBe(400);
+      expect(res.json()).toMatchObject({ error: 'bad_request' });
+    }
+    for (const body of [{ active: true }, { active: false, until: null }]) {
+      expect((await patch(t, admin.cookie, id, { premium: body })).statusCode, JSON.stringify(body)).toBe(400);
+    }
+    // 22 October is over everywhere since 23 October 12:00 UTC; 23 October still goes on somewhere.
+    expect((await premium(`${Y}-10-22`)).statusCode).toBe(400);
+    expect((await premium(`${Y}-10-23`)).json<AccountDetail>().premium).toEqual({ active: true, until: `${Y}-10-23` });
+    expect((await premium(`${LEAP}-02-29`)).json<AccountDetail>().premium).toEqual({ active: true, until: `${LEAP}-02-29` });
+  });
+
+  it('reads a last day saved as a moment (the first test-site release) as its UTC calendar day', async () => {
+    const t = await makeApp(mongo);
+    t.clock.ms = Date.UTC(Y, 9, 23, 18);
+    const admin = await signedInAdmin(t);
+    // 31 December picked in Amsterdam, as the first release stored it.
+    const ann = await seedAccount(t.db, { email: 'ann@example.com', premium: { until: new Date(`${Y}-12-31T22:59:59.999Z`) } });
+    const cookie = await signIn(t, 'ann@example.com');
+    const detail = await t.call({ method: 'GET', url: `/api/v1/admin/accounts/${ann._id}`, cookie: admin.cookie });
+    expect(detail.json<AccountDetail>().premium).toEqual({ active: true, until: `${Y}-12-31` });
+    const exported = await t.call({ method: 'GET', url: '/api/v1/me/export', cookie });
+    expect(exported.json<AccountExport>().account.premium).toEqual({ active: true, until: `${Y}-12-31` });
+    // The same day again is no change; another day is stored as a date.
+    await patch(t, admin.cookie, ann._id.toHexString(), { premium: { active: true, until: `${Y}-12-31` } });
+    expect(await collections(t.db).audit.countDocuments({ action: 'premium.grant' })).toBe(0);
+    await patch(t, admin.cookie, ann._id.toHexString(), { premium: { active: true, until: `${Y + 1}-01-31` } });
+    expect((await collections(t.db).accounts.findOne({ _id: ann._id }))?.premium).toEqual({ until: `${Y + 1}-01-31` });
+    t.clock.ms = Date.UTC(Y + 1, 1, 1, 11, 59);
+    const later = await signIn(t, 'ann@example.com');
+    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: later })).json<Me>().premium).toEqual({ active: true, until: `${Y + 1}-01-31` });
+    t.clock.ms = Date.UTC(Y + 1, 1, 1, 12);
+    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: later })).json<Me>().premium).toEqual({ active: false, until: null });
   });
 
   it('corrects the name and email', async () => {
@@ -202,6 +256,37 @@ describe('PATCH /admin/accounts/:id', () => {
     expect((await patch(t, admin.cookie, id, { name: '' })).statusCode).toBe(400);
     const entry = await collections(t.db).audit.findOne({ targetId: ann._id, action: 'account.update' });
     expect(entry?.details).toEqual({ fields: ['name', 'email'], name: 'Anne', email: 'anne@example.com', previousEmail: 'ann@example.com' });
+  });
+
+  it('makes the links for the old email stop working when it is corrected', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const check = async (kind: 'invite' | 'reset', link: LinkCreated) =>
+      (await t.call({ method: 'POST', url: `/api/v1/auth/${kind}/check`, payload: { token: tokenOf(link.link) } })).statusCode;
+
+    // An active account's new-password link.
+    const ann = await seedAccount(t.db, { email: 'ann@exmaple.com' });
+    const reset = (await t.call({ method: 'POST', url: `/api/v1/admin/accounts/${ann._id}/reset-link`, cookie: admin.cookie })).json<LinkCreated>();
+    expect(await check('reset', reset)).toBe(200);
+    expect((await patch(t, admin.cookie, ann._id.toHexString(), { name: 'Ann B' })).statusCode).toBe(200);
+    expect(await check('reset', reset)).toBe(200); // another field leaves it
+    expect((await patch(t, admin.cookie, ann._id.toHexString(), { email: 'ann@example.com' })).statusCode).toBe(200);
+    expect(await check('reset', reset)).toBe(410);
+
+    // An invited account's invite: the admin makes a new one for the right address.
+    const invited = await t.call({
+      method: 'POST',
+      url: '/api/v1/admin/invites',
+      cookie: admin.cookie,
+      payload: { email: 'jan@exmaple.nl', name: 'Jan', roles: ['admin'] },
+    });
+    const created = invited.json<InviteCreated>();
+    expect(await check('invite', created)).toBe(200);
+    const fixed = await patch(t, admin.cookie, created.account.id, { email: 'jan@example.nl' });
+    expect(fixed.json<AccountDetail>()).toMatchObject({ email: 'jan@example.nl', status: 'invited', inviteExpiresAt: null });
+    expect(await check('invite', created)).toBe(410);
+    const relink = await t.call({ method: 'POST', url: `/api/v1/admin/accounts/${created.account.id}/invite-link`, cookie: admin.cookie });
+    expect(await check('invite', relink.json<LinkCreated>())).toBe(200);
   });
 
   it('needs every permission the fields need', async () => {
@@ -318,6 +403,39 @@ describe('DELETE /admin/accounts/:id', () => {
       ['account.invite', { deleted: true }],
       ['account.delete', { status: 'invited' }],
     ]);
+  });
+
+  it('with ?expect, deletes only an account in that status: an invite accepted meanwhile is not cancelled', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const invite = await t.call({
+      method: 'POST',
+      url: '/api/v1/admin/invites',
+      cookie: admin.cookie,
+      payload: { email: 'lies@example.com', name: 'Lies', roles: [] },
+    });
+    const { account, link } = invite.json<InviteCreated>();
+    // Lies accepts while the admin's screen still shows her invite.
+    const accepted = await t.call({ method: 'POST', url: '/api/v1/auth/invite/accept', payload: { token: tokenOf(link), password: 'a melody in d minor' } });
+    expect(accepted.statusCode).toBe(200);
+    const del = (expect: string) =>
+      t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${account.id}?expect=${expect}`, cookie: admin.cookie });
+    for (const status of ['invited', 'blocked']) {
+      const res = await del(status);
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ error: 'wrong_status' });
+    }
+    const c = collections(t.db);
+    expect(await c.accounts.countDocuments({ email: 'lies@example.com', status: 'active' })).toBe(1);
+    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: sessionCookie(accepted) })).statusCode).toBe(200);
+    expect(await c.audit.countDocuments({ action: 'account.delete' })).toBe(0);
+    expect((await del('gone')).statusCode).toBe(400);
+    const other = await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${account.id}?status=invited`, cookie: admin.cookie });
+    expect(other.statusCode).toBe(400);
+    // The status it has: deleted.
+    expect((await del('active')).statusCode).toBe(204);
+    expect(await c.accounts.countDocuments({ email: 'lies@example.com' })).toBe(0);
+    expect((await del('active')).statusCode).toBe(404);
   });
 
   it('deletes an account with its sessions', async () => {

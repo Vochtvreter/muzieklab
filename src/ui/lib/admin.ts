@@ -1,6 +1,6 @@
 /**
  * Helpers for the admin screens (BACKEND-PLAN.md §4.3, §5.1, §5.3): the ready-made message an admin pastes into an
- * email or chat with a link, premium's last day between the date field and the API, and the one-line message the
+ * email or chat with a link, premium's last day (a calendar day) in the date field, and the one-line message the
  * accounts list shows after an account was removed on the one-account screen.
  */
 import { ROLES, type Role } from '../../../shared/api';
@@ -17,31 +17,24 @@ export function linkMessage(kind: LinkKind, name: string, link: string, expiresA
   return t(kind === 'invite' ? 'admin.inviteMessage' : 'admin.resetMessage', { name, link, date: formatDateTime(expiresAt) });
 }
 
-/** yyyy-mm-dd of a Date in the device's own time zone. */
-function dayOf(d: Date): string {
-  const p = (n: number): string => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+/** Today, yyyy-mm-dd where the admin is: the earliest last day premium can be given. */
+export function today(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
 /**
- * Premium's last day, as the API keeps it (an ISO date-time; premium is on while it is in the future): the end of the
- * chosen day where the admin is, so the day itself still counts. '' (the field left empty) is null: no end.
+ * The date field's value (yyyy-mm-dd) for premium's `until`, or '' for no end. The API keeps a calendar day
+ * (shared/api.ts Premium), which is sent and shown as it is, with no time zone to shift it; an older date-time (kept
+ * before premium ended on a day) counts as its UTC day, as the API reads it.
  */
-export function untilOfDay(day: string): string | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
-  if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999).toISOString();
-}
-
-/** The date field's value (yyyy-mm-dd) for premium's `until`: the day it falls on here, or '' for no end. */
 export function dayOfUntil(until: string | null): string {
   if (!until) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(until)) return until;
   const d = new Date(until);
-  return Number.isNaN(d.getTime()) ? '' : dayOf(d);
+  return Number.isNaN(d.getTime()) ? '' : `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
-
-/** Today, yyyy-mm-dd here: the earliest last day premium can have. */
-export const today = (): string => dayOf(new Date());
 
 /** Roles in the contract's order, for a list of switches or "Admin · Teacher". */
 export function rolesText(roles: readonly Role[]): string {
