@@ -2059,6 +2059,18 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_10_0": {
+      "title": "Hoor de muziek, en een rustiger begin",
+      "try": "Beluister hoofdstuk 1",
+      "learn": "Elk voorbeeld in Leren heeft een afspeelknop: de tel, de ritmes, de notenboom, de toonladders en de piano. Een oefenlink start de oefening nu meteen.",
+      "notes": "Noten lezen speelt elke noot nadat je antwoordt, en elke pianotoets terwijl je hem indrukt. Met Hoor de noten in de instellingen van Noten lezen zet je het uit.",
+      "intro": "Voor een les met een nieuw teken toont een kaart wat het is en hoe lang het duurt, met Luisteren en een link naar Leren. Een nieuwe les wacht op Start, zodat je hem eerst kunt lezen, en het voortellen lijkt niet meer op maat 1.",
+      "coach": "Komt elke tik net te laat, dan zegt de uitslag dat het waarschijnlijk aan je speaker of koptelefoon ligt, met een knop Kalibreren. Kwamen er geen tikken binnen, dan zegt hij hoe je tikt. Onder twee sterren is Nog een keer de hoofdknop.",
+      "home": "Een rustiger Start en Leerpad: je level is een klein label naast je reeks, Verder met de les is de enige hoofdknop, de uitdaging van de dag past bij waar je in het leerpad bent, en elke regel om iets te openen staat er maar één keer. Vrij oefenen telt pas mee hoe lang je een noot vasthoudt als het leerpad dat heeft uitgelegd.",
+      "readNotes": "Noten lezen toont geen tekenknoppen als geen enkele noot een teken kan hebben, de hints lezen niet meer als het antwoord, en Ronde klaar toont gemiste noten op een kleine notenbalk, in je eigen notennamen.",
+      "fit": "Spelen, Noten lezen en Toonladders passen nu op een telefoon, ook met de werkbalken van de browser in beeld.",
+      "misc": "Kleinere verbeteringen: het pad zegt Tik, Instellingen en Kalibreren gebruiken gewone woorden, de oefencode is een kleine knop Kopieer code, een gemiste noot krijgt een × op de notenbalk, het label “6/8 binnenkort” is weg, en een deel van het leerpad heet nu een blok in plaats van een hoofdstuk."
+    },
     "v0_9_0": {
       "title": "Leerpaden voor Noten lezen en Toonsoorten",
       "try": "Open de leerpaden",

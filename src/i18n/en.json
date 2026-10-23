@@ -2059,6 +2059,18 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_10_0": {
+      "title": "Hear the music, and a gentler start",
+      "try": "Hear chapter 1",
+      "learn": "Every example in Learn has a play button: the beat, the rhythms, the note tree, the scales and the piano. A practice link now starts the exercise straight away.",
+      "notes": "Read notes plays each note after you answer, and each piano key as you press it. Hear the notes in the Read notes setup turns it off.",
+      "intro": "Before a lesson with a new symbol, a card shows what it is and how long it lasts, with Listen and a link to Learn. A new lesson waits for Start so you can read it first, and the count-in no longer looks like bar 1.",
+      "coach": "When every tap lands a little late, Results says it is probably your speaker or headphones and offers Calibrate. When no taps came in, it says how to tap. Under two stars, Try again is the main button.",
+      "home": "A calmer Home and Path: your level is a small chip next to your streak, Continue is the one main button, the daily challenge matches your place on the path, and each unlock rule is said once. Free practice only counts how long you hold a note once the path has taught it.",
+      "readNotes": "Read notes shows no sign buttons when no note can have a sign, its hints no longer read like the answer, and Round done shows missed notes on a small staff, in your own note names.",
+      "fit": "Play, Read notes and Scales now fit on a phone with the browser's toolbars showing.",
+      "misc": "Smaller fixes: the pad says Tap, Settings and Calibrate use plain words, the exercise code is a small Copy code button, a missed note gets a × on the staff, the “6/8 soon” chip is gone, and the Dutch app calls a path unit a “blok”."
+    },
     "v0_9_0": {
       "title": "Read notes and Keys learning paths",
       "try": "Open the learning paths",
