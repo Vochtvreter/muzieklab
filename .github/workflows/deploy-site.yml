@@ -16,6 +16,14 @@ on:
         description: The site's address, checked after the switch.
         type: string
         required: true
+      api_path:
+        description: The API's folder on the server (releases/ and current); empty while the site has no API.
+        type: string
+        default: ''
+      api_service:
+        description: The API's systemd service, restarted after its switch (muzieklab-api@<site>.service).
+        type: string
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -24,7 +32,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
-        with: { node-version: 22, cache: npm }
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
       - run: npm ci
       # Tests gate the deploy, so a broken build never reaches the site.
       - run: npm test
@@ -34,6 +47,20 @@ jobs:
           name: dist
           path: dist/
           retention-days: 7
+      # The API is one bundled file (server/build.mjs) that reports this commit from /api/v1/health.
+      - name: Test and build the API
+        if: inputs.api_path != ''
+        working-directory: server
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - if: inputs.api_path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: api
+          path: server/dist/
+          retention-days: 7
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -42,12 +69,20 @@ jobs:
       url: ${{ inputs.url }}
     env:
       DEPLOY_PATH: ${{ inputs.path }}
+      API_PATH: ${{ inputs.api_path }}
+      API_SERVICE: ${{ inputs.api_service }}
+      SITE_URL: ${{ inputs.url }}
       RELEASE: ${{ github.sha }}
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
+      - if: inputs.api_path != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: api
+          path: api/
       - name: Set up SSH
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -71,6 +106,53 @@ jobs:
             BatchMode yes
             StrictHostKeyChecking yes
           EOF
+      # The API goes first, so the app never switches to a release whose API is not running. Its releases sit in
+      # releases/ like the app's; previous records what current pointed at, for the rollback below.
+      - name: Upload the API release
+        if: inputs.api_path != ''
+        run: |
+          ssh server "mkdir -p '$API_PATH/releases/$RELEASE'"
+          rsync -rlptz --delete api/ "server:$API_PATH/releases/$RELEASE/"
+      - name: Switch the API and restart it
+        id: api_switch
+        if: inputs.api_path != ''
+        run: |
+          ssh server "set -e
+            cd '$API_PATH'
+            readlink current > previous || true
+            ln -sfn 'releases/$RELEASE' current.tmp
+            mv -Tf current.tmp current
+            sudo -n systemctl restart '$API_SERVICE'"
+      # Waits until the API answers as this release with the database reachable (a minute at most).
+      - name: Check the API
+        if: inputs.api_path != ''
+        run: |
+          health="${SITE_URL%/}/api/v1/health"
+          for _ in $(seq 1 30); do
+            body=$(curl -fsS --max-time 5 "$health" 2>/dev/null || true)
+            if grep -q "\"commit\":\"$RELEASE\"" <<<"$body" && grep -q '"db":"ok"' <<<"$body"; then
+              echo "$body"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::$health did not answer as $RELEASE with the database reachable. Last answer: ${body:-none}"
+          exit 1
+      # A release that does not come up is switched back, so the API is never left down; the deploy still fails.
+      - name: Roll the API back
+        if: failure() && steps.api_switch.outcome == 'success'
+        run: |
+          ssh server "set -e
+            cd '$API_PATH'
+            prev=\$(cat previous 2>/dev/null || true)
+            if [ -z \"\$prev\" ]; then echo 'No previous release to go back to.'; exit 0; fi
+            ln -sfn \"\$prev\" current.tmp
+            mv -Tf current.tmp current
+            sudo -n systemctl restart '$API_SERVICE'
+            echo \"Back on \$prev.\""
+      - name: Remove old API releases
+        if: inputs.api_path != ''
+        run: ssh server "cd '$API_PATH' && ls -1dt releases/*/ | tail -n +6 | xargs -r rm -rf"
       # Each deploy is a new folder in releases/; the site only switches once the whole build is on the server.
       - name: Upload the release
         run: |
@@ -87,6 +169,4 @@ jobs:
             ls -1dt releases/*/ | tail -n +6 | xargs -r rm -rf"
       - name: Check the live site
         if: inputs.url != ''
-        env:
-          SITE_URL: ${{ inputs.url }}
         run: curl -fsS --retry 3 --retry-all-errors -o /dev/null "$SITE_URL"

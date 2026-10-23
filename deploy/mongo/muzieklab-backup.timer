@@ -1,0 +1,10 @@
+# Backs up MongoDB every night at 03:17 UTC; a night missed while the server was off runs at the next boot.
+[Unit]
+Description=Nightly Muzieklab MongoDB backup
+
+[Timer]
+OnCalendar=*-*-* 03:17:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

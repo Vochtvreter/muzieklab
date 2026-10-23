@@ -1,0 +1,28 @@
+# MongoDB for the Muzieklab API (docs/DEPLOY.md, The API). On the server this lives in /opt/muzieklab-mongo, next to
+# .env (the root password) and keyfile; start it there with: sudo docker compose up -d
+#
+# One node, run as a replica set (rs0) so the API can use transactions; the keyfile is what a replica set with
+# passwords needs. It listens on 127.0.0.1 only: Docker's published ports skip ufw, so the address keeps it private.
+name: muzieklab
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: muzieklab-mongo
+    restart: unless-stopped
+    command:
+      - --replSet=rs0
+      - --keyFile=/etc/mongo/keyfile
+      # The data is small; the default cache (half of the memory minus 1 GB) would take 1.4 GB of the server's 3.7 GB.
+      - --wiredTigerCacheSizeGB=0.5
+      - --bind_ip_all
+    env_file: .env
+    ports:
+      - 127.0.0.1:27017:27017
+    volumes:
+      - ./data:/data/db
+      - ./keyfile:/etc/mongo/keyfile:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

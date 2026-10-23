@@ -1,0 +1,3 @@
+# The deploy user may restart the API after uploading a release, and nothing else (docs/DEPLOY.md, The API).
+# Install with: sudo install -m 440 deploy/api/sudoers /etc/sudoers.d/muzieklab-deploy && sudo visudo -c
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart muzieklab-api@test.service, /usr/bin/systemctl restart muzieklab-api@production.service

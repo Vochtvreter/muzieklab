@@ -20,4 +20,7 @@ jobs:
       environment: test
       path: ${{ vars.TEST_DEPLOY_PATH }}
       url: ${{ vars.TEST_URL }}
+      # The API, once it is set up on the server (docs/DEPLOY.md, The API); skipped while TEST_API_PATH is unset.
+      api_path: ${{ vars.TEST_API_PATH }}
+      api_service: muzieklab-api@test.service
     secrets: inherit

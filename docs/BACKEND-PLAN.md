@@ -1,7 +1,8 @@
 # Accounts and permissions: back-end design
 
-Status: **design, nothing built.** Written on 2026-10-23, after production moved to our own server
-([DEPLOY.md](DEPLOY.md)). Decisions taken so far:
+Status: **phase 0 built** (the API with `/api/v1/health`, MongoDB and backups, deployed to the test site: §10,
+[DEPLOY.md](DEPLOY.md) *The API*); accounts are designed, not built. Written on 2026-10-23, after production moved to
+our own server. Decisions taken so far:
 
 - **Accounts are invite only** for now: an admin invites people, and open sign-up comes later.
 - **No email service** for now: the app sends no email. Where a link is needed (an invite, a new password), the admin
@@ -349,11 +350,15 @@ Security:
 
 ### 9.1 On the server
 
-- **MongoDB 8.0 Community.** It supports Ubuntu 22.04 and 24.04 LTS on x64 and arm64; on a newer, non-LTS Ubuntu it
-  runs in Docker (the official image) instead. The server's Ubuntu version and processor decide this (§11).
-- **Memory:** the server has 4 GB. MongoDB would take about 1.5 GB for its cache by default; `cacheSizeGB: 0.5` is
-  plenty for this data and leaves room for the API and Caddy.
-- **The API** is a systemd service, `muzieklab-api`, started from `/srv/muzieklab-api/current`. Releases sit in
+The server runs Ubuntu 26.04 LTS on x86_64, with 3.7 GB of memory.
+
+- **MongoDB 8.0 in Docker** (the official image, `deploy/mongo/compose.yaml`): MongoDB publishes no packages for
+  Ubuntu 26.04 yet, and Docker works on any version. It listens on `127.0.0.1` only.
+- **Memory:** MongoDB would take about 1.4 GB for its cache by default; `--wiredTigerCacheSizeGB=0.5` is plenty for
+  this data and leaves room for the API and Caddy.
+- **The API** is one bundled file (`server/build.mjs`), so the server needs only Node (Ubuntu's own package) and
+  nothing is installed there at deploy time. It is a systemd service per site, `muzieklab-api@test` and
+  `muzieklab-api@production` (`deploy/api/`), started from `/srv/muzieklab-api/<site>/current`. Releases sit in
   `releases/<commit>/`, as the app's do.
 - **Caddy** gets one block more:
 
@@ -372,14 +377,16 @@ Security:
 
 ### 9.2 Deploying
 
-The existing *Deploy to production* workflow gets a second part:
+Built in phase 0 (`deploy-site.yml`, run for a site once its `TEST_API_PATH` or `API_PATH` variable is set):
 
 1. Test and build the server (with the database tests) next to the app.
-2. Upload it to `/srv/muzieklab-api/releases/<commit>/` with its production dependencies.
-3. Run new **migrations** (`server/migrations/`, each run once, recorded in a `migrations` collection), then switch
-   `current` and restart the service. The `deploy` user may run exactly one command with sudo,
-   `systemctl restart muzieklab-api`, and nothing else.
-4. Check `/api/health`. If it fails, switch back to the previous release and restart, so the API is never left down.
+2. Upload the bundle to `/srv/muzieklab-api/<site>/releases/<commit>/`.
+3. Switch `current` and restart the service. The `deploy` user may run exactly that restart with sudo, and nothing
+   else. From phase 1, new **migrations** (`server/migrations/`, each run once, recorded in a `migrations`
+   collection) run when the API starts, before it answers.
+4. Wait for `/api/v1/health` to answer with this commit and the database reachable. If it does not within a minute,
+   switch back to the previous release and restart, so the API is never left down; the deploy fails and the app is
+   not switched.
 
 Migrations only **add** (a new field with a default, a new index); they never rename or drop in the same release, so
 the previous release still works against the database if the deploy has to switch back.
@@ -394,7 +401,7 @@ by hand. With the API it gets its own API on port 3001, and its own database `mu
 
 | Phase | What | Visible in the app | Version |
 |---|---|---|---|
-| **0 · Groundwork** | test.vivanova.app; MongoDB with backups; the API with `/api/health`, deployed by the workflow; the Caddy `/api` block | Nothing | none (no app change) |
+| **0 · Groundwork** (built) | test.vivanova.app; MongoDB with backups; the API with `/api/v1/health`, deployed by the workflow with a rollback; the Caddy `/api` block | Nothing | none (no app change) |
 | **1 · Accounts** | Create-admin script, invite and new-password links, sign in and out, Account screen (name, email, password, sign out everywhere, export, delete), Admin: accounts, invite, roles, block; privacy statement | Settings → Account; Admin for admins | minor |
 | **2 · Progress on the account** | Sync and merge (§6) | Progress on every device; sync status in Settings → Account | minor |
 | **3 · Teachers and classes** | Classes, join codes, the class view of pupils' progress, assignments | Teacher screens; Join a class | minor |
@@ -430,8 +437,8 @@ every size, with **Admin** as a row in it that only admins see, and no new tab.
 
 1. **Email service:** decided: none for now; admins send invite and new-password links by hand (§5.1, §5.3). Later,
    an EU service (Brevo, Mailjet or Scaleway) can send them; it needs SPF, DKIM and DMARC records on vivanova.app.
-2. **The server's Ubuntu version and processor.** `lsb_release -ds; uname -m` on the server decides MongoDB from apt
-   or in Docker (§9.1), and how the server's dependencies are built.
+2. **The server's Ubuntu version and processor:** decided: Ubuntu 26.04 LTS on x86_64, so MongoDB runs in Docker and
+   the API is one bundled file (§9.1).
 3. **Children's accounts** (before phase 3): pupils under 16 need a parent's consent, or the school is responsible for
    its pupils' accounts under its own agreement with us. Which way, or teachers and pupils 16 and over only at first?
 4. **Two-step sign-in for admins** (an authenticator app code): in phase 1, or later?

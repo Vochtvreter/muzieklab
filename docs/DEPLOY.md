@@ -9,6 +9,8 @@ routes with `#` hashes, so the server needs no rewrite rules. Two sites run on o
 | https://vivanova.app (production) | `/var/www/muzieklab` | every push to `main` | `deploy.yml`, *Deploy to production* |
 | https://test.vivanova.app (test) | `/var/www/muzieklab-test` | every push to `test`, or any branch by hand | `deploy-test.yml`, *Deploy to test* |
 
+Each site can also have the API (`server/`) next to it; see *The API* below.
+
 ## How a deploy works
 
 1. GitHub Actions runs the unit tests and builds the site. A failing test stops the deploy, so a broken `main` never
@@ -169,6 +171,118 @@ Only one version is on the test site at a time: the latest deploy wins.
 
 5. **Deploy:** *Actions → Deploy to test → Run workflow* with `main`, to check it works.
 
+## The API
+
+The API (`server/`, [BACKEND-PLAN.md](BACKEND-PLAN.md)) runs next to each site: one bundled file,
+`server.cjs`, started by systemd, with MongoDB in Docker. Caddy passes `/api/*` to it. Today it only answers
+`GET /api/v1/health`; accounts follow in phase 1. It runs on the test site first.
+
+| | Test | Production (later) |
+|---|---|---|
+| Health | https://test.vivanova.app/api/v1/health | https://vivanova.app/api/v1/health |
+| Service | `muzieklab-api@test`, port 3001 | `muzieklab-api@production`, port 3000 |
+| Releases | `/srv/muzieklab-api/test` | `/srv/muzieklab-api/production` |
+| Settings | `/etc/muzieklab-api/test.env` | `/etc/muzieklab-api/production.env` |
+| Database | `muzieklab_test`, user `muzieklab_test` | `muzieklab`, user `muzieklab` |
+| GitHub variable | `TEST_API_PATH` | `API_PATH` |
+
+**A deploy** with the variable set does this before switching the app:
+
+1. It uploads the API to `releases/<commit>/`, points `current` at it, and restarts the service. The `deploy` user
+   may run exactly that restart with sudo (`deploy/api/sudoers`), and nothing else.
+2. It waits up to a minute for `/api/v1/health` to answer with this commit and `"db":"ok"`.
+3. If it doesn't, it **switches the API back** to the release before and restarts it, and the deploy fails, so the
+   app is not switched either.
+
+**MongoDB** runs as a one-node replica set (so the API can use transactions), with passwords, listening on
+`127.0.0.1` only. Each site's API has its own database user, which can only use that site's database.
+
+**Backups:** every night at 03:17 UTC, `muzieklab-backup.timer` writes a compressed dump of all databases to
+`/var/backups/muzieklab/` and keeps the 14 newest. They stay on the server; turn on Hetzner's server backups too
+(*Cloud Console → the server → Backups*), so a lost server does not take its backups with it.
+
+### Set up the API (once per server, then once per site)
+
+All of this runs on the server, as your own user. The files named come from this repository.
+
+1. **Docker and Node:**
+
+   ```sh
+   sudo apt install -y docker.io docker-compose-v2 nodejs
+   docker compose version; node --version          # Node must be v22 or newer
+   ```
+
+2. **MongoDB** in `/opt/muzieklab-mongo`: copy `deploy/mongo/compose.yaml` and `deploy/mongo/backup.sh` there, then
+   make the root password and the replica set key, start it, and start the replica set:
+
+   ```sh
+   cd /opt/muzieklab-mongo
+   sudo chmod 755 backup.sh
+   sudo sh -c 'umask 077; printf "MONGO_INITDB_ROOT_USERNAME=root\nMONGO_INITDB_ROOT_PASSWORD=%s\n" "$(openssl rand -hex 24)" > .env'
+   sudo sh -c 'umask 077; openssl rand -base64 756 > keyfile' && sudo chown 999:999 keyfile
+   sudo docker compose up -d
+   sudo docker exec muzieklab-mongo sh -c 'mongosh -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --quiet --eval "
+     try { rs.status().ok } catch (e) { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"127.0.0.1:27017\" }] }).ok }"'
+   ```
+
+   Nobody types the passwords: they are made here and stay in `.env` (root only) and the container.
+
+3. **Backups:** copy `deploy/mongo/muzieklab-backup.service` and `.timer` to `/etc/systemd/system/`, then:
+
+   ```sh
+   sudo systemctl daemon-reload && sudo systemctl enable --now muzieklab-backup.timer
+   sudo /opt/muzieklab-mongo/backup.sh                # one now, to check it works
+   ```
+
+4. **The API's user, service and sudo rule:** copy `deploy/api/muzieklab-api@.service` to `/etc/systemd/system/`, then:
+
+   ```sh
+   sudo useradd --system --no-create-home --shell /usr/sbin/nologin muzieklab-api
+   sudo install -m 440 /dev/stdin /etc/sudoers.d/muzieklab-deploy < sudoers     # deploy/api/sudoers
+   sudo visudo -c && sudo systemctl daemon-reload
+   ```
+
+5. **A site** (here `test`; for production use `production`, `muzieklab`, port 3000): its database user, its
+   settings file, its folder, and the service (which starts with the first deploy):
+
+   ```sh
+   SITE=test DB=muzieklab_test PORT=3001
+   PW=$(openssl rand -hex 24)
+   sudo docker exec -e U="$DB" -e P="$PW" muzieklab-mongo sh -c 'mongosh -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --quiet --eval "
+     db.getSiblingDB(\"admin\").createUser({ user: process.env.U, pwd: process.env.P, roles: [{ role: \"readWrite\", db: process.env.U }] }).ok"'
+   sudo install -d -m 755 /etc/muzieklab-api
+   printf 'PORT=%s\nMONGODB_URI=mongodb://%s:%s@127.0.0.1:27017/%s?authSource=admin&replicaSet=rs0\n' "$PORT" "$DB" "$PW" "$DB" \
+     | sudo install -m 600 /dev/stdin /etc/muzieklab-api/$SITE.env
+   unset PW
+   sudo install -d -m 755 /srv/muzieklab-api && sudo install -d -m 755 -o deploy -g deploy /srv/muzieklab-api/$SITE
+   sudo systemctl enable muzieklab-api@$SITE
+   ```
+
+6. **Caddy:** copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile` (the test site's block has the `/api/*` route), then
+   `sudo systemctl reload caddy`.
+7. **GitHub:** the repository variable `TEST_API_PATH` = `/srv/muzieklab-api/test` (production: `API_PATH` =
+   `/srv/muzieklab-api/production`). Then run *Deploy to test*, and open https://test.vivanova.app/api/v1/health.
+
+### Look after it
+
+```sh
+systemctl status muzieklab-api@test                       # running?
+journalctl -u muzieklab-api@test -n 50                    # its log (JSON lines)
+sudo docker ps; sudo docker logs --tail 50 muzieklab-mongo
+ls -lh /var/backups/muzieklab/                            # last night's backup
+```
+
+**Restore** a backup (this replaces what is in the database now; `--nsInclude` limits it to one database):
+
+```sh
+sudo docker exec -i muzieklab-mongo sh -c 'umask 077; printf "password: %s\n" "$MONGO_INITDB_ROOT_PASSWORD" > /tmp/r.yaml
+  mongorestore --config /tmp/r.yaml -u "$MONGO_INITDB_ROOT_USERNAME" --authenticationDatabase admin --archive --gzip \
+    --drop --nsInclude "muzieklab_test.*"; rm -f /tmp/r.yaml' < /var/backups/muzieklab/mongo-<date>.archive.gz
+```
+
+**Roll the API back** like the app: `cd /srv/muzieklab-api/test`, point `current` at an older release (as in *Roll
+back* below), then `sudo systemctl restart muzieklab-api@test`.
+
 ## Roll back
 
 Each run deploys the commit it was started for, so the quickest rollback is to open an older successful run (from the
@@ -191,5 +305,8 @@ ln -sfn releases/<commit> current.tmp && mv -Tf current.tmp current
 - **Permission denied (publickey):** the public key is not in `/home/deploy/.ssh/authorized_keys`, the file or folder
   is not owned by `deploy`, or `DEPLOY_SSH_KEY` is not the whole private key.
 - **rsync: command not found:** install `rsync` on the server.
+- **Check the API fails:** the API did not answer with this commit within a minute, and the deploy switched it back.
+  `journalctl -u muzieklab-api@test -n 50` on the server shows why (often MONGODB_URI, or MongoDB not running).
+- **sudo: a password is required:** `/etc/sudoers.d/muzieklab-deploy` is missing or names another service.
 - **Check the live site fails:** the files are on the server but the web server does not serve them; check the domain
   and root in the Caddyfile or nginx config, and `sudo journalctl -u caddy` (or `/var/log/nginx/error.log`).
