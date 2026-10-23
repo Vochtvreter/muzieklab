@@ -1,8 +1,8 @@
 name: CI
-# Pull requests are checked on every push to their branch; main is checked after each merge.
+# Pull requests are checked on every push to their branch; test and main are checked after each merge.
 on:
   push:
-    branches: [main]
+    branches: [main, test]
   pull_request:
 jobs:
   check:
