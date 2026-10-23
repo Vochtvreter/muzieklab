@@ -1,6 +1,7 @@
 /**
  * Calibrate timing (DESIGN.md §6.1): tap along with 16 clicks; the median offset is this device's delay. Opened from
- * Results (`#/calibrate?from=results`), back and Save return there; otherwise to Settings.
+ * Results (`#/calibrate?from=results`, with `&learn=7.3` when Results goes back to a Learn section), back and Save
+ * return there; otherwise, and when there is no run to show (after a reload), to Settings.
  */
 import { useEffect, useRef, useState } from 'react';
 import { medianOffsetMs, tapOffsetsMs } from '../../audio/calibration';
@@ -13,6 +14,7 @@ import { TapPad } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { useDocTitle } from '../hooks';
 import { signed, signedMs } from '../lib/format';
+import { calibrateBackQuery } from '../lib/learnReturn';
 import { hashQuery, Link, navigate, useHash } from '../router';
 import { useStore } from '../store';
 
@@ -46,8 +48,11 @@ const pct = (v: number): string => ((Math.max(-100, Math.min(100, v)) + 100) / 2
 export function Calibration(): JSX.Element {
   const { state, dispatch } = useStore();
   useDocTitle(t('app.docTitle', { page: t('calibrate.title') }));
-  const fromResults = hashQuery(useHash()).get('from') === 'results';
+  const query = hashQuery(useHash());
+  // Back to Results only with a run to show: after a reload there is none, and Results would send the player Home.
+  const fromResults = query.get('from') === 'results' && !!state.last;
   const backTo = fromResults ? '/results' : '/settings';
+  const backQuery = fromResults ? calibrateBackQuery(query) : undefined;
   const [phase, setPhase] = useState<Phase>('idle');
   const [taps, setTaps] = useState<number[]>([]);
   const clicks = useRef<number[]>([]);
@@ -123,7 +128,7 @@ export function Calibration(): JSX.Element {
     if (median === null) return;
     dispatch({ type: 'prefs', patch: { calibrationMs: median, calibratedAt: localDateIso() } });
     engine().setCalibrationOffsetMs(median);
-    navigate(backTo);
+    navigate(backTo, { query: backQuery });
   };
 
   const dots = offsets.map((v, i) => {
@@ -140,7 +145,7 @@ export function Calibration(): JSX.Element {
     <ExerciseFrame className="frame--cal">
       <div className="page cal no-scrollbar">
         <div className="screen-head">
-          <Link to={backTo} aria-label={t(fromResults ? 'calibrate.backResults' : 'calibrate.back')} className="icon-btn icon-btn--edge">
+          <Link to={backTo} query={backQuery} aria-label={t(fromResults ? 'calibrate.backResults' : 'calibrate.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <h1 className="screen-title">{t('calibrate.title')}</h1>

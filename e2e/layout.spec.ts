@@ -335,6 +335,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await back.click();
       await expect(page).toHaveURL(/#\/results$/);
       await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+
+      // After a reload there is no run to go back to: then it is the way in from Settings.
+      await page.evaluate(() => {
+        window.location.hash = '#/calibrate?from=results';
+      });
+      await expect(page.getByRole('heading', { level: 1, name: 'Calibrate timing' })).toBeVisible();
+      await page.reload();
+      const toSettings = page.getByRole('link', { name: 'Back to settings' });
+      await expectClickable(toSettings, { scroll: false });
+      await toSettings.click();
+      await expect(page).toHaveURL(/#\/settings$/);
     });
 
     test('results: try again, new exercise and copy code', async ({ page }) => {
@@ -384,8 +395,16 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Copy code' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expect(calibrate).toHaveAttribute('href', '#/calibrate?from=results');
+      // Started from a Learn section's Practice link, the run ends on #/results?from=1.1 (notes.spec.ts, "learn: a rhythm
+      // practice link…"): Calibrate takes that along, and brings it back.
+      await page.evaluate(() => {
+        window.location.hash = '#/results?from=1.1';
+      });
+      await expect(page.getByRole('link', { name: 'Back to chapter 1' })).toBeVisible();
       await calibrate.click();
-      await expect(page).toHaveURL(/#\/calibrate\?from=results$/);
+      await expect(page).toHaveURL(/#\/calibrate\?from=results&learn=1\.1$/);
+      await expect(page.getByRole('link', { name: 'Back to results' })).toHaveAttribute('href', '#/results?from=1.1');
 
       // Calibrated from the tip: Save returns to the same run, whose tip is still about how it was played. In place of
       // Calibrate, one line says the next exercise uses the calibration.
@@ -394,7 +413,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(save);
       await expectNoSideScroll(page);
       await save.click();
-      await expect(page).toHaveURL(/#\/results$/);
+      await expect(page).toHaveURL(/#\/results\?from=1\.1$/);
+      await expect(page.getByRole('link', { name: 'Back to chapter 1' })).toBeVisible();
       await expect(page.getByText(tipText!, { exact: true })).toBeVisible();
       await expect(page.getByText('Calibrated. Your next exercise uses it.', { exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Calibrate' })).toHaveCount(0);

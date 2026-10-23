@@ -19,7 +19,7 @@ import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
 import { starsLabel } from '../lib/format';
-import { useLearnReturn } from '../lib/learnReturn';
+import { calibrateQuery, useLearnReturn } from '../lib/learnReturn';
 import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
@@ -265,7 +265,7 @@ export function Results(): JSX.Element | null {
                 (recalibrated ? (
                   <span className="tip-note">{t('results.calibrated')}</span>
                 ) : (
-                  <Link to="/calibrate" query="from=results" className="ghost-btn tip-action" title={t('results.calibrateTitle')} onClick={() => engine().stop()}>
+                  <Link to="/calibrate" query={calibrateQuery(carry)} className="ghost-btn tip-action" title={t('results.calibrateTitle')} onClick={() => engine().stop()}>
                     <Icon name="metronome" size={18} />
                     {t('results.calibrate')}
                   </Link>

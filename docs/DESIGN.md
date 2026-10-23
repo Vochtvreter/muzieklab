@@ -672,8 +672,10 @@ codes are reproducible across devices.
   starts with *Measured over N taps*. The stored value is still the median offset. The Dutch start prompt is *TIK OM
   TE BEGINNEN*; it must fit on one line on a 320 px phone.
 - Calibrate opens from Settings, and from a coaching tip on Results (§6.4) as `#/calibrate?from=results`: then its
-  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. Opened any other way,
-  they return to Settings. After a reload the store has no last run, so Results falls back to Home as it always does.
+  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. When Results goes back
+  to a Learn section (`?from=7.3`), Calibrate carries it as `&learn=7.3` and returns to `#/results?from=7.3`, so the
+  way back to the section stays. Opened any other way, or after a reload (the store then has no last run to show),
+  they return to Settings (*Back to settings*).
 
 ### 6.2 Matching taps to notes
 
@@ -1209,7 +1211,8 @@ ABRSM, Trinity, RCM and Kodály.
   teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1).
 - Read notes links start the round.
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
-  to it, and Retry, Next, New round and Practice missed notes keep it.
+  to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip
+  (§6.1).
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
 - Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.
