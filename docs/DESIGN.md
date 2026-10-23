@@ -65,6 +65,12 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
 2. **Count-in** — one bar of metronome clicks (configurable: silent, 1 or 2 bars) with big
    on-screen counts "1 – 2 – 3 – 4". *Silent* keeps the bar and the counts, without clicks,
    so the first note never comes without warning.
+   The count-in looks different from the music (since 0.10.0; before, it already looked like bar 1). Until the music's
+   first beat (the lead-in, the count-in, and the count-in after a pause), the header line reads *Count-in* (nl
+   *Voortellen*) instead of *Bar 1 of N*, and no note is highlighted (none before the start either). The beat counter
+   draws the current beat as an outlined slate ring, with the digit in slate, instead of the filled circle. On desktop
+   the stat card's label reads COUNT-IN and the active digit is hollow. From beat 1 everything looks as before. The
+   analog metronome is unchanged, and the aria labels stay *Count-in, beat x of y*.
 3. **Play** — a cursor sweeps across the notation in time. The player presses on every
    note and holds it for its length. Rests = nothing pressed. Tied notes = press once and
    keep holding through the tied note (the tie continues the sound, no new onset — an
@@ -75,8 +81,10 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    a **length lane** draws every note to scale in gray (so durations are visible at a
    glance) and your holds on top in color; a note let go too early gets a dashed outline.
    A combo counter grows on consecutive notes that were both started well and held right.
-   The pad itself only says what it is, a quarter-note symbol and **Rhythm**; it never
-   carries instructions. The judgment (GREAT, GOOD · LATE…) shows just above the pad.
+   A missed note also gets a small × under it, so a miss is shape as well as colour (§9).
+   The pad itself only says what it is, a quarter-note symbol and **Tap** (nl *Tik*; since 0.10.0, before
+   *Rhythm*); it never carries instructions. Its accessible name is *Tap pad* (nl *Tikpad*), and the copy calls it
+   that (How to play, the desktop hint, Calibrate). The judgment (GREAT, GOOD · LATE…) shows just above the pad.
 5. **First time** — the first time a player opens a rhythm exercise, a *How to play*
    sheet slides up over the paused exercise: a small press → hold → lift diagram and
    three steps (press when a note starts; hold for its length and lift when it ends;
@@ -88,6 +96,30 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    Unit 1 is tap only, so a beginner's first sheet is the tap version ("no need to hold the note"). The first
    exercise that judges holds (usually lesson 2.1) opens How to play once more, with the hold steps and the eyebrow
    *New: hold each note*; *Got it* starts it (since 0.8.0). After that it opens only from **?**.
+
+   **Before the count-in, one sheet at a time** (since 0.10.0), each closed with one tap:
+   1. *How to play*, when it is due (above).
+   2. The **intro sheet**, when a lesson brings a symbol the player has not been shown yet. `game/intro.ts` works out
+      what each lesson brings that no earlier lesson used (1.2 the half note, 2.2 the quarter rest, 3.1 three-four,
+      4.1 the eighth, 6.1 the tie, 7.1 the dot …); lesson 1.1 brings nothing, because How to play covers it. What was
+      shown is kept in `prefs.seenIntros`. The sheet has the eyebrow *New in this lesson* and the lesson title as its
+      heading. Each symbol gets a 72 px accent-soft tile with its glyph (Noto Music, as the Setup buttons draw it; a
+      time signature as two stacked digits in the display face), its name and one fact (*Half note · 2 beats*,
+      *Quarter rest · 1 beat of silence*, *Three-four · 3 beats in a bar*, *Tie · adds the second note's length*,
+      *Dot · adds half the note's length*, *Triplet · 3 in the time of 2*), and *Learn more →* to its Learn section
+      (2.1 note values, 4.1 eighths, 4.2 sixteenths, 3.1 rests, 1.2 time signatures, 5.1 ties, 5.2 dots, 7.1
+      triplets). Under them is an action row: an outline *Listen*, as wide as its label, that plays this exercise once
+      with the beat (as Results' Listen does; it reads *Stop* while playing), and an accent *Start* that fills the
+      rest. Start marks the symbols as shown and starts the count-in. **?** on the sheet opens How to play and leads
+      back to it. When How to play is due as well, it comes first and *Got it* brings the intro sheet.
+   3. **Ready**, when no tap led here (a reload, Back / Forward into Play), or when the run is a lesson other than the
+      last finished run's (Results → *Next lesson*, another lesson from the Path or Home), so the new rhythm can be
+      read first. Retry and Next exercise of the same lesson, free practice, and the first run of a session count in
+      straight away.
+
+   The intro sheet uses the same Sheet as the others: a bottom sheet on phone and tablet (landscape too), a 440 px
+   dialog on desktop. On desktop the intro and Ready dialogs sit low (aligned to the bottom, 48 px padding), so the
+   staff stays readable; How to play and Pause stay centred.
 5. **Results** (§6.4).
 
 **Input**
@@ -102,9 +134,14 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
   (`setPointerCapture`), so sliding off the pad does not end the hold.
 - Releases are timestamped with the same clock as presses (§6.1).
 
-**Setting: Hold notes for their length** (on by default). Off = *tap only*: only note
-starts are judged, for beginners and the first Path units. The Learning Path switches it
-on from unit 2 (rests), where lengths start to matter.
+**Setting: Hold notes for their length** (Settings → Input: *Tap & hold*, the default, or *Tap only*). Tap only
+judges note starts alone. Tap & hold means holding counts once the path teaches it: the lessons of unit 1 are tap
+only, and the Learning Path switches holding on from unit 2 (lesson 2.1), where lengths start to matter. Since 0.10.0
+the rest of the game follows the path, so the rules do not change when the player leaves it: free practice (Tap and
+Echo, and the Learn practice links) holds only once unit 2 is open (`practiceHold` in `ui/store.tsx`), and so does the
+daily challenge (§3.4). The setup's *Hold notes for their length* switch shows that state and can turn holding on
+earlier (`prefs.holdEarly`). Turning it off before unit 2 only takes that early choice back; after unit 2 it sets
+Input to tap only, as before. *Tap only* in Settings always wins. Echo's How to play has a tap-only step 2.
 
 ### 3.2 Rhythm Dictation — *listen & write*
 
@@ -141,9 +178,31 @@ engine as 3.1 and 3.2, so it's cheap to add.
 |---|---|
 | **Free Practice** | Full custom settings (§4). Always available. |
 | **Learning Path** | Curated units that unlock step by step (§8.2). Each lesson is just a preset of settings + a pass requirement. |
-| **Daily Challenge** | One exercise per day, seeded by the date, so everyone gets the same one. Keeps the streak alive. |
+| **Daily Challenge** | One exercise per day at the player's place on the rhythm path, seeded by the date and the highest open unit, so everyone at the same unit gets the same one (below). Keeps the streak alive. |
 | **Weak Spots** | Adaptive: the generator boosts cells/meters the player scores worst on (§8.4). |
 | **Learn** | Theory library: one topic per thing you can practise (§9.1), each with notation examples, counting and a quick check, linking straight to a matching practice preset. |
+
+**Daily challenge at the player's level** (since 0.10.0; before, everyone got one of eight mid-path presets, so day
+one could bring eight bars of sixteenths). The daily is seeded by the date and the tier: the highest open rhythm unit
+(1–8, `reachedUnit` in `game/daily.ts`). Each preset carries the unit that teaches its hardest material and is picked
+only once that unit is open:
+
+| Unit | Adds |
+|---|---|
+| 1 | 4/4, quarter and half notes |
+| 2 | quarter and half rests |
+| 3 | 3/4, and whole notes |
+| 4 | eighths |
+| 5 | 2/4, eighth rests and mixed meters |
+| 6 | ties |
+| 7 | dotted notes |
+| 8 | sixteenths |
+
+Below unit 3 the daily uses only the unit 1–2 presets, at 60–72 BPM over 4 bars, like the path's first lessons. From
+unit 3 it uses the mid-path presets (unit 3 up to the reached unit), at 72–104 BPM over 4 or 8 bars. It is tap only
+until unit 2, where the path starts teaching holds; from then on hold follows the Input setting. The first-daily bonus
+XP (20), *Streak kept* and *New personal best* work as before. On Home the card reads *Daily challenge · 4 bars · new
+every day*, and its Play is an outlined button: Continue is the only filled button on Home (§9).
 
 ### 3.5 Read Notes — *pitch reading*
 
@@ -162,17 +221,37 @@ like the rhythm notation.
 
 - The answer is the **pitch class**: the octave does not matter (any C answers a C),
   because the input is one octave. Naming the octave (C4 vs C5) could be a later option.
-- Both name inputs (do re mi and letters) have a **sign row: ♭ · ♮ · ♯**, always visible.
-  The player picks the sign first (♮, no sign, is the default) and the seven buttons
+- Both name inputs (do re mi and letters) have a **sign row: ♭ · ♮ · ♯** when a note in the round can carry a sign:
+  a key with a signature (any of the Mix keys counts), or *Extra sharps and flats* (`roundHasSigns` in
+  `core/noteRound.ts`). The player picks the sign first (♮, no sign, is the default) and the seven buttons
   update to show it (D♯, re♯). The written spelling is required: right letter with the
   wrong sign is wrong, and F♯ is not accepted for a written G♭. Desktop keys: − = ♭,
   0 = ♮, = = ♯, then the letter.
+  A round in C major / A minor with no extra signs has no sign row, no *Pick the sign if there is one, then the name.*
+  line and no − 0 = keys: seven buttons for seven answers (since 0.10.0). The idle line is then empty on phone and
+  tablet (the question *Which note is highlighted?* sits above the staff); desktop shows *Which note is highlighted?*
+  in the answer card, and its key hint reads *Type the letter of the note*. The setup's *Answer with* line drops
+  "each with ♭ ♮ ♯ keys" in that case.
 - Desktop: names are typed with the letter keys (A–G); the piano maps to the
   computer keyboard with the common layout **A S D F G H J** = C D E F G A B and
   **W E T Y U** = C♯ D♯ F♯ G♯ A♯.
-- A **Hint** shows the nearest landmark ("just below the bottom line, E") and marks the
-  note as assisted. In a key with sharps or flats it also points at the key signature
-  ("the top line is F; look at the sharp after the clef").
+- **Do re mi or letters** on the name buttons is a saved preference, switched on the play screen. A new player gets
+  do re mi when the device language is French, Italian, Spanish, Portuguese, Romanian or Dutch in Belgium (`nl-BE`),
+  and letters otherwise (since 0.10.0; before, do re mi for everyone). Players with saved preferences keep their
+  choice, and preferences saved before the choice existed keep do re mi.
+- A **Hint** marks the note as assisted. Off a landmark it names the landmark first and then the way to the note, in
+  two sentences, so the landmark's name does not read as the answer: *The top line is fa (F). This note is one step
+  higher.* (nl *De bovenste lijn is fa (F). Deze noot ligt één stap hoger.*; since 0.10.0, before *One step above the
+  top line, fa (F)*). On a landmark it says *This is the top line: fa (F).* In a key with sharps or flats the pointer
+  to the key signature still follows (*… Look at the sharp after the clef.*).
+
+**Hearing the notes** (since 0.10.0). The setup has a *Hear the notes* switch, on by default. With it on, a piano key
+sounds as it is pressed, in the octave of the note on the staff, so the right key sounds as the note. After every
+answer (names or piano; right, wrong or timed out) the note on the staff sounds as written, with the key signature and
+its own sign applied. After a wrong piano key, the right note follows half a second later. Once a note is answered,
+the piano keys only sound, so the player can compare them. The sound is the Scales piano tone, at the Playback volume.
+Read notes and Keys path lessons keep the player's choice (the lesson presets do not set it). Audio is unlocked from the
+Start tap and from every answer tap.
 
 **Keys.** The player chooses which key to read in, on its own screen (*Key*, opened from
 the setup). All 15 standard key signatures are offered: C major (no signs), then sharps
@@ -207,15 +286,20 @@ notes read the same.
 | Extra sharps and flats (signs next to notes, on top of the key signature) | none · sharps · sharps and flats | none |
 | Notes per round | 10 – 50 | 20 |
 | Time per note | off · 5 s · 3 s | off |
+| Hear the notes (since 0.10.0) | on · off | on |
 
 **Note generator:** draws from the allowed positions, spelled in the chosen key, with no immediate repeats and no
 more than two steps of the same direction in a row, and boosts notes the player recently
 got wrong or answered slowly (spaced repetition per note). In mixed-clef rounds the clef
 changes at most every 4 notes, with a visible clef change.
 
-**Scoring:** correct / total, average response time, and a per-note weak-spot list
-("E on the top space"). Stars: ★ ≥ 70% · ★★ ≥ 85% · ★★★ ≥ 95% with an average under 2 s
-(starting values, to tune). XP and streaks work as in the rhythm modes.
+**Scoring:** correct / total, average response time, and a per-note weak-spot list. Stars: ★ ≥ 70% · ★★ ≥ 85% ·
+★★★ ≥ 95% with an average under 2 s (starting values, to tune). XP and streaks work as in the rhythm modes.
+Round done's *Needs practice* shows each missed or slow note as the player reads it (since 0.10.0; before, in
+scientific pitch, *F5 ×3*): a chip with a small staff (the note's clef and the note, with its own sign; no key signature at this
+size), the name in the player's note names (fa♯ or F♯), and ×count or the seconds. Screen readers hear e.g. *fa, F on
+the top line (treble clef), missed 3 times*. The desktop play screen's Needs practice card also uses the player's
+names.
 
 ### 3.7 Scales — *every key*
 
@@ -249,7 +333,10 @@ Learn and practice major and minor scales in all 15 keys.
   The player plays the scale note by note; each right
   note is written on the staff and fills the next degree box. The W/H steps sit between
   the boxes. A wrong key flashes red and the feedback names the step ("From G, go a whole
-  step: skip one key"). *Hear it so far* and *Start over* are always there. Computer keys
+  step: skip one key"). *Hear it so far* and *Start over* appear once the first note is played (since 0.10.0; before
+  that they would do nothing). They are hidden but keep their place, so nothing moves when they come. When the scale is
+  done, *Hear it so far* reads *Hear the scale*. This holds for play and spell, on phone and tablet (the row under the
+  feedback) and on desktop (the side panel). Computer keys
   on desktop, as in Read notes: A S D F G H J K L for the white keys, and for a black key
   the letter above the gap between its two white keys (W E R T Y U I O). Space is *Hear it so far* and Enter goes on,
   except on a button the player reached with Tab: that button takes Space and Enter itself (since 0.9.0). After a click
@@ -275,7 +362,8 @@ Learn and practice major and minor scales in all 15 keys.
   the phone layout, in the 640 px column on tablet. On desktop, play and spell use the wide
   exercise layout of Read notes: the exercise header (title, scale *n* of *m*, progress,
   Quit · Esc), the staff across the top, then the degree row with the piano or the sign
-  buttons, and beside it the mistakes, *Hear it so far* (Space) and *Start over*.
+  buttons, and beside it the mistakes, then *Hear it so far* / *Hear the scale* (Space) and *Start over* once the
+  first note is played.
 
 ### 3.6 Test yourself — *flash cards*
 
@@ -310,8 +398,8 @@ regenerates as you change things, plus a difficulty meter.
 | Setting | Options | Default |
 |---|---|---|
 | **Mode** | Tap · Dictation (Choose / Build) · Echo | Tap |
-| **Hold notes for their length** | on (tap & hold) · off (tap only) | on |
-| **Time signatures** | 2/4 · 3/4 · 4/4 *(v1)*; 2/2 · 3/8 · 6/8 · 9/8 · 12/8 · 5/4 *(later)*. Multi-select: each exercise picks one at random. | 4/4 |
+| **Hold notes for their length** | on (tap & hold) · off (tap only) | follows the path: off until unit 2 is open, then on (since 0.10.0, §3.1) |
+| **Time signatures** | 2/4 · 3/4 · 4/4 *(v1)*; 2/2 · 3/8 · 6/8 · 9/8 · 12/8 · 5/4 *(later)*. Multi-select: each exercise picks one at random. The setup shows only the playable ones; there is no disabled "6/8 soon" chip (since 0.10.0). | 4/4 |
 | **Note values** | whole · half · quarter · eighth · sixteenth | half, quarter |
 | **Rests** | whole · half · quarter · eighth · sixteenth (independent of notes) | quarter |
 | **Extras** | dotted notes · ties / syncopation · triplets | off |
@@ -578,6 +666,14 @@ codes are reproducible across devices.
   `performance.now()`), converted to audio time via `AudioContext.getOutputTimestamp()`.
 - Compensation: `outputLatency` from the browser **plus** a per-device offset measured in
   the **calibration** screen (tap along with 16 clicks; median offset is stored).
+- The calibration screen says it in plain words (since 0.10.0): *Tap along with 16 clicks. Muzieklab measures how
+  late or early your taps land and takes that off every score.* The measured median is labelled *Your delay* (nl
+  *Jouw vertraging*) on the card and on the result card, which said *Median* and *Your offset*, and the result text
+  starts with *Measured over N taps*. The stored value is still the median offset. The Dutch start prompt is *TIK OM
+  TE BEGINNEN*; it must fit on one line on a 320 px phone.
+- Calibrate opens from Settings, and from a coaching tip on Results (§6.4) as `#/calibrate?from=results`: then its
+  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. Opened any other way,
+  they return to Settings. After a reload the store has no last run, so Results falls back to Home as it always does.
 
 ### 6.2 Matching taps to notes
 
@@ -643,57 +739,102 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 - **Stars:** ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% · ★★★★ ≥ 95% with no Good and no Miss (no
   yellow or red noteheads).
 - **Three star slots are shown** (☆☆☆) on the results, the lesson tiles and the Path. The 4th star is a hidden
-  bonus: once earned, the results show the three as a small arc over one big star (tiles and the Path: ★★★★).
+  bonus: once earned, the results show the three as a small arc over one big star (tiles and the Path: ★★★★ in gold).
 - **Diamond star (all perfect, 100%):** every start Perfect, every hold right, no extra taps.
-  It is also hidden until earned; then one diamond star shows in place of the stars. Path totals count three stars
-  per lesson (e.g. 79 / 120 ★), so the 4th star and the diamond count as three there.
+  It is also hidden until earned. Results then shows one big diamond star; the lesson tiles and the Path show four
+  stars in the diamond-blue gradient (since 0.10.0; before, one blue star next to three empty slots, which read as one
+  star). Its label is *Diamond: every note perfect*. Path totals count three stars per lesson (e.g. 79 / 120 ★), so the
+  4th star and the diamond count as three there.
+- **One way to draw lesson stars** (since 0.10.0): `StarsMark` (`ui/components/Bits.tsx`) draws them everywhere they
+  show for a lesson: Home's tiles, the desktop path card, and the Path's rows, tiles and closed-unit stars (locked ones
+  too). 0–3 stars are three slots (★★☆), the 4th star four gold stars, the diamond four diamond stars, so a better
+  result never shows fewer stars. The accessible label stays on the tile or button.
 - **Tendency:** mean signed offset → *"rushing"* / *"dragging"* / *"steady"*. People
   tapping along to a beat naturally land tens of milliseconds early (*negative mean
   asynchrony*, Repp 2005), so a small early average is normal and is reported as
   *steady*. The rushing tip only appears beyond about −40 ms (tunable after playtesting);
-  dragging beyond about +30 ms. Device latency is removed separately by calibration (§6.1).
+  dragging beyond about +30 ms. Device latency is removed separately by calibration (§6.1); when the offsets are
+  steady and the device is not calibrated, the tip points there (§6.4).
 - **Steadiness:** standard deviation of offsets.
 - **Combo:** consecutive notes started Perfect/Great **and** held right; a Good, Miss,
-  cut-short or held-too-long note resets it. Max combo shown on results.
+  cut-short or held-too-long note resets it. It shows during play; Results no longer shows the max combo (since
+  0.10.0).
 - Dictation: % of beats correct; plays used; 3 stars = all correct with ≤ 2 plays.
 
 ### 6.4 Results screen
 
-- Stars, accuracy, XP earned (animated).
-- The exercise again with every note colored by judgment.
+- Stars, accuracy, XP earned (animated). The line under the percentage reads *accuracy · +30 XP* (since 0.10.0; the
+  max combo is no longer on Results, it still shows during play).
+- The exercise again with every note colored by judgment, and a × under each missed note (§9).
 - Counts per judgment, plus a hold line: *held right · cut short · held too long*.
 - **Timing and length lane:** the exercise drawn to scale (two bars per row): every note's
   length in gray, the player's hold on top in color, starting where they pressed. Early or
   late presses show as a shifted start; cut-short notes show a dashed outline for the part
   that was not held; misses show ×; taps that matched no note show as a red outline.
   In tap-only exercises a press is a short mark where it landed (holding does not count).
-- Tendency + steadiness, one-line coaching tip. When misses and extra taps add up to a
-  quarter or more of the notes, it names that first: timing advice is
-  beside the point when the player lost their place. Otherwise it names the worst hold
-  problem first, e.g. "You let go of the dotted quarter in bar 2 too early", then the
-  tendency (only from 4+ hit notes).
-- Buttons: **Retry** (same exercise) · **Next** (new exercise, same settings) · **Listen**
-  (correct playback) · **Settings**.
+- Tendency + steadiness, one-line **coaching tip**: the first of these that applies (`core/coach.ts`; this order since
+  0.10.0):
+  1. No taps at all: *No taps came in. Tap the pad, or press any key, when each note starts.* The player did not know
+     what to do, or the taps did not register; "read one beat ahead" would not help.
+  2. A steady delay: *Your taps came about 125 ms late (early) every time. That is usually the speaker or headphones:
+     calibrate once and it is taken off every score.* A steady player 125 ms late (Bluetooth, an uncalibrated phone)
+     gets 0% with every note Miss + Extra, and the old tip blamed their reading. The offsets are the hit notes'
+     offsets plus, for each missed note, the nearest unpaired extra tap after it (late) or before it (early), within
+     350 ms and before the neighbouring note. It is a delay when all of these hold: those offsets cover at least 60% of
+     the notes (and at least 3); every one is at least 20 ms off the same way; the mean is at least 80 ms; the SD is at
+     most 60 ms; and unpaired extra taps are at most a quarter of the notes. Sloppy timing spreads both ways and wider,
+     and mashing the pad leaves many unpaired extra taps.
+  3. Off track (misses + extra taps add up to a quarter or more of the notes): timing advice is beside the point when
+     the player lost their place, so it names the misses, with the bar that had the most (*You missed 3 notes, most in
+     bar 2. Read one beat ahead.*) or, when bars tie, without a bar (*You missed 8 notes. Read one beat ahead.*); or
+     the extra taps.
+  4. The worst hold problem, e.g. "You let go of the dotted quarter in bar 2 too early".
+  5. The tendency (only from 4+ hit notes). When the hit offsets are steady (SD ≤ 60 ms) and the device is not
+     calibrated, it points to calibration instead of "press sooner" or "wait": *Your taps came on average 60 ms late,
+     about the same on every note. That is often the speaker or headphones: calibrate once and it is taken off every
+     score.* (early: *… Calibrate once and a steady offset like that is taken off every score.*)
+  6. Misses (the same tie rule), extra taps, unsteady, then praise. A perfect run that offers Next lesson says *Every
+     note perfect. On to the next lesson.* (a lesson fixes tempo and bars); free practice and the daily keep *Every
+     note perfect. Try a faster tempo or more bars.*
+- **Calibrate in the tip** (since 0.10.0): with the delay tip, or a rushing or dragging tip while the device is not
+  calibrated (`prefs.calibratedAt` is null), the tip box shows a quiet **Calibrate** action (a ghost button with the
+  metronome icon, titled *Measure the delay of your speaker or headphones*) under its text. It opens
+  `#/calibrate?from=results`, which comes back to Results (§6.1).
+- Buttons: **Listen** (correct playback) and **Practice settings** as quiet ghost buttons, then the main pair:
+  - from 2 stars on: **Retry** (outline; the same exercise) and **Next exercise** (filled; a new exercise, same
+    settings), or **Next lesson** after a lesson (below);
+  - under 2 stars, after a lesson, free practice, Echo or the daily challenge (since 0.10.0; before, the filled button
+    moved on): **Try again** (filled; the same exercise) and **New exercise** (outline; same settings, a new seed), at
+    equal widths. Moving on is not the next step yet. A lesson that already had 2 stars and is replayed under 2 stars
+    keeps **Next lesson** as the outline button, so the way on along the path stays.
+- **Copy code** (since 0.10.0; before, the exercise code and Copy were the first row under the title, though a code
+  cannot be entered yet): one quiet action that copies the exercise code (§4.2). It says *Copied* with a check for
+  2 s and has the code in its title. On tablet and desktop it is the third ghost button, after Listen and Practice
+  settings; on a phone (< 700 px) that row has no room, so it is a small muted link (13 px, 44 px target) at the very
+  bottom, under the main buttons. A daily challenge's date line (*Oct 22 · same for everyone*) sits under the title,
+  as on Round done.
 - After a lesson (since 0.8.0), a badge under the score says what the run means for the Learning Path, and the main
   button follows it:
   - the lesson reached 2 stars for the first time: *Lesson 7.4 unlocked* (slate tint, an open lock), and **Next
-    lesson** starts the path's next lesson in place of Next;
-  - under 2 stars: *Get 2 stars to open lesson 7.4* (quiet, a lock); Retry and Next stay as they are;
+    lesson** starts the path's next lesson in place of Next exercise;
+  - under 2 stars: *Get 2 stars to open lesson 7.4* (quiet, a lock), with Try again and New exercise (above);
   - the last lesson to 2 stars: *Learning path done*;
   - a lesson played again that already had 2 stars shows no badge, and Next lesson goes to the path's current lesson.
 
-  Free practice and the daily challenge are unchanged. MVP canvas, Rhythm practice: the Results row and *Results ·
+  Free practice and the daily challenge have no path badge. MVP canvas, Rhythm practice: the Results row and *Results ·
   lesson under 2 stars*. Read notes' Round done does the same after a Read notes or Keys lesson (since 0.9.0, §8.2;
   MVP canvas, Read notes: *Round done · after a path lesson*).
 - On a short screen (an 8-bar exercise, a 1280 × 800 laptop) Results scrolls and Listen, Retry and Next stay at the
-  bottom, as Start does on Setup; the round summaries of Read notes and Scales do the same.
+  bottom, as Start does on Setup; the round summaries of Read notes and Scales do the same. A control that is scrolled
+  or tabbed to (Calibrate in the tip) stays above those sticky actions (`scroll-padding-bottom`, since 0.10.0).
 
 ---
 
 ## 7. Audio
 
 - Sounds synthesised in Web Audio (no downloads): metronome click (accented high click on
-  beat 1), woodblock/clave for rhythm playback, short soft "tok" as tap feedback.
+  beat 1), woodblock/clave for rhythm playback, short soft "tok" as tap feedback, and a short
+  piano tone (Scales, Read notes and Learn's scales and piano diagrams, since 0.10.0: §3.5, §9.1).
 - Optional sample pack later (piano note, snare).
 - Volume sliders: metronome / rhythm / tap feedback.
 - iOS: audio context unlocked on the first tap of the *Start* button; silent-switch note.
@@ -738,7 +879,9 @@ Each unit offers both *Tap* and *Dictation* lessons.
 **Three learning paths (since 0.9.0).** The Path tab holds three paths, each with its own units, stars and Start
 button: **Rhythm** (the units above; Learn chapters 1–7), **Read notes** (chapter 8) and **Keys** (chapters 9 and 10).
 A switcher picks the path on phone and tablet, cards with a progress bar on desktop; the app remembers the last one
-(`prefs.pathTrack`). The header counts the stars on every path.
+(`prefs.pathTrack`). The header counts the stars on every path. The switcher shows the full path names, *Rhythm ·
+Read notes · Keys* (since 0.10.0; before, *Notes*, while Home, Learn and the setup said Read notes); below 390 px wide
+it drops the glyphs so the names fit on one line.
 
 | Path | Units |
 |---|---|
@@ -756,7 +899,13 @@ A switcher picks the path on phone and tablet, cards with a progress bar on desk
   the path in front ("notes:4.3", "keys:2.1").
 - Every open unit is a button that opens and closes it (the current unit is open). An open unit shows its lessons by
   name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars; any open lesson can
-  be played again.
+  be played again. The current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already
+  says it.
+- A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
+  said once, under the first locked unit: *Opens with 2 stars on every unit N lesson*, or on a closed Keys path *Opens
+  after Read notes unit 3* (since 0.10.0; before, every locked unit repeated it, 63 of the Path's 94 words on day one).
+- In Dutch a path unit is a *blok* (*Blok 3 · Les 1 van 5*, *Blok 1 van 8*, *Leerpad, blokken 1, 3, 5*), so it is not
+  confused with a Learn chapter, which stays a *hoofdstuk* (since 0.10.0, §11).
 - A lesson round counts every note: skipping to the summary counts the notes left as missed, so a lesson cannot be
   passed on its first few notes. Play names the lesson; Quit goes back to the Path. Round done names the lesson and
   its unit, shows what the round did for the path (§6.4) and offers Next lesson once the lesson has two stars.
@@ -767,9 +916,18 @@ A switcher picks the path on phone and tablet, cards with a progress bar on desk
 
 - **XP** = base × difficulty × accuracy (+ bonus for no replays, max combo, 3 stars).
 - **Levels / ranks** (e.g. *Tick → Count → Measure → Groove → Metronome → Maestro*).
+- **Where XP and the level show** (since 0.10.0; before, Home had a block with the level, rank, *0 / 100 XP*, a bar and
+  *100 XP to level 2*): on phone and tablet Home a **level chip** (*Level N* with a small gold ring for the XP into the
+  level) sits beside the streak chip. It opens the **level sheet** (`LevelContent` in `ui/components/Reward.tsx`): the
+  badge, *Level N · Rank*, the next rank (*Count at level 3*, or *The top rank*), the rank ladder, one XP bar with one
+  label (*100 XP to level 2*) and Close. Escape also closes it, and focus returns to the chip. Desktop Home keeps its
+  level card, with one label under the bar (§9).
+- The **level-up sheet** after a result uses the same layout with the *Level up* eyebrow. Its line names the new rank
+  (*New rank: up from Tick*), or else the next rank (*Count at level 3*), instead of *Up from level N*. Its bar fills
+  the old level, then the new one, and only then shows its one label.
 - **Streak** of practice days. MVP: one finished exercise with at least one note hit keeps it
   (as the Home card says); later a daily challenge or any 3 exercises.
-- **Daily Challenge** (date-seeded, same for everyone).
+- **Daily Challenge** (date-seeded, the same for everyone at the same unit of the rhythm path; §3.4).
 - **Achievements**: *Perfect bar*, *50 perfect taps in a row*, *First sixteenths*,
   *No replays needed*, *Played at 160 BPM*, *7-day streak*, …
 - **Personal bests** per lesson and per settings combination.
@@ -824,13 +982,14 @@ engine and screens:
 Built in v0.2 (dark theme was already in the MVP):
 - **Daily challenge** (`game/daily.ts`): the date picks one of eight mid-path presets, a tempo (72–104) and 4 or 8 bars,
   then the seed. The day's first finish earns 20 bonus XP; Results shows *Streak kept* and *New personal best* (best
-  daily accuracy so far). Next after a daily is free practice with the same settings.
+  daily accuracy so far). Next after a daily is free practice with the same settings. Since 0.10.0 the daily follows
+  the player's place on the rhythm path (§3.4).
 - **XP and levels** (`game/xp.ts`): XP = bars × (4 + difficulty) × accuracy, + 5 / 10 / 20 for 3 / 4 stars / the
   diamond; nothing when no note was hit. Level *n* takes 100 + 50 (*n* − 1) XP. Ranks start at levels 1, 3, 5, 8, 12
   and 16: Tick, Count, Measure, Groove, Metronome, Maestro.
 - **Exercise codes** (`core/code.ts`): `T44-HQE-RQ-4B-120-7K2QF` = mode and meters, notes, rests, bars, tempo, optional
   `X` flags for settings off their default, and the seed in Crockford base 32. Shown on Results with Copy; entering a
-  code is still later.
+  code is still later. Since 0.10.0 Results no longer shows the code itself, only a quiet *Copy code* (§6.4).
 - **Echo mode:** a Tap · Echo switch on Practice setup. Play first shows a listen card (two plays), then the normal
   Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
 
@@ -839,7 +998,8 @@ change in the app:
 - The tab bar becomes Home · Path · Learn · Settings.
 - Every section ends with a practice link.
 
-Results tips stay plain text: they do not link to a Learn section (dropped from the plan).
+Results tips stay plain text: they do not link to a Learn section (dropped from the plan). The one action a tip can
+carry is Calibrate, when the device may be the cause (since 0.10.0, §6.4).
 
 Chapters 8–11 and flash cards arrive later, with note reading.
 
@@ -899,6 +1059,11 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 - A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Scales, Calibration) out in
   two columns, so the pad or the answer buttons stay in view next to the notation (Scales: the staff and the degree row
   on the left, the piano or the sign buttons on the right).
+- **Phone browsers** (since 0.10.0). In Safari or Chrome the toolbars take about 180 px of a phone's screen, so the
+  sizes to check include the visible area: 390 × 664 (an iPhone 14 in Safari) and 375 × 553 (an iPhone SE in Safari),
+  `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens
+  must fit them without scrolling during play, with the pad, the piano and the answer buttons in view. On a short
+  screen the empty space above the pad, the piano or the answer buttons shrinks first, then the staff.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
@@ -907,10 +1072,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   with each word and puts the items on the right; desktop puts them right after the brand, as words
   only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile, a
   Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow.
-- Desktop Home has two columns (App design canvas, Desktop · Home): streak and level (with the XP to
-  the next level), the daily challenge and the learning path (unit N of M, a bar of all units, the
-  lesson tiles) on the left; Continue (with the meter, bars and tempo over the staff) and the Free
-  practice tiles on the right.
+- Desktop Home has two columns (App design canvas, Desktop · Home): streak and level (with one label under the XP
+  bar, *100 XP to level 2*; no *0 / 100 XP* since 0.10.0), the daily challenge and the learning path (unit N of M, a
+  bar of all units, the lesson tiles, and the next lesson by its id: *Next: lesson 1.4 · A little faster · 80 BPM*)
+  on the left; Continue (the lesson title over its staff) and the Free practice tiles on the right.
 - A Learn chapter on desktop has the top header, a chapter list on the left and the chapter's
   sections as cards on the right (App design canvas, Desktop · chapter 5 page).
 - Exercise screens swap that header for the exercise header: title, progress, and
@@ -981,17 +1146,38 @@ scroll the whole page on phones with the system scrollbar hidden.
 glyph's fill set from the theme, including paths that VexFlow leaves without a fill
 attribute (they default to black and disappear on a dark background).
 
+After play the notes are coloured by judgment: Perfect and Great green, Good (early or late) amber, Miss red. A missed note also
+gets a small × in the miss token under its note head (since 0.10.0), so a miss is shape as well as colour. It is the
+timing lane's miss mark: 8 px across, a 2 px round stroke (`missMarkPath` in `render/staffDraw.ts`). It sits about
+17 px below the head, because rhythm-staff stems go up and the beams, tuplet numbers and the play cursor are above. A
+tied note gets one ×, on the note it starts on. Early and late stay colour only (the lane shows their direction).
+This holds on Results and on the live staff in Play. The Read notes staff is unchanged.
+
 | Screen | Key elements |
 |---|---|
-| **Home** | Streak + XP header; big *Continue path* card; *Daily challenge*; *Free practice*; *Listen (dictation)*; *Progress*. |
+| **Home** | Level and streak chips; big *Continue* card; *Daily challenge*; *Free practice*; *Listen (dictation)*; *Progress* (below). |
 | **Practice setup** | Mode switch; chips for meters; icon toggles for note values and rests; extras; bars stepper; tempo slider; live preview + difficulty meter; *Start*. |
-| **Play (Tap)** | Top bar: bar x/y, tempo, combo, pause. Notation (wraps 2 bars/line on phone, 4 on desktop, auto-scrolls). Beat dots. Big tap pad (mobile) / "press any key" hint (desktop). |
+| **Play (Tap)** | Top bar: bar x/y (*Count-in* until the music's first beat), tempo, combo, pause. Notation (wraps 2 bars/line on phone, 4 on desktop, auto-scrolls). Beat dots. Big tap pad (mobile) / "press any key" hint (desktop). |
 | **Dictation** | Play/replay button with plays left; staff showing what you've entered; bar fill meter; note palette; *Check*. |
-| **Results** | Stars, accuracy, timing strip, tips, Retry / Next. |
+| **Results** | Stars, accuracy, timing strip, tips (with Calibrate when it may be the device), Retry / Next, or Try again under 2 stars (§6.4). |
 | **Path** | Three learning paths (Rhythm, Read notes, Keys) behind a switcher; units as a vertical path that open to show their lessons by name, with stars and locks (§8.2). |
 | **Progress** | Charts, skill map, achievements. |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
-| **Settings** | Language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes, calibration, timing leniency, notation style (common/strict), theme, metronome style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
+| **Settings** | Language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
+
+**Home** (since 0.10.0). On phone and tablet the order is the brand or title, then the level and streak chips (they
+wrap under the brand on narrow phones, and in Dutch on a new profile), Continue, the daily challenge and Free practice.
+There is no XP block: XP, level and rank are in the level sheet that the chip opens (§8.3). The Continue card has the
+lesson title over its staff and no meter, bars or BPM line (nor on desktop). When no rhythm lesson has been played,
+it reads *Unit 1 · Lesson 1 of 5* with **Start lesson**; after that *Continue · Unit N · Lesson M of 5* with **Continue
+lesson**. Continue is the only filled button on Home: the daily's Play is outlined (§3.4). On tablet the Continue card
+and its staff keep their own height (about 110 px for one line of notes) and do not stretch to fill the screen; on a
+phone the card still fills the screen. The lesson tiles show their stars as on the Path (§6.3).
+
+**Settings** (since 0.10.0). Sound has one *Metronome* row (volume and on/off). The Display row for the digital or
+analog look is *Beat counter* (nl *Telteller*), with the group label *Beat counter style*. The leniency hints describe
+each level in words, with no milliseconds: Strict *Tight timing, for confident players.*, Normal *Fair timing for most
+players.*, Relaxed *Wide timing, for young beginners.* Calibration is in §6.1.
 
 ### 9.1 Learn: theory in chapters
 
@@ -1000,12 +1186,44 @@ Each chapter only relies on earlier chapters, and each setting the player can pr
 (the full map is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md) §5). Every section has a short explanation, rendered
 notation (with the counting under the notes in the rhythm chapters; held or silent counts in grey brackets), key facts,
 an *In the game* tip where one helps, a quick check of one question on what the section explained, and a *Practice*
-link that opens Free practice or Read notes with the matching preset; that setup's back arrow returns to the section
-(*Back to chapter 8*, also after a visit to the Key screen; since 0.9.0). A section is marked read when its quick check is
+link (below). A section is marked read when its quick check is
 answered right (since 0.6.0; before, scrolling past it was enough). A wrong answer says what to look at again, without
 giving the answer away, and the player tries again. Chapter headers show which Learning Path units use them. The contents follow the research in
 `LEARN-CHAPTERS.md`, which compares them with Flemish and Dutch courses (*Allemaal nootjes*, AMV, HaFaBra) and with
 ABRSM, Trinity, RCM and Kodály.
+
+**Practice links** start practice for the section straight away (since 0.10.0; before, they opened the setup, with
+13 controls between the section and the exercise):
+- Rhythm links start an exercise with the section's preset in Tap mode (Echo would hide the notation the section
+  teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1).
+- Read notes links start the round.
+- Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
+  to it, and Retry, Next, New round and Practice missed notes keep it.
+- Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
+  returns to the section, also after a visit to the Key screen (since 0.9.0).
+- Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.
+
+**Hearing the examples** (since 0.10.0). Examples that show music can be heard. A small round slate play button sits
+with the example: a 36 px accent circle in a 44 px touch target, with an on-fill icon and the label *Play* / *Stop*.
+While it plays, the icon becomes a stop square and the circle gets an accent-halo ring.
+- Rhythm examples: a one-bar count-in, then the rhythm on the woodblock with every beat clicking, at 80 BPM or the
+  block's `tempo`. Ties are merged and rests are silent.
+- The note tree (2.2): each row plays its bar the same way; the Rests row plays only the clicks.
+- The 1.1 pulse: each tempo row has its own button, which clicks four seconds of beats; the dot of the beat just heard
+  grows.
+- The chapter 11 scales (`play: true`) play up as piano tones.
+- Piano diagrams: every key sounds when tapped (C4–B4). A diagram with marked keys gets a play button that plays them
+  in order, each above the one before, so E–F and B–C are heard as half steps.
+- Silent: tables, text, the beat grids (4.2, 5.3, 7.1) and the pitch staves of chapters 8–10.
+- One example sounds at a time: starting one stops the other, and opening another chapter or leaving Learn stops it.
+- Sound starts from the tap and follows the Sound volumes: clicks use the Metronome volume, the woodblock and the piano
+  tones use Playback. The beat clicks under a rhythm follow the Metronome switch, as Results' Listen does; the
+  count-in and the pulse clicks always sound.
+- Layout: on tablet and desktop the button stands in front of the notation. On phones (< 700 px) it starts the
+  example's first line (its title or *Write* / *Avoid* label), or has a line of its own, so the notation keeps the full
+  width. Under 390 px the pulse's BPM label sits above its time line.
+
+`docs/ADDING-CONTENT.md` (*Sound*) says which blocks get a button and what each plays.
 
 | Chapter | Sections | Practice |
 |---|---|---|
@@ -1057,7 +1275,8 @@ The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · S
 
 - **One-thumb mobile**: primary actions at the bottom; tap pad is huge; no scroll during play.
 - No accidental zoom/scroll during play (`touch-action: none` on the pad, Wake Lock on).
-- Feedback by **colour + shape/icon** (colour-blind safe), sound optional.
+- Feedback by **colour + shape/icon** (colour-blind safe), sound optional. A missed note gets a × on the staff as
+  well as the red (since 0.10.0; §9).
 - Full keyboard support; `prefers-reduced-motion` respected; light & dark theme.
 - Notation is the hero: big, high-contrast, single-line rhythm staff (percussion style).
 
@@ -1133,6 +1352,12 @@ Property tests over thousands of random seeds and random settings:
 **Dutch** (*Nederlands*: kwartnoot, achtste noot, voortekening, majeur/mineur). Settings → Language picks one;
 until then the app follows the device's languages (`nl-BE` matches `nl`) and falls back to English. Never mix
 languages in the UI.
+
+**One word, one thing.** In Dutch a Learning Path unit is a *blok* (*Blok 3 · Les 1 van 5*, *Blokken*, *Leerpad,
+blokken 1, 3, 5*) and a Learn chapter is a *hoofdstuk* (since 0.10.0; before, both were *hoofdstuk*, so the Path showed
+*Hoofdstuk 1 van 8* next to *Theorie: hoofdstukken 1–7*). Older changelog entries keep the word they shipped with. The
+count-in is *Voortellen* everywhere (Setup's count-in option, the play header, the aria label). The Tap pad is the
+*tikpad* and its label *Tik*.
 
 **Adding a language** needs no code changes:
 
