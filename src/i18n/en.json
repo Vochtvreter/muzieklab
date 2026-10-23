@@ -597,6 +597,7 @@
     "newExercise": "New exercise",
     "calibrate": "Calibrate",
     "calibrateTitle": "Measure the delay of your speaker or headphones",
+    "calibrated": "Calibrated. Your next exercise uses it.",
     "laneLabel": "Note lengths compared with how long each note was held"
   },
   "settings": {

@@ -2921,6 +2921,11 @@ button.lesson-stars:hover {
 .tip-action {
   margin: 0 0 -8px -14px;
 }
+/* In its place once the player has calibrated since this run. */
+.tip-note {
+  margin-top: 4px;
+  font-weight: 600;
+}
 .results-actions {
   margin-top: auto;
   flex: none;

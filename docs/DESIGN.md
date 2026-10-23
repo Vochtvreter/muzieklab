@@ -797,17 +797,20 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
      the extra taps.
   4. The worst hold problem, e.g. "You let go of the dotted quarter in bar 2 too early".
   5. The tendency (only from 4+ hit notes). When the player drags steadily (every hit at least 20 ms late, SD
-     ≤ 45 ms) and the device is not calibrated, it points to calibration instead of "press sooner": *Your taps came
-     on average 60 ms late, about the same on every note. That is often the speaker or headphones: calibrate once and
-     it is taken off every score.* Taps on both sides of the beat are the player, and so is rushing: *Wait for each
-     note.*
+     ≤ 45 ms) on a run played before any calibration, it points to calibration instead of "press sooner": *Your taps
+     came on average 60 ms late, about the same on every note. That is often the speaker or headphones: calibrate
+     once and it is taken off every score.* Taps on both sides of the beat are the player, and so is rushing: *Wait
+     for each note.*
   6. Misses (the same tie rule), extra taps, unsteady, then praise. A perfect run that offers Next lesson says *Every
      note perfect. On to the next lesson.* (a lesson fixes tempo and bars); free practice and the daily keep *Every
      note perfect. Try a faster tempo or more bars.*
-- **Calibrate in the tip** (since 0.10.0): with the delay tip, or a dragging tip while the device is not calibrated
-  (`prefs.calibratedAt` is null), the tip box shows a quiet **Calibrate** action (a ghost button with the
+- **Calibrate in the tip** (since 0.10.0): with the delay tip, or a dragging tip on a run played before any
+  calibration (`prefs.calibratedAt` was null), the tip box shows a quiet **Calibrate** action (a ghost button with the
   metronome icon, titled *Measure the delay of your speaker or headphones*) under its text. It opens
   `#/calibrate?from=results`, which comes back to Results (§6.1).
+- The tip is about the run as it was played: the result keeps the calibration in force when the run finished, and
+  the tip reads that, not the current setting. After calibrating from the tip, Results shows the same tip, and one
+  line in place of Calibrate: *Calibrated. Your next exercise uses it.*
 - Buttons: **Listen** (correct playback) and **Practice settings** as quiet ghost buttons, then the main pair:
   - from 2 stars on: **Retry** (outline; the same exercise) and **Next exercise** (filled; a new exercise, same
     settings), or **Next lesson** after a lesson (below);
