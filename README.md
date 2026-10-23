@@ -31,9 +31,11 @@ Settings → Calibrate once per device so the timing scores match what you hear.
 
 ## Deploy
 
-Every push to `main` runs the tests, builds and redeploys the site to GitHub Pages
-(`.github/workflows/pages.yml`). To redeploy without a change, run *Deploy to GitHub Pages*
-from the Actions tab.
+Every push to `main` runs the tests, builds and deploys the site to the production server over SSH
+(`.github/workflows/deploy.yml`). To redeploy without a change, run *Deploy to production* from the
+Actions tab. [docs/DEPLOY.md](docs/DEPLOY.md) explains how to set up the server, and how to roll back.
+
+The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`).
 
 ## Docs
 

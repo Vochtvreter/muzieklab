@@ -1334,7 +1334,7 @@ The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · S
 | Storage | `localStorage` (settings) + **IndexedDB** (history, stats) | Offline, no account. |
 | Offline / install | **PWA** (`vite-plugin-pwa`) | Home-screen app on phones. |
 | Tests | **Vitest** + **fast-check** (property tests) | Generator correctness over thousands of seeds. |
-| Hosting | Static (GitHub Pages / Netlify) | No backend needed. |
+| Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)) | No backend needed. |
 
 ### 10.2 Module layout
 
