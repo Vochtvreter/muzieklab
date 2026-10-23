@@ -2,7 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
-import { expectClickable, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, pad, seed, VIEWPORTS, type ViewportName } from './helpers';
+import {
+  expectClickable, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, expectTouchHeight, pad, seed, VIEWPORTS, type ViewportName,
+} from './helpers';
 
 /**
  * Known layout bugs from the MVP QA, fixed in the follow-up layout PR. `test.fail` keeps CI green while they are open
@@ -56,6 +58,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     const desktopLayout = VIEWPORTS[name].width >= 1100;
     const tabletLayout = VIEWPORTS[name].width >= 700 && !desktopLayout;
+    /**
+     * Phone and tablet in portrait, a phone browser's short screen too: Read notes and Scales fit, so their controls are
+     * checked where they are, without scrolling (DESIGN.md §9). A phone in landscape lays them out in two columns whose
+     * left one may scroll; desktop has its own layout.
+     */
+    const portraitLayout = !desktopLayout && VIEWPORTS[name].height > VIEWPORTS[name].width;
+    const inPlace = { scroll: !portraitLayout };
 
     test('home: start the first lesson and free practice', async ({ page }) => {
       known(name, 'home');
@@ -157,7 +166,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await expectClickable(page.getByRole('button', { name: 'Play the rhythm' }), { scroll: false });
       await expectNotSqueezed(page.locator('.echo-card'));
-      if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expect(pad(page)).toBeVisible();
+      if (!desktopLayout) {
+        // The listen card and the pad both in view, also in a phone browser (DESIGN.md §9).
+        await expect(pad(page)).toBeInViewport({ ratio: 1 });
+        await expectTouchHeight(pad(page));
+        await expectFits(page);
+      }
       await expectNoSideScroll(page);
     });
 
@@ -266,7 +280,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'calibration');
       await page.goto('./#/calibrate');
       await expectClickable(pad(page), { scroll: false });
+      await expectTouchHeight(pad(page));
       await expect(page.getByRole('img', { name: /taps? measured/ })).toBeInViewport();
+      await expectFits(page);
       await expectNoSideScroll(page);
     });
 
@@ -415,16 +431,27 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('img', { name: /staff in C major/ })).toBeVisible();
       const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
       await expect(names).toHaveCount(7);
-      for (let i = 0; i < 7; i++) await expectClickable(names.nth(i));
+      // Everything in view without scrolling, in a phone browser too (DESIGN.md §9).
+      for (let i = 0; i < 7; i++) await expectClickable(names.nth(i), inPlace);
+      await expectTouchHeight(names.first());
       // C major without extra signs: no note can have a sign, so there is no sign row (and no line about it).
       await expect(page.getByRole('radiogroup', { name: 'Sharp or flat' })).toHaveCount(0);
       await expect(page.getByText('Pick the sign if there is one, then the name.')).toHaveCount(0);
+      if (portraitLayout) await expectFits(page);
       await expectNoSideScroll(page);
       await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
       await expect(keys).toHaveCount(12);
-      for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i));
-      await expectClickable(page.getByRole('button', { name: 'Hint' }));
+      for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i), inPlace);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      await expectTouchHeight(page.getByRole('button', { name: 'Hint' }));
+      // The hint takes two lines; the piano gives up the room, so nothing scrolls.
+      await page.getByRole('button', { name: 'Hint' }).click();
+      await expect(page.locator('.nfeedback')).toHaveText(/^.+\. This note is|^This is /);
+      await expectClickable(keys.nth(0), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      if (portraitLayout) await expectFits(page);
       await expectNoSideScroll(page);
     });
 
@@ -434,10 +461,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Sharps ♯' }).click();
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /staff in C major/ })).toBeVisible();
-      for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }));
+      for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }), inPlace);
       const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
-      for (let i = 0; i < 7; i++) await expectClickable(names.nth(i));
-      await expectClickable(page.getByRole('button', { name: 'Hint' }));
+      for (let i = 0; i < 7; i++) await expectClickable(names.nth(i), inPlace);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      if (portraitLayout) await expectFits(page);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -520,9 +549,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: /^Start · / }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
       await expect(keys).toHaveCount(15);
-      for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i));
+      // The whole piano with its letters in view without scrolling, in a phone browser too (DESIGN.md §9).
+      for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i), inPlace);
       await expect(page.locator('.spiano .piano-label')).toHaveText(['G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A']);
-      await expectClickable(page.getByRole('button', { name: 'Skip to summary' }));
+      if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
+      await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
+      if (portraitLayout) await expectFits(page);
       // Nothing to hear or start over before the first note.
       await expect(page.getByRole('button', { name: /^Hear it so far/ })).toBeHidden();
       await expect(page.getByRole('button', { name: /^Start over/ })).toBeHidden();
@@ -557,8 +589,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('button', { name: /^Start over/ })).toBeHidden();
       const signs = page.getByRole('group', { name: 'Sign for E' }).getByRole('button');
       await expect(signs).toHaveCount(3);
-      for (let i = 0; i < 3; i++) await expectClickable(signs.nth(i));
-      await expectClickable(page.getByRole('button', { name: 'Hint' }));
+      for (let i = 0; i < 3; i++) await expectClickable(signs.nth(i), inPlace);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+      if (portraitLayout) await expectFits(page);
       await signs.nth(1).click();
       await expectClickable(page.getByRole('button', { name: /^Hear it so far/ }));
       await expectClickable(page.getByRole('button', { name: /^Start over/ }));
@@ -740,6 +773,32 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
+      // A phone in landscape has no Skip link: the pad takes the right column.
+      if (portraitLayout) await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+      if (!desktopLayout) await expectFits(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('play: eight bars fit, with the staff, the lane, the beat counter, the pad and Skip in view', async ({ page }) => {
+      known(name, 'play-eight-bars');
+      // Lessons go up to 8 bars: the staff shows two rows and the timing lane two, the tallest Play gets.
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, notes: ['quarter', 'eighth', 'half'], bars: 8, tempo: 60 } } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+      await expect(page.locator('.staff-fallback')).toHaveCount(0);
+      // A phone in landscape scrolls the staff card in its own column; the pad is beside it.
+      if (portraitLayout) {
+        await expect(page.locator('.play-staff')).toBeInViewport({ ratio: 1 });
+        await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
+        await expect(page.locator('.beats')).toBeInViewport({ ratio: 1 });
+        await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+      }
+      if (!desktopLayout) {
+        await expectClickable(pad(page), { scroll: false });
+        await expectTouchHeight(pad(page));
+        await expectFits(page);
+      }
       await expectNoSideScroll(page);
     });
 

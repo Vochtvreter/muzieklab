@@ -35,6 +35,20 @@ describe('drawStaff', () => {
     expect(draw({ bars: DEMO_LESSON, barsPerRow: 4, width: 1040, cursorSpace: true }).size.height).toBe(88);
   });
 
+  it('draws smaller at a scale below 1, still filling the width (Play on a short phone)', () => {
+    const { svg, size } = draw({ bars: DEMO_LESSON, cursorSpace: true, scale: 0.8, marks: { 5: 'miss' }, cursor: 2 });
+    expect(size.height).toBe(139); // 174 × 0.8
+    expect(svg.getAttribute('width')).toBe('342');
+    expect(svg.getAttribute('height')).toBe('139');
+    // Laid out 342 / 0.8 = 427.5 wide in the svg's own units, so the bars still span the whole width.
+    expect(svg.getAttribute('viewBox')).toBe('0 0 427.5 174');
+    // The cursor and the × are placed in those units too.
+    const cursor = svg.querySelector('rect[data-cursor]')!;
+    expect(Number(cursor.getAttribute('x'))).toBeGreaterThan(0);
+    expect(svg.querySelectorAll('.staff-miss path')).toHaveLength(1);
+    expect(draw({ bars: DEMO_LESSON, cursorSpace: true }).svg.getAttribute('viewBox')).toBe('0 0 342 174');
+  });
+
   it('colours marked notes and draws the cursor behind the current note', () => {
     const { svg } = draw({ bars: DEMO_LESSON, marks: { 0: 'perfect', 1: 'good', 5: 'miss' }, cursor: 2, cursorSpace: true });
     const notes = [...svg.querySelectorAll('g.vf-stavenote')];
