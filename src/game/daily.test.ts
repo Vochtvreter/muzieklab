@@ -4,8 +4,8 @@ import { dailyChallenge, reachedUnit } from './daily';
 import { lessonSettings, UNITS } from './path';
 import { defaultProgress, type Progress } from './storage';
 
-const days = (n: number): string[] =>
-  Array.from({ length: n }, (_, i) => `2027-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + ((i * 7) % 28)).padStart(2, '0')}`);
+/** `n` consecutive dates from 2027-01-01. */
+const days = (n: number): string[] => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2027, 0, 1 + i)).toISOString().slice(0, 10));
 
 /** Progress with two stars on every lesson of units 1 … n. */
 function passedUnits(n: number): Progress {
