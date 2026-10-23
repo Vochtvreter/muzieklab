@@ -50,7 +50,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const, seenIntros: ['meter:3/4', 'note:half'], holdEarly: true };
+    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const, seenIntros: ['meter:3/4', 'note:half'], holdEarly: 'tap' as const };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
@@ -58,7 +58,7 @@ describe('prefs and progress storage', () => {
       practiceDays: ['2026-10-16', '2026-10-17'],
       lastSettings: { ...DEFAULT_SETTINGS, meters: ['3/4', '4/4'], tempo: 88 },
       xp: 1445,
-      daily: { day: '2026-10-17', stars: 3, accuracy: 91.5 },
+      daily: { day: '2026-10-17', tier: 3, stars: 3, accuracy: 91.5 },
       dailyBest: 94,
       notes: { settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G', 'Eb'], mixKeys: true }, weak: { 'treble:38': 3, 'bass:21': 1 } },
       scales: { settings: { ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys: ['D', 'Bb'], types: ['major', 'harmonic'] }, stars: { 'D-major': 3, 'E-harmonic': 1 } },
@@ -87,6 +87,15 @@ describe('prefs and progress storage', () => {
     expect(loadProgress().learnRead).toEqual(['8.1', '9.1', '10.1', '10.2', '10.3', '10.4']);
   });
 
+  it('keeps the daily\'s tier when it is a unit number, and reads a record without one (older saves)', () => {
+    const daily = (tier: unknown): unknown => {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify({ daily: { day: '2026-10-17', tier, stars: 2, accuracy: 80 } }));
+      return loadProgress().daily;
+    };
+    expect(daily(2)).toEqual({ day: '2026-10-17', tier: 2, stars: 2, accuracy: 80 });
+    for (const bad of [undefined, 0, -1, 2.5, '2', null]) expect(daily(bad), String(bad)).toEqual({ day: '2026-10-17', stars: 2, accuracy: 80 });
+  });
+
   it('reads an all-perfect 4 saved before the diamond as the diamond', () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ lessons: { '1.1': { stars: 4, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 } } }));
     expect(loadProgress().lessons).toEqual({ '1.1': { stars: 5, bestAccuracy: 100 }, '1.2': { stars: 4, bestAccuracy: 97 } });
@@ -105,6 +114,7 @@ describe('prefs and progress storage', () => {
     const lang = vi.spyOn(navigator, 'language', 'get');
     lang.mockReturnValue('fr-FR');
     expect(loadPrefs().noteNames).toBe('solfege');
+    localStorage.clear();
     lang.mockReturnValue('en-GB');
     expect(loadPrefs().noteNames).toBe('letters');
     localStorage.setItem(PREFS_KEY, JSON.stringify({ ...DEFAULT_PREFS, noteNames: 'letters' }));
@@ -114,6 +124,25 @@ describe('prefs and progress storage', () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: 'dark' }));
     lang.mockReturnValue('en-US');
     expect(loadPrefs().noteNames).toBe('solfege');
+    lang.mockRestore();
+  });
+
+  it('a player with progress but no saved prefs is not new: do re mi, as they had it', () => {
+    // Prefs are saved only when one changes: a player who only played Read notes from Home has progress and no prefs.
+    const lang = vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-US');
+    saveProgress({ ...defaultProgress(), xp: 40, notes: { settings: null, weak: { 'treble:38': 2 } } });
+    expect(loadPrefs().noteNames).toBe('solfege');
+    // Nothing saved at all: a new player gets the device's usual names.
+    localStorage.clear();
+    expect(loadPrefs().noteNames).toBe('letters');
+    lang.mockRestore();
+  });
+
+  it('saves a new player\'s note names at once, so they stay once there is progress', () => {
+    const lang = vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-US');
+    expect(loadPrefs().noteNames).toBe('letters');
+    saveProgress({ ...defaultProgress(), xp: 40 });
+    expect(loadPrefs().noteNames).toBe('letters');
     lang.mockRestore();
   });
 
@@ -190,7 +219,16 @@ describe('prefs and progress storage', () => {
   it('keeps known intro ids only', () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ seenIntros: ['note:half', 'note:half', 'x', 3, 'ties'], holdEarly: 'yes' }));
     expect(loadPrefs().seenIntros).toEqual(['note:half', 'ties']);
-    expect(loadPrefs().holdEarly).toBe(false);
+    expect(loadPrefs().holdEarly).toBeNull();
+  });
+
+  it('reads the setup hold switch saved as on (true, before it kept the Input it replaced) as replacing tap & hold', () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ holdMode: 'hold', holdEarly: true }));
+    expect(loadPrefs().holdEarly).toBe('hold');
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ holdMode: 'hold', holdEarly: false }));
+    expect(loadPrefs().holdEarly).toBeNull();
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ holdMode: 'hold', holdEarly: 'tap' }));
+    expect(loadPrefs().holdEarly).toBe('tap');
   });
 
   it('prefs saved before seenIntros count the symbols of the lessons played as shown', () => {

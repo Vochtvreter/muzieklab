@@ -101,9 +101,14 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    1. *How to play*, when it is due (above).
    2. The **intro sheet**, when a lesson brings a symbol the player has not been shown yet. `game/intro.ts` works out
       what each lesson brings that no earlier lesson used (1.2 the half note, 2.2 the quarter rest, 3.1 three-four,
-      4.1 the eighth, 6.1 the tie, 7.1 the dot …); lesson 1.1 brings nothing, because How to play covers it. What was
-      shown is kept in `prefs.seenIntros`. The sheet has the eyebrow *New in this lesson* and the lesson title as its
-      heading. Each symbol gets a 72 px accent-soft tile with its glyph (Noto Music, as the Setup buttons draw it; a
+      4.1 the eighth, 6.1 the tie, 7.1 the dot …); lesson 1.1 brings nothing, because How to play covers it. Every
+      lesson run (Continue, the Path, *Next lesson*, *Next exercise*) has an exercise that shows all of what its lesson
+      brings: the start tries new seeds until the spelled exercise has each of them (`makeLessonRun` in `ui/store.tsx`,
+      `exerciseHas` in `game/intro.ts`; up to 200 seeds, because 3.4's whole rest is in only about 1 exercise in 22,
+      where most lessons need a few), and keeps the last one tried if none has. The sheet lists only what the
+      exercise shows, so it never names a symbol the staff does not have (nor saves it as shown). What was shown is
+      kept in `prefs.seenIntros`. The sheet has the eyebrow *New in this lesson* and the lesson title as its heading.
+      Each symbol gets a 72 px accent-soft tile with its glyph (Noto Music, as the Setup buttons draw it; a
       time signature as two stacked digits in the display face), its name and one fact (*Half note · 2 beats*,
       *Quarter rest · 1 beat of silence*, *Three-four · 3 beats in a bar*, *Tie · adds the second note's length*,
       *Dot · adds half the note's length*, *Triplet · 3 in the time of 2*), and *Learn more →* to its Learn section
@@ -111,7 +116,8 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
       triplets). Under them is an action row: an outline *Listen*, as wide as its label, that plays this exercise once
       with the beat (as Results' Listen does; it reads *Stop* while playing), and an accent *Start* that fills the
       rest. Start marks the symbols as shown and starts the count-in. **?** on the sheet opens How to play and leads
-      back to it. When How to play is due as well, it comes first and *Got it* brings the intro sheet.
+      back to it; when How to play was not due, its eyebrow names the run (*Lesson 3.1*) instead of *First time here*
+      (also from Ready). When How to play is due as well, it comes first and *Got it* brings the intro sheet.
    3. **Ready**, when no tap led here (a reload, Back / Forward into Play), or when the run is a lesson other than the
       last finished run's (Results → *Next lesson*, another lesson from the Path or Home), so the new rhythm can be
       read first. Retry and Next exercise of the same lesson, free practice, and the first run of a session count in
@@ -140,8 +146,10 @@ only, and the Learning Path switches holding on from unit 2 (lesson 2.1), where 
 the rest of the game follows the path, so the rules do not change when the player leaves it: free practice (Tap and
 Echo, and the Learn practice links) holds only once unit 2 is open (`practiceHold` in `ui/store.tsx`), and so does the
 daily challenge (§3.4). The setup's *Hold notes for their length* switch shows that state and can turn holding on
-earlier (`prefs.holdEarly`). Turning it off before unit 2 only takes that early choice back; after unit 2 it sets
-Input to tap only, as before. *Tap only* in Settings always wins. Echo's How to play has a tap-only step 2.
+earlier: it sets Input to *Tap & hold* and keeps the Input setting it replaced (`prefs.holdEarly`). Turning it off
+before unit 2 takes that early choice back and puts that Input setting back, so on and off again leaves *Tap only*
+as it was; after unit 2 it sets Input to tap only, as before. *Tap only* in Settings always wins. Echo's How to play
+has a tap-only step 2.
 
 ### 3.2 Rhythm Dictation — *listen & write*
 
@@ -184,8 +192,10 @@ engine as 3.1 and 3.2, so it's cheap to add.
 
 **Daily challenge at the player's level** (since 0.10.0; before, everyone got one of eight mid-path presets, so day
 one could bring eight bars of sixteenths). The daily is seeded by the date and the tier: the highest open rhythm unit
-(1–8, `reachedUnit` in `game/daily.ts`). Each preset carries the unit that teaches its hardest material and is picked
-only once that unit is open:
+(1–8, `reachedUnit` in `game/daily.ts`). The tier is fixed for the day when the daily is first played (kept in
+`progress.daily.tier`, `dailyTier`): a player who passes a unit later that day keeps that day's exercise, so Home's
+*Done today* and *Play again* and the result it records all belong to the exercise Play starts; the next day follows
+the new unit. Each preset carries the unit that teaches its hardest material and is picked only once that unit is open:
 
 | Unit | Adds |
 |---|---|
@@ -237,8 +247,10 @@ like the rhythm notation.
   **W E T Y U** = C♯ D♯ F♯ G♯ A♯.
 - **Do re mi or letters** on the name buttons is a saved preference, switched on the play screen. A new player gets
   do re mi when the device language is French, Italian, Spanish, Portuguese, Romanian or Dutch in Belgium (`nl-BE`),
-  and letters otherwise (since 0.10.0; before, do re mi for everyone). Players with saved preferences keep their
-  choice, and preferences saved before the choice existed keep do re mi.
+  and letters otherwise (since 0.10.0; before, do re mi for everyone). A new player is one with nothing saved at all,
+  no preferences and no progress; their names are saved at once. Players with saved preferences keep their choice.
+  Preferences saved before the choice existed keep do re mi, and so does a player with progress but no saved
+  preferences (they are saved only when one changes, so a player who only ever played Read notes from Home has none).
 - A **Hint** marks the note as assisted. Off a landmark it names the landmark first and then the way to the note, in
   two sentences, so the landmark's name does not read as the answer: *The top line is fa (F). This note is one step
   higher.* (nl *De bovenste lijn is fa (F). Deze noot ligt één stap hoger.*; since 0.10.0, before *One step above the
@@ -934,7 +946,8 @@ it drops the glyphs so the names fit on one line.
   level) sits beside the streak chip. It opens the **level sheet** (`LevelContent` in `ui/components/Reward.tsx`): the
   badge, *Level N · Rank*, the next rank (*Count at level 3*, or *The top rank*), the rank ladder, one XP bar with one
   label (*100 XP to level 2*) and Close. Escape also closes it, and focus returns to the chip. Desktop Home keeps its
-  level card, with one label under the bar (§9).
+  level card, with one label under the bar (§9); the sheet closes when the layout becomes desktop (a tablet turned to
+  landscape), so it does not open again by itself when it is turned back.
 - The **level-up sheet** after a result uses the same layout with the *Level up* eyebrow. Its line names the new rank
   (*New rank: up from Tick*), or else the next rank (*Count at level 3*), instead of *Up from level N*. Its bar fills
   the old level, then the new one, and only then shows its one label.

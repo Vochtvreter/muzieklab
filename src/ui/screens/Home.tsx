@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { exerciseView } from '../exerciseView';
-import { dailyChallenge, reachedUnit } from '../../game/daily';
+import { dailyChallenge, dailyTier } from '../../game/daily';
 import { ALL_LESSONS, lessonSettings, UNITS, type Unit } from '../../game/path';
 import { streak } from '../../game/storage';
 import { levelInfo, type LevelInfo } from '../../game/xp';
@@ -79,8 +79,9 @@ export function Home(): JSX.Element {
   // Nothing played on the path yet: the card starts the first lesson instead of continuing.
   const fresh = !!cont && !cont.done && !ALL_LESSONS.some((x) => state.progress.lessons[x.lesson.id]);
   const xp = levelInfo(state.progress.xp);
-  const reached = reachedUnit(state.progress);
-  const daily = useMemo(() => dailyChallenge(today, reached).settings, [today, reached]);
+  // Once played, today's daily keeps its tier, so Done today and Play again belong to the exercise Play starts.
+  const tier = dailyTier(state.progress, today);
+  const daily = useMemo(() => dailyChallenge(today, tier).settings, [today, tier]);
   const dailyDone = state.progress.daily?.day === today ? state.progress.daily : null;
 
   // The level details (phone, tablet): a sheet from the level chip; focus goes back to the chip when it closes.
@@ -99,6 +100,11 @@ export function Home(): JSX.Element {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [levelSheet]);
+  // Desktop has no sheet (its level card shows the details): an iPad turned to landscape closes it, so it does not pop
+  // up again on its own when turned back.
+  useEffect(() => {
+    if (bp === 'desktop') setLevelSheet(null);
+  }, [bp]);
 
   const dailyText = (
     <div className="daily-text">

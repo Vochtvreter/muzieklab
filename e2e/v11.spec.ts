@@ -76,6 +76,20 @@ test('a level-up is saved and shown on Home: the level chip opens its details', 
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
+test('the level sheet closes when a tablet turns to the desktop layout, and stays closed when it turns back', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.tablet);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Level 1' }).click();
+  await expect(page.getByRole('dialog', { name: 'Level 1 · Tick' })).toBeVisible();
+  // An iPad in landscape (1194 px) gets the desktop layout, whose level card needs no sheet.
+  await page.setViewportSize({ width: 1194, height: 834 });
+  await expect(page.getByRole('img', { name: 'XP bar: 0 of 100' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.setViewportSize(VIEWPORTS.tablet);
+  await expect(page.getByRole('button', { name: 'Level 1' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
 test('daily challenge on day one: short and tap only, under the lesson card', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');

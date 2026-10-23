@@ -197,6 +197,13 @@ test('Next lesson introduces what is new before the count-in, once; another less
   await expect(sheet.getByRole('button', { name: 'Stop' })).toHaveAttribute('aria-pressed', 'true');
   await sheet.getByRole('button', { name: 'Stop' }).click();
   await expect(sheet.getByRole('button', { name: 'Listen' })).toHaveAttribute('aria-pressed', 'false');
+  // ? opens How to play, which was not due: it names the lesson, not "First time here", and leads back.
+  await page.keyboard.press('?');
+  const howTo = page.getByRole('dialog', { name: 'How to play' });
+  await expect(howTo.getByText('Lesson 1.2', { exact: true })).toBeVisible();
+  await expect(howTo.getByText('First time here')).toHaveCount(0);
+  await howTo.getByRole('button', { name: 'Got it' }).click();
+  await expect(sheet.getByText('New in this lesson')).toBeVisible();
   await sheet.getByRole('button', { name: 'Start' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(countIn).toBeAttached({ timeout: 3000 });
@@ -246,6 +253,21 @@ test('free practice follows the path: tap only until unit 2, unless the setup tu
   await expect(hold).toHaveAttribute('aria-checked', 'true');
   await hold.click();
   await expect(hold).toHaveAttribute('aria-checked', 'false');
+});
+
+test('the setup hold switch turned on and off again before unit 2 leaves Settings → Input on Tap only', async ({ page }) => {
+  await seed(page, { prefs: { holdMode: 'tap' } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  const hold = page.getByRole('switch', { name: /^Hold notes for their length/ });
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'true');
+  await hold.click();
+  await expect(hold).toHaveAttribute('aria-checked', 'false');
+  // In the same document: a reload would seed Tap only again.
+  await page.evaluate(() => (location.hash = '#/settings'));
+  await expect(page.getByRole('group', { name: 'Rhythm input' }).getByRole('button', { name: 'Tap only' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('free practice holds by default once unit 2 is open', async ({ page }) => {

@@ -1,7 +1,7 @@
 /**
  * Daily challenge (DESIGN.md §3.4): one exercise per day that follows the player's place on the rhythm path. The date
  * and the highest open unit (the tier) pick a preset, then a tempo and a bar count, then the seed, so everyone at the
- * same unit on the same date gets the same exercise.
+ * same unit on the same date gets the same exercise. Once played, the tier stays for the rest of that day (dailyTier).
  */
 import { Rng } from '../core/rng';
 import { DEFAULT_SETTINGS } from '../core/defaults';
@@ -57,6 +57,15 @@ export function reachedUnit(progress: Progress): number {
   let reached = 1;
   for (const u of RHYTHM_TRACK.units) if (u.lessons.length && lessonOpen(progress, RHYTHM_TRACK, u.lessons[0].id)) reached = u.id;
   return reached;
+}
+
+/**
+ * The tier of `day`'s challenge: the one it was first played at that day (progress.daily), so passing a unit later that
+ * day does not swap it for another exercise; else the highest open unit.
+ */
+export function dailyTier(progress: Progress, day: string): number {
+  const d = progress.daily;
+  return d && d.day === day && d.tier ? d.tier : reachedUnit(progress);
 }
 
 /**

@@ -34,6 +34,9 @@ import {
   type Settings,
   type Tap,
 } from '../core/api';
+import { Rng } from '../core/rng';
+import { dailyTier } from '../game/daily';
+import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, isUnlocked, lessonSettings, recordLessonResult } from '../game/path';
 import { progressKey } from '../game/track';
@@ -299,7 +302,13 @@ export function reducer(state: AppState, action: Action): AppState {
         dailyBest = result.accuracy > progress.dailyBest;
         progress = {
           ...progress,
-          daily: { day, stars: prev && prev.stars > result.stars ? prev.stars : result.stars, accuracy: Math.max(prev?.accuracy ?? 0, result.accuracy) },
+          // The tier is fixed by the day's first play (dailyTier): the one this run was started at.
+          daily: {
+            day,
+            tier: dailyTier(progress, day),
+            stars: prev && prev.stars > result.stars ? prev.stars : result.stars,
+            accuracy: Math.max(prev?.accuracy ?? 0, result.accuracy),
+          },
           dailyBest: Math.max(progress.dailyBest, result.accuracy),
         };
       }
@@ -402,7 +411,7 @@ const FIRST_HOLD_LESSON = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson
  */
 export function practiceHold(prefs: Prefs, progress: Progress): boolean {
   if (prefs.holdMode !== 'hold') return false;
-  return prefs.holdEarly || isUnlocked(progress, FIRST_HOLD_LESSON);
+  return prefs.holdEarly !== null || isUnlocked(progress, FIRST_HOLD_LESSON);
 }
 
 /** Free-practice settings for a run: `settings` with the practice hold. Every start outside the path uses this. */
@@ -411,12 +420,14 @@ export function practiceSettings(state: Pick<AppState, 'prefs' | 'progress'>, se
 }
 
 /**
- * The setup's hold switch. On holds from now on, also before the path teaches it. Off before that only takes the
- * early choice back, so the lessons of unit 2 on still hold; after it, it sets the Input pref to tap only.
+ * The setup's hold switch. On holds from now on, also before the path teaches it, and remembers the Input pref it
+ * replaced. Off before that takes the early choice back and puts that Input pref back (on and off again leaves Tap only
+ * as it was), so the lessons of unit 2 on hold as before; after it, it sets the Input pref to tap only.
  */
-export function practiceHoldPatch(state: Pick<AppState, 'progress'>, on: boolean): Partial<Prefs> {
-  if (on) return { holdMode: 'hold', holdEarly: true };
-  return isUnlocked(state.progress, FIRST_HOLD_LESSON) ? { holdMode: 'tap', holdEarly: false } : { holdEarly: false };
+export function practiceHoldPatch(state: Pick<AppState, 'prefs' | 'progress'>, on: boolean): Partial<Prefs> {
+  if (on) return { holdMode: 'hold', holdEarly: state.prefs.holdMode };
+  if (isUnlocked(state.progress, FIRST_HOLD_LESSON)) return { holdMode: 'tap', holdEarly: null };
+  return { holdMode: state.prefs.holdEarly ?? state.prefs.holdMode, holdEarly: null };
 }
 
 /** Settings for a run: a lesson's, with its hold, or the free-practice setup with the practice hold. */
@@ -433,6 +444,24 @@ export function makeRun(settings: Settings, seed: number, lessonId: string | nul
     console.error('generateExercise failed', e);
     return null;
   }
+}
+
+/**
+ * Seeds a lesson start tries for an exercise with everything the lesson introduces. Most lessons find one in the first
+ * few tries; 3.4's whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
+ */
+const INTRO_TRIES = 200;
+
+/**
+ * A lesson run whose exercise shows every symbol the lesson introduces (game/intro.ts), so the intro sheet never names
+ * one the staff does not have: from `seed`, other seeds are tried until the exercise has them all (else the last one).
+ */
+export function makeLessonRun(settings: Settings, seed: number, lessonId: string): Run | null {
+  const ids = lessonIntros(lessonId).map(introId);
+  const seeds = new Rng(seed);
+  let run = makeRun(settings, seed, lessonId);
+  for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(settings, seeds.int(0x7fffffff), lessonId);
+  return run;
 }
 
 function initialState(): AppState {
