@@ -3073,7 +3073,30 @@ button.lesson-stars:hover {
   min-height: 54px;
   text-decoration: none;
   color: var(--ink);
-  border-radius: 20px 20px 0 0;
+}
+/*
+ * Rows take the card's corners wherever they sit (first, middle, last or only), so the focus ring follows the card.
+ * Row buttons, switch rows and the confirm's row button are in account.css.
+ */
+.set-card > .row-link,
+.set-card > .row-btn,
+.set-card > .toggle-row,
+.set-card > .confirm-row > .row-btn {
+  border-radius: 0;
+}
+.set-card > .row-link:first-child,
+.set-card > .row-btn:first-child,
+.set-card > .toggle-row:first-child,
+.set-card > .confirm-row:first-child > .row-btn {
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+.set-card > .row-link:last-child,
+.set-card > .row-btn:last-child,
+.set-card > .toggle-row:last-child,
+.set-card > .confirm-row:last-child > .row-btn {
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
 }
 .row-link:hover {
   color: var(--ink);

@@ -1,6 +1,6 @@
 /**
- * Settings: language, sound, timing (calibrate, leniency), playing (input), display (theme, beat counter), about
- * (what's new, version, offline, reset).
+ * Settings: account (when the API answers, or an account is cached), language, sound, timing (calibrate, leniency),
+ * playing (input), display (theme, beat counter), about (what's new, privacy, version, offline, reset).
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Leniency } from '../../core/api';
@@ -11,11 +11,13 @@ import { AppShell } from '../components/AppShell';
 import { AnalogMetronome, BeatRow } from '../components/Bits';
 import { Segmented, SwitchTrack } from '../components/Controls';
 import { Icon } from '../components/Icon';
+import { RowLink, Section } from '../components/Rows';
 import { useBreakpoint, useDocTitle, useReducedMotion } from '../hooks';
 import { RELEASES } from '../lib/changelog';
 import { signedMs } from '../lib/format';
 import { Link } from '../router';
 import { useStore } from '../store';
+import { AccountSection } from './account/AccountSection';
 import pkg from '../../../package.json';
 
 type VolKey = keyof Prefs['volumes'];
@@ -50,6 +52,8 @@ export function SettingsScreen(): JSX.Element {
           <h1 className="page-title">{t('settings.title')}</h1>
         </div>
         <div className="settings-body">
+          <AccountSection />
+
           <Section id="language" title={t('settings.language')}>
             <LanguageRow onChange={(code) => set({ language: code })} />
           </Section>
@@ -124,6 +128,7 @@ export function SettingsScreen(): JSX.Element {
               </span>
               <Icon name="chevron" size={20} className="row-chevron" />
             </Link>
+            <RowLink to="/privacy" title={t('settings.privacy')} sub={t('settings.privacySub')} />
             <div className="about-row">
               <span className="about-version">
                 <b>{t('settings.version')}</b>
@@ -173,17 +178,6 @@ export function SettingsScreen(): JSX.Element {
         </div>
       </div>
     </AppShell>
-  );
-}
-
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }): JSX.Element {
-  return (
-    <section aria-labelledby={'h-' + id} className="set-section">
-      <h2 id={'h-' + id} className="label">
-        {title}
-      </h2>
-      <div className="set-card">{children}</div>
-    </section>
   );
 }
 

@@ -47,12 +47,42 @@ describe('errors', () => {
     expect(res.json()).toMatchObject({ error: 'not_found' });
     await app.close();
   });
+
+  it('answers a failure inside a route with 500 internal, and no details', async () => {
+    // Port 9 again: every query fails, so signing in throws from deep inside the driver.
+    const down = new MongoClient('mongodb://127.0.0.1:9/x', { serverSelectionTimeoutMS: 200 });
+    const app = buildApp({ db: down.db(), commit: 'dev' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/sign-in',
+      headers: { host: 'localhost', origin: 'http://localhost' },
+      payload: { email: 'ann@example.com', password: 'whatever it is' },
+    });
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: 'internal', message: 'Something went wrong' });
+    await app.close();
+    await down.close();
+  });
 });
 
 describe('loadConfig', () => {
-  it('needs MONGODB_URI, and listens on 127.0.0.1:3000 by default', () => {
+  it('needs MONGODB_URI, and listens on 127.0.0.1:3000 with secure cookies by default', () => {
     expect(() => loadConfig({})).toThrow('MONGODB_URI');
-    expect(loadConfig({ MONGODB_URI: 'mongodb://x' })).toEqual({ host: '127.0.0.1', port: 3000, mongoUri: 'mongodb://x' });
+    expect(loadConfig({ MONGODB_URI: 'mongodb://x' })).toEqual({
+      host: '127.0.0.1',
+      port: 3000,
+      mongoUri: 'mongodb://x',
+      cookieSecure: true,
+    });
     expect(() => loadConfig({ MONGODB_URI: 'mongodb://x', PORT: 'abc' })).toThrow('PORT');
+  });
+
+  it('turns secure cookies off only for COOKIE_SECURE=false', () => {
+    const secure = (value: string) => loadConfig({ MONGODB_URI: 'mongodb://x', COOKIE_SECURE: value }).cookieSecure;
+    expect(secure('false')).toBe(false);
+    expect(secure(' FALSE ')).toBe(false);
+    expect(secure('true')).toBe(true);
+    expect(secure('0')).toBe(true);
+    expect(secure('')).toBe(true);
   });
 });

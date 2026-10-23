@@ -127,6 +127,13 @@ export function formatLongDate(iso: string): string {
   return new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', year: 'numeric' }).format(d);
 }
 
+/** Locale-aware day and time of an ISO date-time, e.g. "October 30, 2026 at 10:00 AM" (when a link stops working). */
+export function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(d);
+}
+
 /** Params whose values are message keys (e.g. an engine's `value: 'value.dottedQuarter'`) translated to text. */
 export function translateParams(params: Record<string, string | number>): MessageParams {
   const out: MessageParams = {};

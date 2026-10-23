@@ -1,0 +1,688 @@
+/*
+ * Accounts (BACKEND-PLAN.md §10.1): the form controls (ui/components/Form.tsx) and the account screens. No board
+ * draws them yet; they reuse Settings' design language (paper cards with hairlines, the uppercase section label,
+ * 54 px rows) and the foundations' field vocabulary. Tokens only, so light and dark both work.
+ */
+
+/* ---------- Pages ---------- */
+/* A Settings sub-page (SubPage): the back arrow and title, then sections 12 px apart as on Settings, scrolling as one page. */
+.acct {
+  gap: 12px;
+}
+.acct > * {
+  flex-shrink: 0;
+}
+@media (min-width: 700px) {
+  .acct {
+    --pt: 40px;
+    --pb: 40px;
+  }
+}
+/* A form on its own (FocusedPage): no tab bar or header, like Calibrate; a narrower column from 700 px up. */
+.acct--focus {
+  --pt: 52px;
+  --pb: 30px;
+  gap: 16px;
+}
+@media (min-width: 700px) {
+  .frame--form .frame-column {
+    max-width: 480px;
+  }
+  .acct--focus {
+    --pt: 64px;
+  }
+}
+/* A phone in landscape: little height, so the form starts near the top. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .acct {
+    --pt: 20px;
+  }
+  .acct--focus {
+    --pt: 16px;
+  }
+}
+.acct-head {
+  align-items: flex-start;
+}
+.acct-head .screen-title {
+  padding-top: 9px;
+  overflow-wrap: anywhere;
+}
+.acct-head .screen-head-text .screen-title {
+  padding-top: 9px;
+}
+.acct-sub {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+/* A paper card holding a form (Sign in, Accept invite, New password). */
+.acct-form {
+  background: var(--paper);
+  border-radius: 20px;
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* A form or text inside a Settings card (Account's sections). */
+.card-pad {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+/* Muted lines under a focused form (Forgot your password?…). */
+.acct-foot {
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.acct-foot p {
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.acct-foot .text-btn {
+  padding: 10px 0;
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.acct-wait {
+  font-size: 14px;
+  color: var(--muted);
+  padding: 4px 2px;
+}
+/* A bad or unreachable link: what happened, and the way on. */
+.acct-message {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.acct-lead {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ---------- Rows inside Settings cards (their corners: app.css, after .row-link) ---------- */
+.row-btn {
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.row-btn:active:not(:disabled),
+.toggle-row:active:not(:disabled) {
+  transform: none;
+}
+.row-btn > svg {
+  flex: none;
+  color: var(--muted);
+}
+.row-btn.is-danger,
+.row-btn.is-danger > svg {
+  color: var(--miss);
+}
+.row-btn:disabled {
+  opacity: 0.6;
+}
+.row-btn-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.row-btn-text b {
+  font-size: 15px;
+}
+.toggle-row {
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.toggle-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toggle-row-text b {
+  font-size: 15px;
+}
+.toggle-row:disabled .toggle-row-text {
+  opacity: 0.7;
+}
+.toggle-row:disabled .switch {
+  opacity: 0.45;
+}
+/* Row buttons and switch rows reset the button border, which would hide the card's hairline between rows. */
+.set-card > * + .row-btn,
+.set-card > * + .toggle-row {
+  border-top: 1px solid var(--divider);
+}
+/* A label and a value (Account → Email), with an optional button on the right. */
+.info-row {
+  padding: 10px 16px;
+  min-height: 54px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+}
+.info-row-text {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.info-row-text b {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+/* The button's padding hangs into the row's gutters, so its words line up with the text when it wraps under it. */
+.info-row .ghost-btn {
+  margin: 0 -10px 0 -14px;
+}
+/* A muted note or a done message as a card row (Settings → Account). */
+.row-note {
+  padding: 10px 16px 12px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.row-status {
+  padding: 10px 16px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.row-status svg {
+  flex: none;
+}
+.row-pad {
+  padding: 10px 16px 12px;
+}
+
+/* ---------- Destructive confirm (ConfirmAction): Settings' reset pattern, as a form ---------- */
+.confirm-row {
+  display: flex;
+  flex-direction: column;
+}
+.confirm {
+  padding: 12px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* On a phone the two buttons share the row (as the App design canvas draws Reset), and each takes the whole row when
+   their words need it (Uitnodiging houden · Uitnodiging intrekken), instead of a ragged stack. */
+@media (max-width: 699.98px) {
+  .confirm-actions .small-btn {
+    flex: 1 1 auto;
+  }
+}
+.small-btn:disabled {
+  opacity: 0.6;
+}
+/* A card's own small form: a soft accent button, so the screen's one filled button stays the main action. */
+.small-btn--tonal {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  padding: 0 16px;
+}
+
+/* ---------- Text fields ---------- */
+.tfield {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tfield-label {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.tfield-box {
+  position: relative;
+  display: flex;
+}
+.tfield-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 11px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  /* 16 px: iOS zooms into a field with smaller text when it gets focus. */
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  transition:
+    border-color 0.18s ease-out,
+    background-color 0.18s ease-out;
+}
+.tfield-input:focus {
+  border-color: var(--accent);
+}
+/* base.css covers input; the copy field's text area needs the same gold ring. */
+.tfield-input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.tfield-input[aria-invalid='true'] {
+  border-color: var(--miss);
+}
+.tfield-input[readonly] {
+  background: var(--ground);
+}
+.tfield-input:disabled {
+  background: var(--track);
+  color: var(--disabled);
+}
+.tfield-input::placeholder {
+  color: var(--muted);
+}
+/* Autofill keeps the field's own colours (its light blue is unreadable in dark). */
+.tfield-input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 40px var(--paper) inset;
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
+}
+.tfield-input--password {
+  padding-right: 84px;
+}
+.tfield-toggle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  min-width: 64px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 14px;
+}
+.tfield-toggle:active:not(:disabled) {
+  transform: none;
+}
+.tfield-hint {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.tfield-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--miss-ink);
+}
+.tfield-error svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* ---------- Form messages ---------- */
+.form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--miss-soft);
+  color: var(--miss-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.form-error svg {
+  flex: none;
+  margin-top: 1px;
+}
+.form-done {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.form-done svg {
+  flex: none;
+}
+.btn[aria-busy='true'] {
+  opacity: 0.75;
+}
+
+/* ---------- Copy field ---------- */
+/* The value and its Copy button side by side; on a very narrow card the button goes under the value. */
+.copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 8px;
+}
+.copy-value {
+  flex: 1 1 160px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+.copy-value--text {
+  font-family: var(--font-ui);
+  line-height: 1.45;
+  resize: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* CopyField sizes it to its text. */
+  overflow: hidden;
+}
+.copy-field--text .copy-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+.copy-field--text .copy-btn {
+  align-self: flex-end;
+}
+/* In the column, the one-line value's flex basis would set the text area's height: its own height (fitted) counts. */
+.copy-field--text .copy-value {
+  flex: none;
+}
+.copy-btn {
+  flex: none;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- Status pill (invited / active / blocked) ---------- */
+.status-pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.status-pill.is-invited {
+  background: var(--reward-soft);
+  color: var(--reward-ink);
+}
+.status-pill.is-active {
+  background: var(--good-soft);
+  color: var(--good-ink);
+}
+.status-pill.is-blocked {
+  background: var(--miss-soft);
+  color: var(--miss-ink);
+}
+
+/* ---------- Privacy ---------- */
+.prose {
+  padding: 12px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.prose ul {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.privacy-updated {
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- Admin screens ---------- */
+/* A button at the end of the title row (Invite someone, from 700 px up). */
+.acct-head-action {
+  flex: none;
+  align-self: center;
+}
+.acct-head-action .btn {
+  min-height: 44px;
+  padding: 10px 16px 10px 14px;
+  font-size: 15px;
+}
+.admin-invite svg {
+  flex: none;
+}
+/* A paper card that is not a form (the invite's result, a message for the list). */
+.acct-card {
+  background: var(--paper);
+  border-radius: 20px;
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.acct-card--status {
+  padding: 12px 16px;
+}
+/* A form that holds several cards (Invite someone). */
+.acct-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* Search and the status filter above the list. */
+.admin-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* The search field has its own label above it; the input inherits the field look. */
+.admin-search .tfield-input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+/* Pick one status: chips that wrap, so long words (Uitgenodigd, Geblokkeerd) never get cut. */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.filter-chips .chip {
+  font-weight: 700;
+  font-size: 14px;
+}
+/* On a phone the chips fill the row under the search field, all four on one line in English down to 320 px. */
+@media (max-width: 699.98px) {
+  .filter-chips {
+    gap: 6px;
+  }
+  .filter-chips .chip {
+    flex: 1 1 auto;
+    padding: 0 10px;
+  }
+}
+.set-section.is-busy .set-card {
+  opacity: 0.6;
+  transition: opacity 0.18s ease-out;
+}
+/* An account in the list: name, email, then the status pill and roles. */
+.acct-row .row-link-text {
+  gap: 2px;
+}
+.acct-row .row-sub {
+  overflow-wrap: anywhere;
+}
+.acct-row {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.row-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.acct-empty {
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: var(--paper);
+  font-size: 15px;
+  color: var(--muted);
+}
+/* No access: a lock, what is wrong, and what to do. */
+.acct-note {
+  background: var(--paper);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.acct-note > svg {
+  flex: none;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.acct-note p {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.acct-note span {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+/* The invite's result: what is ready, then the link and the message. */
+.invite-ready-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.invite-ready-head svg {
+  flex: none;
+  margin-top: 1px;
+}
+.invite-ready-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.invite-ready-title:focus {
+  outline: none;
+}
+.invite-ready .acct-sub {
+  margin-top: -6px;
+}
+.link-result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.link-result .tfield-hint b {
+  font-weight: 600;
+  color: var(--ink);
+}
+/* Two buttons side by side that stack when their words need the room. */
+.btn-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.btn-pair .btn {
+  flex: 1 1 180px;
+}
+/* One account: the status pill and the email under the name. */
+.acct-sub-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.acct-sub-row > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Facts (Details): the label on the left, the value on the right; the value goes under it when it needs the room. */
+.facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.facts > * + * {
+  border-top: 1px solid var(--divider);
+}
+.fact-row {
+  min-height: 48px;
+  padding: 10px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 12px;
+}
+.fact-row dt {
+  font-size: 15px;
+  font-weight: 700;
+}
+.fact-row dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: right;
+}
