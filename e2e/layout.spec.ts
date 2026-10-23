@@ -19,6 +19,8 @@ const known = (vp: string, screen: string): void => {
 
 /** Tablet and desktop: a wide screen's side panel (summary and main button) is beside its main column, not under it. */
 async function expectBeside(main: Locator, side: Locator): Promise<void> {
+  // From the top: further down the side panel stays in view while the main column scrolls on.
+  await main.evaluate((el) => el.closest('.page')?.scrollTo(0, 0));
   const [m, s] = [(await main.boundingBox())!, (await side.boundingBox())!];
   expect(s.x, 'the side panel is right of the main column').toBeGreaterThanOrEqual(m.x + m.width - 1);
   expect(Math.abs(s.y - m.y), 'the side panel starts level with the main column').toBeLessThan(40);

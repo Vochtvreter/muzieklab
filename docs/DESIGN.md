@@ -1126,7 +1126,7 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 | Results with Listen, Settings and the exercise code (copy) | A full achievements list and personal-best history |
 | Level-up / achievement / personal-best moment after a result | Onboarding and day-one empty states |
 | Round summaries for Read notes, Scales and Flash cards | Entering an exercise code to play a shared exercise |
-| Working dictation (Listen & write) with check and feedback | Tablet and desktop versions of the remaining screens (path, setups, results, listen, scale exercises, flip cards) |
+| Working dictation (Listen & write) with check and feedback | Tablet and desktop versions of the screens still to build (listen, flip cards); the built ones have theirs since 0.12.0 |
 | Setup validation (unplayable time signatures, disabled Start) and the first-time How to play | |
 | The unit boss on the Learning Path | |
 
@@ -1169,6 +1169,22 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   releases. On desktop the releases are a list on the left and the chosen one is a card on the right, with Newer and
   Older under it; the list scrolls on its own on a short screen. The desktop boards have no All · New · Fixes filter
   (MVP canvas, Settings page; App design canvas, ChangelogTablet and ChangelogDesktop).
+- Settings on tablet and desktop (since 0.12.0; App design canvas, SettingsTablet and SettingsDesktop): the title and
+  a list of the sections (Language, Sound, Timing, Playing, Display, About) on the left, and the cards in two columns
+  (Language, Sound, Timing; Playing, Display, About), each with its title inside the card. A section picked in the list
+  comes into view and gets the focus; the highlight slides like any pick-one group. On tablet the columns are narrow, so
+  a row's control goes under its label and a volume's slider under its name. The MVP canvas's Settings boards still
+  show the phone column on tablet and desktop.
+- Every screen has a tablet and a desktop layout (since 0.12.0); before, the setups, Key, Results, the round summaries,
+  Calibration and the play screens on tablet were the phone layout in a 640 px column. The setups (Rhythm, Read notes,
+  Scales), Key, Results and the round summaries use the **wide exercise layout** from 700 px: the screen head across
+  the top, the main content on the left, and a side panel on the right (300 px on tablet, 360 px on desktop, up to
+  1160 px in all) that holds the summary and the screen's main button and stays in view while the main content
+  scrolls. Setups: the options on the left; the preview (Rhythm) or the summary, and Start, on the right. Key: the keys
+  on the left; the one key's signature drawn large, what it means, and Use on the right. A phone keeps the one column,
+  in the same order. Calibration on tablet uses the whole width with the pad filling the height under the plot (as Play
+  on the App design canvas's PlayTablet); on desktop the intro and the plot are on the left and the pad or the result
+  on the right, as on a phone in landscape.
 - Exercise screens swap that header for the exercise header: title, progress, and
   Pause / Quit. It has its own spacing (20 px × 40 px) and is not the tab header.
 - Large screens show the same content and data as mobile, laid out side by side. They add no

@@ -2136,6 +2136,13 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_12_0": {
+      "title": "Gemaakt voor tablets en computers",
+      "try": "Open Instellingen",
+      "settings": "Op een tablet of computer staan de onderdelen van Instellingen links, en de kaarten in twee kolommen.",
+      "setups": "De oefeninstellingen en het scherm Toonsoort gebruiken de hele breedte: de keuzes links, het voorbeeld of de samenvatting en Start ernaast.",
+      "calibrate": "Kalibreren gebruikt het hele scherm: een groot tikpad onder de timing op een tablet, en ernaast op een computer."
+    },
     "v0_11_2": {
       "title": "De testsite noemt zijn branch",
       "branch": "De testsite laat de branch zien waaruit hij is gebouwd, bovenaan elk scherm en naast de versie in Instellingen → Over."
