@@ -1,7 +1,7 @@
 /** Starting an exercise from a user gesture: unlock audio, generate, store the run, go to Play. */
 import { useCallback } from 'react';
 import type { Settings } from '../../core/api';
-import { dailyChallenge, reachedUnit } from '../../game/daily';
+import { dailyChallenge, dailyTier } from '../../game/daily';
 import { unlockAudio } from '../audio';
 import { newSeed } from '../lib/format';
 import { navigate } from '../router';
@@ -41,15 +41,16 @@ export function useStartPractice(): (settings: Settings, opts?: { query?: string
 }
 
 /**
- * Today's daily challenge (the same exercise for everyone at this point of the path on this date). Tap only until the
- * path has taught holding (unit 2); from there hold comes from the Input pref.
+ * Today's daily challenge (the same exercise for everyone at this point of the path on this date; once played, the
+ * same one all day: dailyTier). Tap only until the path has taught holding (unit 2); from there hold comes from the
+ * Input pref.
  */
 export function useStartDaily(): () => void {
   const { state, dispatch } = useStore();
   return useCallback(() => {
     unlockAudio();
     const day = todayIso();
-    const { settings, seed } = dailyChallenge(day, reachedUnit(state.progress));
+    const { settings, seed } = dailyChallenge(day, dailyTier(state.progress, day));
     const run = makeRun({ ...settings, hold: settings.hold && state.prefs.holdMode === 'hold' }, seed, null, day);
     if (!run) return;
     dispatch({ type: 'start', run });

@@ -184,8 +184,10 @@ engine as 3.1 and 3.2, so it's cheap to add.
 
 **Daily challenge at the player's level** (since 0.10.0; before, everyone got one of eight mid-path presets, so day
 one could bring eight bars of sixteenths). The daily is seeded by the date and the tier: the highest open rhythm unit
-(1–8, `reachedUnit` in `game/daily.ts`). Each preset carries the unit that teaches its hardest material and is picked
-only once that unit is open:
+(1–8, `reachedUnit` in `game/daily.ts`). The tier is fixed for the day when the daily is first played (kept in
+`progress.daily.tier`, `dailyTier`): a player who passes a unit later that day keeps that day's exercise, so Home's
+*Done today* and *Play again* and the result it records all belong to the exercise Play starts; the next day follows
+the new unit. Each preset carries the unit that teaches its hardest material and is picked only once that unit is open:
 
 | Unit | Adds |
 |---|---|

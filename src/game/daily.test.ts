@@ -1,6 +1,6 @@
 import { checkSettings } from '../core/feasibility';
 import { generateExercise } from '../core/generator';
-import { dailyChallenge, reachedUnit } from './daily';
+import { dailyChallenge, dailyTier, reachedUnit } from './daily';
 import { lessonSettings, UNITS } from './path';
 import { defaultProgress, type Progress } from './storage';
 
@@ -33,6 +33,28 @@ describe('reachedUnit', () => {
     expect(reachedUnit(passedUnits(1))).toBe(2);
     expect(reachedUnit(passedUnits(5))).toBe(6);
     expect(reachedUnit(passedUnits(8))).toBe(8);
+  });
+});
+
+describe('dailyTier', () => {
+  const played = (p: Progress, daily: Progress['daily']): Progress => ({ ...p, daily });
+
+  it('is the highest open unit until the day\'s daily is played', () => {
+    expect(dailyTier(defaultProgress(), '2026-10-22')).toBe(1);
+    expect(dailyTier(passedUnits(1), '2026-10-22')).toBe(2);
+    // Played on another day: today's daily follows the path again.
+    expect(dailyTier(played(passedUnits(1), { day: '2026-10-21', tier: 1, stars: 3, accuracy: 92 }), '2026-10-22')).toBe(2);
+  });
+
+  it('stays at the tier the daily was first played at that day, also after passing a unit', () => {
+    const morning = played(defaultProgress(), { day: '2026-10-22', tier: 1, stars: 3, accuracy: 92 });
+    expect(dailyTier(morning, '2026-10-22')).toBe(1);
+    const afternoon = { ...passedUnits(1), daily: morning.daily };
+    expect(reachedUnit(afternoon)).toBe(2);
+    expect(dailyTier(afternoon, '2026-10-22')).toBe(1);
+    expect(dailyChallenge('2026-10-22', dailyTier(afternoon, '2026-10-22'))).toEqual(dailyChallenge('2026-10-22', 1));
+    // A record saved without its tier (older saves): the highest open unit, as before.
+    expect(dailyTier(played(passedUnits(1), { day: '2026-10-22', stars: 3, accuracy: 92 }), '2026-10-22')).toBe(2);
   });
 });
 

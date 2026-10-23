@@ -34,6 +34,7 @@ import {
   type Settings,
   type Tap,
 } from '../core/api';
+import { dailyTier } from '../game/daily';
 import { noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, isUnlocked, lessonSettings, recordLessonResult } from '../game/path';
 import { progressKey } from '../game/track';
@@ -293,7 +294,13 @@ export function reducer(state: AppState, action: Action): AppState {
         dailyBest = result.accuracy > progress.dailyBest;
         progress = {
           ...progress,
-          daily: { day, stars: prev && prev.stars > result.stars ? prev.stars : result.stars, accuracy: Math.max(prev?.accuracy ?? 0, result.accuracy) },
+          // The tier is fixed by the day's first play (dailyTier): the one this run was started at.
+          daily: {
+            day,
+            tier: dailyTier(progress, day),
+            stars: prev && prev.stars > result.stars ? prev.stars : result.stars,
+            accuracy: Math.max(prev?.accuracy ?? 0, result.accuracy),
+          },
           dailyBest: Math.max(progress.dailyBest, result.accuracy),
         };
       }

@@ -58,7 +58,7 @@ describe('prefs and progress storage', () => {
       practiceDays: ['2026-10-16', '2026-10-17'],
       lastSettings: { ...DEFAULT_SETTINGS, meters: ['3/4', '4/4'], tempo: 88 },
       xp: 1445,
-      daily: { day: '2026-10-17', stars: 3, accuracy: 91.5 },
+      daily: { day: '2026-10-17', tier: 3, stars: 3, accuracy: 91.5 },
       dailyBest: 94,
       notes: { settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G', 'Eb'], mixKeys: true }, weak: { 'treble:38': 3, 'bass:21': 1 } },
       scales: { settings: { ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys: ['D', 'Bb'], types: ['major', 'harmonic'] }, stars: { 'D-major': 3, 'E-harmonic': 1 } },
@@ -85,6 +85,15 @@ describe('prefs and progress storage', () => {
   it('moves the old chapter 8 sections 8.6 and 8.7 to chapters 9 and 10', () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ learnRead: ['8.1', '8.6', '8.7', '9.1'] }));
     expect(loadProgress().learnRead).toEqual(['8.1', '9.1', '10.1', '10.2', '10.3', '10.4']);
+  });
+
+  it('keeps the daily\'s tier when it is a unit number, and reads a record without one (older saves)', () => {
+    const daily = (tier: unknown): unknown => {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify({ daily: { day: '2026-10-17', tier, stars: 2, accuracy: 80 } }));
+      return loadProgress().daily;
+    };
+    expect(daily(2)).toEqual({ day: '2026-10-17', tier: 2, stars: 2, accuracy: 80 });
+    for (const bad of [undefined, 0, -1, 2.5, '2', null]) expect(daily(bad), String(bad)).toEqual({ day: '2026-10-17', stars: 2, accuracy: 80 });
   });
 
   it('reads an all-perfect 4 saved before the diamond as the diamond', () => {

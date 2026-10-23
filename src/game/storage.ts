@@ -51,9 +51,11 @@ export interface LessonProgress {
   bestAccuracy: number;
 }
 
-/** The daily challenge most recently played: its date and the best result that day. */
+/** The daily challenge most recently played: its date, its tier and the best result that day. */
 export interface DailyProgress {
   day: string; // yyyy-mm-dd
+  /** The tier (game/daily.ts) it was first played at, which it keeps for the rest of the day; missing in older saves. */
+  tier?: number;
   stars: Stars;
   accuracy: number;
 }
@@ -239,7 +241,12 @@ export function sanitizeProgress(raw: unknown): Progress {
   const d = isObj(raw.daily) ? raw.daily : null;
   const daily: DailyProgress | null =
     d && typeof d.day === 'string' && ISO_DATE.test(d.day)
-      ? { day: d.day, stars: oneOf(d.stars, [0, 1, 2, 3, 4, DIAMOND] as const, 0), accuracy: num(d.accuracy, 0, 0, 100) }
+      ? {
+          day: d.day,
+          ...(typeof d.tier === 'number' && Number.isInteger(d.tier) && d.tier >= 1 ? { tier: d.tier } : {}),
+          stars: oneOf(d.stars, [0, 1, 2, 3, 4, DIAMOND] as const, 0),
+          accuracy: num(d.accuracy, 0, 0, 100),
+        }
       : null;
   return {
     lessons,

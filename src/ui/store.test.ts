@@ -64,14 +64,27 @@ describe('reducer: rewards', () => {
 
   it('records the daily challenge, its first-play bonus and a new personal best', () => {
     const first = reducer(daily(), { type: 'finish', result: result(['good'], 70, 1), taps: [], today: '2026-10-17' });
-    expect(first.progress.daily).toEqual({ day: '2026-10-17', stars: 1, accuracy: 70 });
+    expect(first.progress.daily).toEqual({ day: '2026-10-17', tier: 1, stars: 1, accuracy: 70 });
     expect(first.last?.reward.dailyBest).toBe(true);
     const again = reducer({ ...first, run: daily().run }, { type: 'finish', result: result(['good'], 60, 2), taps: [], today: '2026-10-17' });
-    expect(again.progress.daily).toEqual({ day: '2026-10-17', stars: 2, accuracy: 70 });
+    expect(again.progress.daily).toEqual({ day: '2026-10-17', tier: 1, stars: 2, accuracy: 70 });
     expect(again.last?.reward.dailyBest).toBe(false);
     // The bonus (20 XP) comes once a day.
     expect(first.last!.reward.xp - again.last!.reward.xp).toBeGreaterThanOrEqual(20);
     expect(again.progress.dailyBest).toBe(70);
+  });
+
+  it('keeps the tier the daily was first played at that day, also after passing a unit', () => {
+    const first = reducer(daily(), { type: 'finish', result: result(['good'], 92, 3), taps: [], today: '2026-10-17' });
+    expect(first.progress.daily?.tier).toBe(1);
+    // Unit 1 passed that afternoon: the daily played again is still the tier-1 one, and so is its record.
+    const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2 as const, bestAccuracy: 80 }]));
+    const later = { ...first, run: daily().run, progress: { ...first.progress, lessons } };
+    const again = reducer(later, { type: 'finish', result: result(['good'], 60, 1), taps: [], today: '2026-10-17' });
+    expect(again.progress.daily).toEqual({ day: '2026-10-17', tier: 1, stars: 3, accuracy: 92 });
+    // The next day's daily is played at the new tier.
+    const next = reducer({ ...later, run: { exercise, lessonId: null, daily: '2026-10-18' } }, { type: 'finish', result: result(['good'], 80, 2), taps: [], today: '2026-10-18' });
+    expect(next.progress.daily?.tier).toBe(2);
   });
 
   it('daily and lesson runs leave the free-practice settings alone', () => {
