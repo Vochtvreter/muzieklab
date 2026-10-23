@@ -38,6 +38,8 @@ from the Actions tab.
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
+- [Feedback loop](docs/FEEDBACK-LOOP.md): mark a spot in the app (`?feedback=on`) and send what should change as a
+  GitHub issue, and the plan for the agents that take it from there to a deployed change.
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,

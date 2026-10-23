@@ -2041,6 +2041,54 @@
       }
     }
   },
+  "feedback": {
+    "open": "Feedback",
+    "openLabel": "Feedback: mark a part of this screen",
+    "markHint": "Click the part you mean, or drag to draw a box around it. Esc cancels.",
+    "markHintTouch": "Tap the part you mean, or drag to draw a box around it.",
+    "cancel": "Cancel",
+    "title": "Feedback",
+    "marked": "Marked",
+    "markedArea": "Marked area",
+    "markAgain": "Mark again",
+    "kindGroup": "Kind of feedback",
+    "kind": {
+      "bug": "Bug",
+      "change": "Change",
+      "idea": "Idea"
+    },
+    "descLabel": "What should change?",
+    "descPlaceholder": "What is wrong here, and what you expect instead",
+    "titleLabel": "Title",
+    "titlePlaceholder": "A short summary (optional)",
+    "attached": "Sent with it: this screen, the marked spot, the screen size, the theme, the language and the settings. Not the progress.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "send": "Send",
+    "sending": "Sending…",
+    "openGithub": "Open on GitHub",
+    "sent": "Sent as issue #{number}",
+    "sentText": "It waits in triage. The analysis and the plan appear on the issue for your review.",
+    "view": "View the issue",
+    "linkOpened": "Finish on GitHub",
+    "linkText": "Check the issue in the new tab, add a screenshot if you like, and press Create.",
+    "another": "Mark another",
+    "close": "Close",
+    "connection": "Send straight from the app",
+    "tokenLabel": "GitHub token",
+    "tokenHint": "A fine-grained token with Issues: read and write on {repo} only. It stays on this device.",
+    "save": "Save",
+    "tokenSaved": "Reports go straight to GitHub with the saved token.",
+    "forget": "Forget token",
+    "turnOff": "Turn off feedback mode",
+    "error": {
+      "token": "GitHub did not accept the token. Save a new one, or open the issue on GitHub instead.",
+      "access": "The token cannot open issues on this repository. It needs Issues: read and write.",
+      "invalid": "GitHub turned the report down. Try a shorter title, or open it on GitHub instead.",
+      "network": "Could not reach GitHub. Check the connection and try again.",
+      "other": "Something went wrong on GitHub. Try again, or open the issue on GitHub instead."
+    }
+  },
   "changelog": {
     "title": "What's new",
     "back": "Back to settings",
@@ -2058,6 +2106,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_11_0": {
+      "title": "Feedback on the spot",
+      "feedback": "For the team: in feedback mode, mark any part of a screen and send what should change as a GitHub issue, with the screen, the spot and the device attached."
+    },
     "v0_10_0": {
       "title": "Hear the music, and a gentler start",
       "try": "Hear chapter 1",

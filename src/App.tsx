@@ -2,6 +2,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { resolveLocale, setLocale, t } from './i18n';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
+import { FeedbackTool } from './ui/feedback/FeedbackTool';
 import { useRoute } from './ui/router';
 import { Calibration } from './ui/screens/Calibration';
 import { Changelog } from './ui/screens/Changelog';
@@ -56,7 +57,13 @@ function Screens(): JSX.Element {
   // in state or memos is redone in the new language.
   const locale = resolveLocale(state.prefs.language);
   setLocale(locale);
-  return <Route key={locale} />;
+  // The feedback tool sits over every screen, in feedback mode only (docs/FEEDBACK-LOOP.md).
+  return (
+    <>
+      <Route key={locale} />
+      <FeedbackTool />
+    </>
+  );
 }
 
 function Route(): JSX.Element {

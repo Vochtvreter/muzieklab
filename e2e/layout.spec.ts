@@ -304,6 +304,62 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('feedback: off until switched on, then mark a spot or draw a box and open it as a GitHub issue', async ({ page }) => {
+      known(name, 'feedback');
+      const fab = page.getByRole('button', { name: 'Feedback: mark a part of this screen' });
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await expect(fab).toHaveCount(0);
+      // ?feedback=on turns it on for this device and leaves the address; it stays on after a reload.
+      await page.goto('./?feedback=on#/settings');
+      await expect(fab).toBeVisible();
+      await expect(page).not.toHaveURL(/feedback=/);
+      await page.reload();
+      await expectClickable(fab, { scroll: false });
+
+      const spot = page.getByText('Fair timing for most players.');
+      await spot.evaluate((n) => n.scrollIntoView({ block: 'center' }));
+      await fab.click();
+      await expect(page.getByRole('dialog', { name: /part you mean/ })).toBeVisible();
+      const r = (await spot.boundingBox())!;
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      await expect(form).toBeVisible();
+      await expect(form.locator('.fb-marked').first()).toContainText('Fair timing for most players.');
+      // Nothing to send until it says what should change.
+      await expect(form.getByRole('button', { name: 'Open on GitHub' })).toBeDisabled();
+      await form.getByLabel('What should change?').fill('Say what each leniency does in milliseconds too.');
+      const open = form.getByRole('link', { name: 'Open on GitHub' });
+      await expectClickable(open);
+      const url = new URL((await open.getAttribute('href'))!);
+      expect(url.origin + url.pathname).toBe('https://github.com/Vochtvreter/muzieklab/issues/new');
+      expect(url.searchParams.get('labels')).toBe('feedback,type:change,status:triage');
+      const body = url.searchParams.get('body')!;
+      expect(body).toContain('- **Screen:** `#/settings`');
+      expect(body).toContain(`in a ${VIEWPORTS[name].width} × ${VIEWPORTS[name].height} viewport`);
+      expect(body).toContain('Say what each leniency does in milliseconds too.');
+      expect(body).not.toContain('feedback=on');
+      await expectClickable(form.getByRole('button', { name: 'Copy' }));
+      await expectNoClippedLabels(page);
+
+      // Mark again, drawing a box this time.
+      await form.getByRole('button', { name: 'Mark again' }).click();
+      await expect(page.getByRole('dialog', { name: /part you mean/ })).toBeVisible();
+      const vp = VIEWPORTS[name];
+      await page.mouse.move(vp.width * 0.2, vp.height * 0.4);
+      await page.mouse.down();
+      await page.mouse.move(vp.width * 0.5, vp.height * 0.5, { steps: 4 });
+      await page.mouse.move(vp.width * 0.7, vp.height * 0.6, { steps: 4 });
+      await page.mouse.up();
+      await expect(form.locator('.fb-marked').first()).toContainText('Marked area');
+      await expect(form.getByLabel('What should change?')).toHaveValue('');
+      await form.getByRole('button', { name: 'Close' }).click();
+      await expect(form).toHaveCount(0);
+      await expect(fab).toBeVisible();
+      await expectNoSideScroll(page);
+    });
+
     test('calibration: pad and the timing plot without scrolling', async ({ page }) => {
       known(name, 'calibration');
       await page.goto('./#/calibrate');
@@ -1012,6 +1068,44 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     });
   });
 }
+
+test('feedback: with a saved token, Send opens the issue through the GitHub API', async ({ page }) => {
+  const sent: { title: string; body: string; labels: string[] }[] = [];
+  await page.route('https://api.github.com/repos/Vochtvreter/muzieklab/issues', async (route) => {
+    expect(route.request().headers().authorization).toBe('Bearer github_pat_test');
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ status: 201, json: { number: 42, html_url: 'https://github.com/Vochtvreter/muzieklab/issues/42' } });
+  });
+  await page.goto('./?feedback=on#/');
+  await page.getByRole('button', { name: 'Feedback: mark a part of this screen' }).click();
+  const target = (await page.getByRole('button', { name: 'Start lesson' }).boundingBox())!;
+  await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
+  const form = page.getByRole('dialog', { name: 'Feedback' });
+  await form.getByRole('button', { name: 'Bug' }).click();
+  // Keys typed in the form never reach the screen's own shortcuts (the pad and the pianos listen on the window).
+  await page.evaluate(() => {
+    (window as unknown as { keys: number }).keys = 0;
+    window.addEventListener('keydown', () => (window as unknown as { keys: number }).keys++);
+  });
+  await form.getByLabel('What should change?').pressSequentially('Start lesson does nothing on the first tap.');
+  expect(await page.evaluate(() => (window as unknown as { keys: number }).keys)).toBe(0);
+  await form.getByText('Send straight from the app').click();
+  await form.getByLabel('GitHub token').fill('github_pat_test');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await form.getByRole('button', { name: 'Send', exact: true }).click();
+  // The sheet now names the issue.
+  const done = page.getByRole('dialog', { name: 'Sent as issue #42' });
+  await expect(done).toBeVisible();
+  await expect(done.getByRole('link', { name: 'View the issue' })).toHaveAttribute('href', 'https://github.com/Vochtvreter/muzieklab/issues/42');
+  expect(sent).toHaveLength(1);
+  expect(sent[0].title).toBe('Bug: button “Start lesson” on /');
+  expect(sent[0].labels).toEqual(['feedback', 'type:bug', 'status:triage']);
+  expect(sent[0].body).toContain('<!-- muzieklab-feedback:v1 -->');
+  // The token stays on the device and is never part of a report.
+  expect(sent[0].body).not.toContain('github_pat_test');
+  await page.keyboard.press('Escape');
+  await expect(done).toHaveCount(0);
+});
 
 test('a touch screen at desktop width (tablet in landscape) gets the desktop layout without keyboard hints', async ({ browser }) => {
   for (const hasTouch of [true, false]) {

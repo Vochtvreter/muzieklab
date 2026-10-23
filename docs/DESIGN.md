@@ -1369,6 +1369,7 @@ src/
     learn/ chapters.ts  # the Learn chapters as data (docs/ADDING-CONTENT.md); Blocks.tsx draws them
     components/ ...
   i18n/ en.json nl.json # every user-facing string, one catalog per locale (found automatically)
+  feedback/             # admin feedback reports -> GitHub issues (docs/FEEDBACK-LOOP.md); ui/feedback/ draws the tool
 ```
 
 ### 10.3 Testing strategy
