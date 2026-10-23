@@ -87,7 +87,9 @@
     "notesTile": "Read notes",
     "notesTileSub": "Treble and bass",
     "scalesTile": "Scales",
-    "scalesTileSub": "All the keys"
+    "scalesTileSub": "All the keys",
+    "notesPreview": "The notes so far: {names}",
+    "notesPreviewRound": "A few notes from the lesson"
   },
   "tile": {
     "next": "next lesson, no stars yet",
@@ -169,32 +171,76 @@
       "l4": "Sixteenth combinations",
       "l5": "Unit review"
     },
-    "allTotalsLabel": "{stars} of {total} stars on all paths",
-    "paths": "Paths",
-    "track": {
-      "rhythm": "Rhythm",
-      "notes": "Read notes",
-      "keys": "Keys"
-    },
     "trackMeta": "Unit {unit} of {total}",
     "trackDone": "All done",
     "trackLocked": "Locked",
-    "cardMeta": "Unit {unit} of {total} · {title}",
     "trackStars": "Unit {unit} of {total} · {stars} / {max} ★",
     "trackStarsDone": "All done · {stars} / {max} ★",
     "trackStarsLabel": "{stars} of {max} stars",
-    "theory": {
-      "rhythm": "Theory: chapters 1–7",
-      "notes": "Theory: chapter 8",
-      "keys": "Theory: chapters 9 and 10"
-    },
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} of {max} stars",
-    "opensAfter": "Opens after Read notes unit {unit}",
     "lockedLessonTitled": "Lesson {id} · {title}, locked",
+    "pitch": {
+      "u1": {
+        "title": "Sol: the G line",
+        "l1": "Meet sol",
+        "l2": "Write sol",
+        "l3": "Sol on the piano",
+        "l4": "Write sol, quickly",
+        "l5": "Unit review"
+      },
+      "u2": {
+        "title": "Mi: the bottom line",
+        "l1": "Meet mi",
+        "l2": "Write mi",
+        "l3": "Hear mi",
+        "l4": "Mi on the piano",
+        "l5": "Unit review"
+      },
+      "u3": {
+        "title": "Fa: the bottom space",
+        "l1": "Meet fa",
+        "l2": "Write fa",
+        "l3": "Hear fa",
+        "l4": "Fa on the piano",
+        "l5": "Unit review"
+      },
+      "u4": {
+        "title": "La: the 2nd space",
+        "l1": "Meet la",
+        "l2": "Write la",
+        "l3": "Hear la",
+        "l4": "La on the piano",
+        "l5": "Unit review"
+      },
+      "u5": {
+        "title": "Do: the 3rd space",
+        "l1": "Meet do",
+        "l2": "Write do",
+        "l3": "Hear do",
+        "l4": "Do on the piano",
+        "l5": "Unit review"
+      },
+      "u6": {
+        "title": "Re: the 4th line",
+        "l1": "Meet re",
+        "l2": "Write re",
+        "l3": "Hear re",
+        "l4": "Re on the piano",
+        "l5": "Unit review"
+      },
+      "u7": {
+        "title": "Si: the middle line",
+        "l1": "Meet si",
+        "l2": "Write si",
+        "l3": "Hear si",
+        "l4": "Si on the piano",
+        "l5": "Unit review"
+      }
+    },
     "notes": {
       "u1": {
-        "title": "Treble clef",
+        "title": "The whole treble staff",
         "l1": "Name the notes",
         "l2": "Twenty notes",
         "l3": "On the piano",
@@ -285,7 +331,10 @@
       }
     },
     "units": "Units",
-    "toTrack": "Go to {track}"
+    "summaryTitle": "Notes and rhythm",
+    "summary": "Read, write and hear the notes one at a time, with a rhythm unit after each",
+    "theoryAll": "Theory: Learn",
+    "nextNotes": "Next: lesson {lesson} · {title}"
   },
   "setup": {
     "title": "Free practice",
@@ -953,7 +1002,30 @@
         "underLedger": "the space below the {n, select, 1 {first} other {second}} ledger line",
         "overLedger": "the space above the {n, select, 1 {first} other {second}} ledger line"
       },
-      "eyebrowLesson": "Lesson {id} · {clef} · {key}"
+      "eyebrowLesson": "Lesson {id} · {clef} · {key}",
+      "askWrite": "Write {name} on the staff",
+      "askHear": "Which note comes after sol?",
+      "askHearPiano": "Play the note that comes after sol",
+      "idleWrite": "Tap the staff where the note goes.",
+      "idleWriteCheck": "Drag it or use the arrows to move it, then Check.",
+      "idleHear": "Listen: first sol, then the note. Which one is it?",
+      "hearAgain": "Hear it again",
+      "hearSame": "the same as {sol}",
+      "hearFrom": "{count, plural, one {one step} other {# steps}} {dir, select, up {above} other {below}} {sol}",
+      "hearHint": "Hint: it is {from}.",
+      "hearRight": "Right: {name}, {from}.",
+      "hearWrong": "That was {name}, {from}.",
+      "hearTimeout": "Time's up: it was {name}, {from}.",
+      "writeRight": "Right: {name} is on {pos}.",
+      "writeWrong": "You wrote {wrote}, on {wrotePos}; {name} goes on {pos}.",
+      "writeSlider": "Where {name} goes on the staff",
+      "writeNone": "Not on the staff yet",
+      "writeLabel": "Write",
+      "lower": "Lower",
+      "higher": "Higher",
+      "check": "Check",
+      "kbdWrite": "↑ ↓ move the note, Enter checks it",
+      "staffLabelOpen": "{clef} staff in {key}, one whole note per bar. Note {n} of {total} is still empty."
     },
     "done": {
       "docTitle": "Round done",
@@ -992,9 +1064,8 @@
       "practiceMissed": "Practice missed notes",
       "change": "Change setup",
       "lessonTitle": "Lesson {id} done",
-      "lessonSub": "{track} · {unit}",
+      "lessonSub": "Unit {unit} · {title}",
       "lessonBack": "Back to the path",
-      "keysOpen": "Keys path open",
       "toPath": "Learning path"
     }
   },
@@ -2058,6 +2129,15 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_11_0": {
+      "title": "One learning path: notes and rhythm together",
+      "try": "Open the learning path",
+      "path": "The Path tab is one learning path now. Note units and rhythm units take turns, then come the bass clef, ledger lines and the keys. Your stars from the old paths still count.",
+      "notes": "Notes come one at a time: sol, mi, fa, la, do, re and si, each with its own unit, and a lesson's name buttons are just the notes you know.",
+      "write": "Write notes: tap the staff where the note goes, drag it or move it with the arrows, then Check.",
+      "hear": "Hear notes: sol sounds, then a note. Which one was it? Hear it again plays both again.",
+      "home": "Continue on Home follows the learning path, and a note lesson shows the notes you have learned so far."
+    },
     "v0_10_0": {
       "title": "Hear the music, and a gentler start",
       "try": "Hear chapter 1",

@@ -17,8 +17,8 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Hear the music, and a gentler start' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 23 · 3 new · 3 better · 2 fixed')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'One learning path: notes and rhythm together' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 23 · 4 new · 1 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
 
@@ -51,8 +51,8 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Hoor de muziek, en een rustiger begin' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('23 okt · 3 nieuw · 3 beter · 2 opgelost')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Eén leerpad: noten en ritme samen' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('23 okt · 4 nieuw · 1 beter')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
 });

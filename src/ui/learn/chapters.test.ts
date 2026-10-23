@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, LETTERS, PPQ, checkSettings, getMeter, sanitizeNoteSettings, sanitizeScaleSettings } from '../../core/api';
-import { UNITS } from '../../game/path';
+import { PATH_UNITS } from '../../game/tracks';
 import { parseBars } from '../../render/notationText';
 import { hasMessage } from '../../i18n';
 import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, parsePitch, sectionKey, type Block, type Quiz, type Section } from './chapters';
@@ -53,7 +53,7 @@ describe('Learn chapters', () => {
   it('build only on earlier chapters, and name Path units that exist', () => {
     for (const c of CHAPTERS) {
       (c.builds ?? []).forEach((n) => expect(CHAPTERS.some((x) => x.n === n) && n < c.n, `chapter ${c.n} builds on ${n}`).toBe(true));
-      (c.units ?? []).forEach((u) => expect(UNITS.some((x) => x.id === u), `chapter ${c.n}: Path unit ${u}`).toBe(true));
+      (c.units ?? []).forEach((u) => expect(PATH_UNITS.some((x) => x.id === u), `chapter ${c.n}: Path unit ${u}`).toBe(true));
     }
   });
 

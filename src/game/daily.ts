@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS } from '../core/defaults';
 import type { Settings } from '../core/types';
 import { RHYTHM_TRACK } from './path';
 import type { Progress } from './storage';
-import { lessonOpen } from './track';
+import { pathLessonOpen } from './tracks';
 
 /** A preset and the path unit that teaches its hardest material: it is picked once that unit is open. */
 interface Preset {
@@ -52,10 +52,10 @@ function hash(s: string): number {
   return h >>> 1;
 }
 
-/** The highest open unit of the rhythm path (1 on day one, the last unit once it is open). */
+/** The highest open rhythm unit of the Learning path, by its rhythm number (1 on day one, the last once it is open). */
 export function reachedUnit(progress: Progress): number {
   let reached = 1;
-  for (const u of RHYTHM_TRACK.units) if (u.lessons.length && lessonOpen(progress, RHYTHM_TRACK, u.lessons[0].id)) reached = u.id;
+  for (const u of RHYTHM_TRACK.units) if (u.lessons.length && pathLessonOpen(progress, 'rhythm', u.lessons[0].id)) reached = u.id;
   return reached;
 }
 

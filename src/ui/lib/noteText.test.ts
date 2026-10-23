@@ -1,8 +1,8 @@
 import type { RoundNote } from '../../core/api';
 import { setLocale } from '../../i18n';
-import { feedbackText, fullName, hintText, keyPairName, keySignsText, positionText } from './noteText';
+import { feedbackText, fullName, hearFeedback, hearHint, hintText, keyPairName, keySignsText, positionText, writeFeedback } from './noteText';
 
-const note = (n: Partial<RoundNote>): RoundNote => ({ clef: 'treble', key: 'C', step: 34, alter: 0, sign: null, input: 'names', ...n });
+const note = (n: Partial<RoundNote>): RoundNote => ({ clef: 'treble', key: 'C', step: 34, alter: 0, sign: null, input: 'names', task: 'read', ...n });
 
 describe('note and key names', () => {
   it('names notes with both systems, the chosen one first', () => {
@@ -72,5 +72,22 @@ describe('feedback', () => {
     );
     expect(feedbackText(note({}), { kind: 'name', letter: 'B', alter: -1 }, false, 'letters')).toBe('Right line, but there is no sign: it is B (si).');
     expect(feedbackText(note({}), null, false, 'letters')).toBe("Time's up: it was B (si), the middle line.");
+  });
+});
+
+describe('writing and hearing (path lessons)', () => {
+  const la = note({ step: 33, task: 'write' });
+  it('says where a written note goes, and where it went', () => {
+    expect(writeFeedback(la, { kind: 'place', step: 33 }, true, 'solfege')).toBe('Right: la (A) is on the 2nd space.');
+    expect(writeFeedback(la, { kind: 'place', step: 32 }, false, 'solfege')).toBe('You wrote sol (G), on the 2nd line; la (A) goes on the 2nd space.');
+    expect(writeFeedback(la, null, false, 'letters')).toBe("Time's up: it was A (la), the 2nd space.");
+  });
+
+  it('places a heard note from sol, the reference', () => {
+    const mi = note({ step: 30, task: 'hear' });
+    expect(hearFeedback(mi, { kind: 'name', letter: 'E', alter: 0 }, true, 'solfege')).toBe('Right: mi (E), 2 steps below sol.');
+    expect(hearFeedback(la, { kind: 'name', letter: 'G', alter: 0 }, false, 'letters')).toBe('That was A (la), one step above G.');
+    expect(hearFeedback(note({ step: 32 }), null, false, 'solfege')).toBe("Time's up: it was sol (G), the same as sol.");
+    expect(hearHint(mi, 'solfege')).toBe('Hint: it is 2 steps below sol.');
   });
 });

@@ -5,6 +5,10 @@ What the Learn chapters (DESIGN.md §9.1) should contain, checked against the Le
 *Allemaal nootjes*, Flemish academy courses (AMV / MCV), the Dutch HaFaBra A–C exams, ABRSM, Trinity, RCM, Kodály and
 Open Music Theory.
 
+Unit numbers in this plan are the rhythm units of `src/game/path.ts` in their own order. Since 0.11.0 they take turns
+with note units in one Learning path (DESIGN.md §8.2), where rhythm unit *n* is path unit *2n*; the chapter headers
+show the path numbers.
+
 Researched on 2026-10-18. Source labels as in `THEORY-SOURCES.md`: **V** read directly, **S** from a summary or a page
 only partly readable, **U** not confirmed. Claims that go into a chapter still get their row in `THEORY-SOURCES.md`.
 

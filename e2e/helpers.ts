@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { PATH_UNITS } from '../src/game/tracks';
 
 /** Screen sizes the app must work at: the canvas boards plus small, landscape and laptop screens. */
 export const VIEWPORTS = {
@@ -93,3 +94,18 @@ export async function seed(page: Page, data: { prefs?: object; progress?: object
 }
 
 export const pad = (page: Page): Locator => page.getByRole('button', { name: 'Tap pad' });
+
+type Lessons = Record<string, { stars: number; bestAccuracy: number }>;
+
+/**
+ * Progress `lessons` with `stars` on every Learning path lesson up to and including `id` (its number in the path, "3.5"),
+ * under their progress keys ("pitch:1.1", rhythm "1.1"). The path starts with sol (unit 1), then rhythm unit 1 (unit 2).
+ */
+export function pathUpTo(id: string, stars = 2, bestAccuracy = 88): Lessons {
+  const all = PATH_UNITS.flatMap((u) => u.lessons);
+  const n = all.findIndex((l) => l.id === id);
+  return Object.fromEntries(all.slice(0, n + 1).map((l) => [l.key, { stars, bestAccuracy }]));
+}
+
+/** Sol's unit passed: the path goes on with rhythm lesson 1.1, which the path calls lesson 2.1. */
+export const SOL_DONE: Lessons = pathUpTo('1.5');

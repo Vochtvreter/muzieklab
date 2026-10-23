@@ -4,6 +4,7 @@
  */
 import {
   BOTTOM_LINE,
+  HEAR_REFERENCE,
   KEYS,
   MIDDLE_C,
   keyAlter,
@@ -154,4 +155,31 @@ export function feedbackText(n: RoundNote, given: Given | null, right: boolean, 
   if (n.sign !== null) return t('notes.play.wrongLetterSign', { name, pos, signWord: signWord(n.sign) });
   if (keySign) return t('notes.play.wrongLetterKey', { name, pos, signWord: signWord(n.alter) });
   return t('notes.play.wrongLetter', { name, pos });
+}
+
+/** "one step above sol", "sol itself": where a heard note is from the reference (§3.5, hear). */
+function fromSol(step: Step, system: NameSystem): string {
+  const diff = step - HEAR_REFERENCE;
+  const sol = (system === 'solfege' ? solfegeName : letterName)(letterOf(HEAR_REFERENCE), 0);
+  return diff === 0 ? t('notes.play.hearSame', { sol }) : t('notes.play.hearFrom', { count: Math.abs(diff), dir: diff > 0 ? 'up' : 'down', sol });
+}
+
+/** The hint for a note to hear: higher or lower than sol, or sol itself. */
+export const hearHint = (n: RoundNote, system: NameSystem): string => t('notes.play.hearHint', { from: fromSol(n.step, system) });
+
+/** The feedback after a heard note: right, or what it was and where it is from sol. */
+export function hearFeedback(n: RoundNote, given: Given | null, right: boolean, system: NameSystem): string {
+  const name = fullName(letterOf(n.step), n.alter, given?.kind === 'piano' ? 'letters' : system);
+  if (right) return t('notes.play.hearRight', { name, from: fromSol(n.step, system) });
+  return t(given === null ? 'notes.play.hearTimeout' : 'notes.play.hearWrong', { name, from: fromSol(n.step, system) });
+}
+
+/** The feedback after a note written on the staff: right, or where it went and where it goes. */
+export function writeFeedback(n: RoundNote, given: Given | null, right: boolean, system: NameSystem): string {
+  const name = fullName(letterOf(n.step), n.alter, system);
+  const pos = positionText(n.clef, n.step);
+  if (given === null) return t('notes.play.timeout', { name, pos });
+  if (right) return t('notes.play.writeRight', { name, pos });
+  const at = given.kind === 'place' ? given.step : n.step;
+  return t('notes.play.writeWrong', { name, pos, wrote: fullName(letterOf(at), 0, system), wrotePos: positionText(n.clef, at) });
 }

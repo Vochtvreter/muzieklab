@@ -50,7 +50,7 @@ describe('prefs and progress storage', () => {
   });
 
   it('round-trips', () => {
-    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, pathTrack: 'keys' as const, seenIntros: ['meter:3/4', 'note:half'], holdEarly: 'tap' as const };
+    const prefs = { ...DEFAULT_PREFS, language: 'nl', theme: 'dark' as const, calibrationMs: 38, calibratedAt: '2026-10-12', seenHowTo: true, metronomeLook: 'analog' as const, seenIntros: ['meter:3/4', 'note:half'], holdEarly: 'tap' as const };
     savePrefs(prefs);
     expect(loadPrefs()).toEqual(prefs);
     const progress: Progress = {
@@ -146,11 +146,9 @@ describe('prefs and progress storage', () => {
     lang.mockRestore();
   });
 
-  it('keeps the Path tab on a known path, else Rhythm', () => {
+  it('drops the Path tab\'s path pick: there is one Learning path since 0.11.0', () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ pathTrack: 'notes' }));
-    expect(loadPrefs().pathTrack).toBe('notes');
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ pathTrack: 'scales' }));
-    expect(loadPrefs().pathTrack).toBe('rhythm');
+    expect(loadPrefs()).not.toHaveProperty('pathTrack');
   });
 
   it('survives corrupt JSON', () => {
@@ -207,6 +205,8 @@ describe('prefs and progress storage', () => {
     };
     // In unit 1 (tap only): the holding version of How to play is still to come.
     expect(old({ seenHowTo: true }, { lessons: { '1.1': { stars: 3, bestAccuracy: 95 } } })).toBe(false);
+    // Note lessons have no taps: sol's unit and Read notes do not count as holds.
+    expect(old({ seenHowTo: true }, { lessons: { 'pitch:2.1': { stars: 3, bestAccuracy: 95 }, 'notes:3.1': { stars: 2, bestAccuracy: 85 } } })).toBe(false);
     // Past unit 1, or after free practice or a daily challenge (hold by default): holding is known.
     expect(old({ seenHowTo: true }, { lessons: { '2.1': { stars: 2, bestAccuracy: 80 } } })).toBe(true);
     expect(old({ seenHowTo: true }, { lastSettings: { ...DEFAULT_SETTINGS } })).toBe(true);

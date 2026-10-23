@@ -2,6 +2,7 @@ import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, genera
 import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings } from '../game/notesPath';
 import { lessonSettings } from '../game/path';
+import { PATH_UNITS } from '../game/tracks';
 import { defaultProgress, DEFAULT_PREFS, type Prefs, type Progress } from '../game/storage';
 import { makeLessonRun, makeNoteRun, makeRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
 
@@ -26,6 +27,10 @@ const result = (judgements: NoteResult['judgement'][], accuracy = 80, stars: Jud
     accuracy,
     stars,
   }) as unknown as JudgeResult;
+
+/** Two stars on every lesson of the Learning path's first `units` units, under their progress keys. */
+const pathPassed = (units: number): Progress['lessons'] =>
+  Object.fromEntries(PATH_UNITS.slice(0, units).flatMap((u) => u.lessons.map((l) => [l.key, { stars: 2 as const, bestAccuracy: 80 }])));
 
 describe('reducer: finish', () => {
   it('a run with at least one hit note counts as a practice day', () => {
@@ -91,7 +96,7 @@ describe('reducer: rewards', () => {
     const first = reducer(daily(), { type: 'finish', result: result(['good'], 92, 3), taps: [], today: '2026-10-17' });
     expect(first.progress.daily?.tier).toBe(1);
     // Unit 1 passed that afternoon: the daily played again is still the tier-1 one, and so is its record.
-    const lessons = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2 as const, bestAccuracy: 80 }]));
+    const lessons = pathPassed(3);
     const later = { ...first, run: daily().run, progress: { ...first.progress, lessons } };
     const again = reducer(later, { type: 'finish', result: result(['good'], 60, 1), taps: [], today: '2026-10-17' });
     expect(again.progress.daily).toEqual({ day: '2026-10-17', tier: 1, stars: 3, accuracy: 92 });
@@ -228,7 +233,8 @@ describe('reducer: reset progress', () => {
 });
 
 describe('practice hold', () => {
-  const unit1Done = { ...defaultProgress(), lessons: Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`1.${n}`, { stars: 2 as const, bestAccuracy: 80 }])) };
+  // Rhythm unit 1 and the note unit after it (mi) passed: rhythm unit 2, which teaches holding, is open.
+  const unit1Done = { ...defaultProgress(), lessons: pathPassed(3) };
   const unit1Half = { ...defaultProgress(), lessons: { '1.1': { stars: 3 as const, bestAccuracy: 95 }, '1.2': { stars: 2 as const, bestAccuracy: 80 } } };
 
   it('follows the path: tap only until unit 2 (the unit that teaches holding) is open', () => {

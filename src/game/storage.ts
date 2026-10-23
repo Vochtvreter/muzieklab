@@ -7,7 +7,6 @@ import { sanitizeScaleSettings, type ScaleSettings } from '../core/scaleRound';
 import type { Volumes } from '../audio/engine';
 import { isLocale } from '../i18n';
 import { INTRO_IDS, introsOf } from './intro';
-import { TRACK_IDS, type TrackId } from './track';
 
 export interface Prefs {
   /** Settings → Language: a locale code ("en", "nl"), or 'system' to follow the device's languages. */
@@ -46,8 +45,6 @@ export interface Prefs {
   noteNames: 'solfege' | 'letters';
   /** Read notes: the piano keys' labels. */
   pianoLabels: 'letters' | 'solfege' | 'off';
-  /** The Path tab: the learning path picked last (DESIGN.md §8.2). */
-  pathTrack: TrackId;
 }
 
 export interface LessonProgress {
@@ -103,7 +100,6 @@ export const DEFAULT_PREFS: Prefs = {
   metronomeLook: 'digital',
   noteNames: 'letters',
   pianoLabels: 'letters',
-  pathTrack: 'rhythm',
 };
 
 export function defaultProgress(): Progress {
@@ -199,7 +195,6 @@ export function sanitizePrefs(raw: unknown): Prefs {
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
     noteNames: oneOf(raw.noteNames, ['solfege', 'letters'] as const, d.noteNames),
     pianoLabels: oneOf(raw.pianoLabels, ['letters', 'solfege', 'off'] as const, d.pianoLabels),
-    pathTrack: oneOf(raw.pathTrack, TRACK_IDS, d.pathTrack),
   };
 }
 
@@ -292,9 +287,12 @@ function sanitizeScales(raw: unknown): Progress['scales'] {
   return { settings: sanitizeScaleSettings(raw.settings), stars };
 }
 
-/** Played an exercise that judges holds: a lesson after unit 1, free practice or a daily challenge (hold by default). */
+/**
+ * Played an exercise that judges holds: a rhythm lesson after rhythm unit 1 (note lessons, "pitch:1.1", have no taps),
+ * free practice or a daily challenge (hold by default).
+ */
 export function playedHolds(p: Progress): boolean {
-  return Object.keys(p.lessons).some((id) => !id.startsWith('1.')) || p.lastSettings !== null || p.daily !== null;
+  return Object.keys(p.lessons).some((id) => !id.includes(':') && !id.startsWith('1.')) || p.lastSettings !== null || p.daily !== null;
 }
 
 /** Languages where music lessons name notes do re mi (fixed do): French, Italian, Spanish, Portuguese, Romanian. */

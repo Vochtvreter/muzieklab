@@ -14,8 +14,9 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
    desktop sidebar, previous / next and the read status all follow from the data.
 2. **Text:** in `src/i18n/en.json`, under `learn`:
    - `chapters.{n}.title` and `.sub`: the name and the line under it in the chapter list;
-   - `builds` and `units` in the data give the line under the intro ("Builds on chapters 1 and 2 · Path units 2, 3,
-     5"); units must exist in `UNITS`;
+   - `builds` and `units` in the data give the line under the intro ("Builds on chapters 1 and 2 · Path units 2, 6,
+     10"); units are numbers in the Learning path (`PATH_UNITS` in `src/game/tracks.ts`: rhythm unit n is path unit
+     2n);
    - `ch{n}.intro`, and `ch{n}.quiz.question`, `.right`, `.wrong` for the quick check;
    - `ch{n}.s{k}.title` for every section, `.check.question`, `.right` and `.wrong` for its quick check, `.practice` for
      its practice link, and every key its blocks name.
@@ -91,22 +92,27 @@ Set `PLANNED_CHAPTERS` in `chapters.ts` when the plan grows ("chapter 9 of 11").
 
 ## A Learning Path unit
 
-1. **Data:** add a `unit(…)` to `UNITS` in `src/game/path.ts`, numbered after the last one: a base with every musical
+1. **Data:** add a `unit(…)` to `UNITS` in `src/game/path.ts`, numbered after the last rhythm unit: a base with every musical
    setting, and five lessons that each add one thing, the fifth a review with more bars and a faster tempo.
 2. **Text:** `path.u{n}.title` and `path.u{n}.l1` … `l5` in `en.json`.
-3. **Run `npm test`.** `src/game/path.test.ts` checks the numbering, the texts, that every lesson can be played, and
-   the teaching order of §8.2 in DESIGN.md.
+3. **Place it:** add `['rhythm', n]` to `ORDER` in `src/game/tracks.ts`, where it belongs in the Learning path
+   (DESIGN.md §8.2: rhythm units take turns with the note units). The path numbers its units in that order.
+4. **Run `npm test`.** `src/game/path.test.ts` checks the numbering, the texts, that every lesson can be played, and
+   the teaching order of §8.2 in DESIGN.md; `src/game/tracks.test.ts` checks the path order.
 
-Then link it from the chapter that explains it: the Path units in the chapter's row of DESIGN.md §9.1 and in
-`LEARN-CHAPTERS.md` §5.
+Then link it from the chapter that explains it: the chapter's `units` in `chapters.ts` (by its number in the path),
+its row of DESIGN.md §9.1 and `LEARN-CHAPTERS.md` §5.
 
-### A Read notes or Keys unit
+### A note unit (First notes, Read notes or Keys)
 
-The Read notes and Keys paths (DESIGN.md §8.2) work the same way, in `src/game/notesPath.ts`:
+Note units (DESIGN.md §8.2) work the same way, in `src/game/notesPath.ts`:
 
 1. **Data:** add a `unit('notes' | 'keys', n, glyph, base, lessons)` to `NOTES_UNITS` or `KEYS_UNITS`. The base and
-   each lesson are Read notes settings (clefs, keys, mix keys, input, range, extra signs, count, timer); a lesson's
-   preset is laid over its unit's base, and the Read notes defaults fill the rest.
-2. **Text:** `path.notes.u{n}.title` and `l1` … `l5` (or `path.keys.…`) in `en.json`.
-3. **Run `npm test`.** `src/game/notesPath.test.ts` checks the numbering, the texts, that every preset is valid and
-   can be played, and the order of the units.
+   each lesson are Read notes settings (clefs, keys, mix keys, input, range, extra signs, count, timer, and the
+   `tasks` read, write and hear, the positions it draws from `only` and the one it stresses `stress`); a lesson's
+   preset is laid over its unit's base, and the Read notes defaults fill the rest. First notes units come from
+   `FIRST_NOTES` (`pitchUnit`): a new note there is one entry, with its name and staff position.
+2. **Text:** `path.notes.u{n}.title` and `l1` … `l5` (or `path.keys.…`, `path.pitch.…`) in `en.json`.
+3. **Place it:** add it to `ORDER` in `src/game/tracks.ts`.
+4. **Run `npm test`.** `src/game/notesPath.test.ts` checks the numbering, the texts, that every preset is valid and
+   can be played, and the order of the units; `src/game/tracks.test.ts` the path order.

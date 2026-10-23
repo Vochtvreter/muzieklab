@@ -4,6 +4,7 @@
  */
 import {
   CLEFS,
+  LETTERS,
   KEY_IDS,
   KEYS,
   RANGES,
@@ -26,6 +27,11 @@ import { midiOf } from './scale';
 export type NoteInput = 'names' | 'piano' | 'mixed';
 export type Extras = 'none' | 'sharps' | 'both';
 export type NoteTimer = 0 | 5 | 3;
+/**
+ * What a note asks (§3.5, §8.2): read it (name the note on the staff), write it (put the named note on the staff) or
+ * hear it (name a note played after sol, the reference).
+ */
+export type NoteTask = 'read' | 'write' | 'hear';
 
 export interface NoteSettings {
   /** At least one. */
@@ -42,6 +48,12 @@ export interface NoteSettings {
   timer: NoteTimer;
   /** Hear the notes: a piano key sounds when pressed, and the right note after every answer (§3.5). */
   playNotes: boolean;
+  /** What the notes ask; with more than one, they take turns every TASK_RUN notes (path lessons; free practice reads). */
+  tasks: NoteTask[];
+  /** The positions notes are drawn from (a path lesson: the notes learned so far); empty: every position of the range. */
+  only: Step[];
+  /** Positions that come up more often (the note a lesson introduces). */
+  stress: Step[];
 }
 
 export const DEFAULT_NOTE_SETTINGS: NoteSettings = {
@@ -55,11 +67,15 @@ export const DEFAULT_NOTE_SETTINGS: NoteSettings = {
   count: 20,
   timer: 0,
   playNotes: true,
+  tasks: ['read'],
+  only: [],
+  stress: [],
 };
 
 export const NOTE_INPUTS: readonly NoteInput[] = ['names', 'piano', 'mixed'];
 export const EXTRAS: readonly Extras[] = ['none', 'sharps', 'both'];
 export const NOTE_TIMERS: readonly NoteTimer[] = [0, 5, 3];
+export const NOTE_TASKS: readonly NoteTask[] = ['read', 'write', 'hear'];
 export const MIN_NOTES = 10;
 export const MAX_NOTES = 50;
 /** A new key every 5 notes in a Mix keys round; the clef stays for at least 4 notes in a two-clef round. */
@@ -67,6 +83,13 @@ export const KEY_RUN = 5;
 export const MIN_CLEF_RUN = 4;
 /** Mixed input alternates names and piano every 5 notes. */
 export const INPUT_RUN = 5;
+/** Several tasks take turns every 5 notes, in the order given. */
+export const TASK_RUN = 5;
+/** A stressed position comes up this many times as often. */
+const STRESS_WEIGHT = 3;
+/** Hearing a note: sol (G4) sounds first, as the reference the note is heard against. */
+export const HEAR_REFERENCE: Step = 32;
+
 /** Share of notes that carry an extra sign when Extra sharps and flats is on. */
 const EXTRA_SHARE = 0.25;
 /** An answer slower than this is "slow" on the summary (and the note comes back more often). */
@@ -87,6 +110,10 @@ export function sanitizeNoteSettings(raw: unknown): NoteSettings | null {
   // Keep the player's order of keys (the first one is the "one key").
   const keys = Array.isArray(v.keys) ? [...new Set(v.keys.filter((x): x is KeyId => (KEY_IDS as readonly unknown[]).includes(x)))] : [];
   const one = <T>(x: unknown, options: readonly T[], def: T): T => (options.includes(x as T) ? (x as T) : def);
+  // Tasks keep their order (the turns of a review); positions are whole letter steps, C0 to B9.
+  const tasks = Array.isArray(v.tasks) ? [...new Set(v.tasks.filter((x): x is NoteTask => (NOTE_TASKS as readonly unknown[]).includes(x)))] : [];
+  const steps = (x: unknown): Step[] =>
+    Array.isArray(x) ? [...new Set(x.filter((n): n is Step => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < 70))] : [];
   const count = typeof v.count === 'number' && Number.isFinite(v.count) ? Math.round(Math.min(MAX_NOTES, Math.max(MIN_NOTES, v.count))) : d.count;
   return {
     clefs: clefs.length ? clefs : [...d.clefs],
@@ -98,6 +125,9 @@ export function sanitizeNoteSettings(raw: unknown): NoteSettings | null {
     count,
     timer: one(v.timer, NOTE_TIMERS, d.timer),
     playNotes: typeof v.playNotes === 'boolean' ? v.playNotes : d.playNotes,
+    tasks: tasks.length ? tasks : [...d.tasks],
+    only: steps(v.only),
+    stress: steps(v.stress),
   };
 }
 
@@ -117,8 +147,10 @@ export interface RoundNote {
   alter: Alter;
   /** The sign drawn next to the note, or null (the key signature says it, or there is none). */
   sign: Alter | null;
-  /** How this note is answered when the round is mixed; otherwise the round's input. */
+  /** How this note is answered when the round is mixed; otherwise the round's input (a note to write is placed). */
   input: 'names' | 'piano';
+  /** What this note asks: read, write or hear. */
+  task: NoteTask;
 }
 
 /** The note as it sounds, as a MIDI number (60 = middle C), with the key signature's or its own sign. */
@@ -159,6 +191,25 @@ function cycle<T>(rng: Rng, items: readonly T[], total: number, run: number): T[
     for (let i = 0; i < run && out.length < total; i++) out.push(item);
   }
   return out;
+}
+
+/** The positions a clef's notes are drawn from: the range, narrowed to `only` when that leaves any. */
+export function roundSteps(s: NoteSettings, clef: Clef): Step[] {
+  const all = rangeSteps(clef, s.range);
+  const some = all.filter((st) => s.only.includes(st));
+  return some.length ? some : all;
+}
+
+/** The letters a round's notes can have, for its name buttons: the notes learned so far in a path lesson, else all seven. */
+export function roundLetters(s: NoteSettings): Letter[] {
+  const used = new Set((s.clefs.length ? s.clefs : (['treble'] as Clef[])).flatMap((c) => roundSteps(s, c)).map(letterOf));
+  return LETTERS.filter((L) => used.has(L));
+}
+
+/** The task of note `i`: the only one, or turns of TASK_RUN notes through them in order. */
+export function noteTask(s: NoteSettings, i: number): NoteTask {
+  const tasks = s.tasks.length ? s.tasks : DEFAULT_NOTE_SETTINGS.tasks;
+  return tasks[Math.floor(i / TASK_RUN) % tasks.length];
 }
 
 /** The clef per note: one clef, or runs of 4–6 notes that alternate (a visible clef change each time). */
@@ -204,28 +255,30 @@ export function generateRound(s: NoteSettings, seed: number, weak: WeakSpots = {
       prev = null;
       dirs = [];
     }
-    const all = rangeSteps(clef, s.range);
+    const all = roundSteps(s, clef);
     const sameWay = dirs.length >= 2 && dirs[dirs.length - 1] === dirs[dirs.length - 2] ? dirs[dirs.length - 1] : 0;
     let options = all.filter((st) => st !== prev && !(prev !== null && sameWay !== 0 && Math.sign(st - prev) === sameWay));
     if (options.length === 0) options = all.filter((st) => st !== prev);
+    // One position only (the first lesson's sol): it comes again.
+    if (options.length === 0) options = all;
     const weights = options.map((st) => {
       const id = noteId(clef, st);
-      return (1 + Math.min(MAX_WEAK, weak[id] ?? 0)) * (focusSet.has(id) ? 8 : 1);
+      return (1 + Math.min(MAX_WEAK, weak[id] ?? 0)) * (focusSet.has(id) ? 8 : 1) * (s.stress.includes(st) ? STRESS_WEIGHT : 1);
     });
     const step = options[Math.max(0, rng.weighted(weights))];
     if (prev !== null) dirs.push(Math.sign(step - prev));
     prev = step;
     const alter = pickAlter(rng, key, letterOf(step), s.extras);
     const input = s.input === 'mixed' ? (Math.floor(i / INPUT_RUN) % 2 === 0 ? 'names' : 'piano') : s.input;
-    notes.push({ clef, key, step, alter, sign: signShown(key, { step, alter }), input });
+    notes.push({ clef, key, step, alter, sign: signShown(key, { step, alter }), input, task: noteTask(s, i) });
   }
   return notes;
 }
 
 // --- Answers ---------------------------------------------------------------------------------------------------
 
-/** A name (letter + sign) or a piano key (pitch class). */
-export type Given = { kind: 'name'; letter: Letter; alter: Alter } | { kind: 'piano'; pc: number };
+/** A name (letter + sign), a piano key (pitch class) or a place on the staff (a note written). */
+export type Given = { kind: 'name'; letter: Letter; alter: Alter } | { kind: 'piano'; pc: number } | { kind: 'place'; step: Step };
 
 export type Outcome = 'right' | 'hinted' | 'wrong' | 'timeout';
 
@@ -244,6 +297,7 @@ export type Miss = 'none' | 'keySign' | 'noteSign' | 'extraSign' | 'letter';
  * plays a pitch, so either name of a black key (and B for a written C♭) is right.
  */
 export function isRight(note: RoundNote, given: Given): boolean {
+  if (given.kind === 'place') return given.step === note.step;
   if (given.kind === 'piano') return given.pc === pitchClass(letterOf(note.step), note.alter);
   return given.letter === letterOf(note.step) && given.alter === note.alter;
 }
@@ -251,6 +305,7 @@ export function isRight(note: RoundNote, given: Given): boolean {
 /** What went wrong: the letter, a sign the key signature gives, a sign next to the note, or a sign that is not there. */
 export function missKind(note: RoundNote, given: Given): Miss {
   if (isRight(note, given)) return 'none';
+  if (given.kind === 'place') return 'letter';
   if (given.kind === 'piano') {
     // The natural key of the right letter: the sign (from the key or next to the note) was not played.
     if (given.pc === pitchClass(letterOf(note.step), 0) && note.alter !== 0) return note.sign !== null ? 'noteSign' : 'keySign';

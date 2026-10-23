@@ -1,13 +1,17 @@
 /**
- * Home: streak and level chips, Continue (the next lesson), the daily challenge and Free practice (Rhythm, Read notes,
- * Scales). The level chip opens the level details in a sheet.
+ * Home: streak and level chips, Continue (the next lesson of the Learning path: a rhythm bar or the notes it reads),
+ * the daily challenge and Free practice (Rhythm, Read notes, Scales). The level chip opens the level details in a sheet.
  * Desktop (App design canvas, Desktop · Home): a left column with streak and level, the daily challenge and the path
  * summary, next to Continue and the practice tiles.
  */
 import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { exerciseView } from '../exerciseView';
 import { dailyChallenge, dailyTier } from '../../game/daily';
-import { ALL_LESSONS, lessonSettings, UNITS, type Unit } from '../../game/path';
+import { generateRound, letterOf } from '../../core/api';
+import { FIRST_NOTES, noteLessonSettings } from '../../game/notesPath';
+import { lessonSettings } from '../../game/path';
+import { PATH_UNITS, type PathLesson, type PathUnit } from '../../game/tracks';
+import { PitchStaff, type PitchNote } from '../../render/PitchStaff';
 import { streak } from '../../game/storage';
 import { levelInfo, type LevelInfo } from '../../game/xp';
 import { dateParts, t, tx } from '../../i18n';
@@ -16,11 +20,13 @@ import { LessonTiles, StaffBox } from '../components/Bits';
 import { DateTile, LevelContent, XpBar } from '../components/Reward';
 import { Sheet } from '../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering, useToday } from '../hooks';
+import { seedFromString } from '../lib/format';
 import { continueLesson, lessonNumber, lessonPreview, unitStates } from '../lib/lessons';
+import { letterName, solfegeName } from '../lib/noteText';
 import { describeBars } from '../lib/notation';
 import { Link } from '../router';
 import { todayIso, useStore } from '../store';
-import { useStartDaily, useStartLesson } from './start';
+import { useStartDaily, useStartPathLesson } from './start';
 
 function StreakPill({ days }: { days: number }): JSX.Element {
   return (
@@ -67,17 +73,49 @@ function LessonPreview({ lessonId, wide, count = 1 }: { lessonId: string; wide?:
   );
 }
 
+/**
+ * A note lesson as a preview: in a First notes unit the notes learned so far, in the order learned, each with its name
+ * and the new one highlighted; in a later unit the first notes of a round (the same every visit).
+ */
+function NotePreview({ lesson, wide }: { lesson: PathLesson; wide?: boolean }): JSX.Element | null {
+  const { state } = useStore();
+  const solfege = state.prefs.noteNames === 'solfege';
+  const settings = useMemo(() => (lesson.track === 'rhythm' ? null : noteLessonSettings(lesson.track, lesson.ref)), [lesson]);
+  const notes = useMemo((): PitchNote[] => {
+    if (!settings) return [];
+    if (lesson.track === 'pitch') {
+      return FIRST_NOTES.filter((n) => settings.only.includes(n.step)).map((n) => ({
+        step: n.step,
+        sign: null,
+        label: (solfege ? solfegeName : letterName)(letterOf(n.step), 0),
+      }));
+    }
+    return generateRound(settings, seedFromString(lesson.key))
+      .slice(0, wide ? 6 : 4)
+      .map((n) => ({ step: n.step, sign: n.sign }));
+  }, [settings, lesson, solfege, wide]);
+  if (!settings || notes.length === 0) return null;
+  const isNew = lesson.track === 'pitch' ? notes.length - 1 : null;
+  const label = lesson.track === 'pitch' ? t('home.notesPreview', { names: notes.map((n) => n.label).join(', ') }) : t('home.notesPreviewRound');
+  return (
+    <div className={'preview-staff' + (wide ? ' preview-staff--wide' : '')}>
+      <PitchStaff clef={settings.clefs[0]} keyId={settings.keys[0]} notes={notes} slots={Math.max(notes.length, wide ? 6 : 4)} cursor={isNew}
+        scale={wide ? 1.2 : 1} room={1.5} label={label} />
+    </div>
+  );
+}
+
 export function Home(): JSX.Element {
   const { state } = useStore();
   const bp = useBreakpoint();
-  const startLesson = useStartLesson();
+  const startLesson = useStartPathLesson();
   const startDaily = useStartDaily();
   useDocTitle(t('app.docTitle', { page: t('home.title') }));
   const today = useToday(todayIso);
   const days = streak(state.progress.practiceDays, today);
   const cont = continueLesson(state.progress);
   // Nothing played on the path yet: the card starts the first lesson instead of continuing.
-  const fresh = !!cont && !cont.done && !ALL_LESSONS.some((x) => state.progress.lessons[x.lesson.id]);
+  const fresh = !!cont && !cont.done && !PATH_UNITS.some((u) => u.lessons.some((l) => state.progress.lessons[l.key]));
   const xp = levelInfo(state.progress.xp);
   // Once played, today's daily keeps its tier, so Done today and Play again belong to the exercise Play starts.
   const tier = dailyTier(state.progress, today);
@@ -154,7 +192,11 @@ export function Home(): JSX.Element {
       {/* No meter, bars or tempo over the staff: the staff shows the meter, the lesson title says what it is. */}
       <div className={'continue-staff' + (bp === 'desktop' ? ' continue-staff--wide' : '')}>
         <div className="continue-staff-body">
-          <LessonPreview lessonId={cont.lesson.id} wide={bp !== 'phone'} count={bp === 'phone' ? 1 : 2} />
+          {cont.lesson.track === 'rhythm' ? (
+            <LessonPreview lessonId={cont.lesson.ref} wide={bp !== 'phone'} count={bp === 'phone' ? 1 : 2} />
+          ) : (
+            <NotePreview lesson={cont.lesson} wide={bp !== 'phone'} />
+          )}
         </div>
       </div>
       {bp !== 'desktop' && <LessonTiles unit={cont.unit} progress={state.progress} currentId={cont.lesson.id} onFill onPick={startLesson} />}
@@ -274,28 +316,29 @@ export function Home(): JSX.Element {
 }
 
 /** Desktop Home: the learning-path card (the current unit, a bar of all units, its lesson tiles and the next lesson). */
-function PathSummary({ currentUnit, currentId }: { currentUnit: Unit; currentId: string | null }): JSX.Element {
-  const { state, dispatch } = useStore();
+function PathSummary({ currentUnit, currentId }: { currentUnit: PathUnit; currentId: string | null }): JSX.Element {
+  const { state } = useStore();
   const p = state.progress;
   const states = unitStates(p);
   const cur = currentId ? currentUnit.lessons.find((l) => l.id === currentId) : null;
   return (
-    // The card shows the rhythm path, so it opens that path (not the one picked last on the Path tab).
-    <Link to="/path" className="card path-card" onClick={() => dispatch({ type: 'prefs', patch: { pathTrack: 'rhythm' } })}>
+    <Link to="/path" className="card path-card">
       <span className="path-card-head">
         <span className="eyebrow">{t('home.pathEyebrow')}</span>
-        <span className="mono-muted">{t('home.pathUnitOf', { unit: UNITS.indexOf(currentUnit) + 1, total: UNITS.length })}</span>
+        <span className="mono-muted">{t('home.pathUnitOf', { unit: currentUnit.id, total: PATH_UNITS.length })}</span>
       </span>
       <span className="path-card-current">{t('path.unitTitle', { id: currentUnit.id, title: tx(currentUnit.titleKey) })}</span>
-      <span aria-hidden="true" className="path-card-bar" style={{ gridTemplateColumns: `repeat(${UNITS.length}, minmax(0, 1fr))` }}>
+      <span aria-hidden="true" className="path-card-bar" style={{ gridTemplateColumns: `repeat(${PATH_UNITS.length}, minmax(0, 1fr))` }}>
         {states.map((st, i) => (
-          <span key={UNITS[i].id} className={'path-card-seg path-card-seg--' + st} />
+          <span key={PATH_UNITS[i].id} className={'path-card-seg path-card-seg--' + st} />
         ))}
       </span>
       <LessonTiles unit={currentUnit} progress={p} currentId={currentId} onFill={false} />
       {cur && (
         <span className="muted-text">
-          {t('path.next', { lesson: cur.id, title: tx(cur.title), bpm: lessonSettings(cur.id).tempo })}
+          {cur.track === 'rhythm'
+            ? t('path.next', { lesson: cur.id, title: tx(cur.title), bpm: lessonSettings(cur.ref).tempo })
+            : t('path.nextNotes', { lesson: cur.id, title: tx(cur.title) })}
         </span>
       )}
       <span className="path-card-link">{t('home.pathView')}</span>

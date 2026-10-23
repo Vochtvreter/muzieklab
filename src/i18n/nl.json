@@ -87,7 +87,9 @@
     "notesTile": "Noten lezen",
     "notesTileSub": "Viool- en bassleutel",
     "scalesTile": "Toonladders",
-    "scalesTileSub": "Alle toonsoorten"
+    "scalesTileSub": "Alle toonsoorten",
+    "notesPreview": "De noten tot nu toe: {names}",
+    "notesPreviewRound": "Een paar noten uit de les"
   },
   "tile": {
     "next": "volgende les, nog geen sterren",
@@ -169,32 +171,76 @@
       "l4": "Combinaties met zestienden",
       "l5": "Herhaling"
     },
-    "allTotalsLabel": "{stars} van {total} sterren op alle paden",
-    "paths": "Paden",
-    "track": {
-      "rhythm": "Ritme",
-      "notes": "Noten lezen",
-      "keys": "Toonsoorten"
-    },
     "trackMeta": "Blok {unit} van {total}",
     "trackDone": "Alles klaar",
     "trackLocked": "Op slot",
-    "cardMeta": "Blok {unit} van {total} · {title}",
     "trackStars": "Blok {unit} van {total} · {stars} / {max} ★",
     "trackStarsDone": "Alles klaar · {stars} / {max} ★",
     "trackStarsLabel": "{stars} van {max} sterren",
-    "theory": {
-      "rhythm": "Theorie: hoofdstukken 1–7",
-      "notes": "Theorie: hoofdstuk 8",
-      "keys": "Theorie: hoofdstukken 9 en 10"
-    },
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} van {max} sterren",
-    "opensAfter": "Gaat open na blok {unit} van Noten lezen",
     "lockedLessonTitled": "Les {id} · {title}, op slot",
+    "pitch": {
+      "u1": {
+        "title": "Sol: de G-lijn",
+        "l1": "Maak kennis met sol",
+        "l2": "Schrijf sol",
+        "l3": "Sol op de piano",
+        "l4": "Schrijf sol, snel",
+        "l5": "Herhaling"
+      },
+      "u2": {
+        "title": "Mi: de onderste lijn",
+        "l1": "Maak kennis met mi",
+        "l2": "Schrijf mi",
+        "l3": "Hoor mi",
+        "l4": "Mi op de piano",
+        "l5": "Herhaling"
+      },
+      "u3": {
+        "title": "Fa: de onderste tussenruimte",
+        "l1": "Maak kennis met fa",
+        "l2": "Schrijf fa",
+        "l3": "Hoor fa",
+        "l4": "Fa op de piano",
+        "l5": "Herhaling"
+      },
+      "u4": {
+        "title": "La: de 2e tussenruimte",
+        "l1": "Maak kennis met la",
+        "l2": "Schrijf la",
+        "l3": "Hoor la",
+        "l4": "La op de piano",
+        "l5": "Herhaling"
+      },
+      "u5": {
+        "title": "Do: de 3e tussenruimte",
+        "l1": "Maak kennis met do",
+        "l2": "Schrijf do",
+        "l3": "Hoor do",
+        "l4": "Do op de piano",
+        "l5": "Herhaling"
+      },
+      "u6": {
+        "title": "Re: de 4e lijn",
+        "l1": "Maak kennis met re",
+        "l2": "Schrijf re",
+        "l3": "Hoor re",
+        "l4": "Re op de piano",
+        "l5": "Herhaling"
+      },
+      "u7": {
+        "title": "Si: de middelste lijn",
+        "l1": "Maak kennis met si",
+        "l2": "Schrijf si",
+        "l3": "Hoor si",
+        "l4": "Si op de piano",
+        "l5": "Herhaling"
+      }
+    },
     "notes": {
       "u1": {
-        "title": "Vioolsleutel",
+        "title": "De hele balk met vioolsleutel",
         "l1": "Benoem de noten",
         "l2": "Twintig noten",
         "l3": "Op de piano",
@@ -285,7 +331,10 @@
       }
     },
     "units": "Blokken",
-    "toTrack": "Naar {track}"
+    "summaryTitle": "Noten en ritme",
+    "summary": "Lees, schrijf en hoor de noten één voor één, met na elke noot een blok ritme",
+    "theoryAll": "Theorie: Leren",
+    "nextNotes": "Volgende: les {lesson} · {title}"
   },
   "setup": {
     "title": "Vrij oefenen",
@@ -953,7 +1002,30 @@
         "underLedger": "de ruimte onder de {n, select, 1 {eerste} other {tweede}} hulplijn",
         "overLedger": "de ruimte boven de {n, select, 1 {eerste} other {tweede}} hulplijn"
       },
-      "eyebrowLesson": "Les {id} · {clef} · {key}"
+      "eyebrowLesson": "Les {id} · {clef} · {key}",
+      "askWrite": "Schrijf {name} op de balk",
+      "askHear": "Welke noot komt na sol?",
+      "askHearPiano": "Speel de noot die na sol komt",
+      "idleWrite": "Tik op de balk waar de noot hoort.",
+      "idleWriteCheck": "Sleep hem of verschuif hem met de pijlen, en dan Controleer.",
+      "idleHear": "Luister: eerst sol, dan de noot. Welke is het?",
+      "hearAgain": "Nog eens horen",
+      "hearSame": "hetzelfde als {sol}",
+      "hearFrom": "{count, plural, one {één stap} other {# stappen}} {dir, select, up {boven} other {onder}} {sol}",
+      "hearHint": "Hint: hij ligt {from}.",
+      "hearRight": "Goed: {name}, {from}.",
+      "hearWrong": "Dat was {name}, {from}.",
+      "hearTimeout": "De tijd is om: het was {name}, {from}.",
+      "writeRight": "Goed: {name} staat op {pos}.",
+      "writeWrong": "Je schreef {wrote}, op {wrotePos}; {name} hoort op {pos}.",
+      "writeSlider": "Waar {name} op de balk hoort",
+      "writeNone": "Nog niet op de balk",
+      "writeLabel": "Schrijf",
+      "lower": "Lager",
+      "higher": "Hoger",
+      "check": "Controleer",
+      "kbdWrite": "↑ ↓ verschuiven de noot, Enter controleert",
+      "staffLabelOpen": "{clef}, notenbalk in {key}, één hele noot per maat. Noot {n} van {total} is nog leeg."
     },
     "done": {
       "docTitle": "Ronde klaar",
@@ -992,9 +1064,8 @@
       "practiceMissed": "Gemiste noten oefenen",
       "change": "Instellingen wijzigen",
       "lessonTitle": "Les {id} klaar",
-      "lessonSub": "{track} · {unit}",
+      "lessonSub": "Blok {unit} · {title}",
       "lessonBack": "Terug naar het leerpad",
-      "keysOpen": "Pad Toonsoorten open",
       "toPath": "Leerpad"
     }
   },
@@ -2058,6 +2129,15 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_11_0": {
+      "title": "Eén leerpad: noten en ritme samen",
+      "try": "Open het leerpad",
+      "path": "Het tabblad Leerpad is nu één leerpad. Blokken met noten en blokken met ritme wisselen elkaar af, en daarna komen de bassleutel, de hulplijnen en de toonsoorten. Je sterren van de oude leerpaden tellen nog mee.",
+      "notes": "De noten komen één voor één: sol, mi, fa, la, do, re en si, elk met een eigen blok, en de naamknoppen van een les zijn alleen de noten die je al kent.",
+      "write": "Noten schrijven: tik op de balk waar de noot hoort, sleep hem of verschuif hem met de pijlen, en dan Controleer.",
+      "hear": "Noten horen: eerst klinkt sol, dan een noot. Welke was het? Nog eens horen speelt ze allebei opnieuw.",
+      "home": "Verder op Start volgt het leerpad, en een les met noten laat de noten zien die je al kent."
+    },
     "v0_10_0": {
       "title": "Hoor de muziek, en een rustiger begin",
       "try": "Beluister hoofdstuk 1",

@@ -118,7 +118,7 @@ export interface Chapter {
   n: number;
   /** "Builds on chapters 1 and 2" in the header; none on a chapter that starts from nothing. */
   builds?: number[];
-  /** Learning Path units that practise the chapter, for the header. */
+  /** Learning path units that practise the chapter (by their number in the path, tracks.ts), for the header. */
   units?: number[];
   sections: Section[];
   quiz: Quiz;
@@ -141,7 +141,7 @@ const RHYTHM: Partial<Settings> = { mode: 'tap', meters: ['4/4'], notes: ['half'
 export const CHAPTERS: Chapter[] = [
   {
     n: 1,
-    units: [1, 3, 5],
+    units: [2, 6, 10],
     practice: 'rhythm',
     sections: [
       {
@@ -200,7 +200,7 @@ export const CHAPTERS: Chapter[] = [
   {
     n: 2,
     builds: [1],
-    units: [1, 3, 4, 8],
+    units: [2, 6, 8, 16],
     practice: 'rhythm',
     sections: [
       {
@@ -233,7 +233,7 @@ export const CHAPTERS: Chapter[] = [
   {
     n: 3,
     builds: [2],
-    units: [2, 3, 5],
+    units: [4, 6, 10],
     practice: 'rhythm',
     sections: [
       {
@@ -281,7 +281,7 @@ export const CHAPTERS: Chapter[] = [
   {
     n: 4,
     builds: [1, 2, 3],
-    units: [4, 5, 8],
+    units: [8, 10, 16],
     practice: 'rhythm',
     sections: [
       {
@@ -348,7 +348,7 @@ export const CHAPTERS: Chapter[] = [
   {
     n: 5,
     builds: [2, 4],
-    units: [6, 7],
+    units: [12, 14],
     practice: 'rhythm',
     sections: [
       {

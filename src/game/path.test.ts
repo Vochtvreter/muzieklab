@@ -1,7 +1,8 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { hasMessage } from '../i18n';
 import { NOTE_VALUES, type MeterId, type NoteValue, type Settings } from '../core/types';
-import { UNITS, findLesson, isUnlocked, lessonSettings, nextLesson, pathStars, recordLessonResult, unitStars } from './path';
+import { RHYTHM_TRACK, UNITS, findLesson, lessonSettings, recordLessonResult } from './path';
+import { lessonOpen, nextIn, trackStarsIn, unitStarsIn } from './track';
 import { defaultProgress, type LessonProgress, type Progress } from './storage';
 
 const allIds = UNITS.flatMap((u) => u.lessons.map((l) => l.id));
@@ -122,49 +123,48 @@ describe('lessonSettings', () => {
   });
 });
 
-describe('unlocking and progress', () => {
+describe('unlocking and progress (the rules of track.ts, on the rhythm units alone)', () => {
   const empty = progressWith({});
 
   it('only 1.1 is open at the start', () => {
-    expect(isUnlocked(empty, '1.1')).toBe(true);
-    expect(isUnlocked(empty, '1.2')).toBe(false);
-    expect(isUnlocked(empty, '2.1')).toBe(false);
-    expect(isUnlocked(empty, 'nope')).toBe(false);
+    expect(lessonOpen(empty, RHYTHM_TRACK, '1.1')).toBe(true);
+    expect(lessonOpen(empty, RHYTHM_TRACK, '1.2')).toBe(false);
+    expect(lessonOpen(empty, RHYTHM_TRACK, '2.1')).toBe(false);
+    expect(lessonOpen(empty, RHYTHM_TRACK, 'nope')).toBe(false);
   });
 
   it('two stars on a lesson open the next one, one star does not', () => {
-    expect(isUnlocked(progressWith({ '1.1': 1 }), '1.2')).toBe(false);
-    expect(isUnlocked(progressWith({ '1.1': 2 }), '1.2')).toBe(true);
-    expect(isUnlocked(progressWith({ '1.1': 3 }), '1.2')).toBe(true);
+    expect(lessonOpen(progressWith({ '1.1': 1 }), RHYTHM_TRACK, '1.2')).toBe(false);
+    expect(lessonOpen(progressWith({ '1.1': 2 }), RHYTHM_TRACK, '1.2')).toBe(true);
+    expect(lessonOpen(progressWith({ '1.1': 3 }), RHYTHM_TRACK, '1.2')).toBe(true);
   });
 
   it('a unit opens with two stars on every lesson of the previous unit', () => {
-    expect(isUnlocked(progressWith(starsUpTo('1.5')), '2.1')).toBe(true);
-    expect(isUnlocked(progressWith({ ...starsUpTo('1.5'), '1.3': 1 }), '2.1')).toBe(false);
+    expect(lessonOpen(progressWith(starsUpTo('1.5')), RHYTHM_TRACK, '2.1')).toBe(true);
+    expect(lessonOpen(progressWith({ ...starsUpTo('1.5'), '1.3': 1 }), RHYTHM_TRACK, '2.1')).toBe(false);
   });
 
-  it('nextLesson is the first lesson without two stars', () => {
-    expect(nextLesson(empty)?.id).toBe('1.1');
-    expect(nextLesson(progressWith({ ...starsUpTo('7.1', 3), '7.2': 2 }))?.id).toBe('7.3');
-    expect(nextLesson(progressWith(starsUpTo('8.5')))).toBeNull();
+  it('the next lesson is the first one without two stars', () => {
+    expect(nextIn(progressWith({ ...starsUpTo('7.1', 3), '7.2': 2 }), RHYTHM_TRACK)?.id).toBe('7.3');
+    expect(nextIn(progressWith(starsUpTo('8.5')), RHYTHM_TRACK)).toBeNull();
   });
 
-  it('nextLesson is always unlocked', () => {
+  it('the next lesson is always open', () => {
     for (let i = 0; i < allIds.length; i++) {
       const p = progressWith(starsUpTo(allIds[i]));
-      const next = nextLesson(p);
-      if (next) expect(isUnlocked(p, next.id)).toBe(true);
+      const next = nextIn(p, RHYTHM_TRACK);
+      if (next) expect(lessonOpen(p, RHYTHM_TRACK, next.id)).toBe(true);
     }
   });
 
   it('counts stars per unit and over the path', () => {
     const p = progressWith({ '7.1': 3, '7.2': 2, '6.5': 1 });
-    expect(unitStars(p, 7)).toBe(5);
-    expect(unitStars(p, 8)).toBe(0);
-    expect(unitStars(p, 42)).toBe(0);
-    expect(pathStars(p)).toEqual({ earned: 6, max: 120 });
+    expect(unitStarsIn(p, RHYTHM_TRACK, 7)).toBe(5);
+    expect(unitStarsIn(p, RHYTHM_TRACK, 8)).toBe(0);
+    expect(unitStarsIn(p, RHYTHM_TRACK, 42)).toBe(0);
+    expect(trackStarsIn(p, RHYTHM_TRACK)).toEqual({ earned: 6, max: 120 });
     // Totals count three stars per lesson: the hidden 4th star and the diamond count as three.
-    expect(unitStars(progressWith({ '7.1': 5, '7.2': 4 }), 7)).toBe(6);
+    expect(unitStarsIn(progressWith({ '7.1': 5, '7.2': 4 }), RHYTHM_TRACK, 7)).toBe(6);
   });
 
   it('recordLessonResult keeps the best stars and accuracy', () => {
