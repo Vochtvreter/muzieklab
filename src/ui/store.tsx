@@ -42,14 +42,17 @@ import { ALL_LESSONS, lessonSettings, recordLessonResult } from '../game/path';
 import { pathLessonOpen } from '../game/tracks';
 import { progressKey } from '../game/track';
 import { xpForResult } from '../game/xp';
+import type { Me } from '../../shared/api';
 import {
   addPracticeDay,
   defaultProgress,
   isEmptyProgress,
+  loadAccount,
   loadPrefs,
   loadProgress,
   localDateIso,
   resetProgress as clearStoredProgress,
+  saveAccount,
   savePrefs,
   saveProgress,
   streak,
@@ -243,6 +246,23 @@ export interface ScaleHub {
   key: KeyId;
 }
 
+/**
+ * A one-line message Settings → Account shows after an account change that ends on Settings (signed out, the account
+ * deleted, a new password set from a link…). It stays until Settings is left.
+ */
+export type AccountNotice = 'signedOut' | 'signedOutEverywhere' | 'deleted' | 'welcome' | 'passwordReset';
+
+/**
+ * The account (BACKEND-PLAN.md §5): who is signed in, and whether the API answered. `api` is 'unknown' until a screen
+ * that needs the account asked GET /me (ui/account.ts); the app makes no network call before that.
+ */
+export interface AccountState {
+  /** The signed-in account, or null. Kept in storage (ACCOUNT_KEY) so it shows offline. */
+  me: Me | null;
+  api: 'unknown' | 'reachable' | 'unreachable';
+  notice: AccountNotice | null;
+}
+
 export interface AppState {
   prefs: Prefs;
   progress: Progress;
@@ -259,6 +279,7 @@ export interface AppState {
   scaleHub: ScaleHub;
   scaleRun: ScaleRun | null;
   scaleLast: ScaleLast | null;
+  account: AccountState;
 }
 
 export type Action =
@@ -274,7 +295,14 @@ export type Action =
   | { type: 'scaleSettings'; settings: ScaleSettings }
   | { type: 'scaleHub'; hub: ScaleHub }
   | { type: 'scaleStart'; run: ScaleRun }
-  | { type: 'scaleFinish'; played: PlayedScale[]; today: string };
+  | { type: 'scaleFinish'; played: PlayedScale[]; today: string }
+  /** The API answered with this account (signed in, or an account change): it is the account from now on. */
+  | { type: 'signedIn'; me: Me; notice?: AccountNotice }
+  /** The API says nobody is signed in (signed out, the session ended, the account was deleted). */
+  | { type: 'signedOut'; notice?: AccountNotice }
+  /** The API did not answer: a cached account stays, shown as offline. */
+  | { type: 'apiUnreachable' }
+  | { type: 'accountNotice'; notice: AccountNotice | null };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -320,6 +348,15 @@ export function reducer(state: AppState, action: Action): AppState {
       const { calibrationMs, calibratedAt } = state.prefs;
       return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
     }
+    case 'signedIn':
+      return { ...state, account: { me: action.me, api: 'reachable', notice: action.notice ?? null } };
+    case 'signedOut':
+      return { ...state, account: { me: null, api: 'reachable', notice: action.notice ?? null } };
+    case 'apiUnreachable':
+      return state.account.api === 'unreachable' ? state : { ...state, account: { ...state.account, api: 'unreachable' } };
+    case 'accountNotice':
+      return state.account.notice === action.notice ? state : { ...state, account: { ...state.account, notice: action.notice } };
+    // Progress only: the account is kept (signing out is its own action).
     case 'resetProgress':
       return {
         ...state,
@@ -485,6 +522,7 @@ function initialState(): AppState {
     scaleHub: { tab: 'major', key: scaleSettings.keys[0] },
     scaleRun: route === '/scales/play' ? restoreScaleRun() : null,
     scaleLast: null,
+    account: { me: loadAccount(), api: 'unknown', notice: null },
   };
 }
 
@@ -523,6 +561,10 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
     if (first.current) return;
     saveScaleRun(state.scaleRun);
   }, [state.scaleRun]);
+  useEffect(() => {
+    if (first.current) return;
+    saveAccount(state.account.me);
+  }, [state.account.me]);
   useEffect(() => {
     first.current = false;
   }, []);

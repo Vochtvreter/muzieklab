@@ -27,10 +27,23 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // API addresses are fetches to the server, never the app shell (BACKEND-PLAN.md §1).
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],
   base: './',
+  // npm run dev: the API (server/, default port 3000) on the same origin, as Caddy does on the site. The API's Origin
+  // check (BACKEND-PLAN.md §5.4) compares Origin with Host, so the proxy must pass the browser's Host on unchanged:
+  // changeOrigin: false. (The string shorthand, '/api': 'http://…', turns changeOrigin on and sends the target's Host,
+  // and the API then refuses every POST, PATCH and DELETE with bad_origin. devProxy.test.ts checks this.)
+  server: {
+    proxy: { '/api': { target: 'http://127.0.0.1:3000', changeOrigin: false } },
+  },
+  // vite preview (and e2e, which runs on it) has no API, like production today: without this it would use the proxy above.
+  preview: {
+    proxy: {},
+  },
   // JSON modules (the message catalogs) as JSON.parse of a string: faster to load than the same data as a JS object.
   json: { stringify: true },
   build: {

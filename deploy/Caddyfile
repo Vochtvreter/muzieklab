@@ -23,8 +23,16 @@
 
 # Production: deploys from main. The deploy workflow points current at the newest release.
 vivanova.app {
-	root * /var/www/muzieklab/current
-	import muzieklab
+	# The API (muzieklab-api@production, docs/DEPLOY.md: Production's API); it sets its own headers. Until that
+	# service runs, /api/* answers 502, and the app shows no Account section, as on a site without an API.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	handle {
+		root * /var/www/muzieklab/current
+		import muzieklab
+	}
 }
 
 www.vivanova.app {

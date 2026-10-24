@@ -3,9 +3,37 @@ import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import {
-  expectClickable, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll, expectNotSqueezed, expectTouchHeight, pad, pathUpTo, seed, SOL_DONE, VIEWPORTS,
-  type ViewportName,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll,
+  expectNotSqueezed, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, SOL_DONE,
+  TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
+
+/**
+ * The status filter's chips sit in rows of the same size: all four on one line, or two and two as an even grid (the
+ * second line's chips under the first's, as wide), never three and a lone one that reads as a separate wide button.
+ */
+async function expectEvenChipRows(page: Page, where = ''): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const lines = await page.getByRole('group', { name: 'Status' }).getByRole('button').evaluateAll((els) => {
+    const byTop = new Map<number, { left: number; width: number }[]>();
+    for (const el of els) {
+      const r = el.getBoundingClientRect();
+      const top = Math.round(r.top);
+      byTop.set(top, [...(byTop.get(top) ?? []), { left: r.left, width: r.width }]);
+    }
+    return [...byTop.values()];
+  });
+  const counts = lines.map((l) => l.length).join(' + ');
+  expect(lines.length === 1 || (lines.length === 2 && lines.every((l) => l.length === 2)), `${where} chips per line: ${counts}`.trim()).toBe(true);
+  if (lines.length === 2) {
+    const [a, b] = lines;
+    const off = Math.max(...a.map((c, i) => Math.max(Math.abs(c.left - b[i].left), Math.abs(c.width - b[i].width))));
+    expect(off, `${where} two and two is an even grid`.trim()).toBeLessThanOrEqual(1);
+  }
+}
+
+/** An invite link that works (POST /auth/invite/check), for the account screens. */
+const INVITE_LINK = { email: 'lies@example.com', name: 'Lies Bakker', expiresAt: '2026-10-29T10:00:00.000Z' };
 
 /**
  * Known layout bugs from the MVP QA, fixed in the follow-up layout PR. `test.fail` keeps CI green while they are open
@@ -16,6 +44,35 @@ const known = (vp: string, screen: string): void => {
   const why = KNOWN[`${vp}/${screen}`];
   test.fail(!!why, why);
 };
+
+/**
+ * One account after a second New password link press that got no answer (DESIGN.md, One account): why takes the place
+ * of "New link ready…", and the earlier link and its message stay in their place, dimmed and not usable. `button` is
+ * the button's name, `alert` the whole error.
+ */
+async function failedSecondLink(page: Page, button: string, alert: string): Promise<void> {
+  let made = 0;
+  await mockApi(page, { ...adminApi(), 'POST /admin/accounts/:id/reset-link': () => (made++ === 0 ? { json: RESET_LINK_CREATED } : { status: 502 }) });
+  await page.goto('./#/admin/account/' + ACCOUNTS[1].id);
+  const press = page.getByRole('button', { name: new RegExp('^' + button) });
+  await press.click();
+  await expect(page.locator('.link-result .form-done')).toBeVisible();
+  await press.click();
+  await expect(page.getByRole('alert')).toHaveText(alert);
+  await expect(page.locator('.link-result .form-done')).toHaveCount(0);
+  await expect(page.locator('.link-result-body')).toHaveAttribute('inert', '');
+  await expect(page.locator('.link-result-body')).toHaveCSS('opacity', '0.45');
+  // Why is shown whole, right under the button, which can be pressed again.
+  await expectNotSqueezed(page.getByRole('alert'));
+  await expectNoOverlap(press, page.getByRole('alert'));
+  await expectClickable(press);
+  await expect(page.getByRole('alert')).toBeInViewport();
+  await expectNotSqueezed(page.locator('.link-result textarea'));
+  for (const card of await page.locator('.set-card').all()) await expectNotSqueezed(card);
+  await expectFieldsFit(page);
+  await expectNoClippedLabels(page);
+  await expectNoSideScroll(page);
+}
 
 /** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
 const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
@@ -960,6 +1017,299 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
       await expectNoSideScroll(page);
     });
+
+    /**
+     * Accounts (no board yet: built from Settings' design language). The API is mocked; the service worker is blocked so
+     * page.route sees the requests.
+     */
+    test.describe('accounts', () => {
+      test.use({ serviceWorkers: 'block' });
+      const mainNav = (page: Page) => page.getByRole('navigation', { name: 'Main' });
+      const account = (page: Page) => page.getByRole('region', { name: 'Account' });
+
+      test('settings with no API: no Account section, About has Privacy', async ({ page }) => {
+        known(name, 'settings-no-api');
+        const me = page.waitForResponse('**/api/v1/me');
+        await page.goto('./#/settings');
+        await me;
+        await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+        await expect(account(page)).toHaveCount(0);
+        await expectClickable(page.getByRole('link', { name: /^Privacy/ }));
+        await expectTouchHeight(page.getByRole('link', { name: /^Privacy/ }));
+        await expectNoSideScroll(page);
+      });
+
+      test('settings signed out: Account is the first section, with Sign in', async ({ page }) => {
+        known(name, 'settings-signed-out');
+        await mockApi(page, SIGNED_OUT);
+        await page.goto('./#/settings');
+        const link = account(page).getByRole('link', { name: /^Sign in/ });
+        await expectClickable(link);
+        await expectTouchHeight(link);
+        await expect(link).toContainText('Accounts are by invitation.');
+        await expect(page.locator('.set-section').first()).toHaveAttribute('aria-labelledby', 'h-account');
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('settings signed in as an admin: the account, Accounts and Sign out', async ({ page }) => {
+        known(name, 'settings-admin');
+        await mockApi(page, ADMIN);
+        await page.goto('./#/settings');
+        const section = account(page);
+        await expectClickable(section.getByRole('link', { name: /^Ann de Vries/ }));
+        await expect(section.getByRole('link', { name: /^Ann de Vries/ })).toContainText('ann@example.com');
+        await expectClickable(section.getByRole('link', { name: /^Accounts/ }));
+        const signOut = section.getByRole('button', { name: 'Sign out' });
+        await expectClickable(signOut);
+        await expectTouchHeight(signOut);
+        await expectNotSqueezed(section.locator('.set-card'));
+        // The shell is Settings' own: the tab bar on phone, the header from 700 px up, Settings current.
+        await expect(mainNav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+        if (VIEWPORTS[name].width >= 700) await expect(page.getByRole('banner').getByRole('navigation', { name: 'Main' })).toBeVisible();
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('settings and account with no answer from the API: the note, and Try again in reach', async ({ page }) => {
+        known(name, 'account-offline');
+        await seedAccount(page, ME_MEMBER);
+        const me = page.waitForResponse('**/api/v1/me');
+        await page.goto('./#/settings');
+        await me;
+        const section = account(page);
+        const retry = section.getByRole('button', { name: 'Try again' });
+        const note = section.getByText(/^Muzieklab can't be reached right now\. /);
+        await expect(note).toBeVisible();
+        await expectClickable(retry);
+        await expectTouchHeight(retry);
+        await expectNoOverlap(note, retry);
+        await expectNotSqueezed(section.locator('.set-card'));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+        await section.getByRole('link', { name: /^Sam Jansen/ }).click();
+        await expect(page.getByRole('heading', { level: 1, name: 'Account' })).toBeVisible();
+        await expectClickable(page.getByRole('button', { name: 'Try again' }));
+        await expectNoOverlap(page.locator('.offline-note p'), page.getByRole('button', { name: 'Try again' }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('sign in: a form on its own, with the fields and the button in reach', async ({ page }) => {
+        known(name, 'signin');
+        await mockApi(page, { ...SIGNED_OUT, 'POST /auth/sign-in': apiError('invalid_credentials', 401) });
+        await page.goto('./#/signin');
+        await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+        await expect(mainNav(page)).toHaveCount(0);
+        await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
+        await expectClickable(page.getByLabel('Email'));
+        await expectClickable(page.getByLabel('Password', { exact: true }));
+        await expectClickable(page.getByRole('button', { name: 'Show password' }));
+        await expectTouchHeight(page.getByRole('button', { name: 'Show password' }));
+        await expectFieldsFit(page);
+        await page.getByLabel('Email').fill('sam@example.com');
+        await page.getByLabel('Password', { exact: true }).fill('wrong password');
+        await page.getByRole('button', { name: 'Sign in' }).click();
+        await expect(page.getByRole('alert')).toBeVisible();
+        await expectClickable(page.getByRole('button', { name: 'Sign in' }));
+        await expectNoOverlap(page.getByRole('alert'), page.getByRole('button', { name: 'Sign in' }));
+        await expectClickable(page.getByRole('link', { name: 'Privacy' }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('accept invite: the name, a new password and Create account', async ({ page }) => {
+        known(name, 'invite');
+        await mockApi(page, { ...SIGNED_OUT, 'POST /auth/invite/check': { json: INVITE_LINK }, 'POST /auth/invite/accept': apiError('password_common', 422) });
+        await page.goto('./#/invite/' + TOKEN);
+        await expect(page.getByRole('heading', { level: 1, name: 'Welcome, Lies Bakker' })).toBeVisible();
+        await expect(page).toHaveTitle('Accept invite · Muzieklab');
+        await expect(mainNav(page)).toHaveCount(0);
+        await expectClickable(page.getByRole('link', { name: 'Back to Home' }));
+        await expectClickable(page.getByLabel('Name'));
+        await page.getByLabel('New password').fill('password1234');
+        await page.getByRole('button', { name: 'Create account' }).click();
+        await expect(page.getByText('This password is too common.', { exact: false })).toBeVisible();
+        await expectClickable(page.getByLabel('New password'));
+        await expectClickable(page.getByRole('button', { name: 'Create account' }));
+        await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('accept invite with a link that no longer works: the message and Home', async ({ page }) => {
+        known(name, 'invite-bad');
+        await mockApi(page, { ...SIGNED_OUT, 'POST /auth/invite/check': apiError('link_invalid', 410) });
+        await page.goto('./#/invite/' + TOKEN);
+        await expect(page.getByRole('alert')).toContainText("This link doesn't work anymore.");
+        await expectClickable(page.getByRole('link', { name: 'Home', exact: true }));
+        await expectTouchHeight(page.getByRole('link', { name: 'Home', exact: true }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('new password: one field and Save password', async ({ page }) => {
+        known(name, 'reset');
+        await mockApi(page, { ...SIGNED_OUT, 'POST /auth/reset/check': { json: { ...INVITE_LINK, email: 'sam@example.com', name: 'Sam Jansen' } } });
+        await page.goto('./#/reset/' + TOKEN);
+        await expect(page.getByRole('heading', { level: 1, name: 'New password' })).toBeVisible();
+        await expect(page.getByText('Choose a new password for sam@example.com.')).toBeVisible();
+        await expectClickable(page.getByLabel('New password'));
+        await expectClickable(page.getByRole('button', { name: 'Save password' }));
+        await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('account: profile, password, devices and your data', async ({ page }) => {
+        known(name, 'account');
+        await mockApi(page, MEMBER);
+        await page.goto('./#/account');
+        await expect(page.getByRole('heading', { level: 1, name: 'Account' })).toBeVisible();
+        await expect(mainNav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+        await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
+        await expectClickable(page.getByLabel('Name'));
+        await expectClickable(page.getByRole('button', { name: 'Change email' }));
+        await page.getByRole('button', { name: 'Change email' }).click();
+        await expectClickable(page.getByRole('button', { name: 'Save email' }));
+        await expectClickable(page.getByRole('button', { name: 'Change password' }));
+        await expectClickable(page.getByRole('button', { name: /^Sign out everywhere/ }));
+        await expectClickable(page.getByRole('button', { name: /^Download my data/ }));
+        await page.getByRole('button', { name: 'Delete account' }).click();
+        const confirm = page.getByRole('alertdialog', { name: 'Delete your account?' });
+        await expectClickable(confirm.getByLabel('Password', { exact: true }));
+        await expectClickable(confirm.getByRole('button', { name: 'Delete' }));
+        await expectClickable(confirm.getByRole('button', { name: 'Cancel' }));
+        await expectFieldsFit(page);
+        for (const card of await page.locator('.set-card').all()) await expectNotSqueezed(card);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('privacy: the statement, and back to Settings', async ({ page }) => {
+        known(name, 'privacy');
+        await mockApi(page, SIGNED_OUT);
+        await page.goto('./#/settings');
+        await page.getByRole('link', { name: /^Privacy/ }).click();
+        await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'With an account' })).toBeVisible();
+        await expectClickable(page.getByText('Last updated: October 23, 2026'));
+        await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
+        await expectNoSideScroll(page);
+      });
+
+      test('admin accounts: Invite someone, search, the status filter and the list', async ({ page }) => {
+        known(name, 'admin-accounts');
+        await mockApi(page, adminApi());
+        await page.goto('./#/admin');
+        await expect(page.getByRole('heading', { level: 1, name: 'Accounts' })).toBeVisible();
+        await expect(page).toHaveTitle('Accounts · Muzieklab');
+        await expect(mainNav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+        await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
+        // The one filled button: in the title row from 700 px up, under it on a phone.
+        const invite = page.getByRole('link', { name: 'Invite someone' });
+        await expectClickable(invite);
+        await expectTouchHeight(invite);
+        await expect(page.locator('.screen-head').getByRole('link', { name: 'Invite someone' })).toHaveCount(VIEWPORTS[name].width >= 700 ? 1 : 0);
+        const list = page.locator('section[aria-labelledby="h-accounts"]');
+        await expect(list.getByRole('heading', { name: '4 accounts' })).toBeVisible();
+        const rows = list.getByRole('link');
+        await expect(rows).toHaveCount(4);
+        for (const row of await rows.all()) await expectTouchHeight(row);
+        await expectClickable(rows.last());
+        await expectNotSqueezed(list.locator('.set-card'));
+        const filter = page.getByRole('group', { name: 'Status' });
+        for (const label of ['All', 'Invited', 'Active', 'Blocked']) await expectTouchHeight(filter.getByRole('button', { name: label }));
+        await expectEvenChipRows(page);
+        await expectClickable(filter.getByRole('button', { name: 'Blocked' }));
+        await filter.getByRole('button', { name: 'Blocked' }).click();
+        await expect(list.getByRole('heading', { name: '1 account found' })).toBeVisible();
+        await expectClickable(page.getByLabel('Search'));
+        await page.getByLabel('Search').fill('nobody');
+        await expect(page.locator('.acct-empty')).toHaveText('No accounts match.');
+        await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin accounts without access: the message and the way back', async ({ page }) => {
+        known(name, 'admin-no-access');
+        await mockApi(page, MEMBER);
+        await page.goto('./#/admin');
+        await expect(page.getByText("You don't have access to this page.")).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Invite someone' })).toHaveCount(0);
+        await expectClickable(page.locator('.acct-message').getByRole('link', { name: 'Back to settings' }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin invite: the form, then the link and the message', async ({ page }) => {
+        known(name, 'admin-invite');
+        await mockApi(page, {
+          ...ADMIN,
+          'POST /admin/invites': ({ body }) => ({ json: { ...INVITE_LINK_CREATED, account: accountDetail({ ...ACCOUNTS[0], ...(body as object), status: 'invited' }) } }),
+        });
+        await page.goto('./#/admin/invite');
+        await expect(page.getByRole('heading', { level: 1, name: 'Invite someone' })).toBeVisible();
+        await expectClickable(page.getByRole('link', { name: 'Back to accounts' }));
+        await expectClickable(page.getByLabel('Email'));
+        await expectClickable(page.getByLabel('Name'));
+        for (const role of ['Admin', 'Editor', 'Teacher']) {
+          await expectClickable(page.getByRole('switch', { name: role }));
+          await expectTouchHeight(page.getByRole('switch', { name: role }));
+        }
+        await expectFieldsFit(page);
+        await expectClickable(page.getByRole('button', { name: 'Create invite' }));
+        await page.getByLabel('Email').fill('noor@example.com');
+        await page.getByLabel('Name').fill('Noor Hendriks');
+        await page.getByRole('button', { name: 'Create invite' }).click();
+        await expect(page.getByRole('heading', { level: 2, name: 'Invite for Noor Hendriks is ready' })).toBeFocused();
+        await expectClickable(page.getByRole('button', { name: 'Copy link' }));
+        await expectTouchHeight(page.getByRole('button', { name: 'Copy link' }));
+        // The whole message shows, without scrolling inside its box.
+        await expectNotSqueezed(page.getByLabel('Message to send'));
+        await expectClickable(page.getByRole('button', { name: 'Copy message' }));
+        await expectClickable(page.getByRole('button', { name: 'Invite someone else' }));
+        await expectClickable(page.getByRole('link', { name: 'Done' }));
+        await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin one account: details, name and email, roles, premium and access', async ({ page }) => {
+        known(name, 'admin-account');
+        const sam = ACCOUNTS[1];
+        await mockApi(page, { ...adminApi(), 'POST /admin/accounts/:id/reset-link': { json: RESET_LINK_CREATED } });
+        await page.goto('./#/admin/account/' + sam.id);
+        await expect(page.getByRole('heading', { level: 1, name: 'Sam Jansen' })).toBeVisible();
+        await expect(page).toHaveTitle('Sam Jansen · Muzieklab');
+        await expectClickable(page.getByRole('link', { name: 'Back to accounts' }));
+        await expect(page.getByText('Devices signed in')).toBeVisible();
+        await expectClickable(page.getByLabel('Name', { exact: true }));
+        await expectClickable(page.getByLabel('Email', { exact: true }));
+        for (const role of ['Admin', 'Editor', 'Teacher']) await expectTouchHeight(page.getByRole('switch', { name: role }));
+        await expectClickable(page.getByRole('switch', { name: 'Premium' }));
+        await expectClickable(page.getByLabel('Last day (optional)'));
+        await page.getByRole('button', { name: /^New password link/ }).click();
+        await expectClickable(page.getByRole('button', { name: 'Copy link' }));
+        await expectNotSqueezed(page.getByLabel('Message to send'));
+        await page.getByRole('button', { name: /^Block/ }).click();
+        const confirm = page.getByRole('alertdialog', { name: 'Block Sam Jansen?' });
+        await expectClickable(confirm.getByRole('button', { name: 'Block' }));
+        await expectClickable(confirm.getByRole('button', { name: 'Cancel' }));
+        await expectClickable(page.getByRole('button', { name: 'Delete account' }));
+        for (const card of await page.locator('.set-card').all()) await expectNotSqueezed(card);
+        await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin one account: a second password link that fails, with the earlier one dimmed in its place', async ({ page }) => {
+        known(name, 'admin-account-link-failed');
+        await failedSecondLink(page, 'New password link',
+          "Can't reach Muzieklab right now. Check your connection and try again. The link below may not work anymore.");
+      });
+    });
   });
 }
 
@@ -1016,6 +1366,89 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       });
     }
 
+    test.describe('accounts', () => {
+      test.use({ serviceWorkers: 'block' });
+      const rows: [string, string, MockRoutes, string, string][] = [
+        ['settings, admin', '#/settings', ADMIN, 'Instellingen', 'Uitloggen'],
+        ['settings, signed out', '#/settings', SIGNED_OUT, 'Instellingen', 'Voortgang wissen'],
+        ['sign in', '#/signin', SIGNED_OUT, 'Inloggen', 'Inloggen'],
+        ['accept invite', '#/invite/' + TOKEN, { ...SIGNED_OUT, 'POST /auth/invite/check': { json: INVITE_LINK } }, 'Uitnodiging aannemen', 'Account maken'],
+        ['accept invite, bad link', '#/invite/' + TOKEN, { ...SIGNED_OUT, 'POST /auth/invite/check': apiError('link_invalid', 410) }, 'Uitnodiging aannemen', ''],
+        ['new password', '#/reset/' + TOKEN, { ...SIGNED_OUT, 'POST /auth/reset/check': { json: INVITE_LINK } }, 'Nieuw wachtwoord', 'Wachtwoord bewaren'],
+        ['account', '#/account', MEMBER, 'Account', 'Wachtwoord wijzigen'],
+        ['privacy', '#/privacy', SIGNED_OUT, 'Privacy', ''],
+        ['admin accounts', '#/admin', adminApi(), 'Accounts', 'Geblokkeerd'],
+        ['admin invite', '#/admin/invite', ADMIN, 'Iemand uitnodigen', 'Uitnodiging maken'],
+        ['admin account', '#/admin/account/' + ACCOUNTS[1].id, adminApi(), 'Sam Jansen', 'Link voor een nieuw wachtwoord'],
+        ['admin account, invited', '#/admin/account/' + ACCOUNTS[0].id, adminApi(), 'Lies Bakker', 'Nieuwe uitnodigingslink'],
+      ];
+      for (const [screen, hash, routes, title, action] of rows) {
+        test(`${screen}: ${title}`, async ({ page }) => {
+          known(name, 'nl-' + screen);
+          await mockApi(page, routes);
+          await page.goto('./' + hash);
+          await expect(page).toHaveTitle(new RegExp(title));
+          await expect(page.locator('h1')).toBeVisible();
+          if (action) await expectClickable(page.getByRole('button', { name: new RegExp('^' + action) }).first());
+          if (hash === '#/settings' && routes === ADMIN) await expectClickable(page.getByRole('link', { name: /^Accounts/ }));
+          if (hash === '#/settings' && routes === SIGNED_OUT) await expectClickable(page.getByRole('link', { name: /^Inloggen/ }));
+          if (hash === '#/account') {
+            await page.getByRole('button', { name: 'Account verwijderen' }).click();
+            await expectClickable(page.getByRole('button', { name: 'Verwijderen' }));
+          }
+          if (hash === '#/admin') {
+            await expectClickable(page.getByRole('link', { name: 'Iemand uitnodigen' }));
+            // Uitgenodigd and Geblokkeerd are long: on a small phone two and two, not three and a lone one.
+            await expectEvenChipRows(page);
+          }
+          await expectFieldsFit(page);
+          await expectNoClippedLabels(page);
+          await expectNoSideScroll(page);
+        });
+      }
+
+      test('settings and account, offline: the note and Opnieuw proberen', async ({ page }) => {
+        known(name, 'nl-account-offline');
+        await seedAccount(page, ME_MEMBER);
+        const me = page.waitForResponse('**/api/v1/me');
+        await page.goto('./#/settings');
+        await me;
+        await expect(page.getByText('Muzieklab is nu niet bereikbaar. Je kunt je account wijzigen zodra Muzieklab weer bereikbaar is.')).toBeVisible();
+        await expectClickable(page.getByRole('button', { name: 'Opnieuw proberen' }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+        await page.goto('./#/account');
+        await expectClickable(page.getByRole('button', { name: 'Opnieuw proberen' }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin invite, the result: Uitnodiging voor … is klaar', async ({ page }) => {
+        known(name, 'nl-admin-invite-result');
+        const noor = accountDetail({ ...ACCOUNTS[0], name: 'Noor Hendriks', email: 'noor@example.com' });
+        await mockApi(page, { ...ADMIN, 'POST /admin/invites': { json: { ...INVITE_LINK_CREATED, account: noor } } });
+        await page.goto('./#/admin/invite');
+        await page.getByLabel('E-mailadres').fill('noor@example.com');
+        await page.getByLabel('Naam').fill('Noor Hendriks');
+        await page.getByRole('button', { name: 'Uitnodiging maken' }).click();
+        await expect(page.getByRole('heading', { level: 2, name: 'Uitnodiging voor Noor Hendriks is klaar' })).toBeVisible();
+        const message = page.getByLabel('Bericht om te versturen');
+        await expect(message).toHaveValue(/^Hoi Noor Hendriks, ik heb een account voor je gemaakt bij Muzieklab\. .* hij werkt tot 30 oktober 2026 om \d\d:\d\d\.$/);
+        await expectNotSqueezed(message);
+        await expectClickable(page.getByRole('button', { name: 'Kopieer bericht' }));
+        await expectClickable(page.getByRole('button', { name: 'Nog iemand uitnodigen' }));
+        await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin account, a second password link that fails: De link hieronder werkt misschien niet meer', async ({ page }) => {
+        known(name, 'nl-admin-account-link-failed');
+        await failedSecondLink(page, 'Link voor een nieuw wachtwoord',
+          'Muzieklab is nu niet bereikbaar. Controleer je verbinding en probeer het opnieuw. De link hieronder werkt misschien niet meer.');
+      });
+    });
+
     test('play: the intro sheet and the count-in', async ({ page }) => {
       known(name, 'nl-play-intro');
       await seed(page, { progress: { lessons: { ...SOL_DONE, '1.1': { stars: 3, bestAccuracy: 95 } } } });
@@ -1060,6 +1493,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     });
   });
 }
+
+test.describe('the status filter at every phone width', () => {
+  test.use({ serviceWorkers: 'block', hasTouch: true });
+  // The fixed sizes miss widths in between (an Android phone is often 360 px wide, where Dutch once broke 3 + 1).
+  for (const language of ['en', 'nl']) {
+    test(`${language}: all four chips on one line, or two and two, from 320 to 699 px`, async ({ page }) => {
+      await seed(page, { prefs: { language, seenHowTo: true, seenHold: true } });
+      await mockApi(page, adminApi());
+      await page.setViewportSize({ width: 320, height: 800 });
+      await page.goto('./#/admin');
+      await expect(page.getByRole('group', { name: 'Status' }).getByRole('button')).toHaveCount(4);
+      for (let width = 320; width < 700; width += 2) {
+        await page.setViewportSize({ width, height: 800 });
+        await expectEvenChipRows(page, `${width} px:`);
+      }
+      await expectNoSideScroll(page);
+    });
+  }
+});
 
 test('a touch screen at desktop width (tablet in landscape) gets the desktop layout without keyboard hints', async ({ browser }) => {
   for (const hasTouch of [true, false]) {

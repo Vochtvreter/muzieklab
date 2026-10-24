@@ -4,6 +4,7 @@ import { noteLessonSettings } from '../game/notesPath';
 import { lessonSettings } from '../game/path';
 import { PATH_UNITS } from '../game/tracks';
 import { defaultProgress, DEFAULT_PREFS, type Prefs, type Progress } from '../game/storage';
+import type { Me } from '../../shared/api';
 import { makeLessonRun, makeNoteRun, makeRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
@@ -20,6 +21,7 @@ const state = (): AppState => ({
   scaleHub: { tab: 'major', key: 'G' },
   scaleRun: null,
   scaleLast: null,
+  account: { me: null, api: 'unknown', notice: null },
 });
 const result = (judgements: NoteResult['judgement'][], accuracy = 80, stars: JudgeResult['stars'] = 2): JudgeResult =>
   ({
@@ -315,5 +317,50 @@ describe('makeLessonRun', () => {
     for (const lessonId of ['1.1', '1.3', '1.2', '3.1']) {
       for (const seed of seeds.slice(0, 20)) expect(makeLessonRun(lessonSettings(lessonId), seed, lessonId)!.exercise.seed).toBe(seed);
     }
+  });
+});
+
+const ME: Me = {
+  id: '6718f0c2a1b2c3d4e5f60001',
+  email: 'sam@example.com',
+  name: 'Sam Jansen',
+  locale: null,
+  roles: [],
+  permissions: ['self.manage', 'progress.own', 'class.join'],
+  premium: { active: false, until: null },
+  createdAt: '2026-10-20T09:00:00.000Z',
+};
+
+describe('reducer: account', () => {
+  it('starts unknown, and a signed-in answer makes the API reachable', () => {
+    const next = reducer(state(), { type: 'signedIn', me: ME });
+    expect(next.account).toEqual({ me: ME, api: 'reachable', notice: null });
+  });
+
+  it('signing out forgets the account and can leave a notice for Settings', () => {
+    const inState = reducer(state(), { type: 'signedIn', me: ME });
+    const out = reducer(inState, { type: 'signedOut', notice: 'deleted' });
+    expect(out.account).toEqual({ me: null, api: 'reachable', notice: 'deleted' });
+    expect(reducer(out, { type: 'accountNotice', notice: null }).account.notice).toBeNull();
+  });
+
+  it('no answer keeps the cached account, shown as offline', () => {
+    const cached: AppState = { ...state(), account: { me: ME, api: 'unknown', notice: null } };
+    const next = reducer(cached, { type: 'apiUnreachable' });
+    expect(next.account).toEqual({ me: ME, api: 'unreachable', notice: null });
+    expect(reducer(next, { type: 'apiUnreachable' })).toBe(next);
+  });
+
+  it('a new account answer replaces the old one (a saved name)', () => {
+    const inState = reducer(state(), { type: 'signedIn', me: ME, notice: 'welcome' });
+    expect(inState.account.notice).toBe('welcome');
+    const renamed = reducer(inState, { type: 'signedIn', me: { ...ME, name: 'Sam J.' } });
+    expect(renamed.account.me?.name).toBe('Sam J.');
+    expect(renamed.account.notice).toBeNull();
+  });
+
+  it('resetting progress keeps the account', () => {
+    const inState = reducer(state(), { type: 'signedIn', me: ME });
+    expect(reducer(inState, { type: 'resetProgress' }).account).toBe(inState.account);
   });
 });

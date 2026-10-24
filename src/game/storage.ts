@@ -6,6 +6,7 @@ import { parseScaleId, type ScaleStars } from '../core/scale';
 import { sanitizeScaleSettings, type ScaleSettings } from '../core/scaleRound';
 import type { Volumes } from '../audio/engine';
 import { isLocale } from '../i18n';
+import { LOCALES as ACCOUNT_LOCALES, PERMISSIONS, ROLES, type Me } from '../../shared/api';
 import { INTRO_IDS, introsOf } from './intro';
 
 export interface Prefs {
@@ -81,6 +82,11 @@ export interface Progress {
 /** Versioned keys: a future format gets a new key (and may migrate from the old one). */
 export const PREFS_KEY = 'muzieklab.prefs.v1';
 export const PROGRESS_KEY = 'muzieklab.progress.v1';
+/**
+ * The signed-in account as GET /me last gave it, so Settings → Account can show who is signed in while offline. Only
+ * what Me holds: never a password or a token (the session cookie is HttpOnly; JavaScript cannot read it).
+ */
+export const ACCOUNT_KEY = 'muzieklab.account.v1';
 
 export const DEFAULT_PREFS: Prefs = {
   language: 'system',
@@ -333,6 +339,40 @@ export function loadProgress(): Progress {
 export function saveProgress(p: Progress): void {
   writeJson(PROGRESS_KEY, p);
 }
+const str = (v: unknown): v is string => typeof v === 'string';
+
+/** A stored Me, field by field; null when it is not one (or names no account). Unknown fields are dropped. */
+export function sanitizeMe(v: unknown): Me | null {
+  if (!isObj(v) || !str(v.id) || !v.id || !str(v.email) || !v.email || !str(v.name) || !str(v.createdAt)) return null;
+  const premium = isObj(v.premium) && v.premium.active === true ? { active: true, until: str(v.premium.until) ? v.premium.until : null } : { active: false, until: null };
+  return {
+    id: v.id,
+    email: v.email,
+    name: v.name,
+    locale: (ACCOUNT_LOCALES as readonly unknown[]).includes(v.locale) ? (v.locale as Me['locale']) : null,
+    roles: subset(v.roles, ROLES) ?? [],
+    permissions: subset(v.permissions, PERMISSIONS) ?? [],
+    premium,
+    createdAt: v.createdAt,
+  };
+}
+export function loadAccount(): Me | null {
+  return sanitizeMe(readJson(ACCOUNT_KEY));
+}
+/** Saves the account (only Me's fields), or forgets it for null (signed out, the session ended, the account deleted). */
+export function saveAccount(me: Me | null): void {
+  const clean = sanitizeMe(me);
+  if (clean) {
+    writeJson(ACCOUNT_KEY, clean);
+    return;
+  }
+  try {
+    localStorage.removeItem(ACCOUNT_KEY);
+  } catch {
+    /* unavailable storage: nothing was saved */
+  }
+}
+
 /** Settings → Reset progress: stars, XP, streak, daily results and last settings (prefs and calibration are kept). */
 export function resetProgress(): void {
   try {

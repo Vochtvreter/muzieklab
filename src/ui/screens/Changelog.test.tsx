@@ -30,8 +30,10 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'The test site has a gold icon' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 23 · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Accounts' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 23 · 3 new')).toBeTruthy();
+    // Accounts are by invitation: the release promises no sign-up (and no more than a site with accounts shows).
+    expect(within(screen.getByRole('article')).getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
 
@@ -64,8 +66,9 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'De testsite heeft een gouden icoon' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('23 okt · 1 beter')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Accounts' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('23 okt · 3 nieuw')).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
 
@@ -73,7 +76,7 @@ describe("What's new", () => {
     width = 834;
     render(<Changelog />);
     const card = screen.getByRole('article');
-    expect(within(card).getAllByText('Better')).toHaveLength(1);
+    expect(within(card).getAllByText('New')).toHaveLength(3);
     expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
   });
 
@@ -83,8 +86,8 @@ describe("What's new", () => {
     const list = screen.getByRole('navigation', { name: 'Releases' });
     expect(within(list).getAllByRole('button')).toHaveLength(RELEASES.length);
     expect(release(RELEASES[0].version).getAttribute('aria-current')).toBe('true');
-    expect(screen.getByRole('heading', { level: 2, name: 'The test site has a gold icon' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('October 23, 2026 · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Accounts' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('October 23, 2026 · 3 new')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
     expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
 
