@@ -376,6 +376,13 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   const [blockError, setBlockError] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // A refusal because the account changed meanwhile (409 wrong_status): the account reloads and the row that was pressed
+  // goes away, so its message is shown here, and focus (which was on the gone button) moves to it.
+  const [changedMeanwhile, setChangedMeanwhile] = useState<string | null>(null);
+  const changedRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (changedMeanwhile) changedRef.current?.focus();
+  }, [changedMeanwhile]);
   const mounted = useMounted();
   const { can } = account;
   const { status, name } = detail;
@@ -424,7 +431,7 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
       const f = fail(e);
       if (invited && f.code === 'wrong_status') {
         // The account is reloaded (fail): it shows as active now, with this message instead of the question.
-        setError(t('admin.inviteAccepted', { name }));
+        setChangedMeanwhile(t('admin.inviteAccepted', { name }));
         return true;
       }
       setRemoveError(f.message);
@@ -433,8 +440,14 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   };
 
   const rows: JSX.Element[] = [];
-  if (status === 'invited' && can('accounts.invite')) rows.push(<LinkMaker key="invite" kind="invite" detail={detail} fail={fail} onMade={reload} />);
-  if (status === 'active' && can('accounts.invite')) rows.push(<LinkMaker key="reset" kind="reset" detail={detail} fail={fail} />);
+  if (status === 'invited' && can('accounts.invite')) {
+    rows.push(<LinkMaker key="invite" kind="invite" detail={detail} fail={fail} onMade={reload}
+      onChangedMeanwhile={() => setChangedMeanwhile(t('admin.inviteAcceptedNoLink', { name }))} />);
+  }
+  if (status === 'active' && can('accounts.invite')) {
+    rows.push(<LinkMaker key="reset" kind="reset" detail={detail} fail={fail}
+      onChangedMeanwhile={() => setChangedMeanwhile(t('admin.notActiveNoLink', { name }))} />);
+  }
   if (status === 'active' && can('accounts.block')) {
     rows.push(
       <ConfirmAction key="block" label={t('admin.block')} sub={t('admin.blockSub')} icon="lock" question={t('admin.blockQuestion', { name })}
@@ -466,6 +479,11 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
 
   return (
     <Section id="access" title={t(status === 'invited' ? 'admin.inviteSection' : 'admin.access')}>
+      {changedMeanwhile && (
+        <div ref={changedRef} tabIndex={-1} className="row-pad">
+          <FormError error={changedMeanwhile} />
+        </div>
+      )}
       {rows}
       {error && (
         <div className="row-pad">
@@ -502,7 +520,14 @@ function reveal(answer: HTMLElement): void {
  * admin is usually scrolled down to it): while a press runs, the earlier answer is dimmed; if it fails, why takes the
  * place of "New link ready…" and the earlier link stays dimmed and not usable, as it may no longer work.
  */
-function LinkMaker({ kind, detail, fail, onMade }: { kind: LinkKind; detail: AccountDetail; fail(e: unknown): Failure; onMade?(): void }): JSX.Element {
+function LinkMaker({ kind, detail, fail, onMade, onChangedMeanwhile }: {
+  kind: LinkKind;
+  detail: AccountDetail;
+  fail(e: unknown): Failure;
+  onMade?(): void;
+  /** Refused because the account's status changed meanwhile: the account reloads and this row goes away. */
+  onChangedMeanwhile(): void;
+}): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Counts failed presses: each failure is a new alert, read out again even with the same words.
@@ -524,7 +549,12 @@ function LinkMaker({ kind, detail, fail, onMade }: { kind: LinkKind; detail: Acc
       onMade?.();
     } catch (e) {
       if (!mounted.current) return;
-      setError(fail(e).message);
+      const f = fail(e);
+      if (f.code === 'wrong_status') {
+        onChangedMeanwhile();
+        return;
+      }
+      setError(f.message);
       setFailures((n) => n + 1);
     } finally {
       if (mounted.current) setBusy(false);

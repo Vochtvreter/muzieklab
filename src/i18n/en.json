@@ -981,6 +981,8 @@
     "unblockedDone": "Unblocked. They can sign in again.",
     "inviteCancelled": "The invite for {name} was canceled.",
     "inviteAccepted": "{name} accepted the invite meanwhile, so the account was not removed.",
+    "inviteAcceptedNoLink": "{name} accepted the invite meanwhile, so no new link was made.",
+    "notActiveNoLink": "{name} was blocked meanwhile, so no new link was made.",
     "deleted": "{name}'s account was deleted.",
     "block": "Block",
     "blockSub": "They can't sign in until you unblock them.",

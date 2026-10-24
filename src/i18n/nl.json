@@ -981,6 +981,8 @@
     "unblockedDone": "Gedeblokkeerd. Inloggen kan weer.",
     "inviteCancelled": "De uitnodiging voor {name} is ingetrokken.",
     "inviteAccepted": "{name} heeft de uitnodiging intussen aangenomen, dus het account is niet verwijderd.",
+    "inviteAcceptedNoLink": "{name} heeft de uitnodiging intussen aangenomen, dus er is geen nieuwe link gemaakt.",
+    "notActiveNoLink": "{name} is intussen geblokkeerd, dus er is geen nieuwe link gemaakt.",
     "deleted": "Het account van {name} is verwijderd.",
     "block": "Blokkeren",
     "blockSub": "Inloggen kan pas weer als je het account deblokkeert.",

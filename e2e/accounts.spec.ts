@@ -106,9 +106,9 @@ test('sign in: a busy server says so, never "too many tries"; the next try gets 
   expect(api.callsTo('POST /auth/sign-in')).toHaveLength(2);
 });
 
-test('sign in, in Dutch: a busy server (too_many_attempts with reason busy) says so too', async ({ page }) => {
+test('sign in, in Dutch: a busy server says so too', async ({ page }) => {
   await seed(page, { prefs: { language: 'nl' } });
-  await mockApi(page, { ...SIGNED_OUT, 'POST /auth/sign-in': { status: 429, json: { error: 'too_many_attempts', reason: 'busy', message: 'The server is busy', retryAfter: 1 } } });
+  await mockApi(page, { ...SIGNED_OUT, 'POST /auth/sign-in': { status: 429, json: { error: 'busy', message: 'The server is busy', retryAfter: 1 } } });
   await page.goto('./#/signin');
   await page.getByLabel('E-mailadres').fill('sam@example.com');
   await page.getByLabel('Wachtwoord', { exact: true }).fill('een goed lang wachtwoord');
@@ -455,7 +455,13 @@ test('offline in Settings: Try again there, and Settings asks again by itself wh
   // The API comes back while the player is on Path; opening Settings later asks again, and Sign out is back.
   api.set(MEMBER);
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Path' }).click();
-  await page.clock.fastForward(10_000);
+  // Playwright's clock keeps pace with real time while it runs, and under load that catch-up can land after a
+  // fastForward and undo it; jump again until the page's own clock is really 10 s on.
+  const before = await page.evaluate(() => Date.now());
+  await expect(async () => {
+    if ((await page.evaluate(() => Date.now())) < before + 10_000) await page.clock.fastForward(10_000);
+    expect(await page.evaluate(() => Date.now())).toBeGreaterThanOrEqual(before + 10_000);
+  }).toPass();
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
   await expect(section.getByRole('button', { name: 'Sign out' })).toBeVisible();
   await expect(section.getByText(OFFLINE)).toHaveCount(0);
@@ -1102,6 +1108,27 @@ test('admin one account: another admin changed the status meanwhile (wrong_statu
   await expect(page.getByRole('button', { name: /^Unblock/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^New password link/ })).toHaveCount(0);
   expect(api.callsTo('GET /admin/accounts/:id')).toHaveLength(2);
+  // Why, kept through the reload that took the pressed row away, and focus on it rather than lost with the button.
+  const why = page.getByRole('alert');
+  await expect(why).toHaveText('Sam Jansen was blocked meanwhile, so no new link was made.');
+  await expect(page.locator('section[aria-labelledby="h-access"] .row-pad').first()).toBeFocused();
+});
+
+test('admin one account: a new invite link after the invite was accepted meanwhile says so, and keeps focus', async ({ page }) => {
+  let lies: AccountDetail = accountDetail(LIES_INVITED);
+  await mockApi(page, {
+    ...adminApi(),
+    'GET /admin/accounts/:id': () => ({ json: lies }),
+    'POST /admin/accounts/:id/invite-link': () => (lies.status === 'invited' ? { json: INVITE_LINK_CREATED } : apiError('wrong_status', 409)),
+  });
+  await page.goto('./#/admin/account/' + LIES_INVITED.id);
+  await expect(statusPill(page)).toHaveText('Invited');
+  lies = { ...lies, status: 'active', inviteExpiresAt: null, sessions: 1, lastSignInAt: '2026-10-23T12:00:00.000Z' };
+  await page.getByRole('button', { name: /^New invite link/ }).click();
+  await expect(statusPill(page)).toHaveText('Active');
+  await expect(page.getByRole('alert')).toHaveText('Lies Bakker accepted the invite meanwhile, so no new link was made.');
+  await expect(page.locator('section[aria-labelledby="h-access"] .row-pad').first()).toBeFocused();
+  await expect(page.getByRole('button', { name: /^New invite link/ })).toHaveCount(0);
 });
 
 test('admin screens with no answer from the API: Try again, then the screen', async ({ page }) => {
