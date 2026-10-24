@@ -3,7 +3,9 @@
  * note is written on the staff and fills the next degree box, a wrong key flashes red and the feedback names the step.
  * Names: the letters are given, one per degree; pick ♭ ♮ ♯ (𝄪) for each. Hear it so far and Start over show from the
  * first note on (Hear the scale once it is done). A scale with mistakes comes back once at the end of the round.
- * Desktop: the exercise header, a wide staff, the answer card with computer keys and the side panel.
+ * Tablet (no board yet; Read notes' NoteTablet pattern): the exercise header, the scale and mistakes, the staff card with
+ * the degrees and the tools under them, the feedback and the answer card. Desktop: the exercise header, a wide staff, the answer card with
+ * computer keys and the side panel.
  */
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import {
@@ -23,10 +25,11 @@ import { t } from '../../../i18n';
 import { PitchStaff, type PitchNote } from '../../../render/PitchStaff';
 import { engine, unlockAudio } from '../../audio';
 import { ExerciseFrame } from '../../components/AppShell';
+import { ExerciseHeader } from '../../components/ExerciseHeader';
 import { Icon } from '../../components/Icon';
 import type { KeyMark } from '../../components/NoteInputs';
 import { DegreeRow, keyNames, SCALE_GAP_KBD, SCALE_WHITE_KBD, ScalePiano, SignButtons, type DegreeCell } from '../../components/ScaleInputs';
-import { SHORTER_PHONE, useBreakpoint, useDocTitle, useKeyboardHints, useMediaQuery } from '../../hooks';
+import { PHONE_LANDSCAPE, SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useMediaQuery } from '../../hooks';
 import { keyForTabbedControl } from '../../lib/focusModality';
 import { letterName } from '../../lib/noteText';
 import { noteName, scaleName, scaleSpoken, stepHow, stepLabel, stepsOf } from '../../lib/scaleText';
@@ -51,8 +54,10 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
   const kbd = useKeyboardHints(bp);
-  // A phone on its side is tablet-wide but short: a smaller staff keeps the degrees and feedback in view.
-  const short = useMediaQuery('(orientation: landscape) and (max-height: 560px)');
+  // A phone on its side is tablet-wide but short: the phone layout (two columns, in the CSS), and a smaller staff keeps
+  // the degrees and feedback in view.
+  const short = useMediaQuery(PHONE_LANDSCAPE);
+  const tablet = useExerciseLayout() === 'tablet';
   // So is a phone browser on a small phone (375 × 553, DESIGN.md §9): the piano and its letters stay in view.
   const shorter = useMediaQuery(SHORTER_PHONE);
   useDocTitle(t('app.docTitle', { page: t('scales.play.docTitle') }));
@@ -310,24 +315,68 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     quit();
   };
 
+  // Tablet and desktop: the exercise header. Esc quits on desktop (as before, also on a touch screen at desktop width).
+  const header = (
+    <ExerciseHeader tablet={tablet} eyebrow={t('scales.play.eyebrowLong', { rest: eyebrow })} line={t('scales.play.scaleOf', { n: idx + 1, total })}
+      progress={{ label: t('scales.play.progress'), value: idx / total, max: total, now: idx }}>
+      <Link to="/scales" className="text-link-btn" aria-keyshortcuts={desktop ? 'Escape' : undefined} onClick={quitLink}>
+        {t('scales.play.quit')} {kbd && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
+      </Link>
+    </ExerciseHeader>
+  );
+  // The scale's name and the mistakes, over the staff (phone and tablet).
+  const info = (
+    <div className="play-info">
+      <div className="play-info-left">
+        <span className="eyebrow">{eyebrow}</span>
+        <span className="splay-title">
+          {scaleName(sc)} {again}
+        </span>
+      </div>
+      {mistakesBox}
+    </div>
+  );
+  const tools = (
+    <div className="splay-tools">
+      {hearBtn}
+      {second}
+    </div>
+  );
+  const skipLink = (
+    <button type="button" className="skip-link nplay-skip" onClick={skip}>
+      {t('scales.play.skip')}
+    </button>
+  );
+
+  // Tablet: as Read notes' (App design canvas, NoteTablet). The staff card takes the height left; Hear it so far and Start
+  // over (hidden in their place before the first note) go under its degrees, as they are about the notes on the staff.
+  if (tablet) {
+    return (
+      <div className="tframe">
+        {header}
+        <h1 className="sr-only">{t(piano ? 'scales.play.headingPiano' : 'scales.play.headingNames')}</h1>
+        <main className="page nplay ntab stab">
+          {info}
+          <div className="card nplay-staff splay-staff ntab-staff stab-staff">
+            {staff}
+            {degrees}
+            {tools}
+          </div>
+          {feedbackBox}
+          <div className="card ntab-card stab-answer">
+            {inputs}
+            {answerActions}
+          </div>
+          {skipLink}
+        </main>
+      </div>
+    );
+  }
+
   if (desktop) {
     return (
       <div className="dplay splay-desk">
-        <header className="dplay-head">
-          <div className="brand brand--static">{t('app.name')}</div>
-          <div className="dplay-title">
-            <span className="eyebrow">{t('scales.play.eyebrowLong', { rest: eyebrow })}</span>
-            <span className="mono-line">{t('scales.play.scaleOf', { n: idx + 1, total })}</span>
-          </div>
-          <div className="progress progress--grow" role="progressbar" aria-label={t('scales.play.progress')} aria-valuemin={0} aria-valuemax={total} aria-valuenow={idx}>
-            <div style={{ width: (idx / total) * 100 + '%' }} />
-          </div>
-          <div className="dplay-actions">
-            <Link to="/scales" className="text-link-btn" aria-keyshortcuts="Escape" onClick={quitLink}>
-              {t('scales.play.quit')} {kbd && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
-            </Link>
-          </div>
-        </header>
+        {header}
         <h1 className="sr-only">{t(piano ? 'scales.play.headingPiano' : 'scales.play.headingNames')}</h1>
         <main className="dplay-main nplay-main">
           <div className="card nplay-staff nplay-staff--desk splay-staff">{staff}</div>
@@ -376,26 +425,13 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
           <span className="mono-muted nplay-count">{t('scales.play.count', { n: idx + 1, total })}</span>
         </div>
 
-        <div className="play-info">
-          <div className="play-info-left">
-            <span className="eyebrow">{eyebrow}</span>
-            <span className="splay-title">
-              {scaleName(sc)} {again}
-            </span>
-          </div>
-          {mistakesBox}
-        </div>
+        {info}
 
         <div className="card nplay-staff splay-staff">{staff}</div>
         {degrees}
         {feedbackBox}
-        <div className="splay-tools">
-          {hearBtn}
-          {second}
-        </div>
-        <button type="button" className="skip-link nplay-skip" onClick={skip}>
-          {t('scales.play.skip')}
-        </button>
+        {tools}
+        {skipLink}
 
         <div className="ninputs splay-inputs">
           {inputs}

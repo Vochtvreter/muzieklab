@@ -56,8 +56,72 @@ export function ScalesDone(): JSX.Element | null {
   const change = (): void => dispatch({ type: 'scaleSettings', settings: s });
   const minor = !s.types.includes('major');
 
+  const score = (
+    <div className="score sdone-score">
+      <div className="score-pct" role="img" aria-label={t('scales.done.cleanAria', { clean: r.clean, total: r.total })}>
+        <span aria-hidden="true">{r.clean}</span>
+        <span aria-hidden="true" className="sdone-of">
+          {' '}
+          / {r.total}
+        </span>
+      </div>
+      <div className="muted-text score-sub">
+        {r.total === 0 ? t('scales.done.none') : t('scales.done.score', { count: r.mistakes })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
+      </div>
+    </div>
+  );
+
+  const review = (
+    <>
+      {r.total > 0 && (
+        <div role="list" aria-label={t('scales.done.listAria')} className="card sdone-list">
+          {r.scales.map((x, i) => (
+            <div key={i} role="listitem" className="sdone-row">
+              <div className="sdone-row-text">
+                <div className="sdone-row-head">
+                  <b>{scaleName(x.scale)}</b>
+                  <span className={x.mistakes ? 'tone-miss' : 'tone-good'}>{t('scales.done.mistakes', { count: x.mistakes })}</span>
+                </div>
+                {x.cameBack && (
+                  <span className="sdone-back">
+                    <Icon name="restart" size={13} strokeWidth={2.4} />
+                    {t('scales.done.cameBack')}
+                  </span>
+                )}
+              </div>
+              <span role="img" aria-label={t('scales.starsAria', { count: x.stars })} className="sdone-stars">
+                <span aria-hidden="true">{'★'.repeat(x.stars)}</span>
+                <span aria-hidden="true" className="scale-stars-off">
+                  {'★'.repeat(3 - x.stars)}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <CircleProgress before={starsBefore} after={state.progress.scales.stars} minor={minor} />
+    </>
+  );
+
+  const actions = (
+    <div className="results-actions">
+      <div className="results-main">
+        <Link to="/scales/setup" className="btn btn--outline" onClick={change}>
+          {t('scales.done.change')}
+        </Link>
+        <button type="button" className="btn btn--accent" onClick={again}>
+          {t('scales.done.newRound')}
+        </button>
+      </div>
+    </div>
+  );
+
+  // Tablet and desktop: the scales and the circle on the left; the score and the actions in the side panel on the right.
+  const wide = bp !== 'phone';
+
   return (
-    <ExerciseFrame className="frame--results">
+    <ExerciseFrame className="frame--results" wide>
       <div className="page results sdone no-scrollbar">
         <div className="screen-head">
           <Link to="/scales" aria-label={t('scales.done.back')} className="icon-btn icon-btn--edge-sm">
@@ -69,58 +133,21 @@ export function ScalesDone(): JSX.Element | null {
           </div>
         </div>
 
-        <div className="score sdone-score">
-          <div className="score-pct" role="img" aria-label={t('scales.done.cleanAria', { clean: r.clean, total: r.total })}>
-            <span aria-hidden="true">{r.clean}</span>
-            <span aria-hidden="true" className="sdone-of">
-              {' '}
-              / {r.total}
-            </span>
+        {wide ? (
+          <div className="wide">
+            <div className="wide-main">{review}</div>
+            <div className="wide-side">
+              {score}
+              {actions}
+            </div>
           </div>
-          <div className="muted-text score-sub">
-            {r.total === 0 ? t('scales.done.none') : t('scales.done.score', { count: r.mistakes })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
-          </div>
-        </div>
-
-        {r.total > 0 && (
-          <div role="list" aria-label={t('scales.done.listAria')} className="card sdone-list">
-            {r.scales.map((x, i) => (
-              <div key={i} role="listitem" className="sdone-row">
-                <div className="sdone-row-text">
-                  <div className="sdone-row-head">
-                    <b>{scaleName(x.scale)}</b>
-                    <span className={x.mistakes ? 'tone-miss' : 'tone-good'}>{t('scales.done.mistakes', { count: x.mistakes })}</span>
-                  </div>
-                  {x.cameBack && (
-                    <span className="sdone-back">
-                      <Icon name="restart" size={13} strokeWidth={2.4} />
-                      {t('scales.done.cameBack')}
-                    </span>
-                  )}
-                </div>
-                <span role="img" aria-label={t('scales.starsAria', { count: x.stars })} className="sdone-stars">
-                  <span aria-hidden="true">{'★'.repeat(x.stars)}</span>
-                  <span aria-hidden="true" className="scale-stars-off">
-                    {'★'.repeat(3 - x.stars)}
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
+        ) : (
+          <>
+            {score}
+            {review}
+            {actions}
+          </>
         )}
-
-        <CircleProgress before={starsBefore} after={state.progress.scales.stars} minor={minor} />
-
-        <div className="results-actions">
-          <div className="results-main">
-            <Link to="/scales/setup" className="btn btn--outline" onClick={change}>
-              {t('scales.done.change')}
-            </Link>
-            <button type="button" className="btn btn--accent" onClick={again}>
-              {t('scales.done.newRound')}
-            </button>
-          </div>
-        </div>
       </div>
       {sheet && (
         <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="levelup" labelledBy="leveluptitle" maxWidth={bp === 'desktop' ? 460 : undefined}>

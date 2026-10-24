@@ -851,6 +851,80 @@
 }
 
 /*
+ * Tablet: Read notes' tablet layout (.ntab in notes.css; App design canvas, NoteTablet), as Scales has no tablet board.
+ * The degrees and the tools (Hear it so far, Start over) in the staff card; the piano or the signs in the answer card.
+ */
+.stab .splay-title {
+  font-size: 24px;
+}
+.stab .splay-mistakes-n {
+  font-size: 24px;
+}
+.ntab > .stab-staff {
+  padding: 20px 24px;
+  gap: 16px;
+  align-items: stretch;
+}
+.stab-staff .degree {
+  height: 54px;
+  border-radius: 10px;
+}
+.stab-staff .degree-name {
+  font-size: 17px;
+}
+.stab-staff .degree-n {
+  font-size: 10.5px;
+}
+.stab-staff .degree-step {
+  width: 22px;
+  font-size: 12px;
+}
+.stab-staff .degree-pair:last-child {
+  flex-basis: calc((100% - 7 * 22px) / 8);
+}
+.stab-staff .splay-tools {
+  gap: 12px;
+}
+.stab-staff .splay-tools .btn {
+  min-height: 52px;
+}
+.stab-answer .spiano {
+  --black-w: 44px;
+  flex: 0 1 276px;
+  height: auto;
+  min-height: 150px;
+}
+.stab-answer .spiano .piano-white {
+  padding-bottom: 14px;
+  font-size: 16px;
+}
+.stab-answer .ssign {
+  height: 104px;
+}
+.stab-answer .ssign-main {
+  font-size: 30px;
+}
+.stab-answer .nactions {
+  gap: 12px;
+}
+.stab-answer .nactions .btn {
+  min-height: 60px;
+}
+/* A smaller tablet: as Read notes' (notes.css), tighter first, then a fixed, lower piano under 960 px tall. */
+@media (max-height: 1099.98px) {
+  .ntab > .stab-staff {
+    padding: 16px 24px;
+    gap: 12px;
+  }
+}
+@media (max-height: 959.98px) {
+  .stab-answer .spiano {
+    flex: none;
+    height: 170px;
+  }
+}
+
+/*
  * A phone browser (DESIGN.md §9, see Play in app.css): tighter gaps, and the piano gives up height so its letters stay
  * in view. On the shortest screens the staff is smaller (ScalesPlay), and so are the degrees and the sign buttons.
  */

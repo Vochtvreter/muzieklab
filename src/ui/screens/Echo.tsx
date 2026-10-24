@@ -1,21 +1,24 @@
 /**
  * Echo mode (DESIGN.md §3.3): the rhythm is played with the notation hidden, the player taps it back from memory,
  * and Results reveals the notation with the timing. `EchoListen` is the listen phase; `EchoCard` stands in for the
- * staff while the player taps (the tapping itself is the normal Play session).
+ * staff while the player taps (the tapping itself is the normal Play session). On tablet and desktop the listen phase
+ * has Play's layout, with the listen card where the staff goes, so the screen looks the same before and after.
  */
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { t } from '../../i18n';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
 import { BeatRow, TapPad } from '../components/Bits';
+import { ExerciseHeader } from '../components/ExerciseHeader';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import type { ExerciseView } from '../exerciseView';
-import { useBreakpoint, useDocTitle, useKeyboardHints, useLingering } from '../hooks';
+import { useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering } from '../hooks';
 import { metersLabel } from '../lib/format';
 import { beatAt, type BeatState } from '../lib/playMath';
 import { Link, navigate } from '../router';
 import { useStore, type Run } from '../store';
+import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
 import { HowToContent } from './PlaySheets';
 
 /** How often the rhythm can be heard (the first listen included). */
@@ -57,6 +60,8 @@ interface ListenProps {
 export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, onTapBack }: ListenProps): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
+  const desktop = bp === 'desktop';
+  const tablet = useExerciseLayout() === 'tablet';
   const keys = useKeyboardHints(bp);
   const ex = run.exercise;
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
@@ -150,6 +155,85 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     ? t('play.beats', { total: ex.meter.beatsPerBar })
     : t(beat.countIn ? 'play.countIn' : 'play.countingBeat', { beat: beat.inBar + 1, total: ex.meter.beatsPerBar });
 
+  const listenBody = (
+    <>
+      <button type="button" className={'echo-play' + (playing ? ' is-playing' : '')} disabled={playing || playsLeft <= 0}
+        aria-label={t(heard ? 'play.echo.replay' : 'play.echo.play')} onClick={listen}>
+        <Icon name="play" size={34} />
+      </button>
+      <h2 id="echo-listen-title" className="echo-title" aria-live="polite">
+        {playing ? t('play.echo.playing') : t('play.echo.listenTitle')}
+      </h2>
+      <span className="muted-text">{t('play.echo.meta', { bars, meter: metersLabel([ex.meter.id]), bpm: ex.tempo })}</span>
+      <PlaysLeft left={playsLeft} />
+      {heard && !playing && (
+        <button type="button" className="btn btn--accent echo-start m-in" onClick={onTapBack}>
+          {t('play.echo.start')}
+        </button>
+      )}
+      <p className="sr-only">{t('play.echo.hidden')}</p>
+    </>
+  );
+  const sheet = helpShown && (
+    <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey="help" labelledBy="howto" maxWidth={desktop ? 520 : undefined}>
+      <HowToContent eyebrow={t('howto.echo.eyebrow')} desktop={keys} hold={ex.settings.hold} echo onDone={closeHelp} />
+    </Sheet>
+  );
+
+  if (desktop || tablet) {
+    // Play's tablet and desktop layout (Play.tsx): the exercise header, the listen card in the staff card, then the
+    // count and the pad, which takes taps once the rhythm is tapped back.
+    const count: CountProps = { beats: ex.meter.beatsPerBar, beat, label: beatLabel, countIn: beat.countIn };
+    const header = (
+      <ExerciseHeader tablet={tablet} eyebrow={where}
+        line={
+          <>
+            {t('play.echo.listen')} · {metersLabel([ex.meter.id])} · <span className="music">𝅘𝅥</span> {t('play.beatEquals', { bpm: ex.tempo })}
+          </>
+        }
+        progress={{ label: t('play.progress'), value: heard ? 0.1 : 0.05, max: 100, now: heard ? 10 : 5 }}>
+        <button type="button" className="icon-btn icon-btn--quiet" aria-haspopup="dialog" aria-keyshortcuts={keys ? '?' : undefined}
+          aria-label={t(keys ? 'play.helpShortcut' : 'play.help')} title={t(keys ? 'play.helpTitle' : 'play.help')} onClick={() => setHelp('help')}>
+          <Icon name="help" size={20} strokeWidth={1.8} />
+        </button>
+        <Link to="/" className="text-link-btn" onClick={quit}>
+          {t('play.quitShort')}
+        </Link>
+      </ExerciseHeader>
+    );
+    const card = (
+      <div className={'card ' + (desktop ? 'dplay-staff' : 'tplay-staff tplay-staff--echo')}>
+        <div className="dplay-staff-inner">
+          <section className="echo-card" aria-labelledby="echo-listen-title">
+            {listenBody}
+          </section>
+        </div>
+      </div>
+    );
+    return (
+      <div className={desktop ? 'dplay' : 'tframe'}>
+        {header}
+        <h1 className="sr-only">{t('play.echo.listenTitle')}</h1>
+        {desktop ? (
+          <main className="dplay-main">
+            {card}
+            <PlayDeskRow count={count} combo={0} soFar={null} judgement={cue} judgementClass="judgement tone-muted" held={false} ring={0} disabled />
+          </main>
+        ) : (
+          <main className="page tplay-main">
+            {card}
+            <PlayCountRow count={count} combo={0} />
+            <div aria-live="polite" className="judgement judgement--tablet tone-muted">
+              {cue}
+            </div>
+            <TapPad progress={0} held={false} disabled />
+          </main>
+        )}
+        {sheet}
+      </div>
+    );
+  }
+
   return (
     <ExerciseFrame className="frame--play">
       <div className="page play echo">
@@ -177,21 +261,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
         </div>
 
         <section className="card play-staff play-staff--echo echo-card" aria-labelledby="echo-listen-title">
-          <button type="button" className={'echo-play' + (playing ? ' is-playing' : '')} disabled={playing || playsLeft <= 0}
-            aria-label={t(heard ? 'play.echo.replay' : 'play.echo.play')} onClick={listen}>
-            <Icon name="play" size={34} />
-          </button>
-          <h2 id="echo-listen-title" className="echo-title" aria-live="polite">
-            {playing ? t('play.echo.playing') : t('play.echo.listenTitle')}
-          </h2>
-          <span className="muted-text">{t('play.echo.meta', { bars, meter: metersLabel([ex.meter.id]), bpm: ex.tempo })}</span>
-          <PlaysLeft left={playsLeft} />
-          {heard && !playing && (
-            <button type="button" className="btn btn--accent echo-start m-in" onClick={onTapBack}>
-              {t('play.echo.start')}
-            </button>
-          )}
-          <p className="sr-only">{t('play.echo.hidden')}</p>
+          {listenBody}
         </section>
 
         <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />
@@ -200,11 +270,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
         </div>
         <TapPad progress={0} held={false} disabled />
       </div>
-      {helpShown && (
-        <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="help" labelledBy="howto" maxWidth={bp === 'desktop' ? 520 : undefined}>
-          <HowToContent eyebrow={t('howto.echo.eyebrow')} desktop={keys} hold={ex.settings.hold} echo onDone={closeHelp} />
-        </Sheet>
-      )}
+      {sheet}
     </ExerciseFrame>
   );
 }
