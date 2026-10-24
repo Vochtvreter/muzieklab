@@ -26,7 +26,7 @@
 }
 @media (min-width: 700px) {
   .frame--form .frame-column {
-    max-width: 480px;
+    --col: 480px;
   }
   .acct--focus {
     --pt: 64px;

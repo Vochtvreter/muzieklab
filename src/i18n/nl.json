@@ -2408,6 +2408,10 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_12_1": {
+      "title": "De schuifbalk aan de rand van het venster",
+      "scrollbar": "Op een tablet of een computer staat de schuifbalk van een pagina die scrolt aan de rechterrand van het venster, niet naast de kolom in het midden. De blokken van het leerpad scrollen ook aan de rand."
+    },
     "v0_12_0": {
       "title": "Accounts",
       "try": "Open Instellingen",

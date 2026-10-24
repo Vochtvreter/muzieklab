@@ -2408,6 +2408,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_12_1": {
+      "title": "The scrollbar at the window's edge",
+      "scrollbar": "On a tablet or a computer, a page that scrolls has its scrollbar at the right edge of the window, not beside the column in the middle. The Learning path's units scroll at the edge too."
+    },
     "v0_12_0": {
       "title": "Accounts",
       "try": "Open Settings",
