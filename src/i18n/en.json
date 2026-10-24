@@ -2415,6 +2415,10 @@
       "admin": "Admins invite people with a link to send themselves, and manage accounts, roles and premium.",
       "privacy": "A privacy statement in Settings → About says what stays on your device and what an account stores."
     },
+    "v0_11_3": {
+      "title": "The test site has a gold icon",
+      "icon": "The test site's icon is gold with a dark note, so a browser tab or a home-screen icon tells it apart from the real Muzieklab."
+    },
     "v0_11_2": {
       "title": "The test site names its branch",
       "branch": "The test site shows the branch it was built from, at the top of every screen and next to the version in Settings → About."

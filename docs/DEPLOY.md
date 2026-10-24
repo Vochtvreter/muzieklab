@@ -7,7 +7,7 @@ routes with `#` hashes, so the server needs no rewrite rules. Two sites run on o
 | Site | Folder on the server | Deploys | Workflow |
 |---|---|---|---|
 | https://vivanova.app (production) | `/var/www/muzieklab` | every push to `main` | `deploy.yml`, *Deploy to production* |
-| https://test.vivanova.app (test) | `/var/www/muzieklab-test` | every push to `test`, or any branch by hand | `deploy-test.yml`, *Deploy to test* |
+| https://test.vivanova.app (test) | `/var/www/muzieklab-test` | every push to `test` (each merged PR), or any branch by hand | `deploy-test.yml`, *Deploy to test* |
 
 Each site can also have the API (`server/`) next to it; see *The API* below.
 
@@ -138,22 +138,47 @@ by itself. The run's summary links the live site.
 
 ## The test site
 
-https://test.vivanova.app is a second copy of the app on the same server, for trying a change before it reaches
+https://test.vivanova.app is a second copy of the app on the same server, for checking changes before they reach
 `main`. It has its own folder and its own releases, and search engines are told to leave it out (`X-Robots-Tag`).
 Progress and settings are kept per site in the browser, so playing on the test site never touches production's.
 
-**Deploy a branch to it** in either of two ways:
+### Branches
 
-- **Actions → Deploy to test → Run workflow**, and pick the branch under *Use workflow from*.
-- Push it to the `test` branch: `git push --force origin my-branch:test`. Every push to `test` deploys by itself.
+Changes go through the `test` branch on their way to `main`:
 
-Only one version is on the test site at a time: the latest deploy wins.
+```
+my-branch ──PR──▶ test ──release PR──▶ main
+                   │                    │
+          test.vivanova.app        vivanova.app
+```
+
+- **Work:** branch from `test` and open the PR into `test`. CI checks it. Merge it once CI is green: every push to
+  `test` deploys the test site, so it always has every PR merged so far, ready to check together.
+- **Release:** when the test site checks out, open a PR from `test` into `main` and merge it with **Create a merge
+  commit**. Not squash or rebase: those give `main` new commits that `test` lacks, so the next release PR shows changes
+  that are already released and can conflict. The push to `main` deploys production.
+- **A PR that breaks something on test:** a release takes everything on `test`, so fix it first, with another PR into
+  `test` or by reverting it (*Revert* on the merged PR opens a PR that undoes it).
+- **An urgent fix for production:** branch from `main`, open the PR into `main`, then bring it to `test` with a PR from
+  `main` into `test` (merge commit).
+
+Two repository settings make this the easy path: `test` as the default branch (*Settings → General → Default branch*),
+so new PRs and new branches start from it, and merge commits allowed (*Settings → General → Pull Requests → Allow
+merge commits*), for the release PR.
+
+### Try a branch before merging it
+
+**Actions → Deploy to test → Run workflow**, and pick the branch under *Use workflow from*. It stays on the test site
+until the next push to `test`. Never push a branch over `test` itself (`git push --force origin my-branch:test`): that
+replaces everything merged into it.
 
 The test site shows which branch is on it: a small label at the top of every screen, and the branch after the version
-in *Settings → About*. The run's name and summary in the Actions tab name it too. A run started by hand names the
-branch picked under *Use workflow from*; a push to `test` names the branch whose latest commit it is (so
-`git push --force origin my-branch:test` shows `my-branch`), or `test` when no other branch is at that commit.
-Production never shows a branch.
+in *Settings → About*. The run's name and summary in the Actions tab name it too: `test` after a push to it, or the
+branch picked under *Use workflow from*. Production never shows a branch.
+
+Its icon is gold with a dark note, where production's is teal with a white note, so a browser tab or an icon on the
+home screen tells the two apart. The deploy copies the icons in `public-test/` over those in `public/` before it
+builds; when the icon changes, change both.
 
 ### Set up the test site (once)
 

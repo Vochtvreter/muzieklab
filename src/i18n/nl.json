@@ -2415,6 +2415,10 @@
       "admin": "Beheerders nodigen mensen uit met een link die ze zelf doorsturen, en beheren accounts, rollen en premium.",
       "privacy": "Een privacyverklaring in Instellingen → Over vertelt wat er op je apparaat blijft en wat een account bewaart."
     },
+    "v0_11_3": {
+      "title": "De testsite heeft een gouden icoon",
+      "icon": "Het icoon van de testsite is goud met een donkere noot, zodat je hem aan een browsertabblad of een icoon op je beginscherm onderscheidt van de echte Muzieklab."
+    },
     "v0_11_2": {
       "title": "De testsite noemt zijn branch",
       "branch": "De testsite laat de branch zien waaruit hij is gebouwd, bovenaan elk scherm en naast de versie in Instellingen → Over."
