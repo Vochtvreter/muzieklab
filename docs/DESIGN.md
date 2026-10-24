@@ -1176,7 +1176,8 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   a list of the sections (Account when it shows, §9.2, then Language, Sound, Timing, Playing, Display, About) on the
   left, and the cards in two columns (Account, Language, Sound, Timing; Playing, Display, About), each with its title
   inside the card. A section picked in the list
-  comes into view and gets the focus; the highlight slides like any pick-one group. On tablet the columns are narrow, so
+  comes into view and gets the focus; the highlight slides like any pick-one group. Until one is picked the first is
+  current, Account once it shows (since 0.13.1). On tablet the columns are narrow, so
   a row's control goes under its label and a volume's slider under its name. The MVP canvas's Settings boards still
   show the phone column on tablet and desktop.
 - Every screen has a tablet and a desktop layout (since 0.13.0); before, the setups, Key, Results, the round summaries,

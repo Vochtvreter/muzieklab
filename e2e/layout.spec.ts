@@ -1233,6 +1233,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectTouchHeight(link);
         await expect(link).toContainText('Accounts are by invitation.');
         await expect(page.locator('.set-section').first()).toHaveAttribute('aria-labelledby', 'h-account');
+        // Tablet and desktop: Account is the first item of the list of sections too, and the current one, though it
+        // comes in above Language only once the API answered.
+        if (VIEWPORTS[name].width >= 700) {
+          const first = page.getByRole('navigation', { name: 'Settings sections' }).getByRole('button').first();
+          await expect(first).toHaveText('Account');
+          await expect(first).toHaveAttribute('aria-current', 'true');
+        }
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });
