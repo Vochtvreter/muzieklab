@@ -249,8 +249,9 @@ function SectionNav({ account }: { account: boolean }): JSX.Element {
   const still = useReducedMotion();
   const sections = account ? SECTIONS : SECTIONS.filter((x) => x.id !== 'account');
   // The picked section by its id: Account can come into the list later (once the API answers), moving the others down.
-  const [picked, setPicked] = useState(sections[0].id);
-  const at = Math.max(0, sections.findIndex((x) => x.id === picked));
+  // Until one is picked the first is current, so that is Account once it is there.
+  const [picked, setPicked] = useState<string | null>(null);
+  const at = picked ? Math.max(0, sections.findIndex((x) => x.id === picked)) : 0;
   const move = useRef({ at, n: 0, fy: '0px' });
   const m = move.current;
   if (m.at !== at) {

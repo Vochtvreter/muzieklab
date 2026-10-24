@@ -30,9 +30,10 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Made for tablets and computers' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 24 · 1 new · 4 better')).toBeTruthy();
-    // Accounts (0.12.0, open under the latest) are by invitation: the release promises no sign-up.
+    expect(screen.getByRole('heading', { level: 2, name: 'Settings marks Account first' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 24 · 1 fixed')).toBeTruthy();
+    // Accounts (0.12.0) are by invitation: the release promises no sign-up.
+    fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
@@ -66,8 +67,9 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Gemaakt voor tablets en computers' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('24 okt · 1 nieuw · 4 beter')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Instellingen markeert eerst Account' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('24 okt · 1 opgelost')).toBeTruthy();
+    fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
@@ -76,8 +78,7 @@ describe("What's new", () => {
     width = 834;
     render(<Changelog />);
     const card = screen.getByRole('article');
-    expect(within(card).getAllByText('New')).toHaveLength(1);
-    expect(within(card).getAllByText('Better')).toHaveLength(4);
+    expect(within(card).getAllByText('Fixed')).toHaveLength(1);
     expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
   });
 
@@ -87,8 +88,8 @@ describe("What's new", () => {
     const list = screen.getByRole('navigation', { name: 'Releases' });
     expect(within(list).getAllByRole('button')).toHaveLength(RELEASES.length);
     expect(release(RELEASES[0].version).getAttribute('aria-current')).toBe('true');
-    expect(screen.getByRole('heading', { level: 2, name: 'Made for tablets and computers' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('October 24, 2026 · 1 new · 4 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Settings marks Account first' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('October 24, 2026 · 1 fixed')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
     expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
 
