@@ -220,6 +220,37 @@ describe('Dutch', () => {
     );
   });
 
+  it('speaks about the one account an admin handles without ze or hun (plural, or "she")', () => {
+    setLocale('nl');
+    const keys = ['emailEmpty', 'nameEmpty', 'rolesNone', 'blockedDone', 'unblockedDone', 'blockSub', 'blockDetail', 'unblockSub', 'deleteDetail'];
+    for (const key of keys) expect(t('admin.' + key, { name: 'Piet Visser' }), key).not.toMatch(/\b(ze|hun)\b/i);
+    // "deblokkeren" takes an object: not a bare "als je deblokkeert".
+    expect(t('admin.blockDetail', { name: 'Piet Visser' })).toBe('Piet Visser wordt uitgelogd en kan pas weer inloggen als je het account deblokkeert.');
+    expect(t('admin.blockSub')).toBe('Inloggen kan pas weer als je het account deblokkeert.');
+  });
+
+  it('does not call the note for an API that does not answer "Offline": the device may be online (a 502 during a deploy)', () => {
+    for (const locale of ['en', 'nl']) {
+      setLocale(locale);
+      for (const key of ['account.offline', 'account.stillOffline', 'account.backOnline']) expect(t(key), `${locale} ${key}`).not.toMatch(/offline/i);
+    }
+    setLocale('en');
+    expect(t('account.offline')).toBe("Muzieklab can't be reached right now. You can change your account again once it can.");
+    setLocale('nl');
+    expect(t('account.offline')).toBe('Muzieklab is nu niet bereikbaar. Je kunt je account wijzigen zodra Muzieklab weer bereikbaar is.');
+    // Names Muzieklab again: a bare "het" after "je account" reads as the account being unreachable.
+    expect(t('account.offline')).not.toMatch(/zodra het\b/);
+  });
+
+  it('says "ongedaan maken" in full, and asks the person who invited you, not who it was', () => {
+    setLocale('nl');
+    for (const key of ['account.deleteDetail', 'admin.deleteDetail', 'settings.resetDetail']) {
+      expect(t(key), key).toMatch(/Je kunt dit niet ongedaan maken\.$/);
+    }
+    expect(t('apiError.link_invalid')).toBe('Deze link werkt niet meer. Vraag degene die je heeft uitgenodigd om een nieuwe link.');
+    expect(t('admin.selfSub')).toBe('Je wachtwoord wijzigen of je account verwijderen doe je in Account.');
+  });
+
   it('falls back to English for a key a catalog lacks', () => {
     setLocale('nl');
     expect(hasMessage('nope.not.here')).toBe(false);

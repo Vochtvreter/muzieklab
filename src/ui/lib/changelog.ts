@@ -25,15 +25,26 @@ export const KINDS: ChangeKind[] = ['new', 'better', 'fix'];
 
 export const RELEASES: Release[] = [
   {
+    version: '0.13.0',
+    date: '2026-10-24',
+    title: 'changelog.v0_13_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_13_0.settings' },
+      { kind: 'better', text: 'changelog.v0_13_0.setups' },
+      { kind: 'better', text: 'changelog.v0_13_0.results' },
+      { kind: 'better', text: 'changelog.v0_13_0.play' },
+      { kind: 'better', text: 'changelog.v0_13_0.calibrate' },
+    ],
+    action: { to: '/settings', label: 'changelog.v0_13_0.try' },
+  },
+  {
     version: '0.12.0',
     date: '2026-10-23',
     title: 'changelog.v0_12_0.title',
     changes: [
-      { kind: 'new', text: 'changelog.v0_12_0.settings' },
-      { kind: 'better', text: 'changelog.v0_12_0.setups' },
-      { kind: 'better', text: 'changelog.v0_12_0.results' },
-      { kind: 'better', text: 'changelog.v0_12_0.play' },
-      { kind: 'better', text: 'changelog.v0_12_0.calibrate' },
+      { kind: 'new', text: 'changelog.v0_12_0.signIn' },
+      { kind: 'new', text: 'changelog.v0_12_0.admin' },
+      { kind: 'new', text: 'changelog.v0_12_0.privacy' },
     ],
     action: { to: '/settings', label: 'changelog.v0_12_0.try' },
   },

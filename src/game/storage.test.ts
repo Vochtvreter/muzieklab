@@ -2,8 +2,11 @@
 import { DEFAULT_NOTE_SETTINGS } from '../core/noteRound';
 import { DEFAULT_SCALE_SETTINGS } from '../core/scaleRound';
 import { DEFAULT_SETTINGS } from '../core/defaults';
+import type { Me } from '../../shared/api';
 import {
+  ACCOUNT_KEY,
   DEFAULT_PREFS,
+  loadAccount,
   PREFS_KEY,
   PROGRESS_KEY,
   addPracticeDay,
@@ -13,6 +16,7 @@ import {
   loadProgress,
   localDateIso,
   resetProgress,
+  saveAccount,
   savePrefs,
   saveProgress,
   streak,
@@ -264,5 +268,63 @@ describe('helpers', () => {
     const p: Progress = { ...defaultProgress(), practiceDays: ['2026-10-17'] };
     expect(addPracticeDay(p, '2026-10-17')).toBe(p);
     expect(addPracticeDay(p, '2026-10-16').practiceDays).toEqual(['2026-10-16', '2026-10-17']);
+  });
+});
+
+describe('account storage (muzieklab.account.v1)', () => {
+  const me: Me = {
+    id: '6718f0c2a1b2c3d4e5f60002',
+    email: 'ann@example.com',
+    name: 'Ann de Vries',
+    locale: 'nl',
+    roles: ['admin'],
+    permissions: ['self.manage', 'accounts.read'],
+    premium: { active: true, until: '2027-01-31' },
+    createdAt: '2026-10-01T09:00:00.000Z',
+  };
+  beforeEach(() => localStorage.clear());
+
+  it('keeps the signed-in account for offline use, and forgets it on sign-out', () => {
+    expect(loadAccount()).toBeNull();
+    saveAccount(me);
+    expect(loadAccount()).toEqual(me);
+    saveAccount(null);
+    expect(localStorage.getItem(ACCOUNT_KEY)).toBeNull();
+    expect(loadAccount()).toBeNull();
+  });
+
+  it("stores only Me's fields: never a password or a token", () => {
+    saveAccount({ ...me, password: 'hunter2hunter2', token: 'abc', session: 'xyz' } as unknown as Me);
+    const raw = localStorage.getItem(ACCOUNT_KEY) ?? '';
+    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['createdAt', 'email', 'id', 'locale', 'name', 'permissions', 'premium', 'roles']);
+    expect(raw).not.toMatch(/hunter2|password|token|session/);
+  });
+
+  it('repairs or drops what is not an account', () => {
+    localStorage.setItem(ACCOUNT_KEY, '{broken');
+    expect(loadAccount()).toBeNull();
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ name: 'No id' }));
+    expect(loadAccount()).toBeNull();
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ ...me, roles: ['admin', 'king'], permissions: ['fly', 'accounts.read'], locale: 'xx', premium: 'yes' }));
+    expect(loadAccount()).toEqual({ ...me, roles: ['admin'], permissions: ['accounts.read'], locale: null, premium: { active: false, until: null } });
+  });
+
+  it('resetting progress keeps the account', () => {
+    saveAccount(me);
+    resetProgress();
+    expect(loadAccount()).toEqual(me);
+  });
+
+  it('does not throw when storage fails', () => {
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota');
+    });
+    const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    expect(() => saveAccount(me)).not.toThrow();
+    expect(() => saveAccount(null)).not.toThrow();
+    set.mockRestore();
+    remove.mockRestore();
   });
 });

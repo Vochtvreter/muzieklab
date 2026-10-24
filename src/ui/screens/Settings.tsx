@@ -1,7 +1,8 @@
 /**
- * Settings: language, sound, timing (calibrate, leniency), playing (input), display (theme, beat counter), about
- * (what's new, version, offline, reset). Phone: one column. Tablet and desktop: the sections listed on the left and the
- * cards in two columns (App design canvas, SettingsTablet and SettingsDesktop).
+ * Settings: account (when the API answers, or an account is cached), language, sound, timing (calibrate, leniency),
+ * playing (input), display (theme, beat counter), about (what's new, privacy, version, offline, reset). Phone: one
+ * column. Tablet and desktop: the sections listed on the left and the cards in two columns (App design canvas,
+ * SettingsTablet and SettingsDesktop).
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Leniency } from '../../core/api';
@@ -12,11 +13,14 @@ import { AppShell } from '../components/AppShell';
 import { AnalogMetronome, BeatRow } from '../components/Bits';
 import { Segmented, SwitchTrack } from '../components/Controls';
 import { Icon, type IconName } from '../components/Icon';
+import { RowLink, Section, WideSections } from '../components/Rows';
 import { useBreakpoint, useDocTitle, useReducedMotion } from '../hooks';
+import { announce } from '../lib/announce';
 import { RELEASES } from '../lib/changelog';
 import { signedMs } from '../lib/format';
 import { Link } from '../router';
 import { useStore } from '../store';
+import { AccountSection } from './account/AccountSection';
 import pkg from '../../../package.json';
 
 type VolKey = keyof Prefs['volumes'];
@@ -45,13 +49,15 @@ export function SettingsScreen(): JSX.Element {
   const offline = useOfflineReady();
 
   const wide = bp !== 'phone';
+  // The Account section shows once the API answered, or with a cached account (AccountSection); the list names it then.
+  const hasAccount = !!state.account.me || state.account.api === 'reachable';
   const language = (
-    <Section id="language" wide={wide} title={t('settings.language')}>
+    <Section id="language" title={t('settings.language')}>
       <LanguageRow onChange={(code) => set({ language: code })} />
     </Section>
   );
   const sound = (
-    <Section id="sound" wide={wide} title={t('settings.sound')}>
+    <Section id="sound" title={t('settings.sound')}>
       <VolumeRow label={t('settings.metronome')} aria={t('settings.metronomeVolume')} value={prefs.volumes.metronome} on={prefs.metronomeOn}
         onChange={(v) => setVol('metronome', v, 'metronomeOn')} onToggle={() => set({ metronomeOn: !prefs.metronomeOn })} />
       <VolumeRow label={t('settings.playback')} aria={t('settings.playbackVolume')} value={prefs.volumes.rhythm} on onChange={(v) => setVol('rhythm', v)} />
@@ -60,7 +66,7 @@ export function SettingsScreen(): JSX.Element {
     </Section>
   );
   const timing = (
-    <Section id="timing" wide={wide} title={t('settings.timing')}>
+    <Section id="timing" title={t('settings.timing')}>
       <Link to="/calibrate" className="row-link">
         <span className="row-link-text">
           <b>{t('settings.calibrate')}</b>
@@ -86,7 +92,7 @@ export function SettingsScreen(): JSX.Element {
     </Section>
   );
   const playing = (
-    <Section id="playing" wide={wide} title={t('settings.playing')}>
+    <Section id="playing" title={t('settings.playing')}>
       {/* A choice here replaces whatever the Setup's early-hold switch would put back (holdEarly). */}
       <SegRow label={t('settings.input')} group={t('settings.inputGroup')} value={prefs.holdMode} onChange={(v: Prefs['holdMode']) => set({ holdMode: v, holdEarly: null })}
         hint={t(prefs.holdMode === 'hold' ? 'settings.hintHold' : 'settings.hintTap')}
@@ -97,7 +103,7 @@ export function SettingsScreen(): JSX.Element {
     </Section>
   );
   const display = (
-    <Section id="display" wide={wide} title={t('settings.display')}>
+    <Section id="display" title={t('settings.display')}>
       <SegRow label={t('settings.theme')} group={t('settings.themeGroup')} value={prefs.theme} onChange={(v: Prefs['theme']) => set({ theme: v })}
         hint={t({ system: 'settings.hintThemeSystem', light: 'settings.hintThemeLight', dark: 'settings.hintThemeDark' }[prefs.theme])}
         options={[
@@ -117,7 +123,7 @@ export function SettingsScreen(): JSX.Element {
     </Section>
   );
   const about = (
-    <Section id="about" wide={wide} title={t('settings.about')}>
+    <Section id="about" title={t('settings.about')}>
       <Link to="/changelog" className="row-link">
         <span className="row-link-text">
           <b>{t('changelog.title')}</b>
@@ -125,6 +131,7 @@ export function SettingsScreen(): JSX.Element {
         </span>
         <Icon name="chevron" size={20} className="row-chevron" />
       </Link>
+      <RowLink to="/privacy" title={t('settings.privacy')} sub={t('settings.privacySub')} />
       <div className="about-row">
         <span className="about-version">
           <b>{t('settings.version')}</b>
@@ -158,13 +165,15 @@ export function SettingsScreen(): JSX.Element {
               dispatch({ type: 'resetProgress' });
               setConfirm(false);
               setWiped(true);
+              // The button that was pressed is gone: the line under it is read out (ui/lib/announce.ts).
+              announce(t('settings.resetDone'));
             }}>
               {t('settings.resetConfirm')}
             </button>
           </div>
         )}
         {wiped && (
-          <div className="reset-done m-in" role="status">
+          <div className="reset-done m-in">
             <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
             {t('settings.resetDone')}
           </div>
@@ -176,22 +185,25 @@ export function SettingsScreen(): JSX.Element {
   if (wide) {
     return (
       <AppShell bp={bp} active="/settings" fill>
-        <div className="page settings-wide no-scrollbar">
-          <aside className="set-side">
-            <h1 className="page-title">{t('settings.title')}</h1>
-            <SectionNav />
-          </aside>
-          <div className="set-col">
-            {language}
-            {sound}
-            {timing}
+        <WideSections.Provider value>
+          <div className="page settings-wide no-scrollbar">
+            <aside className="set-side">
+              <h1 className="page-title">{t('settings.title')}</h1>
+              <SectionNav account={hasAccount} />
+            </aside>
+            <div className="set-col">
+              <AccountSection />
+              {language}
+              {sound}
+              {timing}
+            </div>
+            <div className="set-col">
+              {playing}
+              {display}
+              {about}
+            </div>
           </div>
-          <div className="set-col">
-            {playing}
-            {display}
-            {about}
-          </div>
-        </div>
+        </WideSections.Provider>
       </AppShell>
     );
   }
@@ -203,6 +215,7 @@ export function SettingsScreen(): JSX.Element {
           <h1 className="page-title">{t('settings.title')}</h1>
         </div>
         <div className="settings-body">
+          <AccountSection />
           {language}
           {sound}
           {timing}
@@ -215,31 +228,8 @@ export function SettingsScreen(): JSX.Element {
   );
 }
 
-/** Phone: the title above the card. Tablet and desktop: the title in the card, which the section list can move to. */
-function Section({ id, title, wide, children }: { id: string; title: string; wide: boolean; children: ReactNode }): JSX.Element {
-  if (wide) {
-    return (
-      <section id={'set-' + id} tabIndex={-1} aria-labelledby={'h-' + id} className="set-section set-section--card">
-        <div className="set-card">
-          <h2 id={'h-' + id} className="set-card-title">
-            {title}
-          </h2>
-          {children}
-        </div>
-      </section>
-    );
-  }
-  return (
-    <section aria-labelledby={'h-' + id} className="set-section">
-      <h2 id={'h-' + id} className="label">
-        {title}
-      </h2>
-      <div className="set-card">{children}</div>
-    </section>
-  );
-}
-
 const SECTIONS: { id: string; icon: IconName }[] = [
+  { id: 'account', icon: 'person' },
   { id: 'language', icon: 'globe' },
   { id: 'sound', icon: 'speaker' },
   { id: 'timing', icon: 'stopwatch' },
@@ -255,10 +245,13 @@ const NAV_GAP = 4;
  * Tablet and desktop: the sections listed on the left (App design canvas, SettingsTablet and SettingsDesktop). A pick
  * brings its card into view and moves focus to it; the highlight slides there like any pick-one group (DESIGN.md §9).
  */
-function SectionNav(): JSX.Element {
+function SectionNav({ account }: { account: boolean }): JSX.Element {
   const still = useReducedMotion();
-  const [at, setAt] = useState(0);
-  const move = useRef({ at: 0, n: 0, fy: '0px' });
+  const sections = account ? SECTIONS : SECTIONS.filter((x) => x.id !== 'account');
+  // The picked section by its id: Account can come into the list later (once the API answers), moving the others down.
+  const [picked, setPicked] = useState(sections[0].id);
+  const at = Math.max(0, sections.findIndex((x) => x.id === picked));
+  const move = useRef({ at, n: 0, fy: '0px' });
   const m = move.current;
   if (m.at !== at) {
     m.fy = `calc(${m.at - at} * (100% + ${NAV_GAP}px))`;
@@ -273,9 +266,9 @@ function SectionNav(): JSX.Element {
     '--sh': 1,
     animation: m.n ? `${m.n % 2 ? 'm-slide-a' : 'm-slide-b'} .26s cubic-bezier(.2,0,0,1)` : undefined,
   } as CSSProperties;
-  const pick = (i: number): void => {
-    setAt(i);
-    const el = document.getElementById('set-' + SECTIONS[i].id);
+  const pick = (id: string): void => {
+    setPicked(id);
+    const el = document.getElementById('set-' + id);
     el?.scrollIntoView?.({ block: 'nearest', behavior: still ? 'auto' : 'smooth' });
     el?.focus({ preventScroll: true });
   };
@@ -286,9 +279,9 @@ function SectionNav(): JSX.Element {
           <div className="m-skin set-nav-thumb" style={skin} />
         </div>
       </div>
-      {SECTIONS.map((sec, i) => (
+      {sections.map((sec, i) => (
         <button key={sec.id} type="button" aria-current={i === at ? 'true' : undefined} className={'set-nav-item' + (i === at ? ' is-current' : '')}
-          style={{ height: NAV_ITEM }} onClick={() => pick(i)}>
+          style={{ height: NAV_ITEM }} onClick={() => pick(sec.id)}>
           <Icon name={sec.icon} size={20} />
           {t('settings.' + sec.id)}
         </button>

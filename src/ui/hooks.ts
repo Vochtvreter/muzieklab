@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type MutableRefObject } from 'react';
 
 export type Breakpoint = 'phone' | 'tablet' | 'desktop';
 
@@ -116,4 +116,16 @@ export function useLingering<T>(value: T | null, ms: number): { shown: T | null;
     return () => window.clearTimeout(id);
   }, [value, ms]);
   return { shown: value ?? shown, closing: value === null && closing };
+}
+
+/** A ref that is true while the component is mounted: a request that answers after the screen was left changes nothing. */
+export function useMounted(): MutableRefObject<boolean> {
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  return mounted;
 }

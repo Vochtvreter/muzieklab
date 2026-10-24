@@ -1,8 +1,16 @@
 /** Routes and app-wide effects (theme, language). */
 import { lazy, Suspense, useEffect } from 'react';
 import { resolveLocale, setLocale, t } from './i18n';
+import { Announcer } from './ui/components/Announcer';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
-import { useRoute } from './ui/router';
+import { routeParam, useRoute } from './ui/router';
+import { AccountScreen } from './ui/screens/account/Account';
+import { AcceptInvite, NewPassword } from './ui/screens/account/LinkPassword';
+import { Privacy } from './ui/screens/account/Privacy';
+import { SignIn } from './ui/screens/account/SignIn';
+import { AdminAccount } from './ui/screens/admin/AdminAccount';
+import { AdminAccounts } from './ui/screens/admin/AdminAccounts';
+import { AdminInvite } from './ui/screens/admin/AdminInvite';
 import { Calibration } from './ui/screens/Calibration';
 import { Changelog } from './ui/screens/Changelog';
 import { Home } from './ui/screens/Home';
@@ -71,6 +79,13 @@ function Route(): JSX.Element {
     const chapter = findChapter(Number(route.slice('/learn/'.length)));
     return chapter ? <LearnChapter key={chapter.n} chapter={chapter} /> : <LearnHub />;
   }
+  // Routes with a token or an id (the router has checked its form): a new one is a new screen.
+  const invite = routeParam(route, '/invite/');
+  if (invite) return <AcceptInvite key={invite} token={invite} />;
+  const reset = routeParam(route, '/reset/');
+  if (reset) return <NewPassword key={reset} token={reset} />;
+  const accountId = routeParam(route, '/admin/account/');
+  if (accountId) return <AdminAccount key={accountId} id={accountId} />;
   switch (route) {
     case '/path':
       return <PathScreen />;
@@ -106,6 +121,16 @@ function Route(): JSX.Element {
       return <ScalesDone />;
     case '/learn':
       return <LearnHub />;
+    case '/signin':
+      return <SignIn />;
+    case '/account':
+      return <AccountScreen />;
+    case '/privacy':
+      return <Privacy />;
+    case '/admin':
+      return <AdminAccounts />;
+    case '/admin/invite':
+      return <AdminInvite />;
     case '/dev/render':
       if (RenderDemo) {
         return (
@@ -138,6 +163,8 @@ export function App(): JSX.Element {
       <StoreProvider>
         <Screens />
       </StoreProvider>
+      {/* Screen-reader announcements (ui/lib/announce.ts): outside the screens, so it is there before any text. */}
+      <Announcer />
       {BRANCH && (
         <div className="branch-badge">{BRANCH}</div>
       )}

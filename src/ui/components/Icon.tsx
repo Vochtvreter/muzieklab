@@ -125,6 +125,36 @@ const PATHS = {
       <path d="M12 11v5M12 8h.01" />
     </>
   ),
+  person: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+    </>
+  ),
+  /** A form's error: something to fix. */
+  alert: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5.5" />
+      <path d="M12 16.5h.01" />
+    </>
+  ),
+  download: <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  /** A link to send (an invite). */
+  link: (
+    <>
+      <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1" />
+      <path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />
+    </>
+  ),
+  /** A new password. */
+  key: (
+    <>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.9 12.1 19 4M16 7l2.5 2.5M13.5 9.5l2 2" />
+    </>
+  ),
 } as const;
 
 const FILLED = {
