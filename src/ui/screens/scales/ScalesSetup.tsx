@@ -54,7 +54,7 @@ export function ScalesSetup(): JSX.Element {
   );
 
   return (
-    <ExerciseFrame className="frame--setup">
+    <ExerciseFrame className="frame--setup" wide>
       <div className="page setup ssetup no-scrollbar">
         <div className="screen-head">
           <Link to={back?.to ?? '/scales'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('scales.setup.back')}
@@ -69,96 +69,102 @@ export function ScalesSetup(): JSX.Element {
           </button>
         </div>
 
-        <div className="field">
-          <div className="label">{t('scales.setup.keys')}</div>
-          <Segmented<ScaleKeys> label={t('scales.setup.keys')} value={s.keyMode} onChange={pickKeys}
-            options={[
-              { value: 'one', label: keyName(s.keyMode === 'one' ? keys[0] : hubKey, false) },
-              { value: 'circle', label: t('scales.setup.circle') },
-              { value: 'pick', label: s.keyMode === 'pick' ? t('scales.setup.keysWord', { count: keys.length }) : t('scales.setup.choose') },
-            ]} />
-          <span className="muted-text input-hint" aria-live="polite">
-            {keyHint}{' '}
-            {s.keyMode === 'pick' && (
-              <Link to="/scales/key" query={carry} className="text-link">
-                {t('scales.setup.change')}
-              </Link>
-            )}
-          </span>
-        </div>
+        <div className="wide">
+          <div className="wide-main">
+            <div className="field">
+              <div className="label">{t('scales.setup.keys')}</div>
+              <Segmented<ScaleKeys> label={t('scales.setup.keys')} value={s.keyMode} onChange={pickKeys}
+                options={[
+                  { value: 'one', label: keyName(s.keyMode === 'one' ? keys[0] : hubKey, false) },
+                  { value: 'circle', label: t('scales.setup.circle') },
+                  { value: 'pick', label: s.keyMode === 'pick' ? t('scales.setup.keysWord', { count: keys.length }) : t('scales.setup.choose') },
+                ]} />
+              <span className="muted-text input-hint" aria-live="polite">
+                {keyHint}{' '}
+                {s.keyMode === 'pick' && (
+                  <Link to="/scales/key" query={carry} className="text-link">
+                    {t('scales.setup.change')}
+                  </Link>
+                )}
+              </span>
+            </div>
 
-        <div className="field">
-          <div className="label" id="types-label">
-            {t('scales.setup.types')}
+            <div className="field">
+              <div className="label" id="types-label">
+                {t('scales.setup.types')}
+              </div>
+              <div className="stype-grid" role="group" aria-labelledby="types-label">
+                {SCALE_TYPES.map((type) => {
+                  const on = s.types.includes(type);
+                  return (
+                    <button key={type} type="button" aria-pressed={on} className={'stype' + (on ? ' is-on' : '')}
+                      onClick={() => {
+                        const next = SCALE_TYPES.filter((x) => (x === type ? !on : s.types.includes(x)));
+                        if (next.length) update({ types: next });
+                      }}>
+                      <b>{t('scales.type.' + type)}</b>
+                      <span className="stype-steps">{stepsText(type)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="field">
+              <div className="label">{t('scales.setup.answerWith')}</div>
+              <Segmented<ScaleInput> label={t('scales.setup.answerWith')} value={s.input} onChange={(v) => update({ input: v })}
+                options={[
+                  { value: 'piano', label: t('scales.setup.inputPiano') },
+                  { value: 'names', label: t('scales.setup.inputNames') },
+                  { value: 'mixed', label: t('scales.setup.inputMixed') },
+                ]} />
+              <span className="muted-text input-hint" aria-live="polite">
+                {t(s.input === 'piano' ? 'scales.setup.hintPiano' : s.input === 'names' ? 'scales.setup.hintNames' : 'scales.setup.hintMixed')}
+              </span>
+            </div>
+
+            <div className="ssetup-pair">
+              <div className="field">
+                <div className="label">{t('scales.setup.direction')}</div>
+                <Segmented<Direction> label={t('scales.setup.direction')} value={s.direction} onChange={(v) => update({ direction: v })} pad={3}
+                  options={[
+                    { value: 'up', label: t('scales.setup.up') },
+                    { value: 'upDown', label: t('scales.setup.upDown') },
+                  ]} />
+              </div>
+              <div className="field">
+                <div className="label">{t('scales.setup.write')}</div>
+                <Segmented<ScaleWrite> label={t('scales.setup.write')} value={s.write} onChange={(v) => update({ write: v })} pad={3}
+                  options={[
+                    { value: 'signs', label: t('scales.setup.writeSigns') },
+                    { value: 'keySig', label: t('scales.setup.writeKeySig') },
+                  ]} />
+              </div>
+            </div>
+
+            <div className="card ssw">
+              {switchRow(s.showSteps, t('scales.setup.steps'), t(s.showSteps ? 'scales.setup.stepsOn' : 'scales.setup.stepsOff'), () => update({ showSteps: !s.showSteps }))}
+              {switchRow(s.playNotes, t('scales.setup.sound'), t(s.playNotes ? 'scales.setup.soundOn' : 'scales.setup.soundOff'), () => update({ playNotes: !s.playNotes }))}
+            </div>
           </div>
-          <div className="stype-grid" role="group" aria-labelledby="types-label">
-            {SCALE_TYPES.map((type) => {
-              const on = s.types.includes(type);
-              return (
-                <button key={type} type="button" aria-pressed={on} className={'stype' + (on ? ' is-on' : '')}
-                  onClick={() => {
-                    const next = SCALE_TYPES.filter((x) => (x === type ? !on : s.types.includes(x)));
-                    if (next.length) update({ types: next });
-                  }}>
-                  <b>{t('scales.type.' + type)}</b>
-                  <span className="stype-steps">{stepsText(type)}</span>
-                </button>
-              );
-            })}
+
+          <div className="wide-side">
+            <div className="card ssetup-summary">
+              <b>
+                {t('scales.setup.summary', {
+                  types: s.types.map((x) => t('scales.type.' + x)).join(', '),
+                  keys: keysWord,
+                  direction: t(s.direction === 'up' ? 'scales.setup.upWord' : 'scales.setup.upDownWord'),
+                })}
+              </b>
+              <span className="muted-text">{t(count > 1 ? 'scales.setup.summaryMany' : 'scales.setup.summaryOne')}</span>
+            </div>
+
+            <button type="button" className="btn btn--accent start-btn" onClick={() => start(s)}>
+              {t('scales.setup.start', { count })}
+            </button>
           </div>
         </div>
-
-        <div className="field">
-          <div className="label">{t('scales.setup.answerWith')}</div>
-          <Segmented<ScaleInput> label={t('scales.setup.answerWith')} value={s.input} onChange={(v) => update({ input: v })}
-            options={[
-              { value: 'piano', label: t('scales.setup.inputPiano') },
-              { value: 'names', label: t('scales.setup.inputNames') },
-              { value: 'mixed', label: t('scales.setup.inputMixed') },
-            ]} />
-          <span className="muted-text input-hint" aria-live="polite">
-            {t(s.input === 'piano' ? 'scales.setup.hintPiano' : s.input === 'names' ? 'scales.setup.hintNames' : 'scales.setup.hintMixed')}
-          </span>
-        </div>
-
-        <div className="ssetup-pair">
-          <div className="field">
-            <div className="label">{t('scales.setup.direction')}</div>
-            <Segmented<Direction> label={t('scales.setup.direction')} value={s.direction} onChange={(v) => update({ direction: v })} pad={3}
-              options={[
-                { value: 'up', label: t('scales.setup.up') },
-                { value: 'upDown', label: t('scales.setup.upDown') },
-              ]} />
-          </div>
-          <div className="field">
-            <div className="label">{t('scales.setup.write')}</div>
-            <Segmented<ScaleWrite> label={t('scales.setup.write')} value={s.write} onChange={(v) => update({ write: v })} pad={3}
-              options={[
-                { value: 'signs', label: t('scales.setup.writeSigns') },
-                { value: 'keySig', label: t('scales.setup.writeKeySig') },
-              ]} />
-          </div>
-        </div>
-
-        <div className="card ssw">
-          {switchRow(s.showSteps, t('scales.setup.steps'), t(s.showSteps ? 'scales.setup.stepsOn' : 'scales.setup.stepsOff'), () => update({ showSteps: !s.showSteps }))}
-          {switchRow(s.playNotes, t('scales.setup.sound'), t(s.playNotes ? 'scales.setup.soundOn' : 'scales.setup.soundOff'), () => update({ playNotes: !s.playNotes }))}
-        </div>
-
-        <div className="card ssetup-summary">
-          <b>
-            {t('scales.setup.summary', {
-              types: s.types.map((x) => t('scales.type.' + x)).join(', '),
-              keys: keysWord,
-              direction: t(s.direction === 'up' ? 'scales.setup.upWord' : 'scales.setup.upDownWord'),
-            })}
-          </b>
-          <span className="muted-text">{t(count > 1 ? 'scales.setup.summaryMany' : 'scales.setup.summaryOne')}</span>
-        </div>
-
-        <button type="button" className="btn btn--accent start-btn" onClick={() => start(s)}>
-          {t('scales.setup.start', { count })}
-        </button>
       </div>
     </ExerciseFrame>
   );

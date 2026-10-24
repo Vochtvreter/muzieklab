@@ -32,8 +32,8 @@ describe("What's new", () => {
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: "The scrollbar at the window's edge" })).toBeTruthy();
     expect(within(screen.getByRole('article')).getByText('Oct 24 · 1 fixed')).toBeTruthy();
-    // Accounts are by invitation: the release promises no sign-up (and no more than a site with accounts shows). It is
-    // the release before the latest, open under it.
+    // Accounts (0.12.0) are by invitation: the release promises no sign-up.
+    fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
@@ -69,6 +69,7 @@ describe("What's new", () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'De schuifbalk aan de rand van het venster' })).toBeTruthy();
     expect(within(screen.getByRole('article')).getByText('24 okt · 1 opgelost')).toBeTruthy();
+    fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });

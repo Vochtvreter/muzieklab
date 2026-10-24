@@ -92,8 +92,96 @@ export function NotesDone(): JSX.Element | null {
   };
   const outcomeBadge = outcome && outcome.kind !== 'passed' ? <OutcomeBadge outcome={outcome} /> : null;
 
+  const score = (
+    <>
+      <div className="score">
+        <div className="score-stars" role="img" aria-label={starsLabel(r.stars)}>
+          <span className="score-stars-row">
+            {[0, 1, 2].map((i) => (
+              <span key={i} aria-hidden="true" className={i < r.stars ? 'is-on' : ''}>
+                ★
+              </span>
+            ))}
+          </span>
+        </div>
+        <div className="score-pct">{t('common.percent', { value: Math.round(r.accuracy) })}</div>
+        <div className="muted-text score-sub">
+          {d.total === 0 ? t('notes.done.none') : t('notes.done.score', { right: r.right, total: r.total, avg: secs(d.avgMs) })}
+          {r.hinted > 0 && ' · ' + t('notes.done.hinted', { count: r.hinted })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
+        </div>
+      </div>
+
+      {outcomeBadge && <div className="badges">{outcomeBadge}</div>}
+    </>
+  );
+
+  // Nothing answered: no cards, only the score and the actions.
+  const answered = d.total > 0;
+  const cards = answered && (
+    <>
+      <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />
+      {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
+      {(d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} system={state.prefs.noteNames} />}
+      {d.bySign.length > 1 && <BySign r={d} keyId={keys.length === 1 ? keys[0] : null} />}
+    </>
+  );
+
+  const actions = lesson ? (
+    // A lesson: New round plays it again (new notes); Next lesson once it has two stars, else back to the path.
+    <div className="results-actions">
+      <div className="results-main">
+        {goOn ? (
+          <button type="button" className="btn btn--outline" onClick={replayLesson}>
+            {t('notes.done.newRound')}
+          </button>
+        ) : (
+          <Link to="/path" className="btn btn--outline">
+            {t('notes.done.toPath')}
+          </Link>
+        )}
+        {goOn ? (
+          <button type="button" className="btn btn--accent" aria-label={t('results.nextLessonLabel', { id: goOn.id, title: tx(goOn.title) })}
+            onClick={() => startPath(goOn.id, { replace: true })}>
+            {t('results.nextLesson')}
+          </button>
+        ) : (
+          <button type="button" className="btn btn--accent" onClick={replayLesson}>
+            {t('notes.done.newRound')}
+          </button>
+        )}
+      </div>
+    </div>
+  ) : (
+    <div className="results-actions">
+      <div className="results-main">
+        <button type="button" className="btn btn--outline" onClick={again}>
+          {t('notes.done.newRound')}
+        </button>
+        {missed.length > 0 ? (
+          <button type="button" className="btn btn--accent" onClick={practise}>
+            {t('notes.done.practiceMissed')}
+          </button>
+        ) : (
+          <Link to="/notes" query={carry} className="btn btn--accent" onClick={change}>
+            {t('notes.done.change')}
+          </Link>
+        )}
+      </div>
+      {missed.length > 0 && (
+        <Link to="/notes" query={carry} className="ghost-btn ndone-change" onClick={change}>
+          <Icon name="sliders" size={18} />
+          {t('notes.done.change')}
+        </Link>
+      )}
+    </div>
+  );
+
+  // Tablet and desktop: the round's cards on the left; the score and the actions in the side panel on the right. With
+  // nothing answered there are no cards, and the one column stays.
+  const wide = bp !== 'phone' && answered;
+
   return (
-    <ExerciseFrame className="frame--results">
+    <ExerciseFrame className="frame--results" wide={wide}>
       <div className="page results ndone no-scrollbar">
         <div className="screen-head">
           <Link to={lesson ? '/path' : (back?.to ?? '/')} query={lesson ? undefined : back?.query}
@@ -110,78 +198,20 @@ export function NotesDone(): JSX.Element | null {
           </div>
         </div>
 
-        <div className="score">
-          <div className="score-stars" role="img" aria-label={starsLabel(r.stars)}>
-            <span className="score-stars-row">
-              {[0, 1, 2].map((i) => (
-                <span key={i} aria-hidden="true" className={i < r.stars ? 'is-on' : ''}>
-                  ★
-                </span>
-              ))}
-            </span>
-          </div>
-          <div className="score-pct">{t('common.percent', { value: Math.round(r.accuracy) })}</div>
-          <div className="muted-text score-sub">
-            {d.total === 0 ? t('notes.done.none') : t('notes.done.score', { right: r.right, total: r.total, avg: secs(d.avgMs) })}
-            {r.hinted > 0 && ' · ' + t('notes.done.hinted', { count: r.hinted })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
-          </div>
-        </div>
-
-        {outcomeBadge && <div className="badges">{outcomeBadge}</div>}
-
-        {d.total > 0 && <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />}
-        {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
-        {d.total > 0 && (d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} system={state.prefs.noteNames} />}
-        {d.bySign.length > 1 && <BySign r={d} keyId={keys.length === 1 ? keys[0] : null} />}
-
-        {lesson ? (
-          // A lesson: New round plays it again (new notes); Next lesson once it has two stars, else back to the path.
-          <div className="results-actions">
-            <div className="results-main">
-              {goOn ? (
-                <button type="button" className="btn btn--outline" onClick={replayLesson}>
-                  {t('notes.done.newRound')}
-                </button>
-              ) : (
-                <Link to="/path" className="btn btn--outline">
-                  {t('notes.done.toPath')}
-                </Link>
-              )}
-              {goOn ? (
-                <button type="button" className="btn btn--accent" aria-label={t('results.nextLessonLabel', { id: goOn.id, title: tx(goOn.title) })}
-                  onClick={() => startPath(goOn.id, { replace: true })}>
-                  {t('results.nextLesson')}
-                </button>
-              ) : (
-                <button type="button" className="btn btn--accent" onClick={replayLesson}>
-                  {t('notes.done.newRound')}
-                </button>
-              )}
+        {wide ? (
+          <div className="wide">
+            <div className="wide-main">{cards}</div>
+            <div className="wide-side">
+              {score}
+              {actions}
             </div>
           </div>
         ) : (
-          <div className="results-actions">
-            <div className="results-main">
-              <button type="button" className="btn btn--outline" onClick={again}>
-                {t('notes.done.newRound')}
-              </button>
-              {missed.length > 0 ? (
-                <button type="button" className="btn btn--accent" onClick={practise}>
-                  {t('notes.done.practiceMissed')}
-                </button>
-              ) : (
-                <Link to="/notes" query={carry} className="btn btn--accent" onClick={change}>
-                  {t('notes.done.change')}
-                </Link>
-              )}
-            </div>
-            {missed.length > 0 && (
-              <Link to="/notes" query={carry} className="ghost-btn ndone-change" onClick={change}>
-                <Icon name="sliders" size={18} />
-                {t('notes.done.change')}
-              </Link>
-            )}
-          </div>
+          <>
+            {score}
+            {cards}
+            {actions}
+          </>
         )}
       </div>
       {sheet && (

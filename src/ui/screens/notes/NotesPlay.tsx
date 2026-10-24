@@ -5,7 +5,8 @@
  * Path lessons also write and hear: a note to write is put on the staff (point, drag, ▲ ▼ or the arrow keys, then
  * Check); a note to hear plays after sol and stays hidden until it is named. A lesson's name buttons are the notes it
  * has learned. Right answers move on by themselves; after a wrong one the feedback says why and Next note goes on.
- * Desktop: the exercise header, a wide staff, the answer card with computer keys and three stat cards.
+ * Tablet: the exercise header, the question and score, a big staff, the feedback and the answer card (App design canvas,
+ * NoteTablet). Desktop: the exercise header, a wide staff, the answer card with computer keys and three stat cards.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import {
@@ -34,9 +35,10 @@ import { t } from '../../../i18n';
 import { engine, unlockAudio } from '../../audio';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
+import { ExerciseHeader } from '../../components/ExerciseHeader';
 import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
-import { SHORTER_PHONE, useBreakpoint, useDocTitle, useKeyboardHints, useMediaQuery } from '../../hooks';
+import { SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useMediaQuery } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
 import {
   feedbackText,
@@ -95,6 +97,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
+  // A phone on its side is tablet-wide but keeps the phone layout (two columns, in the CSS).
+  const tablet = useExerciseLayout() === 'tablet';
   // A phone browser on a small phone (375 × 553): a smaller staff, so the answer buttons fit below it (DESIGN.md §9).
   const shorter = useMediaQuery(SHORTER_PHONE);
   const keys = useKeyboardHints(bp);
@@ -300,7 +304,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     return () => window.removeEventListener('keydown', onKey);
   }, [mode, done, sign, signs, answer, pressKey, next, desktop, task, writing, ghost, move, letters]);
 
-  // A round that writes notes draws a taller staff with fewer bars, so a line or space is easy to point at.
+  // A round that writes notes draws a taller staff with fewer bars, so a line or space is easy to point at. A tablet keeps
+  // six bars (NoteTablet draws eight): at its staff size eight leave no room for a sharp or flat before the last note.
   const big = useMemo(() => notes.some((n) => n.task === 'write'), [notes]);
   const size = desktop ? 8 : big && bp === 'phone' ? 4 : 6;
   const page = staffPage(notes, i, size);
@@ -515,6 +520,66 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         ? t(mode === 'piano' ? 'notes.play.askHearPiano' : 'notes.play.askHear')
         : t(mode === 'piano' ? 'notes.play.askPiano' : 'notes.play.askNames');
 
+  // Tablet and desktop: the exercise header. Esc quits on desktop (as before, also on a touch screen at desktop width).
+  const header = (
+    <ExerciseHeader tablet={tablet} eyebrow={run.lesson ? where : t('notes.play.eyebrowLong', { clef: t('notes.clefLower.' + note.clef), key: majorName(note.key) })}
+      line={t('notes.play.noteOf', { n: i + 1, total })}
+      progress={{ label: t('notes.play.progress'), value: answeredCount / total, max: total, now: answeredCount }}>
+      <Link to={home} query={homeQuery} className="text-link-btn" aria-keyshortcuts={desktop ? 'Escape' : undefined} onClick={quitLink}>
+        {t('notes.play.quit')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
+      </Link>
+    </ExerciseHeader>
+  );
+  // The question and the score, over the staff (phone and tablet).
+  const info = (
+    <div className="play-info">
+      <div className="play-info-left">
+        <span className="eyebrow">{where}</span>
+        <span className="nplay-ask">{ask}</span>
+      </div>
+      <div className="nplay-score" role="img" aria-label={t('notes.play.correctLabel', { right, done: answeredCount })}>
+        <div className="nplay-score-n" aria-hidden="true">
+          <span className="tone-good">{right}</span>
+          <span className="tone-faint"> / {answeredCount}</span>
+        </div>
+        <div className="muted-small" aria-hidden="true">
+          {t('notes.play.correct')}
+        </div>
+      </div>
+    </div>
+  );
+  const skipLink = (
+    <button type="button" className="skip-link nplay-skip" onClick={skip}>
+      {t('notes.play.skip')}
+    </button>
+  );
+
+  // Tablet (App design canvas, NoteTablet): the staff card takes the height the answer card leaves.
+  if (tablet) {
+    return (
+      <div className="tframe">
+        {header}
+        <h1 className="sr-only">{t('notes.play.heading')}</h1>
+        <main className="page nplay ntab">
+          {info}
+          <div className="card nplay-staff ntab-staff">
+            {staff}
+            {timerBar}
+            {hearButton}
+          </div>
+          {feedbackBox}
+          <section className="card ntab-card ntab-answer" aria-label={ask}>
+            {modeSeg}
+            {labelsSeg}
+            {inputs}
+            {actions}
+          </section>
+          {skipLink}
+        </main>
+      </div>
+    );
+  }
+
   if (desktop) {
     const needs = answers
       .map((a, j) => ({ a, n: notes[j] }))
@@ -527,23 +592,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     });
     return (
       <div className="dplay nplay-desk">
-        <header className="dplay-head">
-          <div className="brand brand--static">{t('app.name')}</div>
-          <div className="dplay-title">
-            <span className="eyebrow">
-              {run.lesson ? where : t('notes.play.eyebrowLong', { clef: t('notes.clefLower.' + note.clef), key: majorName(note.key) })}
-            </span>
-            <span className="mono-line">{t('notes.play.noteOf', { n: i + 1, total })}</span>
-          </div>
-          <div className="progress progress--grow" role="progressbar" aria-label={t('notes.play.progress')} aria-valuemin={0} aria-valuemax={total} aria-valuenow={answeredCount}>
-            <div style={{ width: (answeredCount / total) * 100 + '%' }} />
-          </div>
-          <div className="dplay-actions">
-            <Link to={home} query={homeQuery} className="text-link-btn" aria-keyshortcuts="Escape" onClick={quitLink}>
-              {t('notes.play.quit')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
-            </Link>
-          </div>
-        </header>
+        {header}
         <h1 className="sr-only">{t('notes.play.heading')}</h1>
         <main className="dplay-main nplay-main">
           <div className="card nplay-staff nplay-staff--desk">
@@ -606,21 +655,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
           <span className="mono-muted nplay-count">{t('notes.play.count', { n: i + 1, total })}</span>
         </div>
 
-        <div className="play-info">
-          <div className="play-info-left">
-            <span className="eyebrow">{where}</span>
-            <span className="nplay-ask">{ask}</span>
-          </div>
-          <div className="nplay-score" role="img" aria-label={t('notes.play.correctLabel', { right, done: answeredCount })}>
-            <div className="nplay-score-n" aria-hidden="true">
-              <span className="tone-good">{right}</span>
-              <span className="tone-faint"> / {answeredCount}</span>
-            </div>
-            <div className="muted-small" aria-hidden="true">
-              {t('notes.play.correct')}
-            </div>
-          </div>
-        </div>
+        {info}
 
         <div className="card nplay-staff">
           {staff}
@@ -629,9 +664,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         </div>
 
         {feedbackBox}
-        <button type="button" className="skip-link nplay-skip" onClick={skip}>
-          {t('notes.play.skip')}
-        </button>
+        {skipLink}
 
         <div className="ninputs">
           {modeSeg}

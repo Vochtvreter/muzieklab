@@ -859,7 +859,8 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 - **Copy code** (since 0.10.0; before, the exercise code and Copy were the first row under the title, though a code
   cannot be entered yet): one quiet action that copies the exercise code (§4.2). It says *Copied* with a check for
   2 s and has the code in its title. On tablet and desktop it is the third ghost button, after Listen and Practice
-  settings; on a phone (< 700 px) that row has no room, so it is a small muted link (13 px, 44 px target) at the very
+  settings (in the side panel since 0.13.0, on a row of its own when the panel is narrow); on a phone (< 700 px) that
+  row has no room, so it is a small muted link (13 px, 44 px target) at the very
   bottom, under the main buttons. A daily challenge's date line (*Oct 22*) sits under the title, as on Round done; it
   no longer says *same for everyone*, as the daily follows the player's unit (§3.4).
 - After a lesson (since 0.8.0), a badge under the score says what the run means for the Learning Path, and the main
@@ -1128,7 +1129,7 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 | Results with Listen, Settings and the exercise code (copy) | A full achievements list and personal-best history |
 | Level-up / achievement / personal-best moment after a result | Onboarding and day-one empty states |
 | Round summaries for Read notes, Scales and Flash cards | Entering an exercise code to play a shared exercise |
-| Working dictation (Listen & write) with check and feedback | Tablet and desktop versions of the remaining screens (path, setups, results, listen, scale exercises, flip cards) |
+| Working dictation (Listen & write) with check and feedback | Tablet and desktop versions of the screens still to build (listen, flip cards); the built ones have theirs since 0.13.0 |
 | Setup validation (unplayable time signatures, disabled Start) and the first-time How to play | |
 | The unit boss on the Learning Path | |
 
@@ -1171,8 +1172,51 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   releases. On desktop the releases are a list on the left and the chosen one is a card on the right, with Newer and
   Older under it; the list scrolls on its own on a short screen. The desktop boards have no All · New · Fixes filter
   (MVP canvas, Settings page; App design canvas, ChangelogTablet and ChangelogDesktop).
+- Settings on tablet and desktop (since 0.13.0; App design canvas, SettingsTablet and SettingsDesktop): the title and
+  a list of the sections (Account when it shows, §9.2, then Language, Sound, Timing, Playing, Display, About) on the
+  left, and the cards in two columns (Account, Language, Sound, Timing; Playing, Display, About), each with its title
+  inside the card. A section picked in the list
+  comes into view and gets the focus; the highlight slides like any pick-one group. Until one is picked the first is
+  current, Account once it shows (since 0.13.1). On tablet the columns are narrow, so
+  a row's control goes under its label and a volume's slider under its name. The MVP canvas's Settings boards still
+  show the phone column on tablet and desktop.
+- Every screen has a tablet and a desktop layout (since 0.13.0); before, the setups, Key, Results, the round summaries,
+  Calibration and the play screens on tablet were the phone layout in a 640 px column. The setups (Rhythm, Read notes,
+  Scales), Key, Results and the round summaries use the **wide exercise layout** from 700 px: the screen head across
+  the top, the main content on the left, and a side panel on the right (300 px on tablet, 360 px on desktop, up to
+  1160 px in all) that holds the summary and the screen's main button and stays in view while the main content
+  scrolls. Setups: the options on the left; the preview (Rhythm) or the summary, and Start, on the right. Key: the keys
+  on the left; the one key's signature drawn large, what it means, and Use on the right. Results: the judged staff (4
+  bars a row on desktop, 2 on tablet), the timing lane and the tip on the left; the stars, the score line, the badges,
+  the counts and every button on the right. Round done (Read notes, Scales): the cards (time per note, needs practice,
+  by sign; the scales played and the circle of fifths) on the left; the score, its line and the buttons on the right.
+  A Read notes round with nothing answered has no cards, so it keeps the one column. A phone keeps the one column, in
+  the same order. On a phone in landscape the side panel scrolls with the page until its end is in view (Results'
+  is taller than the screen), and the buttons stay at the bottom as on a phone. Calibration on tablet uses the whole width with the pad filling the height under the plot (as Play
+  on the App design canvas's PlayTablet); on desktop the intro and the plot are on the left and the pad or the result
+  on the right, as on a phone in landscape.
 - Exercise screens swap that header for the exercise header: title, progress, and
-  Pause / Quit. It has its own spacing (20 px × 40 px) and is not the tab header.
+  Pause / Quit. It has its own spacing (20 px × 40 px) and is not the tab header. On tablet (since 0.13.0) it is
+  18 px × 32 px with the progress bar under the row, as on the App design canvas's PlayTablet and NoteTablet boards.
+- The play screens on tablet (since 0.13.0; before, the phone layout in a 640 px column). A tablet-wide screen that is
+  also a phone on its side (landscape, ≤ 560 px tall) keeps the phone layout and its two columns (`useExerciseLayout`
+  in `ui/hooks.ts`).
+  - Play (App design canvas, PlayTablet): the exercise header with help, Pause and Quit; the staff and lane across the
+    width (four bars a row); the Count and Combo cards (the pendulum in the Count card with the analog look); the
+    judgement; a big pad that fills the rest of the height (its ring grows with it, up to 230 px); Skip to results.
+    Echo's tap-back phase is the same.
+  - Echo's listen phase, on tablet like Play with the listen card where the staff goes, the Count and Combo cards, *Listen
+    first* and the pad off; on desktop Play's desktop layout with the listen card in the staff card and a key cap that is
+    off. Its header has help and Quit, no Pause.
+  - Read notes (App design canvas, NoteTablet): the exercise header; the eyebrow, the question and the correct count; a
+    big staff card (six bars, not the board's eight: eight leave no room for a sign before the last note); the feedback;
+    the answer card with the input switch, the sign row, 200 px name keys or the piano, and Hint / Next note; Skip to
+    summary.
+  - Scales (no board; as Read notes): the exercise header; the scale's name and mistakes; the staff card with the degree
+    rows and Hear it so far / Start over; the feedback; the answer card with the piano, or the signs with Hint / Next
+    scale; Skip to summary.
+  - A shorter tablet window tightens the gaps (Play under 900 px tall, Read notes and Scales under 1100 px); under
+    960 px Read notes' and Scales' keys keep their height and the page scrolls, as the desktop layout does on a laptop.
 - Large screens show the same content and data as mobile, laid out side by side. They add no
   extra features.
 
@@ -1238,10 +1282,10 @@ arrows, `#b9c3c2` (hover `#8a9596`), dark `#3d4849` (hover `#5d6a6b`). A page ta
 Setup or Results on a 1280 × 800 laptop) shows the same app scrollbar when there is a mouse or trackpad, so it is clear
 there is more below (since 0.9.0; before, no page showed one). Touch screens keep their own indicator: long Learn pages
 scroll the whole page on phones with the system scrollbar hidden. At every size the scrollbar is at the window's right
-edge, never at the side of the content (since 0.12.1; before, a page in the centred 640 px column, such as Settings,
-Setup or Results, had it at the column's edge): the page spans the window and pads its content into the column, and the
-Learning path's units, which scroll in a box of their own, reach the window's edge the same way. Only a side menu (a
-Learn chapter's sections, What's new's releases on desktop) scrolls where it stands.
+edge, never at the side of the content (since 0.13.2; before, a page in a centred column, such as the setups and
+Results (1160 px) or Account (640 px), had it at the column's edge): the page spans the window and pads its content into
+the column, and the Learning path's units, which scroll in a box of their own, reach the window's edge the same way.
+Only a side menu (a Learn chapter's sections, What's new's releases on desktop) scrolls where it stands.
 
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every
@@ -1384,8 +1428,10 @@ Since 0.12.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md)). **No board exists yet** for a
 They were built from the built Settings screen (§9) and the foundations, and this section describes them as built.
 Their boards are still to be drawn (phone, tablet and desktop, in light and dark), and so are the components below,
 on Foundations. The Settings boards they would extend disagree with each other: the App design canvas draws tablet
-and desktop Settings with a list of sections and two columns of cards, while the built app and the MVP canvas's
-Settings row use one 640 px column. The account screens follow the built Settings until that is settled.
+and desktop Settings with a list of sections and two columns of cards, while the MVP canvas's Settings row uses one
+640 px column. Since 0.13.0 the built Settings follows the App design canvas (§9), with the Account section as the
+first card and the first item of its list; the account screens it opens (Account, Privacy, the admin screens) keep
+one 640 px column on tablet and desktop.
 
 **Where accounts are.** Accounts are optional and by invitation. The app needs none, and nothing in it waits for the
 server.

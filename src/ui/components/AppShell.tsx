@@ -73,10 +73,13 @@ export function AppShell({ bp, active, children, wide, fill }: Props): JSX.Eleme
   );
 }
 
-/** Exercise screens (setup, play, results, calibration): no nav, content centred in a 640 px column. */
-export function ExerciseFrame({ children, className }: { children: ReactNode; className?: string }): JSX.Element {
+/**
+ * Exercise screens (setup, play, results, calibration): no nav, content centred in a 640 px column. A `wide` screen
+ * uses the whole width on tablet and desktop (up to 1160 px) for its own two-column layout (`.wide`).
+ */
+export function ExerciseFrame({ children, className, wide }: { children: ReactNode; className?: string; wide?: boolean }): JSX.Element {
   return (
-    <main className={'frame' + (className ? ' ' + className : '')}>
+    <main className={'frame' + (wide ? ' frame--wide' : '') + (className ? ' ' + className : '')}>
       <div className="frame-column">{children}</div>
     </main>
   );

@@ -651,6 +651,7 @@
   },
   "settings": {
     "title": "Instellingen",
+    "sections": "Onderdelen van de instellingen",
     "language": "Taal",
     "languageGroup": "Taal van de app",
     "hintLanguage": "Alle tekst, de notennamen en het tellen, en hoe datums en getallen worden geschreven.",
@@ -2408,9 +2409,22 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
-    "v0_12_1": {
+    "v0_13_2": {
       "title": "De schuifbalk aan de rand van het venster",
       "scrollbar": "Op een tablet of een computer staat de schuifbalk van een pagina die scrolt aan de rechterrand van het venster, niet naast de kolom in het midden. De blokken van het leerpad scrollen ook aan de rand."
+    },
+    "v0_13_1": {
+      "title": "Instellingen markeert eerst Account",
+      "sections": "Op een tablet of computer markeert de lijst met onderdelen in Instellingen Account, het eerste, niet Taal."
+    },
+    "v0_13_0": {
+      "title": "Gemaakt voor tablets en computers",
+      "try": "Open Instellingen",
+      "settings": "Op een tablet of computer staan de onderdelen van Instellingen links, en de kaarten in twee kolommen.",
+      "setups": "De oefeninstellingen en het scherm Toonsoort gebruiken de hele breedte: de keuzes links, het voorbeeld of de samenvatting en Start ernaast.",
+      "results": "Resultaten en de samenvattingen van een ronde tonen je score en de knoppen naast de balk en de details, zodat niets ver naar beneden staat.",
+      "play": "Op een tablet hebben Spelen, Echo, Noten lezen en Toonladders een eigen indeling: de voortgang bovenaan, een grote balk, en een groot tikpad, piano of grote antwoordknoppen. Op een computer lijkt Echo ook tijdens het luisteren op Spelen.",
+      "calibrate": "Kalibreren gebruikt het hele scherm: een groot tikpad onder de timing op een tablet, en ernaast op een computer."
     },
     "v0_12_0": {
       "title": "Accounts",

@@ -651,6 +651,7 @@
   },
   "settings": {
     "title": "Settings",
+    "sections": "Settings sections",
     "language": "Language",
     "languageGroup": "App language",
     "hintLanguage": "Every text, note names and counting, and how dates and numbers are written.",
@@ -2408,9 +2409,22 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
-    "v0_12_1": {
+    "v0_13_2": {
       "title": "The scrollbar at the window's edge",
       "scrollbar": "On a tablet or a computer, a page that scrolls has its scrollbar at the right edge of the window, not beside the column in the middle. The Learning path's units scroll at the edge too."
+    },
+    "v0_13_1": {
+      "title": "Settings marks Account first",
+      "sections": "On a tablet or a computer, the list of sections in Settings marks Account, the first one, not Language."
+    },
+    "v0_13_0": {
+      "title": "Made for tablets and computers",
+      "try": "Open Settings",
+      "settings": "On a tablet or a computer, Settings lists its sections on the left and shows the cards in two columns.",
+      "setups": "The practice setups and the Key screen use the whole width: the options on the left, the preview or summary and Start beside them.",
+      "results": "Results and the round summaries show your score and the buttons beside the staff and the details, so nothing is far below.",
+      "play": "On a tablet, Play, Echo, Read notes and Scales have a layout of their own: the progress at the top, a big staff, and a big pad, piano or answer buttons. On a computer, Echo looks like Play while you listen too.",
+      "calibrate": "Calibrate uses the whole screen: a big pad under the timing on a tablet, and beside it on a computer."
     },
     "v0_12_0": {
       "title": "Accounts",

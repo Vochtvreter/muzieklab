@@ -10,7 +10,7 @@ import { t } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
-import { useDocTitle } from '../../hooks';
+import { useBreakpoint, useDocTitle } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
 import { keySignsAria, letterName, majorName, minorName } from '../../lib/noteText';
 import { Link, navigate, type Route } from '../../router';
@@ -43,6 +43,7 @@ interface KeyScreenProps {
 
 export function KeyScreen({ keys, mix: mixed, back, backQuery, mixText, onUse }: KeyScreenProps): JSX.Element {
   useDocTitle(t('app.docTitle', { page: t('notes.keys.title') }));
+  const bp = useBreakpoint();
   // A draft until Use: Back leaves the setup as it was.
   const [mix, setMix] = useState(mixed);
   const [chosen, setChosen] = useState<KeyId[]>(() => (mixed ? keys : keys.slice(0, 1)));
@@ -87,7 +88,7 @@ export function KeyScreen({ keys, mix: mixed, back, backQuery, mixText, onUse }:
   };
 
   return (
-    <ExerciseFrame className="frame--setup">
+    <ExerciseFrame className="frame--setup" wide>
       <div className="page setup nkeys no-scrollbar">
         <div className="screen-head">
           <Link to={back} query={backQuery} aria-label={t('notes.keys.back')} className="icon-btn icon-btn--edge">
@@ -99,32 +100,44 @@ export function KeyScreen({ keys, mix: mixed, back, backQuery, mixText, onUse }:
           </Link>
         </div>
 
-        <Segmented<'one' | 'mix'> label={t('notes.keys.title')} value={mix ? 'mix' : 'one'}
-          onChange={(v) => {
-            setMix(v === 'mix');
-            if (v === 'one') setChosen([chosen[0]]);
-          }}
-          options={[
-            { value: 'one', label: t('notes.keys.one') },
-            { value: 'mix', label: t('notes.keys.mix') },
-          ]} />
+        <div className="wide">
+          <div className="wide-main">
+            <Segmented<'one' | 'mix'> label={t('notes.keys.title')} value={mix ? 'mix' : 'one'}
+              onChange={(v) => {
+                setMix(v === 'mix');
+                if (v === 'one') setChosen([chosen[0]]);
+              }}
+              options={[
+                { value: 'one', label: t('notes.keys.one') },
+                { value: 'mix', label: t('notes.keys.mix') },
+              ]} />
 
-        <div role="group" aria-label={t('notes.keys.group')} className="key-list">
-          {item('C', true)}
-          <div className="key-cols" aria-hidden="true">
-            <span>{t('notes.keys.sharps')}</span>
-            <span>{t('notes.keys.flats')}</span>
+            <div role="group" aria-label={t('notes.keys.group')} className="key-list">
+              {item('C', true)}
+              <div className="key-cols" aria-hidden="true">
+                <span>{t('notes.keys.sharps')}</span>
+                <span>{t('notes.keys.flats')}</span>
+              </div>
+              <div className="key-grid">{KEY_ORDER.slice(1).map((id) => item(id))}</div>
+            </div>
           </div>
-          <div className="key-grid">{KEY_ORDER.slice(1).map((id) => item(id))}</div>
-        </div>
 
-        <div className="key-summary" aria-live="polite">
-          <b>{summaryTitle}</b> {summary}
-        </div>
+          <div className="wide-side">
+            {/* Tablet and desktop: the one key's signature, large, above what it means. */}
+            {bp !== 'phone' && !mix && (
+              <div className="card key-big">
+                <PitchStaff clef="treble" keyId={first} notes={[]} slots={0} scale={1.2} room={2} />
+              </div>
+            )}
+            <div className="key-summary" aria-live="polite">
+              <b>{summaryTitle}</b> {summary}
+            </div>
 
-        <button type="button" className="btn btn--accent start-btn" onClick={use}>
-          {mix ? t('notes.keys.useMix', { count: chosen.length }) : t('notes.keys.use', { major: majorName(first) })}
-        </button>
+            <button type="button" className="btn btn--accent start-btn" onClick={use}>
+              {mix ? t('notes.keys.useMix', { count: chosen.length }) : t('notes.keys.use', { major: majorName(first) })}
+            </button>
+          </div>
+        </div>
       </div>
     </ExerciseFrame>
   );
