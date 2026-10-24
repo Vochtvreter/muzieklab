@@ -4,7 +4,7 @@ import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import {
   ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll,
-  expectNotSqueezed, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, SOL_DONE,
+  expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, SOL_DONE,
   TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
 
@@ -479,6 +479,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const misses = Number(await page.locator('.counts .count-n').nth(3).textContent());
       expect(misses).toBeGreaterThan(0);
       await expect(page.locator('.results-staff .staff-miss path')).toHaveCount(misses);
+      await expectScrollbarAtEdge(page);
       // Tablet and desktop: the staff, the lane and the tip on the left; beside them the side panel with the score, the
       // badge, the counts and every action. A phone keeps its one column.
       if (VIEWPORTS[name].width >= 700) {
@@ -723,6 +724,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(keys.nth(0), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
       if (portraitLayout) await expectFits(page);
+      await expectScrollbarAtEdge(page);
       if (tablet) {
         // A smaller tablet window (700 × 1000): the piano gives up height, and everything still fits.
         await page.setViewportSize({ width: 700, height: 1000 });
@@ -1086,6 +1088,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { name: /1\.1\s*The beat and tempo/ })).toBeInViewport();
     });
 
+    test('scrolling: every page and the Path units scroll at the window\'s edge, not the column\'s', async ({ page }) => {
+      known(name, 'scroll-edge');
+      const screens = ['#/', '#/path', '#/setup', '#/settings', '#/changelog', '#/calibrate', '#/notes', '#/notes/key', '#/scales', '#/scales/setup',
+        '#/learn', '#/learn/1', '#/learn/9', '#/signin', '#/privacy'];
+      for (const hash of screens) {
+        await page.goto('./' + hash);
+        await expect(page.getByRole('main')).toBeVisible();
+        await expectScrollbarAtEdge(page);
+      }
+    });
+
     test('play: how to play, then the pad', async ({ page }) => {
       known(name, 'play');
       await seed(page, { progress: { lessons: SOL_DONE } });
@@ -1419,6 +1432,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(page.getByLabel('Search'));
         await page.getByLabel('Search').fill('nobody');
         await expect(page.locator('.acct-empty')).toHaveText('No accounts match.');
+        await expectScrollbarAtEdge(page);
         await expectFieldsFit(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);

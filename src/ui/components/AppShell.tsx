@@ -59,7 +59,7 @@ export function AppShell({ bp, active, children, wide, fill }: Props): JSX.Eleme
             {items}
           </nav>
         </header>
-        <main className={'shell-main' + (full ? ' shell-main--wide' : '')}>{full ? children : <div className="column">{children}</div>}</main>
+        <main className="shell-main">{full ? children : <div className="column">{children}</div>}</main>
       </div>
     );
   }

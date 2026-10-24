@@ -1281,7 +1281,11 @@ list, results history); they use the app scrollbar: a 4 px fully rounded thumb i
 arrows, `#b9c3c2` (hover `#8a9596`), dark `#3d4849` (hover `#5d6a6b`). A page taller than the window (a Learn chapter,
 Setup or Results on a 1280 × 800 laptop) shows the same app scrollbar when there is a mouse or trackpad, so it is clear
 there is more below (since 0.9.0; before, no page showed one). Touch screens keep their own indicator: long Learn pages
-scroll the whole page on phones with the system scrollbar hidden.
+scroll the whole page on phones with the system scrollbar hidden. At every size the scrollbar is at the window's right
+edge, never at the side of the content (since 0.13.2; before, a page in a centred column, such as the setups and
+Results (1160 px) or Account (640 px), had it at the column's edge): the page spans the window and pads its content into
+the column, and the Learning path's units, which scroll in a box of their own, reach the window's edge the same way.
+Only a side menu (a Learn chapter's sections, What's new's releases on desktop) scrolls where it stands.
 
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every

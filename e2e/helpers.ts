@@ -81,6 +81,21 @@ export async function expectNoClippedLabels(page: Page): Promise<void> {
   expect(clipped, 'labels cut off').toEqual([]);
 }
 
+/**
+ * The screen scrolls at the window's edge: every page that can scroll (and Path's units, which scroll in a box of their
+ * own) reaches the right side of the window, so its scrollbar is there and not at the side of the content's column
+ * (DESIGN.md §9 Scrolling). Side menus (a Learn chapter's, What's new's) are not pages and are left out.
+ */
+export async function expectScrollbarAtEdge(page: Page): Promise<void> {
+  const off = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.shell-main, .page, .units')]
+      .filter((el) => el.offsetParent !== null && /auto|scroll/.test(getComputedStyle(el).overflowY))
+      .map((el) => ({ el: el.className, right: el.getBoundingClientRect().right }))
+      .filter(({ right }) => Math.abs(right - window.innerWidth) > 1),
+  );
+  expect(off, 'scroll boxes that stop short of the window\'s right edge').toEqual([]);
+}
+
 export async function expectNoSideScroll(page: Page): Promise<void> {
   const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(wide, 'no horizontal scroll').toBe(false);

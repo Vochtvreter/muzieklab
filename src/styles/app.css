@@ -28,22 +28,8 @@
 .shell-main::-webkit-scrollbar {
   display: none;
 }
-.shell--tablet .shell-main {
-  align-items: center;
-  padding: 0 24px;
-}
-.shell--desktop .shell-main {
-  align-items: center;
-  padding: 0 32px;
-}
-.shell--desktop .shell-main--wide,
-.shell--tablet .shell-main--wide {
-  align-items: stretch;
-  padding: 0;
-}
+/* The centred 640 px column (tablet and desktop) is the page's padding, so the page spans the window (see .page). */
 .column {
-  width: 100%;
-  max-width: 640px;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -162,7 +148,6 @@
 .frame {
   height: 100dvh;
   display: flex;
-  justify-content: center;
   background: var(--ground);
   overflow: hidden;
 }
@@ -173,19 +158,6 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-@media (min-width: 700px) {
-  .frame {
-    padding: 0 24px;
-  }
-  .frame-column {
-    max-width: 640px;
-  }
-}
-@media (min-width: 1100px) {
-  .frame {
-    padding: 0 32px;
-  }
 }
 /*
  * Wide exercise screens (setups, Key, results, round done, calibration). On a phone the wrappers are not boxes, so the
@@ -199,7 +171,7 @@
 }
 @media (min-width: 700px) {
   .frame--wide .frame-column {
-    max-width: 1160px;
+    --col: 1160px;
   }
   .wide {
     flex: 1 0 auto;
@@ -286,9 +258,23 @@
     background-color: var(--scroll-thumb-hover);
   }
 }
+/*
+ * From 700 px up the content sits in a centred column, 640 px wide (--col sets another width) with at least 24 px beside
+ * it (32 px on desktop). The page itself spans the window and pads its content into the column, so its scrollbar is at
+ * the window's edge, not the column's (DESIGN.md §9 Scrolling). --side is the room beside the column.
+ */
 @media (min-width: 700px) {
+  .column > .page,
+  .frame-column > .page {
+    --side: max(var(--gutter, 24px), calc((100% - var(--col, 640px)) / 2));
+  }
   .page {
-    padding: var(--pt) var(--px) var(--pb);
+    padding: var(--pt) calc(var(--px) + var(--side, 0px)) var(--pb);
+  }
+}
+@media (min-width: 1100px) {
+  .page {
+    --gutter: 32px;
   }
 }
 
@@ -1084,8 +1070,9 @@
   --pb: 14px;
   gap: 12px;
 }
+/* vw, not %: the units use --px too, and the page always spans the window. */
 .path--tablet {
-  --px: max(24px, calc((100% - 720px) / 2));
+  --px: max(24px, calc((100vw - 720px) / 2));
   gap: 14px;
 }
 .path-head {
@@ -1211,6 +1198,15 @@
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
+}
+/* The units' scroll box reaches the window's edges, so its scrollbar is at the edge, as a page's is (DESIGN.md §9). */
+.path:not(.path--desk) .units {
+  margin-left: calc(-1 * var(--px));
+  padding-left: var(--px);
+}
+.path .units {
+  margin-right: calc(-1 * var(--px));
+  padding-right: var(--px);
 }
 .unit {
   display: flex;
@@ -1551,7 +1547,7 @@ button.lesson-stars:hover {
 }
 /* Desktop: the paths as cards on the left, the chosen one on the right. */
 .path--desk {
-  --px: max(32px, calc((100% - 1040px) / 2));
+  --px: max(32px, calc((100vw - 1040px) / 2));
   --pt: 76px;
   flex-direction: row;
   align-items: stretch;
@@ -2180,14 +2176,14 @@ button.lesson-stars:hover {
  */
 @media (orientation: landscape) and (max-height: 560px) {
   .frame--play .frame-column {
-    max-width: 1000px;
+    --col: 1000px;
   }
   .play {
     display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     grid-template-rows: auto auto auto minmax(0, 1fr);
     gap: 8px 20px;
-    padding: max(10px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    padding: max(10px, env(safe-area-inset-top, 0px)) calc(max(16px, env(safe-area-inset-right, 0px)) + var(--side, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) calc(max(16px, env(safe-area-inset-left, 0px)) + var(--side, 0px));
   }
   .play-top {
     grid-column: 1 / -1;
@@ -3234,8 +3230,7 @@ button.lesson-stars:hover {
 /* ---------- Settings ---------- */
 .settings {
   --pb: 10px;
-  padding-left: 0;
-  padding-right: 0;
+  --px: 0px;
 }
 .settings-head {
   flex: none;
@@ -4501,14 +4496,14 @@ button.lesson-stars:hover {
 /* Phone landscape: the intro and the plot on the left, the pad (or the result) on the right, so both stay in view. */
 @media (orientation: landscape) and (max-height: 560px) {
   .frame--cal .frame-column {
-    max-width: 1000px;
+    --col: 1000px;
   }
   .cal {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 8px 20px;
-    padding: max(10px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    padding: max(10px, env(safe-area-inset-top, 0px)) calc(max(16px, env(safe-area-inset-right, 0px)) + var(--side, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) calc(max(16px, env(safe-area-inset-left, 0px)) + var(--side, 0px));
   }
   .cal > .screen-head {
     grid-column: 1;
@@ -4573,7 +4568,7 @@ button.lesson-stars:hover {
  */
 @media (min-width: 700px) and (min-height: 561px) {
   .frame--cal .frame-column {
-    max-width: 1160px;
+    --col: 1160px;
   }
   .cal .pad {
     flex: 1 1 236px;
