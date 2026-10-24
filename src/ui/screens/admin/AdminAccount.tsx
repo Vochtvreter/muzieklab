@@ -10,7 +10,7 @@
  * Each part shows only with its permission (the server checks anyway). last_admin, own_account and wrong_status come
  * back as messages; wrong_status also reloads the account, which another admin changed meanwhile.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { INVITE_DAYS, RESET_HOURS, ROLES, type AccountDetail, type AdminUpdateRequest, type LinkCreated, type Role } from '../../../../shared/api';
 import { api } from '../../../api/client';
 import { formatDateTime, formatDay, formatLongDate, t } from '../../../i18n';
@@ -482,27 +482,50 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   );
 }
 
-/** New invite link or New password link: makes one (the earlier one stops working) and shows it once. */
+/**
+ * The answer to a press (under its button), brought into view when what it says ("New link ready…", or why it failed)
+ * is below the screen's edge while the button is on screen, as when the button sat at the bottom of the screen: the
+ * whole answer where it fits, else its top. Not when the admin has scrolled away from the button meanwhile.
+ */
+function reveal(answer: HTMLElement): void {
+  const port = answer.closest('.page')?.getBoundingClientRect();
+  const top = Math.max(0, port?.top ?? 0);
+  const bottom = Math.min(window.innerHeight, port?.bottom ?? Infinity);
+  const button = answer.previousElementSibling?.getBoundingClientRect();
+  const line = (answer.querySelector('.form-done, .form-error') ?? answer).getBoundingClientRect();
+  if (button && button.bottom > top && button.top < bottom && line.bottom > bottom) answer.scrollIntoView?.({ block: 'nearest' });
+}
+
+/**
+ * New invite link or New password link: makes one (the earlier one stops working) and shows it once. Each answer stays
+ * where it is until the next one takes its place, so the page keeps its height and nothing above or below it moves (the
+ * admin is usually scrolled down to it): while a press runs, the earlier answer is dimmed; if it fails, why takes the
+ * place of "New link ready…" and the earlier link stays dimmed and not usable, as it may no longer work.
+ */
 function LinkMaker({ kind, detail, fail, onMade }: { kind: LinkKind; detail: AccountDetail; fail(e: unknown): Failure; onMade?(): void }): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Counts failed presses: each failure is a new alert, read out again even with the same words.
+  const [failures, setFailures] = useState(0);
   const [made, setMade] = useState<LinkCreated | null>(null);
+  const answer = useRef<HTMLDivElement>(null);
   const mounted = useMounted();
+  // A new link or a failure is in view (nothing is shown before the first press).
+  useLayoutEffect(() => {
+    if (answer.current) reveal(answer.current);
+  }, [made, failures]);
   const make = async (): Promise<void> => {
     setBusy(true);
-    setError(null);
-    // The earlier link stays where it is, dimmed, until the new one takes its place: the page keeps its height, so
-    // nothing above or below it moves (the admin is usually scrolled down to it).
     try {
       const link = await api.post<LinkCreated>(`/admin/accounts/${detail.id}/${kind}-link`);
       if (!mounted.current) return;
       setMade(link);
+      setError(null);
       onMade?.();
     } catch (e) {
       if (!mounted.current) return;
-      // It may have stopped working: the server could have made the new one before the answer was lost.
-      setMade(null);
       setError(fail(e).message);
+      setFailures((n) => n + 1);
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -514,11 +537,18 @@ function LinkMaker({ kind, detail, fail, onMade }: { kind: LinkKind; detail: Acc
         sub={t(invite ? 'admin.newInviteLinkSub' : 'admin.newResetLinkSub', { days: INVITE_DAYS, hours: RESET_HOURS })} busy={busy}
         busyLabel={t('admin.making')} onClick={() => void make()} />
       {(made || error) && (
-        <div className="card-pad">
-          <FormError error={error} />
+        <div ref={answer} className="card-pad">
           {/* A new link is a new result (keyed by the link): its "New link ready" line is read out again, and Copy starts
-              over. */}
-          {made && <LinkResult key={made.link} kind={kind} name={detail.name} link={made.link} expiresAt={made.expiresAt} announce stale={busy} />}
+              over. The server may have made a link before an answer was lost, so after a failure the earlier one may
+              not work anymore. */}
+          {made ? (
+            <LinkResult key={made.link} kind={kind} name={detail.name} link={made.link} expiresAt={made.expiresAt} announce stale={busy}
+              failed={error && <FormError key={failures} error={`${error} ${t('admin.linkMayNotWork')}`} />} />
+          ) : (
+            <div className={busy ? 'link-stale' : undefined}>
+              <FormError key={failures} error={error} />
+            </div>
+          )}
         </div>
       )}
     </>

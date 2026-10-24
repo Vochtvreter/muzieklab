@@ -80,8 +80,8 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
   });
 
   /**
-   * The link's account while the link works. Wrong tokens count as failed tries for the address only (attempts.ts
-   * linkKeys): not for an email, as there is none, and not for the network, which others share.
+   * The link's account while the link works. Wrong tokens count as failed tries for the address, on a counter of their
+   * own (attempts.ts linkKeys): not for an email, as there is none, and not for the network, which others share.
    */
   async function checkedLink(kind: LinkKind, token: string, ip: string) {
     const found = await countedTry(ctx, linkKeys(ip), () => findLink(c, kind, token, ctx.now()));

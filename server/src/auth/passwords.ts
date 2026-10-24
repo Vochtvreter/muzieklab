@@ -37,7 +37,7 @@ export interface HashLane {
 /** The line of the hashes the server makes for itself (the dummy hash; the tests' accounts). */
 export const SERVER_LANE: HashLane = { network: 'server', limited: false, clean: false };
 
-/** How many may wait for a hash. Past these the server is too busy, and a try gets 429 with `retryAfter: 1`. */
+/** How many may wait for a hash. Past these the server is too busy, and a try gets 429 `busy` with `retryAfter: 1`. */
 export interface QueueLimits {
   /** Any line may add to the waiting while fewer than this many wait in all: a class signing in at once. */
   shared: number;
@@ -67,7 +67,11 @@ export interface QueueLimits {
  */
 export const HASH_QUEUE: QueueLimits = { shared: 32, perLine: 2, max: 512, perLineClean: 4, maxClean: 512 };
 
-const busy = () => new ApiError('too_many_attempts', 'The server is busy: try again in a second', 1);
+/**
+ * A try the hash queue has no place for (BACKEND-PLAN.md §5.2): `busy`, not `too_many_attempts`, since whoever gets it
+ * may have tried only once. Nothing was checked, so countedTry (tries.ts) takes the try back.
+ */
+const busy = () => new ApiError('busy', 'The server is busy: try again in a second', 1);
 
 /** A line's waiting tries, in the places kept for clean ones and in the others, each first come, first served. */
 interface Line {
@@ -82,8 +86,7 @@ export type Places = keyof Line;
  * A counting semaphore that is fair between lines (networks): callers past `size` wait in their line, and the lines
  * take turns, first come first served within a line, clean tries first. A free slot goes to the line whose turn it
  * is, and that line then goes to the back. So a network with one try waiting waits behind at most one try of every
- * other network, however many those have. A try that may not wait (`limits`) is refused with too_many_attempts
- * instead.
+ * other network, however many those have. A try that may not wait (`limits`) is refused with `busy` instead.
  */
 export class Semaphore {
   private free: number;

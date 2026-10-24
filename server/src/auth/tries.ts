@@ -9,12 +9,14 @@ import { verifyPassword, type HashLane } from './passwords.js';
  * The hash queue's line for a request from `ip` (passwords.ts): its network's, with only that line's own places once
  * the network is past its free failures. Every hash a request makes goes through it, so no network can fill the queue.
  *
- * The try is clean when its address has made no other try within the window, wrong or right (attempts.ts `tries`):
- * then it may also use the places the line keeps for clean tries, so a few addresses of a network cannot keep the
- * rest of it out. A password try is counted while it runs (countedTry), hence `<= 1`; so is the right current
- * password before a new password's hash (`rightPassword`). (A link's new password comes after a right link token,
- * which is not noted, so one earlier try is let by there; a link works once.) An address loses this with its first
- * try, so a flood from it soon has none: a /60 has 16 addresses (/64s), a /56 256, each clean once every 15 minutes.
+ * The try is clean when its address has made no other try within the window: no password, wrong or right, and no
+ * wrong link token (attempts.ts `tries`). Then it may also use the places the line keeps for clean tries, so a few
+ * addresses of a network cannot keep the rest of it out. A password try is counted while it runs (countedTry), hence
+ * `<= 1`; so is the right current password before a new password's hash (`rightPassword`). (A link's new password
+ * comes after a right link token, which is not noted, so one earlier try is let by there; a link works once.) An
+ * address loses this with its first try, so a flood from it soon has none: a /60 has 16 addresses (/64s), a /56 256,
+ * each clean once every 15 minutes. Wrong link tokens from other addresses cannot make it clean again sooner: they
+ * have entries of their own (attempts.ts linkKeys).
  */
 export function hashLane(ctx: AppContext, ip: string): HashLane {
   return {

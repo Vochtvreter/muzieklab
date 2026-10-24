@@ -3,6 +3,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import type { InjectOptions, LightMyRequestResponse } from 'fastify';
 import type { Role } from '../../../shared/api.js';
 import { buildApp } from '../app.js';
+import type { AttemptLimits } from '../auth/attempts.js';
 import { SERVER_LANE, hashPassword } from '../auth/passwords.js';
 import { collections, ensureIndexes, type AccountDoc } from '../db.js';
 
@@ -57,10 +58,13 @@ export interface TestApp {
   call: (options: InjectOptions & { cookie?: string }) => Promise<LightMyRequestResponse>;
 }
 
-export async function makeApp(mongo: Mongo, opts: { cookieSecure?: boolean } = {}): Promise<TestApp> {
+export async function makeApp(
+  mongo: Mongo,
+  opts: { cookieSecure?: boolean; limits?: AttemptLimits } = {},
+): Promise<TestApp> {
   const db = await freshDb(mongo);
   const clock = new TestClock();
-  const app = buildApp({ db, commit: 'test', now: clock.now, cookieSecure: opts.cookieSecure });
+  const app = buildApp({ db, commit: 'test', now: clock.now, cookieSecure: opts.cookieSecure, limits: opts.limits });
   await app.ready();
   const cookieName = opts.cookieSecure === false ? 'session' : COOKIE;
   const call: TestApp['call'] = ({ cookie, headers, ...options }) =>

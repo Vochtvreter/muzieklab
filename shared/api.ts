@@ -276,6 +276,8 @@ export const ERROR_CODES = [
   'email_invalid',
   /** 429: too many tries; `retryAfter` says how many seconds to wait. */
   'too_many_attempts',
+  /** 429: the password-check queue is full; no try was counted. `retryAfter: 1`. */
+  'busy',
   /** 500 */
   'internal',
 ] as const;
@@ -285,7 +287,7 @@ export interface ApiErrorBody {
   error: ErrorCode;
   /** For people reading logs; the app shows its own translated text for the code. */
   message: string;
-  /** With too_many_attempts: seconds until the next try. */
+  /** With too_many_attempts and busy: seconds until the next try (also the Retry-After header). */
   retryAfter?: number;
 }
 

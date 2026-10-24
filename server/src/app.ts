@@ -2,7 +2,7 @@ import cookie from '@fastify/cookie';
 import Fastify, { LogController, type FastifyError, type FastifyServerOptions } from 'fastify';
 import type { Db } from 'mongodb';
 import type { ApiErrorBody } from '../../shared/api.js';
-import { AttemptLimiter } from './auth/attempts.js';
+import { AttemptLimiter, DEFAULT_LIMITS, type AttemptLimits } from './auth/attempts.js';
 import { installGuard } from './auth/guard.js';
 import { dummyHash } from './auth/passwords.js';
 import type { AppContext } from './context.js';
@@ -22,11 +22,20 @@ export interface AppOptions {
   cookieSecure?: boolean;
   /** The clock; tests pass their own to move time on. */
   now?: () => Date;
+  /** The sign-in limits (§5.2); tests pass smaller caps on the entries kept. */
+  limits?: AttemptLimits;
 }
 
 const PREFIX = '/api/v1';
 
-export function buildApp({ db, commit, logger = false, cookieSecure = true, now = () => new Date() }: AppOptions) {
+export function buildApp({
+  db,
+  commit,
+  logger = false,
+  cookieSecure = true,
+  now = () => new Date(),
+  limits = DEFAULT_LIMITS,
+}: AppOptions) {
   const app = Fastify({
     logger,
     // Fastify's request lines hold the visitor's address, the Host and the whole URL: log.ts writes its own.
@@ -50,7 +59,7 @@ export function buildApp({ db, commit, logger = false, cookieSecure = true, now 
     c: collections(db),
     now,
     cookies: { secure: cookieSecure },
-    attempts: new AttemptLimiter(() => now().getTime()),
+    attempts: new AttemptLimiter(() => now().getTime(), limits),
   };
   // Old sign-in counters go, so memory does not grow with every address that ever mistyped a password.
   const sweep = setInterval(() => ctx.attempts.sweep(), 60_000);

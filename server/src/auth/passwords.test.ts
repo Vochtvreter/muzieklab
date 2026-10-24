@@ -141,7 +141,8 @@ describe('Semaphore', () => {
     // The queue is full for A, which has its 32…
     const refused = await refusal(run('A'));
     expect(refused).toBeInstanceOf(ApiError);
-    expect((refused as ApiError).body()).toEqual({ error: 'too_many_attempts', message: expect.any(String), retryAfter: 1 });
+    expect((refused as ApiError).statusCode).toBe(429);
+    expect((refused as ApiError).body()).toEqual({ error: 'busy', message: expect.any(String), retryAfter: 1 });
     // …but every other network may still have 2 waiting, and is served in turn.
     for (let i = 0; i < 240; i++) tasks.push(run(`n${i}`), run(`n${i}`));
     expect(await refusal(run('n0'))).toBeInstanceOf(ApiError);
@@ -219,8 +220,8 @@ describe('Semaphore', () => {
     const hash = await hashPassword('a long enough password', LANE, FAST);
     const g = gate();
     const held = Array.from({ length: 4 + 32 }, () => hashing.run(LANE, () => g.done));
-    await expect(verifyPassword('a long enough password', hash, LANE)).rejects.toMatchObject({ code: 'too_many_attempts', retryAfter: 1 });
-    await expect(hashPassword('a long enough password', LANE, FAST)).rejects.toMatchObject({ code: 'too_many_attempts' });
+    await expect(verifyPassword('a long enough password', hash, LANE)).rejects.toMatchObject({ code: 'busy', retryAfter: 1 });
+    await expect(hashPassword('a long enough password', LANE, FAST)).rejects.toMatchObject({ code: 'busy' });
     // Another network's line still has its places.
     const elsewhere = verifyPassword('a long enough password', hash, lane('198.51.100.0/24'));
     expect(hashing.waitingIn('198.51.100.0/24')).toBe(1);

@@ -19,6 +19,7 @@ const STATUS: Record<ErrorCode, number> = {
   password_has_email: 422,
   email_invalid: 422,
   too_many_attempts: 429,
+  busy: 429,
   internal: 500,
 };
 
@@ -29,7 +30,7 @@ export class ApiError extends Error {
   constructor(
     readonly code: ErrorCode,
     message: string,
-    /** With too_many_attempts: seconds until the next try. */
+    /** With too_many_attempts and busy: seconds until the next try (app.ts also sends it as Retry-After). */
     readonly retryAfter?: number,
   ) {
     super(message);

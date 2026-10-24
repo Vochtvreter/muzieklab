@@ -4,7 +4,7 @@ import { isIPv4, isIPv6 } from 'node:net';
 // lock someone else out. In memory, because the API is one process; a restart forgets, which only helps the person
 // who was waiting.
 //
-// Four counters. A try must pass the first three, and the fourth never refuses one:
+// Four counters for a password try. It must pass the first three, and the fourth never refuses one:
 // - the pair, an email from one address: 5 failures in 15 minutes are free. Only that address is slowed for that
 //   email, so someone guessing slows themselves down, not the account's owner elsewhere.
 // - the address alone, across emails: 50 failures in 15 minutes are free, so one school or office network, where many
@@ -17,12 +17,20 @@ import { isIPv4, isIPv6 } from 'node:net';
 //   network wait would let one of them keep all the others out. Past its 200 free failures in 15 minutes it only gets
 //   fewer places in the hash queue (`over`; passwords.ts serves the networks in turn), so its tries cannot fill it.
 //
-// The hash queue also asks whether an address is clean (`tries`: no other try in the window, wrong or right), as it
-// keeps a few places in each network's line for those: someone in a network past its free failures cannot keep the
-// others in it out with failures from a few of its addresses, or with right passwords to an account of their own.
+// A fifth, the link counter, is for wrong link tokens: per address, with the address's limits, but apart from its
+// password tries (`linkKeys`).
 //
-// Each counter keeps its own entries, with its own cap: link checks, which cost no hash, can make address entries
-// quickly, but cannot push out the pair and email entries, which only grow at hash speed.
+// The hash queue also asks whether an address is clean (`tries`: no other try in the window, a password wrong or right,
+// or a wrong link token), as it keeps a few places in each network's line for those: someone in a network past its
+// free failures cannot keep the others in it out with failures from a few of its addresses, or with right passwords to
+// an account of their own.
+//
+// Each counter keeps its own entries, with its own cap, and a flood of one kind can push out only its own kind's. Link
+// checks cost no hash, so wrong tokens from many addresses can fill the link counter's entries within seconds. The
+// address entries (which say who is clean), the pair's and the email's grow only from password tries, and only those
+// that get a hash stay counted (a try refused as busy is taken back): about 16 a second, so a window holds far fewer
+// than the cap. Only tens of thousands of tries in flight at the same moment could push some out, a flood that is met
+// at the network edge, not here (BACKEND-PLAN.md §8, residual risk).
 
 /** How one counter slows tries down. */
 export interface CounterLimits {
@@ -45,7 +53,7 @@ export interface CounterLimits {
   maxKeys: number;
 }
 
-export const COUNTERS = ['pair', 'address', 'network', 'email'] as const;
+export const COUNTERS = ['pair', 'address', 'network', 'email', 'link'] as const;
 export type Counter = (typeof COUNTERS)[number];
 
 export type AttemptLimits = Record<Counter, CounterLimits>;
@@ -59,6 +67,8 @@ export const DEFAULT_LIMITS: AttemptLimits = {
   // each may hold the times of hundreds of failures, and filling 10,000 takes 10,000 networks.
   network: { freeFailures: 200, ...WAITS, firstWaitMs: 0, maxWaitMs: 0, untilQuiet: false, maxKeys: 10_000 },
   email: { freeFailures: 50, ...WAITS, untilQuiet: false, maxKeys: 100_000 },
+  // Wrong link tokens, per address: the address's limits, in entries of their own.
+  link: { freeFailures: 50, ...WAITS, untilQuiet: false, maxKeys: 100_000 },
 };
 
 interface Entry {
@@ -72,10 +82,10 @@ interface Entry {
 
 /**
  * Counts failed tries per key ("pair:203.0.113.7 ann@example.com", "address:203.0.113.7", "network:203.0.113.0/24",
- * "email:ann@example.com"; the part before the colon names the counter and so its limits and its entries). After a
- * counter's free failures within the window, every further try must wait: 2 s, then 4 s, 8 s… up to 15 minutes (not
- * the network's, which never waits). Tries during a wait are refused without being checked, so they neither count nor
- * shorten or reset the wait.
+ * "email:ann@example.com", "link:203.0.113.7"; the part before the colon names the counter and so its limits and its
+ * entries). After a counter's free failures within the window, every further try must wait: 2 s, then 4 s, 8 s… up to
+ * 15 minutes (not the network's, which never waits). Tries during a wait are refused without being checked, so they
+ * neither count nor shorten or reset the wait.
  *
  * A try counts as a failure from the moment it starts (`begin`) until it turns out right (`forgive`): otherwise many
  * tries sent at once would all be checked before the first failure was counted.
@@ -87,6 +97,7 @@ export class AttemptLimiter {
     address: new Map(),
     network: new Map(),
     email: new Map(),
+    link: new Map(),
   };
   /**
    * The right passwords per key (`right`), when they were within its counter's window, oldest first; the Map in order
@@ -189,14 +200,19 @@ export class AttemptLimiter {
   }
 
   /**
-   * The tries of `key` within the window, wrong or right: its `failures` (with the tries still running) and the right
-   * passwords `right` noted. The hash queue keeps places for the tries of an address with no other (tries.ts hashLane).
+   * The tries of `key` (an address) within the window: its `failures` (password tries, with those still running), the
+   * right passwords `right` noted, and the wrong link tokens from that address (its link counter's failures). The hash
+   * queue keeps places for the tries of an address with no other (tries.ts hashLane). The link entries are apart, so
+   * a flood of wrong tokens pushing them out can only forget those, never an address's password tries.
    */
   tries(key: string): number {
-    const since = this.now() - this.limits[counterOf(key)].windowMs;
+    const counter = counterOf(key);
+    const since = this.now() - this.limits[counter].windowMs;
     let rights = 0;
     for (const at of this.rights.get(key) ?? []) if (at > since) rights++;
-    return this.failures(key) + rights;
+    // The same address on the link counter ("address:203.0.113.7" → "link:203.0.113.7").
+    const links = counter === 'address' ? this.failures(`link:${key.slice(key.indexOf(':') + 1)}`) : 0;
+    return this.failures(key) + rights + links;
   }
 
   /** Forgets a key's failures: a good sign-in clears its pair's counter (not the address's, network's or email's). */
@@ -335,14 +351,17 @@ export const pairKey = (email: string, ip: string) => `pair:${addressOf(ip)} ${l
 export const addressKey = (ip: string) => `address:${addressOf(ip)}`;
 export const networkKey = (ip: string) => `network:${networkOf(ip)}`;
 export const emailKey = (email: string) => `email:${lower(email)}`;
+export const linkKey = (ip: string) => `link:${addressOf(ip)}`;
 
 /**
- * The counters a link try goes through: the address only. There is no email to count against, and not the network: a
- * wrong token costs no hash, and links (256 bits) cannot be guessed, so counting it there would only let one address
- * slow the sign-ins of everyone it shares its network with.
+ * The counters a link try goes through: the link counter only, per address as the address counter but apart from it.
+ * There is no email to count against, and not the network: a wrong token costs no hash, and links (256 bits) cannot be
+ * guessed, so counting it there would only let one address slow the sign-ins of everyone it shares its network with.
+ * Not the address counter either: wrong tokens cost no hash, so a flood of them from many addresses would push out the
+ * address entries that say who is clean (`tries`, which still counts them through the link counter).
  */
 export function linkKeys(ip: string): string[] {
-  return [addressKey(ip)];
+  return [linkKey(ip)];
 }
 
 /** The four counters a password try goes through: the pair, the address, its network (never waits), then the email. */

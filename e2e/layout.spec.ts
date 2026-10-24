@@ -45,6 +45,35 @@ const known = (vp: string, screen: string): void => {
   test.fail(!!why, why);
 };
 
+/**
+ * One account after a second New password link press that got no answer (DESIGN.md, One account): why takes the place
+ * of "New link ready…", and the earlier link and its message stay in their place, dimmed and not usable. `button` is
+ * the button's name, `alert` the whole error.
+ */
+async function failedSecondLink(page: Page, button: string, alert: string): Promise<void> {
+  let made = 0;
+  await mockApi(page, { ...adminApi(), 'POST /admin/accounts/:id/reset-link': () => (made++ === 0 ? { json: RESET_LINK_CREATED } : { status: 502 }) });
+  await page.goto('./#/admin/account/' + ACCOUNTS[1].id);
+  const press = page.getByRole('button', { name: new RegExp('^' + button) });
+  await press.click();
+  await expect(page.locator('.link-result .form-done')).toBeVisible();
+  await press.click();
+  await expect(page.getByRole('alert')).toHaveText(alert);
+  await expect(page.locator('.link-result .form-done')).toHaveCount(0);
+  await expect(page.locator('.link-result-body')).toHaveAttribute('inert', '');
+  await expect(page.locator('.link-result-body')).toHaveCSS('opacity', '0.45');
+  // Why is shown whole, right under the button, which can be pressed again.
+  await expectNotSqueezed(page.getByRole('alert'));
+  await expectNoOverlap(press, page.getByRole('alert'));
+  await expectClickable(press);
+  await expect(page.getByRole('alert')).toBeInViewport();
+  await expectNotSqueezed(page.locator('.link-result textarea'));
+  for (const card of await page.locator('.set-card').all()) await expectNotSqueezed(card);
+  await expectFieldsFit(page);
+  await expectNoClippedLabels(page);
+  await expectNoSideScroll(page);
+}
+
 /** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
 const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
   metronome: 'on', countIn: 1, density: 'balanced', restAmount: 'few' };
@@ -1274,6 +1303,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });
+
+      test('admin one account: a second password link that fails, with the earlier one dimmed in its place', async ({ page }) => {
+        known(name, 'admin-account-link-failed');
+        await failedSecondLink(page, 'New password link',
+          "Can't reach Muzieklab right now. Check your connection and try again. The link below may not work anymore.");
+      });
     });
   });
 }
@@ -1405,6 +1440,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectFieldsFit(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
+      });
+
+      test('admin account, a second password link that fails: De link hieronder werkt misschien niet meer', async ({ page }) => {
+        known(name, 'nl-admin-account-link-failed');
+        await failedSecondLink(page, 'Link voor een nieuw wachtwoord',
+          'Muzieklab is nu niet bereikbaar. Controleer je verbinding en probeer het opnieuw. De link hieronder werkt misschien niet meer.');
       });
     });
 

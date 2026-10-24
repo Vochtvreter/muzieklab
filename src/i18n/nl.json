@@ -928,6 +928,7 @@
     "copyLink": "Kopieer link",
     "worksUntil": "Werkt tot {date}.",
     "shownOnce": "Deze link zie je alleen nu. Maak een nieuwe als hij kwijtraakt.",
+    "linkMayNotWork": "De link hieronder werkt misschien niet meer.",
     "message": "Bericht om te versturen",
     "copyMessage": "Kopieer bericht",
     "inviteMessage": "Hoi {name}, ik heb een account voor je gemaakt bij Muzieklab. Open deze link om je wachtwoord te kiezen: {link} — hij werkt tot {date}.",

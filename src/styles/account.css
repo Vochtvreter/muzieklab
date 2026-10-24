@@ -667,15 +667,23 @@
 .invite-ready .acct-sub {
   margin-top: -6px;
 }
-.link-result {
+.link-result,
+.link-result-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-/* While a newer link is being made: the old one is dimmed (and inert), in its place, so the page does not move. */
-.link-result--stale {
+/* While a newer link is being made, the earlier answer (a link, or why making one failed) is dimmed (and inert) in its
+   place, so the page does not move. If making it failed, the earlier link and its message stay dimmed and inert under
+   why, as they may no longer work, until a new link replaces them. */
+.link-stale,
+.link-result--old .link-result-body {
   opacity: 0.45;
   transition: opacity 0.18s ease-out;
+}
+/* Not dimmed twice while the next press runs. */
+.link-stale .link-result-body {
+  opacity: 1;
 }
 .link-result .tfield-hint b {
   font-weight: 600;

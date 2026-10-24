@@ -862,6 +862,140 @@ test('admin one account: a new password link for an active account, with its own
   expect(api.callsTo('POST /admin/accounts/:id/reset-link')).toHaveLength(2);
 });
 
+test('admin one account: a second password link that fails keeps the earlier one in place, dimmed, until a new one replaces it', async ({ page }) => {
+  // The first press makes a link; the next two get no answer (502, held back until `reply()`); the fourth makes one.
+  const fourth = { ...RESET_LINK_CREATED, link: RESET_LINK_CREATED.link.replace(/.$/, 'Q') };
+  let made = 0;
+  let reply = (): void => undefined;
+  const api = await mockApi(page, {
+    ...adminApi(),
+    'POST /admin/accounts/:id/reset-link': async () => {
+      made++;
+      if (made === 1) return { json: RESET_LINK_CREATED };
+      await new Promise<void>((resolve) => (reply = resolve));
+      return made === 4 ? { json: fourth } : { status: 502 };
+    },
+  });
+  await page.goto('./#/admin/account/' + SAM_ACTIVE.id);
+  // No scroll anchoring, as in Safari: the page itself must not move when the answer changes.
+  await page.addStyleTag({ content: '* { overflow-anchor: none !important; }' });
+  const button = page.getByRole('button', { name: /^(New password link|Making a link…)/ });
+  const result = page.locator('.link-result');
+  const body = result.locator('.link-result-body');
+  const field = page.getByLabel('New password link', { exact: true });
+  const alert = page.getByRole('alert');
+  const failed = "Can't reach Muzieklab right now. Check your connection and try again. The link below may not work anymore.";
+  await button.click();
+  await expect(field).toHaveValue(RESET_LINK_CREATED.link);
+
+  // Scrolled down to the result, as when copying the message.
+  await page.getByRole('button', { name: 'Copy message' }).evaluate((el) => el.scrollIntoView({ block: 'end' }));
+  expect(await page.locator('.page').evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expectClickable(button);
+  const top = async (): Promise<number> => Math.round((await button.boundingBox())!.y);
+  const before = await top();
+  const said = await recordAnnouncements(page);
+
+  // The second press fails: the earlier link keeps its place, under why, dimmed and not usable (it may no longer work).
+  await button.click();
+  await expect(button).toHaveAccessibleName(/^Making a link…/);
+  await expect(result).toHaveAttribute('inert', '');
+  reply();
+  await expect(alert).toHaveText(failed);
+  await expect(button).toHaveAccessibleName(/^New password link/);
+  expect(await top()).toBe(before);
+  await expect(field).toHaveValue(RESET_LINK_CREATED.link);
+  await expect(done(page, 'New link ready. Send it yourself.')).toHaveCount(0);
+  await expect(result).not.toHaveAttribute('inert', /.*/);
+  await expect(body).toHaveAttribute('inert', '');
+  await expect(body).toHaveCSS('opacity', '0.45');
+  // Why it failed is not dimmed, and is in view.
+  await expect(alert).toHaveCSS('opacity', '1');
+  await expect(alert).toBeInViewport();
+  // Inert: Copy cannot be pressed or focused.
+  const copy = page.getByRole('button', { name: 'Copy message' });
+  await copy.evaluate((el: HTMLElement) => el.focus());
+  await expect(copy).not.toBeFocused();
+
+  // The third press fails too: the same words are a new alert (read out again), and still nothing moves.
+  await alert.evaluate((el) => el.setAttribute('data-seen', ''));
+  await button.click();
+  await expect(button).toHaveAccessibleName(/^Making a link…/);
+  // Meanwhile the earlier answer stays, dimmed as a whole (not twice).
+  await expect(result).toHaveCSS('opacity', '0.45');
+  await expect(body).toHaveCSS('opacity', '1');
+  expect(await top()).toBe(before);
+  reply();
+  await expect(alert).not.toHaveAttribute('data-seen');
+  await expect(alert).toHaveText(failed);
+  expect(await top()).toBe(before);
+
+  // The fourth press works: the new link takes the earlier one's place, in view, and is read out.
+  await button.click();
+  await expect(button).toHaveAccessibleName(/^Making a link…/);
+  expect(await top()).toBe(before);
+  reply();
+  await expect(field).toHaveValue(fourth.link);
+  await expect(alert).toHaveCount(0);
+  await expect(done(page, 'New link ready. Send it yourself.')).toBeInViewport();
+  await expect(body).not.toHaveAttribute('inert', /.*/);
+  await expect(result).not.toHaveAttribute('inert', /.*/);
+  await expect(body).toHaveCSS('opacity', '1');
+  await expect.poll(said).toEqual(['New link ready. Send it yourself.']);
+  expect(await top()).toBe(before);
+  await expectClickable(page.getByRole('button', { name: 'Copy message' }));
+  expect(api.callsTo('POST /admin/accounts/:id/reset-link')).toHaveLength(4);
+});
+
+test('admin one account: a password link pressed at the bottom of the screen comes into view, whether it fails or works', async ({ page }) => {
+  // The first press gets no answer (502); the next ones make a link, each held back until `reply()`.
+  const third = { ...RESET_LINK_CREATED, link: RESET_LINK_CREATED.link.replace(/.$/, 'R') };
+  let made = 0;
+  let reply = (): void => undefined;
+  await mockApi(page, {
+    ...adminApi(),
+    'POST /admin/accounts/:id/reset-link': async () => {
+      made++;
+      if (made === 1) return { status: 502 };
+      await new Promise<void>((resolve) => (reply = resolve));
+      return { json: made === 2 ? RESET_LINK_CREATED : third };
+    },
+  });
+  await page.goto('./#/admin/account/' + SAM_ACTIVE.id);
+  const button = page.getByRole('button', { name: /^(New password link|Making a link…)/ });
+  const alert = page.getByRole('alert');
+  // Scrolled just far enough to see the button: what a press shows would be under the screen's edge.
+  const atBottom = (): Promise<void> => button.evaluate((el) => el.scrollIntoView({ block: 'end' }));
+  await atBottom();
+  await button.click();
+  // No earlier link: only why, brought into view, with the button still on screen.
+  await expect(alert).toHaveText("Can't reach Muzieklab right now. Check your connection and try again.");
+  await expect(page.locator('.link-result')).toHaveCount(0);
+  await expectClickable(alert, { scroll: false });
+  await expectClickable(button, { scroll: false });
+
+  // Why stays, dimmed, while the next press runs, until the link takes its place: in view, whole, and read out.
+  await atBottom();
+  await button.click();
+  await expect(button).toHaveAccessibleName(/^Making a link…/);
+  await expect(alert).toBeVisible();
+  await expect(page.locator('.link-stale')).toHaveCSS('opacity', '0.45');
+  reply();
+  await expect(page.getByLabel('New password link', { exact: true })).toHaveValue(RESET_LINK_CREATED.link);
+  await expect(alert).toHaveCount(0);
+  await expect(announcer(page)).toHaveText('New link ready. Send it yourself.');
+  await expectClickable(page.getByRole('button', { name: 'Copy message' }), { scroll: false });
+  await expectClickable(button, { scroll: false });
+
+  // The admin scrolls back up while the next link is made: the page stays where they are.
+  await button.click();
+  await expect(button).toHaveAccessibleName(/^Making a link…/);
+  await page.locator('.page').evaluate((el) => el.scrollTo(0, 0));
+  reply();
+  await expect(page.getByLabel('New password link', { exact: true })).toHaveValue(third.link);
+  expect(await page.locator('.page').evaluate((el) => el.scrollTop)).toBe(0);
+});
+
 test('admin one account: Delete account, confirmed; the list says so', async ({ page }) => {
   const api = await mockApi(page, { ...adminApi(), 'DELETE /admin/accounts/:id': { status: 204 } });
   await page.goto('./#/admin/account/' + PIET_BLOCKED.id);

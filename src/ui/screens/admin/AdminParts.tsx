@@ -6,7 +6,7 @@
  *   message to paste into an email or chat.
  * - RoleSwitches: Admin, Editor and Teacher as switch rows, each with what it lets someone do.
  */
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { ROLES, type Permission, type Role } from '../../../../shared/api';
 import { formatDateTime, t } from '../../../i18n';
 import { useAccount, type UseAccount } from '../../account';
@@ -67,28 +67,40 @@ export interface LinkResultProps {
   announce?: boolean;
   /** A newer link is being made: this one is dimmed and cannot be copied (inert), but keeps its place and height. */
   stale?: boolean;
+  /**
+   * Making a newer link failed: why (a FormError) takes the place of "New link ready…", and this link and its message
+   * stay in their place, dimmed and not usable (inert), as they may no longer work, until a new link replaces them.
+   */
+  failed?: ReactNode;
 }
 
 /**
  * A new link, shown once: the link with Copy, when it stops working, and the message to send with it (in the admin's
  * app language) with its own Copy.
  */
-export function LinkResult({ kind, name, link, expiresAt, announce, stale = false }: LinkResultProps): JSX.Element {
+export function LinkResult({ kind, name, link, expiresAt, announce, stale = false, failed }: LinkResultProps): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  const old = !!failed;
   // React 18 has no `inert` prop: set the attribute on the element.
   useLayoutEffect(() => {
     ref.current?.toggleAttribute('inert', stale);
   }, [stale]);
+  useLayoutEffect(() => {
+    body.current?.toggleAttribute('inert', old);
+  }, [old]);
   return (
-    <div ref={ref} className={'link-result m-in' + (stale ? ' link-result--stale' : '')}>
-      {announce && <FormDone>{t('admin.linkReady')}</FormDone>}
-      <CopyField label={t(kind === 'invite' ? 'admin.inviteLink' : 'admin.resetLink')} value={link} copyLabel={t('admin.copyLink')}
-        hint={
-          <>
-            {t('admin.worksUntil', { date: formatDateTime(expiresAt) })} <b>{t('admin.shownOnce')}</b>
-          </>
-        } />
-      <CopyField label={t('admin.message')} value={linkMessage(kind, name, link, expiresAt)} multiline copyLabel={t('admin.copyMessage')} />
+    <div ref={ref} className={'link-result m-in' + (stale ? ' link-stale' : '') + (old ? ' link-result--old' : '')}>
+      {old ? failed : announce && <FormDone>{t('admin.linkReady')}</FormDone>}
+      <div ref={body} className="link-result-body">
+        <CopyField label={t(kind === 'invite' ? 'admin.inviteLink' : 'admin.resetLink')} value={link} copyLabel={t('admin.copyLink')}
+          hint={
+            <>
+              {t('admin.worksUntil', { date: formatDateTime(expiresAt) })} <b>{t('admin.shownOnce')}</b>
+            </>
+          } />
+        <CopyField label={t('admin.message')} value={linkMessage(kind, name, link, expiresAt)} multiline copyLabel={t('admin.copyMessage')} />
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   addressKey,
   addressOf,
   emailKey,
+  linkKey,
   linkKeys,
   networkKey,
   networkOf,
@@ -19,6 +20,7 @@ const PAIR = pairKey('ann@example.com', '203.0.113.7');
 const ADDRESS = addressKey('203.0.113.7');
 const NETWORK = networkKey('203.0.113.7');
 const EMAIL = emailKey('ann@example.com');
+const LINK = linkKey('203.0.113.7');
 
 function limiter(limits?: AttemptLimits) {
   const clock = { ms: 1_000_000 };
@@ -30,7 +32,7 @@ function failTimes(l: AttemptLimiter, keys: string[], n: number) {
 }
 
 describe('the limits', () => {
-  it('are 5 free failures for an email from one address, 50 for an address or an email alone, 200 for a network', () => {
+  it('are 5 free failures for an email from one address, 50 for an address, an email or wrong links, 200 for a network', () => {
     const waits = { windowMs: 15 * MINUTE, firstWaitMs: 2000, maxWaitMs: 15 * MINUTE };
     expect(DEFAULT_LIMITS).toEqual({
       pair: { freeFailures: 5, ...waits, untilQuiet: true, maxKeys: 100_000 },
@@ -38,10 +40,14 @@ describe('the limits', () => {
       // The network never waits.
       network: { freeFailures: 200, windowMs: 15 * MINUTE, firstWaitMs: 0, maxWaitMs: 0, untilQuiet: false, maxKeys: 10_000 },
       email: { freeFailures: 50, ...waits, untilQuiet: false, maxKeys: 100_000 },
+      // Wrong link tokens: the address's limits, in entries of their own.
+      link: { freeFailures: 50, ...waits, untilQuiet: false, maxKeys: 100_000 },
     });
     expect(passwordKeys(' Ann@Example.com ', '203.0.113.7')).toEqual([PAIR, ADDRESS, NETWORK, EMAIL]);
-    // A wrong link token counts for its address only.
-    expect(linkKeys('203.0.113.7')).toEqual([ADDRESS]);
+    // A wrong link token counts for its address only, on the link counter.
+    expect(linkKeys('203.0.113.7')).toEqual([LINK]);
+    expect(LINK).toBe('link:203.0.113.7');
+    expect(linkKey('2001:db8:1:2::a')).toBe('link:2001:db8:1:2::/64');
     expect(NETWORK).toBe('network:203.0.113.0/24');
   });
 });
@@ -149,8 +155,8 @@ describe('an email from one address (the pair)', () => {
 });
 
 describe('an address or an email alone', () => {
-  it('lets 50 failures through, then waits 2 s, doubling', () => {
-    for (const key of [ADDRESS, EMAIL]) {
+  it('lets 50 failures through, then waits 2 s, doubling (wrong link tokens from an address too)', () => {
+    for (const key of [ADDRESS, EMAIL, LINK]) {
       const { clock, limiter: l } = limiter();
       failTimes(l, [key], 50);
       expect(l.begin([key])).toBe(2);
@@ -238,13 +244,15 @@ describe('the tries of an address, for the hash queue', () => {
     expect(l.failures(ADDRESS)).toBe(1); // running
     l.begin(passwordKeys('bob@example.com', '203.0.113.7'));
     l.forgive(passwordKeys('bob@example.com', '203.0.113.7')); // right
-    expect(l.failures(ADDRESS)).toBe(1);
+    expect([l.failures(ADDRESS), l.tries(ADDRESS)]).toEqual([1, 1]);
     for (let i = 0; i < 60; i++) l.begin(linkKeys('203.0.113.7'));
-    // Wrong link tokens count too, up to the address's 50: the tries after those wait, uncounted.
-    expect(l.failures(ADDRESS)).toBe(50);
-    expect(l.failures(addressKey('203.0.113.8'))).toBe(0);
+    // Wrong link tokens count as tries too, up to the link counter's 50 (the tries after those wait, uncounted), but
+    // on a counter of their own: the address's failures, which slow its sign-ins, are still the one password.
+    expect([l.failures(ADDRESS), l.failures(LINK), l.tries(ADDRESS)]).toEqual([1, 50, 51]);
+    expect(l.retryAfter(passwordKeys('cem@example.com', '203.0.113.7'))).toBe(0);
+    expect(l.tries(addressKey('203.0.113.8'))).toBe(0);
     clock.ms += 15 * MINUTE;
-    expect(l.failures(ADDRESS)).toBe(0);
+    expect([l.failures(ADDRESS), l.tries(ADDRESS)]).toEqual([0, 0]);
   });
 
   it('counts right passwords too, without making anyone wait, for 15 minutes', () => {
@@ -285,28 +293,41 @@ describe('the tries of an address, for the hash queue', () => {
 describe('the store', () => {
   const small = (maxKeys: number): AttemptLimits => {
     const counter: CounterLimits = { freeFailures: 5, windowMs: 1000, firstWaitMs: 100, maxWaitMs: 1000, untilQuiet: true, maxKeys };
-    return { pair: counter, address: { ...counter, untilQuiet: false }, network: { ...counter, untilQuiet: false }, email: counter };
+    const shared = { ...counter, untilQuiet: false };
+    return { pair: counter, address: shared, network: shared, email: counter, link: shared };
   };
 
   it('sweeps old entries, and keeps at most maxKeys of each counter, dropping its oldest', () => {
     const { clock, limiter: l } = limiter(small(2));
-    for (const key of ['pair:a', 'address:b', 'network:x', 'email:c', 'pair:d', 'address:e', 'pair:f', 'address:g']) l.begin([key]);
-    expect([l.size('pair'), l.size('address'), l.size('network'), l.size('email')]).toEqual([2, 2, 1, 1]);
-    expect(l.size()).toBe(6);
+    for (const key of ['pair:a', 'address:b', 'network:x', 'email:c', 'link:b', 'pair:d', 'address:e', 'pair:f', 'address:g']) {
+      l.begin([key]);
+    }
+    expect([l.size('pair'), l.size('address'), l.size('network'), l.size('email'), l.size('link')]).toEqual([2, 2, 1, 1, 1]);
+    expect(l.size()).toBe(7);
     clock.ms += 2000;
     l.sweep();
     expect(l.size()).toBe(0);
   });
 
-  it('keeps the email and pair entries that wait however many addresses fail (link checks cost no hash)', () => {
-    const { limiter: l } = limiter({ ...DEFAULT_LIMITS, address: { ...DEFAULT_LIMITS.address, maxKeys: 1000 } });
+  it('keeps the entries of password tries however many wrong link tokens come (link checks cost no hash)', () => {
+    // The real caps: wrong tokens from more /64s than the link counter keeps take under a second here, and not much
+    // longer against the API, as they cost no hash.
+    const { limiter: l } = limiter();
     for (let i = 0; i < 50; i++) l.begin(passwordKeys('victim@example.com', `2001:db8:${i.toString(16)}::1`));
     for (let i = 0; i < 5; i++) l.begin([pairKey('victim@example.com', '198.51.100.7')]);
     const waiting = [emailKey('victim@example.com'), pairKey('victim@example.com', '198.51.100.7')];
     expect(waiting.map((key) => l.retryAfter([key]))).toEqual([2, 2]);
-    // Wrong link tokens from many more /64s than the address counter keeps, each in its own /48.
-    for (let i = 0; i < 3000; i++) l.begin(linkKeys(`2001:db8:${(0x1000 + i).toString(16)}::1`));
-    expect(l.size('address')).toBe(1000);
+    // One wrong password from a /64 of an ISP's /48: it is not clean for 15 minutes.
+    const used = addressKey('2001:db8:abcd:10::1');
+    l.begin(passwordKeys('pupil@example.com', '2001:db8:abcd:10::1'));
+    expect(l.tries(used)).toBe(1);
+    // Two tunnel-broker /48s hold 131,072 /64s.
+    const tunnel = (i: number) => `2001:db8:${(0xf000 + (i >> 16)).toString(16)}:${(i & 0xffff).toString(16)}::1`;
+    for (let i = 0; i < DEFAULT_LIMITS.link.maxKeys + 1000; i++) l.begin(linkKeys(tunnel(i)));
+    // Only link entries were pushed out: the address is still not clean, and the email and pair still wait.
+    expect(l.size('link')).toBe(DEFAULT_LIMITS.link.maxKeys);
+    expect(l.size('address')).toBe(51);
+    expect(l.tries(used)).toBe(1);
     expect(waiting.map((key) => l.retryAfter([key]))).toEqual([2, 2]);
   });
 
