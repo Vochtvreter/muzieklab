@@ -356,11 +356,14 @@ test('a member deletes their account: a wrong password first, then signed out fo
   await password.fill('not my password at all');
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(confirm.getByText("That's not your current password.")).toBeVisible();
+  // Keep anonymously (the default), and why: the feedback is unique to this test, as tests share the database.
+  const why = `Leaving, test ${Math.random().toString(36).slice(2)}`;
+  await confirm.getByLabel('Why are you leaving? (optional)').fill(why);
   await password.fill(member.password);
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
 
   await expect(m).toHaveURL(/#\/settings$/);
-  await expect(accountSection(m).locator('.row-status')).toHaveText('Your account was deleted.');
+  await expect(accountSection(m).locator('.row-status')).toHaveText('Your account was deleted. An anonymous copy of your progress is kept.');
   await expect(accountSection(m).getByRole('link', { name: /^Sign in/ })).toBeVisible();
   await expect.poll(() => m.evaluate(() => localStorage.getItem('muzieklab.account.v1'))).toBeNull();
   await signIn(m, member.email, member.password);
@@ -376,6 +379,16 @@ test('a member deletes their account: a wrong password first, then signed out fo
   await expect(a.locator('#announcer')).toHaveText('No accounts match.');
   await a.goto(`./#/admin/account/${member.me.id}`);
   await expect(a.getByText("This account isn't there anymore. Another admin may have deleted it.")).toBeVisible();
+
+  // Deleted accounts has it: archived, with the feedback, and nothing that says whose it was.
+  await a.goto('./#/admin');
+  await a.getByRole('link', { name: /^Deleted accounts/ }).click();
+  const entry = a.locator('.closure-row').filter({ hasText: why });
+  await expect(entry).toHaveCount(1);
+  await expect(entry).toContainText('Archived');
+  await expect(entry).toContainText('Joined');
+  await expect(a.locator('main')).not.toContainText(member.email);
+  await expect(a.locator('main')).not.toContainText(member.name);
 });
 
 test('progress on the account: two devices merge, and a reset on one resets the other', async ({ person }) => {

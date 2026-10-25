@@ -1424,8 +1424,9 @@ The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · S
 
 ### 9.2 Accounts: the account and admin screens
 
-Since 0.12.0, and progress on the account since 0.15.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §6). **No board exists yet**
-for any of these screens, on either canvas.
+Since 0.12.0, progress on the account since 0.15.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §6), and deleting an account
+with the choice to keep an anonymous copy, and the admin screen *Deleted accounts*, since 0.16.0 (BACKEND-PLAN.md §3.7).
+**No board exists yet** for any of these screens, on either canvas.
 They were built from the built Settings screen (§9) and the foundations, and this section describes them as built.
 Their boards are still to be drawn (phone, tablet and desktop, in light and dark), and so are the components below,
 on Foundations. The Settings boards they would extend disagree with each other: the App design canvas draws tablet
@@ -1457,7 +1458,8 @@ server.
     again when Settings or an account screen opens (at most once every 10 s), when it comes back into view, and when
     the device is back online.
   - After an action that ends on Settings, one line with a green check says what happened: *Signed out.*, *Signed out
-    on every device.*, *Your account was deleted.*, *You're signed in. Welcome to Muzieklab.*, *Password saved. Your
+    on every device.*, *Your account and its data were deleted.* or *Your account was deleted. An anonymous copy of
+    your progress is kept.* (after Delete account, by the choice made), *You're signed in. Welcome to Muzieklab.*, *Password saved. Your
     other devices are signed out.*, or, after a first sign-in on a device that had progress, *The progress on this
     device is on your account now too.* It is read out once, when it happens (not again when the language is switched),
     and it goes when Settings is left.
@@ -1487,9 +1489,10 @@ server.
 | **Sign in** `#/signin` | form on its own | Email, Password (with Show), **Sign in**. Under the card: *Forgot your password? Ask the person who invited you.* and a Privacy link. | An empty field says what is missing. A wrong email or password: *Email or password is not right.*, with the password selected. Too many tries: *Too many tries. Try again in 2 seconds.* The server busy (its line for password checks is full, so it counted no try): *Muzieklab is busy. Try again in a moment.*, never "too many tries". Both are form errors. No answer. Already signed in: Account. Success: Settings. |
 | **Accept invite** `#/invite/<token>` | form on its own | *Checking the link…*, then *Welcome, {name}* over *Choose a password for {email}.* Name (filled in; it may be changed), New password with the rules (*At least 10 characters. Not a common password, and not your email.*), **Create account**. | A link that no longer works: the message and **Home**. No answer, or too many tries at checking the link: the message and **Try again**. Too many tries or the server busy when the form is sent: as Sign in, the form error. Success: Settings, with the welcome line. |
 | **New password** `#/reset/<token>` | form on its own | The same with one field, *Saving it signs out your other devices.*, and **Save password**. | As Accept invite. Success: Settings, with *Password saved…* |
-| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account. | Loading. Signed out: Sign in. No answer from the API with a cached account: the note (*Muzieklab can't be reached right now…*) with Try again at the top, the profile read only, the other sections hidden. No answer with nothing cached: the message and Try again. Too many tries and the server busy, where the current password is asked (Change email, Change password, Delete account): as Sign in, the form error. A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*). |
-| **Privacy** `#/privacy` | sub-page | A lead line, then *Without an account*, *With an account*, *Why*, *Where*, *How long*, *Your rights*, *Age*, and the day it was last updated. | None. Opened from Sign in (`?from=signin`), its back arrow goes to Sign in. |
-| **Accounts** `#/admin` | sub-page | **Invite someone**, the screen's one filled button: in the title row from 700 px, full width under the title on a phone. A search field (*Search*, *Name or email*; it searches once typing pauses for 250 ms, or on Enter), the status filter (All · Invited · Active · Blocked), then one section whose label counts (*4 accounts*, *1 account found*). Each row: the name (*(you)* after your own), the email, a status pill and the roles, and a chevron. | Checking; loading; *No accounts match.*; an error with Try again (outlined, as Invite someone is the filled button); no access (a lock, *You don't have access to this page.*, *Only admins manage accounts.*, Back to settings); no answer; signed out: Sign in. After Cancel invite or Delete account, a line saying so, once (*The invite for {name} was canceled.*). |
+| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account (*You choose whether an anonymous copy of your progress is kept.*). Its confirm: *Delete your account?*, *Your name, email, password and devices are deleted, and you're signed out. Progress on this device stays. No undo.*; then *Your progress and settings*, a two-choice segmented control, **Keep anonymously** (chosen, and focused, when it opens) · **Delete too**, with a muted line under it saying what the chosen one does (*They're kept without your name, email or anything else that says they were yours…* / *They're deleted with your account. Nothing of your account is kept.*); *Why are you leaving? (optional)*, a text area (at most 1000 characters) with *It helps us make Muzieklab better. It's kept without your name or email, also when you delete everything, so leave out anything that says who you are.*; Password; Cancel and Delete. Cancel puts the choice back to Keep anonymously and empties the feedback. | Loading. Signed out: Sign in. No answer from the API with a cached account: the note (*Muzieklab can't be reached right now…*) with Try again at the top, the profile read only, the other sections hidden. No answer with nothing cached: the message and Try again. Too many tries and the server busy, where the current password is asked (Change email, Change password, Delete account): as Sign in, the form error. A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*). |
+| **Privacy** `#/privacy` | sub-page | A lead line, then *Without an account*, *With an account*, *Why*, *Where*, *How long* (with *Deleted accounts: the anonymous copy, the feedback and the day, 2 years.*), *When you delete your account* (the two choices, the feedback, and that backups hold the account for up to 14 days), *Your rights*, *Age*, and the day it was last updated. | None. Opened from Sign in (`?from=signin`), its back arrow goes to Sign in. |
+| **Accounts** `#/admin` | sub-page | **Invite someone**, the screen's one filled button: in the title row from 700 px, full width under the title on a phone. A search field (*Search*, *Name or email*; it searches once typing pauses for 250 ms, or on Enter), the status filter (All · Invited · Active · Blocked), then one section whose label counts (*4 accounts*, *1 account found*). Each row: the name (*(you)* after your own), the email, a status pill and the roles, and a chevron. | Checking; loading; *No accounts match.*; an error with Try again (outlined, as Invite someone is the filled button); no access (a lock, *You don't have access to this page.*, *Only admins manage accounts.*, Back to settings); no answer; signed out: Sign in. After Cancel invite or Delete account, a line saying so, once (*The invite for {name} was canceled.*). Under the list, a *History* section with one row: *Deleted accounts* (*Accounts that were deleted, and why people left*). |
+| **Deleted accounts** `#/admin/deleted` | sub-page | *Back to accounts*. A lead line: *Every account deleted in the last 2 years, with what its owner wrote. Nothing here says whose an account was.* A filter (*How it was deleted*: All · Archived · Data deleted · By an admin, chips in two pairs as on Accounts), then one section whose label counts (*4 deleted accounts*, *2 deleted accounts found*). Each entry (an `article`, not a link): the day (bold) and a pill on the right (*Archived*, *Data deleted*, *By an admin*); the feedback as written, line breaks kept, on a Ground panel (radius 12), or *No feedback.* (muted; not for an admin's deletion); for an archived one a muted line, *Joined March 2026 · Level 8 · 1840 XP · 2 lessons · 3 days practiced*, or *… · No progress saved*. Then *File*: *Download as a file* (*Every entry, with the anonymous progress, as JSON.*, `muzieklab-deleted-accounts.json`; every entry, whatever the filter). Needs `accounts.read`. | Checking; loading; *No account has been deleted yet.* (no filter or file then); *None of these.* for a filter with none; an error with Try again; no access; no answer; signed out: Sign in. A filter's count is read out. |
 | **Invite someone** `#/admin/invite` | sub-page | *Person*: Email, Name. *Roles* (only with `roles.grant`): a switch per role with what it does (*Makes classes and follows pupils (coming later).*), and *Without a role, they can practice and keep their own progress.* **Create invite**. Then a card: *Invite for {name} is ready* (it gets focus), *Send the link yourself, for example with the message below.*, the link with **Copy link**, *Works until {date and time}.* **This link is shown only now. Make a new one if it gets lost.**, and the message with **Copy message**. Under it *Invite someone else* (outlined) and **Done**. | An empty field. *There's already an account with this email.* under Email. No access; no answer. |
 | **One account** `#/admin/account/<id>` | sub-page | The name as the title, with the status pill and email under it. *Details*: Added, Last signed in, Devices signed in, and for an invite when its link stops working (*No working link. Make a new one below.*). *Name and email* (Save). *Roles*: switches, saved at once. *Premium*: a switch, and *Last day (optional)*, a date field with **Save date**. Then by status: invited, *New invite link* and *Cancel invite*; active, *New password link*, *Block* and *Delete account*; blocked, *Unblock* and *Delete account*. A new link shows as in Invite someone. | Each part shows only with its permission. On your own account the role switches are disabled, with *You can't change your own roles.*, and one row to Account (*This is your account*) replaces the links, Block and Delete. Loading; an error with Try again; *This account isn't there anymore…* with Back to accounts; no access. An invite accepted meanwhile: *{name} accepted the invite meanwhile, so the account was not removed.*, and the account reloads. *New invite link* or *New password link* pressed again: each answer keeps its place until the next one replaces it, so the page keeps its height and does not move under the admin's finger. While the press runs (the button says *Making a link…*), the earlier link, or why the last press failed, stays dimmed (45%) and cannot be used (inert). A new link takes the earlier one's place, and its *New link ready. Send it yourself.* is read out again. If the press fails, why takes the place of *New link ready…* (an alert, read out each time, ending *The link below may not work anymore.*), and the earlier link and its message stay under it, dimmed and not usable, until a new link replaces them. A first press that fails shows only why. When the answer lands below the screen's edge (the button was at the bottom of the screen), the page scrolls just enough to show it, all of it where it fits; not when the admin has scrolled away from the button meanwhile. |
 
@@ -1506,6 +1509,7 @@ both work.
   - Read only: a Ground fill. Disabled: Track, with `--disabled` text.
   - A password field has *Show* / *Hide* inside it, on the right (accent ink, 700; *Show password* for screen readers).
   - Types: text, email, search and date.
+  - A text area (`TextAreaField`, feedback): the same field, three lines tall to start (96 px), and taller by hand.
 - **Which error goes where:** a field error is only about what was typed in that field: it is empty, not an address,
   taken, a new password that cannot be used, or a current password that is not right. Everything else is the **form
   error**: a wrong email or password on Sign in (which of the two is not told), and every request that failed (no
@@ -1521,7 +1525,8 @@ both work.
   - a switch row, for roles and premium: 56 px, with Settings' switch (`role="switch"`);
   - label and value rows (Email, Details).
 - **Status pill:** 11.5 px / 700, fully rounded. Invited is `--reward-soft` / `--reward-ink`, Active `--good-soft` /
-  `--good-ink`, and Blocked `--miss-soft` / `--miss-ink`.
+  `--good-ink`, and Blocked `--miss-soft` / `--miss-ink`. On Deleted accounts the same pill says how an account went:
+  Archived in the reward colours, Data deleted in the miss colours, By an admin in `--accent-soft` / `--accent-ink`.
 - **Copy field:** the value, read only, with a 48 px Copy button that turns into a check and *Copied* for 2 s, as
   Results' Copy code does. A link is in JetBrains Mono; a message is in Figtree, as tall as its text. Where copying is
   not allowed, it selects the text instead: *Selected. Copy it with your device's copy command.*
@@ -1543,7 +1548,11 @@ both work.
 - Only the confirm step has the red fill: `--miss`, with `--on-fill` text.
 - It is a form (`role="alertdialog"`): Enter confirms from its field, and Escape or Cancel closes it, putting focus
   back on the row button.
-- Used for Delete account (your own, with your password), Block, Cancel invite and an admin's Delete account. Cancel
+- Used for Delete account (your own, with the choice of what happens to your progress, feedback and your password),
+  Block, Cancel invite and an admin's Delete account.
+- A choice inside a confirm (Sign out's Keep · Remove, Delete account's Keep anonymously · Delete too) is a segmented
+  control with 44 px buttons. Words that do not fit half the confirm (*Keep anonymously* at 320 px) take a second
+  line instead of being cut. Cancel
   invite's other button says *Keep invite*, as its verb is Cancel.
 - Sign out everywhere uses the same confirm without red: the question in Ink and a tonal button, because it loses
   nothing. Unblock and a new link need no confirm.
@@ -1554,14 +1563,17 @@ what to do. For accounts:
   flow: *Forgot your password? Ask the person who invited you.* Signed out, the Account section says *Accounts are by
   invitation.* (nl *Alleen met een uitnodiging.*).
 - A confirm asks a question and says in one line what happens. Where nothing brings it back, that line ends with *No
-  undo.* (*Delete your account?* / *Your account and everything stored with it are deleted. Progress on this device
-  stays. No undo.*). A done line says what happened (*Blocked. They're signed out.*).
+  undo.* (*Delete your account?* / *Your name, email, password and devices are deleted, and you're signed out.
+  Progress on this device stays. No undo.*).
+- What is kept after Delete account is said where the choice is made, in plain words, and again in Privacy: no
+  promise the copy cannot be traced back further than BACKEND-PLAN.md §3.7 says. A done line says what happened (*Blocked. They're signed out.*).
 - A link says *Works until {date and time}.*: a new-password link lasts 24 hours, so the time counts. It adds *This
   link is shown only now.* The message to send is in the admin's app language and uses the person's full name (*Hi
   {name}, I've made you an account for Muzieklab. Open this link to choose your password: …*).
 - Premium's last day is a calendar day, shown as that day in every time zone (*Premium until December 31, 2026*).
 - Dutch uses *inloggen*, *uitloggen*, *account* and *wachtwoord*. For one person it says *deze persoon* or the name,
-  never *ze* or *hun*, and *Je kunt dit niet ongedaan maken.* for "No undo."
+  never *ze* or *hun*, and *Je kunt dit niet ongedaan maken.* for "No undo." Deleted accounts' kinds are short enough
+  for the two-and-two filter at 320 px: *Gearchiveerd*, *Gegevens gewist*, *Door beheerder*.
 
 ### UX principles
 

@@ -908,6 +908,7 @@ describe('deny by default', () => {
         'POST /api/v1/admin/accounts/:id/invite-link accounts.invite',
         'POST /api/v1/admin/accounts/:id/reset-link accounts.invite',
         'DELETE /api/v1/admin/accounts/:id accounts.delete',
+        'GET /api/v1/admin/closures accounts.read',
         'GET /api/v1/admin/audit audit.read',
       ].sort(),
     );

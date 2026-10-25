@@ -101,6 +101,32 @@ export function TextField(props: TextFieldProps): JSX.Element {
   );
 }
 
+export interface TextAreaFieldProps extends FieldProps {
+  value: string;
+  onChange(value: string): void;
+  name?: string;
+  /** In UTF-16 units, as the browser counts; the API counts characters, so it never refuses what fits here. */
+  maxLength?: number;
+  /** The rows it shows before it scrolls (3 by default); it can be made taller by hand. */
+  rows?: number;
+  disabled?: boolean;
+  inputRef?: Ref<HTMLTextAreaElement>;
+}
+
+/** A labelled text area: text over several lines, such as feedback (Delete account). */
+export function TextAreaField(props: TextAreaFieldProps): JSX.Element {
+  const auto = useId();
+  const { id = auto, value, onChange, name, maxLength, rows = 3, disabled, inputRef, error } = props;
+  return (
+    <FieldShell {...props} id={id}>
+      {(describedBy) => (
+        <textarea id={id} ref={inputRef} className="tfield-input tfield-input--area" value={value} onChange={(e) => onChange(e.target.value)} name={name}
+          maxLength={maxLength} rows={rows} disabled={disabled} aria-invalid={error ? true : undefined} aria-describedby={describedBy} />
+      )}
+    </FieldShell>
+  );
+}
+
 export interface PasswordFieldProps extends FieldProps {
   value: string;
   onChange(value: string): void;

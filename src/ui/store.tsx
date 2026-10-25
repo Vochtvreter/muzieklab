@@ -251,7 +251,7 @@ export interface ScaleHub {
  * A one-line message Settings → Account shows after an account change that ends on Settings (signed out, the account
  * deleted, a new password set from a link…). It stays until Settings is left.
  */
-export type AccountNotice = 'signedOut' | 'signedOutEverywhere' | 'deleted' | 'welcome' | 'passwordReset' | 'progressAdded';
+export type AccountNotice = 'signedOut' | 'signedOutEverywhere' | 'deleted' | 'deletedKept' | 'welcome' | 'passwordReset' | 'progressAdded';
 
 /**
  * Progress on the account (BACKEND-PLAN.md §6, ui/sync.ts): 'idle' until the first sync of this app session, 'saving'

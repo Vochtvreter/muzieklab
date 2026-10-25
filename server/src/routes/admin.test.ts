@@ -4,6 +4,7 @@ import type {
   AccountExport,
   AccountListResponse,
   AuditListResponse,
+  ClosureListResponse,
   InviteCreated,
   LinkCreated,
   Me,
@@ -404,6 +405,8 @@ describe('DELETE /admin/accounts/:id', () => {
       ['account.invite', { deleted: true }],
       ['account.delete', { status: 'invited' }],
     ]);
+    // An invite that was never used is not a deleted account.
+    expect(await c.closures.countDocuments()).toBe(0);
   });
 
   it('with ?expect, deletes only an account in that status: an invite accepted meanwhile is not cancelled', async () => {
@@ -447,11 +450,49 @@ describe('DELETE /admin/accounts/:id', () => {
     expect((await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${ann._id}`, cookie: admin.cookie })).statusCode).toBe(204);
     expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode).toBe(401);
     expect(await collections(t.db).sessions.countDocuments({ accountId: ann._id })).toBe(0);
+    // Nothing of it is kept but that an admin deleted an account.
+    expect(await collections(t.db).closures.find().project({ _id: 0, day: 0 }).toArray()).toEqual([{ kind: 'admin', feedback: null, archive: null }]);
     expect((await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${ann._id}`, cookie: admin.cookie })).statusCode).toBe(404);
     // A teacher may not.
     await seedAccount(t.db, { email: 'teacher@example.com', roles: ['teacher'] });
     const teacher = await signIn(t, 'teacher@example.com');
     expect((await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${admin.account._id}`, cookie: teacher })).statusCode).toBe(403);
+  });
+});
+
+describe('GET /admin/closures', () => {
+  it('lists deleted accounts, newest day first, to those who may read accounts', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const deleteSelf = async (email: string, payload: object) => {
+      await seedAccount(t.db, { email, createdAt: new Date(Date.UTC(2026, 0, 15)) });
+      const cookie = await signIn(t, email);
+      expect((await t.call({ method: 'DELETE', url: '/api/v1/me', cookie, payload: { password: PASSWORD, ...payload } })).statusCode).toBe(204);
+    };
+    await deleteSelf('ann@example.com', { removeData: false, feedback: 'Not for me' });
+    t.clock.advance(DAY);
+    await deleteSelf('bob@example.com', { removeData: true });
+    t.clock.advance(DAY);
+    // A day later: the admin's session token (an hour) has ended.
+    const cookie = await signIn(t, admin.account.email);
+    const cy = await seedAccount(t.db, { email: 'cy@example.com' });
+    expect((await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${cy._id}`, cookie })).statusCode).toBe(204);
+
+    const res = await t.call({ method: 'GET', url: '/api/v1/admin/closures', cookie });
+    expect(res.statusCode).toBe(200);
+    const { closures } = res.json<ClosureListResponse>();
+    const day = (n: number) => new Date(t.clock.ms - n * DAY).toISOString().slice(0, 10);
+    expect(closures).toEqual([
+      { id: expect.stringMatching(/^[0-9a-f]{32}$/), day: day(0), kind: 'admin', feedback: null, archive: null },
+      { id: expect.any(String), day: day(1), kind: 'removed', feedback: null, archive: null },
+      { id: expect.any(String), day: day(2), kind: 'archived', feedback: 'Not for me', archive: { joined: '2026-01', data: null } },
+    ]);
+    expect(res.body).not.toMatch(/ann|bob|cy@/);
+
+    await seedAccount(t.db, { email: 'teacher@example.com', roles: ['teacher'] });
+    const teacher = await signIn(t, 'teacher@example.com');
+    expect((await t.call({ method: 'GET', url: '/api/v1/admin/closures', cookie: teacher })).statusCode).toBe(403);
+    expect((await t.call({ method: 'GET', url: '/api/v1/admin/closures' })).statusCode).toBe(401);
   });
 });
 

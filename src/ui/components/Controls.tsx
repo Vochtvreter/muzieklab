@@ -25,6 +25,8 @@ interface SegmentedProps<T extends string | number> {
   gap?: number;
   /** The choice the thumb slides in from when it mounts, for a control that the change itself remounts (the language). */
   from?: T;
+  /** Focus the chosen button when it mounts (the first control of a confirm that opens: Delete account). */
+  autoFocus?: boolean;
 }
 
 /**
@@ -32,7 +34,7 @@ interface SegmentedProps<T extends string | number> {
  * with a transform only (260 ms, cubic-bezier(.2, 0, 0, 1)), as on the canvas.
  */
 export function Segmented<T extends string | number>(props: SegmentedProps<T>): JSX.Element {
-  const { label, options, value, onChange, className, pad = 4, gap = 4, from } = props;
+  const { label, options, value, onChange, className, pad = 4, gap = 4, from, autoFocus } = props;
   const n = options.length;
   const i = Math.max(0, options.findIndex((o) => o.value === value));
   const start = options.findIndex((o) => o.value === from);
@@ -67,7 +69,7 @@ export function Segmented<T extends string | number>(props: SegmentedProps<T>): 
       </div>
       {options.map((o) => (
         <button key={String(o.value)} type="button" aria-pressed={o.value === value} className={'seg-btn' + (o.value === value ? ' is-on' : '')}
-          onClick={() => onChange(o.value)}>
+          autoFocus={autoFocus && o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}

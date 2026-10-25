@@ -8,6 +8,7 @@ import {
   type AccountStatus,
   type AdminUpdateRequest,
   type AuditListResponse,
+  type ClosureListResponse,
   type InviteCreated,
   type InviteRequest,
   type LinkCreated,
@@ -15,6 +16,7 @@ import {
   type Role,
 } from '../../../shared/api.js';
 import { writeAudit, type AuditInput } from '../accounts/audit.js';
+import { toClosure, writeClosure } from '../accounts/closures.js';
 import { isDay, lastDayOf, premiumEnd } from '../accounts/premium.js';
 import { isActiveAdmin, otherActiveAdmins, removeAccount } from '../accounts/remove.js';
 import { normalizeEmail, validName } from '../accounts/validate.js';
@@ -36,7 +38,8 @@ import {
 import { ApiError } from '../errors.js';
 import * as s from './schemas.js';
 
-// The admin screens (BACKEND-PLAN.md §5.1, §5.3, §7): accounts, invites, roles, status, premium, links, the audit log.
+// The admin screens (BACKEND-PLAN.md §5.1, §5.3, §7): accounts, invites, roles, status, premium, links, deleted
+// accounts, the audit log.
 
 const LIST_MAX = 500;
 const AUDIT_DEFAULT = 100;
@@ -403,6 +406,8 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
         if (isActiveAdmin(target) && (await otherActiveAdmins(c, target._id, session)) === 0) {
           throw new ApiError('last_admin', 'This would leave no active admin');
         }
+        // A cancelled invite was never used, so it is not a deleted account.
+        if (target.status !== 'invited') await writeClosure(c, target, now, { kind: 'admin' }, session);
         await removeAccount(c, target._id, session);
         // Cancelling an invite and deleting an account are one action; the status tells them apart.
         await writeAudit(
@@ -413,6 +418,15 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
         );
       });
       return reply.code(204).send();
+    },
+  );
+
+  app.get(
+    '/admin/closures',
+    { config: { permission: 'accounts.read' } },
+    async (): Promise<ClosureListResponse> => {
+      const docs = await c.closures.find().sort({ day: -1, _id: 1 }).limit(LIST_MAX).toArray();
+      return { closures: docs.map(toClosure) };
     },
   );
 

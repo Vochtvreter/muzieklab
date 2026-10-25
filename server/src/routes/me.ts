@@ -9,6 +9,7 @@ import {
   type UpdateMeRequest,
 } from '../../../shared/api.js';
 import { writeAudit } from '../accounts/audit.js';
+import { validFeedback, writeClosure } from '../accounts/closures.js';
 import { isActiveAdmin, otherActiveAdmins, removeAccount } from '../accounts/remove.js';
 import { normalizeEmail, validName } from '../accounts/validate.js';
 import { toAuditEntry, toExportAccount, toMe, toSavedProgress } from '../accounts/views.js';
@@ -156,9 +157,15 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
 
   app.delete<{ Body: DeleteMeRequest }>(
     '/me',
-    { config: SELF, schema: { body: s.body({ password: s.password }, ['password']) } },
+    {
+      config: SELF,
+      schema: { body: s.body({ password: s.password, removeData: { type: 'boolean' }, feedback: s.feedback }, ['password']) },
+    },
     async (request, reply) => {
       const { account } = signedIn(request);
+      const feedback = validFeedback(request.body.feedback);
+      // Not sent: everything goes, as apps before 0.16.0 said it would.
+      const removeData = request.body.removeData ?? true;
       await confirmPassword(ctx, request, account, request.body.password);
       const now = ctx.now();
       await inTransaction(ctx.db, async (session) => {
@@ -168,6 +175,9 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
         if (isActiveAdmin(fresh) && (await otherActiveAdmins(c, fresh._id, session)) === 0) {
           throw new ApiError('last_admin', 'The last admin cannot delete their account: make another admin first');
         }
+        // Before removeAccount: an archived account's progress is copied first. The audit entry does not say which
+        // kind of Closure it left, so the two cannot be matched up (BACKEND-PLAN.md §3.7).
+        await writeClosure(c, fresh, now, { kind: removeData ? 'removed' : 'archived', feedback }, session);
         await removeAccount(c, fresh._id, session);
         await writeAudit(c, now, { actorId: fresh._id, action: 'account.delete_self', targetId: fresh._id }, session);
       });

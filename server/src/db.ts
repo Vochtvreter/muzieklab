@@ -1,5 +1,5 @@
 import { ObjectId, type ClientSession, type Collection, type Db } from 'mongodb';
-import type { AccountLocale, AccountStatus, AuditAction, AuditEntry, Role } from '../../shared/api.js';
+import type { AccountLocale, AccountStatus, AuditAction, AuditEntry, ClosureKind, Role, SyncedData } from '../../shared/api.js';
 
 // The documents as stored (docs/BACKEND-PLAN.md §3). Ids are ObjectIds here and hex strings in the API.
 
@@ -91,6 +91,21 @@ export interface ProgressDoc {
 }
 
 /**
+ * A deleted account (BACKEND-PLAN.md §3.7): what the admin screen Deleted accounts shows. It holds nothing that says
+ * whose it was: no name, email or account id, and no ObjectId, whose first bytes are the second it was made and would
+ * match it to the deletion's audit entry. `day` is midnight UTC of the day it was deleted, for the same reason.
+ */
+export interface ClosureDoc {
+  /** 16 random bytes, hex. */
+  _id: string;
+  day: Date;
+  kind: ClosureKind;
+  feedback: string | null;
+  /** archived only: the month the account was made (YYYY-MM), and its saved progress and prefs (null: none saved). */
+  archive: { joined: string; data: SyncedData | null } | null;
+}
+
+/**
  * One small document that every transaction which could remove an admin writes first. MongoDB transactions are
  * snapshots, so two of them that each demote a different admin would both still see the other admin and both commit
  * (write skew). Writing the same document makes the second one conflict and retry, and the retry sees the first one.
@@ -107,6 +122,7 @@ export interface Collections {
   audit: Collection<AuditDoc>;
   locks: Collection<LockDoc>;
   progress: Collection<ProgressDoc>;
+  closures: Collection<ClosureDoc>;
 }
 
 export function collections(db: Db): Collections {
@@ -117,11 +133,13 @@ export function collections(db: Db): Collections {
     audit: db.collection<AuditDoc>('audit'),
     locks: db.collection<LockDoc>('locks'),
     progress: db.collection<ProgressDoc>('progress'),
+    closures: db.collection<ClosureDoc>('closures'),
   };
 }
 
-/** Audit entries are kept for two years (BACKEND-PLAN.md §3.5). */
+/** Audit entries are kept for two years (BACKEND-PLAN.md §3.5), and so are deleted accounts' closures (§3.7). */
 export const AUDIT_KEEP_SECONDS = 2 * 365 * 24 * 60 * 60;
+export const CLOSURE_KEEP_SECONDS = AUDIT_KEEP_SECONDS;
 
 /**
  * Creates the indexes the API relies on: run at startup, before listening. Idempotent: an index that already exists
@@ -143,6 +161,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
     c.tokens.createIndex({ accountId: 1, kind: 1 }, { name: 'accountId_kind' }),
     c.audit.createIndex({ at: 1 }, { expireAfterSeconds: AUDIT_KEEP_SECONDS, name: 'at_ttl' }),
     c.audit.createIndex({ targetId: 1 }, { name: 'targetId' }),
+    // Also the list's order (newest day first).
+    c.closures.createIndex({ day: 1 }, { expireAfterSeconds: CLOSURE_KEEP_SECONDS, name: 'day_ttl' }),
     // The lock document exists before the first transaction needs it, so no transaction has to create a collection.
     c.locks.updateOne({ _id: 'admins' }, { $setOnInsert: { rev: 0 } }, { upsert: true }),
   ]);
