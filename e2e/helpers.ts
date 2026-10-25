@@ -126,6 +126,41 @@ export function pathUpTo(id: string, stars = 2, bestAccuracy = 88): Lessons {
 /** Sol's unit passed: the path goes on with rhythm lesson 1.1, which the path calls lesson 2.1. */
 export const SOL_DONE: Lessons = pathUpTo('1.5');
 
+/** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
+export const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
+  metronome: 'on', countIn: 1, density: 'balanced', restAmount: 'few' };
+
+/**
+ * Plays along on the keyboard, every beat `lateMs` after it, from the first counted beat on Play: a steady late tapper
+ * (Bluetooth headphones). Each key event carries its own time stamp, so a timer that fires late does not move a tap.
+ */
+export async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number): Promise<void> {
+  await page.evaluate(
+    ({ beats, beatMs, lateMs }) =>
+      new Promise<void>((resolve) => {
+        const key = (type: string, at: number): void => {
+          const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
+          Object.defineProperty(ev, 'timeStamp', { value: at });
+          window.dispatchEvent(ev);
+        };
+        const look = (): void => {
+          if (!document.querySelector('[role="img"][aria-label^="Counting beat 1 "]')) return void requestAnimationFrame(look);
+          const t0 = performance.now();
+          for (let k = 0; k < beats; k++) {
+            const at = t0 + k * beatMs + lateMs;
+            window.setTimeout(() => {
+              key('keydown', at);
+              key('keyup', at + 80);
+            }, at + 80 - performance.now());
+          }
+          window.setTimeout(resolve, beats * beatMs + lateMs);
+        };
+        look();
+      }),
+    { beats, beatMs, lateMs },
+  );
+}
+
 // --- accounts: the API, mocked (no API server runs for e2e) -------------------------------------------------------
 
 /** One request the page made to /api/v1. `path` has no /api/v1 and no query ('/admin/accounts'). */

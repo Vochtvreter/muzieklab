@@ -180,6 +180,15 @@ Its icon is gold with a dark note, where production's is teal with a white note,
 home screen tells the two apart. The deploy copies the icons in `public-test/` over those in `public/` before it
 builds; when the icon changes, change both.
 
+### Smoke tests
+
+After every deploy to the test site, the *Smoke test* workflow checks it with `npm run smoke` (once that workflow is on
+the default branch): the files and headers, every screen at phone, tablet and desktop size, offline, the main things to
+do, and accounts, roles and the admin screens with the real API. It signs in with an admin account of the test site,
+from the repository secrets `MUZIEKLAB_TEST_EMAIL` and `MUZIEKLAB_TEST_PASSWORD` (without them it is skipped), and only
+ever changes accounts it makes itself (`smoke-…@example.invalid`), which it removes again. How to run it, and what it
+leaves behind (an entry in *Deleted accounts* for each account it deletes): [SMOKE.md](SMOKE.md).
+
 ### Set up the test site (once)
 
 1. **DNS:** an `A` record with name `test` and the server's IP address (in Hetzner DNS: *Records → Add record*).

@@ -4,8 +4,8 @@ import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import {
   ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll,
-  expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, SOL_DONE,
-  TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
+  expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, QUARTERS, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT,
+  SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
 
 /**
@@ -81,41 +81,6 @@ async function failedSecondLink(page: Page, button: string, alert: string): Prom
   await expectFieldsFit(page);
   await expectNoClippedLabels(page);
   await expectNoSideScroll(page);
-}
-
-/** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
-const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
-  metronome: 'on', countIn: 1, density: 'balanced', restAmount: 'few' };
-
-/**
- * Plays along on the keyboard, every beat `lateMs` after it, from the first counted beat on Play: a steady late tapper
- * (Bluetooth headphones). Each key event carries its own time stamp, so a timer that fires late does not move a tap.
- */
-async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number): Promise<void> {
-  await page.evaluate(
-    ({ beats, beatMs, lateMs }) =>
-      new Promise<void>((resolve) => {
-        const key = (type: string, at: number): void => {
-          const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
-          Object.defineProperty(ev, 'timeStamp', { value: at });
-          window.dispatchEvent(ev);
-        };
-        const look = (): void => {
-          if (!document.querySelector('[role="img"][aria-label^="Counting beat 1 "]')) return void requestAnimationFrame(look);
-          const t0 = performance.now();
-          for (let k = 0; k < beats; k++) {
-            const at = t0 + k * beatMs + lateMs;
-            window.setTimeout(() => {
-              key('keydown', at);
-              key('keyup', at + 80);
-            }, at + 80 - performance.now());
-          }
-          window.setTimeout(resolve, beats * beatMs + lateMs);
-        };
-        look();
-      }),
-    { beats, beatMs, lateMs },
-  );
 }
 
 /**
