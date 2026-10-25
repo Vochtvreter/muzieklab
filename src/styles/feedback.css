@@ -160,13 +160,6 @@ textarea.fb-input:focus-visible {
 .fb-error p {
   margin: 0;
 }
-.fb-error a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: inherit;
-  font-weight: 700;
-}
 .fb-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);

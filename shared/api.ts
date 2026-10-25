@@ -5,6 +5,8 @@
  * Dates are ISO 8601 strings. Every error is an ApiErrorBody with a stable `error` code the app translates.
  */
 
+import type { FeedbackReport, FeedbackStatus } from './feedback.js';
+
 // --- roles, permissions, entitlements (BACKEND-PLAN.md §4) ------------------------------------------------------
 
 /**
@@ -40,6 +42,7 @@ export const PERMISSIONS = [
   'content.edit',
   'content.publish',
   'feedback.give',
+  'feedback.review',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -150,10 +153,21 @@ export interface DeleteMeRequest {
 /** The longest feedback DELETE /me takes, in characters (code points). */
 export const FEEDBACK_MAX = 1000;
 
+/** A feedback report in the account's export: what it sent, and where the review stands (not who reviewed it). */
+export interface OwnFeedback {
+  id: string;
+  createdAt: string;
+  status: FeedbackStatus;
+  /** The report as sent. */
+  report: FeedbackReport;
+}
+
 /** GET /me/export: everything stored about the account, as a download (Content-Disposition: attachment). */
 export interface AccountExport {
   exportedAt: string;
   account: Omit<Me, 'permissions' | 'roleNames'> & { status: AccountStatus; lastSignInAt: string | null; passwordChangedAt: string | null };
+  /** The feedback reports the account sent from the app, with what the review made of them (docs/FEEDBACK-LOOP.md). */
+  feedback: OwnFeedback[];
   sessions: { device: string; createdAt: string; lastSeenAt: string }[];
   /** What admins changed about this account, and what it changed itself. */
   audit: AuditEntry[];
@@ -345,13 +359,10 @@ export interface UpdateRoleRequest {
 // DELETE /admin/roles/:id → 204: a custom role only; every account that had it loses it. The admin must have every
 // permission in it.
 
-// --- feedback (feedback.give; docs/FEEDBACK-LOOP.md) ----------------------------------------------------------------
-
-/** POST /feedback with a FeedbackReport (shared/feedback.ts) → the GitHub issue the server opened for it. */
-export interface FeedbackSent {
-  number: number;
-  url: string;
-}
+// --- feedback reports (feedback.give to send, feedback.review to review; docs/FEEDBACK-LOOP.md) ---------------------
+// The bodies are in shared/feedback.ts, with the report itself: POST /feedback → FeedbackSaved; GET /admin/feedback →
+// FeedbackListResponse; GET and PATCH /admin/feedback/:id → FeedbackDetail; DELETE /admin/feedback/:id → 204.
+// (Not to be mixed up with the feedback someone leaves when deleting their account: Closure.feedback above.)
 
 /** GET /admin/audit?limit=&before= → { entries }, newest first. */
 export interface AuditEntry {
@@ -389,6 +400,8 @@ export const AUDIT_ACTIONS = [
   'role.update',
   'role.delete',
   'feedback.send',
+  'feedback.review',
+  'feedback.delete',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -448,10 +461,6 @@ export const ERROR_CODES = [
   'busy',
   /** 500 */
   'internal',
-  /** 502: GitHub did not take the feedback (the token was refused, or GitHub is down). */
-  'feedback_failed',
-  /** 503: this server has no GitHub token, so it cannot send feedback (docs/DEPLOY.md, The API). */
-  'feedback_unavailable',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

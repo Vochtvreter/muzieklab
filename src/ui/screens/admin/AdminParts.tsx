@@ -1,5 +1,5 @@
 /**
- * What the three admin screens share (no board yet; built from Settings' design language):
+ * What the admin screens share (no board yet; built from Settings' design language):
  * - useAdminGate: whether the signed-in account may open the screen, and GateMessage for when it may not (still
  *   checking, no answer from the API, or no access, with the way back to Settings). Signed out goes to Sign in.
  * - LinkResult: a link shown once (an invite or a new password), with Copy, when it stops working, and a ready-made
@@ -34,23 +34,29 @@ export function useAdminGate(account: UseAccount, permission: Permission): Gate 
   return me.permissions.includes(permission) ? 'ok' : 'denied';
 }
 
-/** Why the screen shows nothing else: still checking, no answer (Try again), or no access (back to Settings). */
-export function GateMessage({ gate }: { gate: Exclude<Gate, 'ok'> }): JSX.Element {
+/**
+ * Why the screen shows nothing else: still checking, no answer (Try again), or no access (back to Settings). `sub`: who
+ * may open it (NoAccess).
+ */
+export function GateMessage({ gate, sub }: { gate: Exclude<Gate, 'ok'>; sub?: string }): JSX.Element {
   const account = useAccount();
   if (gate === 'wait') return <p className="acct-wait">{t('admin.checking')}</p>;
   if (gate === 'offline') return <ErrorRetry error={t('apiError.unavailable')} onRetry={() => void account.refresh()} />;
-  return <NoAccess />;
+  return <NoAccess sub={sub} />;
 }
 
-/** "You don't have access to this page", and the way back to Settings. */
-export function NoAccess(): JSX.Element {
+/**
+ * "You don't have access to this page", and the way back to Settings. `sub`: the line under it, who may open the page
+ * ("Only admins manage accounts." by default).
+ */
+export function NoAccess({ sub }: { sub?: string }): JSX.Element {
   return (
     <div className="acct-message">
       <div className="acct-note" role="status">
         <Icon name="lock" size={22} />
         <p>
           <b>{t('admin.noAccess')}</b>
-          <span>{t('admin.noAccessSub')}</span>
+          <span>{sub ?? t('admin.noAccessSub')}</span>
         </p>
       </div>
       <Link to="/settings" className="btn btn--accent">

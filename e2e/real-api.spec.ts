@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expect, test as base, type BrowserContext, type Page } from '@playwright/test';
-import type { InviteCreated, Me, RoleInfo } from '../shared/api';
+import type { AccountExport, InviteCreated, Me, RoleInfo } from '../shared/api';
 
 /**
  * Accounts against the real API (BACKEND-PLAN.md §5): the app's production build in a real browser, the API bundle and
@@ -459,7 +459,7 @@ test('progress on the account: two devices merge, and a reset on one resets the 
   await expect(syncLine(phone)).toHaveText('Progress saved to your account');
 });
 
-test('a role an admin makes gives its permission: with feedback.give the member gets the Feedback button', async ({ person }) => {
+test('a role an admin makes gives its permission: with feedback.give the member sends a report, and an admin reviews it', async ({ person }) => {
   const admin = await anAdmin(person);
   const member = await aMember(person, admin);
   const id = `testers-${Date.now().toString(36)}${(made++).toString(36)}`;
@@ -481,15 +481,81 @@ test('a role an admin makes gives its permission: with feedback.give the member 
   await member.page.reload();
   await expect(fab).toBeVisible();
   await expect(accountSection(member.page).getByRole('switch', { name: 'Feedback button' })).toHaveAttribute('aria-checked', 'true');
+  // Reviewing is not part of the role: no Feedback row to the reports.
+  await expect(accountRow(member.page, 'Feedback')).toHaveCount(0);
 
-  // This API has no GitHub token: the app says so, and offers GitHub's own page instead.
+  // The member marks their account row and sends a report: the API saves it for review (nothing goes to GitHub).
+  const title = `Roles on the account ${id}`;
   await fab.click();
   const row = (await accountRow(member.page, member.name).boundingBox())!;
   await member.page.mouse.click(row.x + row.width / 2, row.y + row.height / 2);
   const form = member.page.getByRole('dialog', { name: 'Feedback' });
-  await form.getByLabel('What should change?').fill('Show my roles here.');
+  await form.getByLabel('What should change?').fill('Show my roles here.\nThen I know what I may do.');
+  await form.getByLabel('Title').fill(title);
   await form.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(form.getByRole('alert')).toContainText("This site can't send feedback yet.");
-  await expect(form.getByRole('link', { name: 'Open on GitHub' })).toHaveAttribute('href', /^https:\/\/github\.com\/Vochtvreter\/muzieklab\/issues\/new\?/);
-});
+  const done = member.page.getByRole('dialog', { name: 'Saved for review' });
+  await expect(done).toContainText('An admin reads it in Settings → Account → Feedback, and picks what goes on to GitHub.');
+  await expect(done.getByRole('link')).toHaveCount(0);
+  await done.getByRole('button', { name: 'Close' }).click();
 
+  // The member's export holds it, as sent and where it stands; never the review's note or who reviewed it.
+  const exported = async (): Promise<AccountExport> => {
+    const res = await member.ctx.request.get(API + '/me/export');
+    expect(res.ok(), `GET /me/export: ${res.status()}`).toBe(true);
+    return (await res.json()) as AccountExport;
+  };
+  const before = await exported();
+  expect(before.feedback).toHaveLength(1);
+  const [own] = before.feedback;
+  expect(own).toMatchObject({ status: 'new', report: { kind: 'change', title, description: 'Show my roles here.\nThen I know what I may do.', context: { route: '/settings' } } });
+  // The spot as marked: on Settings, in the account row (the label is whatever was under the click).
+  expect(own.report.target.label).not.toBe('');
+
+  // The admin finds it under Settings → Account → Feedback, with the new ones.
+  const a = admin.page;
+  await a.goto('./#/settings');
+  await accountRow(a, 'Feedback').click();
+  await expect(a.getByRole('heading', { level: 1, name: 'Feedback' })).toBeVisible();
+  const filter = a.getByRole('group', { name: 'Status' });
+  await expect(filter.getByRole('button', { name: /^New \d+$/ })).toHaveAttribute('aria-pressed', 'true');
+  // The database outlives a test (a retry, an earlier run), so the counts are read, not assumed. This is the only test
+  // that sends reports, so nothing else changes them meanwhile (copies of it side by side, --repeat-each, would).
+  const count = async (status: string): Promise<number> => Number(/\d+$/.exec((await filter.getByRole('button', { name: new RegExp(`^${status} \\d+$`) }).textContent()) ?? '')?.[0]);
+  const [isNew, accepted] = [await count('New'), await count('Accepted')];
+  expect(isNew).toBeGreaterThanOrEqual(1);
+  const report = a.getByRole('link', { name: new RegExp('^' + escapeRegExp(title)) });
+  await expect(report).toContainText(`Change · ${own.report.target.label} · ${member.name}`);
+  await report.click();
+
+  // The report as sent, from the member; the admin accepts it and leaves a note for the team.
+  await expect(a).toHaveURL(new RegExp(`#/admin/feedback/${own.id}$`));
+  await expect(a.getByRole('heading', { level: 1, name: title })).toBeVisible();
+  await expect(a.getByRole('region', { name: 'Report', exact: true })).toContainText('Then I know what I may do.');
+  await expect(a.getByRole('region', { name: 'Where', exact: true })).toContainText('#/settings');
+  await expect(a.getByRole('region', { name: 'Sent', exact: true })).toContainText(member.name);
+  const review = a.getByRole('region', { name: 'Review', exact: true });
+  await expect(review).toContainText('Not reviewed yet.');
+  await review.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'Accepted' }).click();
+  await expect(review).toContainText(`Reviewed by ${admin.name}, `);
+  await review.getByLabel('Note for the team').fill(`Picked up ${id}.`);
+  await review.getByRole('button', { name: 'Save note' }).click();
+  await expect(review.getByText('Saved.')).toBeVisible();
+
+  // Back on the list (still on New): it has moved from New to Accepted.
+  await a.getByRole('link', { name: 'Back to feedback' }).click();
+  await expect(filter.getByRole('button', { name: `New ${isNew - 1}`, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(filter.getByRole('button', { name: `Accepted ${accepted + 1}`, exact: true })).toBeVisible();
+  await expect(report).toHaveCount(0);
+  await filter.getByRole('button', { name: /^Accepted / }).click();
+  await expect(report).toBeVisible();
+  // Opened again, it is as the admin left it.
+  await report.click();
+  await expect(review.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'Accepted' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(review.getByLabel('Note for the team')).toHaveValue(`Picked up ${id}.`);
+
+  // The member's export says it was accepted, and still has no note or reviewer.
+  const after = await exported();
+  expect(after.feedback.map((f) => [f.id, f.status])).toEqual([[own.id, 'accepted']]);
+  expect(Object.keys(after.feedback[0]).sort()).toEqual(['createdAt', 'id', 'report', 'status']);
+  expect(JSON.stringify(after)).not.toContain(`Picked up ${id}.`);
+});

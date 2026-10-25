@@ -10,6 +10,7 @@ import {
   type Role,
   type SyncedData,
 } from '../../shared/api.js';
+import type { FeedbackContext, FeedbackKind, FeedbackStatus, FeedbackTarget } from '../../shared/feedback.js';
 import { BUILT_IN_DEFAULTS } from './auth/policy.js';
 
 // The documents as stored (docs/BACKEND-PLAN.md §3). Ids are ObjectIds here and hex strings in the API.
@@ -138,6 +139,32 @@ export interface ClosureDoc {
 }
 
 /**
+ * A feedback report sent from the app (BACKEND-PLAN.md §3.9, docs/FEEDBACK-LOOP.md step 1): the report's fields as the
+ * app sent them (routes/feedback.ts checks their shape), and where an admin's review of it stands. Not to be mixed up
+ * with the feedback someone leaves when deleting their account (ClosureDoc.feedback).
+ */
+export interface FeedbackDoc {
+  _id: ObjectId;
+  kind: FeedbackKind;
+  title: string;
+  description: string;
+  target: FeedbackTarget;
+  context: FeedbackContext;
+  status: FeedbackStatus;
+  /** Who sent it; null once that account is deleted and the report stays (accounts/remove.ts). */
+  authorId: ObjectId | null;
+  createdAt: Date;
+  /** The reviewing admin's note for the team; '' for none. */
+  note: string;
+  /**
+   * Who last changed the status or the note, and when; null before anyone did. The id becomes null once that account
+   * is deleted, and the time stays.
+   */
+  reviewerId: ObjectId | null;
+  reviewedAt: Date | null;
+}
+
+/**
  * One small document that every transaction which could remove an admin writes first. MongoDB transactions are
  * snapshots, so two of them that each demote a different admin would both still see the other admin and both commit
  * (write skew). Writing the same document makes the second one conflict and retry, and the retry sees the first one.
@@ -156,6 +183,7 @@ export interface Collections {
   locks: Collection<LockDoc>;
   progress: Collection<ProgressDoc>;
   closures: Collection<ClosureDoc>;
+  feedback: Collection<FeedbackDoc>;
 }
 
 export function collections(db: Db): Collections {
@@ -168,6 +196,7 @@ export function collections(db: Db): Collections {
     locks: db.collection<LockDoc>('locks'),
     progress: db.collection<ProgressDoc>('progress'),
     closures: db.collection<ClosureDoc>('closures'),
+    feedback: db.collection<FeedbackDoc>('feedback'),
   };
 }
 
@@ -208,6 +237,11 @@ export async function ensureIndexes(db: Db): Promise<void> {
     c.audit.createIndex({ targetId: 1 }, { name: 'targetId' }),
     // Also the list's order (newest day first).
     c.closures.createIndex({ day: 1 }, { expireAfterSeconds: CLOSURE_KEEP_SECONDS, name: 'day_ttl' }),
+    // The review list: one status, newest first. The other two find the reports an account sent or reviewed, when it
+    // is deleted (and the ones it sent, for its export).
+    c.feedback.createIndex({ status: 1, createdAt: -1 }, { name: 'status_createdAt' }),
+    c.feedback.createIndex({ authorId: 1 }, { name: 'authorId' }),
+    c.feedback.createIndex({ reviewerId: 1 }, { name: 'reviewerId' }),
     // The lock document exists before the first transaction needs it, so no transaction has to create a collection.
     c.locks.updateOne({ _id: 'admins' }, { $setOnInsert: { rev: 0 } }, { upsert: true }),
   ]);

@@ -403,7 +403,8 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
         }
         // A cancelled invite was never used, so it is not a deleted account.
         if (target.status !== 'invited') await writeClosure(c, target, now, { kind: 'admin' }, session);
-        await removeAccount(c, target._id, session);
+        // The reports it sent stay without its name: they are about the app, and the account did not ask for them to go.
+        await removeAccount(c, target._id, { reports: 'keep' }, session);
         // Cancelling an invite and deleting an account are one action; the status tells them apart.
         await writeAudit(
           c,

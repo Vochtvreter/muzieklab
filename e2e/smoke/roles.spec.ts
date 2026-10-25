@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from '@playwright/test';
-import { PERMISSIONS, ROLES, type Me, type Permission, type Role } from '../../shared/api';
+import { BUILT_IN_ROLES, PERMISSIONS, type BuiltInRole, type Me, type Permission, type RoleListResponse } from '../../shared/api';
 import { VIEWPORTS } from '../helpers';
 import {
   accept, accountRow, accountSection, call, checkScreen, cleanUp, errorCode, expect, NO_ACCOUNTS, openAccount, send, SITE, test, Throwaways, Watcher, type Admin,
@@ -7,10 +7,11 @@ import {
 } from './helpers';
 
 /**
- * Roles and premium on the deployed site (docs/SMOKE.md): one of the suite's own accounts goes through every role in
- * shared/api.ts ROLES, one at a time (invited with the first, the others switched in the admin screen), then none, then
- * premium. Each time /me has the permissions the role gives (server/src/auth/policy.ts, written out again here), and the
- * app shows what it should: Accounts and the admin screens for an admin only, refused screens and 403s for the others.
+ * Roles and premium on the deployed site (docs/SMOKE.md): one of the suite's own accounts goes through every built-in
+ * role in shared/api.ts BUILT_IN_ROLES, one at a time (invited with the first, the others switched in the admin screen),
+ * then none, then premium. Each time /me has the permissions the role gives: what the site stores for it (GET
+ * /admin/roles, as admins can change editor's and teacher's; admin always has every one), and the app shows what it
+ * should: Accounts, Feedback and the admin screens for an admin only, refused screens and 403s for the others.
  * The tests run in order on that one account, which is removed at the end. Each starts from the roles the account has
  * now, so one that fails does not take the others with it: Playwright goes on with the next in a new worker, which
  * invites a new account.
@@ -21,13 +22,21 @@ test.skip(!!NO_ACCOUNTS, NO_ACCOUNTS ?? '');
 test.describe.configure({ mode: 'default' });
 
 const EVERY_ACCOUNT: readonly Permission[] = ['self.manage', 'progress.own', 'class.join'];
-/** What each role adds (BACKEND-PLAN.md §4.2). A new role in ROLES does not compile until it is here. */
-const GRANTS: Record<Role, readonly Permission[]> = { admin: PERMISSIONS, editor: ['content.edit', 'content.publish'], teacher: ['class.create'] };
-const LABELS: Record<Role, string> = { admin: 'Admin', editor: 'Editor', teacher: 'Teacher' };
-const permissionsFor = (roles: Role[]): Permission[] => PERMISSIONS.filter((p) => EVERY_ACCOUNT.includes(p) || roles.some((r) => GRANTS[r].includes(p)));
+/** The built-in roles' names in the app. A new built-in role does not compile until it is here. */
+const LABELS: Record<BuiltInRole, string> = { admin: 'Admin', editor: 'Editor', teacher: 'Teacher' };
+
+/**
+ * What /me should say for these roles: every account's permissions, plus what the site stores for each role (BACKEND-PLAN.md
+ * §3.8, §4.2), read with the suite's admin; admin has every permission whatever is stored.
+ */
+async function permissionsFor(admin: Admin, roles: BuiltInRole[]): Promise<Permission[]> {
+  const stored = (await call<RoleListResponse>(admin.ctx.request, 'GET', '/admin/roles')).roles;
+  const grants = (r: BuiltInRole): readonly Permission[] => (r === 'admin' ? PERMISSIONS : (stored.find((x) => x.id === r)?.permissions ?? []));
+  return PERMISSIONS.filter((p) => EVERY_ACCOUNT.includes(p) || roles.some((r) => grants(r).includes(p)));
+}
 
 /** The roles the account has, step by step: each role on its own, admin last, then none. */
-const STEPS: Role[][] = [...ROLES.filter((r) => r !== 'admin').map((r) => [r]), ['admin'], []];
+const STEPS: BuiltInRole[][] = [...BUILT_IN_ROLES.filter((r) => r !== 'admin').map((r) => [r]), ['admin'], []];
 
 let person: Person;
 let accounts: Throwaways;
@@ -59,11 +68,11 @@ test.afterAll(async ({ admin }) => {
 });
 
 /** Switches the account's roles to `to` in the admin's one-account screen, from those it has now, waiting for each to save. */
-async function switchRoles(page: Page, admin: Admin, to: Role[]): Promise<void> {
+async function switchRoles(page: Page, admin: Admin, to: BuiltInRole[]): Promise<void> {
   const from = (await admin.account(person.id))?.roles ?? [];
   await openAccount(page, admin, person);
   const region = page.getByRole('region', { name: 'Roles' });
-  for (const role of ROLES) {
+  for (const role of BUILT_IN_ROLES) {
     const on = to.includes(role);
     if (from.includes(role) === on) continue;
     const toggle = region.getByRole('switch', { name: LABELS[role] });
@@ -75,14 +84,16 @@ async function switchRoles(page: Page, admin: Admin, to: Role[]): Promise<void> 
   }
 }
 
-/** Not an admin: no Accounts in Settings, every admin screen says so, and every admin route answers 403. */
+/** Not an admin: no Accounts or Feedback in Settings, every admin screen says so, and every admin route answers 403. */
 async function expectNoAdmin(m: Page): Promise<void> {
   await expect(accountSection(m).getByRole('link', { name: /^Accounts/ })).toHaveCount(0);
+  await expect(accountSection(m).getByRole('link', { name: /^Feedback/ })).toHaveCount(0);
   const screens: [string, string][] = [
     ['#/admin', 'Accounts'],
     ['#/admin/invite', 'Invite someone'],
     ['#/admin/deleted', 'Deleted accounts'],
     [`#/admin/account/${person.id}`, 'Account'],
+    ['#/admin/feedback', 'Feedback'],
   ];
   for (const [hash, heading] of screens) {
     await checkScreen(m, hash, heading);
@@ -95,6 +106,8 @@ async function expectNoAdmin(m: Page): Promise<void> {
     ['GET', `/admin/accounts/${person.id}`],
     ['GET', '/admin/closures'],
     ['GET', '/admin/audit'],
+    ['GET', '/admin/roles'],
+    ['GET', '/admin/feedback'],
     ['PATCH', `/admin/accounts/${person.id}`, { name: person.name }],
     ['POST', `/admin/accounts/${person.id}/reset-link`],
     ['POST', `/admin/accounts/${person.id}/invite-link`],
@@ -120,7 +133,7 @@ for (const [i, roles] of STEPS.entries()) {
     await switchRoles(adminPage, admin, roles);
     const me = await call<Me>(ctx.request, 'GET', '/me');
     expect(me.roles).toEqual(roles);
-    expect(me.permissions).toEqual(permissionsFor(roles));
+    expect(me.permissions).toEqual(await permissionsFor(admin, roles));
 
     const m = await ctx.newPage();
     await m.goto('./#/settings');
@@ -140,10 +153,14 @@ for (const [i, roles] of STEPS.entries()) {
       await checkScreen(m, '#/admin/invite', 'Invite someone');
       await expect(m.getByRole('button', { name: 'Create invite' })).toBeVisible();
       await checkScreen(m, '#/admin/deleted', 'Deleted accounts');
+      // Feedback, from Settings → Account, with feedback.review.
+      await checkScreen(m, '#/settings', 'Settings');
+      await expect(accountSection(m).getByRole('link', { name: /^Feedback/ })).toBeVisible();
+      await checkScreen(m, '#/admin/feedback', 'Feedback');
       await checkScreen(m, `#/admin/account/${person.id}`, person.name);
       const own = m.getByRole('region', { name: 'Roles' });
       await expect(own.getByText("You can't change your own roles.")).toBeVisible();
-      for (const r of ROLES) await expect(own.getByRole('switch', { name: LABELS[r] })).toBeDisabled();
+      for (const r of BUILT_IN_ROLES) await expect(own.getByRole('switch', { name: LABELS[r] })).toBeDisabled();
       // The API refuses it too (sent from its own session, about itself).
       const res = await send(ctx.request, 'PATCH', `/admin/accounts/${person.id}`, { roles: [] });
       expect(`${res.status()} ${await errorCode(res)}`).toBe('409 own_account');
@@ -181,7 +198,9 @@ test('premium: switched on with a last day in the admin screen; /me and Account 
   const m = await ctx.newPage();
   await m.goto('./#/account');
   // After the roles the account has, if any: "Editor · Premium until …".
-  await expect(m.getByRole('region', { name: 'Profile' }).locator('.row-note')).toHaveText([...me.roles.map((r) => LABELS[r]), `Premium until ${shown}`].join(' · '));
+  await expect(m.getByRole('region', { name: 'Profile' }).locator('.row-note')).toHaveText(
+    [...me.roles.map((r) => LABELS[r as BuiltInRole] ?? r), `Premium until ${shown}`].join(' · '),
+  );
   await m.close();
 
   saved = patched();

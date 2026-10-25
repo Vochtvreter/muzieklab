@@ -6,9 +6,9 @@
  * looks exactly as before: no section at all.
  * - Signed out: Sign in.
  * - Signed in: the account (name and email) → Account; whether the progress is saved to it (§6, ui/sync.ts); Accounts →
- *   the admin screens, with `accounts.read`; the Feedback button switch for this device, with `feedback.give`
- *   (docs/FEEDBACK-LOOP.md §3); Sign out, which asks whether this device keeps its progress (a shared device removes
- *   it). The last change is saved first.
+ *   the admin screens, with `accounts.read`; Feedback → the feedback reports to review, with `feedback.review`; the
+ *   Feedback button switch for this device, with `feedback.give` (docs/FEEDBACK-LOOP.md §3); Sign out, which asks
+ *   whether this device keeps its progress (a shared device removes it). The last change is saved first.
  * - No answer from the API with a cached account: the account, and a note that it cannot be changed now, with Try again.
  * After a change that ends here (signed out, the account deleted…) a one-line status says what happened. It was read
  * out when it happened (useAccount announces it), so showing it again after the language switch says nothing new.
@@ -78,6 +78,7 @@ export function AccountSection(): JSX.Element | null {
           <RowLink to="/account" title={me.name} sub={me.email} />
           {!offline && <SyncLine status={state.account.sync} />}
           {account.can('accounts.read') && <RowLink to="/admin" title={t('settings.accounts')} sub={t('settings.accountsSub')} />}
+          {account.can('feedback.review') && <RowLink to="/admin/feedback" title={t('settings.feedbackReports')} sub={t('settings.feedbackReportsSub')} />}
           {account.can('feedback.give') && (
             <SwitchRow label={t('settings.feedbackButton')} description={t('settings.feedbackButtonSub')} on={state.prefs.feedbackButton}
               onChange={(on) => dispatch({ type: 'prefs', patch: { feedbackButton: on } })} />

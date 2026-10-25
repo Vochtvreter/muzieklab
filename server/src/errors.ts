@@ -24,8 +24,6 @@ const STATUS: Record<ErrorCode, number> = {
   too_many_attempts: 429,
   busy: 429,
   internal: 500,
-  feedback_failed: 502,
-  feedback_unavailable: 503,
 };
 
 /** An error the API answers with as it is: thrown anywhere in a route, turned into an ApiErrorBody by app.ts. */

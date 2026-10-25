@@ -5,15 +5,25 @@ import {
   type AccountSummary,
   type AuditEntry,
   type Me,
+  type OwnFeedback,
   type Permission,
   type Role,
   type SavedProgress,
 } from '../../../shared/api.js';
-import type { AccountDoc, AuditDoc, Collections, ProgressDoc } from '../db.js';
+import type {
+  FeedbackContext,
+  FeedbackDetail,
+  FeedbackPerson,
+  FeedbackReport,
+  FeedbackSummary,
+  FeedbackTarget,
+} from '../../../shared/feedback.js';
+import type { AccountDoc, AuditDoc, Collections, FeedbackDoc, ProgressDoc } from '../db.js';
 import { permissionsOf } from '../auth/policy.js';
 import { premiumOf } from './premium.js';
 
-// From stored documents to the bodies of shared/api.ts: ids as hex strings, dates as ISO strings.
+// From stored documents to the bodies of shared/api.ts and shared/feedback.ts: ids as hex strings, dates as ISO
+// strings.
 
 export function toMe(account: AccountDoc, now: Date, permissions: Permission[], roleNames: Record<Role, string>): Me {
   return { ...ownAccount(account, now), roleNames, permissions };
@@ -87,4 +97,48 @@ export function toSavedProgress(doc: ProgressDoc | null): SavedProgress {
     resetAt: doc.resetAt?.toISOString() ?? null,
     updatedAt: doc.updatedAt.toISOString(),
   };
+}
+
+// --- feedback reports (routes/feedback.ts) ---------------------------------------------------------------------------
+
+/** The report as the app sent it, from the stored fields. */
+export function feedbackReport(doc: FeedbackDoc): FeedbackReport {
+  return { kind: doc.kind, title: doc.title, description: doc.description, target: doc.target, context: doc.context };
+}
+
+/** What a list row needs of a stored report: GET /admin/feedback loads only these fields. */
+export type FeedbackSummaryFields = Pick<FeedbackDoc, '_id' | 'kind' | 'title' | 'description' | 'status' | 'authorId' | 'createdAt'> & {
+  target: Pick<FeedbackTarget, 'label' | 'mode'>;
+  context: Pick<FeedbackContext, 'route'>;
+};
+
+/** `author` is looked up by the caller (null: the account is gone). */
+export function toFeedbackSummary(doc: FeedbackSummaryFields, author: FeedbackPerson | null): FeedbackSummary {
+  return {
+    id: doc._id.toHexString(),
+    kind: doc.kind,
+    title: doc.title,
+    description: doc.description,
+    route: doc.context.route,
+    label: doc.target.label,
+    mode: doc.target.mode,
+    status: doc.status,
+    author,
+    createdAt: doc.createdAt.toISOString(),
+  };
+}
+
+export function toFeedbackDetail(doc: FeedbackDoc, author: FeedbackPerson | null, reviewer: FeedbackPerson | null): FeedbackDetail {
+  return {
+    ...toFeedbackSummary(doc, author),
+    report: feedbackReport(doc),
+    note: doc.note,
+    reviewer,
+    reviewedAt: doc.reviewedAt?.toISOString() ?? null,
+  };
+}
+
+/** A report in its author's export: what it sent and its status, never the admin's note or who reviewed it. */
+export function toOwnFeedback(doc: FeedbackDoc): OwnFeedback {
+  return { id: doc._id.toHexString(), createdAt: doc.createdAt.toISOString(), status: doc.status, report: feedbackReport(doc) };
 }

@@ -28,9 +28,10 @@ sessions run it to check the test site.
   and dark. Several tabs opened at once: a known bug, noted and not checked (*Known app bugs* below).
 - **Progress on the account** (`sync.spec.ts`): played on a phone, it is on a laptop that signs in; a theme set there
   comes back; Remove on sign-out takes it off the phone.
-- **Roles** (`roles.spec.ts`): one account goes through every role in `shared/api.ts` (`ROLES`), then none, then
-  premium. Each time `/me` has the right permissions, and only an admin sees Accounts and the admin screens; the
-  others see "You don't have access" and get 403 from every admin route. An admin cannot change its own roles. Each
+- **Roles** (`roles.spec.ts`): one account goes through every built-in role in `shared/api.ts` (`BUILT_IN_ROLES`), then
+  none, then premium. Each time `/me` has the permissions the site stores for the role (`GET /admin/roles`), and only an
+  admin sees Accounts, Feedback and the admin screens; the others see "You don't have access" and get 403 from every
+  admin route. An admin cannot change its own roles. Each
   step starts from the roles the account has, so a step that fails does not skip the others: they go on in a new
   worker, with a new account.
 - **The admin screens** (`admin.spec.ts`): search and the status filter, a new invite link, canceling an invite,

@@ -12,6 +12,8 @@ import { SignIn } from './ui/screens/account/SignIn';
 import { AdminAccount } from './ui/screens/admin/AdminAccount';
 import { AdminAccounts } from './ui/screens/admin/AdminAccounts';
 import { AdminClosures } from './ui/screens/admin/AdminClosures';
+import { AdminFeedback } from './ui/screens/admin/AdminFeedback';
+import { AdminFeedbackReport } from './ui/screens/admin/AdminFeedbackReport';
 import { AdminInvite } from './ui/screens/admin/AdminInvite';
 import { Calibration } from './ui/screens/Calibration';
 import { Changelog } from './ui/screens/Changelog';
@@ -97,6 +99,8 @@ function Route(): JSX.Element {
   if (reset) return <NewPassword key={reset} token={reset} />;
   const accountId = routeParam(route, '/admin/account/');
   if (accountId) return <AdminAccount key={accountId} id={accountId} />;
+  const reportId = routeParam(route, '/admin/feedback/');
+  if (reportId) return <AdminFeedbackReport key={reportId} id={reportId} />;
   switch (route) {
     case '/path':
       return <PathScreen />;
@@ -144,6 +148,8 @@ function Route(): JSX.Element {
       return <AdminInvite />;
     case '/admin/deleted':
       return <AdminClosures />;
+    case '/admin/feedback':
+      return <AdminFeedback />;
     case '/dev/render':
       if (RenderDemo) {
         return (

@@ -34,6 +34,7 @@ export function Privacy(): JSX.Element {
             <li>{t('privacy.accountProgress')}</li>
             <li>{t('privacy.accountRoles')}</li>
             <li>{t('privacy.accountLog')}</li>
+            <li>{t('privacy.accountReports')}</li>
           </ul>
         </div>
       </Section>
@@ -55,6 +56,7 @@ export function Privacy(): JSX.Element {
             <li>{t('privacy.keepDevices')}</li>
             <li>{t('privacy.keepLog')}</li>
             <li>{t('privacy.keepClosures')}</li>
+            <li>{t('privacy.keepReports')}</li>
             <li>{t('privacy.keepBackups')}</li>
           </ul>
         </div>
@@ -66,6 +68,7 @@ export function Privacy(): JSX.Element {
             <li>{t('privacy.deleteKeep')}</li>
             <li>{t('privacy.deleteRemove')}</li>
           </ul>
+          <p>{t('privacy.deleteReports')}</p>
           <p>{t('privacy.deleteFeedback')}</p>
           <p>{t('privacy.deleteBackups')}</p>
         </div>

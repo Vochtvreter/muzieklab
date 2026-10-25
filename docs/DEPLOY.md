@@ -304,23 +304,13 @@ All of this runs on the server, as your own user. The files named come from this
    sudo systemctl enable muzieklab-api@$SITE
    ```
 
-   The settings file holds `PORT` and `MONGODB_URI`, and may hold `LOG_LEVEL` (*What the API logs*, below) and
-   `GITHUB_TOKEN` with `FEEDBACK_REPO` (below). It is
+   The settings file holds `PORT` and `MONGODB_URI`, and may hold `LOG_LEVEL` (*What the API logs*, below). It is
    readable by root only; systemd reads it before it starts the service as `muzieklab-api`.
 
-   **Feedback from the app** (0.17.0, [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md)): to let accounts with `feedback.give` send
-   reports, add `GITHUB_TOKEN` to the settings file. It is a [fine-grained personal access
-   token](https://github.com/settings/personal-access-tokens/new) with access to `Vochtvreter/muzieklab` only, the
-   permission **Issues: Read and write** and nothing else, and an expiry date (renew it before then). The issues are
-   opened in the name of the token's GitHub account. `FEEDBACK_REPO=owner/name` sends them to another repository; it
-   defaults to this one. Then restart the service (`sudo systemctl restart muzieklab-api@$SITE`). Without a token the
-   API runs as before, and the app offers GitHub's own new-issue page instead. The token stays on the server: it is
-   never in the code, the build or the app.
-
-   ```sh
-   # Asks for the token without showing it, and adds it to the test site's settings (production: production.env).
-   sudo bash -c 'read -rsp "GitHub token: " T; echo; printf "GITHUB_TOKEN=%s\n" "$T" >> /etc/muzieklab-api/test.env'
-   ```
+   **Feedback from the app** (0.17.0, [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md)) needs no setting: the API stores the
+   reports in its database, and admins review them in the app. Nothing goes to GitHub yet; the GitHub token comes with
+   the step that sends accepted reports there, and so do its instructions. Test builds before the 0.17.0 release read
+   a `GITHUB_TOKEN` from this file: if you added one, take that line out and revoke the token on GitHub.
 
    **Never put `COOKIE_SECURE` in it.** That setting is for development over plain http only (README). Set to
    `false`, it drops `Secure` and the `__Host-` and `__Secure-` prefixes from the session cookies, so the browser would

@@ -5,7 +5,6 @@ import type { ApiErrorBody } from '../../shared/api.js';
 import { AttemptLimiter, DEFAULT_LIMITS, type AttemptLimits } from './auth/attempts.js';
 import { installGuard } from './auth/guard.js';
 import { dummyHash } from './auth/passwords.js';
-import type { GitHubSettings } from './config.js';
 import type { AppContext } from './context.js';
 import { collections } from './db.js';
 import { ApiError } from './errors.js';
@@ -28,10 +27,6 @@ export interface AppOptions {
   now?: () => Date;
   /** The sign-in limits (§5.2); tests pass smaller caps on the entries kept. */
   limits?: AttemptLimits;
-  /** Where feedback goes (config.ts); without it POST /feedback answers 503. */
-  github?: GitHubSettings | null;
-  /** fetch for the calls to GitHub; tests pass their own. */
-  fetch?: typeof fetch;
 }
 
 const PREFIX = '/api/v1';
@@ -43,8 +38,6 @@ export function buildApp({
   cookieSecure = true,
   now = () => new Date(),
   limits = DEFAULT_LIMITS,
-  github = null,
-  fetch: fetcher = fetch,
 }: AppOptions) {
   const app = Fastify({
     logger,
@@ -70,8 +63,6 @@ export function buildApp({
     now,
     cookies: { secure: cookieSecure },
     attempts: new AttemptLimiter(() => now().getTime(), limits),
-    github,
-    fetch: fetcher,
   };
   // Old sign-in counters go, so memory does not grow with every address that ever mistyped a password.
   const sweep = setInterval(() => ctx.attempts.sweep(), 60_000);

@@ -1,13 +1,13 @@
 /**
  * The feedback tool (docs/FEEDBACK-LOOP.md, step 1), for an account with feedback.give: a Feedback button floats over
  * every screen. It marks a part of the screen (tap or click an element, or drag a box), then a sheet (dialog on desktop)
- * takes the kind, a title and what should change, and sends it to the API (POST /feedback), which opens the GitHub
- * issue with its own token. FeedbackTool.tsx loads it.
+ * takes the kind, a title and what should change, and sends it to the API (POST /feedback), which saves it for an admin
+ * to review in Settings → Account → Feedback (feedback.review). Nothing goes to GitHub from here: an admin picks what
+ * does. FeedbackTool.tsx loads it.
  */
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import pkg from '../../../package.json';
-import type { FeedbackSent } from '../../../shared/api';
-import { buildIssue, FEEDBACK_KINDS, newIssueUrl, type FeedbackKind, type FeedbackReport, type FeedbackTarget, type Rect } from '../../../shared/feedback';
+import { buildIssue, FEEDBACK_KINDS, type FeedbackKind, type FeedbackReport, type FeedbackSaved, type FeedbackTarget, type Rect } from '../../../shared/feedback';
 import { api, type ApiError } from '../../api/client';
 import { boxFrom, captureContext, elementAt, targetFor, TOOL_ATTR } from '../../feedback/dom';
 import { getLocale, t } from '../../i18n';
@@ -17,7 +17,7 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { useBreakpoint, useLingering, useMediaQuery, useMounted } from '../hooks';
 import { errorMessage } from '../lib/apiErrors';
-import { useRoute } from '../router';
+import { Link, useRoute } from '../router';
 import { useStore } from '../store';
 
 const tool = { [TOOL_ATTR]: '' };
@@ -142,9 +142,6 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
   );
 }
 
-/** Codes for which GitHub's own new-issue page is the way out: the server cannot send now, but the admin can. */
-const LINK_INSTEAD = new Set(['feedback_unavailable', 'feedback_failed', 'unavailable', 'internal']);
-
 function FeedbackForm({ target, onClose, onRemark, onHide }: {
   target: FeedbackTarget;
   onClose(): void;
@@ -159,7 +156,7 @@ function FeedbackForm({ target, onClose, onRemark, onHide }: {
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
-  const [sent, setSent] = useState<FeedbackSent | null>(null);
+  const [saved, setSaved] = useState<FeedbackSaved | null>(null);
   const [copied, setCopied] = useState(false);
   // The screen as it was when the spot was marked, not as it is once the sheet is open.
   const [context] = useState(() =>
@@ -173,8 +170,8 @@ function FeedbackForm({ target, onClose, onRemark, onHide }: {
     setBusy(true);
     setError(null);
     try {
-      const res = await api.post<FeedbackSent>('/feedback', report);
-      if (mounted.current) setSent(res);
+      const res = await api.post<FeedbackSaved>('/feedback', report);
+      if (mounted.current) setSaved(res);
     } catch (e) {
       if (mounted.current) setError(account.handleError(e));
     } finally {
@@ -190,18 +187,21 @@ function FeedbackForm({ target, onClose, onRemark, onHide }: {
       .catch(() => undefined);
   };
 
-  if (sent) {
+  if (saved) {
     return (
       <>
         <div className="sheet-head">
           <h2 id="fb-title" className="sheet-title">
-            {t('feedback.sent', { number: sent.number })}
+            {t('feedback.saved')}
           </h2>
-          <p className="sheet-text muted-text">{t('feedback.sentText')}</p>
+          <p className="sheet-text muted-text">{t('feedback.savedText')}</p>
         </div>
-        <a className="btn btn--outline" href={sent.url} target="_blank" rel="noopener noreferrer">
-          {t('feedback.view')}
-        </a>
+        {/* Someone who reviews feedback too opens it there; the tool closes, as the report's screen replaces this one. */}
+        {account.can('feedback.review') && (
+          <Link to={`/admin/feedback/${saved.id}`} className="btn btn--outline" onClick={onClose}>
+            {t('feedback.review')}
+          </Link>
+        )}
         <div className="fb-actions">
           <button type="button" className="btn btn--outline" onClick={onRemark}>
             {t('feedback.another')}
@@ -245,15 +245,10 @@ function FeedbackForm({ target, onClose, onRemark, onHide }: {
         <input className="fb-input" type="text" value={title} maxLength={120} placeholder={t('feedback.titlePlaceholder')} onChange={(e) => setTitle(e.target.value)} />
       </label>
       <p className="sheet-note">{t('feedback.attached')}</p>
+      {/* The form stays as it is: Send tries again. */}
       {error && (
         <div className="fb-error" role="alert">
           <p>{errorMessage(error)}</p>
-          {LINK_INSTEAD.has(error.code) && (
-            // Opens GitHub's own new-issue page, filled in: the admin presses Create there, signed in to GitHub.
-            <a href={newIssueUrl(report)} target="_blank" rel="noopener noreferrer">
-              {t('feedback.openGithub')}
-            </a>
-          )}
         </div>
       )}
       <div className="fb-actions">

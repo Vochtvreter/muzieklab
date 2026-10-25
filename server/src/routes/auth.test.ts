@@ -947,6 +947,10 @@ describe('deny by default', () => {
         'PATCH /api/v1/admin/roles/:id roles.manage',
         'DELETE /api/v1/admin/roles/:id roles.manage',
         'POST /api/v1/feedback feedback.give',
+        'GET /api/v1/admin/feedback feedback.review',
+        'GET /api/v1/admin/feedback/:id feedback.review',
+        'PATCH /api/v1/admin/feedback/:id feedback.review',
+        'DELETE /api/v1/admin/feedback/:id feedback.review',
       ].sort(),
     );
     // HEAD routes Fastify adds for GET ones carry the same config.

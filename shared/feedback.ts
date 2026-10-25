@@ -1,10 +1,13 @@
 /**
  * Feedback reports (docs/FEEDBACK-LOOP.md, step 1): what someone with feedback.give marked on a screen, what they want
- * changed, and the context an agent needs to find and reproduce it. A report becomes one GitHub issue: a readable body
- * plus a JSON block the triage agent parses (the `muzieklab-feedback:v1` marker names its format).
+ * changed, and the context an agent needs to find and reproduce it.
  *
- * Shared by the app, which makes the report, and the API, which builds the issue from it (POST /feedback), so the
- * issue's format and labels are the server's to set. No imports: both sides bundle it as it is.
+ * The app sends a report to the API (POST /feedback), which stores it for an admin with feedback.review to read and
+ * accept or decline in the app (the bodies below). An accepted report is meant to become one GitHub issue later: a
+ * readable body plus a JSON block the triage agent parses (`buildIssue`, the `muzieklab-feedback:v1` marker); until
+ * that step is built, Copy (Markdown) and GitHub's own new-issue page (`newIssueUrl`) are the way there.
+ *
+ * Shared by the app and the API. No imports: both sides bundle it as it is.
  */
 
 export type FeedbackKind = 'bug' | 'change' | 'idea';
@@ -165,3 +168,66 @@ export function parseIssueBody(body: string): ReturnType<typeof reportData> | nu
     return null;
   }
 }
+
+// --- reviewing reports in the app (feedback.review; the API's bodies, BACKEND-PLAN.md §7) --------------------------
+
+/**
+ * Where a stored report stands: new until an admin looks at it; accepted (picked up: it is to become a GitHub issue,
+ * a later step) or declined.
+ */
+export const FEEDBACK_STATUSES = ['new', 'accepted', 'declined'] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
+
+/** POST /feedback → the stored report's id. */
+export interface FeedbackSaved {
+  id: string;
+}
+
+/** Someone a report names: its author or its reviewer. Null in their place: the account was deleted since. */
+export interface FeedbackPerson {
+  id: string;
+  name: string;
+}
+
+/** A report in the list: what it is about, where, from whom, and where the review stands. */
+export interface FeedbackSummary {
+  id: string;
+  kind: FeedbackKind;
+  /** As written; '' when the author left it empty (the app then names it by its kind, spot and screen). */
+  title: string;
+  description: string;
+  /** The hash route it was sent from, '/settings'. */
+  route: string;
+  /** The marked spot as a person would name it (FeedbackTarget.label), and whether it was an element or a drawn box. */
+  label: string;
+  mode: FeedbackTarget['mode'];
+  status: FeedbackStatus;
+  author: FeedbackPerson | null;
+  createdAt: string;
+}
+
+/** One report, whole: the summary, the report as sent, and the review. */
+export interface FeedbackDetail extends FeedbackSummary {
+  report: FeedbackReport;
+  /** The reviewing admin's note, for the team ('' for none). */
+  note: string;
+  /** Who last changed the status or the note, and when; null before anyone did. */
+  reviewer: FeedbackPerson | null;
+  reviewedAt: string | null;
+}
+
+/** GET /admin/feedback?status= → the reports, newest first (at most 500), and how many there are per status. */
+export interface FeedbackListResponse {
+  reports: FeedbackSummary[];
+  counts: Record<FeedbackStatus, number>;
+}
+
+/** PATCH /admin/feedback/:id → FeedbackDetail. Only the fields sent change. */
+export interface FeedbackUpdateRequest {
+  status?: FeedbackStatus;
+  /** Up to FEEDBACK_NOTE_MAX characters; '' clears it. */
+  note?: string;
+}
+
+export const FEEDBACK_NOTE_MAX = 2000;
+

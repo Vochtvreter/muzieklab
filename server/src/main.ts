@@ -44,7 +44,6 @@ function serve(config: Config): void {
     db: client.db(),
     commit: COMMIT,
     cookieSecure: config.cookieSecure,
-    github: config.github,
     // JSON lines to stdout, which systemd keeps in the journal (journalctl -u muzieklab-api@test); log.ts says what
     // a line may hold.
     logger: loggerOptions(process.env.LOG_LEVEL),
