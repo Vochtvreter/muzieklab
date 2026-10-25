@@ -42,6 +42,11 @@ export interface SessionDoc {
   retired: string[];
   /** The last refresh, or null before the first. */
   refreshedAt: Date | null;
+  /**
+   * Random, new at each refresh (absent before the first): that refresh's pair was derived from the token it swapped
+   * and this, so the same token gets the same pair again in a race (auth/sessions.ts, REFRESH_RACE_MS).
+   */
+  refreshSalt?: string;
   createdAt: Date;
   /** Sign-in or the last refresh. */
   lastSeenAt: Date;

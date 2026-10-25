@@ -153,6 +153,7 @@ hold a Date there, which reads as its UTC calendar day.
   accessHash: "<sha256 of the session cookie's token>", accessExpiresAt,    // the session token: one hour
   refreshHash: "<sha256 of the refresh cookie's token>",                    // swapped on every refresh
   retired: ["<sha256 of a refresh token swapped before>", …],               // the last 50, oldest first
+  refreshSalt: "<random>",                                                   // the last refresh's pair came from it
   refreshedAt, lastSeenAt, expiresAt,                                        // expiresAt: 90 days after lastSeenAt
 }
 
@@ -511,8 +512,15 @@ request and a long one that only keeps the session going, and the app renews the
 - **A refresh token works once.** A session remembers the last 50 it swapped. One that comes back later was copied:
   whoever has the session now, its owner or whoever copied the token, the session ends for both, and the API logs it
   (the account's id, never the token). The exception is a race: the token swapped less than **a minute** ago, as when
-  two tabs refresh at once. That answers 204 without cookies, as the browser has the new ones from the first answer.
-  A blocked or deleted account's session ends at its next refresh, and the cookies are cleared on every refusal.
+  two tabs refresh at once, or when the first answer never reached the browser (the page was reloaded while the refresh
+  was on the way, or the connection dropped), so the browser still has the old token and no session token. That answers
+  204 with **the same new pair again**: a refresh's pair is derived from the token it swaps and a random salt kept on
+  the session (`refreshSalt`), so it can be made again. The old token alone cannot make it (the salt is only in the
+  database), nor can the database (it has only hashes). Nothing else moves: the session lasts 90 days from the swap, not
+  from the race. The price is that a copied token used within that minute gets the session too, until one of the two
+  swaps it and the other comes back. Until 0.16.1 a race answered 204 without cookies, which signed out a browser whose
+  first answer was lost. A blocked or deleted account's session ends at its next refresh, and the cookies are cleared on
+  every refusal.
 - **The app renews by itself** (`src/api/client.ts`): when a request answers 401 `unauthenticated` on a device where
   someone is signed in, it calls `POST /auth/refresh` once (one call for all the requests waiting) and sends the
   request again; a screen never sees the swap. It also renews when the app starts and when it comes back into view,
@@ -610,7 +618,7 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 |---|---|---|
 | `GET /health` | public | Is the API up, and can it reach the database: 200, or 503 with `db: "unreachable"`. Also the running commit, which the deploy waits for. |
 | `POST /auth/sign-in` | public | Email and password → `Me`, and the session cookies. |
-| `POST /auth/refresh` | public | The refresh cookie → 204 and a new pair of cookies (§5.4); 204 without cookies when the same token was swapped less than a minute ago; else 401 `unauthenticated`, and the cookies are cleared. A swapped token that comes back ends its session. |
+| `POST /auth/refresh` | public | The refresh cookie → 204 and a new pair of cookies (§5.4); 204 with the same new pair again when the same token was swapped less than a minute ago; else 401 `unauthenticated`, and the cookies are cleared. A swapped token that comes back ends its session. |
 | `POST /auth/invite/check`, `POST /auth/reset/check` | public | Is the link still good, and whose is it: email, name and when it stops working. |
 | `POST /auth/invite/accept` | public | The token, a password and optionally a name → `Me`, and the cookies. The account becomes active. |
 | `POST /auth/reset/confirm` | public | The token and a password → `Me`, and the cookies. Every other session ends. |

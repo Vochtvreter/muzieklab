@@ -64,16 +64,16 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
 
   /**
    * Keeps a session going (BACKEND-PLAN.md §5.4): swaps the refresh cookie for a new pair of tokens. The app calls it
-   * when a request says the session token ran out, and when it starts. 204 with new cookies; 204 without any when
-   * another request from this browser swapped the same token moments ago (it has the new cookies); else 401, and the
-   * cookies are cleared. A refresh token that comes back after it was swapped ends its session.
+   * when a request says the session token ran out, and when it starts. 204 with new cookies; when the same token was
+   * swapped moments ago (two tabs at once, or a first answer that never reached the browser), 204 with the same new
+   * cookies again; else 401, and the cookies are cleared. A refresh token that comes back after it was swapped ends its
+   * session.
    */
   app.post('/auth/refresh', { config: { public: true } }, async (request, reply) => {
     const token = refreshToken(request, ctx.cookies);
     if (!token) throw new ApiError('unauthenticated', 'Not signed in');
     const result = await refreshSession(c, token, ctx.now());
-    if (result.outcome === 'raced') return reply.code(204).send();
-    if (result.outcome === 'rotated') {
+    if (result.outcome === 'rotated' || result.outcome === 'raced') {
       const active = await c.accounts.countDocuments({ _id: result.session.accountId, status: 'active' }, { limit: 1 });
       if (active > 0) {
         setSessionCookies(reply, ctx.cookies, result.tokens);

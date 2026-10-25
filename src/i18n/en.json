@@ -2466,6 +2466,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_16_1": {
+      "title": "Still signed in after a reload",
+      "signedIn": "If you reloaded the app just as your sign-in renewed itself, or the connection dropped for a moment then, you could be signed out. Now you stay signed in."
+    },
     "v0_16_0": {
       "title": "Deleting your account, your way",
       "try": "Read how it works",
