@@ -893,10 +893,10 @@
     "why": "Om je in te loggen en, later, om je voortgang op al je apparaten te bewaren.",
     "whereTitle": "Waar",
     "where": "Op onze eigen server bij Hetzner in Helsinki, Finland, in de EU. Geen andere diensten krijgen je gegevens: geen advertenties en geen tracking.",
-    "cookie": "Muzieklab zet één cookie, alleen om je ingelogd te houden.",
+    "cookie": "Muzieklab zet twee cookies, alleen om je ingelogd te houden.",
     "keepTitle": "Hoe lang",
     "keepAccount": "Je account: tot je het verwijdert.",
-    "keepDevices": "Een ingelogd apparaat: tot 30 dagen nadat het voor het laatst is gebruikt.",
+    "keepDevices": "Een ingelogd apparaat: tot 90 dagen nadat het voor het laatst is gebruikt.",
     "keepLog": "Het logboek van wijzigingen: 2 jaar.",
     "keepBackups": "Nachtelijke back-ups: 14 dagen.",
     "rightsTitle": "Jouw rechten",
@@ -2409,6 +2409,11 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_14_0": {
+      "title": "Ingelogd blijven",
+      "signedIn": "Ben je eenmaal ingelogd, dan blijf je ingelogd: Muzieklab houdt je sessie zelf gaande elke keer dat je de app gebruikt, tot 90 dagen nadat je hem voor het laatst gebruikte. Je hoeft je account niet meer af en toe te openen om ingelogd te blijven.",
+      "safer": "Je inlog vernieuwt zich elk uur, en een gekopieerde inlog werkt niet meer zodra hij twee keer wordt gebruikt."
+    },
     "v0_13_2": {
       "title": "De schuifbalk aan de rand van het venster",
       "scrollbar": "Op een tablet of een computer staat de schuifbalk van een pagina die scrolt aan de rechterrand van het venster, niet naast de kolom in het midden. De blokken van het leerpad scrollen ook aan de rand."

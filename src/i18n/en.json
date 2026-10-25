@@ -893,10 +893,10 @@
     "why": "To sign you in and, later, to keep your progress on all your devices.",
     "whereTitle": "Where",
     "where": "On our own server at Hetzner in Helsinki, Finland, in the EU. No other services get your data: no ads and no tracking.",
-    "cookie": "Muzieklab sets one cookie, only to keep you signed in.",
+    "cookie": "Muzieklab sets two cookies, only to keep you signed in.",
     "keepTitle": "How long",
     "keepAccount": "Your account: until you delete it.",
-    "keepDevices": "A signed-in device: until 30 days after it was last used.",
+    "keepDevices": "A signed-in device: until 90 days after it was last used.",
     "keepLog": "The change log: 2 years.",
     "keepBackups": "Nightly backups: 14 days.",
     "rightsTitle": "Your rights",
@@ -2409,6 +2409,11 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_14_0": {
+      "title": "Stay signed in",
+      "signedIn": "Once you have signed in, you stay signed in: Muzieklab keeps your session going by itself each time you use the app, for up to 90 days after you last used it. You no longer have to open your account now and then to stay signed in.",
+      "safer": "Your sign-in renews itself every hour, and a copied sign-in stops working as soon as it is used twice."
+    },
     "v0_13_2": {
       "title": "The scrollbar at the window's edge",
       "scrollbar": "On a tablet or a computer, a page that scrolls has its scrollbar at the right edge of the window, not beside the column in the middle. The Learning path's units scroll at the edge too."

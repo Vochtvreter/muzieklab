@@ -74,8 +74,8 @@ npm run dev                        # the app: http://localhost:5173
 - The root `npm run dev` passes `/api` on to the API at 127.0.0.1:3000 and keeps the browser's Host header, which the
   API compares with the Origin of every change. So open the app on http://localhost:5173, then the link create-admin
   printed, and choose a password.
-- `COOKIE_SECURE=false` makes the session cookie a plain `session` without Secure, because browsers drop Secure
-  cookies over plain http. Never set it on a server ([DEPLOY.md](docs/DEPLOY.md)).
+- `COOKIE_SECURE=false` makes the session cookies plain `session` and `refresh` without Secure, because browsers drop
+  Secure cookies over plain http. Never set it on a server ([DEPLOY.md](docs/DEPLOY.md)).
 - `npm run preview` and `npm run e2e` have no API: the app then shows no Account section, as on a site without one.
 
 ## Deploy

@@ -14,7 +14,7 @@ import { normalizeEmail, validName } from '../accounts/validate.js';
 import { toAuditEntry, toExportAccount, toMe } from '../accounts/views.js';
 import { signedIn } from '../auth/guard.js';
 import { hashPassword, passwordProblem } from '../auth/passwords.js';
-import { clearSessionCookie } from '../auth/sessions.js';
+import { clearSessionCookies } from '../auth/sessions.js';
 import { confirmPassword, hashLane } from '../auth/tries.js';
 import type { AppContext } from '../context.js';
 import { inTransaction, isDuplicateKey, lockAdmins, type AccountDoc } from '../db.js';
@@ -169,7 +169,7 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
         await removeAccount(c, fresh._id, session);
         await writeAudit(c, now, { actorId: fresh._id, action: 'account.delete_self', targetId: fresh._id }, session);
       });
-      clearSessionCookie(reply, ctx.cookies);
+      clearSessionCookies(reply, ctx.cookies);
       return reply.code(204).send();
     },
   );

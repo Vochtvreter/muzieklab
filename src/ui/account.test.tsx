@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Me } from '../../shared/api';
 import { ACCOUNT_KEY } from '../game/storage';
-import { RECHECK_MS, resetAccountCheck, useAccount, type UseAccount } from './account';
+import { keepSignedIn, RECHECK_MS, RENEW_MS, resetAccountCheck, useAccount, type UseAccount } from './account';
 import { StoreProvider } from './store';
 
 const ME: Me = {
@@ -58,9 +58,9 @@ describe('useAccount', () => {
     await waitFor(() => expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null')?.email).toBe('ann@example.com'));
   });
 
-  it('a 401 is signed out, and clears a cached account', async () => {
+  it('a 401 the session cannot be renewed from is signed out, and clears a cached account', async () => {
     localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
-    fetchMock.mockResolvedValue(json(401, { error: 'unauthenticated', message: '' }));
+    fetchMock.mockImplementation(async () => json(401, { error: 'unauthenticated', message: '' }));
     render(
       <StoreProvider>
         <Probe />
@@ -69,6 +69,49 @@ describe('useAccount', () => {
     expect(shown()).toBe('unknown Ann de Vries');
     await waitFor(() => expect(shown()).toBe('reachable nobody'));
     await waitFor(() => expect(localStorage.getItem(ACCOUNT_KEY)).toBeNull());
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual(['/api/v1/me', '/api/v1/auth/refresh']);
+  });
+
+  it('renews a session whose token ran out, and asks again: still signed in', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    fetchMock
+      .mockResolvedValueOnce(json(401, { error: 'unauthenticated', message: '' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    expect(fetchMock.mock.calls.map((c) => [c[0], (c[1] as RequestInit).method])).toEqual([
+      ['/api/v1/me', 'GET'],
+      ['/api/v1/auth/refresh', 'POST'],
+      ['/api/v1/me', 'GET'],
+    ]);
+  });
+
+  it('keepSignedIn renews the session on start and on coming back into view, only while signed in', async () => {
+    fetchMock.mockImplementation(async () => new Response(null, { status: 204 }));
+    keepSignedIn();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    keepSignedIn();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/refresh');
+    expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBe('POST');
+
+    // Back into view soon after: no need yet.
+    await new Promise((r) => setTimeout(r, 0));
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Hours later: renewed again.
+    const now = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(now + RENEW_MS);
+    document.dispatchEvent(new Event('visibilitychange'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    vi.restoreAllMocks();
   });
 
   it('no answer keeps the cached account, as offline', async () => {
@@ -256,12 +299,13 @@ describe('useAccount', () => {
 
     it('Try again (refresh) asks at once', async () => {
       await offlineThenSettings();
-      fetchMock.mockResolvedValue(json(401, { error: 'unauthenticated', message: '' }));
+      fetchMock.mockImplementation(async () => json(401, { error: 'unauthenticated', message: '' }));
       await act(async () => {
         await latest.refresh();
       });
       expect(shown()).toBe('reachable nobody');
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      // GET /me offline; then GET /me, and the renewal it tried.
+      expect(fetchMock).toHaveBeenCalledTimes(3);
     });
   });
 });
