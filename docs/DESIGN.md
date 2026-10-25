@@ -33,9 +33,9 @@ game rather than homework.
 
 - Pitch reading / melodic dictation (see §13, possible later module).
 - Multiplayer.
-- Cloud sync and teacher dashboards: planned after v1 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). Accounts came first,
-  in 0.12.0: optional and by invitation, next to the account-free app. The app needs no account, and a site without
-  the API shows no account at all (§9.2).
+- Teacher dashboards: planned after v1 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). Accounts came first, in 0.12.0:
+  optional and by invitation, next to the account-free app, and since 0.15.0 they keep progress across devices. The app
+  needs no account, and a site without the API shows no account at all (§9.2).
 
 ---
 
@@ -1424,7 +1424,8 @@ The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · S
 
 ### 9.2 Accounts: the account and admin screens
 
-Since 0.12.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md)). **No board exists yet** for any of these screens, on either canvas.
+Since 0.12.0, and progress on the account since 0.15.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §6). **No board exists yet**
+for any of these screens, on either canvas.
 They were built from the built Settings screen (§9) and the foundations, and this section describes them as built.
 Their boards are still to be drawn (phone, tablet and desktop, in light and dark), and so are the components below,
 on Foundations. The Settings boards they would extend disagree with each other: the App design canvas draws tablet
@@ -1438,8 +1439,16 @@ server.
 - Settings has an **Account** section first, on every size, once the API has answered or an account is cached on the
   device. A site without an API shows no Account section at all.
   - Signed out: one row, *Sign in* (*Accounts are by invitation.*).
-  - Signed in: the account (name and email) → Account; *Accounts* (*Invite people and manage roles*) → the admin
-    screens, only with `accounts.read`; and *Sign out*.
+  - Signed in: the account (name and email) → Account; under it, joined to it without a hairline, a quiet line (13 px,
+    muted) that says whether the progress is on the account: a green check and *Progress saved to your account*; a
+    clock and *Saving your progress…*; a clock and *Not saved yet. Your progress is saved when you're back online.*;
+    or an alert icon, *Your progress couldn't be saved.* and **Try again** beside it (under it when the words need the
+    room). It is not read out: it changes after every exercise. Then *Accounts* (*Invite people and manage roles*) →
+    the admin screens, only with `accounts.read`; and *Sign out*.
+  - *Sign out* opens a confirm in place (as *Sign out everywhere*: the question in ink, a tonal button): *Sign out on
+    this device?*, *Your progress stays on your account. On a shared device, remove it from this one.*, then a
+    two-choice segmented control, *Progress on this device*: **Keep** (chosen when it opens) · **Remove**, then Cancel
+    and Sign out. It saves the last change first. Cancel puts the choice back to Keep.
   - No answer from the API, with a cached account: the account row, then *Muzieklab can't be reached right now. You
     can change your account again once it can.* with **Try again**. (Not "Offline": the device may be online while
     the API restarts or answers 502.) Try again keeps its focus while it checks and shows *Checking…* for at least
@@ -1448,11 +1457,13 @@ server.
     again when Settings or an account screen opens (at most once every 10 s), when it comes back into view, and when
     the device is back online.
   - After an action that ends on Settings, one line with a green check says what happened: *Signed out.*, *Signed out
-    on every device.*, *Your account was deleted.*, *You're signed in. Welcome to Muzieklab.*, or *Password saved. Your
-    other devices are signed out.* It is read out once, when it happens (not again when the language is switched),
+    on every device.*, *Your account was deleted.*, *You're signed in. Welcome to Muzieklab.*, *Password saved. Your
+    other devices are signed out.*, or, after a first sign-in on a device that had progress, *The progress on this
+    device is on your account now too.* It is read out once, when it happens (not again when the language is switched),
     and it goes when Settings is left.
 - Settings → About has a **Privacy** row (*What stays on this device, and what an account stores*), with or without an
-  API.
+  API. Its *Reset progress* confirm says, while signed in, *Streak, stars and XP, on every device with your account.
+  No undo.*, and resets the account's progress too.
 
 **Two frames.**
 - **A Settings sub-page** (Account, Privacy and the three admin screens) keeps the shell, with Settings current. That
@@ -1578,7 +1589,7 @@ what to do. For accounts:
 | Offline / install | **PWA** (`vite-plugin-pwa`) | Home-screen app on phones. |
 | Tests | **Vitest** + **fast-check** (property tests) | Generator correctness over thousands of seeds. |
 | Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)), with an optional API on the same server under `/api` | The app needs no backend: it works fully without the API, and shows no account then. |
-| Accounts (since 0.12.0) | **Node** API (Fastify, one bundled file) + **MongoDB** on the same server ([BACKEND-PLAN.md](BACKEND-PLAN.md)); the contract `shared/api.ts`; the app's client `src/api/client.ts` | Optional, invite-only accounts with roles; progress across devices from phase 2. |
+| Accounts (since 0.12.0) | **Node** API (Fastify, one bundled file) + **MongoDB** on the same server ([BACKEND-PLAN.md](BACKEND-PLAN.md)); the contract `shared/api.ts`; the app's client `src/api/client.ts` | Optional, invite-only accounts with roles; progress across devices since 0.15.0. |
 
 ### 10.2 Module layout
 
@@ -1615,6 +1626,7 @@ src/
     screens/account/    # Settings → Account section, Sign in, Accept invite, New password, Account, Privacy (§9.2)
     screens/admin/      # Accounts, Invite someone, one account (§9.2)
     account.ts          # useAccount(): who is signed in, GET /me, the account cache
+    sync.ts             # progress on the account: when it syncs, saves and merges (game/merge.ts, BACKEND-PLAN §6)
     learn/ chapters.ts  # the Learn chapters as data (docs/ADDING-CONTENT.md); Blocks.tsx draws them
     components/ ...     # Form.tsx: text fields, confirm, copy field (§9.2)
   i18n/ en.json nl.json # every user-facing string, one catalog per locale (found automatically)
@@ -1704,7 +1716,7 @@ without code changes:
 | M5 | **Game layer** | XP, levels, Learning Path, daily challenge, streaks, achievements. |
 | M5b | **Read notes** | Note generator, treble and bass clef rendering, names / piano input, setup, scoring, Learn chapter 8. |
 | M6 | **Polish** | Calibration, PWA/offline, mobile tuning, localization-ready check (all strings in the catalog), progress screen, Weak Spots. |
-| M7 | **Accounts** (phase 1 done in 0.12.0; phases 2–5 planned) | Invite-only accounts with roles: sign-in, invite and new-password links, the Account screen, the admin screens and the privacy statement (done, 0.12.0). Then progress on the account, classes, content editing and premium ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). |
+| M7 | **Accounts** (phases 1 and 2 done in 0.12.0 and 0.15.0; phases 3–5 planned) | Invite-only accounts with roles: sign-in, invite and new-password links, the Account screen, the admin screens and the privacy statement (done, 0.12.0). Progress on the account, synced and merged across devices (done, 0.15.0). Then classes, content editing and premium ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). |
 
 ---
 

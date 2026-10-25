@@ -11,7 +11,7 @@ import { SubPage } from '../../components/SubPage';
 import { hashQuery, useHash } from '../../router';
 
 /** The day the statement last changed (yyyy-mm-dd). */
-export const PRIVACY_UPDATED = '2026-10-23';
+export const PRIVACY_UPDATED = '2026-10-25';
 
 export function Privacy(): JSX.Element {
   const fromSignIn = hashQuery(useHash()).get('from') === 'signin';
@@ -31,6 +31,7 @@ export function Privacy(): JSX.Element {
             <li>{t('privacy.accountEmail')}</li>
             <li>{t('privacy.accountPassword')}</li>
             <li>{t('privacy.accountDevices')}</li>
+            <li>{t('privacy.accountProgress')}</li>
             <li>{t('privacy.accountRoles')}</li>
             <li>{t('privacy.accountLog')}</li>
           </ul>

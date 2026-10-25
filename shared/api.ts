@@ -130,7 +130,50 @@ export interface AccountExport {
   sessions: { device: string; createdAt: string; lastSeenAt: string }[];
   /** What admins changed about this account, and what it changed itself. */
   audit: AuditEntry[];
+  /** The progress and prefs saved on the account (BACKEND-PLAN.md §6). */
+  progress: SavedProgress;
 }
+
+// --- progress on the account (progress.own; BACKEND-PLAN.md §6) ------------------------------------------------------
+
+/**
+ * What syncs (BACKEND-PLAN.md §6.1): the app's Progress, and the prefs that follow the account, as the app saves them
+ * (src/game/sync.ts). The server keeps them as they come, checked for size and shape only (no key starts with `$`);
+ * the app checks them with sanitizeProgress and sanitizePrefs on every read, as it does what it reads from storage.
+ */
+export interface SyncedData {
+  prefs: Record<string, unknown>;
+  progress: Record<string, unknown>;
+}
+
+/** GET /progress, and the answer to every save: the account's copy. */
+export interface SavedProgress {
+  /** Goes up by one on every save; 0 before the first. */
+  rev: number;
+  /** null before the first save. */
+  data: SyncedData | null;
+  /**
+   * When the progress was last reset (DELETE /progress), or null. A device that last saw another value drops its own
+   * progress for the account's, so a reset on one device is not undone by another device's older copy.
+   */
+  resetAt: string | null;
+  updatedAt: string | null;
+}
+
+/**
+ * PUT /progress → SavedProgress. `rev` is the one this device last saw (0: it has seen none). When the account has
+ * moved on since (another device saved), it is refused with 409 rev_conflict and the account's copy in `current`; the
+ * app merges the two and saves again with the copy's rev.
+ */
+export interface SaveProgressRequest extends SyncedData {
+  rev: number;
+}
+
+// DELETE /progress → SavedProgress: Settings → Reset progress on a signed-in device. The progress is emptied (the prefs
+// stay), `resetAt` is now, and `rev` goes up. Without a saved copy there is nothing to reset: the answer is rev 0.
+
+/** The largest progress document the API keeps (BACKEND-PLAN.md §3.3: a full one is a few tens of kB). */
+export const PROGRESS_MAX_BYTES = 200 * 1024;
 
 // --- admin (accounts.*, roles.grant, entitlements.grant) ------------------------------------------------------------
 
@@ -264,6 +307,8 @@ export const ERROR_CODES = [
   'own_account',
   /** 409: the action does not fit the account's status (e.g. a new-password link for an invited account). */
   'wrong_status',
+  /** 409: PUT /progress with a rev the account has moved on from: `current` holds the account's copy. */
+  'rev_conflict',
   /** 401: the current password given to change something is not right. */
   'wrong_password',
   /** 410: an invite or new-password link that is unknown, used, cancelled or expired. */
@@ -291,6 +336,8 @@ export interface ApiErrorBody {
   message: string;
   /** With too_many_attempts and busy: seconds until the next try (also the Retry-After header). */
   retryAfter?: number;
+  /** With rev_conflict: the account's copy, to merge with. */
+  current?: SavedProgress;
 }
 
 /** Password rules, the same on both sides (BACKEND-PLAN.md §5.5). */

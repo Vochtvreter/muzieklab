@@ -69,6 +69,7 @@ test('sign in: a wrong password, then the right one; Settings shows the account;
   expect(cached).not.toContain('a good long password');
 
   await section.getByRole('button', { name: 'Sign out' }).click();
+  await section.getByRole('alertdialog').getByRole('button', { name: 'Sign out' }).click();
   await expect(notice(page)).toHaveText('Signed out.');
   await expect(announcer(page)).toHaveText('Signed out.');
   await expect(section.getByRole('link', { name: /^Sign in/ })).toBeVisible();
@@ -141,7 +142,7 @@ test('privacy from sign in, and back', async ({ page }) => {
   await page.goto('./#/signin');
   await page.getByRole('link', { name: 'Privacy' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
-  await expect(page.getByText('Last updated: October 23, 2026')).toBeVisible();
+  await expect(page.getByText('Last updated: October 25, 2026')).toBeVisible();
   await page.getByRole('link', { name: 'Back to sign in' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
 });

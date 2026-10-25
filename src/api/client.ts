@@ -30,13 +30,16 @@ export class ApiError extends Error {
   readonly code: ClientErrorCode;
   /** With too_many_attempts (and busy): seconds until the next try (from the body, else the Retry-After header). */
   readonly retryAfter?: number;
+  /** With rev_conflict: the account's copy of the progress, as it came (ui/sync.ts checks it before use). */
+  readonly current?: unknown;
 
-  constructor(status: number, code: ClientErrorCode, message: string = code, retryAfter?: number) {
+  constructor(status: number, code: ClientErrorCode, message: string = code, retryAfter?: number, current?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.retryAfter = retryAfter;
+    this.current = current;
   }
 }
 
@@ -45,7 +48,7 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 const isCode = (v: unknown): v is ErrorCode => typeof v === 'string' && (ERROR_CODES as readonly string[]).includes(v);
 
@@ -94,7 +97,7 @@ async function failure(res: Response): Promise<ApiError> {
   const retryAfter = typeof data.retryAfter === 'number' ? data.retryAfter : Number.isFinite(header) && header > 0 ? header : undefined;
   // An error code this app does not know yet (a newer server): a server fault, or a request it did not take.
   const code: ClientErrorCode = isCode(data.error) ? data.error : res.status >= 500 ? 'internal' : 'bad_request';
-  return new ApiError(res.status, code, typeof data.message === 'string' ? data.message : code, retryAfter);
+  return new ApiError(res.status, code, typeof data.message === 'string' ? data.message : code, retryAfter, data.current);
 }
 
 /** The renewal that is running, if any: every request that needs one waits for the same. */
@@ -161,6 +164,7 @@ async function request<T>(method: Method, path: string, body: unknown, opts: Req
 export const api = {
   get: <T>(path: string, opts?: RequestOptions): Promise<T> => request<T>('GET', path, undefined, opts),
   post: <T>(path: string, body?: unknown, opts?: RequestOptions): Promise<T> => request<T>('POST', path, body, opts),
+  put: <T>(path: string, body: unknown, opts?: RequestOptions): Promise<T> => request<T>('PUT', path, body, opts),
   patch: <T>(path: string, body: unknown, opts?: RequestOptions): Promise<T> => request<T>('PATCH', path, body, opts),
   del: <T>(path: string, body?: unknown, opts?: RequestOptions): Promise<T> => request<T>('DELETE', path, body, opts),
 };

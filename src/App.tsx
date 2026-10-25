@@ -31,6 +31,7 @@ import { ScalesSetup } from './ui/screens/scales/ScalesSetup';
 import { SettingsScreen } from './ui/screens/Settings';
 import { Setup } from './ui/screens/Setup';
 import { StoreProvider, useStore } from './ui/store';
+import { useProgressSync } from './ui/sync';
 
 /** The notation test page: development builds only, so it is not shipped. */
 const RenderDemo = import.meta.env.DEV ? lazy(() => import('./render/RenderDemo').then((m) => ({ default: m.RenderDemo }))) : null;
@@ -63,6 +64,8 @@ function useTheme(theme: 'system' | 'light' | 'dark'): void {
 function Screens(): JSX.Element {
   const { state } = useStore();
   useTheme(state.prefs.theme);
+  // Progress on the account, while someone is signed in (BACKEND-PLAN.md §6).
+  useProgressSync();
   // t() reads module state: switch the catalog before the screens render, and remount them on a change so text kept
   // in state or memos is redone in the new language.
   const locale = resolveLocale(state.prefs.language);

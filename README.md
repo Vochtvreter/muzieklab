@@ -17,8 +17,9 @@ screens fit a phone browser. 0.11.0 makes the Path one learning path for notes a
 one at a time (sol, mi, fa, la, do, re, si), to read, write on the staff and hear. 0.12.0 adds accounts, by
 invitation only and optional (the app needs none): sign in from Settings → Account; change your name, email and
 password, sign out every device, and download or delete your data; admins invite people with a link they send
-themselves, and manage roles, blocking and premium. A privacy statement is in Settings → About. Accounts need the API
-(`server/`); a site without it shows no Account section. On phone, tablet and desktop, in light and dark. In English
+themselves, and manage roles, blocking and premium. A privacy statement is in Settings → About. 0.15.0 keeps your
+progress on your account: signed in, it is saved and merged across your devices, and nothing done before signing in is
+lost. Accounts need the API (`server/`); a site without it shows no Account section. On phone, tablet and desktop, in light and dark. In English
 and Dutch (Settings → Language); adding a language is one new catalog, see [DESIGN.md §11](docs/DESIGN.md).
 
 ## Run it
@@ -93,8 +94,8 @@ The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
-- [Accounts and permissions](docs/BACKEND-PLAN.md): the back-end design; phases 0 (the API, MongoDB, backups) and 1
-  (accounts) are built.
+- [Accounts and permissions](docs/BACKEND-PLAN.md): the back-end design; phases 0 (the API, MongoDB, backups), 1
+  (accounts) and 2 (progress on the account) are built.
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,

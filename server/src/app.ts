@@ -13,6 +13,7 @@ import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
 import { meRoutes } from './routes/me.js';
+import { progressRoutes } from './routes/progress.js';
 
 export interface AppOptions {
   db: Db;
@@ -106,6 +107,7 @@ export function buildApp({
   app.register(healthRoutes, { prefix: PREFIX, db, commit });
   app.register(authRoutes, { prefix: PREFIX, ctx });
   app.register(meRoutes, { prefix: PREFIX, ctx });
+  app.register(progressRoutes, { prefix: PREFIX, ctx });
   app.register(adminRoutes, { prefix: PREFIX, ctx });
   return app;
 }

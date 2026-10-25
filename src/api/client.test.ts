@@ -85,9 +85,9 @@ describe('api client', () => {
   });
 
   it('reads an error code it does not know as internal (5xx) or bad_request', async () => {
-    fetchMock.mockResolvedValueOnce(json(503, { error: 'rev_conflict', message: '' }));
+    fetchMock.mockResolvedValueOnce(json(503, { error: 'a_newer_code', message: '' }));
     expect((await failure(api.get('/x'))).code).toBe('internal');
-    fetchMock.mockResolvedValueOnce(json(409, { error: 'rev_conflict', message: '' }));
+    fetchMock.mockResolvedValueOnce(json(409, { error: 'a_newer_code', message: '' }));
     expect((await failure(api.get('/x'))).code).toBe('bad_request');
   });
 

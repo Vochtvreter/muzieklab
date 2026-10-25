@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { PERMISSIONS, type AccountDetail, type AccountSummary, type ApiErrorBody, type ErrorCode, type Me } from '../shared/api';
+import { PERMISSIONS, type AccountDetail, type AccountSummary, type ApiErrorBody, type ErrorCode, type Me, type SavedProgress, type SaveProgressRequest } from '../shared/api';
 import { PATH_UNITS } from '../src/game/tracks';
 
 /** Screen sizes the app must work at: the canvas boards plus small, landscape and laptop screens. */
@@ -256,17 +256,62 @@ export const ME_ADMIN: Me = {
   createdAt: '2026-10-01T09:00:00.000Z',
 };
 
-/** Nobody signed in: GET /me is a 401. */
+/** The account had no progress saved: GET /progress before the first save. */
+export const NO_PROGRESS: SavedProgress = { rev: 0, data: null, resetAt: null, updatedAt: null };
+
+/**
+ * The progress routes as the server answers them, without keeping anything between tests: the account has no copy
+ * (GET), and every save goes through with the next rev. For a test that needs the account to keep its copy, see
+ * progressServer.
+ */
+export const PROGRESS_ECHO: MockRoutes = {
+  'GET /progress': { json: NO_PROGRESS },
+  'PUT /progress': ({ body }) => {
+    const { rev, prefs, progress } = body as SaveProgressRequest;
+    return { json: { rev: rev + 1, data: { prefs, progress }, resetAt: null, updatedAt: '2026-10-25T10:00:00.000Z' } satisfies SavedProgress };
+  },
+  'DELETE /progress': { json: NO_PROGRESS },
+};
+
+/** An account that keeps its progress, for one test: a save from an older rev is refused with the copy (409). */
+export function progressServer(start: SavedProgress = NO_PROGRESS): { routes: MockRoutes; copy(): SavedProgress } {
+  let copy = start;
+  let n = 0;
+  const at = (): string => new Date(Date.UTC(2026, 9, 25, 10, 0, n++)).toISOString();
+  return {
+    copy: () => copy,
+    routes: {
+      'GET /progress': () => ({ json: copy }),
+      'PUT /progress': ({ body }) => {
+        const { rev, prefs, progress } = body as SaveProgressRequest;
+        if (rev !== copy.rev) return apiError('rev_conflict', 409, { current: copy });
+        copy = { rev: rev + 1, data: { prefs, progress }, resetAt: copy.resetAt, updatedAt: at() };
+        return { json: copy };
+      },
+      'DELETE /progress': () => {
+        if (copy.data) {
+          const now = at();
+          copy = { rev: copy.rev + 1, data: { ...copy.data, progress: {} }, resetAt: now, updatedAt: now };
+        }
+        return { json: copy };
+      },
+    },
+  };
+}
+
+/** Nobody signed in: GET /me is a 401. Once a test signs in, the progress is saved (PROGRESS_ECHO). */
 export const SIGNED_OUT: MockRoutes = {
   'GET /me': apiError('unauthenticated', 401),
   'POST /auth/sign-out': apiError('unauthenticated', 401),
+  ...PROGRESS_ECHO,
 };
 
-/** Signed in as `me`: GET /me answers with it, and signing out works. */
+/** Signed in as `me`: GET /me answers with it, signing out works, and the progress is saved (PROGRESS_ECHO). */
 export const signedInAs = (me: Me): MockRoutes => ({
   'GET /me': { json: me },
   'POST /auth/sign-out': { status: 204 },
   'POST /auth/sign-out-everywhere': { status: 204 },
+  ...PROGRESS_ECHO,
 });
 export const MEMBER: MockRoutes = signedInAs(ME_MEMBER);
 export const ADMIN: MockRoutes = signedInAs(ME_ADMIN);

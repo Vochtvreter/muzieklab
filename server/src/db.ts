@@ -75,6 +75,22 @@ export interface AuditDoc {
 }
 
 /**
+ * The progress and prefs saved on an account (BACKEND-PLAN.md §3.3, §6): one per account, under the account's _id.
+ * `prefs` and `progress` are the app's documents as it sent them (routes/progress.ts checks their size and keys).
+ */
+export interface ProgressDoc {
+  _id: ObjectId;
+  schema: 1;
+  prefs: Record<string, unknown>;
+  progress: Record<string, unknown>;
+  /** Goes up by one on every save, so a device that saves from an older copy is told (409 rev_conflict). */
+  rev: number;
+  /** The last DELETE /progress, or null. */
+  resetAt: Date | null;
+  updatedAt: Date;
+}
+
+/**
  * One small document that every transaction which could remove an admin writes first. MongoDB transactions are
  * snapshots, so two of them that each demote a different admin would both still see the other admin and both commit
  * (write skew). Writing the same document makes the second one conflict and retry, and the retry sees the first one.
@@ -90,6 +106,7 @@ export interface Collections {
   tokens: Collection<TokenDoc>;
   audit: Collection<AuditDoc>;
   locks: Collection<LockDoc>;
+  progress: Collection<ProgressDoc>;
 }
 
 export function collections(db: Db): Collections {
@@ -99,6 +116,7 @@ export function collections(db: Db): Collections {
     tokens: db.collection<TokenDoc>('tokens'),
     audit: db.collection<AuditDoc>('audit'),
     locks: db.collection<LockDoc>('locks'),
+    progress: db.collection<ProgressDoc>('progress'),
   };
 }
 

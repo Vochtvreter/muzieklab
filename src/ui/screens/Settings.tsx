@@ -20,6 +20,7 @@ import { RELEASES } from '../lib/changelog';
 import { signedMs } from '../lib/format';
 import { Link } from '../router';
 import { useStore } from '../store';
+import { progressSync } from '../sync';
 import { AccountSection } from './account/AccountSection';
 import pkg from '../../../package.json';
 
@@ -156,13 +157,15 @@ export function SettingsScreen(): JSX.Element {
           <div className="reset-confirm m-in" role="alertdialog" aria-labelledby="reset-q" aria-describedby="reset-d">
             <p className="reset-text">
               <b id="reset-q">{t('settings.resetQuestion')}</b>
-              <span id="reset-d">{t('settings.resetDetail')}</span>
+              <span id="reset-d">{t(state.account.me ? 'settings.resetDetailAccount' : 'settings.resetDetail')}</span>
             </p>
             <button type="button" className="small-btn" autoFocus onClick={() => setConfirm(false)}>
               {t('common.cancel')}
             </button>
             <button type="button" className="small-btn small-btn--danger" onClick={() => {
               dispatch({ type: 'resetProgress' });
+              // Signed in, the account's progress is reset too, so another device does not bring it back.
+              if (state.account.me) progressSync()?.reset();
               setConfirm(false);
               setWiped(true);
               // The button that was pressed is gone: the line under it is read out (ui/lib/announce.ts).
