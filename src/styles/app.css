@@ -58,7 +58,7 @@
 .nav--tabs {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   background: var(--paper);
   border-top: 1px solid var(--line);
   padding: 6px 6px calc(8px + env(safe-area-inset-bottom, 0px));

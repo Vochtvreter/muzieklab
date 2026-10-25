@@ -3,7 +3,8 @@ import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings } from '../game/notesPath';
 import { lessonSettings } from '../game/path';
 import { PATH_UNITS } from '../game/tracks';
-import { defaultProgress, DEFAULT_PREFS, type Prefs, type Progress } from '../game/storage';
+import { defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type DayStats, type Prefs, type Progress } from '../game/storage';
+import { CHAPTERS } from './learn/chapters';
 import type { Me } from '../../shared/api';
 import { makeLessonRun, makeNoteRun, makeRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
 
@@ -173,7 +174,7 @@ describe('reducer: Read notes', () => {
   it('saves the setup with the progress, and Learn sections once', () => {
     const s = reducer(state(), { type: 'noteSettings', settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G'] } });
     expect(s.progress.notes.settings?.keys).toEqual(['G']);
-    const r = reducer(reducer(s, { type: 'learnRead', ids: ['8.2', '8.1'] }), { type: 'learnRead', ids: ['8.1'] });
+    const r = reducer(reducer(s, { type: 'learnRead', ids: ['8.2', '8.1'], today: '2026-10-22' }), { type: 'learnRead', ids: ['8.1'], today: '2026-10-22' });
     expect(r.progress.learnRead).toEqual(['8.1', '8.2']);
   });
 });
@@ -190,7 +191,7 @@ describe('reducer: scales', () => {
       { scale: b, mistakes: 1 },
       { scale: { ...b, again: true }, mistakes: 0 },
     ];
-    const next = reducer({ ...s, progress: { ...s.progress, scales: { settings: null, stars: { 'G-major': 3 } } } }, { type: 'scaleFinish', played, today: '2026-10-21' });
+    const next = reducer({ ...s, progress: { ...s.progress, scales: { settings: null, stars: { 'G-major': 3 } } } }, { type: 'scaleFinish', played, today: '2026-10-21', seconds: 40 });
     expect(next.scaleLast!.result.total).toBe(2);
     expect(next.scaleLast!.starsBefore).toEqual({ 'G-major': 3 });
     expect(next.progress.scales.stars[scaleId(a)]).toBe(3);
@@ -203,12 +204,12 @@ describe('reducer: scales', () => {
   it('scores a round once', () => {
     const s = started();
     const played = [{ scale: s.scaleRun!.scales[0], mistakes: 0 }];
-    const once = reducer(s, { type: 'scaleFinish', played, today: '2026-10-21' });
-    expect(reducer(once, { type: 'scaleFinish', played, today: '2026-10-21' })).toBe(once);
+    const once = reducer(s, { type: 'scaleFinish', played, today: '2026-10-21', seconds: 40 });
+    expect(reducer(once, { type: 'scaleFinish', played, today: '2026-10-21', seconds: 40 })).toBe(once);
   });
 
   it('a round with no scale finished keeps no streak and earns nothing', () => {
-    const next = reducer(started(), { type: 'scaleFinish', played: [], today: '2026-10-21' });
+    const next = reducer(started(), { type: 'scaleFinish', played: [], today: '2026-10-21', seconds: 5 });
     expect(next.progress.practiceDays).toEqual([]);
     expect(next.scaleLast!.reward.xp).toBe(0);
   });
@@ -362,5 +363,193 @@ describe('reducer: account', () => {
   it('resetting progress keeps the account', () => {
     const inState = reducer(state(), { type: 'signedIn', me: ME });
     expect(reducer(inState, { type: 'resetProgress' }).account).toBe(inState.account);
+  });
+});
+
+// --- The Progress tab: figures, achievements, skill levels and personal bests ---------------------------------------
+
+const TODAY = '2026-10-25';
+/** What the store keeps is what storage and the account read back (game/merge.ts: a saved copy stays saved). */
+const readsBack = (p: Progress): void => expect(sanitizeProgress(JSON.parse(JSON.stringify(p)))).toEqual(p);
+const finish = (patch: Partial<Extract<Action, { type: 'finish' }>> = {}): Action => ({ type: 'finish', result: result(['perfect', 'good']), taps: [], today: TODAY, ...patch });
+const withRun = (run: Partial<AppState['run'] & object>, progress: Progress = defaultProgress()): AppState => ({ ...state(), progress, run: { exercise, lessonId: null, daily: null, ...run } });
+const day = (patch: Partial<DayStats>): DayStats => ({ sec: 0, rounds: 0, acc: 0, off: 0, hits: 0, cells: {}, ...patch });
+
+describe('reducer: the Progress tab’s figures', () => {
+  it('a rhythm round adds its seconds, accuracy and cells to today, and rhythm reading as practised', () => {
+    const next = reducer(state(), finish());
+    const d = next.progress.stats.days[TODAY];
+    expect(d).toMatchObject({ rounds: 1, acc: 80 });
+    expect(d.sec).toBeGreaterThan(0);
+    expect(Object.keys(d.cells).length).toBeGreaterThan(0);
+    expect(next.progress.stats.seen).toEqual({ rhythm: TODAY });
+    readsBack(next.progress);
+  });
+
+  it('a run left to play out adds no figures', () => {
+    const next = reducer(state(), finish({ result: result(['miss', 'miss']) }));
+    expect(next.progress.stats).toEqual(defaultStats());
+  });
+
+  it('finishes a run once: a second finish of the same run changes nothing', () => {
+    const once = reducer(state(), finish());
+    expect(reducer(once, finish())).toBe(once);
+    // A new attempt (Retry, or Echo's Tap it back) is a new run.
+    expect(reducer({ ...once, run: { ...once.run! } }, finish()).progress.stats.days[TODAY].rounds).toBe(2);
+  });
+
+  it('an Echo round counts its listening as minutes, its material level, and rhythm by ear', () => {
+    const echo = generateExercise({ ...DEFAULT_SETTINGS, mode: 'echo', bars: 4 }, 3);
+    const s = withRun({ exercise: echo });
+    const once = reducer(s, finish({ result: result(['perfect', 'great', 'great', 'great'], 92, 3), echo: { plays: 1, replays: 0 } }));
+    const twice = reducer(withRun({ exercise: echo }), finish({ result: result(['perfect', 'great', 'great', 'great'], 92, 3), echo: { plays: 2, replays: 1 } }));
+    expect(twice.progress.stats.days[TODAY].sec).toBeGreaterThan(once.progress.stats.days[TODAY].sec);
+    expect(once.progress.stats.seen).toEqual({ ear: TODAY });
+    expect(Object.values(once.progress.stats.echo)).toEqual([[1, 3]]);
+    // Heard once at ★★★: No replays needed.
+    expect(once.last?.reward.achievements).toEqual(['noReplays']);
+    expect(twice.last?.reward.achievements).toEqual([]);
+    readsBack(once.progress);
+  });
+
+  it('a Read notes round adds the clefs, the answer times, the key and the seconds', () => {
+    const run = makeNoteRun({ ...DEFAULT_NOTE_SETTINGS, count: 10, keys: ['G'] }, 5, {});
+    const answers = run.notes.map((_, i) => ({ outcome: i < 9 ? ('right' as const) : ('wrong' as const), ms: 1500, given: { kind: 'piano' as const, pc: 0 } }));
+    const next = reducer(reducer(state(), { type: 'noteStart', run }), { type: 'noteFinish', answers, today: TODAY });
+    const s = next.progress.stats;
+    expect(s.clefs).toEqual({ treble: [9, 10] });
+    expect(s.lastKey).toEqual({ key: 'G', clef: 'treble' });
+    expect(s.days[TODAY].sec).toBe(15);
+    expect(s.seen).toEqual({ treble: TODAY });
+    // Whole staff in G major at 90%: treble levels 1, 2, 3 and 6 have a round.
+    expect(Object.keys(s.reading).sort()).toEqual(['treble:1', 'treble:2', 'treble:3', 'treble:6']);
+    // Levels 1–3 are passed; level 4 (middle C) needs a round with a ledger line.
+    expect(next.progress.skills).toEqual({ 'treble:1': TODAY, 'treble:2': TODAY, 'treble:3': TODAY });
+    readsBack(next.progress);
+  });
+
+  it('a Scales round adds its seconds (at most 90 a scale) and scales as practised', () => {
+    const run = makeScaleRun({ ...DEFAULT_SCALE_SETTINGS, keys: ['C'] }, 5);
+    const s = reducer(state(), { type: 'scaleStart', run });
+    const played = [{ scale: run.scales[0], mistakes: 0 }];
+    const next = reducer(s, { type: 'scaleFinish', played, today: TODAY, seconds: 250 });
+    expect(next.progress.stats.days[TODAY].sec).toBe(90);
+    expect(next.progress.stats.seen).toEqual({ scales: TODAY });
+    // C major at three stars: scales level 1.
+    expect(next.progress.skills).toEqual({ 'scales:1': TODAY });
+    readsBack(next.progress);
+    expect(reducer(s, { type: 'scaleFinish', played: [], today: TODAY, seconds: 30 }).progress.stats.days).toEqual({});
+  });
+
+  it('marking a Learn section read is theory practised, and passes theory levels', () => {
+    let s = state();
+    for (const id of ['1.1', '1.2']) s = reducer(s, { type: 'learnRead', ids: [id], today: TODAY });
+    expect(s.progress.stats.seen).toEqual({ theory: TODAY });
+    expect(s.progress.skills).toEqual({});
+    s = reducer(s, { type: 'learnRead', ids: ['1.3'], today: TODAY });
+    expect(s.progress.skills).toEqual({ 'theory:1': TODAY });
+    // A section read again the same day changes nothing; on a later day it clears a review.
+    expect(reducer(s, { type: 'learnRead', ids: ['1.1'], today: TODAY })).toBe(s);
+    const later = reducer(s, { type: 'learnRead', ids: ['1.1'], today: '2026-11-20' });
+    expect(later.progress.learnRead).toBe(s.progress.learnRead);
+    expect(later.progress.stats.seen.theory).toBe('2026-11-20');
+    readsBack(later.progress);
+  });
+});
+
+describe('reducer: achievements, skill levels and personal bests', () => {
+  it('a round earns its achievements and lists them on the reward', () => {
+    const fast = generateExercise({ ...DEFAULT_SETTINGS, tempo: 160, bars: 1 }, 1);
+    const next = reducer(withRun({ exercise: fast }), finish({ result: result(['good', 'good'], 80, 2) }));
+    expect(next.last?.reward.achievements).toEqual(['tempo160']);
+    expect(next.progress.achievements).toEqual({ tempo160: TODAY });
+    // Earned once.
+    expect(reducer({ ...next, run: { ...next.run! } }, finish({ result: result(['good', 'good'], 80, 2) })).last?.reward.achievements).toEqual([]);
+  });
+
+  it('the 7th practice day in a row earns the 7-day streak', () => {
+    const six = { ...defaultProgress(), practiceDays: Array.from({ length: 6 }, (_, i) => shiftDay(TODAY, i - 6)) };
+    const next = reducer(withRun({}, six), finish());
+    expect(next.last?.reward.achievements).toEqual(['streak7']);
+    expect(next.progress.achievements.streak7).toBe(TODAY);
+    // A day missed in between: no streak yet.
+    expect(reducer(withRun({}, six), finish({ today: shiftDay(TODAY, 1) })).last?.reward.achievements).toEqual([]);
+  });
+
+  it('passes a skill level when a round meets its last check', () => {
+    // Rhythm unit 1: lessons 1.1–1.4 at ★★ and the half notes at 85% already; the unit review at ★★★ passes level 1.
+    const lessons = Object.fromEntries(['1.1', '1.2', '1.3', '1.4'].map((id) => [id, { stars: 2 as const, bestAccuracy: 85 }]));
+    const progress = { ...defaultProgress(), lessons, stats: { ...defaultStats(), days: { [TODAY]: day({ rounds: 1, acc: 90, cells: { half: [1100, 1200] } }) } } };
+    const next = reducer(withRun({ lessonId: '1.5' }, progress), finish({ result: result(['perfect', 'perfect'], 93, 3) }));
+    expect(next.progress.skills).toEqual({ 'rhythm:1': TODAY });
+    readsBack(next.progress);
+  });
+
+  it('reports a new personal best on a lesson played before, by its Learning path number, and the daily’s', () => {
+    const played = { ...defaultProgress(), lessons: { '1.1': { stars: 2 as const, bestAccuracy: 78 } } };
+    expect(reducer(withRun({ lessonId: '1.1' }, played), finish({ result: result(['perfect'], 84.4, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 84 });
+    expect(reducer(withRun({ lessonId: '1.1' }, played), finish({ result: result(['perfect'], 70, 1) })).last?.reward.best).toBeNull();
+    // Beaten as shown, in whole %: 87.45% after 87.4% is still 87%, no new best; 87.5% shows 88%.
+    const close = { ...defaultProgress(), lessons: { '1.1': { stars: 2 as const, bestAccuracy: 87.4 } } };
+    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 87.45, 2) })).last?.reward.best).toBeNull();
+    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 87.5, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 88 });
+    // The first play of a lesson is no personal best.
+    expect(reducer(withRun({ lessonId: '1.1' }), finish({ result: result(['perfect'], 90, 3) })).last?.reward.best).toBeNull();
+    const daily = reducer(withRun({ daily: TODAY }), finish({ result: result(['perfect'], 88, 2) })).last?.reward;
+    expect(daily).toMatchObject({ dailyBest: true, best: { kind: 'daily', accuracy: 88 } });
+    expect(reducer(state(), finish()).last?.reward).toMatchObject({ achievements: [], best: null });
+  });
+
+  it('a note lesson played before reports its personal best too', () => {
+    const settings = noteLessonSettings('notes', '1.1')!;
+    const run = makeNoteRun(settings, 7, {}, [], { track: 'notes', id: '1.1' });
+    const right = run.notes.map(() => ({ outcome: 'right' as const, ms: 900, given: { kind: 'piano' as const, pc: 0 } }));
+    const before = { ...defaultProgress(), lessons: { 'notes:1.1': { stars: 1 as const, bestAccuracy: 70 } } };
+    const next = reducer(reducer({ ...state(), progress: before }, { type: 'noteStart', run }), { type: 'noteFinish', answers: right, today: TODAY });
+    expect(next.noteLast?.reward.best).toMatchObject({ kind: 'lesson', accuracy: 100 });
+    expect(next.noteLast?.reward.best).not.toMatchObject({ lesson: 'notes:1.1' });
+  });
+
+  it('on start, gives progress from before the achievements and levels it meets (once: nothing new, nothing changes)', () => {
+    const days = Array.from({ length: 9 }, (_, i) => shiftDay('2026-09-01', i));
+    const learnRead = CHAPTERS[0].sections.map((s) => s.id);
+    const before = { ...state(), progress: { ...defaultProgress(), practiceDays: days, learnRead, scales: { settings: null, stars: { 'C-major': 2 } } } };
+    const next = reducer(before, { type: 'evaluate', today: TODAY });
+    expect(next.progress.achievements).toEqual({ streak7: '2026-09-07' });
+    expect(next.progress.skills).toEqual({ 'theory:1': TODAY, 'scales:1': TODAY });
+    expect(reducer(next, { type: 'evaluate', today: '2026-10-26' })).toBe(next);
+    const empty = state();
+    expect(reducer(empty, { type: 'evaluate', today: TODAY })).toBe(empty);
+    readsBack(next.progress);
+  });
+});
+
+
+describe('reducer: what it saves reads back unchanged (the account sees a saved copy as saved)', () => {
+  it('after rhythm, Echo, Read notes, Scales and Learn, one after another, over several days', () => {
+    let s = state();
+    const check = (): void => readsBack(s.progress);
+    const echo = generateExercise({ ...DEFAULT_SETTINGS, mode: 'echo', notes: ['quarter', 'eighth', 'sixteenth'], bars: 4, tempo: 132 }, 9);
+    for (let i = 0; i < 3; i++) {
+      const today = shiftDay(TODAY, i);
+      s = reducer({ ...s, run: { exercise, lessonId: '1.1', daily: null } }, { type: 'finish', result: result(['perfect', 'great', 'good', 'miss'], 77.7, 2), taps: [], today });
+      check();
+      s = reducer({ ...s, run: { exercise: echo, lessonId: null, daily: today } }, { type: 'finish', result: result(['perfect', 'perfect', 'great'], 95.2, 4), taps: [], today, echo: { plays: 1, replays: 0 } });
+      check();
+      const notes = makeNoteRun({ ...DEFAULT_NOTE_SETTINGS, clefs: ['treble', 'bass'], range: 'ledger1', keys: ['D', 'Bb'], mixKeys: true, count: 20 }, 40 + i, s.progress.notes.weak);
+      s = reducer(s, { type: 'noteStart', run: notes });
+      s = reducer(s, { type: 'noteFinish', answers: notes.notes.map((_, j) => ({ outcome: j % 6 ? ('right' as const) : ('timeout' as const), ms: 700 + 333 * j, given: j % 6 ? { kind: 'piano' as const, pc: 0 } : null })), today });
+      check();
+      const scales = makeScaleRun({ ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys: ['C', 'G', 'F'], types: ['major', 'natural'] }, 3 + i);
+      s = reducer(s, { type: 'scaleStart', run: scales });
+      s = reducer(s, { type: 'scaleFinish', played: scales.scales.map((scale, j) => ({ scale, mistakes: j % 3 })), today, seconds: 123.4 });
+      check();
+      s = reducer(s, { type: 'learnRead', ids: [`${i + 1}.1`], today });
+      check();
+      s = reducer(s, { type: 'evaluate', today });
+      check();
+    }
+    expect(Object.keys(s.progress.stats.days)).toHaveLength(3);
+    expect(Object.keys(s.progress.stats.seen).sort()).toEqual(['bass', 'ear', 'rhythm', 'scales', 'theory', 'treble']);
   });
 });

@@ -72,6 +72,16 @@ export function judgeHold(note: TimedNote, up: number | null, leniency: Leniency
 
 export const judgeRelease = (note: TimedNote, up: number | null, leniency: Leniency): HoldJudgement => judgeHold(note, up, leniency).hold;
 
+/** What a wrong hold cost one note (0 when holding is off, the note was missed or the hold was right). */
+const holdCost = (r: NoteResult, note: TimedNote, leniency: Leniency): number =>
+  r.hold && r.tap ? judgeHold(note, r.tap.up, leniency).points : 0;
+
+/**
+ * The points one judged note earned towards the accuracy (of POINTS.perfect possible): its press, less what a wrong
+ * hold cost. Extra taps cost the run, not a note. The Progress tab's skill map adds these up per kind of note.
+ */
+export const notePoints = (r: NoteResult, note: TimedNote, leniency: Leniency): number => POINTS[r.judgement] + holdCost(r, note, leniency);
+
 export interface LivePress {
   index: number | null; // matched note, or null for an extra tap
   judgement: Judgement | 'extra';
@@ -183,8 +193,7 @@ class Session {
   finish(): JudgeResult {
     const notes = this.timeline.notes.map((_, i) => this.noteResult(i, true) as NoteResult);
     const extraTaps = this.tapNote.filter((n) => n === null).length;
-    const holdPoints = notes.map((r) => (r.hold && r.tap ? judgeHold(this.timeline.notes[r.index], r.tap.up, this.opts.leniency).points : 0));
-    return summarise(notes, extraTaps, holdPoints);
+    return summarise(notes, extraTaps, notes.map((r) => holdCost(r, this.timeline.notes[r.index], this.opts.leniency)));
   }
 }
 

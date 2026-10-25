@@ -1,0 +1,77 @@
+/**
+ * Practice weak spots (DESIGN.md §9 v1.5, the Progress tab's skill map): a practice-setup preset that switches on what
+ * the weak cells need, on top of the rhythm setup as it is. The screen puts it on the setup (dispatch 'settings') and
+ * opens /setup, where Start plays it. Pure.
+ */
+import { METER_IDS, NOTE_VALUES, type MeterId, type NoteValue, type Settings } from '../core/types';
+import type { CellId } from './storage';
+
+/** Under this rolling accuracy (%) a cell is a weak spot. */
+export const WEAK_BELOW = 80;
+
+/** What the preset reads of a skill-map cell (progressView's CellView has it). */
+export interface WeakSpotCell {
+  id: CellId;
+  /** Rolling accuracy as a whole %, or null without enough notes. */
+  accuracy: number | null;
+  locked: boolean;
+}
+
+/**
+ * The cells to practise: those under WEAK_BELOW, or with none, the two weakest unlocked cells (ties: the map's order).
+ * Only cells with enough notes count; none: the button is hidden.
+ */
+export function weakCells(cells: readonly WeakSpotCell[]): CellId[] {
+  const rated = cells.filter((c): c is WeakSpotCell & { accuracy: number } => c.accuracy !== null);
+  const weak = rated.filter((c) => c.accuracy < WEAK_BELOW);
+  if (weak.length > 0) return weak.map((c) => c.id);
+  return rated
+    .filter((c) => !c.locked)
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => a.c.accuracy - b.c.accuracy || a.i - b.i)
+    .slice(0, 2)
+    .map(({ c }) => c.id);
+}
+
+const VALUE_OF: Partial<Record<CellId, NoteValue>> = { quarter: 'quarter', half: 'half', eighths: 'eighth', sixteenths: 'sixteenth' };
+
+/**
+ * The rhythm setup with what the weak cells need switched on: their note values; rests (quarter, and eighth when
+ * eighths are on) with many rests; ties; dotted notes with a half (and three-four) for the dotted half, with a quarter
+ * and an eighth for the dotted quarter + eighth. Arrays stay in their canonical order (as sanitizeSettings keeps them).
+ * Null when no cell has enough notes yet.
+ */
+export function weakSpotsSettings(settings: Settings, cells: readonly WeakSpotCell[]): Settings | null {
+  const ids = weakCells(cells);
+  if (ids.length === 0) return null;
+  const notes = new Set<NoteValue>(settings.notes);
+  const rests = new Set<NoteValue>(settings.rests);
+  const meters = new Set<MeterId>(settings.meters);
+  const next: Settings = { ...settings };
+  for (const id of ids) {
+    const value = VALUE_OF[id];
+    if (value) notes.add(value);
+    if (id === 'ties') next.ties = true;
+    if (id === 'dottedHalf') {
+      next.dotted = true;
+      notes.add('half');
+      meters.add('3/4');
+    }
+    if (id === 'dottedQE') {
+      next.dotted = true;
+      notes.add('quarter');
+      notes.add('eighth');
+    }
+  }
+  if (ids.includes('rests')) {
+    rests.add('quarter');
+    if (notes.has('eighth')) rests.add('eighth');
+    next.restAmount = 'many';
+  }
+  return {
+    ...next,
+    notes: NOTE_VALUES.filter((v) => notes.has(v)),
+    rests: NOTE_VALUES.filter((v) => rests.has(v)),
+    meters: METER_IDS.filter((m) => meters.has(m)),
+  };
+}

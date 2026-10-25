@@ -11,7 +11,8 @@
     "home": "Start",
     "path": "Leerpad",
     "settings": "Instellingen",
-    "learn": "Leren"
+    "learn": "Leren",
+    "progress": "Voortgang"
   },
   "common": {
     "back": "Terug",
@@ -2398,6 +2399,170 @@
         "right": "Goed. 1 ½ 1 1 ½ 1 1: de noten van de parallelle majeur, vanaf zijn 6e noot.",
         "wrong": "Niet helemaal. Natuurlijk mineur is 1 ½ 1 1 ½ 1 1: de noten van de parallelle majeur, vanaf zijn 6e noot."
       }
+    }
+  },
+  "skills": {
+    "title": "Vaardigheden",
+    "name": {
+      "rhythm": "Ritme lezen",
+      "ear": "Ritme op gehoor",
+      "treble": "Vioolsleutel",
+      "bass": "Bassleutel",
+      "scales": "Toonladders",
+      "theory": "Theorie"
+    },
+    "nameLower": {
+      "rhythm": "ritme lezen",
+      "ear": "ritme op gehoor",
+      "treble": "de vioolsleutel",
+      "bass": "de bassleutel",
+      "scales": "toonladders",
+      "theory": "theorie"
+    },
+    "level": {
+      "rhythm": {
+        "9": "Syncopen",
+        "10": "Zesachtstemaat"
+      },
+      "treble": {
+        "1": "Lijnen: E G B D F",
+        "2": "Tussenruimtes: F A C E",
+        "4": "Centrale C tot G"
+      },
+      "bass": {
+        "1": "Lijnen: G B D F A",
+        "2": "Tussenruimtes: A C E G",
+        "4": "Centrale C omlaag tot F"
+      },
+      "notes": {
+        "3": "De hele balk",
+        "5": "Eén hulplijn",
+        "6": "Toonsoorten met 1♯ of 1♭",
+        "7": "Tot 3♯ of 3♭",
+        "8": "Twee hulplijnen",
+        "9": "Tot 5♯ of 5♭",
+        "10": "Elke toonsoort, onder 1,5 s"
+      },
+      "scales": {
+        "1": "C majeur",
+        "2": "G en F majeur",
+        "3": "D en B♭ majeur",
+        "4": "A en E♭ majeur",
+        "5": "E en A♭ majeur",
+        "6": "Alle 15 majeurtoonladders",
+        "7": "Natuurlijk mineur, tot 2♯ of 2♭",
+        "8": "Harmonisch mineur",
+        "9": "Melodisch mineur",
+        "10": "Elke toonladder op ★★★"
+      },
+      "theory": {
+        "10": "Toonsoorten en toonladders"
+      }
+    },
+    "material": {
+      "1": "kwartnoten en halve noten",
+      "2": "rusten",
+      "3": "driekwartsmaat of hele noten",
+      "4": "achtste noten",
+      "5": "tweekwartsmaat of achtste rusten",
+      "6": "overbindingen",
+      "7": "gepunteerde noten",
+      "8": "zestienden"
+    },
+    "what": {
+      "treble": {
+        "1": "op de lijnen E G B D F",
+        "2": "in de tussenruimtes F A C E",
+        "4": "van centrale C tot G"
+      },
+      "bass": {
+        "1": "op de lijnen G B D F A",
+        "2": "in de tussenruimtes A C E G",
+        "4": "van centrale C omlaag tot F"
+      },
+      "notes": {
+        "3": "over de hele balk",
+        "5": "met één hulplijn",
+        "6": "in een toonsoort met 1 kruis of mol",
+        "7": "in een toonsoort met 2 of 3 kruisen of mollen",
+        "8": "met twee hulplijnen",
+        "9": "in een toonsoort met 4 of 5 kruisen of mollen",
+        "10": "in een toonsoort met 6 of 7 kruisen of mollen"
+      }
+    },
+    "cell": {
+      "quarter": "Kwartnoot",
+      "half": "Halve noot",
+      "eighths": "Achtsten",
+      "rests": "Rusten",
+      "ties": "Overbindingen",
+      "dottedHalf": "Gepunteerde halve",
+      "dottedQE": "Gepunteerde kwart + achtste",
+      "sixteenths": "Zestienden"
+    },
+    "check": {
+      "lessons": "Lessen {first}–{last} op ★★ of meer",
+      "cell": "{cell} op {pct}%",
+      "review": "Herhaling {id} op ★★★",
+      "echoRounds": "{count, plural, one {# Echo-ronde} other {# Echo-rondes}} met {material} op ★★",
+      "echoBars": "Echo van {bars} maten met {material} op ★★★",
+      "read": "{pct}% in een ronde {what}",
+      "speed": "Gemiddeld antwoord onder {seconds, number, ::.0} s",
+      "major": "{tonic} majeur op ★★",
+      "scaleCount": "{count} toonladders {type} op ★★",
+      "allScales": "Alle {count} toonladders op ★★★",
+      "section": "Lees {id} {title}"
+    },
+    "now": {
+      "percent": "nu {value}%",
+      "count": "nu {done} van {total}",
+      "seconds": "nu {value, number, ::.0} s",
+      "stars": "nu {count, plural, =0 {geen sterren} one {# ster} other {# sterren}}"
+    },
+    "later": "Dit niveau komt later, met de lessen ervoor.",
+    "chip": {
+      "review": "Herhalen",
+      "gain": "+{count} deze maand"
+    },
+    "cta": {
+      "rhythm": "Ga verder met blok {unit}",
+      "rhythmFree": "Vrij oefenen",
+      "ear": "Oefen Echo",
+      "treble": "Lees noten in de vioolsleutel",
+      "bass": "Lees noten in de bassleutel",
+      "scales": "Oefen toonladders",
+      "theory": "Ga verder met hoofdstuk {n}",
+      "theoryDone": "Open Leren"
+    },
+    "focus": {
+      "behind": "{skill} is je laagste vaardigheid: niveau {level}, {count, plural, one {# niveau} other {# niveaus}} achter op {other}.",
+      "equal": "Je vaardigheden staan allemaal op niveau {level}."
+    },
+    "review": {
+      "title": "Herhalen",
+      "text": "{count, plural, one {# dag} other {# dagen}} geleden voor het laatst geoefend. Je niveau blijft; één ronde haalt dit weg."
+    }
+  },
+  "achievements": {
+    "streak7": {
+      "name": "7 dagen op rij",
+      "text": "Oefen zeven dagen achter elkaar"
+    },
+    "perfectBar": {
+      "name": "Perfecte maat",
+      "text": "Een hele maat met elke noot Perfect"
+    },
+    "noReplays": {
+      "name": "Niet opnieuw nodig",
+      "text": "Tik een Echo na zonder hem nog eens te horen"
+    },
+    "firstSixteenths": {
+      "name": "Eerste zestienden",
+      "text": "Twee sterren op een ritme met zestienden"
+    },
+    "tempo160": {
+      "name": "Gespeeld op 160 BPM",
+      "text": "Twee sterren op 160 BPM of sneller"
     }
   },
   "changelog": {

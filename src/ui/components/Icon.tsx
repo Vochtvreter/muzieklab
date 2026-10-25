@@ -3,6 +3,8 @@ import type { CSSProperties } from 'react';
 
 const PATHS = {
   home: <path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" />,
+  /** The Progress tab (MVP canvas, Home with the Progress tab). */
+  progress: <path d="M5 20V11M12 20V4M19 20v-6" />,
   path: (
     <>
       <circle cx="6" cy="5" r="2" />

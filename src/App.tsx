@@ -1,5 +1,6 @@
 /** Routes and app-wide effects (theme, language). */
 import { lazy, Suspense, useEffect } from 'react';
+import type { SkillId } from './game/storage';
 import { resolveLocale, setLocale, t } from './i18n';
 import { Announcer } from './ui/components/Announcer';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
@@ -21,6 +22,9 @@ import { NotesKey } from './ui/screens/notes/NotesKey';
 import { NotesPlay } from './ui/screens/notes/NotesPlay';
 import { NotesSetup } from './ui/screens/notes/NotesSetup';
 import { PathScreen } from './ui/screens/Path';
+import { ProgressScreen } from './ui/screens/progress/Progress';
+import { SkillDetail } from './ui/screens/progress/SkillDetail';
+import { Skills } from './ui/screens/progress/Skills';
 import { Play } from './ui/screens/Play';
 import { Results } from './ui/screens/Results';
 import { ScalesDone } from './ui/screens/scales/ScalesDone';
@@ -89,6 +93,8 @@ function Route(): JSX.Element {
   if (reset) return <NewPassword key={reset} token={reset} />;
   const accountId = routeParam(route, '/admin/account/');
   if (accountId) return <AdminAccount key={accountId} id={accountId} />;
+  const skill = routeParam(route, '/progress/skills/');
+  if (skill) return <SkillDetail key={skill} skill={skill as SkillId} />;
   switch (route) {
     case '/path':
       return <PathScreen />;
@@ -124,6 +130,10 @@ function Route(): JSX.Element {
       return <ScalesDone />;
     case '/learn':
       return <LearnHub />;
+    case '/progress':
+      return <ProgressScreen />;
+    case '/progress/skills':
+      return <Skills />;
     case '/signin':
       return <SignIn />;
     case '/account':

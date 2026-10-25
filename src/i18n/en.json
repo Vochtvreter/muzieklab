@@ -11,7 +11,8 @@
     "home": "Home",
     "path": "Path",
     "settings": "Settings",
-    "learn": "Learn"
+    "learn": "Learn",
+    "progress": "Progress"
   },
   "common": {
     "back": "Back",
@@ -2398,6 +2399,170 @@
         "right": "Right. W H W W H W W: the notes of the relative major, starting on its 6th note.",
         "wrong": "Not quite. Natural minor is W H W W H W W: the notes of the relative major, starting on its 6th note."
       }
+    }
+  },
+  "skills": {
+    "title": "Skill levels",
+    "name": {
+      "rhythm": "Rhythm reading",
+      "ear": "Rhythm by ear",
+      "treble": "Treble clef",
+      "bass": "Bass clef",
+      "scales": "Scales",
+      "theory": "Theory"
+    },
+    "nameLower": {
+      "rhythm": "rhythm reading",
+      "ear": "rhythm by ear",
+      "treble": "treble clef",
+      "bass": "bass clef",
+      "scales": "scales",
+      "theory": "theory"
+    },
+    "level": {
+      "rhythm": {
+        "9": "Syncopation",
+        "10": "Six-eight"
+      },
+      "treble": {
+        "1": "Lines: E G B D F",
+        "2": "Spaces: F A C E",
+        "4": "Middle C up to G"
+      },
+      "bass": {
+        "1": "Lines: G B D F A",
+        "2": "Spaces: A C E G",
+        "4": "Middle C down to F"
+      },
+      "notes": {
+        "3": "The whole staff",
+        "5": "One ledger line",
+        "6": "Keys with 1♯ or 1♭",
+        "7": "Up to 3♯ or 3♭",
+        "8": "Two ledger lines",
+        "9": "Up to 5♯ or 5♭",
+        "10": "Every key, under 1.5 s"
+      },
+      "scales": {
+        "1": "C major",
+        "2": "G and F major",
+        "3": "D and B♭ major",
+        "4": "A and E♭ major",
+        "5": "E and A♭ major",
+        "6": "All 15 major scales",
+        "7": "Natural minor, up to 2♯ or 2♭",
+        "8": "Harmonic minor",
+        "9": "Melodic minor",
+        "10": "Every scale at ★★★"
+      },
+      "theory": {
+        "10": "Keys and scales"
+      }
+    },
+    "material": {
+      "1": "quarter and half notes",
+      "2": "rests",
+      "3": "three-four or whole notes",
+      "4": "eighth notes",
+      "5": "two-four or eighth rests",
+      "6": "ties",
+      "7": "dotted notes",
+      "8": "sixteenths"
+    },
+    "what": {
+      "treble": {
+        "1": "on the lines E G B D F",
+        "2": "in the spaces F A C E",
+        "4": "from middle C up to G"
+      },
+      "bass": {
+        "1": "on the lines G B D F A",
+        "2": "in the spaces A C E G",
+        "4": "from middle C down to F"
+      },
+      "notes": {
+        "3": "over the whole staff",
+        "5": "with one ledger line",
+        "6": "in a key with 1 sharp or flat",
+        "7": "in a key with 2 or 3 sharps or flats",
+        "8": "with two ledger lines",
+        "9": "in a key with 4 or 5 sharps or flats",
+        "10": "in a key with 6 or 7 sharps or flats"
+      }
+    },
+    "cell": {
+      "quarter": "Quarter",
+      "half": "Half",
+      "eighths": "Eighths",
+      "rests": "Rests",
+      "ties": "Ties",
+      "dottedHalf": "Dotted half",
+      "dottedQE": "Dotted quarter + eighth",
+      "sixteenths": "Sixteenths"
+    },
+    "check": {
+      "lessons": "Lessons {first}–{last} at ★★ or more",
+      "cell": "{cell} at {pct}%",
+      "review": "Unit review {id} at ★★★",
+      "echoRounds": "{count, plural, one {# Echo round} other {# Echo rounds}} with {material} at ★★",
+      "echoBars": "Echo {bars} bars with {material} at ★★★",
+      "read": "A round {what} at {pct}%",
+      "speed": "Average answer under {seconds, number, ::.0} s",
+      "major": "{tonic} major at ★★",
+      "scaleCount": "{count} {type} scales at ★★",
+      "allScales": "All {count} scales at ★★★",
+      "section": "Read {id} {title}"
+    },
+    "now": {
+      "percent": "now {value}%",
+      "count": "now {done} of {total}",
+      "seconds": "now {value, number, ::.0} s",
+      "stars": "now {count, plural, =0 {no stars} one {# star} other {# stars}}"
+    },
+    "later": "This level comes later, with its lessons.",
+    "chip": {
+      "review": "Review due",
+      "gain": "+{count} this month"
+    },
+    "cta": {
+      "rhythm": "Continue unit {unit}",
+      "rhythmFree": "Free practice",
+      "ear": "Practice Echo",
+      "treble": "Read treble notes",
+      "bass": "Read bass notes",
+      "scales": "Practice scales",
+      "theory": "Continue chapter {n}",
+      "theoryDone": "Open Learn"
+    },
+    "focus": {
+      "behind": "{skill} is your lowest skill: level {level}, {count, plural, one {# level} other {# levels}} behind {other}.",
+      "equal": "Your skills are all at level {level}."
+    },
+    "review": {
+      "title": "Review due",
+      "text": "Last practised {count, plural, one {# day} other {# days}} ago. Your level stays; one round clears this."
+    }
+  },
+  "achievements": {
+    "streak7": {
+      "name": "7-day streak",
+      "text": "Practice on seven days in a row"
+    },
+    "perfectBar": {
+      "name": "Perfect bar",
+      "text": "A whole bar with every note Perfect"
+    },
+    "noReplays": {
+      "name": "No replays needed",
+      "text": "Tap back an Echo without hearing it again"
+    },
+    "firstSixteenths": {
+      "name": "First sixteenths",
+      "text": "Two stars on a rhythm with sixteenths"
+    },
+    "tempo160": {
+      "name": "Played at 160 BPM",
+      "text": "Two stars at 160 BPM or faster"
     }
   },
   "changelog": {
