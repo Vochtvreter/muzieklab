@@ -3,8 +3,8 @@ import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import {
-  ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll,
-  expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, QUARTERS, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoPageScroll,
+  expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, QUARTERS, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT,
   SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
 import { emptyProgress, PROGRESS_CLOCK, PROGRESS_PREFS, richProgress } from './progressFixture';
@@ -545,6 +545,37 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
       await done.click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible();
+    });
+
+    test('results: a level-up sheet with several rows never focuses a button out of sight', async ({ page }) => {
+      known(name, 'levelup-rows');
+      test.setTimeout(60_000);
+      // Level 8 with two achievements, Perfect bar and Played at 160 BPM: on a phone on its side the sheet scrolls, and
+      // Continue starts below what it shows. Focus is then on the sheet itself, and Tab goes on to the buttons.
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, tempo: 160 }, xp: 1745 } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await tapLate(page, 4, 375, 0);
+      const sheet = page.getByRole('dialog', { name: 'Level 8 · Groove' });
+      await expect(sheet).toBeVisible({ timeout: 10_000 });
+      await expect(sheet.getByText('Achievement unlocked')).toHaveCount(2);
+      const focusShown = (): Promise<string> =>
+        page.evaluate(() => {
+          const el = document.activeElement as HTMLElement | null;
+          if (!el?.closest('[role="dialog"]')) return 'focus is outside the sheet';
+          const r = el.getBoundingClientRect();
+          return r.top >= -1 && r.bottom <= window.innerHeight + 1 ? 'ok' : `"${(el.textContent ?? '').trim().slice(0, 24)}" is focused out of sight`;
+        });
+      const done = sheet.getByRole('button', { name: 'Continue' });
+      for (let i = 0; i < 3 && !(await done.evaluate((el) => el === document.activeElement)); i++) {
+        await expect.poll(focusShown, { timeout: 3000 }).toBe('ok');
+        await page.keyboard.press('Tab');
+      }
+      await expect(done).toBeFocused();
+      await expect.poll(focusShown, { timeout: 3000 }).toBe('ok');
+      await page.keyboard.press('Enter');
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible();
     });
@@ -1166,6 +1197,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
 
       // Notes: accuracy per clef, the slowest notes and the last key.
       await show('Notes');
@@ -1180,6 +1212,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       else await expect(streak).toHaveCount(0);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
 
       // Scales: the major scales round the circle and the minor keys started.
       await show('Scales');
@@ -1192,6 +1225,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (tabletLayout) await expectNoOverlap(page.getByRole('region', { name: 'Major scales' }), page.getByRole('region', { name: 'Minor scales' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
     });
 
     test('progress: a new player', async ({ page }) => {
@@ -1214,17 +1248,20 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('link', { name: /^Skill levels/ }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
       const views = page.getByRole('group', { name: 'Show progress for' });
       await views.getByRole('button', { name: 'Notes', exact: true }).click();
       await expect(page.getByText('No Read notes round yet.')).toHaveCount(3);
       await expectClickable(page.getByRole('link', { name: 'Read notes', exact: true }));
       await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
       await views.getByRole('button', { name: 'Scales', exact: true }).click();
       await expect(page.getByRole('img', { name: '0 of 15 major scales with two stars or more' })).toBeVisible();
       await expect(page.getByText('No minor scale started yet.')).toBeVisible();
       await expectClickable(page.getByRole('link', { name: 'Open the circle of fifths' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
     });
 
     test('progress: practice weak spots opens the setup', async ({ page }) => {
@@ -1281,6 +1318,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectTouchHeight(back);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
 
       // One skill: its level, the next level's checks with its button, 12 weeks and all ten levels.
       await page.getByRole('link', { name: /^Bass clef: level 3 of 10\./ }).click();
@@ -1303,11 +1341,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectTouchHeight(up);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
       await up.click();
       await expect(page.getByRole('heading', { level: 1, name: 'Skill levels' })).toBeVisible();
       await page.getByRole('link', { name: 'Back to Progress' }).click();
       await expect(page).toHaveURL(/#\/progress$/);
       await expect(page.getByRole('heading', { level: 1, name: 'Progress' })).toBeVisible();
+
+      // A skill with checks met: their "Done:" for screen readers stays in the page, which the document does not scroll.
+      await page.goto('./#/progress/skills/theory');
+      await expect(page.getByRole('region', { name: 'Next · level 5' }).locator('.skill-checks li.is-done').first()).toBeVisible();
+      await expectNoPageScroll(page);
     });
 
     test('scrolling: every page and the Path units scroll at the window\'s edge, not the column\'s', async ({ page }) => {

@@ -124,6 +124,17 @@ describe('treble and bass clef', () => {
     expect(checks(p, 'bass', 9).map((c) => c.done)).toEqual([true, true]);
     expect(passSkills(p, TODAY).added).toEqual(['treble:1']);
   });
+
+  it('never shows an average that misses the target as the target', () => {
+    const speed = (ms: number): Check => checks(progress({}, { reading: { 'treble:4': [95, ms] } }), 'treble', 4)[1];
+    // Just over 2.0 s: not met, so it reads 2.1 s, with the bar short of full.
+    for (const ms of [2001, 2049]) {
+      expect(speed(ms)).toMatchObject({ done: false, now: { key: 'skills.now.seconds', params: { value: 2.1 } } });
+      expect(Math.round(speed(ms).w * 100)).toBeLessThan(100);
+    }
+    expect(speed(2000)).toMatchObject({ done: true, w: 1 });
+    expect(speed(1951).now).toEqual({ key: 'skills.now.seconds', params: { value: 2 } });
+  });
 });
 
 describe('scales', () => {
@@ -205,8 +216,15 @@ describe('levels, review, gains and history', () => {
     expect(gainOf(p, 'rhythm', shiftDay(TODAY, 1))).toBe(2);
     // Level 2 on Saturday Sep 26: the week ending Sunday Sep 27 (5 weeks back) has it.
     expect(historyOf(p, 'rhythm', TODAY)).toEqual([1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4]);
-    // Midweek, this week’s bar is today’s level.
-    expect(historyOf(p, 'rhythm', '2026-10-21')).toEqual([1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3]);
+    // Midweek, this week’s bar is today’s level: one passed on a day after today counts as today, as in the level.
+    expect(historyOf(p, 'rhythm', '2026-10-21')).toEqual([1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4]);
+  });
+
+  it('counts a level passed on a day after today (another device a time zone ahead) as passed today', () => {
+    const p = progress({ skills: { 'scales:1': shiftDay(TODAY, 1) } });
+    expect(skillLevel(p, 'scales')).toBe(1);
+    expect(gainOf(p, 'scales', TODAY)).toBe(1);
+    expect(historyOf(p, 'scales', TODAY).slice(-2)).toEqual([0, 1]);
   });
 });
 
@@ -246,6 +264,8 @@ describe('buttons', () => {
 
   it('puts Echo mode or one clef on the setup, the rest as it was', () => {
     expect(echoPreset({ ...DEFAULT_SETTINGS, tempo: 70 })).toEqual({ ...DEFAULT_SETTINGS, tempo: 70, mode: 'echo' });
+    // A setup the player left without a time signature: one Start plays (weakSpots' playableSetup).
+    expect(echoPreset({ ...DEFAULT_SETTINGS, meters: [] })).toEqual({ ...DEFAULT_SETTINGS, mode: 'echo' });
     expect(notesPreset({ ...DEFAULT_NOTE_SETTINGS, clefs: ['treble', 'bass'], keys: ['G'] }, 'bass')).toEqual({ ...DEFAULT_NOTE_SETTINGS, clefs: ['bass'], keys: ['G'] });
   });
 });

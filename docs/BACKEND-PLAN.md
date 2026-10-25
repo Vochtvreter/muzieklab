@@ -572,7 +572,9 @@ Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
     then more rounds, then more hits, then the larger JSON (so any two records compare), never a sum, for the same
     reason as XP. Then the newest 42 dates, as `sanitizeProgress` keeps them. Against the base: a date one side dropped
     since the base (it fell out of its 42 days, or a clock set forward wrote it) stays dropped while the other side
-    still has the base's record of it.
+    still has the base's record of it. A side drops a date only for 42 others, a later one among them; a side with
+    fewer, or only earlier ones, never had it (a tab behind the one that played it, a copy an app from before 0.16.0
+    saved, without these fields), and the date stays.
   - `stats.clefs` and `stats.noteMs`: per key, the whole pair of the side with more answers (the second number); on a
     tie, the larger first number.
   - `stats.reading`: per key, the higher accuracy and the faster average answer of those that are not 0 (0 when both
@@ -581,7 +583,8 @@ Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
   - `stats.seen`: per skill, the side that changed it since the base; the later day when both did, and without a base.
     So a day a clock set forward wrote, once one device corrected it, stays corrected.
   - `stats.lastKey`: a choice, like a setup: the side that changed it since the base, this device when both did;
-    without a base this device's, or the account's when this device has none.
+    without a base this device's, or the account's when this device has none. Never back to none (only a copy from
+    before 0.16.0 has none after a round).
   - `achievements` and `skills`: every key from both sides, each with the earlier day.
 
   The never-lower property allows the two base-aware cases (a dropped day, a corrected day practised); a day kept is

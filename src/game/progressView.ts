@@ -292,7 +292,7 @@ export interface CellView {
   notes: number;
   band: CellBand | null;
   weak: boolean;
-  /** Not open yet on the Learning path, and no notes of it played: "Locked until unit {unlockUnit}". */
+  /** Not open yet on the Learning path, and no notes of it in the figures kept: "Locked until unit {unlockUnit}". */
   locked: boolean;
   /** The Learning path's unit number that opens it. */
   unlockUnit: number;
@@ -301,6 +301,8 @@ export interface CellView {
 /** The skill map's eight cells, in its order; also what weakSpotsSettings (game/weakSpots.ts) takes. */
 export function skillMap(p: Progress, today: string): CellView[] {
   const totals = cellTotals(p, today);
+  // Any day kept, not only the window: a cell played does not lock again when its notes leave the window ("—").
+  const played = new Set(Object.values(p.stats.days).flatMap((d) => Object.keys(d.cells)));
   return CELL_IDS.map((id) => {
     const accuracy = cellAccuracy(totals[id]);
     const notes = cellNotes(totals[id]);
@@ -313,7 +315,7 @@ export function skillMap(p: Progress, today: string): CellView[] {
       notes,
       band,
       weak: band === 'weak',
-      locked: notes === 0 && !pathLessonOpen(p, 'rhythm', `${unit}.1`),
+      locked: !played.has(id) && !pathLessonOpen(p, 'rhythm', `${unit}.1`),
       unlockUnit: pathUnitOf('rhythm', unit) ?? unit,
     };
   });

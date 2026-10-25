@@ -1060,14 +1060,17 @@ built (since 0.16.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
   day keeps one device's record, BACKEND-PLAN §6.2) and old figures drop out of the window as practice moves on.
 - **Bands and weak spots.** 90% and up, 80–89%, and under 80%: a **weak spot**. A cell is locked until the Learning path
   opens the first lesson of the rhythm unit that teaches it (Quarter and Half: unit 1, Rests: 2, Eighths: 4, Ties: 6,
-  the dotted cells: 7, Sixteenths: 8), unless it already has notes; it says so with the path's unit number
+  the dotted cells: 7, Sixteenths: 8), unless it already has notes in any day kept (not only the window, so a cell
+  played does not lock again when its notes leave the window: it shows *—*); it says so with the path's unit number
   (*Sixteenths: locked until unit 16*).
 - **Practice weak spots** is a practice-setup preset (as §9 v1.5 planned), not a generator mode. It takes the rhythm
   setup as it is and switches on what the weak cells need: their note value (quarter, half, eighth, sixteenth); for
   Rests, quarter rests (and eighth rests when eighths are on) with *many* rests; for Ties, ties; for Dotted half, dotted
   notes with halves and 3/4; for Dotted quarter + eighth, dotted notes with quarters and eighths. With no cell under 80%
   it uses the two weakest open cells. It puts the result on the rhythm setup (the player's own setup changes, as a
-  Learn practice link does) and opens it, where Start plays it. It is hidden while no cell has 12 notes.
+  Learn practice link does) and opens it, where Start plays it: a setup Start could not play (every time signature or
+  note value switched off, or none that fills a bar) first gets 4/4 when it has no time signature, then quarter notes
+  when it still needs them. It is hidden while no cell has 12 notes.
 - **Meters are not tracked separately.** A round has one meter, so a meter score would be the accuracy of whole rounds,
   not of the notes that are hard. The meters are taught by rhythm units (3/4 in unit 3, 2/4 in unit 5) that the
   Rhythm reading levels already check (§8.6), and every board's skill map draws cells only. A boost in the generator
@@ -1154,8 +1157,12 @@ skills of ten levels each, 60 in all: **Rhythm reading**, **Rhythm by ear**, **T
 **Passing a level.** A level is passed when all its checks are met, and it stays passed, with the day it was passed
 (`progress.skills`). A skill's level is the number of levels passed in order from level 1. Levels are checked after
 every finished exercise, after a Learn section is marked read, and once when the app starts, so progress from before
-0.16.0 counts at once. A level met only by putting two devices' progress together is passed on the next round (it is
-not checked after a sync).
+0.16.0 counts at once where a level reads only what was kept before: Scales (the scale stars) and Theory (the Learn
+sections read). The other levels also read figures recorded from 0.16.0 on (`game/stats.ts`), so they count rounds
+played since: Rhythm reading needs each unit's skill-map cell from rhythm rounds as well as its lessons (a player with
+every rhythm lesson from before starts at level 0 until those rounds), and Rhythm by ear and the clefs count Echo and
+Read notes rounds. A level met only by putting two devices' progress together is passed on the next round (it is not
+checked after a sync).
 
 **The ladders and their checks.**
 
@@ -1180,7 +1187,8 @@ not checked after a sync).
   round's material is the highest rhythm unit whose material it has (8 a sixteenth, 7 a dotted note, 6 a tie, 5 an
   eighth rest or 2/4, 4 an eighth, 3 3/4 or a whole note, 2 any rest, else 1). Checks: *3 Echo rounds with eighth notes
   at ★★* and *Echo 4 bars with eighth notes at ★★★* (a round of 4 bars or more), each counting rounds of that material
-  or later. Button: *Practice Echo*, which turns Echo on in the rhythm setup and opens it.
+  or later. Button: *Practice Echo*, which turns Echo on in the rhythm setup and opens it (made playable first, as
+  Practice weak spots does).
 - **Rhythm reading and Rhythm by ear levels 9 and 10** (Syncopation, Six-eight) have no lessons yet. They are listed,
   and once level 8 is passed the next-level card says *This level comes later, with its lessons.* with no checks
   (no board). When their units are added, the levels take their checks and the units' names (docs/ADDING-CONTENT.md).
@@ -1327,8 +1335,9 @@ Built in 0.16.0 (MVP canvas, Progress & rewards page; App design canvas, the Pro
 and Mobile · Results · level up):
 - **The Progress tab** (§8.5) with its three views on phone, tablet and desktop, from the App design canvas, which the
   MVP canvas's own notes say to follow. Its figures are recorded per day from 0.16.0 on (`game/stats.ts`), so the
-  charts start empty; the streak calendar, the scale stars, the 7-day streak and the levels that read lessons, scales
-  and Learn sections use what was kept before.
+  charts start empty; the streak calendar, the scale stars, the 7-day streak and the Scales and Theory levels use what
+  was kept before. Rhythm reading also needs each unit's skill-map cell, and Rhythm by ear and the clefs count rounds,
+  all from 0.16.0 on (§8.6).
 - **The skill map and Practice weak spots** (§8.4): cells only, a weak spot under 80%, the preset on the rhythm setup.
 - **Skill levels** (§8.6): the list and one skill per skill, and a Skill levels card on Progress.
 - **Achievements and personal bests** (§8.3): five achievements on Progress, on the level-up sheet and as a badge on

@@ -216,14 +216,18 @@ export function recordNotes(p: Progress, notes: RoundNote[], answers: NoteAnswer
   }
   const last = notes[given.length - 1];
   let next = withStats(p, { clefs, noteMs, reading, lastKey: { key: last.key, clef: last.clef } });
-  next = changeDay(next, today, (d) => ({ ...d, sec: d.sec + Math.round(ms.reduce((s, x) => s + x, 0) / 1000) }));
+  // At least a second, so a day with a short round shows a minute (minutesOf), as it counts as practised.
+  next = changeDay(next, today, (d) => ({ ...d, sec: d.sec + Math.max(1, Math.round(ms.reduce((s, x) => s + x, 0) / 1000)) }));
   for (const clef of CLEFS) if (perClef[clef]) next = markSeen(next, clef, today);
   return next;
 }
 
-/** A finished Scales round: its seconds (measured on its play screen, at most SCALE_CAP_S a scale) and the skill. */
+/**
+ * A finished Scales round: its seconds (measured on its play screen, at most SCALE_CAP_S a scale; at least 1, as for
+ * Read notes) and the skill.
+ */
 export function recordScales(p: Progress, seconds: number, today: string): Progress {
-  const sec = Math.round(Math.max(0, finite(seconds)));
+  const sec = Math.max(1, Math.round(finite(seconds)));
   return markSeen(changeDay(p, today, (d) => ({ ...d, sec: d.sec + sec })), 'scales', today);
 }
 

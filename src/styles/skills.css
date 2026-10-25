@@ -457,7 +457,9 @@
   margin: 0;
   padding: 0;
 }
+/* Positioned, so the .sr-only "Done:" sits inside the page's scroll box (progress.css, .prog-rank). */
 .skill-checks li {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 11px;

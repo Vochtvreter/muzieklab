@@ -1,7 +1,7 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { checkSettings } from '../core/feasibility';
 import { sanitizeSettings, CELL_IDS, type CellId } from './storage';
-import { weakCells, weakSpotsSettings, type WeakSpotCell } from './weakSpots';
+import { playableSetup, weakCells, weakSpotsSettings, type WeakSpotCell } from './weakSpots';
 
 /** The eight cells with these accuracies (null: not enough notes) and locks. */
 function cells(acc: Partial<Record<CellId, number | null>>, locked: CellId[] = []): WeakSpotCell[] {
@@ -48,5 +48,25 @@ describe('weakSpotsSettings', () => {
 
   it('is null without a cell with enough notes (the button is hidden)', () => {
     expect(weakSpotsSettings(base, cells({}))).toBeNull();
+  });
+
+  it('opens a setup Start plays, also from one the player left without a time signature or a note that fills one', () => {
+    expect(checkSettings({ ...base, meters: [] }).ok).toBe(false);
+    expect(weakSpotsSettings({ ...base, meters: [] }, cells({ ties: 78, dottedQE: 72 }))).toEqual({ ...base, ties: true, dotted: true, notes: ['half', 'quarter', 'eighth'] });
+    expect(weakSpotsSettings({ ...base, notes: [] }, cells({ rests: 70 }))).toEqual({ ...base, notes: ['quarter'], rests: ['quarter'], restAmount: 'many' });
+    const whole = { ...base, notes: ['whole' as const], meters: ['2/4' as const, '3/4' as const] };
+    expect(weakSpotsSettings(whole, cells({ ties: 70 }))).toEqual({ ...whole, notes: ['whole', 'quarter'], ties: true });
+    expect(playableSetup(base)).toBe(base);
+  });
+});
+
+describe('playableSetup', () => {
+  it('leaves a setup Start plays as it is, and gives one it cannot a time signature and quarter notes', () => {
+    for (const s of [{ ...DEFAULT_SETTINGS, meters: [] }, { ...DEFAULT_SETTINGS, notes: [] }, { ...DEFAULT_SETTINGS, notes: ['whole' as const], meters: ['3/4' as const] }]) {
+      expect(checkSettings(s).ok).toBe(false);
+      expect(checkSettings(playableSetup(s)).ok).toBe(true);
+    }
+    // Quarter notes only when the time signature alone does not do.
+    expect(playableSetup({ ...DEFAULT_SETTINGS, notes: ['eighth'], meters: [] })).toEqual({ ...DEFAULT_SETTINGS, notes: ['eighth'] });
   });
 });

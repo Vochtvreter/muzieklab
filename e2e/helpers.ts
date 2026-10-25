@@ -101,6 +101,18 @@ export async function expectNoSideScroll(page: Page): Promise<void> {
   expect(wide, 'no horizontal scroll').toBe(false);
 }
 
+/**
+ * The document itself does not scroll: the page scrolls in its own box and the shell (tab bar, header) stays on screen.
+ * Text for screen readers (.sr-only, absolutely placed) in a box that is not positioned would stretch the document.
+ */
+export async function expectNoPageScroll(page: Page): Promise<void> {
+  const over = await page.evaluate(() => {
+    const doc = document.scrollingElement ?? document.documentElement;
+    return doc.scrollHeight - doc.clientHeight;
+  });
+  expect(over, 'the document scrolls under the shell').toBeLessThanOrEqual(1);
+}
+
 /** Seeds localStorage before the app loads. */
 export async function seed(page: Page, data: { prefs?: object; progress?: object }): Promise<void> {
   await page.addInitScript((d) => {

@@ -22,6 +22,7 @@ import { CHAPTERS, sectionKey } from '../ui/learn/chapters';
 import { cellAccuracy, cellTotals } from './stats';
 import { pathLessonOf, pathUnitOf } from './tracks';
 import { daysBetween, mondayOf, shiftDay, SKILL_IDS, type CellId, type Progress, type SkillId } from './storage';
+import { playableSetup } from './weakSpots';
 
 /** A text for the screen: a message key and its params (string params that are message keys are translated too). */
 export interface Label {
@@ -174,11 +175,13 @@ function readingChecks(ctx: SkillContext, clef: Clef, n: number): Check[] {
   if (n >= 3) {
     const target = n === SKILL_LEVELS ? SPEED_TOP_MS : SPEED_MS;
     const ms = entry ? entry[1] : 0;
+    const done = ms > 0 && ms <= target;
+    // Rounded up, and the bar short of full, so an average that misses the target never reads as it (2.04 s: 2.1 s).
     checks.push({
       label: label('skills.check.speed', { seconds: target / 1000 }),
-      done: ms > 0 && ms <= target,
-      now: ms > 0 ? label('skills.now.seconds', { value: Math.round(ms / 100) / 10 }) : null,
-      w: ms > 0 ? ratio(target, ms) : 0,
+      done,
+      now: ms > 0 ? label('skills.now.seconds', { value: Math.ceil(ms / 100) / 10 }) : null,
+      w: ms > 0 ? Math.min(done ? 1 : 0.99, ratio(target, ms)) : 0,
     });
   }
   return checks;
@@ -278,13 +281,22 @@ export function reviewOf(p: Progress, skill: SkillId, today: string): { due: boo
   return { due: days !== null && days >= REVIEW_DAYS && skillLevel(p, skill) >= 1, days };
 }
 
+/**
+ * The day level n was passed, as this device counts it: a day after today (another device a time zone ahead, or a
+ * clock set wrong, wrote it) counts as today, as skillLevel counts the level already.
+ */
+const passedBy = (p: Progress, skill: SkillId, n: number, today: string): string | null => {
+  const day = passedOn(p, skill, n);
+  return day && day > today ? today : day;
+};
+
 /** Levels of a skill passed in the last GAIN_DAYS days (today included). */
 export function gainOf(p: Progress, skill: SkillId, today: string): number {
   const from = shiftDay(today, -GAIN_DAYS);
   let n = 0;
   for (let l = 1; l <= SKILL_LEVELS; l++) {
-    const day = passedOn(p, skill, l);
-    if (day && day > from && day <= today) n++;
+    const day = passedBy(p, skill, l, today);
+    if (day && day > from) n++;
   }
   return n;
 }
@@ -297,15 +309,15 @@ export function historyOf(p: Progress, skill: SkillId, today: string): number[] 
     const end = back === 0 ? today : shiftDay(monday, -7 * back + 6);
     let n = 0;
     for (let l = 1; l <= SKILL_LEVELS; l++) {
-      const day = passedOn(p, skill, l);
+      const day = passedBy(p, skill, l, today);
       if (day && day <= end) n++;
     }
     return n;
   });
 }
 
-/** The rhythm setup in Echo mode (Rhythm by ear's button), the rest as set up. */
-export const echoPreset = (s: Settings): Settings => ({ ...s, mode: 'echo' });
+/** The rhythm setup in Echo mode (Rhythm by ear's button), the rest as set up (playable: weakSpots' playableSetup). */
+export const echoPreset = (s: Settings): Settings => ({ ...playableSetup(s), mode: 'echo' });
 
 /** The Read notes setup with one clef (Treble clef's and Bass clef's button), the rest as set up. */
 export const notesPreset = (s: NoteSettings, clef: Clef): NoteSettings => ({ ...s, clefs: [clef] });

@@ -9,7 +9,8 @@
  * sides last agreed on: a side that changed it since wins, and this device wins when both did. Without a base (the
  * first sign-in on a device) the account's prefs win, and this device's setups unless it has none. Against the base
  * too: a day of figures one side dropped stays dropped, and a day practised one side corrected stays corrected (a date
- * a clock set forward wrote, game/stats.ts).
+ * a clock set forward wrote, game/stats.ts). A side that cannot have dropped a day (a tab behind the one that recorded
+ * it, a copy an app from before 0.16.0 saved) never had it, and the day stays.
  *
  * The rules are pure and tested as properties (merge.test.ts): order-independent for every result, never lower than
  * either side, and merging a copy with itself gives it back.
@@ -17,7 +18,7 @@
 import type { SyncedData } from '../../shared/api';
 import { DIAMOND } from '../core/types';
 import type { DayStats, LessonProgress, Prefs, Progress, DailyProgress, Stats } from './storage';
-import { newestDays, sanitizePrefs, sanitizeProgress } from './storage';
+import { HISTORY_DAYS, newestDays, sanitizePrefs, sanitizeProgress } from './storage';
 
 /**
  * The prefs that follow the account (§6.1). Calibration, volumes, the sounds switched on and the How to play and intro
@@ -185,6 +186,17 @@ function fuller(x: DayStats, y: DayStats): DayStats {
 }
 
 /**
+ * Whether a copy without day `d` can have dropped it: the recorders drop a date only for HISTORY_DAYS others, a later
+ * one among them (game/stats.ts). A copy with fewer, or only earlier ones, never had it: a tab behind the one that
+ * recorded it (ui/sync.ts brings that tab's results in against the base), or a copy an app from before 0.16.0 saved,
+ * which has no figures.
+ */
+function couldDrop(days: Record<string, DayStats>, d: string): boolean {
+  const dates = Object.keys(days);
+  return dates.length >= HISTORY_DAYS && dates.some((k) => k > d);
+}
+
+/**
  * Per day, the whole record of the side that has more of it (a day played on two devices keeps one device's figures,
  * as XP keeps the higher total); then the newest HISTORY_DAYS days, as sanitizeProgress keeps them. A day one side
  * dropped since the base (gone from its window, or written by a clock set forward: game/stats.ts) stays dropped
@@ -196,7 +208,7 @@ function mergeDays(a: Record<string, DayStats>, b: Record<string, DayStats>, bas
     const x = a[d];
     const y = b[d];
     const was = base?.[d];
-    if ((!x || !y) && was && sameValue(x ?? y, was)) continue;
+    if ((!x || !y) && was && sameValue(x ?? y, was) && couldDrop(x ? b : a, d)) continue;
     const win = !x || !y ? (x ?? y) : fuller(x, y);
     out[d] = { ...win, cells: Object.fromEntries(Object.entries(win.cells).map(([k, v]) => [k, [v[0], v[1]]])) };
   }
@@ -223,8 +235,9 @@ function mergeStats(local: Stats, remote: Stats, base: Stats | null, hasBase: bo
     days: mergeDays(local.days, remote.days, base?.days ?? null),
     clefs: moreCounted(local.clefs, remote.clefs),
     noteMs: moreCounted(local.noteMs, remote.noteMs),
-    // The Notes view's Key card shows the last round's key: a choice, like a setup.
-    lastKey: pick(local.lastKey, remote.lastKey, base?.lastKey, hasBase, (x, y) => x ?? y),
+    // The Notes view's Key card shows the last round's key: a choice, like a setup. Never back to none: only a copy
+    // without figures (an app from before 0.16.0 saved it) has none after a round.
+    lastKey: pick(local.lastKey, remote.lastKey, base?.lastKey, hasBase, (x, y) => x ?? y) ?? local.lastKey ?? remote.lastKey,
     reading: mergeReading(local.reading, remote.reading),
     echo: maxPairs(local.echo, remote.echo),
     seen: mergeSeen(local.seen, remote.seen, base?.seen ?? null),

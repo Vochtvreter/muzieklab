@@ -197,6 +197,12 @@ describe('recordNotes', () => {
     const none = defaultProgress();
     expect(recordNotes(none, notes, [], settings, TODAY)).toBe(none);
   });
+
+  it('counts a short round as a second at least, so its day shows a minute', () => {
+    const p = recordNotes(defaultProgress(), notes.slice(0, 1), [{ outcome: 'right', ms: 450, given: null }], settings, TODAY);
+    expect(p.stats.days[TODAY].sec).toBe(1);
+    expect(minutesOf(p.stats.days[TODAY].sec)).toBe(1);
+  });
 });
 
 describe('readingLevels', () => {
@@ -223,6 +229,7 @@ describe('recordScales and markSeen', () => {
   it('adds a Scales round’s seconds and the skill', () => {
     const p = recordScales(defaultProgress(), 61.6, TODAY);
     expect(p.stats.days[TODAY]).toEqual({ sec: 62, rounds: 0, acc: 0, off: 0, hits: 0, cells: {} });
+    expect(recordScales(defaultProgress(), 0.3, TODAY).stats.days[TODAY].sec).toBe(1);
     expect(p.stats.seen).toEqual({ scales: TODAY });
     readsBack(p);
   });

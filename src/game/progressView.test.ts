@@ -148,6 +148,10 @@ describe('skillMap', () => {
     expect(fresh.every((c) => c.locked && c.accuracy === null)).toBe(true);
     const played = skillMap(progress({}, { days: { [TODAY]: day({ cells: { sixteenths: [90, 100] } }) } }), TODAY);
     expect(played.find((c) => c.id === 'sixteenths')).toMatchObject({ locked: false, notes: 1, accuracy: null });
+    // Played 41 days ago: once its notes leave the 42-day window, it shows "—", and does not lock again.
+    const old = progress({}, { days: { [shiftDay(TODAY, -41)]: day({ cells: { sixteenths: [2000, 2400] } }) } });
+    expect(skillMap(old, TODAY).find((c) => c.id === 'sixteenths')).toMatchObject({ locked: false, notes: 24, accuracy: 83 });
+    expect(skillMap(old, shiftDay(TODAY, 1)).find((c) => c.id === 'sixteenths')).toMatchObject({ locked: false, notes: 0, accuracy: null });
   });
 });
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Me, SavedProgress, SaveProgressRequest } from '../../shared/api';
-import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS } from '../core/api';
+import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, type JudgeResult } from '../core/api';
 import { syncedOf } from '../game/merge';
 import { defaultProgress, DEFAULT_PREFS, type Progress } from '../game/storage';
 import { loadSync, SYNC_KEY } from '../game/syncState';
@@ -18,6 +18,13 @@ const ME: Me = {
   premium: { active: false, until: null },
   createdAt: '2026-10-20T09:00:00.000Z',
 };
+
+/** A rhythm round's result, as the judge gives it (the first two notes played). */
+const ROUND = {
+  notes: [0, 1].map((index) => ({ index, judgement: 'great', offsetMs: 12, hold: null, releaseOffsetMs: null, tap: null })),
+  accuracy: 90,
+  stars: 3,
+} as unknown as JudgeResult;
 
 const json = (status: number, body?: unknown): Response =>
   new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -278,17 +285,23 @@ describe('ProgressSync: never lowering the account', () => {
     const tabB = new Device();
     tabB.stored = tabA.stored;
     tabA.pass('1.1', 3, 40);
+    // And a rhythm round: a day of the Progress tab's figures, which tab B does not have.
+    tabA.do({ type: 'start', run: { exercise: generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1), lessonId: null, daily: null } });
+    tabA.do({ type: 'finish', result: ROUND, taps: [], today: '2026-10-24' });
+    expect(Object.keys(tabA.state.progress.stats.days)).toEqual(['2026-10-24']);
     await tabA.run((d) => d.sync.request('change'));
     tabB.stored = tabA.stored;
     tabB.pass('2.1', 1, 10);
     server.calls = [];
     await tabB.run((d) => d.sync.request('change'));
-    // Nothing sent yet: tab A's lesson came into tab B first.
+    // Nothing sent yet: tab A's lesson and day came into tab B first.
     expect(server.calls).toEqual([]);
     expect(Object.keys(tabB.state.progress.lessons).sort()).toEqual(['1.1', '2.1']);
+    expect(tabB.state.progress.stats.days).toEqual(tabA.state.progress.stats.days);
     await tabB.run((d) => d.sync.request('change'));
     expect(Object.keys(server.progress().lessons).sort()).toEqual(['1.1', '2.1']);
-    expect(server.progress().xp).toBe(40);
+    expect(server.progress().xp).toBe(tabA.state.progress.xp);
+    expect(server.progress().stats.days).toEqual(tabA.state.progress.stats.days);
   });
 
   it('lets Reset progress overtake a sync that was running, so the old progress does not come back', async () => {

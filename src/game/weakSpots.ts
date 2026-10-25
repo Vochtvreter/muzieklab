@@ -3,6 +3,8 @@
  * the weak cells need, on top of the rhythm setup as it is. The screen puts it on the setup (dispatch 'settings') and
  * opens /setup, where Start plays it. Pure.
  */
+import { DEFAULT_SETTINGS } from '../core/defaults';
+import { checkSettings } from '../core/feasibility';
 import { METER_IDS, NOTE_VALUES, type MeterId, type NoteValue, type Settings } from '../core/types';
 import type { CellId } from './storage';
 
@@ -36,14 +38,27 @@ export function weakCells(cells: readonly WeakSpotCell[]): CellId[] {
 const VALUE_OF: Partial<Record<CellId, NoteValue>> = { quarter: 'quarter', half: 'half', eighths: 'eighth', sixteenths: 'sixteenth' };
 
 /**
- * The rhythm setup with what the weak cells need switched on: their note values; rests (quarter, and eighth when
- * eighths are on) with many rests; ties; dotted notes with a half (and three-four) for the dotted half, with a quarter
- * and an eighth for the dotted quarter + eighth. Arrays stay in their canonical order (as sanitizeSettings keeps them).
- * Null when no cell has enough notes yet.
+ * The rhythm setup as it is, when Start can play it. One that Start cannot (the player switched off every time
+ * signature or note value, or kept none that fills a bar) gets the default time signature when it has none, then
+ * quarter notes, which fill every one, when it still needs them: so a preset opens a setup where Start plays it.
  */
-export function weakSpotsSettings(settings: Settings, cells: readonly WeakSpotCell[]): Settings | null {
+export function playableSetup(settings: Settings): Settings {
+  if (checkSettings(settings).ok) return settings;
+  const timed = settings.meters.length > 0 ? settings : { ...settings, meters: [...DEFAULT_SETTINGS.meters] };
+  if (checkSettings(timed).ok) return timed;
+  return { ...timed, notes: NOTE_VALUES.filter((v) => v === 'quarter' || timed.notes.includes(v)) };
+}
+
+/**
+ * The rhythm setup (playable: playableSetup) with what the weak cells need switched on: their note values; rests
+ * (quarter, and eighth when eighths are on) with many rests; ties; dotted notes with a half (and three-four) for the
+ * dotted half, with a quarter and an eighth for the dotted quarter + eighth. Arrays stay in their canonical order (as
+ * sanitizeSettings keeps them). Null when no cell has enough notes yet.
+ */
+export function weakSpotsSettings(setup: Settings, cells: readonly WeakSpotCell[]): Settings | null {
   const ids = weakCells(cells);
   if (ids.length === 0) return null;
+  const settings = playableSetup(setup);
   const notes = new Set<NoteValue>(settings.notes);
   const rests = new Set<NoteValue>(settings.rests);
   const meters = new Set<MeterId>(settings.meters);

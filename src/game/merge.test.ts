@@ -264,15 +264,34 @@ describe('mergeProgress: the Progress tab', () => {
   });
 
   it('keeps a day one side dropped since the base dropped, unless the other side changed it', () => {
-    const base = stats({ days: { '2026-10-23': day(60), '2027-03-01': day(60) } });
-    const dropped = stats({ days: { '2026-10-23': day(60), '2026-10-25': day(30) } });
+    // 40 days played and two a clock set forward wrote; today's round drops the earlier of those two (game/stats.ts).
+    const real = Object.fromEntries(STAT_DAYS.slice(0, 40).map((d) => [d, day(60)]));
+    const base = stats({ days: { ...real, '2027-03-01': day(60), '2027-03-02': day(60) } });
+    const dropped = recordScales(base, 30, '2026-10-25');
+    expect(dropped.stats.days['2027-03-01']).toBeUndefined();
     expect(mergeProgress(dropped, base, base).stats.days).toEqual(dropped.stats.days);
     expect(mergeProgress(base, dropped, base).stats.days).toEqual(dropped.stats.days);
-    // Played again there since the base: kept.
-    const playedThere = stats({ days: { '2026-10-23': day(60), '2027-03-01': day(120, 2) } });
-    expect(mergeProgress(dropped, playedThere, base).stats.days).toEqual({ ...dropped.stats.days, '2027-03-01': day(120, 2) });
-    // Without a base, every day of both.
-    expect(Object.keys(mergeProgress(dropped, base, null).stats.days)).toHaveLength(3);
+    // Played again there since the base: kept (and the oldest day makes room for it).
+    const playedThere = stats({ days: { ...base.stats.days, '2027-03-01': day(120, 2) } });
+    expect(mergeProgress(dropped, playedThere, base).stats.days['2027-03-01']).toEqual(day(120, 2));
+    // Without a base, every day of both, the newest 42.
+    expect(mergeProgress(dropped, base, null).stats.days['2027-03-01']).toEqual(day(60));
+  });
+
+  it('keeps a day a copy without it never had: a tab behind the one that played it, a copy from before 0.16.0', () => {
+    // Another tab played on the 24th and saved; this tab, behind it, brings that in with the base as the account's copy.
+    const played = recordScales(defaultProgress(), 40, '2026-10-24');
+    expect(mergeProgress(defaultProgress(), played, played).stats.days).toEqual(played.stats.days);
+    // Also with a full 42 days here, all of them earlier: the oldest makes room.
+    const full = stats({ days: Object.fromEntries(STAT_DAYS.slice(0, 42).map((d) => [d, day(60)])) });
+    const later = recordScales(full, 40, '2026-10-24');
+    expect(mergeProgress(full, later, later).stats.days).toEqual(later.stats.days);
+    // An app from before 0.16.0 saved the account's copy without the Progress tab's figures.
+    const agreed = stats({ days: Object.fromEntries(STAT_DAYS.slice(0, 14).map((d) => [d, day(60)])), lastKey: { key: 'G', clef: 'treble' }, seen: { treble: '2026-09-14' } });
+    const old = readSynced({ prefs: {}, progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 90 } }, practiceDays: ['2026-10-24'], xp: 900 } })!.progress;
+    const m = mergeProgress(agreed, old, agreed);
+    expect(m.stats).toEqual(agreed.stats);
+    expect(m.lessons).toEqual(old.lessons);
   });
 
   it('lets the clock right again win over 42 days a clock set forward wrote, on this device and the next merges', () => {
