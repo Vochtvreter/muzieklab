@@ -317,6 +317,14 @@
   white-space: normal;
   line-height: 1.2;
 }
+/* The smallest phones: a status in a longer language is one word that cannot wrap ("Afgewezen" fills a third of the
+   card at 320 px to the pixel), so the three buttons give it a little more room. */
+@media (max-width: 359.98px) {
+  .review-seg .seg-btn {
+    padding-inline: 2px;
+    font-size: 13px;
+  }
+}
 /* A labelled choice inside a confirm (Delete account: the label, Keep anonymously · Delete too, and what the chosen one
    does), or a feedback report's status (the label, New · Accepted · Declined, and who reviewed it), spaced like a text
    field. */
