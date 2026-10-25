@@ -4,10 +4,11 @@ import type { InviteCreated, LinkCreated, Me } from '../../../shared/api.js';
 import { buildApp } from '../app.js';
 import { DEFAULT_LIMITS, networkOf } from '../auth/attempts.js';
 import { SERVER_LANE, hashing } from '../auth/passwords.js';
-import { MAX_SESSIONS } from '../auth/sessions.js';
-import { collections } from '../db.js';
+import { MAX_SESSIONS, RETIRED_KEPT } from '../auth/sessions.js';
+import { collections, ensureIndexes } from '../db.js';
 import {
   COOKIE,
+  REFRESH_COOKIE,
   HOST,
   ORIGIN,
   PASSWORD,
@@ -16,6 +17,7 @@ import {
   seedAccount,
   sessionCookie,
   signIn,
+  signInPair,
   signedInAdmin,
   startMongo,
   stopMongo,
@@ -35,7 +37,7 @@ const DAY = 24 * 60 * 60_000;
 const NEW_PASSWORD = 'a melody in d minor';
 
 describe('POST /auth/sign-in', () => {
-  it('sets the session cookie and answers Me with the permissions', async () => {
+  it('sets the session and refresh cookies and answers Me with the permissions', async () => {
     const t = await makeApp(mongo);
     const account = await seedAccount(t.db, { email: 'ann@example.com', name: 'Ann', roles: ['teacher'] });
     const res = await t.call({
@@ -46,9 +48,16 @@ describe('POST /auth/sign-in', () => {
     });
     expect(res.statusCode).toBe(200);
     const cookie = res.cookies.find((c) => c.name === COOKIE)!;
-    expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 30 * 24 * 60 * 60 });
+    const refresh = res.cookies.find((c) => c.name === REFRESH_COOKIE)!;
+    expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 60 * 60 });
+    expect(refresh).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/api/v1/auth', maxAge: 90 * 24 * 60 * 60 });
     expect(cookie.value).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(res.headers['set-cookie']).toMatch(/^__Host-session=[^;]+; Max-Age=2592000; Path=\/; HttpOnly; Secure; SameSite=Lax$/);
+    expect(refresh.value).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(refresh.value).not.toBe(cookie.value);
+    expect(res.headers['set-cookie']).toEqual([
+      expect.stringMatching(/^__Host-session=[^;]+; Max-Age=3600; Path=\/; HttpOnly; Secure; SameSite=Lax$/),
+      expect.stringMatching(/^__Secure-refresh=[^;]+; Max-Age=7776000; Path=\/api\/v1\/auth; HttpOnly; Secure; SameSite=Lax$/),
+    ]);
     expect(res.json<Me>()).toEqual({
       id: account._id.toHexString(),
       email: 'ann@example.com',
@@ -61,22 +70,37 @@ describe('POST /auth/sign-in', () => {
     });
     const c = collections(t.db);
     expect((await c.accounts.findOne({ _id: account._id }))?.lastSignInAt).toEqual(t.clock.now());
-    // Only the token's hash is stored, with the device's name.
+    // Only the tokens' hashes are stored, with the device's name.
     const session = await c.sessions.findOne({ accountId: account._id });
-    expect(session?._id).toMatch(/^[0-9a-f]{64}$/);
-    expect(session?._id).not.toContain(cookie.value);
-    expect(session?.device).toBe('Firefox on Linux');
+    expect(session?._id).toMatch(/^[0-9a-f]{32}$/);
+    expect(session?.accessHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(session?.refreshHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(session)).not.toContain(cookie.value);
+    expect(JSON.stringify(session)).not.toContain(refresh.value);
+    expect(session).toMatchObject({
+      device: 'Firefox on Linux',
+      accessExpiresAt: new Date(t.clock.ms + 60 * 60_000),
+      expiresAt: new Date(t.clock.ms + 90 * DAY),
+      retired: [],
+      refreshedAt: null,
+    });
   });
 
-  it('uses a plain `session` cookie without Secure when COOKIE_SECURE is false', async () => {
+  it('uses plain `session` and `refresh` cookies without Secure when COOKIE_SECURE is false', async () => {
     const t = await makeApp(mongo, { cookieSecure: false });
     await seedAccount(t.db, { email: 'dev@example.com' });
     const res = await t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email: 'dev@example.com', password: PASSWORD } });
     expect(res.statusCode).toBe(200);
-    expect(res.headers['set-cookie']).toMatch(/^session=[^;]+; Max-Age=2592000; Path=\/; HttpOnly; SameSite=Lax$/);
+    expect(res.headers['set-cookie']).toEqual([
+      expect.stringMatching(/^session=[^;]+; Max-Age=3600; Path=\/; HttpOnly; SameSite=Lax$/),
+      expect.stringMatching(/^refresh=[^;]+; Max-Age=7776000; Path=\/api\/v1\/auth; HttpOnly; SameSite=Lax$/),
+    ]);
     const cookie = sessionCookie(res, 'session')!;
     const me = await t.call({ method: 'GET', url: '/api/v1/me', cookie });
     expect(me.statusCode).toBe(200);
+    const refreshed = await t.call({ method: 'POST', url: '/api/v1/auth/refresh', refresh: sessionCookie(res, 'refresh') });
+    expect(refreshed.statusCode).toBe(204);
+    expect(sessionCookie(refreshed, 'session')).toBeDefined();
   });
 
   it('gives a wrong password and an unknown email the same answer', async () => {
@@ -540,17 +564,22 @@ describe('sessions', () => {
   it('sign-out ends only this session; sign-out-everywhere ends all of them', async () => {
     const t = await makeApp(mongo);
     await seedAccount(t.db, { email: 'ann@example.com' });
-    const [phone, laptop, tablet] = [await signIn(t, 'ann@example.com'), await signIn(t, 'ann@example.com'), await signIn(t, 'ann@example.com')];
+    const [phone, laptop, tablet] = [await signInPair(t, 'ann@example.com'), await signIn(t, 'ann@example.com'), await signInPair(t, 'ann@example.com')];
 
-    const out = await t.call({ method: 'POST', url: '/api/v1/auth/sign-out', cookie: phone });
+    const out = await t.call({ method: 'POST', url: '/api/v1/auth/sign-out', cookie: phone.cookie });
     expect(out.statusCode).toBe(204);
-    expect(out.headers['set-cookie']).toMatch(/^__Host-session=; Max-Age=0; Path=\/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax$/);
-    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: phone })).statusCode).toBe(401);
+    expect(out.headers['set-cookie']).toEqual([
+      '__Host-session=; Max-Age=0; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax',
+      '__Secure-refresh=; Max-Age=0; Path=/api/v1/auth; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax',
+    ]);
+    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: phone.cookie })).statusCode).toBe(401);
+    expect((await t.call({ method: 'POST', url: '/api/v1/auth/refresh', refresh: phone.refresh })).statusCode).toBe(401);
     expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: laptop })).statusCode).toBe(200);
 
     expect((await t.call({ method: 'POST', url: '/api/v1/auth/sign-out-everywhere', cookie: laptop })).statusCode).toBe(204);
     expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: laptop })).statusCode).toBe(401);
-    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: tablet })).statusCode).toBe(401);
+    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie: tablet.cookie })).statusCode).toBe(401);
+    expect((await t.call({ method: 'POST', url: '/api/v1/auth/refresh', refresh: tablet.refresh })).statusCode).toBe(401);
     expect(await collections(t.db).sessions.countDocuments()).toBe(0);
     // Signing out needs a session.
     expect((await t.call({ method: 'POST', url: '/api/v1/auth/sign-out' })).statusCode).toBe(401);
@@ -566,67 +595,59 @@ describe('sessions', () => {
     expect(await collections(t.db).sessions.countDocuments()).toBe(1);
   });
 
+  it('signing in again with only the refresh cookie left also ends the session it had', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const first = await signInPair(t, 'ann@example.com');
+    t.clock.advance(2 * 60 * 60_000); // the session token ran out, and the browser dropped it
+    const res = await t.call({ method: 'POST', url: '/api/v1/auth/sign-in', refresh: first.refresh, payload: { email: 'ann@example.com', password: PASSWORD } });
+    expect(res.statusCode).toBe(200);
+    expect(await collections(t.db).sessions.countDocuments()).toBe(1);
+  });
+
   it(`keeps at most ${MAX_SESSIONS} sessions an account, ending the ones used longest ago`, async () => {
     expect(MAX_SESSIONS).toBe(20);
     const t = await makeApp(mongo);
     const ann = await seedAccount(t.db, { email: 'ann@example.com' });
-    const cookies: string[] = [];
+    const pairs: { cookie: string; refresh: string }[] = [];
     for (let i = 0; i < 25; i++) {
-      cookies.push(await signIn(t, 'ann@example.com'));
+      pairs.push(await signInPair(t, 'ann@example.com'));
       t.clock.advance(1000);
     }
     const sessions = collections(t.db).sessions;
     expect(await sessions.countDocuments({ accountId: ann._id })).toBe(20);
     const me = async (cookie: string) => (await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode;
-    for (const [i, cookie] of cookies.entries()) expect(await me(cookie), `session ${i}`).toBe(i < 5 ? 401 : 200);
+    for (const [i, { cookie }] of pairs.entries()) expect(await me(cookie), `session ${i}`).toBe(i < 5 ? 401 : 200);
 
-    // By last use, not by age: the oldest session, used again an hour later, stays; the next oldest ends.
-    t.clock.advance(60 * 60_000 + 1);
-    expect(await me(cookies[5])).toBe(200);
+    // By last use, not by age: the oldest session, refreshed, stays; the next oldest ends.
+    t.clock.advance(1000);
+    const refreshed = await t.call({ method: 'POST', url: '/api/v1/auth/refresh', refresh: pairs[5].refresh });
+    expect(refreshed.statusCode).toBe(204);
     await signIn(t, 'ann@example.com');
     expect(await sessions.countDocuments({ accountId: ann._id })).toBe(20);
-    expect(await me(cookies[5])).toBe(200);
-    expect(await me(cookies[6])).toBe(401);
+    expect(await me(sessionCookie(refreshed)!)).toBe(200);
+    expect(await me(pairs[6].cookie)).toBe(401);
     // Another account's sessions are its own.
     await seedAccount(t.db, { email: 'bob@example.com' });
     await signIn(t, 'bob@example.com');
     expect(await sessions.countDocuments({ accountId: ann._id })).toBe(20);
   });
 
-  it('refuses a session 30 days after its last use', async () => {
+  it('takes a session token for an hour: using it moves nothing', async () => {
     const t = await makeApp(mongo);
     await seedAccount(t.db, { email: 'ann@example.com' });
-    const cookie = await signIn(t, 'ann@example.com');
-    t.clock.advance(29 * DAY);
-    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode).toBe(200); // moves the end on
-    t.clock.advance(29 * DAY);
-    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode).toBe(200);
-    t.clock.advance(30 * DAY + 1);
-    expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode).toBe(401);
-  });
-
-  it('moves lastSeenAt on at most once an hour, and sends the cookie again then', async () => {
-    const t = await makeApp(mongo);
-    await seedAccount(t.db, { email: 'ann@example.com' });
-    const cookie = await signIn(t, 'ann@example.com');
+    const { cookie } = await signInPair(t, 'ann@example.com');
     const sessions = collections(t.db).sessions;
-    const signedInAt = t.clock.now();
-
+    const before = await sessions.findOne();
     t.clock.advance(59 * 60_000);
     const quiet = await t.call({ method: 'GET', url: '/api/v1/me', cookie });
+    expect(quiet.statusCode).toBe(200);
     expect(quiet.headers['set-cookie']).toBeUndefined();
-    expect((await sessions.findOne())?.lastSeenAt).toEqual(signedInAt);
-
-    t.clock.advance(2 * 60_000);
-    const moved = await t.call({ method: 'GET', url: '/api/v1/me', cookie });
-    expect(sessionCookie(moved)).toBe(cookie);
-    const session = await sessions.findOne();
-    expect(session?.lastSeenAt).toEqual(t.clock.now());
-    expect(session?.expiresAt).toEqual(new Date(t.clock.ms + 30 * DAY));
-
-    t.clock.advance(30 * 60_000);
-    await t.call({ method: 'GET', url: '/api/v1/me', cookie });
-    expect((await sessions.findOne())?.lastSeenAt).toEqual(session?.lastSeenAt);
+    expect(await sessions.findOne()).toEqual(before);
+    t.clock.advance(60_000);
+    const late = await t.call({ method: 'GET', url: '/api/v1/me', cookie });
+    expect(late.statusCode).toBe(401);
+    expect(late.json()).toEqual({ error: 'unauthenticated', message: 'Not signed in' });
   });
 
   it('ends the use of a session when its account is blocked behind its back', async () => {
@@ -635,6 +656,177 @@ describe('sessions', () => {
     const cookie = await signIn(t, 'ann@example.com');
     await collections(t.db).accounts.updateOne({ _id: account._id }, { $set: { status: 'blocked' } });
     expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode).toBe(401);
+  });
+});
+
+describe('POST /auth/refresh', () => {
+  const refreshWith = (t: Awaited<ReturnType<typeof makeApp>>, refresh?: string) =>
+    t.call({ method: 'POST', url: '/api/v1/auth/refresh', refresh });
+  const meWith = async (t: Awaited<ReturnType<typeof makeApp>>, cookie: string | undefined) =>
+    (await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode;
+  const pairOf = (res: Awaited<ReturnType<typeof refreshWith>>) => ({
+    cookie: sessionCookie(res)!,
+    refresh: sessionCookie(res, REFRESH_COOKIE)!,
+  });
+  const cleared = [
+    '__Host-session=; Max-Age=0; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax',
+    '__Secure-refresh=; Max-Age=0; Path=/api/v1/auth; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax',
+  ];
+
+  it('swaps the refresh token for a new pair; the old session token stops working', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const first = await signInPair(t, 'ann@example.com');
+    const sessions = collections(t.db).sessions;
+    const before = (await sessions.findOne())!;
+    t.clock.advance(10 * 60_000);
+
+    const res = await refreshWith(t, first.refresh);
+    expect(res.statusCode).toBe(204);
+    expect(res.headers['set-cookie']).toEqual([
+      expect.stringMatching(/^__Host-session=[^;]+; Max-Age=3600; Path=\/; HttpOnly; Secure; SameSite=Lax$/),
+      expect.stringMatching(/^__Secure-refresh=[^;]+; Max-Age=7776000; Path=\/api\/v1\/auth; HttpOnly; Secure; SameSite=Lax$/),
+    ]);
+    const next = pairOf(res);
+    expect(next.cookie).not.toBe(first.cookie);
+    expect(next.refresh).not.toBe(first.refresh);
+    expect(await meWith(t, next.cookie)).toBe(200);
+    expect(await meWith(t, first.cookie)).toBe(401);
+
+    // One session, the same one: its id and device stay, its hashes and times move on.
+    const after = (await sessions.findOne())!;
+    expect(await sessions.countDocuments()).toBe(1);
+    expect(after).toMatchObject({ _id: before._id, device: before.device, createdAt: before.createdAt });
+    expect(after.refreshHash).not.toBe(before.refreshHash);
+    expect(after.retired).toEqual([before.refreshHash]);
+    expect(after).toMatchObject({
+      lastSeenAt: t.clock.now(),
+      refreshedAt: t.clock.now(),
+      accessExpiresAt: new Date(t.clock.ms + 60 * 60_000),
+      expiresAt: new Date(t.clock.ms + 90 * DAY),
+    });
+  });
+
+  it('keeps a session going for as long as it is refreshed within 90 days', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    let pair = await signInPair(t, 'ann@example.com');
+    for (let i = 0; i < 3; i++) {
+      t.clock.advance(89 * DAY);
+      const res = await refreshWith(t, pair.refresh);
+      expect(res.statusCode, `refresh ${i}`).toBe(204);
+      pair = pairOf(res);
+    }
+    expect(await meWith(t, pair.cookie)).toBe(200);
+    t.clock.advance(90 * DAY + 1);
+    const late = await refreshWith(t, pair.refresh);
+    expect(late.statusCode).toBe(401);
+    expect(late.headers['set-cookie']).toEqual(cleared);
+  });
+
+  it('gives a second refresh with the same token moments later no cookies, and keeps the session', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const first = await signInPair(t, 'ann@example.com');
+    // Two tabs at once: the first swaps, the second finds the token just retired.
+    const [a, b] = await Promise.all([refreshWith(t, first.refresh), refreshWith(t, first.refresh)]);
+    const [won, raced] = sessionCookie(a) ? [a, b] : [b, a];
+    expect([won.statusCode, raced.statusCode]).toEqual([204, 204]);
+    expect(raced.headers['set-cookie']).toBeUndefined();
+    const next = pairOf(won);
+    expect(await meWith(t, next.cookie)).toBe(200);
+
+    t.clock.advance(59_000);
+    expect((await refreshWith(t, first.refresh)).statusCode).toBe(204);
+    expect(await meWith(t, next.cookie)).toBe(200);
+    expect(await collections(t.db).sessions.countDocuments()).toBe(1);
+  });
+
+  it('ends the session when a swapped refresh token comes back later: it was copied', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const stolen = await signInPair(t, 'ann@example.com');
+    // Whoever copied it refreshes first; the owner's device comes back with the same token a while later.
+    const thief = pairOf(await refreshWith(t, stolen.refresh));
+    t.clock.advance(60_000);
+    const owner = await refreshWith(t, stolen.refresh);
+    expect(owner.statusCode).toBe(401);
+    expect(owner.json()).toEqual({ error: 'unauthenticated', message: 'Not signed in' });
+    expect(owner.headers['set-cookie']).toEqual(cleared);
+    // Both copies are dead: the session is gone.
+    expect(await meWith(t, thief.cookie)).toBe(401);
+    expect((await refreshWith(t, thief.refresh)).statusCode).toBe(401);
+    expect(await collections(t.db).sessions.countDocuments()).toBe(0);
+  });
+
+  it('knows a refresh token that comes back several swaps later', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const first = await signInPair(t, 'ann@example.com');
+    let pair = first;
+    for (let i = 0; i < 5; i++) {
+      t.clock.advance(2 * 60 * 60_000);
+      pair = pairOf(await refreshWith(t, pair.refresh));
+    }
+    expect((await refreshWith(t, first.refresh)).statusCode).toBe(401);
+    expect(await meWith(t, pair.cookie)).toBe(401);
+  });
+
+  it(`remembers the last ${RETIRED_KEPT} swapped refresh tokens`, async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    let pair = await signInPair(t, 'ann@example.com');
+    for (let i = 0; i < RETIRED_KEPT + 5; i++) pair = pairOf(await refreshWith(t, pair.refresh));
+    expect((await collections(t.db).sessions.findOne())?.retired).toHaveLength(RETIRED_KEPT);
+  });
+
+  it('refuses no cookie, a cookie that is not a token, and an unknown token, and clears the cookies', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const { cookie } = await signInPair(t, 'ann@example.com');
+    const none = await refreshWith(t);
+    expect(none.statusCode).toBe(401);
+    expect(none.json()).toEqual({ error: 'unauthenticated', message: 'Not signed in' });
+    expect((await refreshWith(t, 'garbage')).statusCode).toBe(401);
+    const unknown = await refreshWith(t, 'x'.repeat(43));
+    expect(unknown.statusCode).toBe(401);
+    expect(unknown.headers['set-cookie']).toEqual(cleared);
+    // The session token is not a refresh token.
+    expect((await refreshWith(t, cookie)).statusCode).toBe(401);
+  });
+
+  it('ends the session of an account blocked or deleted behind its back', async () => {
+    const t = await makeApp(mongo);
+    const account = await seedAccount(t.db, { email: 'ann@example.com' });
+    const { refresh } = await signInPair(t, 'ann@example.com');
+    const c = collections(t.db);
+    await c.accounts.updateOne({ _id: account._id }, { $set: { status: 'blocked' } });
+    const res = await refreshWith(t, refresh);
+    expect(res.statusCode).toBe(401);
+    expect(res.headers['set-cookie']).toEqual(cleared);
+    expect(await c.sessions.countDocuments()).toBe(0);
+  });
+
+  it('needs the request to come from the site, like every other change', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const { refresh } = await signInPair(t, 'ann@example.com');
+    const res = await t.call({ method: 'POST', url: '/api/v1/auth/refresh', refresh, headers: { origin: 'https://evil.example' } });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toMatchObject({ error: 'bad_origin' });
+    expect((await refreshWith(t, refresh)).statusCode).toBe(204);
+  });
+
+  it('drops the sessions saved before refresh tokens when the API starts', async () => {
+    const t = await makeApp(mongo);
+    const account = await seedAccount(t.db, { email: 'ann@example.com' });
+    await signIn(t, 'ann@example.com');
+    const sessions = t.db.collection('sessions');
+    const now = t.clock.now();
+    await sessions.insertOne({ _id: 'a'.repeat(64) as never, accountId: account._id, createdAt: now, lastSeenAt: now, expiresAt: new Date(now.getTime() + DAY), device: 'Old' });
+    await ensureIndexes(t.db);
+    expect(await sessions.countDocuments()).toBe(1);
+    expect(await sessions.countDocuments({ device: 'Old' })).toBe(0);
   });
 });
 
@@ -693,6 +885,7 @@ describe('deny by default', () => {
       [
         'GET /api/v1/health public',
         'POST /api/v1/auth/sign-in public',
+        'POST /api/v1/auth/refresh public',
         'POST /api/v1/auth/sign-out self.manage',
         'POST /api/v1/auth/sign-out-everywhere self.manage',
         'POST /api/v1/auth/invite/check public',
@@ -832,7 +1025,9 @@ describe('invites', () => {
     expect((await check(tokenOf(created.link))).statusCode).toBe(410);
     expect((await check(tokenOf(fresh.link))).statusCode).toBe(200);
 
-    const detail = () => t.call({ method: 'GET', url: `/api/v1/admin/accounts/${created.account.id}`, cookie: admin.cookie });
+    // Signed in afresh each time, as the clock jumps past the session token's hour.
+    const detail = async () =>
+      t.call({ method: 'GET', url: `/api/v1/admin/accounts/${created.account.id}`, cookie: await signIn(t, 'admin@example.com') });
     expect((await detail()).json().inviteExpiresAt).toBe(fresh.expiresAt);
     t.clock.advance(7 * DAY + 1);
     expect((await check(tokenOf(fresh.link))).statusCode).toBe(410);

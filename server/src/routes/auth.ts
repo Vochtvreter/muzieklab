@@ -14,7 +14,7 @@ import { linkKeys, pairKey, passwordKeys } from '../auth/attempts.js';
 import { signedIn } from '../auth/guard.js';
 import { findLink } from '../auth/links.js';
 import { hashPassword, passwordProblem, verifyDummy, verifyPassword } from '../auth/passwords.js';
-import { clearSessionCookie, replaceSession } from '../auth/sessions.js';
+import { clearSessionCookies, refreshSession, refreshToken, replaceSession, setSessionCookies } from '../auth/sessions.js';
 import { countedTry, hashLane, rightPassword } from '../auth/tries.js';
 import type { AppContext } from '../context.js';
 import { inTransaction, type AccountDoc, type LinkKind } from '../db.js';
@@ -62,9 +62,36 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
     },
   );
 
+  /**
+   * Keeps a session going (BACKEND-PLAN.md §5.4): swaps the refresh cookie for a new pair of tokens. The app calls it
+   * when a request says the session token ran out, and when it starts. 204 with new cookies; 204 without any when
+   * another request from this browser swapped the same token moments ago (it has the new cookies); else 401, and the
+   * cookies are cleared. A refresh token that comes back after it was swapped ends its session.
+   */
+  app.post('/auth/refresh', { config: { public: true } }, async (request, reply) => {
+    const token = refreshToken(request, ctx.cookies);
+    if (!token) throw new ApiError('unauthenticated', 'Not signed in');
+    const result = await refreshSession(c, token, ctx.now());
+    if (result.outcome === 'raced') return reply.code(204).send();
+    if (result.outcome === 'rotated') {
+      const active = await c.accounts.countDocuments({ _id: result.session.accountId, status: 'active' }, { limit: 1 });
+      if (active > 0) {
+        setSessionCookies(reply, ctx.cookies, result.tokens);
+        return reply.code(204).send();
+      }
+      // Blocked or deleted behind its back: the session goes with it.
+      await c.sessions.deleteOne({ _id: result.session._id });
+    }
+    if (result.outcome === 'reused') {
+      request.log.warn({ accountId: result.session.accountId.toHexString() }, 'a swapped refresh token came back: session ended');
+    }
+    clearSessionCookies(reply, ctx.cookies);
+    throw new ApiError('unauthenticated', 'Not signed in');
+  });
+
   app.post('/auth/sign-out', { config: { permission: 'self.manage' } }, async (request, reply) => {
     await c.sessions.deleteOne({ _id: signedIn(request).session._id });
-    clearSessionCookie(reply, ctx.cookies);
+    clearSessionCookies(reply, ctx.cookies);
     return reply.code(204).send();
   });
 
@@ -75,7 +102,7 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
       await c.tokens.deleteMany({ accountId, kind: 'reset' }, { session });
       await c.sessions.deleteMany({ accountId }, { session });
     });
-    clearSessionCookie(reply, ctx.cookies);
+    clearSessionCookies(reply, ctx.cookies);
     return reply.code(204).send();
   });
 

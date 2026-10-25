@@ -13,6 +13,7 @@ import { collections, ensureIndexes, type AccountDoc } from '../db.js';
 export const HOST = 'test.vivanova.app';
 export const ORIGIN = `https://${HOST}`;
 export const COOKIE = '__Host-session';
+export const REFRESH_COOKIE = '__Secure-refresh';
 export const PASSWORD = 'correct horse battery';
 
 export interface Mongo {
@@ -54,8 +55,8 @@ export interface TestApp {
   app: ReturnType<typeof buildApp>;
   db: Db;
   clock: TestClock;
-  /** A request as the app sends it: the site's Host and Origin, JSON. */
-  call: (options: InjectOptions & { cookie?: string }) => Promise<LightMyRequestResponse>;
+  /** A request as the app sends it: the site's Host and Origin, JSON, and the session and refresh cookies given. */
+  call: (options: InjectOptions & { cookie?: string; refresh?: string }) => Promise<LightMyRequestResponse>;
 }
 
 export async function makeApp(
@@ -66,17 +67,19 @@ export async function makeApp(
   const clock = new TestClock();
   const app = buildApp({ db, commit: 'test', now: clock.now, cookieSecure: opts.cookieSecure, limits: opts.limits });
   await app.ready();
-  const cookieName = opts.cookieSecure === false ? 'session' : COOKIE;
-  const call: TestApp['call'] = ({ cookie, headers, ...options }) =>
-    app.inject({
+  const [cookieName, refreshName] = opts.cookieSecure === false ? ['session', 'refresh'] : [COOKIE, REFRESH_COOKIE];
+  const call: TestApp['call'] = ({ cookie, refresh, headers, ...options }) => {
+    const cookies = [cookie && `${cookieName}=${cookie}`, refresh && `${refreshName}=${refresh}`].filter(Boolean);
+    return app.inject({
       ...options,
       headers: {
         host: HOST,
         ...(options.method && options.method !== 'GET' && options.method !== 'HEAD' ? { origin: ORIGIN } : {}),
-        ...(cookie ? { cookie: `${cookieName}=${cookie}` } : {}),
+        ...(cookies.length > 0 ? { cookie: cookies.join('; ') } : {}),
         ...headers,
       },
     });
+  };
   return { app, db, clock, call };
 }
 
@@ -116,11 +119,23 @@ export function sessionCookie(res: LightMyRequestResponse, name = COOKIE): strin
 
 /** Signs in and returns the session cookie's value. */
 export async function signIn(t: TestApp, email: string, password = PASSWORD, cookieName = COOKIE): Promise<string> {
+  return (await signInPair(t, email, password, cookieName)).cookie;
+}
+
+/** Signs in and returns both cookies' values: the session token, and the refresh token. */
+export async function signInPair(
+  t: TestApp,
+  email: string,
+  password = PASSWORD,
+  cookieName = COOKIE,
+  refreshName = REFRESH_COOKIE,
+): Promise<{ cookie: string; refresh: string }> {
   const res = await t.call({ method: 'POST', url: '/api/v1/auth/sign-in', payload: { email, password } });
   if (res.statusCode !== 200) throw new Error(`sign-in failed: ${res.statusCode} ${res.body}`);
   const cookie = sessionCookie(res, cookieName);
-  if (!cookie) throw new Error('sign-in set no cookie');
-  return cookie;
+  const refresh = sessionCookie(res, refreshName);
+  if (!cookie || !refresh) throw new Error('sign-in did not set both cookies');
+  return { cookie, refresh };
 }
 
 /** An admin, signed in. */

@@ -34,7 +34,7 @@ game rather than homework.
 - Pitch reading / melodic dictation (see §13, possible later module).
 - Multiplayer.
 - Teacher dashboards: planned after v1 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). Accounts came first, in 0.12.0:
-  optional and by invitation, next to the account-free app, and since 0.14.0 they keep progress across devices. The app
+  optional and by invitation, next to the account-free app, and since 0.15.0 they keep progress across devices. The app
   needs no account, and a site without the API shows no account at all (§9.2).
 
 ---
@@ -1424,7 +1424,7 @@ The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · S
 
 ### 9.2 Accounts: the account and admin screens
 
-Since 0.12.0, and progress on the account since 0.14.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §6). **No board exists yet**
+Since 0.12.0, and progress on the account since 0.15.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §6). **No board exists yet**
 for any of these screens, on either canvas.
 They were built from the built Settings screen (§9) and the foundations, and this section describes them as built.
 Their boards are still to be drawn (phone, tablet and desktop, in light and dark), and so are the components below,
@@ -1589,7 +1589,7 @@ what to do. For accounts:
 | Offline / install | **PWA** (`vite-plugin-pwa`) | Home-screen app on phones. |
 | Tests | **Vitest** + **fast-check** (property tests) | Generator correctness over thousands of seeds. |
 | Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)), with an optional API on the same server under `/api` | The app needs no backend: it works fully without the API, and shows no account then. |
-| Accounts (since 0.12.0) | **Node** API (Fastify, one bundled file) + **MongoDB** on the same server ([BACKEND-PLAN.md](BACKEND-PLAN.md)); the contract `shared/api.ts`; the app's client `src/api/client.ts` | Optional, invite-only accounts with roles; progress across devices since 0.14.0. |
+| Accounts (since 0.12.0) | **Node** API (Fastify, one bundled file) + **MongoDB** on the same server ([BACKEND-PLAN.md](BACKEND-PLAN.md)); the contract `shared/api.ts`; the app's client `src/api/client.ts` | Optional, invite-only accounts with roles; progress across devices since 0.15.0. |
 
 ### 10.2 Module layout
 
@@ -1716,7 +1716,7 @@ without code changes:
 | M5 | **Game layer** | XP, levels, Learning Path, daily challenge, streaks, achievements. |
 | M5b | **Read notes** | Note generator, treble and bass clef rendering, names / piano input, setup, scoring, Learn chapter 8. |
 | M6 | **Polish** | Calibration, PWA/offline, mobile tuning, localization-ready check (all strings in the catalog), progress screen, Weak Spots. |
-| M7 | **Accounts** (phases 1 and 2 done in 0.12.0 and 0.14.0; phases 3–5 planned) | Invite-only accounts with roles: sign-in, invite and new-password links, the Account screen, the admin screens and the privacy statement (done, 0.12.0). Progress on the account, synced and merged across devices (done, 0.14.0). Then classes, content editing and premium ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). |
+| M7 | **Accounts** (phases 1 and 2 done in 0.12.0 and 0.15.0; phases 3–5 planned) | Invite-only accounts with roles: sign-in, invite and new-password links, the Account screen, the admin screens and the privacy statement (done, 0.12.0). Progress on the account, synced and merged across devices (done, 0.15.0). Then classes, content editing and premium ([BACKEND-PLAN.md](BACKEND-PLAN.md) §10). |
 
 ---
 

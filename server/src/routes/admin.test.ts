@@ -170,8 +170,8 @@ describe('PATCH /admin/accounts/:id', () => {
     t.clock.ms = Date.UTC(Y, 9, 23, 18); // 23 October, 18:00 UTC
     const admin = await signedInAdmin(t);
     const ann = await seedAccount(t.db, { email: 'ann@example.com' });
-    const cookie = await signIn(t, 'ann@example.com');
-    const me = async () => (await t.call({ method: 'GET', url: '/api/v1/me', cookie })).json<Me>().premium;
+    // Signed in afresh each time, as the clock jumps past the session token's hour.
+    const me = async () => (await t.call({ method: 'GET', url: '/api/v1/me', cookie: await signIn(t, 'ann@example.com') })).json<Me>().premium;
     const id = ann._id.toHexString();
 
     const res = await patch(t, admin.cookie, id, { premium: { active: true, until: `${Y}-11-02` } });
@@ -183,12 +183,13 @@ describe('PATCH /admin/accounts/:id', () => {
     expect(await me()).toEqual({ active: true, until: `${Y}-11-02` });
     t.clock.ms = Date.UTC(Y, 10, 3, 12);
     expect(await me()).toEqual({ active: false, until: null });
-    const list = await t.call({ method: 'GET', url: '/api/v1/admin/accounts?q=ann', cookie: admin.cookie });
+    const adminCookie = await signIn(t, 'admin@example.com');
+    const list = await t.call({ method: 'GET', url: '/api/v1/admin/accounts?q=ann', cookie: adminCookie });
     expect(list.json<AccountListResponse>().accounts[0].premium).toEqual({ active: false, until: null });
 
-    await patch(t, admin.cookie, id, { premium: { active: true, until: null } });
+    await patch(t, adminCookie, id, { premium: { active: true, until: null } });
     expect(await me()).toEqual({ active: true, until: null });
-    await patch(t, admin.cookie, id, { premium: { active: false } });
+    await patch(t, adminCookie, id, { premium: { active: false } });
     expect(await me()).toEqual({ active: false, until: null });
     expect((await collections(t.db).accounts.findOne({ _id: ann._id }))?.premium).toBeNull();
 

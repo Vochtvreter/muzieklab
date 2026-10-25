@@ -24,14 +24,28 @@ export interface AccountDoc {
   updatedAt: Date;
 }
 
-/** One per signed-in device. Only the hash of the cookie's token is stored, so a copy of the database signs no one in. */
+/**
+ * One per signed-in device (BACKEND-PLAN.md §3.2, §5.4). Only the hashes of the cookies' tokens are stored, so a copy
+ * of the database signs no one in.
+ */
 export interface SessionDoc {
-  /** sha256 of the cookie token, hex. */
+  /** A random id, hex: names the session, as the tokens change on every refresh. */
   _id: string;
   accountId: ObjectId;
+  /** sha256 of the session cookie's token, hex. */
+  accessHash: string;
+  /** The session token works until then: an hour after the last refresh. */
+  accessExpiresAt: Date;
+  /** sha256 of the refresh cookie's token, hex. */
+  refreshHash: string;
+  /** Hashes of the refresh tokens swapped before, oldest first (at most 50): one that comes back was copied. */
+  retired: string[];
+  /** The last refresh, or null before the first. */
+  refreshedAt: Date | null;
   createdAt: Date;
+  /** Sign-in or the last refresh. */
   lastSeenAt: Date;
-  /** 30 days after the last use; a TTL index deletes the session then. */
+  /** 90 days after lastSeenAt; a TTL index deletes the session then. */
   expiresAt: Date;
   device: string;
 }
@@ -120,6 +134,11 @@ export async function ensureIndexes(db: Db): Promise<void> {
     c.accounts.createIndex({ createdAt: -1 }, { name: 'createdAt' }),
     c.sessions.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expiresAt_ttl' }),
     c.sessions.createIndex({ accountId: 1 }, { name: 'accountId' }),
+    c.sessions.createIndex({ accessHash: 1 }, { name: 'accessHash' }),
+    c.sessions.createIndex({ refreshHash: 1 }, { name: 'refreshHash' }),
+    c.sessions.createIndex({ retired: 1 }, { name: 'retired' }),
+    // Sessions from before refresh tokens (app 0.14.0) have neither hash, so no cookie can use them any more.
+    c.sessions.deleteMany({ refreshHash: { $exists: false } }),
     c.tokens.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expiresAt_ttl' }),
     c.tokens.createIndex({ accountId: 1, kind: 1 }, { name: 'accountId_kind' }),
     c.audit.createIndex({ at: 1 }, { expireAfterSeconds: AUDIT_KEEP_SECONDS, name: 'at_ttl' }),

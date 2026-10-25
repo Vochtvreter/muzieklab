@@ -143,10 +143,12 @@ test('the first admin: the create-admin link, a weak password, then signed in wi
   await expect(page.getByRole('link', { name: new RegExp(`^${name} \\(you\\)`) })).toContainText('Active');
 
   // The session cookie: HttpOnly, SameSite=Lax, for the whole site (`session` over http; `__Host-session` on https).
-  const cookies = (await ctx.cookies()).filter((c) => c.name.endsWith('session'));
-  expect(cookies).toHaveLength(1);
-  expect(cookies[0]).toMatchObject({ name: 'session', httpOnly: true, sameSite: 'Lax', path: '/' });
-  expect(await page.evaluate(() => document.cookie)).not.toContain('session');
+  // The refresh cookie: the same, for the sign-in routes only (`refresh` over http; `__Secure-refresh` on https).
+  const cookies = (await ctx.cookies()).filter((c) => c.name.endsWith('session') || c.name.endsWith('refresh'));
+  expect(cookies).toHaveLength(2);
+  expect(cookies.find((c) => c.name === 'session')).toMatchObject({ httpOnly: true, sameSite: 'Lax', path: '/' });
+  expect(cookies.find((c) => c.name === 'refresh')).toMatchObject({ httpOnly: true, sameSite: 'Lax', path: '/api/v1/auth' });
+  expect(await page.evaluate(() => document.cookie)).toBe('');
   // A change without this site's Origin is refused, even with the cookie.
   const forged = await ctx.request.post(API + '/auth/sign-out');
   expect(forged.status()).toBe(403);
@@ -195,6 +197,32 @@ test('an admin invites a member, who accepts: no Accounts for them, and the admi
   await a.getByRole('link', { name: 'Done' }).click();
   await a.getByLabel('Search').fill(bob.email);
   await expect(a.getByRole('link', { name: new RegExp('^' + bob.name) })).toContainText('Active');
+});
+
+test('a session token that ran out is renewed by the app: still signed in, on start and on a save', async ({ person }) => {
+  const admin = await anAdmin(person);
+  const member = await aMember(person, admin);
+  const { ctx, page } = member;
+  const cookie = async (name: string) => (await ctx.cookies()).find((c) => c.name === name)?.value;
+  await page.goto('./#/account');
+  await expect(page.getByLabel('Name')).toHaveValue(member.name);
+
+  // An hour on, the browser has dropped the session token (its Max-Age); the refresh token is left.
+  const refresh = await cookie('refresh');
+  await ctx.clearCookies({ name: 'session' });
+  const renewed = page.waitForResponse((r) => r.url().endsWith('/api/v1/auth/refresh') && r.status() === 204);
+  await page.reload();
+  await renewed;
+  await expect(page.getByLabel('Name')).toHaveValue(member.name);
+  expect(await cookie('session')).toBeDefined();
+  expect(await cookie('refresh')).not.toBe(refresh);
+
+  // The same while a screen is open: the save renews the session and goes through.
+  await ctx.clearCookies({ name: 'session' });
+  await page.getByLabel('Name').fill(member.name + ' B.');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('.form-done')).toHaveText('Name saved.');
+  await expect(page).toHaveURL(/#\/account$/);
 });
 
 test('blocking signs a member out at their next request and refuses sign-in until unblocked', async ({ person }) => {

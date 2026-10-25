@@ -64,7 +64,7 @@ export interface Me {
 
 // --- sign in, invites, new passwords (BACKEND-PLAN.md §5) -----------------------------------------------------------
 
-/** POST /auth/sign-in → Me, and the session cookie. */
+/** POST /auth/sign-in → Me, and the session cookies (a session token for an hour, and a refresh token). */
 export interface SignInRequest {
   email: string;
   password: string;
@@ -80,7 +80,7 @@ export interface LinkCheckResponse {
   expiresAt: string;
 }
 
-/** POST /auth/invite/accept → Me, and the session cookie. The account becomes active. */
+/** POST /auth/invite/accept → Me, and the session cookies. The account becomes active. */
 export interface InviteAcceptRequest {
   token: string;
   password: string;
@@ -88,13 +88,15 @@ export interface InviteAcceptRequest {
   name?: string;
 }
 
-/** POST /auth/reset/confirm → Me, and the session cookie. Every other session of the account is signed out. */
+/** POST /auth/reset/confirm → Me, and the session cookies. Every other session of the account is signed out. */
 export interface ResetConfirmRequest {
   token: string;
   password: string;
 }
 
-// POST /auth/sign-out → 204 (this device). POST /auth/sign-out-everywhere → 204 (every session of the account).
+// POST /auth/refresh → 204 and new session cookies, from the refresh cookie (BACKEND-PLAN.md §5.4); 401 when the
+// session ended. POST /auth/sign-out → 204 (this device). POST /auth/sign-out-everywhere → 204 (every session of the
+// account).
 
 // --- own account ----------------------------------------------------------------------------------------------------
 

@@ -1,12 +1,18 @@
 /**
- * The API client (BACKEND-PLAN.md §1, §7): JSON over HTTPS under /api/v1 on the same site, with the session in an
- * HttpOnly cookie the browser sends by itself. The contract — every body and error code — is shared/api.ts.
+ * The API client (BACKEND-PLAN.md §1, §7): JSON over HTTPS under /api/v1 on the same site, with the session in
+ * HttpOnly cookies the browser sends by itself. The contract — every body and error code — is shared/api.ts.
+ *
+ * The session token works for an hour; a refresh token keeps the session going for 90 days after its last use
+ * (§5.4). When a request says the session ended (401 `unauthenticated`) on a device where someone is signed in, the
+ * client swaps the refresh token for a new pair (POST /auth/refresh) and sends the request once more, so a screen
+ * never sees the hourly swap.
  *
  * The API lives at the site root, so the path is absolute (`/api/v1`), unlike the app's own `./` base. Production has
  * no API yet: there `/api/…` answers with a 404 that is not JSON, which counts as `unavailable`, like a network error
  * or a timeout. So a screen never has to tell "offline" from "no API here".
  */
 import { ERROR_CODES, type ApiErrorBody, type ErrorCode } from '../../shared/api';
+import { loadAccount } from '../game/storage';
 
 export const API_BASE = '/api/v1';
 /** A request that takes longer than this is given up (and is `unavailable`). */
@@ -94,8 +100,55 @@ async function failure(res: Response): Promise<ApiError> {
   return new ApiError(res.status, code, typeof data.message === 'string' ? data.message : code, retryAfter, data.current);
 }
 
-async function request<T>(method: Method, path: string, body: unknown, opts: RequestOptions = {}): Promise<T> {
+/** The renewal that is running, if any: every request that needs one waits for the same. */
+let renewing: Promise<void> | null = null;
+/** Renewals that succeeded: a request sent before the latest may have carried the session token it replaced. */
+let renewals = 0;
+
+/**
+ * POST /auth/refresh: swaps the refresh cookie for a new pair, so the session lasts 90 days from now. One at a time.
+ * Rejects with an ApiError: `unauthenticated` when the session has ended.
+ */
+export function renewSession(): Promise<void> {
+  renewing ??= send('POST', '/auth/refresh', undefined, {})
+    .then(async (res) => {
+      if (!res.ok) throw await failure(res);
+      renewals++;
+    })
+    .finally(() => {
+      renewing = null;
+    });
+  return renewing;
+}
+
+/** Only a device where someone is signed in has a refresh token to try. */
+const signedInHere = (): boolean => loadAccount() !== null;
+
+/**
+ * Sends a request; when it says the session ended, renews the session and sends it once more. If the renewal gets no
+ * answer, that is the error (the device may still be signed in); if it says the session ended, the first answer is.
+ */
+async function sendRenewing(method: Method, path: string, body: unknown, opts: RequestOptions): Promise<Response> {
+  const before = renewals;
   const res = await send(method, path, body, opts);
+  if (res.status !== 401 || !signedInHere()) return res;
+  const err = await failure(res.clone());
+  if (err.code !== 'unauthenticated') return res;
+  // Another request renewed the session meanwhile: its new cookies are already in place.
+  if (renewals === before) {
+    try {
+      await renewSession();
+    } catch (e) {
+      const renewal = asApiError(e);
+      if (renewal.code === 'unavailable' || renewal.code === 'busy' || renewal.status >= 500) throw renewal;
+      return res;
+    }
+  }
+  return send(method, path, body, opts);
+}
+
+async function request<T>(method: Method, path: string, body: unknown, opts: RequestOptions = {}): Promise<T> {
+  const res = await sendRenewing(method, path, body, opts);
   if (!res.ok) throw await failure(res);
   if (res.status === 204) return undefined as T;
   // A 200 that is not JSON is not the API: e.g. a dev server's or a service worker's index.html for an unknown path.
@@ -121,7 +174,7 @@ export const EXPORT_FILE = 'muzieklab-account.json';
 
 /** GET /me/export, saved as muzieklab-account.json (an object URL and a temporary <a download>). */
 export async function downloadExport(): Promise<void> {
-  const res = await send('GET', '/me/export', undefined, {});
+  const res = await sendRenewing('GET', '/me/export', undefined, {});
   if (!res.ok) throw await failure(res);
   if (!isJson(res)) throw new ApiError(res.status, 'unavailable', `HTTP ${res.status} without a JSON body`);
   const blob = await res.blob();

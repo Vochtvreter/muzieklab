@@ -5,15 +5,28 @@ import type { ClientSession, ObjectId } from 'mongodb';
 import type { Collections, SessionDoc } from '../db.js';
 import { deviceName } from './device.js';
 
-// Sessions (BACKEND-PLAN.md §5.4): a random token in a cookie, and only its hash in the database.
+// Sessions (BACKEND-PLAN.md §5.4): two random tokens in two cookies, and only their hashes in the database. The
+// session token goes with every request and works for an hour. The refresh token goes only to /api/v1/auth and keeps
+// the session going: POST /auth/refresh swaps it for a new pair (rotation), so a refresh token works once, and one that
+// comes back after it was swapped was copied, which ends the session.
 
-/** A session lasts this long after its last use, so someone who practises weekly stays signed in. */
-export const SESSION_DAYS = 30;
+/** A session lasts this long after its last refresh, so someone back from the summer holidays is still signed in. */
+export const SESSION_DAYS = 90;
 const SESSION_MS = SESSION_DAYS * 24 * 60 * 60_000;
-/** lastSeenAt (and the end) move at most this often, so a busy session writes at most once an hour. */
-const REFRESH_MS = 60 * 60_000;
+/** The session token works this long; then the app swaps the refresh token for a new pair. */
+export const ACCESS_MINUTES = 60;
+const ACCESS_MS = ACCESS_MINUTES * 60_000;
+/**
+ * A refresh token swapped less than this ago is a race, not a copy: two tabs refreshing at once with the same cookie.
+ * The second gets no new cookies, as the browser already has them from the first.
+ */
+export const REFRESH_RACE_MS = 60_000;
+/** Refresh tokens used before that a session remembers, to know one that comes back. */
+export const RETIRED_KEPT = 50;
 /** Sessions an account has at most: a new one past this ends the one used longest ago. */
 export const MAX_SESSIONS = 20;
+/** The refresh cookie is sent only to the sign-in routes, not with every request. */
+export const REFRESH_PATH = '/api/v1/auth';
 
 /** 32 random bytes, base64url: what goes in a cookie or a link. */
 export function newToken(): string {
@@ -38,28 +51,62 @@ export function cookieName({ secure }: CookieSettings): string {
   return secure ? '__Host-session' : 'session';
 }
 
-function cookieOptions({ secure }: CookieSettings, maxAgeSeconds: number): CookieSerializeOptions {
-  return { httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: maxAgeSeconds };
+/**
+ * `__Secure-refresh` over HTTPS: Secure, and with no Domain, so only this host gets it. Not `__Host-`, which allows
+ * only Path=/; this one has REFRESH_PATH. Over plain http (development), `refresh`.
+ */
+export function refreshCookieName({ secure }: CookieSettings): string {
+  return secure ? '__Secure-refresh' : 'refresh';
 }
 
-export function setSessionCookie(reply: FastifyReply, settings: CookieSettings, token: string): void {
-  reply.setCookie(cookieName(settings), token, cookieOptions(settings, SESSION_MS / 1000));
+function cookieOptions({ secure }: CookieSettings, path: string, maxAgeSeconds: number): CookieSerializeOptions {
+  return { httpOnly: true, secure, sameSite: 'lax', path, maxAge: maxAgeSeconds };
 }
 
-export function clearSessionCookie(reply: FastifyReply, settings: CookieSettings): void {
-  reply.setCookie(cookieName(settings), '', { ...cookieOptions(settings, 0), expires: new Date(0) });
+export interface SessionTokens {
+  access: string;
+  refresh: string;
 }
+
+export function setSessionCookies(reply: FastifyReply, settings: CookieSettings, tokens: SessionTokens): void {
+  reply.setCookie(cookieName(settings), tokens.access, cookieOptions(settings, '/', ACCESS_MS / 1000));
+  reply.setCookie(refreshCookieName(settings), tokens.refresh, cookieOptions(settings, REFRESH_PATH, SESSION_MS / 1000));
+}
+
+export function clearSessionCookies(reply: FastifyReply, settings: CookieSettings): void {
+  const gone = (path: string) => ({ ...cookieOptions(settings, path, 0), expires: new Date(0) });
+  reply.setCookie(cookieName(settings), '', gone('/'));
+  reply.setCookie(refreshCookieName(settings), '', gone(REFRESH_PATH));
+}
+
+// Tokens are 43 base64url characters; anything else cannot be one of ours, so skip the lookup.
+const asToken = (value: string | undefined) => (value && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : undefined);
 
 export function sessionToken(request: FastifyRequest, settings: CookieSettings): string | undefined {
-  const token = request.cookies[cookieName(settings)];
-  // Tokens are 43 base64url characters; anything else cannot be one of ours, so skip the lookup.
-  return token && /^[A-Za-z0-9_-]{43}$/.test(token) ? token : undefined;
+  return asToken(request.cookies[cookieName(settings)]);
+}
+
+export function refreshToken(request: FastifyRequest, settings: CookieSettings): string | undefined {
+  return asToken(request.cookies[refreshCookieName(settings)]);
+}
+
+/** A new pair of tokens, and what the session stores for them. */
+function newPair(now: Date) {
+  const tokens: SessionTokens = { access: newToken(), refresh: newToken() };
+  const fields = {
+    accessHash: hashToken(tokens.access),
+    accessExpiresAt: new Date(now.getTime() + ACCESS_MS),
+    refreshHash: hashToken(tokens.refresh),
+    lastSeenAt: now,
+    expiresAt: new Date(now.getTime() + SESSION_MS),
+  };
+  return { tokens, fields };
 }
 
 /**
- * Signs an account in on this device: a new session, its cookie, and the device's name from the User-Agent. An account
- * keeps at most MAX_SESSIONS: past that, the ones used longest ago (lastSeenAt) end, so a loop of sign-ins cannot fill
- * the database. The new one always stays.
+ * Signs an account in on this device: a new session, its cookies, and the device's name from the User-Agent. An
+ * account keeps at most MAX_SESSIONS: past that, the ones used longest ago (lastSeenAt) end, so a loop of sign-ins
+ * cannot fill the database. The new one always stays. Returns the session's id.
  */
 export async function createSession(
   c: Collections,
@@ -70,13 +117,14 @@ export async function createSession(
   userAgent: string | undefined,
   session?: ClientSession,
 ): Promise<string> {
-  const token = newToken();
+  const { tokens, fields } = newPair(now);
   const doc: SessionDoc = {
-    _id: hashToken(token),
+    _id: randomBytes(16).toString('hex'),
     accountId,
+    ...fields,
+    retired: [],
+    refreshedAt: null,
     createdAt: now,
-    lastSeenAt: now,
-    expiresAt: new Date(now.getTime() + SESSION_MS),
     device: deviceName(userAgent).slice(0, 100),
   };
   await c.sessions.insertOne(doc, { session });
@@ -86,14 +134,15 @@ export async function createSession(
     .skip(MAX_SESSIONS - 1)
     .toArray();
   if (over.length > 0) await c.sessions.deleteMany({ _id: { $in: over.map((s) => s._id) } }, { session });
-  setSessionCookie(reply, settings, token);
+  setSessionCookies(reply, settings, tokens);
   return doc._id;
 }
 
 /**
  * Signs an account in on this device in place of the session the browser had, if any: that one ends first, whoever's
- * it was and whether or not it still works, so no session is left behind that no device holds any more. For sign-in,
- * accepting an invite and setting a new password.
+ * it was and whether or not it still works, so no session is left behind that no device holds any more. Either cookie
+ * names it: the session token may have run out while the refresh token still works. For sign-in, accepting an invite
+ * and setting a new password, all under REFRESH_PATH.
  */
 export async function replaceSession(
   c: Collections,
@@ -103,26 +152,55 @@ export async function replaceSession(
   accountId: ObjectId,
   now: Date,
 ): Promise<string> {
-  const previous = sessionToken(request, settings);
-  if (previous) await c.sessions.deleteOne({ _id: hashToken(previous) });
+  const access = sessionToken(request, settings);
+  const refresh = refreshToken(request, settings);
+  const previous = [
+    ...(access ? [{ accessHash: hashToken(access) }] : []),
+    ...(refresh ? [{ refreshHash: hashToken(refresh) }] : []),
+  ];
+  if (previous.length > 0) await c.sessions.deleteMany({ $or: previous });
   return createSession(c, reply, settings, accountId, now, request.headers['user-agent']);
 }
 
 /**
- * The live session for a cookie token, or null. An expired session counts as missing even before the TTL index
- * deletes it (MongoDB removes expired documents only about once a minute). When the session was last seen over an
- * hour ago, it is moved on: lastSeenAt is now, and it ends 30 days from now; `refreshed` says so, and the caller sends
- * the cookie again so the browser keeps it as long.
+ * The live session for a session token, or null. A session token that ran out, or was swapped by a refresh, counts as
+ * missing; so does an expired session, even before the TTL index deletes it (MongoDB removes expired documents only
+ * about once a minute). Using the session token moves nothing: only a refresh does.
  */
-export async function findSession(
-  c: Collections,
-  token: string,
-  now: Date,
-): Promise<{ session: SessionDoc; refreshed: boolean } | null> {
-  const session = await c.sessions.findOne({ _id: hashToken(token), expiresAt: { $gt: now } });
-  if (!session) return null;
-  if (now.getTime() - session.lastSeenAt.getTime() <= REFRESH_MS) return { session, refreshed: false };
-  const expiresAt = new Date(now.getTime() + SESSION_MS);
-  await c.sessions.updateOne({ _id: session._id }, { $set: { lastSeenAt: now, expiresAt } });
-  return { session: { ...session, lastSeenAt: now, expiresAt }, refreshed: true };
+export async function findSession(c: Collections, token: string, now: Date): Promise<SessionDoc | null> {
+  return c.sessions.findOne({ accessHash: hashToken(token), accessExpiresAt: { $gt: now }, expiresAt: { $gt: now } });
+}
+
+export type Refresh =
+  /** Swapped: the new pair goes in the cookies. The session lasts SESSION_DAYS from now. */
+  | { outcome: 'rotated'; session: SessionDoc; tokens: SessionTokens }
+  /** Swapped moments ago by another request from this browser (REFRESH_RACE_MS), which has the new cookies already. */
+  | { outcome: 'raced'; session: SessionDoc }
+  /** A refresh token swapped longer ago came back: it was copied. The session is ended, for whoever holds it. */
+  | { outcome: 'reused'; session: SessionDoc }
+  /** No live session has this token, now or before. */
+  | { outcome: 'none' };
+
+/**
+ * Swaps a refresh token for a new pair. The swap is one update that matches the current token only, so of two
+ * requests with one token, one swaps and the other finds it retired (a race, or a copy). The caller checks the
+ * account before it sets the cookies.
+ */
+export async function refreshSession(c: Collections, token: string, now: Date): Promise<Refresh> {
+  const hash = hashToken(token);
+  const { tokens, fields } = newPair(now);
+  const rotated = await c.sessions.findOneAndUpdate(
+    { refreshHash: hash, expiresAt: { $gt: now } },
+    { $set: { ...fields, refreshedAt: now }, $push: { retired: { $each: [hash], $slice: -RETIRED_KEPT } } },
+    { returnDocument: 'after' },
+  );
+  if (rotated) return { outcome: 'rotated', session: rotated, tokens };
+
+  const old = await c.sessions.findOne({ retired: hash, expiresAt: { $gt: now } });
+  if (!old) return { outcome: 'none' };
+  const justSwapped = old.retired.at(-1) === hash && old.refreshedAt !== null
+    && now.getTime() - old.refreshedAt.getTime() < REFRESH_RACE_MS;
+  if (justSwapped) return { outcome: 'raced', session: old };
+  await c.sessions.deleteOne({ _id: old._id });
+  return { outcome: 'reused', session: old };
 }

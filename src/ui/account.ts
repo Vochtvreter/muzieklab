@@ -1,8 +1,11 @@
 /**
  * useAccount(): who is signed in, for Settings → Account and the account and admin screens (BACKEND-PLAN.md §5).
  *
- * The app stays offline first: no request goes out until a screen that needs the account is opened. The first such
- * screen of an app session asks GET /me: 200 → signed in; 401 → signed out; no answer (offline, the API restarting, or
+ * The app stays offline first: no request goes out until a screen that needs the account is opened, with one
+ * exception: on a device where someone is signed in, keepSignedIn() renews the session when the app starts and when it
+ * comes back into view (at most every RENEW_MS), so the session lasts 90 days after the app was last used, not after
+ * an account screen was last opened (BACKEND-PLAN.md §5.4). The first screen of an app session that needs the
+ * account asks GET /me: 200 → signed in; 401 → signed out; no answer (offline, the API restarting, or
  * a site with no API) → `unreachable`, and a cached account is shown as offline. While it is unreachable, GET /me is
  * asked again when such a screen opens (at most once every RECHECK_MS), when the app comes back into view
  * (visibilitychange), when the device is back online, and on Try again. Everything else that changes the account goes
@@ -10,7 +13,8 @@
  */
 import { useCallback, useEffect, useMemo } from 'react';
 import type { Me, Permission } from '../../shared/api';
-import { api, asApiError, type ApiError } from '../api/client';
+import { api, asApiError, renewSession, type ApiError } from '../api/client';
+import { loadAccount } from '../game/storage';
 import { t } from '../i18n';
 import { announce } from './lib/announce';
 import { useStore, type AccountNotice, type AccountState, type Action } from './store';
@@ -51,8 +55,11 @@ let reach: AccountState['api'] = 'unknown';
 let dispatchTo: ((a: Action) => void) | null = null;
 let listening = false;
 
-/** Tests only: forget this session's GET /me, as a reload would. */
+/** Tests only: forget this session's GET /me and renewal, as a reload would. */
 export function resetAccountCheck(): void {
+  renewedAt = -Infinity;
+  stopKeeping?.();
+  stopKeeping = null;
   check = null;
   asking = null;
   askedAt = -Infinity;
@@ -112,6 +119,39 @@ function listen(): void {
   document.addEventListener('visibilitychange', () => {
     if (dispatchTo && document.visibilityState === 'visible') askAgain(dispatchTo);
   });
+}
+
+/** keepSignedIn() renews the session at most this often while the app stays open. */
+export const RENEW_MS = 12 * 60 * 60_000;
+let renewedAt = -Infinity;
+/** Removes keepSignedIn's listener (tests only, through resetAccountCheck). */
+let stopKeeping: (() => void) | null = null;
+
+/**
+ * Called once at startup (main.tsx): renews the session now and whenever the app comes back into view, while someone
+ * is signed in on this device and the last renewal that got an answer is over RENEW_MS ago. What the answer says is
+ * left to GET /me: a session that ended shows as signed out once a screen that needs the account opens.
+ */
+export function keepSignedIn(): void {
+  const renew = (): void => {
+    if (!loadAccount() || Date.now() - renewedAt < RENEW_MS) return;
+    renewSession().then(
+      () => {
+        renewedAt = Date.now();
+      },
+      (e: unknown) => {
+        // No answer (offline): try again when the app next comes into view.
+        if (asApiError(e).code !== 'unavailable') renewedAt = Date.now();
+      },
+    );
+  };
+  renew();
+  if (stopKeeping) return;
+  const onView = (): void => {
+    if (document.visibilityState === 'visible') renew();
+  };
+  document.addEventListener('visibilitychange', onView);
+  stopKeeping = () => document.removeEventListener('visibilitychange', onView);
 }
 
 /**

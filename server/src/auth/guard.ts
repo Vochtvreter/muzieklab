@@ -1,11 +1,11 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { PERMISSIONS, type Permission } from '../../../shared/api.js';
 import type { AppContext } from '../context.js';
 import type { AccountDoc, SessionDoc } from '../db.js';
 import { ApiError } from '../errors.js';
 import { needsOriginCheck, sameOrigin } from './origin.js';
 import { can } from './policy.js';
-import { findSession, sessionToken, setSessionCookie } from './sessions.js';
+import { findSession, sessionToken } from './sessions.js';
 
 // Deny by default (BACKEND-PLAN.md §4.4): every route says in its `config` who may call it, either `{ public: true }`
 // or `{ permission }` (signed in, with that permission). A route that says neither does not start.
@@ -44,7 +44,7 @@ export function installGuard(app: FastifyInstance, ctx: AppContext): void {
     }
   });
 
-  app.addHook('onRequest', async (request, reply) => {
+  app.addHook('onRequest', async (request) => {
     // Unknown routes answer 404 whoever asks.
     if (request.is404) return;
     if (needsOriginCheck(request.method) && !sameOrigin(request)) {
@@ -52,23 +52,25 @@ export function installGuard(app: FastifyInstance, ctx: AppContext): void {
     }
     const { permission } = request.routeOptions.config;
     if (permission === undefined) return; // public (onRoute made sure)
-    const auth = await authenticate(ctx, request, reply);
+    const auth = await authenticate(ctx, request);
     if (!auth) throw new ApiError('unauthenticated', 'Not signed in');
     if (!can(auth.account, permission)) throw new ApiError('forbidden', 'This account may not do this');
     request.auth = auth;
   });
 }
 
-/** The signed-in account for the request's session cookie, or null. Sends the cookie again when the session moves on. */
-export async function authenticate(ctx: AppContext, request: FastifyRequest, reply: FastifyReply): Promise<Auth | null> {
+/**
+ * The signed-in account for the request's session cookie, or null. A session token that ran out gives null too: the app
+ * then swaps its refresh token for a new pair (POST /auth/refresh) and asks again.
+ */
+export async function authenticate(ctx: AppContext, request: FastifyRequest): Promise<Auth | null> {
   const token = sessionToken(request, ctx.cookies);
   if (!token) return null;
-  const found = await findSession(ctx.c, token, ctx.now());
-  if (!found) return null;
-  const account = await ctx.c.accounts.findOne({ _id: found.session.accountId, status: 'active' });
+  const session = await findSession(ctx.c, token, ctx.now());
+  if (!session) return null;
+  const account = await ctx.c.accounts.findOne({ _id: session.accountId, status: 'active' });
   if (!account) return null;
-  if (found.refreshed) setSessionCookie(reply, ctx.cookies, token);
-  return { account, session: found.session };
+  return { account, session };
 }
 
 /** The signed-in account on a route with a permission (the guard has checked it). */

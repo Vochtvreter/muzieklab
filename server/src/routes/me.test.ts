@@ -245,7 +245,7 @@ describe('DELETE /me', () => {
 
     const res = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie, payload: { password: NEW_PASSWORD } });
     expect(res.statusCode).toBe(204);
-    expect(res.headers['set-cookie']).toMatch(/^__Host-session=; Max-Age=0/);
+    expect(res.cookies.map((x) => [x.name, x.value, x.maxAge])).toEqual([['__Host-session', '', 0], ['__Secure-refresh', '', 0]]);
 
     const c = collections(t.db);
     expect(await c.accounts.countDocuments({ email: 'bob@example.com' })).toBe(0);
