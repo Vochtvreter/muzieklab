@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { AccountExport, LinkCreated, Me } from '../../../shared/api.js';
+import { FEEDBACK_MAX, type AccountExport, type LinkCreated, type Me } from '../../../shared/api.js';
 import { collections } from '../db.js';
 import {
   PASSWORD,
@@ -225,6 +225,7 @@ describe('DELETE /me', () => {
     expect(res.json()).toMatchObject({ error: 'wrong_password' });
     const none = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie });
     expect(none.statusCode).toBe(400);
+    expect(await collections(t.db).closures.countDocuments()).toBe(0);
   });
 
   it('removes everything about the account, and scrubs its name and email from the audit', async () => {
@@ -259,9 +260,90 @@ describe('DELETE /me', () => {
       ['account.delete_self', {}],
     ]);
     expect(JSON.stringify(audit)).not.toMatch(/bob/i);
+    // Without removeData (an app before 0.16.0): nothing is kept, only that an account was deleted.
+    expect(await c.closures.find().project({ _id: 0, day: 0 }).toArray()).toEqual([{ kind: 'removed', feedback: null, archive: null }]);
     // The email is free again.
     const again = await t.call({ method: 'POST', url: '/api/v1/admin/invites', cookie: admin.cookie, payload: { email: 'bob@example.com', name: 'Bob', roles: [] } });
     expect(again.statusCode).toBe(200);
+  });
+
+  it('keeps an anonymous copy of the progress and prefs, and the feedback, without a name, email, id or time', async () => {
+    const t = await makeApp(mongo);
+    const now = t.clock.now();
+    const account = await seedAccount(t.db, { email: 'ann@example.com', name: 'Ann Smit', createdAt: new Date(Date.UTC(2026, 2, 3, 9)) });
+    const cookie = await signIn(t, 'ann@example.com');
+    const prefs = { theme: 'dark', noteNames: 'solfege' };
+    const progress = { xp: 1840, lessons: { '7.3': { stars: 3, bestAccuracy: 94 } }, practiceDays: ['2026-10-24'] };
+    const saved = await t.call({ method: 'PUT', url: '/api/v1/progress', cookie, payload: { rev: 0, prefs, progress } });
+    expect(saved.statusCode).toBe(200);
+
+    const res = await t.call({
+      method: 'DELETE',
+      url: '/api/v1/me',
+      cookie,
+      payload: { password: PASSWORD, removeData: false, feedback: '  Too hard after chapter 7.  ' },
+    });
+    expect(res.statusCode).toBe(204);
+    const c = collections(t.db);
+    expect(await c.accounts.countDocuments()).toBe(0);
+    expect(await c.progress.countDocuments()).toBe(0);
+    const closures = await c.closures.find().toArray();
+    expect(closures).toEqual([
+      {
+        _id: expect.stringMatching(/^[0-9a-f]{32}$/),
+        // The day only: not the time of the deletion.
+        day: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())),
+        kind: 'archived',
+        feedback: 'Too hard after chapter 7.',
+        archive: { joined: '2026-03', data: { prefs, progress } },
+      },
+    ]);
+    const text = JSON.stringify(closures);
+    expect(text).not.toMatch(/ann|smit/i);
+    expect(text).not.toContain(account._id.toHexString());
+    // Its audit entry is the same as for one deleted with its data, so the two cannot be matched up.
+    const entry = await c.audit.findOne({ action: 'account.delete_self' });
+    expect(entry?.details).toEqual({});
+  });
+
+  it('with removeData, keeps only the feedback', async () => {
+    const t = await makeApp(mongo);
+    const { cookie } = await annSignedIn(t);
+    await t.call({ method: 'PUT', url: '/api/v1/progress', cookie, payload: { rev: 0, prefs: {}, progress: { xp: 5 } } });
+    const res = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie, payload: { password: PASSWORD, removeData: true, feedback: 'Moving on' } });
+    expect(res.statusCode).toBe(204);
+    const c = collections(t.db);
+    expect(await c.progress.countDocuments()).toBe(0);
+    expect(await c.closures.find().project({ _id: 0, day: 0 }).toArray()).toEqual([{ kind: 'removed', feedback: 'Moving on', archive: null }]);
+  });
+
+  it('archives an account that never saved progress, and keeps empty feedback as none', async () => {
+    const t = await makeApp(mongo);
+    const { account, cookie } = await annSignedIn(t);
+    const res = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie, payload: { password: PASSWORD, removeData: false, feedback: '   ' } });
+    expect(res.statusCode).toBe(204);
+    expect(await collections(t.db).closures.find().project({ _id: 0, day: 0 }).toArray()).toEqual([
+      { kind: 'archived', feedback: null, archive: { joined: account.createdAt.toISOString().slice(0, 7), data: null } },
+    ]);
+  });
+
+  it('refuses feedback over the limit, and a removeData that is not true or false, and deletes nothing', async () => {
+    const t = await makeApp(mongo);
+    const { cookie } = await annSignedIn(t);
+    for (const payload of [
+      { password: PASSWORD, feedback: 'x'.repeat(FEEDBACK_MAX + 1) },
+      { password: PASSWORD, removeData: 'yes' },
+      { password: PASSWORD, feedback: 7 },
+    ]) {
+      const res = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie, payload });
+      expect(res.statusCode, JSON.stringify(payload).slice(0, 60)).toBe(400);
+    }
+    const c = collections(t.db);
+    expect(await c.accounts.countDocuments()).toBe(1);
+    expect(await c.closures.countDocuments()).toBe(0);
+    // The limit counts characters as people do: 1000 emoji are 2000 UTF-16 units.
+    const ok = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie, payload: { password: PASSWORD, feedback: '🎵'.repeat(FEEDBACK_MAX) } });
+    expect(ok.statusCode).toBe(204);
   });
 
   it('refuses the last admin', async () => {
@@ -270,6 +352,7 @@ describe('DELETE /me', () => {
     const res = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie: admin.cookie, payload: { password: PASSWORD } });
     expect(res.statusCode).toBe(409);
     expect(res.json()).toMatchObject({ error: 'last_admin' });
+    expect(await collections(t.db).closures.countDocuments()).toBe(0);
     // With a second active admin it works.
     await seedAccount(t.db, { email: 'second@example.com', roles: ['admin'] });
     const ok = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie: admin.cookie, payload: { password: PASSWORD } });

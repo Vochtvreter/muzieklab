@@ -717,7 +717,8 @@
     "privacySub": "What stays on this device, and what an account stores",
     "noticeSignedOut": "Signed out.",
     "noticeSignedOutEverywhere": "Signed out on every device.",
-    "noticeDeleted": "Your account was deleted.",
+    "noticeDeleted": "Your account and its data were deleted.",
+    "noticeDeletedKept": "Your account was deleted. An anonymous copy of your progress is kept.",
     "noticeWelcome": "You're signed in. Welcome to Muzieklab.",
     "noticePasswordReset": "Password saved. Your other devices are signed out.",
     "noticeProgressAdded": "The progress on this device is on your account now too.",
@@ -881,8 +882,16 @@
     "downloading": "Downloading…",
     "downloaded": "Downloaded: {file}.",
     "delete": "Delete account",
+    "deleteSub": "You choose whether an anonymous copy of your progress is kept.",
     "deleteQuestion": "Delete your account?",
-    "deleteDetail": "Your account and everything stored with it, the progress on it too, are deleted. Progress on this device stays. No undo.",
+    "deleteDetail": "Your name, email, password and devices are deleted, and you're signed out. Progress on this device stays. No undo.",
+    "deleteData": "Your progress and settings",
+    "deleteKeep": "Keep anonymously",
+    "deleteRemove": "Delete too",
+    "deleteKeepHint": "They're kept without your name, email or anything else that says they were yours, to see how Muzieklab is used and make it better.",
+    "deleteRemoveHint": "They're deleted with your account. Nothing of your account is kept.",
+    "feedback": "Why are you leaving? (optional)",
+    "feedbackHint": "It helps us make Muzieklab better. It's kept without your name or email, also when you delete everything, so leave out anything that says who you are.",
     "deletePassword": "Password",
     "deleteConfirm": "Delete",
     "deleting": "Deleting…"
@@ -916,7 +925,14 @@
     "ageTitle": "Age",
     "age": "For now, accounts are for people aged 16 and over.",
     "updated": "Last updated: {date}",
-    "accountProgress": "your progress and the settings that go with you, such as the theme and note names"
+    "accountProgress": "your progress and the settings that go with you, such as the theme and note names",
+    "deleteTitle": "When you delete your account",
+    "deleteIntro": "You choose what happens to your progress and settings:",
+    "deleteKeep": "Keep them anonymously: your name, email, password and devices are deleted, and your progress and settings are kept without them, with only the month you joined. Nothing in them says they were yours. We use them to see how Muzieklab is used.",
+    "deleteRemove": "Delete them too: nothing of your account is kept.",
+    "deleteFeedback": "Either way, we note the day an account was deleted, and keep what you wrote about why you're leaving, if you wrote anything, without your name or email.",
+    "deleteBackups": "The nightly backups still hold your account for up to 14 days.",
+    "keepClosures": "Deleted accounts: the anonymous copy, the feedback and the day, 2 years."
   },
   "admin": {
     "title": "Accounts",
@@ -1022,7 +1038,35 @@
     "newResetLink": "New password link",
     "newInviteLinkSub": "Works for {days} days. The earlier link stops working.",
     "newResetLinkSub": "Works for {hours} hours, once. The earlier one stops working.",
-    "making": "Making a link…"
+    "making": "Making a link…",
+    "history": "History",
+    "historySub": "Accounts that were deleted, and why people left"
+  },
+  "closures": {
+    "title": "Deleted accounts",
+    "lead": "Every account deleted in the last 2 years, with what its owner wrote. Nothing here says whose an account was.",
+    "loading": "Loading deleted accounts…",
+    "empty": "No account has been deleted yet.",
+    "emptyKind": "None of these.",
+    "kindGroup": "How it was deleted",
+    "count": "{count, plural, one {# deleted account} other {# deleted accounts}}",
+    "countFound": "{count, plural, one {# deleted account found} other {# deleted accounts found}}",
+    "rowLabel": "{day}, {kind}",
+    "noFeedback": "No feedback.",
+    "joined": "Joined {month}",
+    "noProgress": "No progress saved",
+    "level": "Level {level}",
+    "xp": "{xp} XP",
+    "lessons": "{count, plural, one {# lesson} other {# lessons}}",
+    "days": "{count, plural, one {# day practiced} other {# days practiced}}",
+    "file": "File",
+    "download": "Download as a file",
+    "downloadSub": "Every entry, with the anonymous progress, as JSON."
+  },
+  "closureKind": {
+    "archived": "Archived",
+    "removed": "Data deleted",
+    "admin": "By an admin"
   },
   "noteButton": {
     "whole": "Whole note",
@@ -2422,6 +2466,13 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_16_0": {
+      "title": "Deleting your account, your way",
+      "try": "Read how it works",
+      "choice": "Deleting your account now asks what happens to your progress and settings: keep them as an anonymous copy, without your name or email, or delete them too.",
+      "feedback": "You can say why you leave when you delete your account. It is kept without your name.",
+      "admin": "Admins see every deleted account in Accounts → Deleted accounts, with the feedback and what an anonymous copy holds."
+    },
     "v0_15_0": {
       "title": "Progress on every device",
       "try": "Open Settings",

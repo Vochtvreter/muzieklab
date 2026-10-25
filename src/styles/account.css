@@ -308,9 +308,19 @@
 .small-btn[aria-disabled='true'] {
   opacity: 0.6;
 }
-/* A choice inside a confirm (Sign out: Keep · Remove): buttons as tall as the confirm's own, for a finger. */
+/* A choice inside a confirm (Sign out: Keep · Remove): buttons as tall as the confirm's own, for a finger. Words that
+   do not fit half the confirm (Keep anonymously at 320 px) go onto a second line instead of being cut. */
 .confirm-seg .seg-btn {
   min-height: 44px;
+  white-space: normal;
+  line-height: 1.2;
+}
+/* A labelled choice inside a confirm (Delete account: the label, Keep anonymously · Delete too, and what the chosen one
+   does), spaced like a text field. */
+.confirm-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 /* A confirm that loses nothing (Sign out everywhere): the question in ink, not the danger red. */
 .reset-text.is-plain b {
@@ -386,6 +396,11 @@
   -webkit-box-shadow: 0 0 0 40px var(--paper) inset;
   -webkit-text-fill-color: var(--ink);
   caret-color: var(--ink);
+}
+/* Text over several lines (feedback): three lines to start with, taller by hand. */
+.tfield-input--area {
+  min-height: 96px;
+  resize: vertical;
 }
 .tfield-input--password {
   padding-right: 84px;
@@ -526,6 +541,21 @@
   color: var(--miss-ink);
 }
 
+/* How a deleted account went (Deleted accounts): Archived in the invited gold, Data deleted in red, By an admin in the
+   accent; AA contrast in both themes, as the status pills. */
+.status-pill.is-archived {
+  background: var(--reward-soft);
+  color: var(--reward-ink);
+}
+.status-pill.is-removed {
+  background: var(--miss-soft);
+  color: var(--miss-ink);
+}
+.status-pill.is-admin {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
 /* ---------- Privacy ---------- */
 .prose {
   padding: 12px 16px 14px;
@@ -643,6 +673,33 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
+}
+/* One deleted account (Deleted accounts): the day and its pill, the feedback, and the archived copy's facts. Not a
+   link: there is nothing to open. */
+.closure-row {
+  padding: 12px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.closure-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  font-size: 15px;
+}
+/* What they wrote, as they wrote it: their line breaks kept, a long word broken rather than widening the card. */
+.closure-feedback {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--ground);
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .acct-empty {
   padding: 14px 16px;

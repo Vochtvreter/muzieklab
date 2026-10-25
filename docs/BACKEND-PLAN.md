@@ -4,7 +4,8 @@ Status: **phases 0, 1 and 2 built.** Phase 0 is the API with `/api/v1/health`, M
 test site. Phase 1, in 0.12.0, is accounts: invite and new-password links, signing in and out, the Account screen, the
 admin screens and the privacy statement (§10, [DEPLOY.md](DEPLOY.md) *The API*). Sessions with refresh tokens, which
 keep someone signed in for 90 days after they last used the app, came in 0.14.0 (§5.4). Phase 2, in 0.15.0, is progress
-on the account: sync and merge (§6). Phases 3 to 5 are designed, not built.
+on the account: sync and merge (§6). Deleting an account with the choice to keep an anonymous copy, feedback, and the
+admin screen Deleted accounts came in 0.16.0 (§3.7). Phases 3 to 5 are designed, not built.
 
 This was written on 2026-10-23, after production moved to our own server. It now describes phases 1 and 2 as built.
 Where the build differs from the first plan, the section says so. Decisions taken so far:
@@ -86,7 +87,7 @@ server/
       guard.ts          deny by default: each route is public or needs a permission (§4.4)
       origin.ts         the Origin check (§5.4), and the site's address for links
       device.ts         a device name from the User-Agent ("Safari on iPhone")
-    accounts/           views (documents → API bodies), validate, premium (§4.3), audit (§3.5), remove
+    accounts/           views (documents → API bodies), validate, premium (§4.3), audit (§3.5), remove, closures (§3.7)
     routes/             health, auth, me, progress, admin; schemas.ts holds the JSON schemas
     commands/
       create-admin.ts   the first admin, run on the server (§5.1)
@@ -116,7 +117,8 @@ Transactions need a replica set, so MongoDB runs as a single-node replica set (`
 
 Field names are as stored (`server/src/db.ts`). `_id` is an `ObjectId` unless shown otherwise; the API sends ids as
 hex strings and dates as ISO strings. Phase 1 has five collections: `accounts`, `sessions`, `tokens`, `audit` and
-`locks`. `progress` (phase 2), `classes` and `memberships` (phase 3) and `content` (phase 4) come later. The indexes
+`locks`. `progress` came with phase 2 and `closures` with 0.16.0; `classes` and `memberships` (phase 3) and `content`
+(phase 4) come later. The indexes
 are made when the API starts (§9.2).
 
 ### 3.1 accounts
@@ -234,6 +236,44 @@ demote each other at the same moment would each still see the other as an admin,
 admin. So every transaction that could remove an admin writes this document first: `PATCH` and `DELETE
 /admin/accounts/:id`, and `DELETE /me`. The second transaction then conflicts, and the driver runs it again; on the new
 run it sees the first one's change. The document is made when the API starts.
+
+### 3.7 closures: deleted accounts (0.16.0)
+
+```js
+{
+  _id: "3f9c1a7e5b2d4c6e8a0b1c2d3e4f5a6b",   // 16 random bytes, hex: not an ObjectId, whose first bytes are the second it was made
+  day: ISODate("2026-10-24T00:00:00Z"),     // midnight UTC of the day it was deleted: no time of day
+  kind: "archived",                         // "archived" | "removed" | "admin"
+  feedback: "Too hard after chapter 7.",    // what its owner wrote, or null; at most 1000 characters
+  archive: {                                // archived only, else null
+    joined: "2026-03",                      // the month the account was made
+    data: { prefs: {…}, progress: {…} },    // the progress document's prefs and progress (§3.3), or null if none was saved
+  },
+}
+```
+
+Every deleted account leaves one closure, written in the deletion's transaction, so the admin screen *Deleted accounts*
+can show the history and why people left. Deleting your own account (`DELETE /me`) asks one more thing: what happens to
+the progress and prefs.
+
+- **archived** (`removeData: false`, the app's default): the account, its sessions, links and progress go, as before,
+  but a copy of its prefs and progress is kept, with the month it was made.
+- **removed** (`removeData: true`): nothing of the account is kept. Apps before 0.16.0 send no `removeData`: that counts
+  as true, which is what they told the person.
+- **admin** (`DELETE /admin/accounts/:id`): an admin deleted it; no feedback and no copy. A cancelled invite was never
+  used, so it leaves no closure.
+
+What makes it anonymous: a closure holds no name, email, password, device, role, premium or account id, and no moment
+that could match it to the audit log's `account.delete_self` entry (the random `_id` and the day only). That entry is
+the same for every kind, so the log does not say which closure an account left. Feedback is stored as written; the app
+asks people to leave out anything that says who they are. Closures are kept two years, as the audit log (a TTL index on
+`day`).
+
+**What it does not do:** with only a handful of accounts, someone who knows who left on a given day (an admin sees
+who is gone from the accounts list, and the audit log keeps the deleted account's id with the times of its entries) can
+still guess whose an archived copy is. The copy is anonymous in what it stores, not against that guess; it becomes hard
+only with many accounts. Dropping the account's id from its audit entries when it is deleted would make the guess
+harder; it is not done, as the log keeps ids on purpose (§3.5).
 
 ## 4. Permissions
 
@@ -581,7 +621,7 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `POST /me/password` | `self.manage` | The current and a new password. Other sessions and new-password links end. |
 | `POST /me/email` | `self.manage` | The current password and a new email. New-password links end. |
 | `GET /me/export` | `self.manage` | Everything about the account as a download (`muzieklab-account.json`): the account, its sessions, its saved progress and the audit entries about it. What it did to other accounts is left out, so other people's data stays out. |
-| `DELETE /me` | `self.manage` | With the current password: the account, its sessions, links and progress go, and audit entries about it are scrubbed (§3.5). |
+| `DELETE /me` | `self.manage` | With the current password, and optionally `removeData` and `feedback`: the account, its sessions, links and progress go, and audit entries about it are scrubbed (§3.5). Without `removeData`, or with it false, a copy of the progress and prefs is kept, without anything that says whose (§3.7). Not sent: true. Either way it leaves a closure, with the feedback. |
 | `GET /progress` | `progress.own` | The account's copy (`SavedProgress`): `rev`, `data` (prefs and progress, null before the first save), `resetAt` and `updatedAt`. Rev 0 before the first save. |
 | `PUT /progress` | `progress.own` | `rev`, `prefs` and `progress` → the saved copy, with the next rev. A `rev` the account has moved on from (or never had) is refused with 409 `rev_conflict` and the account's copy in `current`. Of two first saves at once, one gets the conflict. |
 | `DELETE /progress` | `progress.own` | Reset progress: the progress is emptied, the prefs stay, `resetAt` is now and the rev goes up. Without a saved copy it changes nothing (rev 0). |
@@ -591,7 +631,8 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite`, roles `roles.grant`, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
 | `POST /admin/accounts/:id/invite-link` | `accounts.invite` | An invited account only: a new invite link; the old one stops working. |
 | `POST /admin/accounts/:id/reset-link` | `accounts.invite` | An active account only: a new-password link for 24 hours. It lets its holder into the account, as an invite does, hence the same permission. |
-| `DELETE /admin/accounts/:id?expect=` | `accounts.delete` | Cancels an invite or deletes an account (never yourself, never the last admin). With `expect` (a status), it is refused with 409 `wrong_status` when the account has another status: Cancel invite sends `expect=invited`, so an invite accepted meanwhile is not deleted. |
+| `DELETE /admin/accounts/:id?expect=` | `accounts.delete` | Cancels an invite or deletes an account (never yourself, never the last admin). A deleted account (not a cancelled invite) leaves a closure of kind `admin` (§3.7). With `expect` (a status), it is refused with 409 `wrong_status` when the account has another status: Cancel invite sends `expect=invited`, so an invite accepted meanwhile is not deleted. |
+| `GET /admin/closures` | `accounts.read` | Deleted accounts (§3.7), newest day first, at most 500: `id`, `day` (YYYY-MM-DD), `kind`, `feedback` and `archive`. |
 | `GET /admin/audit?limit=&before=` | `audit.read` | Newest first: 100 by default, at most 500. `before` is the last id of the previous page. No screen shows it yet. |
 
 Planned: `POST
@@ -610,7 +651,9 @@ body also has `current`, the account's copy of the progress. When the API does n
 ## 8. Privacy and security
 
 **Personal data we keep:** email, name, password hash, roles and premium, sessions (device name, when signed in and
-last used), the audit log, and the progress and synced prefs (§6). No IP addresses are stored: an address is kept only briefly in
+last used), the audit log, and the progress and synced prefs (§6). A deleted account leaves a closure (§3.7): the day,
+the feedback if any, and, if its owner chose to keep it, an anonymous copy of the progress and prefs with the month the
+account was made. No IP addresses are stored: an address is kept only briefly in
 memory for the sign-in limits (§5.2), and the log has none (below).
 
 GDPR (in the Netherlands: AVG) needs, before the first invite goes out:
@@ -622,7 +665,8 @@ GDPR (in the Netherlands: AVG) needs, before the first invite goes out:
 - A **data processing agreement** with Hetzner (they offer one in the console).
 - **Export** (`GET /me/export`, everything about the account as JSON) and **delete** (the account, its sessions and
   links and progress go, and audit entries about it lose the name and email) from the Account screen, without asking
-  an admin: built. Memberships join the export and the delete in phase 3.
+  an admin: built. Since 0.16.0 the person chooses whether an anonymous copy of the progress and prefs is kept, and
+  may leave feedback; the privacy statement says how it works and how long it is kept (§3.7). Memberships join the export and the delete in phase 3.
 - **Children:** in the Netherlands, under-16s need a parent's consent for an account. While accounts are invite only,
   admins invite only people of 16 and over, as the privacy statement says. Teachers and pupils (phase 3) need a
   decision first (§11).
@@ -738,7 +782,8 @@ Per CLAUDE.md, every screen is designed on the canvases first (phone, tablet and
 these has a board yet. Phase 1's screens were built in 0.12.0 without boards, from Settings' design language; DESIGN.md
 §9 (*Account and admin screens*) describes them as built. Phase 2's parts were built the same way in 0.15.0, inside
 Settings → Account: the sync line under the account, the sign-out confirm with Keep or Remove, the first sign-in notice,
-and Reset progress's line for an account. Their boards are still to be drawn on both canvases.
+and Reset progress's line for an account. Their boards are still to be drawn on both canvases. So are 0.16.0's: the
+Delete account confirm with its choice and feedback, and the admin screen Deleted accounts (§3.7, DESIGN.md §9.2).
 
 | Phase | Screens |
 |---|---|

@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { PERMISSIONS, type AccountDetail, type AccountSummary, type ApiErrorBody, type ErrorCode, type Me, type SavedProgress, type SaveProgressRequest } from '../shared/api';
+import { PERMISSIONS, type AccountDetail, type AccountSummary, type ApiErrorBody, type Closure, type ErrorCode, type Me, type SavedProgress, type SaveProgressRequest } from '../shared/api';
 import { PATH_UNITS } from '../src/game/tracks';
 
 /** Screen sizes the app must work at: the canvas boards plus small, landscape and laptop screens. */
@@ -366,10 +366,34 @@ export async function expectFieldsFit(page: Page): Promise<void> {
   expect(bad, 'text fields').toEqual([]);
 }
 
-/** The admin screens' API: the list (searched by `q`, filtered by `status`) and each account in detail. */
+/**
+ * Deleted accounts (GET /admin/closures), newest day first: one of each kind, and an archived one without feedback or
+ * saved progress. The first has the longest feedback a screen should still show whole.
+ */
+export const CLOSURES: Closure[] = [
+  {
+    id: '3f9c1a7e5b2d4c6e8a0b1c2d3e4f5a6b',
+    day: '2026-10-24',
+    kind: 'archived',
+    feedback: 'The scales got too hard for me after chapter 7, and I had no time to practice every day.\nMaybe later!',
+    archive: {
+      joined: '2026-03',
+      data: {
+        prefs: { theme: 'dark', noteNames: 'solfege' },
+        progress: { xp: 1840, practiceDays: ['2026-10-20', '2026-10-21', '2026-10-23'], lessons: { '1.1': { stars: 3, bestAccuracy: 94 }, '1.2': { stars: 2, bestAccuracy: 81 } } },
+      },
+    },
+  },
+  { id: '8b2e4d6f0a1c3e5a7b9d1f3a5c7e9b0d', day: '2026-10-20', kind: 'removed', feedback: 'Moving to another app.', archive: null },
+  { id: 'c4a6e8b0d2f4a6c8e0b2d4f6a8c0e2b4', day: '2026-10-02', kind: 'admin', feedback: null, archive: null },
+  { id: '0e2c4a6b8d0f2e4c6a8b0d2f4e6c8a0b', day: '2026-09-15', kind: 'archived', feedback: null, archive: { joined: '2026-09', data: null } },
+];
+
+/** The admin screens' API: the list (searched by `q`, filtered by `status`), each account in detail, and deleted accounts. */
 export function adminApi(accounts: AccountSummary[] = ACCOUNTS, me: Me = ME_ADMIN): MockRoutes {
   return {
     ...signedInAs(me),
+    'GET /admin/closures': { json: { closures: CLOSURES } },
     'GET /admin/accounts': ({ query }) => {
       const q = (query.get('q') ?? '').toLowerCase();
       const status = query.get('status');

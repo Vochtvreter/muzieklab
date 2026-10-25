@@ -177,11 +177,15 @@ export async function downloadExport(): Promise<void> {
   const res = await sendRenewing('GET', '/me/export', undefined, {});
   if (!res.ok) throw await failure(res);
   if (!isJson(res)) throw new ApiError(res.status, 'unavailable', `HTTP ${res.status} without a JSON body`);
-  const blob = await res.blob();
+  saveBlob(await res.blob(), EXPORT_FILE);
+}
+
+/** Saves `blob` as a file named `name` (an object URL and a temporary <a download>). */
+export function saveBlob(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = EXPORT_FILE;
+  a.download = name;
   a.rel = 'noopener';
   a.style.display = 'none';
   document.body.appendChild(a);

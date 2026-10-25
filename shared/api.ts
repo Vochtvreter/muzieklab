@@ -118,10 +118,24 @@ export interface ChangeEmailRequest {
   email: string;
 }
 
-/** DELETE /me with this body → 204. Everything about the account goes; audit entries lose its name and email. */
+/**
+ * DELETE /me with this body → 204 (BACKEND-PLAN.md §3.7). The account, its sessions and links go, and audit entries
+ * lose its name and email. Its saved progress and prefs go too with `removeData`; without it they are archived as an
+ * anonymous copy (ClosureArchive). Either way a Closure says that an account was deleted, with the feedback.
+ */
 export interface DeleteMeRequest {
   password: string;
+  /**
+   * true: nothing of the account is kept. false: an anonymous copy of its progress and prefs is kept. When it is not
+   * sent, true: what apps before 0.16.0 told the person (everything is deleted).
+   */
+  removeData?: boolean;
+  /** Why they leave, if they want to say (at most FEEDBACK_MAX characters): kept with the Closure, without a name. */
+  feedback?: string;
 }
+
+/** The longest feedback DELETE /me takes, in characters (code points). */
+export const FEEDBACK_MAX = 1000;
 
 /** GET /me/export: everything stored about the account, as a download (Content-Disposition: attachment). */
 export interface AccountExport {
@@ -236,9 +250,43 @@ export interface AdminUpdateRequest {
 
 // POST /admin/accounts/:id/invite-link → LinkCreated (an invited account: a new invite link, the old one stops).
 // POST /admin/accounts/:id/reset-link → LinkCreated (an active account: a new-password link valid for 24 hours).
-// DELETE /admin/accounts/:id?expect=<status> → 204 (cancels an invite, or deletes an account; never yourself or the
-// last admin). With `expect` (invited, active or blocked), it is refused with 409 wrong_status when the account's
+// DELETE /admin/accounts/:id?expect=<status> → 204 (cancels an invite, or deletes an account with all of its data, and
+// adds a Closure of kind admin; never yourself or the last admin). With `expect` (invited, active or blocked), it is refused with 409 wrong_status when the account's
 // status is another one, so "Cancel invite" cannot delete an account whose invite was accepted meanwhile.
+
+/**
+ * A deleted account, for the admin screen Deleted accounts (BACKEND-PLAN.md §3.7). Nothing in it says whose it was: no
+ * name, email or account id, and no time of day (an id or a moment would match it to the audit log's entry).
+ * - archived: deleted by its owner, who let an anonymous copy of the progress and prefs be kept (`archive`);
+ * - removed: deleted by its owner with all of its data (`archive` is null);
+ * - admin: deleted by an admin (no feedback, no archive). A cancelled invite is not an account and has no Closure.
+ */
+export const CLOSURE_KINDS = ['archived', 'removed', 'admin'] as const;
+export type ClosureKind = (typeof CLOSURE_KINDS)[number];
+
+export interface Closure {
+  /** A random id, only to tell entries apart. */
+  id: string;
+  /** The day it was deleted (YYYY-MM-DD, UTC). */
+  day: string;
+  kind: ClosureKind;
+  /** What its owner wrote when deleting it, or null. */
+  feedback: string | null;
+  archive: ClosureArchive | null;
+}
+
+/** The anonymous copy an archived account leaves. */
+export interface ClosureArchive {
+  /** The month the account was made (YYYY-MM): how long it was used, without a day to match. */
+  joined: string;
+  /** The saved progress and prefs (SyncedData), as the account last saved them; null when it never saved any. */
+  data: SyncedData | null;
+}
+
+/** GET /admin/closures → { closures }, newest day first, at most 500. */
+export interface ClosureListResponse {
+  closures: Closure[];
+}
 
 /** GET /admin/audit?limit=&before= → { entries }, newest first. */
 export interface AuditEntry {

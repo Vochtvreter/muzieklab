@@ -138,6 +138,14 @@ export function formatDay(day: string): string {
   return new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(d);
 }
 
+/** A month (yyyy-mm) as "March 2026", the same in every time zone. */
+export function formatMonth(month: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!m) return month;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1));
+  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+}
+
 /** Locale-aware day and time of an ISO date-time, e.g. "October 30, 2026 at 10:00 AM" (when a link stops working). */
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);

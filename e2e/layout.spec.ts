@@ -12,9 +12,9 @@ import {
  * The status filter's chips sit in rows of the same size: all four on one line, or two and two as an even grid (the
  * second line's chips under the first's, as wide), never three and a lone one that reads as a separate wide button.
  */
-async function expectEvenChipRows(page: Page, where = ''): Promise<void> {
+async function expectEvenChipRows(page: Page, where = '', group = 'Status'): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  const lines = await page.getByRole('group', { name: 'Status' }).getByRole('button').evaluateAll((els) => {
+  const lines = await page.getByRole('group', { name: group }).getByRole('button').evaluateAll((els) => {
     const byTop = new Map<number, { left: number; width: number }[]>();
     for (const el of els) {
       const r = el.getBoundingClientRect();
@@ -1403,10 +1403,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(page.getByRole('button', { name: 'Change password' }));
         await expectClickable(page.getByRole('button', { name: /^Sign out everywhere/ }));
         await expectClickable(page.getByRole('button', { name: /^Download my data/ }));
-        await page.getByRole('button', { name: 'Delete account' }).click();
+        await page.getByRole('button', { name: /^Delete account/ }).click();
         const confirm = page.getByRole('alertdialog', { name: 'Delete your account?' });
+        // The choice: two buttons a finger can hit, side by side, with their words whole.
+        const choice = confirm.getByRole('group', { name: 'Your progress and settings' });
+        for (const label of ['Keep anonymously', 'Delete too']) {
+          await expectClickable(choice.getByRole('button', { name: label }));
+          await expectTouchHeight(choice.getByRole('button', { name: label }));
+        }
+        await expectNoOverlap(choice.getByRole('button', { name: 'Keep anonymously' }), choice.getByRole('button', { name: 'Delete too' }));
+        await expectClickable(confirm.getByLabel('Why are you leaving? (optional)'));
         await expectClickable(confirm.getByLabel('Password', { exact: true }));
-        await expectClickable(confirm.getByRole('button', { name: 'Delete' }));
+        await expectClickable(confirm.getByRole('button', { name: 'Delete', exact: true }));
         await expectClickable(confirm.getByRole('button', { name: 'Cancel' }));
         await expectFieldsFit(page);
         for (const card of await page.locator('.set-card').all()) await expectNotSqueezed(card);
@@ -1457,6 +1465,36 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.acct-empty')).toHaveText('No accounts match.');
         await expectScrollbarAtEdge(page);
         await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin deleted accounts: the filter, each entry with its feedback, and the file', async ({ page }) => {
+        known(name, 'admin-deleted');
+        await mockApi(page, adminApi());
+        await page.goto('./#/admin');
+        // From Accounts: the History card under the list.
+        const history = page.getByRole('link', { name: /^Deleted accounts/ });
+        await expectClickable(history);
+        await expectTouchHeight(history);
+        await history.click();
+        await expect(page.getByRole('heading', { level: 1, name: 'Deleted accounts' })).toBeVisible();
+        await expect(mainNav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+        await expectClickable(page.getByRole('link', { name: 'Back to accounts' }));
+        const filter = page.getByRole('group', { name: 'How it was deleted' });
+        for (const label of ['All', 'Archived', 'Data deleted', 'By an admin']) await expectTouchHeight(filter.getByRole('button', { name: label }));
+        await expectEvenChipRows(page, '', 'How it was deleted');
+        const list = page.locator('section[aria-labelledby="h-closures"]');
+        await expect(list.getByRole('article')).toHaveCount(4);
+        await expectNotSqueezed(list.locator('.set-card'));
+        // The feedback is shown whole, inside its card.
+        const feedback = list.locator('blockquote').first();
+        await expectClickable(feedback);
+        const [quote, card] = await Promise.all([feedback.boundingBox(), list.locator('.set-card').boundingBox()]);
+        expect(quote!.x + quote!.width).toBeLessThanOrEqual(card!.x + card!.width + 0.5);
+        await expectClickable(page.getByRole('button', { name: /^Download as a file/ }));
+        await expectTouchHeight(page.getByRole('button', { name: /^Download as a file/ }));
+        await expectScrollbarAtEdge(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });
@@ -1610,6 +1648,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         ['admin invite', '#/admin/invite', ADMIN, 'Iemand uitnodigen', 'Uitnodiging maken'],
         ['admin account', '#/admin/account/' + ACCOUNTS[1].id, adminApi(), 'Sam Jansen', 'Link voor een nieuw wachtwoord'],
         ['admin account, invited', '#/admin/account/' + ACCOUNTS[0].id, adminApi(), 'Lies Bakker', 'Nieuwe uitnodigingslink'],
+        ['admin deleted accounts', '#/admin/deleted', adminApi(), 'Verwijderde accounts', 'Downloaden als bestand'],
       ];
       for (const [screen, hash, routes, title, action] of rows) {
         test(`${screen}: ${title}`, async ({ page }) => {
@@ -1622,8 +1661,15 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           if (hash === '#/settings' && routes === ADMIN) await expectClickable(page.getByRole('link', { name: /^Accounts/ }));
           if (hash === '#/settings' && routes === SIGNED_OUT) await expectClickable(page.getByRole('link', { name: /^Inloggen/ }));
           if (hash === '#/account') {
-            await page.getByRole('button', { name: 'Account verwijderen' }).click();
-            await expectClickable(page.getByRole('button', { name: 'Verwijderen' }));
+            await page.getByRole('button', { name: /^Account verwijderen/ }).click();
+            for (const label of ['Anoniem bewaren', 'Ook verwijderen']) await expectClickable(page.getByRole('button', { name: label }));
+            await expectClickable(page.getByLabel('Waarom stop je? (niet verplicht)'));
+            await expectClickable(page.getByRole('button', { name: 'Verwijderen', exact: true }));
+          }
+          if (hash === '#/admin/deleted') {
+            // Gegevens gewist and Door beheerder are long: two and two, never three and a lone one.
+            await expectEvenChipRows(page, '', 'Hoe het is verwijderd');
+            await expect(page.getByRole('article').first()).toContainText('Begonnen in maart 2026');
           }
           if (hash === '#/admin') {
             await expectClickable(page.getByRole('link', { name: 'Iemand uitnodigen' }));

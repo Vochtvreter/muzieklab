@@ -2,7 +2,7 @@
  * A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/settings, #/calibrate, #/changelog, Read notes (#/notes, #/notes/key,
  * #/notes/play, #/notes/done), Scales (#/scales, #/scales/setup, #/scales/key, #/scales/play, #/scales/done), Learn (#/learn and a chapter, #/learn/8), and #/dev/render. A `?s=10.2` query names a Learn section.
  * Accounts (BACKEND-PLAN.md §5, §10.1): #/signin, #/invite/<token> and #/reset/<token> (the links an admin sends),
- * #/account, #/privacy, and the admin screens #/admin, #/admin/invite and #/admin/account/<id>.
+ * #/account, #/privacy, and the admin screens #/admin, #/admin/invite, #/admin/account/<id> and #/admin/deleted.
  */
 import { useSyncExternalStore, type AnchorHTMLAttributes } from 'react';
 
@@ -33,6 +33,7 @@ export type Route =
   | '/privacy'
   | '/admin'
   | '/admin/invite'
+  | '/admin/deleted'
   | `/admin/account/${string}`
   | '/dev/render';
 
@@ -60,6 +61,7 @@ const ROUTES: Route[] = [
   '/privacy',
   '/admin',
   '/admin/invite',
+  '/admin/deleted',
   '/dev/render',
 ];
 

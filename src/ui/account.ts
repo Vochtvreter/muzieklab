@@ -24,6 +24,7 @@ export const NOTICE_TEXT: Record<AccountNotice, string> = {
   signedOut: 'settings.noticeSignedOut',
   signedOutEverywhere: 'settings.noticeSignedOutEverywhere',
   deleted: 'settings.noticeDeleted',
+  deletedKept: 'settings.noticeDeletedKept',
   welcome: 'settings.noticeWelcome',
   passwordReset: 'settings.noticePasswordReset',
   progressAdded: 'settings.noticeProgressAdded',

@@ -1,6 +1,7 @@
 /**
  * Admin: Accounts (#/admin; BACKEND-PLAN.md §5.1, §7; no board yet): every account, newest first, to search by name or
- * email and filter by status, with Invite someone as the screen's one filled button. A row opens the account.
+ * email and filter by status, with Invite someone as the screen's one filled button. A row opens the account. Under
+ * the list, a History card leads to Deleted accounts (AdminClosures).
  * Needs `accounts.read`; without it the screen says so, with the way back to Settings. A search or filter's result, and
  * the message from the one-account screen ("The invite for … was canceled."), are announced (ui/lib/announce.ts).
  */
@@ -51,7 +52,16 @@ export function AdminAccounts(): JSX.Element {
   const inHead = bp !== 'phone';
   return (
     <SubPage title={t('admin.title')} back="/settings" backLabel={t('account.back')} action={gate === 'ok' && inHead ? invite : undefined}>
-      {gate === 'ok' ? <AccountList invite={inHead ? null : invite} quiet={!!invite} /> : <GateMessage gate={gate} />}
+      {gate === 'ok' ? (
+        <>
+          <AccountList invite={inHead ? null : invite} quiet={!!invite} />
+          <Section id="history" title={t('admin.history')}>
+            <RowLink to="/admin/deleted" title={t('closures.title')} sub={t('admin.historySub')} />
+          </Section>
+        </>
+      ) : (
+        <GateMessage gate={gate} />
+      )}
     </SubPage>
   );
 }

@@ -10,6 +10,7 @@ import { Privacy } from './ui/screens/account/Privacy';
 import { SignIn } from './ui/screens/account/SignIn';
 import { AdminAccount } from './ui/screens/admin/AdminAccount';
 import { AdminAccounts } from './ui/screens/admin/AdminAccounts';
+import { AdminClosures } from './ui/screens/admin/AdminClosures';
 import { AdminInvite } from './ui/screens/admin/AdminInvite';
 import { Calibration } from './ui/screens/Calibration';
 import { Changelog } from './ui/screens/Changelog';
@@ -134,6 +135,8 @@ function Route(): JSX.Element {
       return <AdminAccounts />;
     case '/admin/invite':
       return <AdminInvite />;
+    case '/admin/deleted':
+      return <AdminClosures />;
     case '/dev/render':
       if (RenderDemo) {
         return (
