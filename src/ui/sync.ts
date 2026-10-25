@@ -87,9 +87,10 @@ export class ProgressSync {
   /** Syncs now, or right after the sync that is running. Resolves when this one is done; it never rejects. */
   request(reason: SyncReason): Promise<void> {
     if (this.running) {
-      // One more run after this one covers every ask meanwhile; any reason but a change also asks the account.
+      // One more run after this one covers every ask meanwhile; any reason but a change also asks the account. This
+      // ask is done when that run is: the running one's finally has started it by the time this then runs.
       this.again = this.again && this.again !== 'change' ? this.again : reason;
-      return this.running;
+      return this.running.then(() => this.running ?? undefined);
     }
     clearTimeout(this.retryTimer);
     const run = this.run(reason).finally(() => {
