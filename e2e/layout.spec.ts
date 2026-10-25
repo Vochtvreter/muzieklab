@@ -45,7 +45,10 @@ const known = (vp: string, screen: string): void => {
   test.fail(!!why, why);
 };
 
-/** Tablet and desktop: a wide screen's side panel (summary and main button) is beside its main column, not under it. */
+/**
+ * Tablet and desktop: a wide screen's side panel (summary and main button) is beside its main column, not under it.
+ * Wait for the screen first: right after a link to another screen, both locators can still find the old one.
+ */
 async function expectBeside(main: Locator, side: Locator): Promise<void> {
   // From the top: further down the side panel stays in view while the main column scrolls on.
   await main.evaluate((el) => el.closest('.page')?.scrollTo(0, 0));
@@ -632,6 +635,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
       if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
       await page.getByRole('link', { name: /^Key: / }).click();
+      // The Key screen takes the setup's place on the hashchange, a moment after the click: wait for it, or the setup
+      // is measured (or its main column comes back null, swapped out between finding and measuring it).
+      await expect(page.getByRole('heading', { name: 'Key', exact: true })).toBeVisible();
       if (desktopLayout || tabletLayout) {
         // The keys on the left; the chosen key's signature, large, with what it means and Use beside them.
         await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
