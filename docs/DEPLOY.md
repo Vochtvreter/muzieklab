@@ -299,8 +299,9 @@ All of this runs on the server, as your own user. The files named come from this
    readable by root only; systemd reads it before it starts the service as `muzieklab-api`.
 
    **Never put `COOKIE_SECURE` in it.** That setting is for development over plain http only (README). Set to
-   `false`, it drops `Secure` and the `__Host-` prefix from the session cookie, so the browser would also send the
-   cookie over plain http and other subdomains could set it. Without it the cookie is `__Host-session`, Secure.
+   `false`, it drops `Secure` and the `__Host-` and `__Secure-` prefixes from the session cookies, so the browser would
+   also send them over plain http and other subdomains could set them. Without it they are `__Host-session` and
+   `__Secure-refresh`, Secure.
 
 6. **Caddy:** copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile`, then `sudo systemctl reload caddy`. Both site blocks
    have the `/api/*` route: test.vivanova.app to port 3001, vivanova.app to port 3000. Until a site's API runs, its

@@ -2,7 +2,9 @@
 
 Status: **phases 0 and 1 built.** Phase 0 is the API with `/api/v1/health`, MongoDB and backups, deployed to the test
 site. Phase 1, in 0.12.0, is accounts: invite and new-password links, signing in and out, the Account screen, the admin
-screens and the privacy statement (§10, [DEPLOY.md](DEPLOY.md) *The API*). Phases 2 to 5 are designed, not built.
+screens and the privacy statement (§10, [DEPLOY.md](DEPLOY.md) *The API*). Sessions with refresh tokens, which keep
+someone signed in for 90 days after they last used the app, came in 0.14.0 (§5.4). Phases 2 to 5 are designed, not
+built.
 
 This was written on 2026-10-23, after production moved to our own server. It now describes phase 1 as built. Where the
 build differs from the first plan, the section says so. Decisions taken so far:
@@ -40,7 +42,7 @@ MongoDB      127.0.0.1:27017                          auth on, single-node repli
 
 The test site has the same setup: its API listens on 127.0.0.1:3001 and uses the database `muzieklab_test` (§9.3).
 
-- **One domain.** The app calls `/api/…` on the same domain, so there are no CORS rules and the session cookie can be
+- **One domain.** The app calls `/api/…` on the same domain, so there are no CORS rules and the session cookies can be
   locked down tight (§5.4). Caddy sends `/api/*` to the API and everything else to the files, as now.
 - **Caddy keeps the request as it came.** It passes the browser's `Host` header on unchanged, which the Origin check
   needs (§5.4). It also passes the visitor's address in `X-Forwarded-For`, which the sign-in limits need (§5.2). The API
@@ -142,14 +144,21 @@ hold a Date there, which reads as its UTC calendar day.
 
 ```js
 // sessions: one per signed-in device, at most 20 per account (§5.4)
-{ _id: "<sha256 of the cookie token>", accountId, createdAt, lastSeenAt, expiresAt, device: "Safari on iPhone" }
+{
+  _id: "<random id>", accountId, device: "Safari on iPhone", createdAt,
+  accessHash: "<sha256 of the session cookie's token>", accessExpiresAt,    // the session token: one hour
+  refreshHash: "<sha256 of the refresh cookie's token>",                    // swapped on every refresh
+  retired: ["<sha256 of a refresh token swapped before>", …],               // the last 50, oldest first
+  refreshedAt, lastSeenAt, expiresAt,                                        // expiresAt: 90 days after lastSeenAt
+}
 
 // tokens: invite and new-password links, which the admin sends by hand (§5.1, §5.3)
 { _id: "<sha256 of the link's token>", kind: "invite" | "reset", accountId, createdBy, createdAt, expiresAt, usedAt }
 ```
 
-Only the **hash** of a token is stored, so a copy of the database cannot be used to sign in. A **TTL index** on
-`expiresAt` deletes old sessions and tokens by itself. MongoDB does that about once a minute, so the API also treats an
+Only the **hash** of a token is stored, so a copy of the database cannot be used to sign in. A session's `_id` is a
+random id of its own, as both its tokens change on every refresh. A **TTL index** on `expiresAt` deletes old sessions
+and tokens by itself. MongoDB does that about once a minute, so the API also treats an
 expired session or link as gone at once. `createdBy` is the admin who made the link, or null for the create-admin
 command.
 
@@ -295,7 +304,8 @@ can(account, 'accounts.invite')   // → true or false; class permissions take t
 - **Deny by default:** every route declares in its options either `{ public: true }` or `{ permission }`. A route with
   neither, or both, stops the server from starting, and a test checks every registered route and its permission
   against the table in §7.
-  The public routes are health, sign-in, the invite check and accept, and the new-password check and confirm.
+  The public routes are health, sign-in, refresh (§5.4: it checks the refresh cookie itself), the invite check and
+  accept, and the new-password check and confirm.
 - A route's `permission` is what it needs at least. A request that does more checks more in the handler: inviting with
   a role also needs `roles.grant`, and each field of an admin change needs its own permission (§7).
 - The table in §4.2 is the policy, written once in `policy.ts` and tested row by row.
@@ -437,19 +447,45 @@ works again (a known gap, §11).
 
 ### 5.4 Sessions
 
-- The session token is 32 random bytes, in a cookie: `__Host-session`, `HttpOnly`, `Secure`, `SameSite=Lax`,
-  `Path=/`, `Max-Age` 30 days. JavaScript cannot read it, and it is only sent over HTTPS to the site that set it. The
-  `__Host-` prefix makes the browser insist on Secure, `Path=/` and no Domain, so no other site or subdomain can set or
-  read it.
-- **For development only,** `COOKIE_SECURE=false` makes it a plain `session` cookie without Secure, because browsers
-  drop Secure cookies over plain http and refuse the `__Host-` prefix there. Every other value, or none, keeps
-  `__Host-session` with Secure. It is never set on a server (DEPLOY.md).
-- A session lasts **30 days after the last use**, so someone who practises weekly stays signed in. The last use, and
-  with it the end, moves at most once an hour, and then the API sends the cookie again so the browser keeps it as long.
-- **Signing in always makes a new token.** Signing in, accepting an invite and setting a new password from a link each
-  end the session the browser had first, whoever it belonged to, so no session is left behind that no device holds.
-- An account has **at most 20 sessions**. A new one past that ends the ones used longest ago, so a loop of sign-ins
-  cannot fill the database. The Account screen's Sign out everywhere ends them all.
+Until 0.14.0 a session was one cookie that lasted 30 days after the last use, and the use moved on only when an
+account screen asked the API something. The app is offline first, so someone who practised every day but never opened
+Settings → Account was signed out after 30 days. Now a session has **two tokens**, a short one that goes with every
+request and a long one that only keeps the session going, and the app renews the session by itself:
+
+- **The session token** is 32 random bytes, in a cookie: `__Host-session`, `HttpOnly`, `Secure`, `SameSite=Lax`,
+  `Path=/`, `Max-Age` one hour. It works for **one hour**; using it moves nothing. JavaScript cannot read it, and it is
+  only sent over HTTPS to the site that set it. The `__Host-` prefix makes the browser insist on Secure, `Path=/` and
+  no Domain, so no other site or subdomain can set or read it.
+- **The refresh token** is 32 random bytes too, in `__Secure-refresh`: `HttpOnly`, `Secure`, `SameSite=Lax`,
+  `Path=/api/v1/auth`, `Max-Age` 90 days, and no Domain, so only this host gets it. Its path keeps it off every other
+  request: the browser sends it only to the sign-in routes. (Not `__Host-`, which allows only `Path=/`.)
+- **`POST /auth/refresh` swaps the refresh token for a new pair** (rotation): a new session token for an hour and a new
+  refresh token, and the session lasts **90 days from then**, so someone back from the summer holidays is still signed
+  in. The swap matches the current refresh token in one update, so of two requests with one token only one swaps.
+- **A refresh token works once.** A session remembers the last 50 it swapped. One that comes back later was copied:
+  whoever has the session now, its owner or whoever copied the token, the session ends for both, and the API logs it
+  (the account's id, never the token). The exception is a race: the token swapped less than **a minute** ago, as when
+  two tabs refresh at once. That answers 204 without cookies, as the browser has the new ones from the first answer.
+  A blocked or deleted account's session ends at its next refresh, and the cookies are cleared on every refusal.
+- **The app renews by itself** (`src/api/client.ts`): when a request answers 401 `unauthenticated` on a device where
+  someone is signed in, it calls `POST /auth/refresh` once (one call for all the requests waiting) and sends the
+  request again; a screen never sees the swap. It also renews when the app starts and when it comes back into view,
+  at most every 12 hours (`keepSignedIn`, `src/ui/account.ts`). That is the one request the app sends before an
+  account screen opens, and only while someone is signed in on the device. If the renewal gets no answer (offline),
+  the account stays as it was cached; if it is refused, the next account screen shows Sign in.
+- **For development only,** `COOKIE_SECURE=false` makes them plain `session` and `refresh` cookies without Secure,
+  because browsers drop Secure cookies over plain http and refuse the prefixes there. Every other value, or none, keeps
+  `__Host-session` and `__Secure-refresh` with Secure. It is never set on a server (DEPLOY.md).
+- **Signing in always makes a new pair and a new session.** Signing in, accepting an invite and setting a new password
+  from a link each end the session the browser had first, whoever it belonged to, found by either cookie (the session
+  token may have run out), so no session is left behind that no device holds.
+- An account has **at most 20 sessions**. A new one past that ends the ones used longest ago (signed in or refreshed),
+  so a loop of sign-ins cannot fill the database. The Account screen's Sign out everywhere ends them all.
+- Sign-out, Sign out everywhere, a new password and blocking end sessions at once, as before: the session token is
+  checked in the database on every request, so an hour-long token is never a way in after its session ended.
+- Sessions saved before 0.14.0 have neither hash, so no cookie can use them: the API deletes them when it starts, and
+  everyone on the test site signs in once more. (Production had no accounts yet.) A rollback to an older API finds no
+  session either, so everyone would sign in again after one.
 - **Forged requests** from other sites are stopped twice: `SameSite=Lax`, and every request that changes something
   (anything but GET, HEAD and OPTIONS) must have an `Origin` header with the same host and port as its `Host` header
   (else 403 `bad_origin`). Bodies must be JSON: a `text/plain` body, which a form on another site can send, gets 415.
@@ -507,10 +543,11 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | Request | Who | What |
 |---|---|---|
 | `GET /health` | public | Is the API up, and can it reach the database: 200, or 503 with `db: "unreachable"`. Also the running commit, which the deploy waits for. |
-| `POST /auth/sign-in` | public | Email and password → `Me`, and the session cookie. |
+| `POST /auth/sign-in` | public | Email and password → `Me`, and the session cookies. |
+| `POST /auth/refresh` | public | The refresh cookie → 204 and a new pair of cookies (§5.4); 204 without cookies when the same token was swapped less than a minute ago; else 401 `unauthenticated`, and the cookies are cleared. A swapped token that comes back ends its session. |
 | `POST /auth/invite/check`, `POST /auth/reset/check` | public | Is the link still good, and whose is it: email, name and when it stops working. |
-| `POST /auth/invite/accept` | public | The token, a password and optionally a name → `Me`, and the cookie. The account becomes active. |
-| `POST /auth/reset/confirm` | public | The token and a password → `Me`, and the cookie. Every other session ends. |
+| `POST /auth/invite/accept` | public | The token, a password and optionally a name → `Me`, and the cookies. The account becomes active. |
+| `POST /auth/reset/confirm` | public | The token and a password → `Me`, and the cookies. Every other session ends. |
 | `POST /auth/sign-out` | `self.manage` | Ends this session. |
 | `POST /auth/sign-out-everywhere` | `self.manage` | Ends every session of the account, and its new-password links. |
 | `GET /me` | `self.manage` | `Me`: the account, its roles, permissions and premium. |
