@@ -2466,6 +2466,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_16_2": {
+      "title": "Still signed in with several tabs open",
+      "tabs": "If you opened or reloaded several tabs of the app at once, some of them could show you as signed out, and now and then you were signed out in all of them. Now every tab stays signed in."
+    },
     "v0_16_1": {
       "title": "Still signed in after a reload",
       "signedIn": "If you reloaded the app just as your sign-in renewed itself, or the connection dropped for a moment then, you could be signed out. Now you stay signed in."

@@ -2,18 +2,24 @@ import { request, type Page } from '@playwright/test';
 import { PERMISSIONS, type Me, type SavedProgress } from '../../shared/api';
 import { VIEWPORTS } from '../helpers';
 import {
-  accountRow, accountSection, call, checkScreen, cookie, expect, expectTheme, linkPattern, newPassword, NO_ACCOUNTS, send, SESSION_ENDED, SIGN_IN_REFUSED,
+  accountRow, accountSection, call, checkScreen, cookie, expect, expectTheme, linkPattern, newPassword, NO_ACCOUNTS, send, SIGN_IN_REFUSED,
   signInWithForm, signOut, SITE, stored, test, type Size,
 } from './helpers';
 
 /**
  * Accounts on the deployed site with its real API (docs/SMOKE.md): the suite's admin, signed in once per worker, looks
  * at its own screens without changing anything; then accounts the test makes itself (smoke-…@example.invalid) are
- * invited, accepted, signed out and renewed. Every one is removed when its test ends. Several tabs at once: a known
- * bug, noted rather than failed (below).
+ * invited, accepted, signed out and renewed, in one tab and in several at once. Every one is removed when its test
+ * ends.
  */
 
 test.skip(!!NO_ACCOUNTS, NO_ACCOUNTS ?? '');
+
+/**
+ * As if the session was last renewed over 12 hours ago (src/api/client.ts, RENEWED_KEY): the next tab that starts
+ * renews it. Within 12 hours of a renewal, in any tab, a start does not renew again.
+ */
+const twelveHoursOn = (page: Page) => page.evaluate(() => localStorage.removeItem('muzieklab.renewed.v1'));
 
 /** Progress this device had before signing in: it goes to the account at the first sync. */
 const PLAYED = { xp: 120, practiceDays: ['2026-10-20'], lessons: { '1.1': { stars: 2, bestAccuracy: 85 } } };
@@ -166,14 +172,28 @@ test('staying signed in: a reload renews the session, and a lost session token i
   const name = d.page.getByRole('region', { name: 'Profile' }).getByLabel('Name');
   await d.page.goto('./#/account');
   await expect(name).toHaveValue(person.name);
+  await d.page.waitForLoadState('networkidle');
+  let renewals = 0;
+  d.ctx.on('request', (r) => {
+    if (r.url().endsWith('/api/v1/auth/refresh')) renewals++;
+  });
 
-  // Every start renews the session: both tokens change.
+  // A start renews the session when its last renewal is 12 hours ago: both tokens change.
   const before = await cookie(d.ctx, '__Secure-refresh');
+  await twelveHoursOn(d.page);
   const renewed = d.page.waitForResponse((r) => r.url().endsWith('/api/v1/auth/refresh'));
   await d.page.reload();
   expect((await renewed).status(), 'the renewal on a reload').toBe(204);
   await expect(name).toHaveValue(person.name);
   expect((await cookie(d.ctx, '__Secure-refresh')) !== before, 'the refresh token was replaced').toBe(true);
+
+  // A reload soon after does not renew again.
+  await d.page.waitForLoadState('networkidle');
+  renewals = 0;
+  await d.page.reload();
+  await expect(name).toHaveValue(person.name);
+  await d.page.waitForLoadState('networkidle');
+  expect(renewals, 'renewals on a reload soon after one').toBe(0);
 
   // An hour on, the browser has dropped the session token (its Max-Age): the refresh token gets a new one. Only that
   // cookie is deleted, once nothing is on its way (context.clearCookies re-adds the others, and could put back an old
@@ -192,29 +212,45 @@ test('staying signed in: a reload renews the session, and a lost session token i
 });
 
 /**
- * Known app bug, 0.16.0: every tab renews the session when it starts (keepSignedIn, src/ui/account.ts), and a renewal
- * ends the session token it replaces. Tabs that start together each renew in turn, so a tab whose request was sent
- * with a token another tab has replaced since gets a 401 on its one retry (src/api/client.ts, sendRenewing, which only
- * knows its own tab's renewals) and shows itself signed out. Seen on the test site: of three tabs opened at once, one
- * or two land on #/signin. With four reloaded at once, the session itself was ended (GET /me 401 afterwards), likely
- * because a refresh token that arrives after two renewals, not only the last, counts as copied
- * (server/src/auth/sessions.ts, refreshSession). It depends on timing (now and then every tab stays signed in).
+ * Every tab renews the session when it starts, if its last renewal is over 12 hours ago, and a renewal ends the session
+ * token it replaces. Until 0.16.2 a tab whose request was sent with a token another tab had replaced since got a 401 on
+ * its one retry, and showed itself signed out: of three tabs opened at once on the test site, one or two landed on
+ * #/signin, and with four reloaded at once the session itself was ended. Now the tabs renew one at a time and use each
+ * other's renewals (src/api/client.ts, renewSession): of tabs that start together, one renews.
  *
- * So tabs opened and reloaded one after another are checked, and must all stay signed in. Tabs opened at once are
- * opened too, and what happened is noted (an annotation in the report and a line in the output) without failing the
- * test. Once the bug is fixed, make that part a check like the first.
+ * Tabs opened and reloaded one after another, each renewing as it starts (as if 12 hours on each time), and tabs
+ * opened and reloaded at once: all stay signed in, and the session goes on.
  */
-test('staying signed in: tabs opened one after another stay signed in; tabs opened at once are noted (known bug)', async ({ smoke, device }) => {
+test('staying signed in: tabs opened one after another, and at once, stay signed in, and the session goes on', async ({ smoke, device }) => {
   const d = await device({ size: 'desktop' });
   const person = await smoke.member('tabs', d);
   const nameIn = (page: Page) => page.getByRole('region', { name: 'Profile' }).getByLabel('Name');
   await d.page.goto('./#/account');
   await expect(nameIn(d.page)).toHaveValue(person.name);
   await d.page.waitForLoadState('networkidle');
+  let renewals = 0;
+  d.ctx.on('request', (r) => {
+    if (r.url().endsWith('/api/v1/auth/refresh')) renewals++;
+  });
+  // A tab shows the cached account at once, so each is checked once nothing is on its way: still on Account, and
+  // still signed in in Settings. Afterwards each is back on Account.
+  const stayed = async (tabs: Page[], when: string) => {
+    await Promise.all(tabs.map((tab) => tab.waitForLoadState('networkidle')));
+    for (const [i, tab] of tabs.entries()) {
+      const which = `tab ${i + 1} of ${tabs.length}, ${when}`;
+      await expect(tab, which).toHaveURL(/#\/account$/);
+      await expect(nameIn(tab), which).toHaveValue(person.name);
+      await tab.evaluate(() => void (location.hash = '#/settings'));
+      await expect(accountRow(tab, person.name), which).toContainText(person.email);
+      await tab.evaluate(() => void (location.hash = '#/account'));
+      await expect(nameIn(tab), which).toHaveValue(person.name);
+    }
+  };
 
   // One after another: each tab renews the session as it starts, then each is reloaded in turn.
   const tabs = [d.page];
   for (const n of [2, 3]) {
+    await twelveHoursOn(d.page);
     const tab = await d.ctx.newPage();
     await tab.goto('./#/account');
     await expect(nameIn(tab), `tab ${n}, opened after the others`).toHaveValue(person.name);
@@ -222,38 +258,33 @@ test('staying signed in: tabs opened one after another stay signed in; tabs open
     tabs.push(tab);
   }
   for (const [i, tab] of tabs.entries()) {
+    await twelveHoursOn(d.page);
     await tab.reload();
     await expect(nameIn(tab), `tab ${i + 1} of 3, reloaded in turn`).toHaveValue(person.name);
     await tab.waitForLoadState('networkidle');
   }
   // Each still signed in, the earlier ones too, whose session token later renewals replaced.
-  for (const [i, tab] of tabs.entries()) {
-    await tab.evaluate(() => void (location.hash = '#/settings'));
-    await expect(accountRow(tab, person.name), `tab ${i + 1} of 3, afterwards`).toContainText(person.email);
-  }
+  await stayed(tabs, 'afterwards');
+  expect(renewals, 'renewals by the tabs opened and reloaded one after another').toBe(5);
   expect((await call<Me>(d.ctx.request, 'GET', '/me')).id, 'the session afterwards').toBe(person.id);
-  expect(await d.watch.found(), 'errors in the tabs opened one after another').toEqual([]);
 
-  // At once: the known bug. A tab that shows itself signed out, or a session that was ended, is noted.
-  d.watch.allow(...SESSION_ENDED);
+  // At once: one renews, and the others use its renewal.
+  await twelveHoursOn(d.page);
+  renewals = 0;
   const together = await Promise.all([1, 2, 3].map(() => d.ctx.newPage()));
   await Promise.all(together.map((tab) => tab.goto('./#/account')));
-  const stayed = await Promise.all(
-    together.map((tab) =>
-      expect(nameIn(tab))
-        .toHaveValue(person.name, { timeout: 5000 })
-        .then(() => true, () => false),
-    ),
-  );
-  const out = stayed.filter((ok) => !ok).length;
-  // Ended, or only a session token that a tab's renewal replaced just then: the refresh token tells them apart.
-  await Promise.all(together.map((tab) => tab.waitForLoadState('networkidle')));
-  let session = (await send(d.ctx.request, 'GET', '/me')).ok();
-  if (!session) session = (await send(d.ctx.request, 'POST', '/auth/refresh')).ok() && (await send(d.ctx.request, 'GET', '/me')).ok();
-  const note =
-    out || !session
-      ? `known bug seen: ${out} of 3 tabs opened at once showed themselves signed out, and the session ${session ? 'went on' : 'was ended'}`
-      : 'known bug not seen this time: all 3 tabs opened at once stayed signed in';
-  test.info().annotations.push({ type: 'known bug', description: `Several tabs at once: ${note}.` });
-  console.log(`Smoke, several tabs at once: ${note}.`);
+  await stayed(together, 'opened at once');
+  expect(renewals, 'renewals by the 3 tabs opened at once').toBe(1);
+
+  const all = [...tabs, ...together];
+  await twelveHoursOn(d.page);
+  renewals = 0;
+  await Promise.all(all.map((tab) => tab.reload()));
+  await stayed(all, 'reloaded at once');
+  expect(renewals, 'renewals by the 6 tabs reloaded at once').toBe(1);
+
+  // The session goes on: its session token works, and so does its refresh token.
+  expect((await call<Me>(d.ctx.request, 'GET', '/me')).id, 'the session afterwards').toBe(person.id);
+  expect((await send(d.ctx.request, 'POST', '/auth/refresh')).status(), 'a renewal afterwards').toBe(204);
+  expect(await d.watch.found(), 'errors in the tabs').toEqual([]);
 });

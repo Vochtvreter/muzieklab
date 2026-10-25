@@ -25,6 +25,12 @@ export const KINDS: ChangeKind[] = ['new', 'better', 'fix'];
 
 export const RELEASES: Release[] = [
   {
+    version: '0.16.2',
+    date: '2026-10-25',
+    title: 'changelog.v0_16_2.title',
+    changes: [{ kind: 'fix', text: 'changelog.v0_16_2.tabs' }],
+  },
+  {
     version: '0.16.1',
     date: '2026-10-25',
     title: 'changelog.v0_16_1.title',

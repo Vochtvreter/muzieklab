@@ -527,6 +527,19 @@ request and a long one that only keeps the session going, and the app renews the
   at most every 12 hours (`keepSignedIn`, `src/ui/account.ts`). That is the one request the app sends before an
   account screen opens, and only while someone is signed in on the device. If the renewal gets no answer (offline),
   the account stays as it was cached; if it is refused, the next account screen shows Sign in.
+- **The tabs of one browser renew together** (since 0.16.2). They share the cookies, and a swap ends the session
+  token it replaces, which another tab may have just sent. So a tab renews only while no other tab does (a Web Lock,
+  `muzieklab.renew`); one that finds another tab renewing waits for it and uses its new cookies. The time of the last
+  renewal is kept in `localStorage` (`muzieklab.renewed.v1`, a time and nothing else), so the 12 hours count over
+  every tab and reload, and a request that a renewal in another tab answered with 401 is sent again with the new
+  cookies instead of renewing once more. Another tab may renew while it is on its way again, so a request is sent
+  again at most twice. A tab that waits longer than the request timeout plus 5 seconds for another tab (one that was
+  frozen while renewing) renews itself. Until then every tab renewed by itself when it started: of tabs opened or
+  reloaded at once, one could get a 401 on its one retry and show itself signed out, and with four the session was
+  seen to end, as a token swapped two swaps ago counts as copied. A browser without Web Locks (before Safari 15.4 or
+  Firefox 96) still renews per tab; the shared time keeps that to tabs that start within moments of each other. The
+  server is unchanged: keeping a replaced session token working for a while longer was weighed and left out, as it
+  would lengthen how long a stolen one works and would not stop a token from two swaps ago from ending the session.
 - **For development only,** `COOKIE_SECURE=false` makes them plain `session` and `refresh` cookies without Secure,
   because browsers drop Secure cookies over plain http and refuse the prefixes there. Every other value, or none, keeps
   `__Host-session` and `__Secure-refresh` with Secure. It is never set on a server (DEPLOY.md).
