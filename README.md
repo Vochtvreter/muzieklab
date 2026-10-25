@@ -31,6 +31,7 @@ npm test           # Vitest, including property tests of the rhythm engine
 npm run build      # type check + production build in dist/
 npm run e2e        # Playwright: layout at every screen size and a full lesson (builds first), the API mocked
 npm run e2e:real   # Playwright against the real API: the app, the API bundle and a throwaway MongoDB
+npm run smoke      # Playwright against the deployed test site (docs/SMOKE.md); signs in with MUZIEKLAB_TEST_*
 ```
 
 `npm run e2e:real` needs `npm install` in `server/` first; its first run downloads MongoDB 9.0.4.
