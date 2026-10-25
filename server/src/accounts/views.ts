@@ -4,8 +4,9 @@ import type {
   AccountSummary,
   AuditEntry,
   Me,
+  SavedProgress,
 } from '../../../shared/api.js';
-import type { AccountDoc, AuditDoc } from '../db.js';
+import type { AccountDoc, AuditDoc, ProgressDoc } from '../db.js';
 import { permissionsFor } from '../auth/policy.js';
 import { premiumOf } from './premium.js';
 
@@ -59,5 +60,16 @@ export function toAuditEntry(doc: AuditDoc): AuditEntry {
     action: doc.action,
     targetId: doc.targetId?.toHexString() ?? null,
     details: doc.details,
+  };
+}
+
+/** The account's saved progress, or the empty answer (rev 0) when it has none yet. */
+export function toSavedProgress(doc: ProgressDoc | null): SavedProgress {
+  if (!doc) return { rev: 0, data: null, resetAt: null, updatedAt: null };
+  return {
+    rev: doc.rev,
+    data: { prefs: doc.prefs, progress: doc.progress },
+    resetAt: doc.resetAt?.toISOString() ?? null,
+    updatedAt: doc.updatedAt.toISOString(),
   };
 }

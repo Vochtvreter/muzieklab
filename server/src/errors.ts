@@ -13,6 +13,7 @@ const STATUS: Record<ErrorCode, number> = {
   last_admin: 409,
   own_account: 409,
   wrong_status: 409,
+  rev_conflict: 409,
   link_invalid: 410,
   password_length: 422,
   password_common: 422,
@@ -32,6 +33,8 @@ export class ApiError extends Error {
     message: string,
     /** With too_many_attempts and busy: seconds until the next try (app.ts also sends it as Retry-After). */
     readonly retryAfter?: number,
+    /** More fields for the body: `current` with rev_conflict. */
+    readonly more: Pick<ApiErrorBody, 'current'> = {},
   ) {
     super(message);
     this.name = 'ApiError';
@@ -40,8 +43,8 @@ export class ApiError extends Error {
 
   body(): ApiErrorBody {
     return this.retryAfter === undefined
-      ? { error: this.code, message: this.message }
-      : { error: this.code, message: this.message, retryAfter: this.retryAfter };
+      ? { error: this.code, message: this.message, ...this.more }
+      : { error: this.code, message: this.message, retryAfter: this.retryAfter, ...this.more };
   }
 }
 

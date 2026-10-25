@@ -719,7 +719,18 @@
     "noticeSignedOutEverywhere": "Op elk apparaat uitgelogd.",
     "noticeDeleted": "Je account is verwijderd.",
     "noticeWelcome": "Je bent ingelogd. Welkom bij Muzieklab.",
-    "noticePasswordReset": "Wachtwoord bewaard. Je andere apparaten zijn uitgelogd."
+    "noticePasswordReset": "Wachtwoord bewaard. Je andere apparaten zijn uitgelogd.",
+    "noticeProgressAdded": "De voortgang op dit apparaat staat nu ook op je account.",
+    "syncSaved": "Voortgang bewaard op je account",
+    "syncSaving": "Je voortgang wordt bewaard…",
+    "syncPending": "Nog niet bewaard. Je voortgang wordt bewaard zodra je weer online bent.",
+    "syncFailed": "Je voortgang kon niet worden bewaard.",
+    "signOutQuestion": "Uitloggen op dit apparaat?",
+    "signOutDetail": "Je voortgang blijft op je account staan. Op een gedeeld apparaat haal je hem hier weg.",
+    "signOutChoice": "Voortgang op dit apparaat",
+    "signOutKeep": "Houden",
+    "signOutClear": "Verwijderen",
+    "resetDetailAccount": "Reeks, sterren en XP, op elk apparaat met je account. Je kunt dit niet ongedaan maken."
   },
   "calibrate": {
     "title": "Timing kalibreren",
@@ -778,6 +789,7 @@
     "last_admin": "Je bent de laatste beheerder. Maak eerst iemand anders beheerder.",
     "own_account": "Je kunt je eigen rollen of status niet wijzigen. Een andere beheerder kan dat wel.",
     "wrong_status": "Dit account is intussen gewijzigd. Bekijk het en probeer het opnieuw.",
+    "rev_conflict": "Je voortgang is intussen op een ander apparaat gewijzigd. Probeer het opnieuw.",
     "wrong_password": "Dat is niet je huidige wachtwoord.",
     "link_invalid": "Deze link werkt niet meer. Vraag degene die je heeft uitgenodigd om een nieuwe link.",
     "password_length": "Gebruik {min} tot {max} tekens.",
@@ -865,12 +877,12 @@
     "signingOut": "Uitloggen…",
     "data": "Je gegevens",
     "download": "Mijn gegevens downloaden",
-    "downloadSub": "Alles wat over je account is bewaard, als bestand.",
+    "downloadSub": "Alles wat over je account is bewaard, ook je voortgang, als bestand.",
     "downloading": "Downloaden…",
     "downloaded": "Gedownload: {file}.",
     "delete": "Account verwijderen",
     "deleteQuestion": "Je account verwijderen?",
-    "deleteDetail": "Je account en alles wat erbij bewaard is, worden verwijderd. De voortgang op dit apparaat blijft staan. Je kunt dit niet ongedaan maken.",
+    "deleteDetail": "Je account en alles wat erbij bewaard is, ook de voortgang erop, worden verwijderd. De voortgang op dit apparaat blijft staan. Je kunt dit niet ongedaan maken.",
     "deletePassword": "Wachtwoord",
     "deleteConfirm": "Verwijderen",
     "deleting": "Verwijderen…"
@@ -890,7 +902,7 @@
     "accountRoles": "je rollen, zoals beheerder of docent",
     "accountLog": "een logboek van wijzigingen aan accounts: wat er veranderde, wanneer en door wie",
     "whyTitle": "Waarom",
-    "why": "Om je in te loggen en, later, om je voortgang op al je apparaten te bewaren.",
+    "why": "Om je in te loggen en om je voortgang op al je apparaten te bewaren.",
     "whereTitle": "Waar",
     "where": "Op onze eigen server bij Hetzner in Helsinki, Finland, in de EU. Geen andere diensten krijgen je gegevens: geen advertenties en geen tracking.",
     "cookie": "Muzieklab zet één cookie, alleen om je ingelogd te houden.",
@@ -903,7 +915,8 @@
     "rights": "Je naam en e-mailadres wijzigen, je gegevens downloaden of je account verwijderen doe je zelf, in Instellingen → Account. Voor de rest kun je terecht bij degene die je heeft uitgenodigd.",
     "ageTitle": "Leeftijd",
     "age": "Accounts zijn voorlopig voor mensen van 16 jaar en ouder.",
-    "updated": "Laatst bijgewerkt: {date}"
+    "updated": "Laatst bijgewerkt: {date}",
+    "accountProgress": "je voortgang en de instellingen die met je meegaan, zoals het thema en de notennamen"
   },
   "admin": {
     "title": "Accounts",
@@ -2409,6 +2422,13 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_14_0": {
+      "title": "Voortgang op elk apparaat",
+      "try": "Open Instellingen",
+      "sync": "Ben je ingelogd, dan wordt je voortgang op je account bewaard: sterren, XP, reeks, de dagelijkse uitdaging, Noten lezen en Toonladders, de Leer-onderdelen die je las, en instellingen zoals het thema en de notennamen. Log je op een ander apparaat in, dan staat het er allemaal.",
+      "merge": "Voortgang van twee apparaten telt op: het beste resultaat van elke les telt, en niets wat je deed voordat je inlogde gaat verloren.",
+      "signOut": "Bij uitloggen kies je of je voortgang op het apparaat blijft of eraf gaat, voor een gedeelde computer. Voortgang wissen wist hem op elk apparaat met je account."
+    },
     "v0_13_2": {
       "title": "De schuifbalk aan de rand van het venster",
       "scrollbar": "Op een tablet of een computer staat de schuifbalk van een pagina die scrolt aan de rechterrand van het venster, niet naast de kolom in het midden. De blokken van het leerpad scrollen ook aan de rand."

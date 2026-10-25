@@ -209,6 +209,7 @@ describe('GET /me/export', () => {
           details: { fields: ['locale'] },
         },
       ],
+      progress: { rev: 0, data: null, resetAt: null, updatedAt: null },
     });
     // Nothing secret in it.
     expect(res.body).not.toMatch(/scrypt|passwordHash|_id/);

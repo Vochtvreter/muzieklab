@@ -1,11 +1,12 @@
 # Accounts and permissions: back-end design
 
-Status: **phases 0 and 1 built.** Phase 0 is the API with `/api/v1/health`, MongoDB and backups, deployed to the test
-site. Phase 1, in 0.12.0, is accounts: invite and new-password links, signing in and out, the Account screen, the admin
-screens and the privacy statement (§10, [DEPLOY.md](DEPLOY.md) *The API*). Phases 2 to 5 are designed, not built.
+Status: **phases 0, 1 and 2 built.** Phase 0 is the API with `/api/v1/health`, MongoDB and backups, deployed to the
+test site. Phase 1, in 0.12.0, is accounts: invite and new-password links, signing in and out, the Account screen, the
+admin screens and the privacy statement (§10, [DEPLOY.md](DEPLOY.md) *The API*). Phase 2, in 0.14.0, is progress on the
+account: sync and merge (§6). Phases 3 to 5 are designed, not built.
 
-This was written on 2026-10-23, after production moved to our own server. It now describes phase 1 as built. Where the
-build differs from the first plan, the section says so. Decisions taken so far:
+This was written on 2026-10-23, after production moved to our own server. It now describes phases 1 and 2 as built.
+Where the build differs from the first plan, the section says so. Decisions taken so far:
 
 - **Accounts are invite only** for now: an admin invites people, and open sign-up comes later.
 - **No email service** for now: the app sends no email. Where a link is needed (an invite, a new password), the admin
@@ -19,7 +20,7 @@ build differs from the first plan, the section says so. Decisions taken so far:
   admins see. There is no new tab (§10.1).
 
 The app keeps working **without an account and offline**, as DESIGN.md §1 promises. An account is an extra: it is what
-roles and permissions hang on, and from phase 2 it keeps progress across devices. No screen needs the server to work,
+roles and permissions hang on, and it keeps progress across devices (§6). No screen needs the server to work,
 except the account and admin screens themselves. A site without an API shows no Account section at all.
 
 ## 1. Architecture
@@ -63,7 +64,7 @@ The test site has the same setup: its API listens on 127.0.0.1:3001 and uses the
 
 ### 1.2 Code layout
 
-As built in phase 1:
+As built in phases 1 and 2:
 
 ```
 server/
@@ -85,16 +86,18 @@ server/
       origin.ts         the Origin check (§5.4), and the site's address for links
       device.ts         a device name from the User-Agent ("Safari on iPhone")
     accounts/           views (documents → API bodies), validate, premium (§4.3), audit (§3.5), remove
-    routes/             health, auth, me, admin; schemas.ts holds the JSON schemas
+    routes/             health, auth, me, progress, admin; schemas.ts holds the JSON schemas
     commands/
       create-admin.ts   the first admin, run on the server (§5.1)
 shared/
   api.ts                the contract: request and response types, error codes, roles, permissions (types only)
-src/                    the app: src/api/client.ts, src/ui/account.ts, src/ui/screens/account/ and admin/
+src/                    the app: src/api/client.ts, src/ui/account.ts, src/ui/screens/account/ and admin/; for §6,
+                        src/game/merge.ts (what syncs, how it merges), src/game/syncState.ts and src/ui/sync.ts
 ```
 
-Not built yet: `server/migrations/` (§9.2), `shared/merge.ts` (phase 2, §6) and the routes for progress, classes and
-content.
+Not built yet: `server/migrations/` (§9.2) and the routes for classes and content. The merge rules are in
+`src/game/merge.ts`, not `shared/merge.ts` as first planned: only the app merges (§6.2), and the rules work on the app's
+own `Progress` and `Prefs`.
 
 ## 2. What a document database is good for here
 
@@ -159,14 +162,18 @@ command.
 {
   _id: ObjectId("…"),                  // the account's _id: one document per account
   schema: 1,
-  prefs: { language: "nl", theme: "dark", noteNames: "solfege", … },   // Prefs, minus device settings (§6)
-  progress: { lessons: { "7.3": { stars: 3, bestAccuracy: 0.94 } }, xp: 1840, … },  // Progress
+  prefs: { language: "nl", theme: "dark", noteNames: "solfege", … },   // the synced prefs only (§6.1)
+  progress: { lessons: { "7.3": { stars: 3, bestAccuracy: 94 } }, xp: 1840, … },  // Progress
   rev: 42,                             // goes up by one on every save (§6.2)
+  resetAt: ISODate("…") | null,        // the last Reset progress (§6.2)
   updatedAt: ISODate("…"),
 }
 ```
 
-A full progress document is a few tens of kB; MongoDB's limit is 16 MB.
+`prefs` and `progress` are the app's documents as it sent them. The server checks only their size (at most 200 kB,
+`PROGRESS_MAX_BYTES`) and that no key starts with `$`; the app checks them with `sanitizePrefs` and `sanitizeProgress`
+on every read, as it does what it reads from its own storage. Lesson ids hold a dot ("7.3"), which MongoDB keeps as a
+key. A full progress document is a few tens of kB; MongoDB's limit is 16 MB. Deleting the account deletes it.
 
 ### 3.4 classes and memberships (phase 3)
 
@@ -474,28 +481,48 @@ without changing the rest. Phase 1 has no two-step sign-in; for admins it is an 
 
 ## 6. Progress on the account
 
-Phase 2; not built yet. Without an account nothing changes: progress stays in the browser. Signing in adds a copy on
-the server.
+Phase 2, built in 0.14.0. Without an account nothing changes: progress stays in the browser, and no request goes out.
+Signing in adds a copy on the server.
 
 ### 6.1 What syncs
 
 | Synced to the account | Stays on the device |
 |---|---|
-| Progress: lessons, stars, XP, streak days, daily challenge, Read notes and Scales results, Learn sections read | Calibration (`calibrationMs`, `calibratedAt`): each device has its own delay |
-| Prefs: language, theme, note names, piano labels, metronome look, input mode, the path last picked | Volumes, and the How to play and intro flags already seen on this device |
+| Progress: lessons, stars, XP, streak days, daily challenge, Read notes (setup and weak spots) and Scales results, Learn sections read, the setups last used | Calibration (`calibrationMs`, `calibratedAt`): each device has its own delay |
+| Prefs: language, theme, leniency, input mode (with the setup's early hold), metronome look, note names, piano labels (`SYNCED_PREFS`) | Volumes and the sounds switched on (each device has its own speaker), and the How to play and intro flags already seen on this device |
+
+The first plan listed "the path last picked" as a pref; the app keeps no such pref, so there is nothing to sync.
 
 ### 6.2 How it syncs
 
-- The app saves to the account **after each finished exercise**, on start, and when the device comes back online; it
-  sends the `rev` it last saw.
-- If the account has moved on (another device saved meanwhile), the server answers with its copy, the app **merges**
-  the two and saves again.
-- **Merging never loses progress:** the best stars and accuracy per lesson, all practice days from both, the higher
-  XP, all Learn sections read from both, the newer daily challenge. The rules live in `shared/merge.ts`, with property
-  tests (fast-check) that merging is order-independent and never lowers a result.
-- **First sign-in on a device that already has progress:** merged the same way, so nobody loses what they did before
-  they had an account.
-- **Signing out** asks whether to keep this device's progress or clear it (for a shared computer).
+Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
+
+- **When:** on start with a signed-in account (or right after signing in), a moment (1.5 s) after each change of what
+  syncs (a finished exercise, a setup, a pref), when the device is back online, and when the app comes back into view
+  (at most every 30 s). After a failure it tries again 30 s later, unless something else asks first.
+- **Saving:** `PUT /progress` with the whole copy and the `rev` this device last saw. The device keeps that rev and
+  that copy (the *base*, `muzieklab.sync.v1`): a change here is what differs from the base, so nothing is sent when
+  nothing changed.
+- **Another device saved meanwhile:** the server refuses with 409 `rev_conflict` and its copy. The app merges the copy
+  into its own against the base, and saves the merge with the copy's rev.
+- **Merging never loses a result:** the best stars and accuracy per lesson and per scale, all practice days and Learn
+  sections from both, the higher XP and best daily accuracy, the newer daily challenge (on the same day, the best of
+  both). Two devices that both earn XP offline keep the higher total, not the sum: a sum would count XP twice when a
+  save went through but its answer was lost. What is not a result (a pref, a setup, a Read notes weak spot, which goes
+  down with practice) goes to the side that changed it since the base, to this device when both did. Property tests
+  (fast-check, `merge.test.ts`) check that every result is the same in either order, never lower than either side, and
+  that merging a copy with itself gives it back.
+- **First sign-in on a device:** there is no base yet, so the account's prefs win, and this device's progress is merged
+  in, so nothing done before having an account is lost. Settings → Account says so ("The progress on this device is on
+  your account now too").
+- **Reset progress** while signed in resets the account too (`DELETE /progress`), at once or, offline, as soon as the
+  API answers. The account's `resetAt` changes; another device that last saw an older `resetAt` takes the account's
+  progress instead of merging its own back in. Its prefs still merge.
+- **Signing out** saves the last change first, then asks whether this device keeps its progress (the default) or
+  removes it (for a shared device). Either way the device forgets the base: a save sends the whole copy, so it may
+  only ever be made on top of the account's own. A session that ended (a 401) signs out and keeps the progress here.
+- **Settings → Account** shows whether it is saved: saved, saving, not saved yet (no connection; it goes when the
+  device is back online), or could not be saved, with Try again.
 
 ## 7. API
 
@@ -517,8 +544,11 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `PATCH /me` | `self.manage` | Name and locale. |
 | `POST /me/password` | `self.manage` | The current and a new password. Other sessions and new-password links end. |
 | `POST /me/email` | `self.manage` | The current password and a new email. New-password links end. |
-| `GET /me/export` | `self.manage` | Everything about the account as a download (`muzieklab-account.json`): the account, its sessions and the audit entries about it. What it did to other accounts is left out, so other people's data stays out. |
-| `DELETE /me` | `self.manage` | With the current password: the account, its sessions and links go, and audit entries about it are scrubbed (§3.5). |
+| `GET /me/export` | `self.manage` | Everything about the account as a download (`muzieklab-account.json`): the account, its sessions, its saved progress and the audit entries about it. What it did to other accounts is left out, so other people's data stays out. |
+| `DELETE /me` | `self.manage` | With the current password: the account, its sessions, links and progress go, and audit entries about it are scrubbed (§3.5). |
+| `GET /progress` | `progress.own` | The account's copy (`SavedProgress`): `rev`, `data` (prefs and progress, null before the first save), `resetAt` and `updatedAt`. Rev 0 before the first save. |
+| `PUT /progress` | `progress.own` | `rev`, `prefs` and `progress` → the saved copy, with the next rev. A `rev` the account has moved on from (or never had) is refused with 409 `rev_conflict` and the account's copy in `current`. Of two first saves at once, one gets the conflict. |
+| `DELETE /progress` | `progress.own` | Reset progress: the progress is emptied, the prefs stay, `resetAt` is now and the rev goes up. Without a saved copy it changes nothing (rev 0). |
 | `GET /admin/accounts?q=&status=` | `accounts.read` | Newest first, at most 500. `q` matches name or email as plain text, without case; `status` is invited, active or blocked. There is no role filter (the first plan had one). |
 | `POST /admin/invites` | `accounts.invite`, plus `roles.grant` when roles are given | Email, name and roles → the invited account and its link. |
 | `GET /admin/accounts/:id` | `accounts.read` | The account, how many devices are signed in, and while invited, when its link stops working (null when none works). |
@@ -528,23 +558,23 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `DELETE /admin/accounts/:id?expect=` | `accounts.delete` | Cancels an invite or deletes an account (never yourself, never the last admin). With `expect` (a status), it is refused with 409 `wrong_status` when the account has another status: Cancel invite sends `expect=invited`, so an invite accepted meanwhile is not deleted. |
 | `GET /admin/audit?limit=&before=` | `audit.read` | Newest first: 100 by default, at most 500. `before` is the last id of the previous page. No screen shows it yet. |
 
-Planned: `GET /progress` and `PUT /progress` (with `rev`; 409 with the server copy on a conflict) in phase 2; `POST
+Planned: `POST
 /classes`, `GET /classes`, `GET /classes/:id`, `PATCH /classes/:id`, `POST /classes/join`, `GET /classes/:id/progress`
 and `DELETE /classes/:id/members/:accountId` in phase 3; content in phase 4, designed with it (§10).
 
 Errors are `{ "error": "code", "message": "…" }`, plus `retryAfter` with `too_many_attempts` and `busy`. The `code` is
 stable, and the app shows its own English or Dutch text for it. The codes are in `ERROR_CODES` (`shared/api.ts`):
 `bad_request` (400), `unauthenticated`, `invalid_credentials` and `wrong_password` (401), `forbidden` and `bad_origin`
-(403), `not_found` (404), `email_taken`, `last_admin`, `own_account` and `wrong_status` (409), `link_invalid` (410),
+(403), `not_found` (404), `email_taken`, `last_admin`, `own_account`, `wrong_status` and `rev_conflict` (409), `link_invalid` (410),
 `password_length`, `password_common`, `password_has_email` and `email_invalid` (422), `too_many_attempts` (a counter's
 wait) and `busy` (the hash queue is full, §5.2) (429), and `internal` (500). Fastify's own refusals (a body that is
-broken, too big, or not JSON) keep their status (400, 413, 415) with the code `bad_request`. Phase 2 adds
-`rev_conflict`. When the API does not answer at all, the app uses its own code, `unavailable`.
+broken, too big, or not JSON) keep their status (400, 413, 415) with the code `bad_request`. With `rev_conflict` the
+body also has `current`, the account's copy of the progress. When the API does not answer at all, the app uses its own code, `unavailable`.
 
 ## 8. Privacy and security
 
 **Personal data we keep:** email, name, password hash, roles and premium, sessions (device name, when signed in and
-last used) and the audit log. Progress joins in phase 2. No IP addresses are stored: an address is kept only briefly in
+last used), the audit log, and the progress and synced prefs (§6). No IP addresses are stored: an address is kept only briefly in
 memory for the sign-in limits (§5.2), and the log has none (below).
 
 GDPR (in the Netherlands: AVG) needs, before the first invite goes out:
@@ -555,8 +585,8 @@ GDPR (in the Netherlands: AVG) needs, before the first invite goes out:
   legal check, and a contact address for privacy questions, before the first real invite.
 - A **data processing agreement** with Hetzner (they offer one in the console).
 - **Export** (`GET /me/export`, everything about the account as JSON) and **delete** (the account, its sessions and
-  links go, and audit entries about it lose the name and email) from the Account screen, without asking an admin:
-  built. Progress and memberships join the export and the delete in phases 2 and 3.
+  links and progress go, and audit entries about it lose the name and email) from the Account screen, without asking
+  an admin: built. Memberships join the export and the delete in phase 3.
 - **Children:** in the Netherlands, under-16s need a parent's consent for an account. While accounts are invite only,
   admins invite only people of 16 and over, as the privacy statement says. Teachers and pupils (phase 3) need a
   decision first (§11).
@@ -652,7 +682,7 @@ by hand. Its API is on port 3001, with its own database `muzieklab_test`.
 |---|---|---|---|
 | **0 · Groundwork** (built) | test.vivanova.app; MongoDB with backups; the API with `/api/v1/health`, deployed by the workflow with a rollback; the Caddy `/api` block | Nothing | none (no app change) |
 | **1 · Accounts** (built) | The create-admin command, invite and new-password links, sign in and out, the Account screen (name, email, password, sign out everywhere, export, delete), Admin: accounts, invite, roles, block, premium; the privacy statement | Settings → Account; Accounts for admins; Settings → About → Privacy | 0.12.0 |
-| **2 · Progress on the account** | Sync and merge (§6) | Progress on every device; sync status in Settings → Account | minor |
+| **2 · Progress on the account** (built) | Sync and merge (§6) | Progress on every device; sync status in Settings → Account; Sign out keeps or removes this device's progress | 0.14.0 |
 | **3 · Teachers and classes** | Classes, join codes, the class view of pupils' progress, assignments | Teacher screens; Join a class | minor |
 | **4 · Editing content** | Editors change Learn chapters and Path units | Editor screens | minor |
 | **5 · Premium** | Premium features, then a payment provider (for example Mollie, which is Dutch) | Premium badge and upgrade screen | minor |
@@ -670,12 +700,14 @@ today, and needs no content collection at all.
 
 Per CLAUDE.md, every screen is designed on the canvases first (phone, tablet and desktop, light and dark). None of
 these has a board yet. Phase 1's screens were built in 0.12.0 without boards, from Settings' design language; DESIGN.md
-§9 (*Account and admin screens*) describes them as built. Their boards are still to be drawn on both canvases.
+§9 (*Account and admin screens*) describes them as built. Phase 2's parts were built the same way in 0.14.0, inside
+Settings → Account: the sync line under the account, the sign-out confirm with Keep or Remove, the first sign-in notice,
+and Reset progress's line for an account. Their boards are still to be drawn on both canvases.
 
 | Phase | Screens |
 |---|---|
 | 1 (built) | Sign in (with "Forgot your password? Ask the person who invited you") · Accept invite (choose a password) · New password (from a link) · Settings → Account, signed out and signed in · Account details (name, email, password, sign out everywhere, export, delete) · Admin: accounts list, invite (with the link to copy), an account (roles, status, premium, new password link) · Privacy statement |
-| 2 | Sync status and "first sign-in on a device with progress" · Signing out: keep or clear this device |
+| 2 (built) | Sync status and "first sign-in on a device with progress" · Signing out: keep or clear this device |
 | 3 | Join a class · Teacher: classes, a class (pupils, progress, assignments) · Pupil: assignments |
 | 4 | Content editor (depends on the approach above) |
 | 5 | Premium badge · Upgrade |

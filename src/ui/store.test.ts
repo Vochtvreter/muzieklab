@@ -21,7 +21,7 @@ const state = (): AppState => ({
   scaleHub: { tab: 'major', key: 'G' },
   scaleRun: null,
   scaleLast: null,
-  account: { me: null, api: 'unknown', notice: null },
+  account: { me: null, api: 'unknown', notice: null, sync: 'idle' },
 });
 const result = (judgements: NoteResult['judgement'][], accuracy = 80, stars: JudgeResult['stars'] = 2): JudgeResult =>
   ({
@@ -334,20 +334,20 @@ const ME: Me = {
 describe('reducer: account', () => {
   it('starts unknown, and a signed-in answer makes the API reachable', () => {
     const next = reducer(state(), { type: 'signedIn', me: ME });
-    expect(next.account).toEqual({ me: ME, api: 'reachable', notice: null });
+    expect(next.account).toEqual({ me: ME, api: 'reachable', notice: null, sync: 'idle' });
   });
 
   it('signing out forgets the account and can leave a notice for Settings', () => {
     const inState = reducer(state(), { type: 'signedIn', me: ME });
     const out = reducer(inState, { type: 'signedOut', notice: 'deleted' });
-    expect(out.account).toEqual({ me: null, api: 'reachable', notice: 'deleted' });
+    expect(out.account).toEqual({ me: null, api: 'reachable', notice: 'deleted', sync: 'idle' });
     expect(reducer(out, { type: 'accountNotice', notice: null }).account.notice).toBeNull();
   });
 
   it('no answer keeps the cached account, shown as offline', () => {
-    const cached: AppState = { ...state(), account: { me: ME, api: 'unknown', notice: null } };
+    const cached: AppState = { ...state(), account: { me: ME, api: 'unknown', notice: null, sync: 'idle' } };
     const next = reducer(cached, { type: 'apiUnreachable' });
-    expect(next.account).toEqual({ me: ME, api: 'unreachable', notice: null });
+    expect(next.account).toEqual({ me: ME, api: 'unreachable', notice: null, sync: 'idle' });
     expect(reducer(next, { type: 'apiUnreachable' })).toBe(next);
   });
 

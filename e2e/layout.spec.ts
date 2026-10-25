@@ -1276,6 +1276,29 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('settings signed in: the progress is saved, and Sign out asks about this device in reach', async ({ page }) => {
+        known(name, 'settings-sign-out');
+        await mockApi(page, MEMBER);
+        await page.goto('./#/settings');
+        const section = account(page);
+        const line = section.locator('.sync-line');
+        await expect(line).toHaveText('Progress saved to your account');
+        // Under the account, as part of it: inside the card, beside nothing.
+        const [row, status] = await Promise.all([section.getByRole('link', { name: /^Sam Jansen/ }).boundingBox(), line.boundingBox()]);
+        expect(status!.y).toBeGreaterThanOrEqual(row!.y + row!.height - 1);
+        expect(status!.x).toBeGreaterThanOrEqual(row!.x - 1);
+        await section.getByRole('button', { name: 'Sign out' }).click();
+        const confirm = section.getByRole('alertdialog', { name: 'Sign out on this device?' });
+        for (const label of ['Keep', 'Remove', 'Cancel']) {
+          await expectClickable(confirm.getByRole('button', { name: label }));
+          await expectTouchHeight(confirm.getByRole('button', { name: label }));
+        }
+        await expectClickable(confirm.getByRole('button', { name: 'Sign out' }));
+        await expectNotSqueezed(section.locator('.set-card'));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
       test('settings and account with no answer from the API: the note, and Try again in reach', async ({ page }) => {
         known(name, 'account-offline');
         await seedAccount(page, ME_MEMBER);
@@ -1398,7 +1421,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.getByRole('link', { name: /^Privacy/ }).click();
         await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'With an account' })).toBeVisible();
-        await expectClickable(page.getByText('Last updated: October 23, 2026'));
+        await expectClickable(page.getByText('Last updated: October 25, 2026'));
         await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
         await expectNoSideScroll(page);
       });

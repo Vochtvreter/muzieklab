@@ -22,6 +22,7 @@ export const NOTICE_TEXT: Record<AccountNotice, string> = {
   deleted: 'settings.noticeDeleted',
   welcome: 'settings.noticeWelcome',
   passwordReset: 'settings.noticePasswordReset',
+  progressAdded: 'settings.noticeProgressAdded',
 };
 
 /**
@@ -111,6 +112,16 @@ function listen(): void {
   document.addEventListener('visibilitychange', () => {
     if (dispatchTo && document.visibilityState === 'visible') askAgain(dispatchTo);
   });
+}
+
+/**
+ * The session ended (a request other than GET /me got a 401, e.g. the progress sync): signed out from now on, as when
+ * GET /me says so. A GET /me still running answers about the old state, so its answer is dropped.
+ */
+export function sessionEnded(dispatch: (a: Action) => void): void {
+  generation++;
+  reach = 'reachable';
+  dispatch({ type: 'signedOut' });
 }
 
 export interface UseAccount {

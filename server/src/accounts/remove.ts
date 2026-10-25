@@ -14,12 +14,13 @@ export function otherActiveAdmins(c: Collections, accountId: ObjectId, session: 
 }
 
 /**
- * Everything about the account goes: the account, its sessions and links; audit entries keep the action but lose
- * its name and email (BACKEND-PLAN.md §8). Progress and memberships join this list in phases 2 and 3.
+ * Everything about the account goes: the account, its sessions, links and progress; audit entries keep the action but lose
+ * its name and email (BACKEND-PLAN.md §8). Memberships join this list in phase 3.
  */
 export async function removeAccount(c: Collections, accountId: ObjectId, session: ClientSession): Promise<void> {
   await c.accounts.deleteOne({ _id: accountId }, { session });
   await c.sessions.deleteMany({ accountId }, { session });
   await c.tokens.deleteMany({ accountId }, { session });
+  await c.progress.deleteOne({ _id: accountId }, { session });
   await scrubAudit(c, accountId, session);
 }

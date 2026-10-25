@@ -349,3 +349,49 @@ test('a member deletes their account: a wrong password first, then signed out fo
   await a.goto(`./#/admin/account/${member.me.id}`);
   await expect(a.getByText("This account isn't there anymore. Another admin may have deleted it.")).toBeVisible();
 });
+
+test('progress on the account: two devices merge, and a reset on one resets the other', async ({ person }) => {
+  const admin = await anAdmin(person);
+  const member = await aMember(person, admin);
+  const progressOf = async (page: Page) => JSON.parse((await page.evaluate(() => localStorage.getItem('muzieklab.progress.v1'))) ?? 'null');
+  const syncLine = (page: Page) => accountSection(page).locator('.sync-line');
+
+  // The phone was used before the account: its progress goes to the account on the first sync.
+  const phone = member.page;
+  await phone.addInitScript(() => {
+    if (!localStorage.getItem('muzieklab.progress.v1')) {
+      localStorage.setItem('muzieklab.progress.v1', JSON.stringify({ xp: 340, practiceDays: ['2026-10-24'], lessons: { '1.1': { stars: 3, bestAccuracy: 92 } } }));
+    }
+  });
+  await phone.goto('./#/settings');
+  await expect(syncLine(phone)).toHaveText('Progress saved to your account');
+  await expect(accountSection(phone).locator('.row-status')).toHaveText('The progress on this device is on your account now too.');
+
+  // A laptop with progress of its own signs in: the two merge, and nothing is lost.
+  const laptop = (await person('desktop')).page;
+  await laptop.addInitScript(() => {
+    if (!localStorage.getItem('muzieklab.progress.v1')) {
+      localStorage.setItem('muzieklab.progress.v1', JSON.stringify({ xp: 60, practiceDays: ['2026-10-25'], lessons: { '1.2': { stars: 2, bestAccuracy: 81 } } }));
+    }
+  });
+  await signIn(laptop, member.email, member.password);
+  await expect(laptop).toHaveURL(/#\/settings$/);
+  await expect(syncLine(laptop)).toHaveText('Progress saved to your account');
+  await expect.poll(async () => (await progressOf(laptop))?.lessons).toEqual({
+    '1.1': { stars: 3, bestAccuracy: 92 },
+    '1.2': { stars: 2, bestAccuracy: 81 },
+  });
+  expect(await progressOf(laptop)).toMatchObject({ xp: 340, practiceDays: ['2026-10-24', '2026-10-25'] });
+
+  // The phone picks up the laptop's lesson when it starts again.
+  await phone.reload();
+  await expect.poll(async () => Object.keys((await progressOf(phone))?.lessons ?? {}).sort()).toEqual(['1.1', '1.2']);
+
+  // Reset progress on the laptop resets the account; the phone takes the reset instead of bringing its copy back.
+  await laptop.getByRole('button', { name: 'Reset progress' }).click();
+  await laptop.getByRole('alertdialog').getByRole('button', { name: 'Reset' }).click();
+  await expect(syncLine(laptop)).toHaveText('Progress saved to your account');
+  await phone.reload();
+  await expect.poll(async () => (await progressOf(phone))?.xp ?? 0).toBe(0);
+  await expect(syncLine(phone)).toHaveText('Progress saved to your account');
+});

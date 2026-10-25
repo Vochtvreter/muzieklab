@@ -36,6 +36,7 @@ import {
 } from '../core/api';
 import { Rng } from '../core/rng';
 import { dailyTier } from '../game/daily';
+import { mergePrefs, mergeSynced, sameValue, type Synced } from '../game/merge';
 import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, lessonSettings, recordLessonResult } from '../game/path';
@@ -250,7 +251,14 @@ export interface ScaleHub {
  * A one-line message Settings → Account shows after an account change that ends on Settings (signed out, the account
  * deleted, a new password set from a link…). It stays until Settings is left.
  */
-export type AccountNotice = 'signedOut' | 'signedOutEverywhere' | 'deleted' | 'welcome' | 'passwordReset';
+export type AccountNotice = 'signedOut' | 'signedOutEverywhere' | 'deleted' | 'welcome' | 'passwordReset' | 'progressAdded';
+
+/**
+ * Progress on the account (BACKEND-PLAN.md §6, ui/sync.ts): 'idle' until the first sync of this app session, 'saving'
+ * while a save runs, 'saved' when the account has everything, 'pending' when a change could not be sent (no
+ * connection; it goes when the app is back online), 'failed' when the API refused or failed it.
+ */
+export type SyncStatus = 'idle' | 'saving' | 'saved' | 'pending' | 'failed';
 
 /**
  * The account (BACKEND-PLAN.md §5): who is signed in, and whether the API answered. `api` is 'unknown' until a screen
@@ -261,6 +269,7 @@ export interface AccountState {
   me: Me | null;
   api: 'unknown' | 'reachable' | 'unreachable';
   notice: AccountNotice | null;
+  sync: SyncStatus;
 }
 
 export interface AppState {
@@ -302,7 +311,13 @@ export type Action =
   | { type: 'signedOut'; notice?: AccountNotice }
   /** The API did not answer: a cached account stays, shown as offline. */
   | { type: 'apiUnreachable' }
-  | { type: 'accountNotice'; notice: AccountNotice | null };
+  | { type: 'accountNotice'; notice: AccountNotice | null }
+  /**
+   * The account's copy of the progress and synced prefs (ui/sync.ts), merged into this device's against `base`, the copy
+   * both last agreed on. With `reset`, the account was reset since: its progress replaces this device's.
+   */
+  | { type: 'syncApply'; remote: Synced; base: Synced | null; reset: boolean }
+  | { type: 'syncStatus'; status: SyncStatus };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -348,10 +363,17 @@ export function reducer(state: AppState, action: Action): AppState {
       const { calibrationMs, calibratedAt } = state.prefs;
       return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
     }
-    case 'signedIn':
-      return { ...state, account: { me: action.me, api: 'reachable', notice: action.notice ?? null } };
+    case 'signedIn': {
+      // The same account again (GET /me, a change of name…) keeps its sync status; another one starts over.
+      const sync = state.account.me?.id === action.me.id ? state.account.sync : 'idle';
+      return { ...state, account: { me: action.me, api: 'reachable', notice: action.notice ?? null, sync } };
+    }
     case 'signedOut':
-      return { ...state, account: { me: null, api: 'reachable', notice: action.notice ?? null } };
+      return { ...state, account: { me: null, api: 'reachable', notice: action.notice ?? null, sync: 'idle' } };
+    case 'syncStatus':
+      return state.account.sync === action.status ? state : { ...state, account: { ...state.account, sync: action.status } };
+    case 'syncApply':
+      return applySynced(state, action.remote, action.base, action.reset);
     case 'apiUnreachable':
       return state.account.api === 'unreachable' ? state : { ...state, account: { ...state.account, api: 'unreachable' } };
     case 'accountNotice':
@@ -431,6 +453,36 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, progress: { ...state.progress, learnRead: [...state.progress.learnRead, ...add].sort() } };
     }
   }
+}
+
+/**
+ * The account's copy merged into the state (game/merge.ts), with the setups that follow from the progress. Always a new
+ * progress object, so the sync's change effect runs and saves the merge when it differs from the account's copy.
+ */
+function applySynced(state: AppState, remote: Synced, base: Synced | null, reset: boolean): AppState {
+  const local: Synced = { prefs: state.prefs, progress: state.progress };
+  const merged = reset
+    ? { prefs: mergePrefs(local.prefs, remote.prefs, base?.prefs ?? null), progress: remote.progress }
+    : mergeSynced(local, remote, base);
+  const prefs = { ...state.prefs, ...merged.prefs };
+  const progress = { ...merged.progress };
+  const was = state.progress;
+  const next: AppState = { ...state, prefs, progress };
+  // The setups shown on their screens follow the progress when the merge changed them.
+  if (!sameValue(was.lastSettings, progress.lastSettings)) {
+    next.settings = practiceSettings({ prefs, progress }, progress.lastSettings ?? DEFAULT_SETTINGS);
+  }
+  if (!sameValue(was.notes.settings, progress.notes.settings)) next.noteSettings = progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS };
+  if (!sameValue(was.scales.settings, progress.scales.settings)) {
+    next.scaleSettings = progress.scales.settings ?? { ...DEFAULT_SCALE_SETTINGS };
+    next.scaleHub = { ...state.scaleHub, key: next.scaleSettings.keys[0] };
+  }
+  if (reset) {
+    next.last = null;
+    next.noteLast = null;
+    next.scaleLast = null;
+  }
+  return next;
 }
 
 /** The hold setting a lesson uses: its preset's `hold: false` wins, otherwise the Input pref. */
@@ -522,7 +574,7 @@ function initialState(): AppState {
     scaleHub: { tab: 'major', key: scaleSettings.keys[0] },
     scaleRun: route === '/scales/play' ? restoreScaleRun() : null,
     scaleLast: null,
-    account: { me: loadAccount(), api: 'unknown', notice: null },
+    account: { me: loadAccount(), api: 'unknown', notice: null, sync: 'idle' },
   };
 }
 

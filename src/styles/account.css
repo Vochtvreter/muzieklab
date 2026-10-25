@@ -228,6 +228,34 @@
 .row-status svg {
   flex: none;
 }
+/* Whether the progress is on the account (Settings → Account, under the account): a quiet line, with Try again
+   beside it when saving failed (under it when the words need the room). */
+.sync-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px 10px;
+  min-height: 40px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.sync-line svg {
+  flex: none;
+}
+.sync-line-text {
+  flex: 1 1 160px;
+  text-wrap: pretty;
+}
+.sync-line.is-failed {
+  color: var(--ink);
+}
+/* It belongs to the account above it: no hairline between them. */
+.set-card > .row-link + .sync-line {
+  border-top: 0;
+  padding-top: 0;
+}
 .row-pad {
   padding: 10px 16px 12px;
 }
@@ -279,6 +307,10 @@
 .small-btn:disabled,
 .small-btn[aria-disabled='true'] {
   opacity: 0.6;
+}
+/* A choice inside a confirm (Sign out: Keep · Remove): buttons as tall as the confirm's own, for a finger. */
+.confirm-seg .seg-btn {
+  min-height: 44px;
 }
 /* A confirm that loses nothing (Sign out everywhere): the question in ink, not the danger red. */
 .reset-text.is-plain b {

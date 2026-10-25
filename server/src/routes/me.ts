@@ -11,7 +11,7 @@ import {
 import { writeAudit } from '../accounts/audit.js';
 import { isActiveAdmin, otherActiveAdmins, removeAccount } from '../accounts/remove.js';
 import { normalizeEmail, validName } from '../accounts/validate.js';
-import { toAuditEntry, toExportAccount, toMe } from '../accounts/views.js';
+import { toAuditEntry, toExportAccount, toMe, toSavedProgress } from '../accounts/views.js';
 import { signedIn } from '../auth/guard.js';
 import { hashPassword, passwordProblem } from '../auth/passwords.js';
 import { clearSessionCookie } from '../auth/sessions.js';
@@ -135,9 +135,10 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
   app.get('/me/export', { config: SELF }, async (request, reply) => {
     const { account } = signedIn(request);
     const now = ctx.now();
-    const [sessions, audit] = await Promise.all([
+    const [sessions, audit, progress] = await Promise.all([
       c.sessions.find({ accountId: account._id, expiresAt: { $gt: now } }).sort({ createdAt: -1 }).toArray(),
       c.audit.find({ targetId: account._id }).sort({ _id: -1 }).toArray(),
+      c.progress.findOne({ _id: account._id }),
     ]);
     const body: AccountExport = {
       exportedAt: now.toISOString(),
@@ -148,6 +149,7 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
         lastSeenAt: x.lastSeenAt.toISOString(),
       })),
       audit: audit.map(toAuditEntry),
+      progress: toSavedProgress(progress),
     };
     return reply.header('Content-Disposition', 'attachment; filename="muzieklab-account.json"').send(body);
   });
