@@ -724,22 +724,53 @@ describe('POST /auth/refresh', () => {
     expect(late.headers['set-cookie']).toEqual(cleared);
   });
 
-  it('gives a second refresh with the same token moments later no cookies, and keeps the session', async () => {
+  it('gives a second refresh with the same token at once the same new pair: two tabs at once', async () => {
     const t = await makeApp(mongo);
     await seedAccount(t.db, { email: 'ann@example.com' });
     const first = await signInPair(t, 'ann@example.com');
-    // Two tabs at once: the first swaps, the second finds the token just retired.
+    // The first swaps; the second finds the token just retired, and gets what the first got.
     const [a, b] = await Promise.all([refreshWith(t, first.refresh), refreshWith(t, first.refresh)]);
-    const [won, raced] = sessionCookie(a) ? [a, b] : [b, a];
-    expect([won.statusCode, raced.statusCode]).toEqual([204, 204]);
-    expect(raced.headers['set-cookie']).toBeUndefined();
-    const next = pairOf(won);
-    expect(await meWith(t, next.cookie)).toBe(200);
-
-    t.clock.advance(59_000);
-    expect((await refreshWith(t, first.refresh)).statusCode).toBe(204);
+    expect([a.statusCode, b.statusCode]).toEqual([204, 204]);
+    expect(b.headers['set-cookie']).toEqual(a.headers['set-cookie']);
+    const next = pairOf(a);
+    expect(next.refresh).not.toBe(first.refresh);
     expect(await meWith(t, next.cookie)).toBe(200);
     expect(await collections(t.db).sessions.countDocuments()).toBe(1);
+  });
+
+  it('gives the same new pair again for a minute when the answer never reached the browser', async () => {
+    const t = await makeApp(mongo);
+    await seedAccount(t.db, { email: 'ann@example.com' });
+    const first = await signInPair(t, 'ann@example.com');
+    const sessions = collections(t.db).sessions;
+    // The page was reloaded while its refresh was on the way: the server swapped, the browser kept the old token.
+    const lost = pairOf(await refreshWith(t, first.refresh));
+    const swapped = await sessions.findOne();
+    t.clock.advance(59_000);
+
+    const again = await refreshWith(t, first.refresh);
+    expect(again.statusCode).toBe(204);
+    expect(pairOf(again)).toEqual(lost);
+    expect(await meWith(t, lost.cookie)).toBe(200);
+    // It is the same swap: nothing moves.
+    expect(await sessions.findOne()).toEqual(swapped);
+    // And the pair goes on as any other.
+    const next = await refreshWith(t, lost.refresh);
+    expect(next.statusCode).toBe(204);
+    expect(await meWith(t, pairOf(next).cookie)).toBe(200);
+  });
+
+  it('ends the session of an account blocked behind its back when its token was just swapped', async () => {
+    const t = await makeApp(mongo);
+    const account = await seedAccount(t.db, { email: 'ann@example.com' });
+    const { refresh } = await signInPair(t, 'ann@example.com');
+    const c = collections(t.db);
+    expect((await refreshWith(t, refresh)).statusCode).toBe(204);
+    await c.accounts.updateOne({ _id: account._id }, { $set: { status: 'blocked' } });
+    const res = await refreshWith(t, refresh);
+    expect(res.statusCode).toBe(401);
+    expect(res.headers['set-cookie']).toEqual(cleared);
+    expect(await c.sessions.countDocuments()).toBe(0);
   });
 
   it('ends the session when a swapped refresh token comes back later: it was copied', async () => {

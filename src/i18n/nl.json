@@ -2466,6 +2466,10 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_16_1": {
+      "title": "Ingelogd blijven na herladen",
+      "signedIn": "Als je de app herlaadde net toen je inlog zich vernieuwde, of de verbinding toen even wegviel, kon je worden uitgelogd. Nu blijf je ingelogd."
+    },
     "v0_16_0": {
       "title": "Je account verwijderen, zoals jij wilt",
       "try": "Lees hoe het werkt",

@@ -225,6 +225,28 @@ test('a session token that ran out is renewed by the app: still signed in, on st
   await expect(page).toHaveURL(/#\/account$/);
 });
 
+test('a renewal whose answer never came back (a reload on the way) is made again on start: still signed in', async ({ person, request }) => {
+  const admin = await anAdmin(person);
+  const member = await aMember(person, admin);
+  const { ctx, page } = member;
+  const cookie = async (name: string) => (await ctx.cookies()).find((c) => c.name === name)?.value;
+  await page.goto('./#/account');
+  await expect(page.getByLabel('Name')).toHaveValue(member.name);
+
+  // The session token ran out, and a renewal reached the server, but its answer never reached the browser (the page
+  // was reloaded meanwhile, or the connection dropped): the server swapped the refresh token the browser still has.
+  const refresh = await cookie('refresh');
+  await ctx.clearCookies({ name: 'session' });
+  const lost = await request.post(API + '/auth/refresh', { headers: { Origin: ORIGIN, Cookie: `refresh=${refresh}` } });
+  expect(lost.status()).toBe(204);
+
+  // On start the app renews with that token again, moments later, and gets the pair the lost answer had.
+  await page.reload();
+  await expect(page.getByLabel('Name')).toHaveValue(member.name);
+  expect(await cookie('session')).toBeDefined();
+  expect(await cookie('refresh')).not.toBe(refresh);
+});
+
 test('blocking signs a member out at their next request and refuses sign-in until unblocked', async ({ person }) => {
   const admin = await anAdmin(person);
   const member = await aMember(person, admin);
