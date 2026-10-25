@@ -183,6 +183,12 @@ command.
 on every read, as it does what it reads from its own storage. Lesson ids hold a dot ("7.3"), which MongoDB keeps as a
 key. A full progress document is a few tens of kB; MongoDB's limit is 16 MB. Deleting the account deletes it.
 
+Since 0.16.0 `progress` also holds the Progress tab's figures, achievements and skill levels (§6.1). They add about
+250 bytes a day of practice and at most about 16 kB in all: `stats.days` keeps only the newest 42 days (about 12 kB
+when every one has every figure), and the totals per note, the skill checks, the achievements and the 60 skill levels
+are a few kB more. That fits the 200 kB limit with room, so the server needed no change: it stores the document as the
+app sends it, and the app's `sanitizeProgress` checks the new fields as it does the rest.
+
 ### 3.4 classes and memberships (phase 3)
 
 ```js
@@ -517,16 +523,30 @@ without changing the rest. Phase 1 has no two-step sign-in; for admins it is an 
 ## 6. Progress on the account
 
 Phase 2, built in 0.15.0. Without an account nothing changes: progress stays in the browser, and no request goes out.
-Signing in adds a copy on the server.
+Signing in adds a copy on the server. Since 0.16.0 the copy also carries the Progress tab's figures, achievements and
+skill levels; only the app changed (the fields, their sanitizing and their merge rules), not the server or the API
+(§3.3).
 
 ### 6.1 What syncs
 
 | Synced to the account | Stays on the device |
 |---|---|
-| Progress: lessons, stars, XP, streak days, daily challenge, Read notes (setup and weak spots) and Scales results, Learn sections read, the setups last used | Calibration (`calibrationMs`, `calibratedAt`): each device has its own delay |
+| Progress: lessons, stars, XP, streak days, daily challenge, Read notes (setup and weak spots) and Scales results, Learn sections read, the setups last used; since 0.16.0 the Progress tab's figures (`stats`, below), the achievements earned (`achievements`: id → the day) and the skill levels passed (`skills`: "rhythm:3" → the day) | Calibration (`calibrationMs`, `calibratedAt`): each device has its own delay |
 | Prefs: language, theme, leniency, input mode (with the setup's early hold), metronome look, note names, piano labels (`SYNCED_PREFS`) | Volumes and the sounds switched on (each device has its own speaker), and the How to play and intro flags already seen on this device |
 
 The first plan listed "the path last picked" as a pref; the app keeps no such pref, so there is nothing to sync.
+
+The Progress tab's figures (`progress.stats`, DESIGN.md §8.5–8.6), all whole numbers:
+
+| Field | What it holds |
+|---|---|
+| `days` | Per local day (`"2026-10-25"`), at most the newest 42: seconds practised (`sec`), rhythm rounds and the sum of their accuracies (`rounds`, `acc`), the sum of the hit notes' timing offsets and how many (`off`, `hits`), and per skill-map cell `[points earned, points possible]` (`cells`) |
+| `clefs` | Read notes, every round: `[right, answered]` per clef |
+| `noteMs` | Read notes, every round: `[sum of answer ms (each at most 15 s), answers]` per note (`"treble:38"`) |
+| `lastKey` | The key and clef of the last Read notes round, or null |
+| `reading` | The treble and bass skill checks: per `"treble:3"`, `[best accuracy %, best average answer ms]` (0 ms: none yet) |
+| `echo` | Rhythm by ear: per material level `"1"`–`"8"`, `[Echo rounds at ★★ or more, best stars in an Echo round of 4 bars or more]` |
+| `seen` | The last day each of the six skills was practised (for Review due) |
 
 ### 6.2 How it syncs
 
@@ -547,6 +567,27 @@ Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
   down with practice) goes to the side that changed it since the base, to this device when both did. Property tests
   (fast-check, `merge.test.ts`) check that every result is the same in either order, never lower than either side, and
   that merging a copy with itself gives it back.
+- **The Progress tab's fields** (since 0.16.0; §6.1), in `mergeProgress`:
+  - `stats.days`: every date from both sides. A date on both keeps the whole record of the side with more seconds,
+    then more rounds, then more hits, then the larger JSON (so any two records compare), never a sum, for the same
+    reason as XP. Then the newest 42 dates, as `sanitizeProgress` keeps them. Against the base: a date one side dropped
+    since the base (it fell out of its 42 days, or a clock set forward wrote it) stays dropped while the other side
+    still has the base's record of it.
+  - `stats.clefs` and `stats.noteMs`: per key, the whole pair of the side with more answers (the second number); on a
+    tie, the larger first number.
+  - `stats.reading`: per key, the higher accuracy and the faster average answer of those that are not 0 (0 when both
+    are).
+  - `stats.echo`: per key, the higher of each number.
+  - `stats.seen`: per skill, the side that changed it since the base; the later day when both did, and without a base.
+    So a day a clock set forward wrote, once one device corrected it, stays corrected.
+  - `stats.lastKey`: a choice, like a setup: the side that changed it since the base, this device when both did;
+    without a base this device's, or the account's when this device has none.
+  - `achievements` and `skills`: every key from both sides, each with the earlier day.
+
+  The never-lower property allows the two base-aware cases (a dropped day, a corrected day practised); a day kept is
+  never a smaller record. Skill levels and achievements are checked again after the next finished exercise (or when the
+  app next starts), not right after a merge, so a level met only by the two devices' progress together is passed on
+  the next round.
 - **First sign-in on a device:** there is no base yet, so the account's prefs win, and this device's progress is merged
   in, so nothing done before having an account is lost. Settings → Account says so ("The progress on this device is on
   your account now too").

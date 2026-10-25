@@ -190,7 +190,7 @@ engine as 3.1 and 3.2, so it's cheap to add.
 | **Free Practice** | Full custom settings (§4). Always available. |
 | **Learning Path** | Curated units that unlock step by step (§8.2). Each lesson is just a preset of settings + a pass requirement. |
 | **Daily Challenge** | One exercise per day at the player's place among the rhythm units of the Learning path, seeded by the date and the highest open unit, so everyone at the same unit gets the same one (below). Keeps the streak alive. |
-| **Weak Spots** | Adaptive: the generator boosts cells/meters the player scores worst on (§8.4). |
+| **Weak Spots** | Adaptive (later): the generator boosts the cells the player scores worst on. Since 0.16.0 *Practice weak spots* on the Progress tab's skill map is a practice-setup preset instead (§8.4). |
 | **Learn** | Theory library: one topic per thing you can practise (§9.1), each with notation examples, counting and a quick check, linking straight to a matching practice preset. |
 
 **Daily challenge at the player's level** (since 0.10.0; before, everyone got one of eight mid-path presets, so day
@@ -874,6 +874,8 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   Free practice and the daily challenge have no path badge. MVP canvas, Rhythm practice: the Results row and *Results ·
   lesson under 2 stars*. Read notes' Round done does the same after a Read notes or Keys lesson (since 0.9.0, §8.2;
   MVP canvas, Read notes: *Round done · after a path lesson*).
+- A run that earns an achievement without a new level shows a gold *Achievement unlocked · Perfect bar* badge with the
+  other badges (since 0.16.0, §8.3; no board). With a new level, the level-up sheet lists it instead.
 - On a short screen (an 8-bar exercise, a 1280 × 800 laptop) Results scrolls and Listen, Retry and Next stay at the
   bottom, as Start does on Setup; the round summaries of Read notes and Scales do the same. A control that is scrolled
   or tabbed to (Calibrate in the tip) stays above those sticky actions (`scroll-padding-bottom`, since 0.10.0).
@@ -987,7 +989,10 @@ How write and hear work is in §3.5, *Write it, hear it*.
 - Home's Continue card follows the Learning path (since 0.11.0): a rhythm lesson shows a bar of its rhythm, a First
   notes lesson the notes learned so far with their names (the new one highlighted), and a later note lesson a few
   notes of its round. The daily challenge follows the highest open rhythm unit (§3.4).
-- Not yet: the Progress screen (§8.5) counts rhythm only, and free practice cannot write or hear notes yet.
+- Not yet: free practice cannot write or hear notes. The Progress tab (since 0.16.0, §8.5) counts every kind of
+  practice: its accuracy, timing and skill map count rhythm rounds (free practice, lessons, the daily, Echo), its Notes
+  view every Read notes round (free practice and note lessons), and its minutes every mode. The skill levels (§8.6)
+  follow the path: Rhythm reading's levels are the rhythm units.
 
 ### 8.3 Progression & rewards
 
@@ -1003,23 +1008,229 @@ How write and hear work is in §3.5, *Write it, hear it*.
 - The **level-up sheet** after a result uses the same layout with the *Level up* eyebrow. Its line names the new rank
   (*New rank: up from Tick*), or else the next rank (*Count at level 3*), instead of *Up from level N*. Its bar fills
   the old level, then the new one, and only then shows its one label.
+  - Since 0.16.0 (App design canvas, Mobile · Results · level up) a bordered list follows the bar: an *Achievement
+    unlocked* row for each achievement the run earned (medal icon on the gold tint, the name, what it asks for) and a
+    *New personal best* row when the run set one (trophy icon, *Lesson 7.3 · 80%* and *Your best accuracy on this lesson
+    so far*, or *Daily challenge · 80%*). The rows fade in one after another (450 ms, then every 150 ms; at once with
+    reduced motion). The list shows only when there is a row.
+  - Then two buttons side by side, 1 : 1.5 but never narrower than their words: **See progress** (outlined, opens the
+    Progress tab) and **Continue** (filled; it closes the sheet, as before). On a short screen the sheet scrolls rather
+    than cutting a row off. The rest of the sheet (badge, ladder, the one label under the bar, a dialog on desktop) stays
+    as built, because Home's level sheet shares it.
 - **Streak** of practice days. MVP: one finished exercise with at least one note hit keeps it
   (as the Home card says); later a daily challenge or any 3 exercises.
 - **Daily Challenge** (date-seeded, the same for everyone at the same unit of the rhythm path; §3.4).
-- **Achievements**: *Perfect bar*, *50 perfect taps in a row*, *First sixteenths*,
-  *No replays needed*, *Played at 160 BPM*, *7-day streak*, …
-- **Personal bests** per lesson and per settings combination.
+- **Achievements** (since 0.16.0, `game/achievements.ts`): five, in this order. Each is earned once and keeps the day
+  it was earned (`progress.achievements`).
+
+  | Achievement | What it asks for (the line under its name) | Earned when |
+  |---|---|---|
+  | *7-day streak* | Practice on seven days in a row | the practice days hold seven days in a row; dated the 7th day of the first such run, so a streak from before 0.16.0 counts as it happened |
+  | *Perfect bar* | A whole bar with every note Perfect | a rhythm round (tap or Echo) has a bar whose notes, at least one, are all Perfect |
+  | *No replays needed* | Tap back an Echo without hearing it again | an Echo round at ★★★ or more heard once: a replay on the listen card or *Hear again* both count as hearing it again |
+  | *First sixteenths* | Two stars on a rhythm with sixteenths | a rhythm round with a written sixteenth note at ★★ or more |
+  | *Played at 160 BPM* | Two stars at 160 BPM or faster | a rhythm round at 160 BPM or faster at ★★ or more |
+
+  They are checked after every finished exercise (the 7-day streak after any mode) and once when the app starts. They
+  show in three places: the Achievements card on Progress (§8.5; earned in gold with its icon, the others with a lock),
+  a row on the level-up sheet (above) when the run also reached a new level, and otherwise a gold *Achievement unlocked ·
+  Perfect bar* badge (medal icon) beside the other badges on Results, Read notes' Round done or Scales' round done (no
+  board; Scales' round done gained a badge row under the score for it). *50 perfect taps in a row* and the rest wait for
+  the full achievements list (Later, §9).
+- **Personal bests** (since 0.16.0): a lesson played before whose best accuracy goes up, in whole percent (87.45% after
+  87.4% is not a new best), or the daily challenge's best (as Results' *New personal best* badge, §3.4), is a *New
+  personal best* row on the level-up sheet. Rhythm and note lessons count; Scales rounds do not. Bests per settings
+  combination and a history of them are still Later.
 
 ### 8.4 Skill tracking (Weak Spots)
 
-Every judged note is attributed to the **cell** and **meter** it came from. Per cell we keep
-a rolling accuracy (exponential moving average). Weak Spots mode boosts the generator
-weights of the weakest cells; the Progress screen shows them as a "heat map" of skills.
+The first plan: every judged note is attributed to the cell and meter it came from, per cell a rolling accuracy (an
+exponential moving average), and a Weak Spots mode that boosts the generator weights of the weakest cells. What is
+built (since 0.16.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
+
+- **Cells.** Every judged note of a rhythm round (tap and Echo; free practice, lessons and the daily) counts for one of
+  eight cells by its written value (the speller, as Results' tip names a note): a tied note for *Ties*; else a dotted
+  half for *Dotted half*; a dotted quarter, and the eighth right after it, for *Dotted quarter + eighth*; else a
+  quarter, half, eighth or sixteenth for its own cell (the dotted eighth of a sixteenth figure counts for
+  *Sixteenths*). Whole notes and triplets count for none. The first note after a rest also counts for *Rests*. A note
+  adds the points the accuracy gives it (§6.3) to its cells, out of a Perfect's.
+- **Rolling accuracy.** The points are kept per local day (`progress.stats.days`, the newest 42 days), and a cell's
+  accuracy is its points earned over points possible across the last 42 days, as a whole percent. It shows from 12
+  notes in that window (*—* before). A per-day sum instead of a moving average, because two devices' days merge (each
+  day keeps one device's record, BACKEND-PLAN §6.2) and old figures drop out of the window as practice moves on.
+- **Bands and weak spots.** 90% and up, 80–89%, and under 80%: a **weak spot**. A cell is locked until the Learning path
+  opens the first lesson of the rhythm unit that teaches it (Quarter and Half: unit 1, Rests: 2, Eighths: 4, Ties: 6,
+  the dotted cells: 7, Sixteenths: 8), unless it already has notes; it says so with the path's unit number
+  (*Sixteenths: locked until unit 16*).
+- **Practice weak spots** is a practice-setup preset (as §9 v1.5 planned), not a generator mode. It takes the rhythm
+  setup as it is and switches on what the weak cells need: their note value (quarter, half, eighth, sixteenth); for
+  Rests, quarter rests (and eighth rests when eighths are on) with *many* rests; for Ties, ties; for Dotted half, dotted
+  notes with halves and 3/4; for Dotted quarter + eighth, dotted notes with quarters and eighths. With no cell under 80%
+  it uses the two weakest open cells. It puts the result on the rhythm setup (the player's own setup changes, as a
+  Learn practice link does) and opens it, where Start plays it. It is hidden while no cell has 12 notes.
+- **Meters are not tracked separately.** A round has one meter, so a meter score would be the accuracy of whole rounds,
+  not of the notes that are hard. The meters are taught by rhythm units (3/4 in unit 3, 2/4 in unit 5) that the
+  Rhythm reading levels already check (§8.6), and every board's skill map draws cells only. A boost in the generator
+  is still Later: it has no weights to boost a cell, and a boost must not change what a seed or an exercise code
+  gives.
 
 ### 8.5 Progress screen
 
-Accuracy over time, minutes practised, streak calendar, skill map per cell/meter,
-tendency trend (rushing/dragging over time).
+The first plan: accuracy over time, minutes practised, streak calendar, skill map per cell/meter, tendency trend
+(rushing/dragging over time). Built in 0.16.0 as the **Progress tab** (`#/progress`, `ui/screens/progress/`; App design
+canvas, Mobile · Progress, Tablet · Progress and Desktop · Progress), the 4th of five tabs (§9). Everything it shows is
+worked out by `game/progressView.ts` from the progress and today's date; the screens add no logic.
+
+**Head.** A segmented switch, *Show progress for*: **Rhythm · Notes · Scales** (Rhythm first). It changes only the
+cards below it, and is not remembered: every visit starts on Rhythm.
+- Phone: the title with the streak chip (*12-day streak*), the level line and the switch stay at the top while the
+  cards scroll under them. The level line reads *Level 7 · Measure* and *1445 / 1750 XP* (the total, and the XP where
+  the next level starts), then the bar, filled for the XP into the level, then *305 XP to level 8 · next rank Groove*.
+  On a phone under 700 px tall (the phone browser sizes) the whole page scrolls, head included, so the cards still
+  show.
+- Tablet and desktop: the title and the switch (340 px, 360 px on desktop) in one row, no streak chip. The level is
+  the **Level card**: *Level 7 · Measure*, the bar, *1445 / 1750 XP* and *305 XP to level 8*, and the *Ranks* ladder
+  (six rows: reached, *Level 7 · now*, next, later). The bar's label says *95 of 400 XP, 23 percent of the way to
+  level 8*. Numbers have no thousands separator, as everywhere in the app.
+
+**Layout.**
+- Phone: the **Skill levels** card heads every view. Rhythm: streak calendar, Accuracy · 14 days, Minutes this week,
+  the skill map, Timing tendency, Achievements. Notes: Accuracy per clef, Slowest notes, Key. Scales: Major scales,
+  Minor scales.
+- Tablet (and a phone in landscape): the Level card beside the streak calendar, then Skill levels across the width,
+  then the view: Rhythm in pairs (Accuracy | Timing, the skill map across the width with its button in the legend row,
+  Minutes | Achievements); Notes as (Accuracy per clef above Key) | Slowest notes; Scales as Major | Minor. The streak
+  calendar shows in every view.
+- Desktop (and a tablet in landscape): a column on the left with the Level card, Skill levels and the streak calendar
+  (which grows to fill), and the view's cards beside it in the same pairs. On a 1280 × 800 laptop the page scrolls
+  about 77 px, because Skill levels makes the left column taller than the cards.
+
+**The cards.** Each is a section with an eyebrow heading (`h2`); the charts are SVG drawn at the card's width, each a
+`role="img"` with a sentence built from the data, and a title per point.
+- **Skill levels:** *25 of 60 levels · 6 skills · 1 review due*, a link to the Skill levels screen (§8.6).
+- **Streak calendar:** five weeks, Monday to Sunday, ending this week. Days of the current streak are gold (with dark
+  ink on the gold in both themes), earlier practice days a gold tint, missed days plain, today outlined, later days
+  empty; a legend, and *Practised 28 of 32 days* over the calendar's days so far.
+- **Accuracy · 14 days:** rhythm rounds only (tap and Echo): each day the mean of its rounds' accuracy, a line with a
+  gap and a tick for a day without one, the latest value at the end and the average beside the title. The scale is
+  60–100%, and drops to 20% or 0% when a day is under 60%.
+- **Timing tendency:** each day the mean offset of the hit notes, against the steady band from −40 to +30 ms (the
+  tendency's thresholds, §6.3; the range widens past −70 and +50 ms when needed). The caption names the latest day's
+  tendency (*Steady · −22 ms*) and how it started (*Was rushing (−52 ms). A little early is normal.*).
+- **Minutes this week:** every mode, a bar per day, Monday to Sunday, and the total. A rhythm round counts its played
+  length with the count-in (Echo also every time it was heard); Read notes the answer times, each at most 15 s; Scales
+  the time on its play screen, at most 90 s a scale. A day with any practice shows at least 1 minute.
+- **Skill map · rhythm cells:** the eight cells (§8.4) as tiles, 2 a row on phone and 4 on tablet and desktop, coloured
+  by band, locked, or *—* under 12 notes; the legend (*90%+*, *80–89%*, *Under 80% · weak spot*) and **Practice weak
+  spots** when a cell has enough notes.
+- **Achievements:** the five (§8.3) and *3 earned*; 5 a row, or 3 when the longest name would not fit (a narrow phone,
+  a tablet's half column, a narrow desktop).
+- **Accuracy per clef:** treble and bass over every Read notes round.
+- **Slowest notes:** the three notes with the longest average answer time (from 3 answers), named as the Note names
+  setting says, with the sign the last round's key gives them, where they sit (*top space · treble*) and the seconds.
+- **Key:** the last Read notes round's key signature on its staff, its name and what it does, and **Read notes**.
+- **Major scales:** the 15 major scales round the circle of fifths with their best stars; *9 of 15* with ★★ or more.
+- **Minor scales:** the minor keys started, with the best stars of each form (natural, harmonic, melodic), and **Open
+  the circle of fifths** (the Scales hub).
+
+**A new player** (no board) sees every card: short muted lines instead of a chart (*No rhythm rounds in the last 14
+days.*, *No practice this week yet.*, *No Read notes round yet.*, *No minor scale started yet.*, and for slowest notes
+with too few answers *Answer each note a few times to see which ones are slow.*), locked or *—* tiles, every
+achievement locked and empty stars.
+
+**What is recorded** (`progress.stats`, synced with the account, BACKEND-PLAN §6.1): per day for the newest 42 days
+the seconds, the rhythm rounds and their accuracies, the timing offsets and the cells; Read notes' right and answered
+per clef and answer times per note; the last round's key; the bests the skill levels check; Echo rounds per material;
+and the last day each skill was practised. A round counts only when it counts as practice (a note hit, a note
+answered, a scale played), as for the streak.
+
+### 8.6 Skill levels
+
+Since 0.16.0 (`game/skills.ts`; App design canvas, Mobile · Progress · skill levels and its one-skill board). Six
+skills of ten levels each, 60 in all: **Rhythm reading**, **Rhythm by ear**, **Treble clef**, **Bass clef**,
+**Scales** and **Theory**, always in that order. The Progress tab's Skill levels card opens the list
+(`#/progress/skills`); each skill has its own screen (`#/progress/skills/rhythm`).
+
+**Passing a level.** A level is passed when all its checks are met, and it stays passed, with the day it was passed
+(`progress.skills`). A skill's level is the number of levels passed in order from level 1. Levels are checked after
+every finished exercise, after a Learn section is marked read, and once when the app starts, so progress from before
+0.16.0 counts at once. A level met only by putting two devices' progress together is passed on the next round (it is
+not checked after a sync).
+
+**The ladders and their checks.**
+
+| Level | Rhythm reading and Rhythm by ear | Treble clef | Bass clef | Scales | Theory |
+|---|---|---|---|---|---|
+| 1 | Quarter and half notes | Lines: E G B D F | Lines: G B D F A | C major | Ch. 1 Pulse and meter |
+| 2 | Rests | Spaces: F A C E | Spaces: A C E G | G and F major | Ch. 2 Note values |
+| 3 | Three-four, whole notes | The whole staff | The whole staff | D and B♭ major | Ch. 3 Rests |
+| 4 | Eighth notes | Middle C up to G | Middle C down to F | A and E♭ major | Ch. 4 Dividing the beat |
+| 5 | Two-four, eighth rests | One ledger line | One ledger line | E and A♭ major | Ch. 5 Making notes longer |
+| 6 | Ties | Keys with 1♯ or 1♭ | (as treble) | All 15 major scales | Ch. 6 Off the beat |
+| 7 | Dotted notes | Up to 3♯ or 3♭ | (as treble) | Natural minor, up to 2♯ or 2♭ | Ch. 7 Beats in three |
+| 8 | Sixteenths | Two ledger lines | (as treble) | Harmonic minor | Ch. 8 Notes on the staff |
+| 9 | Syncopation (later) | Up to 5♯ or 5♭ | (as treble) | Melodic minor | Ch. 9 Sharps, flats and naturals |
+| 10 | Six-eight (later) | Every key, under 1.5 s | (as treble) | Every scale at ★★★ | Keys and scales (ch. 10 and 11) |
+
+- **Rhythm reading:** level *n* is rhythm unit *n* of the Learning path (§8.2). Its checks: *Lessons 14.1–14.4 at ★★ or
+  more* (the unit's first four lessons, by their path numbers), the unit's skill-map cell at 85% (§8.4; unit 1 Half,
+  2 Rests, 4 Eighths, 5 Rests, 6 Ties, 7 Dotted quarter + eighth, 8 Sixteenths; unit 3 has none), and *Unit review
+  14.5 at ★★★*. Button: *Continue unit 14* (the Path); with level 8 passed, *Free practice*.
+- **Rhythm by ear:** the same ladder, measured with **Echo** (§3.3) until dictation (§3.2, v1.6) is built. An Echo
+  round's material is the highest rhythm unit whose material it has (8 a sixteenth, 7 a dotted note, 6 a tie, 5 an
+  eighth rest or 2/4, 4 an eighth, 3 3/4 or a whole note, 2 any rest, else 1). Checks: *3 Echo rounds with eighth notes
+  at ★★* and *Echo 4 bars with eighth notes at ★★★* (a round of 4 bars or more), each counting rounds of that material
+  or later. Button: *Practice Echo*, which turns Echo on in the rhythm setup and opens it.
+- **Rhythm reading and Rhythm by ear levels 9 and 10** (Syncopation, Six-eight) have no lessons yet. They are listed,
+  and once level 8 is passed the next-level card says *This level comes later, with its lessons.* with no checks
+  (no board). When their units are added, the levels take their checks and the units' names (docs/ADDING-CONTENT.md).
+  The boards name level 10 *Six-eight*, but rhythm unit 10 in §8.2 is the dotted eighth + sixteenth, and compound
+  meters are unit 12 (later).
+- **Treble clef and Bass clef** (Read notes): a round counts for a level of a clef when it covers it, with at least 5
+  notes of that clef answered. It covers level 1 when it draws every line of the staff, 2 every space, 3 every staff
+  position, 4 every note from middle C up to G (treble) or down to F (bass), 5 and 8 every note of the one- or
+  two-ledger-line range; 6, 7, 9 and 10 when it covers the whole staff in a key with 1, 2–3, 4–5 or 6–7 sharps or
+  flats. Checks: *A round over the whole staff at 90%* (the best accuracy of that clef's notes in such a round) and,
+  from level 3, *Average answer under 2.0 s* (level 10: 1.5 s). Middle C is a ledger line, so level 4 needs a round
+  with ledger lines. Button: *Read treble notes* / *Read bass notes*, which puts that one clef on the Read notes setup
+  (the rest as set up) and opens it.
+- **Scales** (the Scales hub's best stars): levels 1–5 one check per scale, *A major at ★★*; level 6 all 15 major
+  scales at ★★; levels 7–9 the five minor keys up to 2♯ or 2♭ (A, E, D, B and G minor) in their natural, harmonic or
+  melodic form at ★★; level 10 all 60 scales at ★★★. Button: *Practice scales* (the Scales hub).
+- **Theory:** the Learn chapters (§9.1), measured with **sections read** until Test yourself (§3.6) exists. One check
+  per section, *Read 5.2 Dotted notes*. Button: *Continue chapter 5*, the first chapter from the next level on with a
+  section not read (*Open Learn* once all are read). A section added to a chapter becomes a check of its level; a
+  level already passed stays passed.
+
+**The clef ladders' order** follows the Learning path: it reads the whole treble staff (path unit 15) before middle C
+and ledger lines (unit 19), so level 3 is *The whole staff* and level 4 middle C. The boards have the two the other way
+round.
+
+**Review due.** A skill with a level that was last practised 14 or more days ago is due for review; one round of it
+clears it, and its level stays. A rhythm round practises Rhythm reading, an Echo round Rhythm by ear, a Read notes
+round each clef in it, a Scales round Scales, and a Learn quick check answered right Theory. Its screen then starts
+with a gold card, *Review due · Last practised 16 days ago. Your level stays; one round clears this.*, and the skill's
+button (Theory's opens its chapter, as there is no Test yourself yet).
+
+**The list** (phone as the board; tablet and desktop, which have no board, in the 640 px column under the top header,
+as Settings' sub-pages, with Progress current; on a phone at least 700 px tall the head stays at the top):
+- *‹ Progress*, the title and *25 / 60 levels*.
+- Two tiles for the last 30 days: *+4 levels up in 30 days* and *1 review due · Theory* (*0 · No review due*, neutral,
+  when none is).
+- *Your skills · 10 levels each*: a row per skill, a link to its screen, with its icon, a chip (*Review due*, or *+2
+  this month* for levels passed in the last 30 days), a 10-segment meter (passed levels slate, the next one gold for
+  the share of its checks done) and *Level 6 · next: Dotted notes*. Below 335 px of list width (345 px in Dutch) every
+  chip goes under its name.
+- **Focus next:** the lowest skill, ties by the order above: *Bass clef is your lowest skill: level 3, 2 levels behind
+  treble clef.* It is compared with its pair (Rhythm reading and Rhythm by ear, Treble and Bass clef) when that is
+  higher, else with the highest skill; with all level, *Your skills are all at level 3.* Then the skill's button.
+- The footnote on passing and Review due.
+
+**One skill:** *‹ Skill levels*, the icon, the name and *Level 6 of 10* with the meter; the Review due card when due;
+**Next · level 7**: its name, a bar, the checks (a done circle, the label, and while not done a mini bar with *now
+72%*), and the skill's button; **Level · 12 weeks**: a bar per week for the level at its end (this week: today), with
+*+1 in 30 days* or *No change in 30 days*; and **All levels**: the ten, passed, next (*1 of 3*) or later (*Later* for
+a level that comes later). With all ten passed the next card reads *Level 10 · Every level passed* (no board).
 
 ---
 
@@ -1112,6 +1323,40 @@ desktop), round done (`/scales/done`), the third Home tile and Learn chapter 11.
 Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
 appear on Progress and on the level-up sheet.
 
+Built in 0.16.0 (MVP canvas, Progress & rewards page; App design canvas, the Progress boards, the skill levels boards
+and Mobile · Results · level up):
+- **The Progress tab** (§8.5) with its three views on phone, tablet and desktop, from the App design canvas, which the
+  MVP canvas's own notes say to follow. Its figures are recorded per day from 0.16.0 on (`game/stats.ts`), so the
+  charts start empty; the streak calendar, the scale stars, the 7-day streak and the levels that read lessons, scales
+  and Learn sections use what was kept before.
+- **The skill map and Practice weak spots** (§8.4): cells only, a weak spot under 80%, the preset on the rhythm setup.
+- **Skill levels** (§8.6): the list and one skill per skill, and a Skill levels card on Progress.
+- **Achievements and personal bests** (§8.3): five achievements on Progress, on the level-up sheet and as a badge on
+  the summary screens; a personal-best row on the level-up sheet, with See progress and Continue under it.
+- **The shell** gains Progress (§9, Breakpoints).
+- Where the code differs from the boards, and why:
+  - Tablet: the App design canvas's grid, not the MVP canvas's phone layout in a 640 px column (the newer canvas).
+  - Shell: the built tablet header (icon and word, on the right; Breakpoints, below), not the App design canvas tablet
+    board's words after the brand.
+  - The Skill levels card on tablet and desktop too, though only the phone board has it (large screens show the same
+    content); the skill screens on tablet and desktop use the 640 px column (no board).
+  - The level numbers come from the app's XP curve (the boards' *1 445 / 1 500 XP* does not fit it), the bar fills for
+    the XP into the level, and numbers have no thousands separator. The Progress tab shows the boards' two XP labels;
+    Home and the level-up sheet keep their one label (§8.3).
+  - *Locked until unit 16*: the path's number for rhythm unit 8, not the boards' *unit 8*.
+  - Dark ink on the gold streak days and every button arrow in the text colour (the dark boards put light text on
+    gold).
+  - *Practice* as the verb, as everywhere in the app (the skill boards write *Practise*).
+  - Rhythm by ear is measured with Echo and Theory with Learn sections, as the boards' dictation and Test yourself are
+    not built; Theory's levels follow the app's chapters; the clef ladders' levels 3 and 4 are swapped to follow the
+    Learning path (§8.6). The checks' wording follows from that.
+  - A skill's row links to its own screen (the board opens it in place).
+  - The level-up sheet's Continue closes it (the boards go on to Home or Play), its list shows only with a row, and on
+    desktop it stays a dialog.
+  - Charts widen their scale for values outside the boards' ranges.
+  - States no board draws: the empty cards, a level that comes later, every level passed, the summary screens'
+    achievement badge, the narrow tablet header.
+
 **v1.6 · Flash cards and listen & write** adds *Test yourself* over all eleven Learn chapters (flip or choose from 3),
 started from the Learn tab. It also adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
 
@@ -1123,11 +1368,11 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 
 | MVP (designed) | Later (nice to have, not designed yet) |
 |---|---|
-| Progress (rhythm / notes / scales; streak calendar, accuracy, skill map with *Practice weak spots*, tendency, achievements strip) | A dedicated Weak Spots mode screen (for now it is a practice-setup preset) |
+| Progress (rhythm / notes / scales; streak calendar, accuracy, skill map with *Practice weak spots*, tendency, achievements strip; built in 0.16.0 with the skill levels, §8.5–8.6) | A dedicated Weak Spots mode screen (for now it is a practice-setup preset) |
 | Settings (sound, timing leniency, tap & hold, counting syllables, notation style, theme) and Calibration (tap along with 16 clicks) | Echo mode play screen (reuses Play without notation) |
 | Pause menu (sheet on phone and tablet, dialog on desktop) | Daily challenge intro and result variant (uses the normal Play and Results) |
 | Results with Listen, Settings and the exercise code (copy) | A full achievements list and personal-best history |
-| Level-up / achievement / personal-best moment after a result | Onboarding and day-one empty states |
+| Level-up / achievement / personal-best moment after a result (built in 0.16.0, §8.3) | Onboarding and day-one empty states (the Progress tab's empty cards are built without a board, §8.5) |
 | Round summaries for Read notes, Scales and Flash cards | Entering an exercise code to play a shared exercise |
 | Working dictation (Listen & write) with check and feedback | Tablet and desktop versions of the screens still to build (listen, flip cards); the built ones have theirs since 0.13.0 |
 | Setup validation (unplayable time signatures, disabled Start) and the first-time How to play | |
@@ -1161,6 +1406,12 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   with each word and puts the items on the right; desktop puts them right after the brand, as words
   only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile, a
   Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow.
+  Since 0.16.0 there are five items, **Home · Path · Learn · Progress · Settings**: Progress is the 4th, with a
+  three-bar icon (MVP canvas, Home & shell page, the *Home · 5-item tab bar* boards), *Voortgang* in Dutch. The phone's
+  tab bar has five equal columns (the pill still fits at 320 px, in Dutch too). On a narrow tablet (700–820 px) the
+  header tightens (14 × 20 px padding, at least 16 px between brand and items, 2 px between items, 10 px inside each
+  item and 6 px from icon to word) so five items with their icons fit beside the brand, in Dutch too. The Skill levels
+  screens keep Progress current.
 - Desktop Home has two columns (App design canvas, Desktop · Home): streak and level (with one label under the XP
   bar, *100 XP to level 2*; no *0 / 100 XP* since 0.10.0), the daily challenge and the learning path (unit N of M, a
   bar of all units, the lesson tiles, and the next lesson by its id: *Next: lesson 1.4 · A little faster · 80 BPM*)
@@ -1247,6 +1498,13 @@ reserved for feedback; gold only for rewards (stars, streak, XP).
 | Good (early/late) | `#b7791f` | `#f0b429` |
 | Miss | `#d64545` | `#ff6b6b` |
 | Field border (`--field-line`, since 0.12.0) | `#7a8687` | `#738080` |
+| Gold text (`--reward-text`, since 0.16.0) | `#7a540c` | `#f0c35a` |
+| Ink on gold (`--on-reward`, since 0.16.0) | `#161b1c` | `#101415` |
+
+`--reward-text` is the boards' gold text on the gold tint or on paper (Progress: a practised day, *Earned*, the stars
+on a scale tile, the level-up rows' eyebrows). `--on-reward` is the text on a gold fill (a streak day on the
+calendar); it stays dark in dark mode, because the gold stays bright there (the dark boards' light text on gold is
+about 1.5:1).
 
 A text field's border (§9.2) is `--field-line`, not Line. Line is 1.2–1.4:1 against paper and ground, under the 3:1
 that WCAG 1.4.11 asks of a field's edge. `--field-line` is 3.76:1 on paper and 3.31:1 on ground in light, and 4.08:1
@@ -1307,7 +1565,7 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 | **Dictation** | Play/replay button with plays left; staff showing what you've entered; bar fill meter; note palette; *Check*. |
 | **Results** | Stars, accuracy, timing strip, tips (with Calibrate when it may be the device), Retry / Next, or Try again under 2 stars (§6.4). |
 | **Path** | One Learning path (since 0.11.0; before, three paths behind a switcher): note units and rhythm units taking turns, as a vertical path whose units open to show their lessons by name, with stars and locks (§8.2). |
-| **Progress** | Charts, skill map, achievements. |
+| **Progress** | Since 0.16.0 (§8.5): a Rhythm · Notes · Scales switch; the level, the streak calendar, accuracy and timing over 14 days, minutes this week, the skill map with *Practice weak spots*, achievements; accuracy per clef, the slowest notes and the last key; the scale stars; Skill levels (§8.6). |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
 | **Settings** | Account first, once the API answers (since 0.12.0; §9.2), language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
 
@@ -1420,7 +1678,7 @@ on tablet the sidebar becomes a row of section chips under the title. The canvas
 Both use the full width (up to 1160 px of content) instead of the 640 px column, and the Learn tab's chapter list
 (up to 960 px) shows a chapter's sections in two columns, read down.
 
-The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings. The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
+The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings (Progress since 0.16.0). The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
 
 ### 9.2 Accounts: the account and admin screens
 
@@ -1618,11 +1876,18 @@ src/
     vexflowStaff.tsx    # NotatedSymbol[] -> SVG, cursor, colouring
     notationText.ts     # rhythm written as text ('q [8 8] h') -> NotatedBar[]
   game/
-    xp.ts  path.ts  achievements.ts  skills.ts  storage.ts
+    xp.ts  path.ts  storage.ts
+    stats.ts            # the Progress tab's figures: per day (minutes, accuracy, timing, cells), Read notes totals
+    cells.ts            # which skill-map cell each judged rhythm note counts for (§8.4)
+    achievements.ts     # the five achievements (§8.3)
+    skills.ts           # skill levels: ladders, checks, review due, focus next (§8.6)
+    weakSpots.ts        # Practice weak spots: the rhythm setup preset (§8.4)
+    progressView.ts     # progress + today -> everything the Progress screens show (§8.5)
   api/
     client.ts           # fetch to /api/v1: JSON, a 15 s timeout, errors as stable codes ('unavailable': no answer)
   ui/
-    screens/ Home, Setup, Play, Dictation, Results, Path, Progress, Settings, Learn
+    screens/ Home, Setup, Play, Dictation, Results, Path, Settings, Learn
+    screens/progress/   # the Progress tab, its cards and charts, Skill levels and one skill (§8.5–8.6)
     screens/account/    # Settings → Account section, Sign in, Accept invite, New password, Account, Privacy (§9.2)
     screens/admin/      # Accounts, Invite someone, one account (§9.2)
     account.ts          # useAccount(): who is signed in, GET /me, the account cache

@@ -2818,6 +2818,15 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_16_0": {
+      "title": "Your progress at a glance",
+      "try": "Open Progress",
+      "tab": "A Progress tab, between Learn and Settings, with your level, your streak and your skill levels. Pick Rhythm, Notes or Scales to see your accuracy and timing over two weeks, the minutes you practised this week and your achievements; your accuracy per clef and your slowest notes; or the stars of every scale.",
+      "weakSpots": "The skill map shows how well you play each kind of rhythm, from quarter notes to sixteenths. Under 80% is a weak spot, and Practice weak spots sets up a practice with those rhythms.",
+      "skills": "Skill levels: rhythm reading, rhythm by ear, treble clef, bass clef, scales and theory have ten levels each. Each level says what passes it, Progress names your lowest skill, and a skill you have not practised for two weeks asks for one review round. Your level stays.",
+      "achievements": "Five achievements to earn, such as a 7-day streak, a perfect bar and two stars at 160 BPM. After a round, a badge shows the one you earned.",
+      "levelUp": "The level-up sheet lists the achievements and the new personal best the round brought, and See progress opens the Progress tab."
+    },
     "v0_15_0": {
       "title": "Progress on every device",
       "try": "Open Settings",

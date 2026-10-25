@@ -25,6 +25,19 @@ export const KINDS: ChangeKind[] = ['new', 'better', 'fix'];
 
 export const RELEASES: Release[] = [
   {
+    version: '0.16.0',
+    date: '2026-10-25',
+    title: 'changelog.v0_16_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_16_0.tab' },
+      { kind: 'new', text: 'changelog.v0_16_0.weakSpots' },
+      { kind: 'new', text: 'changelog.v0_16_0.skills' },
+      { kind: 'new', text: 'changelog.v0_16_0.achievements' },
+      { kind: 'better', text: 'changelog.v0_16_0.levelUp' },
+    ],
+    action: { to: '/progress', label: 'changelog.v0_16_0.try' },
+  },
+  {
     version: '0.15.0',
     date: '2026-10-25',
     title: 'changelog.v0_15_0.title',

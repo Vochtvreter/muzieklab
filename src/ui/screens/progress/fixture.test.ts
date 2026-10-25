@@ -7,7 +7,7 @@ import { emptyProgress, PROGRESS_DAY, richProgress } from '../../../../e2e/progr
 import { awardAchievements, streakDay } from '../../../game/achievements';
 import { progressView } from '../../../game/progressView';
 import { passSkills } from '../../../game/skills';
-import { isEmptyProgress, sanitizeProgress } from '../../../game/storage';
+import { defaultProgress, isEmptyProgress, sanitizeProgress } from '../../../game/storage';
 
 describe('the Progress seed', () => {
   it('reads back unchanged: sanitizeProgress (after a JSON round trip) gives the same progress', () => {
@@ -15,6 +15,8 @@ describe('the Progress seed', () => {
     expect(sanitizeProgress(JSON.parse(JSON.stringify(p)))).toEqual(p);
     expect(sanitizeProgress(JSON.parse(JSON.stringify(emptyProgress())))).toEqual(emptyProgress());
     expect(isEmptyProgress(emptyProgress())).toBe(true);
+    // The fixture writes defaultProgress out (Playwright cannot load storage.ts): the same new player.
+    expect(emptyProgress()).toEqual(defaultProgress());
   });
 
   it("is what the store keeps: its start-up check passes no level and earns no achievement", () => {

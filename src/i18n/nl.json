@@ -2818,6 +2818,15 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_16_0": {
+      "title": "Je voortgang in één oogopslag",
+      "try": "Open Voortgang",
+      "tab": "Een tabblad Voortgang, tussen Leren en Instellingen, met je level, je reeks en je vaardigheden. Kies Ritme, Noten of Toonladders voor je score en timing over twee weken, de minuten die je deze week oefende en je prestaties; je score per sleutel en je traagste noten; of de sterren van elke toonladder.",
+      "weakSpots": "De ritmekaart laat zien hoe goed je elk soort ritme speelt, van kwartnoten tot zestienden. Onder 80% is een zwak punt, en Zwakke punten oefenen zet een oefening met die ritmes voor je klaar.",
+      "skills": "Vaardigheden: ritme lezen, ritme op gehoor, de vioolsleutel, de bassleutel, toonladders en theorie hebben elk tien niveaus. Elk niveau zegt wat je ervoor moet doen, Voortgang noemt je laagste vaardigheid, en een vaardigheid die je twee weken niet oefende vraagt om één herhaalronde. Je niveau blijft.",
+      "achievements": "Vijf prestaties om te behalen, zoals 7 dagen op rij, een perfecte maat en twee sterren op 160 BPM. Na een ronde laat een label zien welke je behaalde.",
+      "levelUp": "Het scherm voor een nieuw level toont de prestaties en het nieuwe persoonlijk record van de ronde, en Bekijk voortgang opent het tabblad Voortgang."
+    },
     "v0_15_0": {
       "title": "Voortgang op elk apparaat",
       "try": "Open Instellingen",

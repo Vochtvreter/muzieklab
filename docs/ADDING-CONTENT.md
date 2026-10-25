@@ -116,3 +116,23 @@ Note units (DESIGN.md §8.2) work the same way, in `src/game/notesPath.ts`:
 3. **Place it:** add it to `ORDER` in `src/game/tracks.ts`.
 4. **Run `npm test`.** `src/game/notesPath.test.ts` checks the numbering, the texts, that every preset is valid and
    can be played, and the order of the units; `src/game/tracks.test.ts` the path order.
+
+## Skill levels and achievements
+
+The Progress tab's skill levels (DESIGN.md §8.6, `src/game/skills.ts`) read this content, so check them when you add
+some:
+
+- **A Learn section** in chapters 1–11 becomes a check (*Read 5.3 …*) of its chapter's Theory level at once (chapters
+  10 and 11 share level 10). Players who passed that level keep it. A **new chapter** is not on the ladder until
+  `theoryChapters` in `skills.ts` gives it a level.
+- **Rhythm units 9 and 10** open Rhythm reading's and Rhythm by ear's levels 9 and 10, which say *This level comes
+  later* until then. Raise `RHYTHM_UNITS` in `skills.ts`, add the unit's skill-map cell to `UNIT_CELL` if it has one,
+  add what the unit brings to `materialLevel` in `src/game/cells.ts` with its `skills.material.{n}` text, and let
+  `ECHO_KEY` in `src/game/storage.ts` keep the new material level (it keeps "1"–"8"). The level then takes the unit's
+  checks and its name (`path.u{n}.title`), and `skills.level.rhythm.{n}` can go. Update the ladder in DESIGN.md §8.6
+  and the tests in `skills.test.ts` and `cells.test.ts`.
+- **A note or keys unit** changes no skill level: the clef levels read what a Read notes round covers, not the units.
+- **An achievement** is an id in `AchievementId` and `ACHIEVEMENT_IDS` (`src/game/storage.ts`: the sanitizer keeps
+  only those, and the Progress card shows them in that order), a rule in `src/game/achievements.ts`, an icon in
+  `src/ui/lib/achievementIcons.ts`, and `achievements.{id}.name` and `.text` in every catalog. It is a new feature, so
+  it needs its board first and a minor release.

@@ -17,8 +17,28 @@
  * theory 4 (25 of 60), theory last practised 16 days ago. Level 7 · Measure on 1445 XP (the boards' 1445 / 1500 is
  * not a level boundary in the app; level 8 starts at 1750).
  */
-import { defaultProgress, type DayStats, type Progress } from '../src/game/storage';
+// Types only from storage.ts: it loads the i18n catalogs with import.meta.glob, which Vite resolves and Playwright (which
+// loads this file in Node) cannot. defaultProgress below is storage's, written out; fixture.test.ts fails if they differ.
+import type { DayStats, Progress } from '../src/game/storage';
 import { PATH_UNITS } from '../src/game/tracks';
+
+/** What `defaultProgress()` in src/game/storage.ts gives: a new player. */
+function defaultProgress(): Progress {
+  return {
+    lessons: {},
+    practiceDays: [],
+    lastSettings: null,
+    xp: 0,
+    daily: null,
+    dailyBest: 0,
+    notes: { settings: null, weak: {} },
+    scales: { settings: null, stars: {} },
+    learnRead: [],
+    stats: { days: {}, clefs: {}, noteMs: {}, lastKey: null, reading: {}, echo: {}, seen: {} },
+    achievements: {},
+    skills: {},
+  };
+}
 
 /** The boards' today, and a time on it for `page.clock.setFixedTime`. */
 export const PROGRESS_DAY = '2026-10-15';
