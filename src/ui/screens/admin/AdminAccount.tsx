@@ -11,7 +11,7 @@
  * back as messages; wrong_status also reloads the account, which another admin changed meanwhile.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { INVITE_DAYS, RESET_HOURS, ROLES, type AccountDetail, type AdminUpdateRequest, type LinkCreated, type Role } from '../../../../shared/api';
+import { INVITE_DAYS, RESET_HOURS, type AccountDetail, type AdminUpdateRequest, type LinkCreated, type Role } from '../../../../shared/api';
 import { api } from '../../../api/client';
 import { formatDateTime, formatDay, formatLongDate, t } from '../../../i18n';
 import { useAccount, type UseAccount } from '../../account';
@@ -20,7 +20,7 @@ import { Icon } from '../../components/Icon';
 import { RowLink, Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
-import { dayOfUntil, setListNotice, today, type LinkKind } from '../../lib/admin';
+import { dayOfUntil, setListNotice, sortRoles, today, type LinkKind } from '../../lib/admin';
 import { announce } from '../../lib/announce';
 import { errorMessage, failureOf, fieldError, formError, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
@@ -258,7 +258,7 @@ function RolesCard({ detail, self, account, onChange, fail }: CardProps): JSX.El
 
   const toggle = async (role: Role, on: boolean): Promise<void> => {
     if (pending) return;
-    const next = ROLES.filter((r) => (r === role ? on : detail.roles.includes(r)));
+    const next = sortRoles(on ? [...detail.roles, role] : detail.roles.filter((r) => r !== role));
     setPending(next);
     setError(null);
     try {

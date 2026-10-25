@@ -711,6 +711,8 @@
     "signInSub": "Accounts are by invitation.",
     "accounts": "Accounts",
     "accountsSub": "Invite people and manage roles",
+    "feedbackButton": "Feedback button",
+    "feedbackButtonSub": "On this device: mark part of a screen and send what should change.",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
     "privacy": "Privacy",
@@ -802,7 +804,11 @@
     "internal": "Something went wrong on our side. Try again later.",
     "unavailable": "Can't reach Muzieklab right now. Check your connection and try again.",
     "waitSeconds": "Too many tries. Try again in {count, plural, one {# second} other {# seconds}}.",
-    "waitMinutes": "Too many tries. Try again in {count, plural, one {# minute} other {# minutes}}."
+    "waitMinutes": "Too many tries. Try again in {count, plural, one {# minute} other {# minutes}}.",
+    "role_exists": "There's already a role with this id.",
+    "built_in_role": "Built-in roles keep their name, and Admin can always do everything.",
+    "feedback_failed": "GitHub didn't take the feedback. Try again, or open it on GitHub.",
+    "feedback_unavailable": "This site can't send feedback yet. Open it on GitHub instead."
   },
   "accountRole": {
     "admin": "Admin",
@@ -2444,6 +2450,39 @@
       }
     }
   },
+  "feedback": {
+    "open": "Feedback",
+    "openLabel": "Feedback: mark a part of this screen",
+    "markHint": "Click the part you mean, or drag to draw a box around it. Esc cancels.",
+    "markHintTouch": "Tap the part you mean, or drag to draw a box around it.",
+    "cancel": "Cancel",
+    "title": "Feedback",
+    "marked": "Marked",
+    "markedArea": "Marked area",
+    "markAgain": "Mark again",
+    "kindGroup": "Kind of feedback",
+    "kind": {
+      "bug": "Bug",
+      "change": "Change",
+      "idea": "Idea"
+    },
+    "descLabel": "What should change?",
+    "descPlaceholder": "What is wrong here, and what you expect instead",
+    "titleLabel": "Title",
+    "titlePlaceholder": "A short summary (optional)",
+    "attached": "It becomes a public GitHub issue, with this screen, the marked spot, the screen size, the theme, the language and the settings. Not your name or your progress.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "send": "Send",
+    "sending": "Sending…",
+    "openGithub": "Open on GitHub",
+    "sent": "Sent as issue #{number}",
+    "sentText": "It waits in triage. The analysis and the plan appear on the issue for your review.",
+    "view": "View the issue",
+    "another": "Mark another",
+    "close": "Close",
+    "hide": "Hide the feedback button on this device"
+  },
   "changelog": {
     "title": "What's new",
     "back": "Back to settings",
@@ -2466,6 +2505,11 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_17_0": {
+      "title": "Feedback on the spot",
+      "feedback": "For the team: an account allowed to give feedback gets a Feedback button. Mark any part of a screen and send what should change; it becomes a GitHub issue, with the screen, the spot and the device attached.",
+      "roles": "Admins: what each role may do is now stored on the server, so roles can change, and new ones can be made, without a new version of the app."
+    },
     "v0_16_1": {
       "title": "Still signed in after a reload",
       "signedIn": "If you reloaded the app just as your sign-in renewed itself, or the connection dropped for a moment then, you could be signed out. Now you stay signed in."

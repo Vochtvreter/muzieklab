@@ -1,5 +1,16 @@
 import { ObjectId, type ClientSession, type Collection, type Db } from 'mongodb';
-import type { AccountLocale, AccountStatus, AuditAction, AuditEntry, ClosureKind, Role, SyncedData } from '../../shared/api.js';
+import {
+  BUILT_IN_ROLES,
+  type AccountLocale,
+  type AccountStatus,
+  type AuditAction,
+  type AuditEntry,
+  type ClosureKind,
+  type Permission,
+  type Role,
+  type SyncedData,
+} from '../../shared/api.js';
+import { BUILT_IN_DEFAULTS } from './auth/policy.js';
 
 // The documents as stored (docs/BACKEND-PLAN.md §3). Ids are ObjectIds here and hex strings in the API.
 
@@ -20,6 +31,22 @@ export interface AccountDoc {
   locale: AccountLocale | null;
   passwordChangedAt: Date | null;
   lastSignInAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * A role and its permissions (BACKEND-PLAN.md §3.8, §4). The built-in ones are stored when the API starts (ensureIndexes)
+ * and keep what admins give them from then on; admin's stored permissions are not read, as admin has them all.
+ */
+export interface RoleDoc {
+  /** 'admin', 'editor', 'teacher', or a custom role's id (ROLE_ID_PATTERN); accounts.roles holds these. */
+  _id: Role;
+  name: string;
+  description: string;
+  /** In the order of PERMISSIONS. */
+  permissions: Permission[];
+  builtIn: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -122,6 +149,7 @@ export interface LockDoc {
 
 export interface Collections {
   accounts: Collection<AccountDoc>;
+  roles: Collection<RoleDoc>;
   sessions: Collection<SessionDoc>;
   tokens: Collection<TokenDoc>;
   audit: Collection<AuditDoc>;
@@ -133,6 +161,7 @@ export interface Collections {
 export function collections(db: Db): Collections {
   return {
     accounts: db.collection<AccountDoc>('accounts'),
+    roles: db.collection<RoleDoc>('roles'),
     sessions: db.collection<SessionDoc>('sessions'),
     tokens: db.collection<TokenDoc>('tokens'),
     audit: db.collection<AuditDoc>('audit'),
@@ -152,9 +181,20 @@ export const CLOSURE_KEEP_SECONDS = AUDIT_KEEP_SECONDS;
  */
 export async function ensureIndexes(db: Db): Promise<void> {
   const c = collections(db);
+  const now = new Date();
   await Promise.all([
     c.accounts.createIndex({ email: 1 }, { unique: true, name: 'email_unique' }),
     c.accounts.createIndex({ createdAt: -1 }, { name: 'createdAt' }),
+    // Who has a role: GET /admin/roles counts them, and deleting a custom role takes it from them.
+    c.accounts.createIndex({ roles: 1 }, { name: 'roles' }),
+    // The built-in roles exist before the first request. One that exists keeps the permissions admins gave it.
+    ...BUILT_IN_ROLES.map((id) =>
+      c.roles.updateOne(
+        { _id: id },
+        { $setOnInsert: { ...BUILT_IN_DEFAULTS[id], builtIn: true, createdAt: now, updatedAt: now } },
+        { upsert: true },
+      ),
+    ),
     c.sessions.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expiresAt_ttl' }),
     c.sessions.createIndex({ accountId: 1 }, { name: 'accountId' }),
     c.sessions.createIndex({ accessHash: 1 }, { name: 'accessHash' }),

@@ -115,8 +115,17 @@ describe('loadConfig', () => {
       port: 3000,
       mongoUri: 'mongodb://x',
       cookieSecure: true,
+      github: null,
     });
     expect(() => loadConfig({ MONGODB_URI: 'mongodb://x', PORT: 'abc' })).toThrow('PORT');
+  });
+
+  it('sends feedback only with GITHUB_TOKEN, to this repository unless FEEDBACK_REPO says another', () => {
+    const base = { MONGODB_URI: 'mongodb://x' };
+    expect(loadConfig({ ...base, GITHUB_TOKEN: ' ' }).github).toBeNull();
+    expect(loadConfig({ ...base, GITHUB_TOKEN: ' tok ' }).github).toEqual({ token: 'tok', repo: 'Vochtvreter/muzieklab' });
+    expect(loadConfig({ ...base, GITHUB_TOKEN: 'tok', FEEDBACK_REPO: 'me/fork' }).github).toEqual({ token: 'tok', repo: 'me/fork' });
+    expect(() => loadConfig({ ...base, FEEDBACK_REPO: 'https://github.com/me/fork' })).toThrow('FEEDBACK_REPO');
   });
 
   it('turns secure cookies off only for COOKIE_SECURE=false', () => {

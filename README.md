@@ -97,6 +97,8 @@ The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
 - [Accounts and permissions](docs/BACKEND-PLAN.md): the back-end design; phases 0 (the API, MongoDB, backups), 1
   (accounts) and 2 (progress on the account) are built.
+- [Feedback loop](docs/FEEDBACK-LOOP.md): with the `feedback.give` permission, mark a spot in the app and send what
+  should change as a GitHub issue; and the plan for the agents that take it from there to a deployed change.
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,

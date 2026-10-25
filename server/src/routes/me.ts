@@ -12,7 +12,7 @@ import { writeAudit } from '../accounts/audit.js';
 import { validFeedback, writeClosure } from '../accounts/closures.js';
 import { isActiveAdmin, otherActiveAdmins, removeAccount } from '../accounts/remove.js';
 import { normalizeEmail, validName } from '../accounts/validate.js';
-import { toAuditEntry, toExportAccount, toMe, toSavedProgress } from '../accounts/views.js';
+import { meOf, toAuditEntry, toExportAccount, toSavedProgress } from '../accounts/views.js';
 import { signedIn } from '../auth/guard.js';
 import { hashPassword, passwordProblem } from '../auth/passwords.js';
 import { clearSessionCookies } from '../auth/sessions.js';
@@ -30,7 +30,7 @@ const emailTaken = () => new ApiError('email_taken', 'Another account has this e
 export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { ctx }) => {
   const { c } = ctx;
 
-  app.get('/me', { config: SELF }, async (request): Promise<Me> => toMe(signedIn(request).account, ctx.now()));
+  app.get('/me', { config: SELF }, async (request): Promise<Me> => meOf(c, signedIn(request).account, ctx.now()));
 
   app.patch<{ Body: UpdateMeRequest }>(
     '/me',
@@ -44,7 +44,7 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
       }
       if (request.body.locale !== undefined && request.body.locale !== account.locale) set.locale = request.body.locale;
       const now = ctx.now();
-      if (Object.keys(set).length === 0) return toMe(account, now);
+      if (Object.keys(set).length === 0) return meOf(c, account, now);
       const updated = await inTransaction(ctx.db, async (session) => {
         const doc = await c.accounts.findOneAndUpdate(
           { _id: account._id },
@@ -59,7 +59,7 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
         );
         return doc;
       });
-      return toMe(updated ?? account, now);
+      return meOf(c, updated ?? account, now);
     },
   );
 
@@ -100,7 +100,7 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
       // The password first: whether an address is taken is only told to someone who knows it.
       await confirmPassword(ctx, request, account, request.body.password);
       const now = ctx.now();
-      if (email === account.email) return toMe(account, now);
+      if (email === account.email) return meOf(c, account, now);
       if (await c.accounts.findOne({ email }, { projection: { _id: 1 } })) throw emailTaken();
       try {
         const updated = await inTransaction(ctx.db, async (session) => {
@@ -124,7 +124,7 @@ export const meRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, { c
           );
           return doc;
         });
-        return toMe(updated ?? account, now);
+        return meOf(c, updated ?? account, now);
       } catch (err) {
         // Two accounts taking one address at the same moment: the unique index refuses the second.
         if (isDuplicateKey(err)) throw emailTaken();

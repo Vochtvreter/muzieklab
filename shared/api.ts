@@ -7,9 +7,18 @@
 
 // --- roles, permissions, entitlements (BACKEND-PLAN.md §4) ------------------------------------------------------
 
-/** Global roles, kept on the account. Class roles (teacher, pupil in one class) come with phase 3. */
-export const ROLES = ['admin', 'editor', 'teacher'] as const;
-export type Role = (typeof ROLES)[number];
+/**
+ * The built-in roles (BACKEND-PLAN.md §4.1), in the order lists show them. They always exist and cannot be deleted;
+ * admin always has every permission. Admins can make more roles (custom roles), and change the permissions of editor,
+ * teacher and the custom ones. Class roles (teacher, pupil in one class) come with phase 3.
+ */
+export const BUILT_IN_ROLES = ['admin', 'editor', 'teacher'] as const;
+export type BuiltInRole = (typeof BUILT_IN_ROLES)[number];
+
+/** A role's id: a built-in one, or a custom one (2 to 32 lower-case letters, digits and dashes, starting with a letter). */
+export type Role = string;
+export const ROLE_ID_PATTERN = '^[a-z][a-z0-9-]{1,31}$';
+export const isBuiltInRole = (id: string): id is BuiltInRole => (BUILT_IN_ROLES as readonly string[]).includes(id);
 
 export const ACCOUNT_STATUSES = ['invited', 'active', 'blocked'] as const;
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
@@ -24,11 +33,13 @@ export const PERMISSIONS = [
   'accounts.block',
   'accounts.delete',
   'roles.grant',
+  'roles.manage',
   'entitlements.grant',
   'audit.read',
   'class.create',
   'content.edit',
   'content.publish',
+  'feedback.give',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -56,6 +67,8 @@ export interface Me {
   name: string;
   locale: AccountLocale | null;
   roles: Role[];
+  /** The names of the account's custom roles, by id (built-in roles are named by the app, in its language). */
+  roleNames: Record<Role, string>;
   /** Everything this account may do: the app shows only what is allowed (the server checks anyway). */
   permissions: Permission[];
   premium: Premium;
@@ -140,7 +153,7 @@ export const FEEDBACK_MAX = 1000;
 /** GET /me/export: everything stored about the account, as a download (Content-Disposition: attachment). */
 export interface AccountExport {
   exportedAt: string;
-  account: Omit<Me, 'permissions'> & { status: AccountStatus; lastSignInAt: string | null; passwordChangedAt: string | null };
+  account: Omit<Me, 'permissions' | 'roleNames'> & { status: AccountStatus; lastSignInAt: string | null; passwordChangedAt: string | null };
   sessions: { device: string; createdAt: string; lastSeenAt: string }[];
   /** What admins changed about this account, and what it changed itself. */
   audit: AuditEntry[];
@@ -288,6 +301,58 @@ export interface ClosureListResponse {
   closures: Closure[];
 }
 
+// --- roles (accounts.read to list them; roles.manage to change them; BACKEND-PLAN.md §4) ------------------------------
+
+/** A role and what it lets an account do. */
+export interface RoleInfo {
+  id: Role;
+  /** As stored. The app names built-in roles itself, in its language. */
+  name: string;
+  description: string;
+  /** In the order of PERMISSIONS. Admin's are always all of them. */
+  permissions: Permission[];
+  builtIn: boolean;
+  /** How many accounts have it. */
+  accounts: number;
+}
+
+/** GET /admin/roles → { roles }: the built-in roles first, then the custom ones by name. */
+export interface RoleListResponse {
+  roles: RoleInfo[];
+}
+
+/**
+ * POST /admin/roles → RoleInfo. Nobody gives out more than they have: every permission in the role must be one the
+ * admin has.
+ */
+export interface CreateRoleRequest {
+  id: Role;
+  name: string;
+  description?: string;
+  permissions: Permission[];
+}
+
+/**
+ * PATCH /admin/roles/:id → RoleInfo. Only the fields sent change. A built-in role keeps its name and description, and
+ * admin keeps every permission (409 built_in_role). Permissions added or removed must be ones the admin has.
+ */
+export interface UpdateRoleRequest {
+  name?: string;
+  description?: string;
+  permissions?: Permission[];
+}
+
+// DELETE /admin/roles/:id → 204: a custom role only; every account that had it loses it. The admin must have every
+// permission in it.
+
+// --- feedback (feedback.give; docs/FEEDBACK-LOOP.md) ----------------------------------------------------------------
+
+/** POST /feedback with a FeedbackReport (shared/feedback.ts) → the GitHub issue the server opened for it. */
+export interface FeedbackSent {
+  number: number;
+  url: string;
+}
+
 /** GET /admin/audit?limit=&before= → { entries }, newest first. */
 export interface AuditEntry {
   id: string;
@@ -320,6 +385,10 @@ export const AUDIT_ACTIONS = [
   'role.revoke',
   'premium.grant',
   'premium.revoke',
+  'role.create',
+  'role.update',
+  'role.delete',
+  'feedback.send',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -359,6 +428,10 @@ export const ERROR_CODES = [
   'rev_conflict',
   /** 401: the current password given to change something is not right. */
   'wrong_password',
+  /** 409: a role with this id exists already. */
+  'role_exists',
+  /** 409: a built-in role cannot be deleted or renamed, and admin always has every permission. */
+  'built_in_role',
   /** 410: an invite or new-password link that is unknown, used, cancelled or expired. */
   'link_invalid',
   /** 422: the new password is too short (under 10 characters) or too long (over 128). */
@@ -375,6 +448,10 @@ export const ERROR_CODES = [
   'busy',
   /** 500 */
   'internal',
+  /** 502: GitHub did not take the feedback (the token was refused, or GitHub is down). */
+  'feedback_failed',
+  /** 503: this server has no GitHub token, so it cannot send feedback (docs/DEPLOY.md, The API). */
+  'feedback_unavailable',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

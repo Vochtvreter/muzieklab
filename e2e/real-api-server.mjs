@@ -54,6 +54,9 @@ async function startApi() {
       PORT: port,
       COOKIE_SECURE: 'false',
       LOG_LEVEL: process.env.LOG_LEVEL ?? 'warn',
+      // Never a real GitHub token (a developer's or CI's own GITHUB_TOKEN): feedback must not reach GitHub from a test,
+      // so POST /feedback answers 503 feedback_unavailable here.
+      GITHUB_TOKEN: '',
     },
     stdio: 'inherit',
   });

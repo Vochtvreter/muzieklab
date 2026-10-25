@@ -5,7 +5,9 @@ test site. Phase 1, in 0.12.0, is accounts: invite and new-password links, signi
 admin screens and the privacy statement (§10, [DEPLOY.md](DEPLOY.md) *The API*). Sessions with refresh tokens, which
 keep someone signed in for 90 days after they last used the app, came in 0.14.0 (§5.4). Phase 2, in 0.15.0, is progress
 on the account: sync and merge (§6). Deleting an account with the choice to keep an anonymous copy, feedback, and the
-admin screen Deleted accounts came in 0.16.0 (§3.7). Phases 3 to 5 are designed, not built.
+admin screen Deleted accounts came in 0.16.0 (§3.7). Since 0.17.0 roles are data: which permissions a role has is
+stored in the database, admins can make roles of their own, and feedback from the app is the `feedback.give`
+permission (§3.8, §4). Phases 3 to 5 are designed, not built.
 
 This was written on 2026-10-23, after production moved to our own server. It now describes phases 1 and 2 as built.
 Where the build differs from the first plan, the section says so. Decisions taken so far:
@@ -16,7 +18,10 @@ Where the build differs from the first plan, the section says so. Decisions take
   model.
 - **Sign-in is email and password.** The model leaves room for passkeys or Google/Apple later (§5.6).
 - **Permissions cover four areas:** admin tools, teachers and classes, editing content, and premium features. They are
-  built in that order of need, in phases (§10).
+  built in that order of need, in phases (§10). Since 0.17.0 there is a fifth, feedback from the app
+  ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md)).
+- **Roles are data** (0.17.0): permissions are given to roles in the database, and roles to accounts. Admins can change
+  which permissions a role has, and make new roles, without a new version of the API (§3.8, §4).
 - **MongoDB** is the database: a document database, with the features accounts need (§3.1).
 - **Accounts sit in Settings:** an Account section at the top of Settings, on every size, with an Accounts row that only
   admins see. There is no new tab (§10.1).
@@ -117,7 +122,7 @@ Transactions need a replica set, so MongoDB runs as a single-node replica set (`
 
 Field names are as stored (`server/src/db.ts`). `_id` is an `ObjectId` unless shown otherwise; the API sends ids as
 hex strings and dates as ISO strings. Phase 1 has five collections: `accounts`, `sessions`, `tokens`, `audit` and
-`locks`. `progress` came with phase 2 and `closures` with 0.16.0; `classes` and `memberships` (phase 3) and `content`
+`locks`. `progress` came with phase 2, `closures` with 0.16.0 and `roles` with 0.17.0; `classes` and `memberships` (phase 3) and `content`
 (phase 4) come later. The indexes
 are made when the API starts (§9.2).
 
@@ -217,7 +222,9 @@ collection.
 - The actions (`AUDIT_ACTIONS` in `shared/api.ts`): `account.invite`, `account.invite_link`, `account.reset_link`,
   `account.update`, `account.block`, `account.unblock`, `account.delete`, `account.accept_invite`,
   `account.reset_password`, `account.change_password`, `account.change_email`, `account.delete_self`, `role.grant`,
-  `role.revoke`, `premium.grant` and `premium.revoke`.
+  `role.revoke`, `premium.grant` and `premium.revoke`; since 0.17.0 also `role.create`, `role.update` and
+  `role.delete` (with `targetId` null and the role's id in `details.role`), and `feedback.send` (`details: { issue,
+  kind }`: who sent which GitHub issue, which the public issue itself does not say).
 - `details` never hold a password or a token. Personal data goes only under the keys `email`, `name`, `previousEmail`
   and `previousName`.
 - Entries are kept for two years (a TTL index on `at`).
@@ -276,16 +283,38 @@ still guess whose an archived copy is. The copy is anonymous in what it stores, 
 only with many accounts. Dropping the account's id from its audit entries when it is deleted would make the guess
 harder; it is not done, as the log keeps ids on purpose (§3.5).
 
+### 3.8 roles (0.17.0)
+
+```js
+{
+  _id: "testers",                       // the role's id: admin, editor, teacher, or a custom one (^[a-z][a-z0-9-]{1,31}$)
+  name: "Testers",                      // 1 to 80 characters; the app names the built-in roles itself, in its language
+  description: "Send feedback from the app.",  // up to 200 characters
+  permissions: ["feedback.give"],       // in the order of PERMISSIONS
+  builtIn: false,
+  createdAt: ISODate("…"), updatedAt: ISODate("…"),
+}
+```
+
+New in 0.17.0. `accounts.roles` holds these ids, so the accounts made before needed no change. The three built-in roles
+are written when the API starts, with the permissions of §4.2, but only if they are not there yet: from then on the
+stored role is what counts. So a permission added to the code later (as `feedback.give` was) goes to admin only, until
+an admin gives it to another role. Admin's stored permissions are not read: admin always has every permission. An
+index on `accounts.roles` serves counting who has a role, and taking a deleted role from everyone.
+
 ## 4. Permissions
 
 ### 4.1 Roles
 
 Two kinds of role, and entitlements beside them:
 
-- **Global roles**, in `accounts.roles`: what someone may do anywhere.
-  - `admin`: accounts, roles and entitlements, and everything else.
-  - `editor`: edit and publish learning content.
-  - `teacher`: create classes. Inside a class, the class's own roles apply.
+- **Global roles**, in `accounts.roles`, each a document in `roles` (§3.8): what someone may do anywhere.
+  - Built in, always there and never deleted:
+    - `admin`: accounts, roles and entitlements, and everything else. Always every permission.
+    - `editor`: edit and publish learning content.
+    - `teacher`: create classes. Inside a class, the class's own roles apply.
+  - **Custom roles** (0.17.0): an admin with `roles.manage` makes them, names them and picks their permissions, for
+    example *Testers* with `feedback.give`. They are given to accounts like the built-in ones.
 - **Class roles**, in `memberships` (phase 3): `teacher` (the owner, and co-teachers) and `pupil`. They count only
   inside that class.
 - **Entitlements**: features an account has, for a time. Phase 1 has one, premium (`accounts.premium`, §4.3). They are
@@ -311,12 +340,22 @@ Code checks **permissions**, never role names, so a role can change without hunt
 | `class.assign`: set lessons for the class | ✓ | | | ✓ | | |
 | `class.read`: name, teachers, own assignments | ✓ | | | ✓ | ✓ | |
 | `content.edit`, `content.publish` | ✓ | ✓ | | | | |
+| `roles.manage`: make, change and delete roles (0.17.0) | ✓ | | | | | |
+| `feedback.give`: the feedback tool in the app (0.17.0) | ✓ | | | | | |
 
-Phase 1 built the global columns: the 13 permissions in `PERMISSIONS` (`shared/api.ts`), given out in
-`server/src/auth/policy.ts`. Admin has all of them; editor has `content.edit` and `content.publish`; teacher has
-`class.create`; every account has `self.manage`, `progress.own` and `class.join`. Only an `active` account has any
-permission at all. The class permissions (`class.manage`, `class.progress.read`, `class.assign`, `class.read`) come
-with phase 3.
+The table holds what the built-in roles **start with**; admins can change editor's and teacher's since 0.17.0, and give
+any permission to a custom role. Phase 1 built the global columns: the permissions in `PERMISSIONS` (`shared/api.ts`;
+15 since 0.17.0), with the starting set in `BUILT_IN_DEFAULTS` (`server/src/auth/policy.ts`). Admin has all of them;
+editor starts with `content.edit` and `content.publish`; teacher with `class.create`; every account has `self.manage`,
+`progress.own` and `class.join`, whatever its roles. Only an `active` account has any permission at all. The class
+permissions (`class.manage`, `class.progress.read`, `class.assign`, `class.read`) come with phase 3.
+
+**Nobody gives out more than they have** (0.17.0). To grant a role to an account or take it away, an admin needs
+`roles.grant` and every permission in that role, so only someone with every permission can make or unmake an admin. To
+put a permission into a role or take it out (`roles.manage`), they need that permission themselves; deleting a custom
+role needs all of its permissions, and `roles.grant` too while accounts have it. So a role with `roles.grant` or
+`roles.manage` cannot be used to climb to more. A built-in role keeps its name and description (409 `built_in_role`),
+admin keeps every permission, and built-in roles cannot be deleted.
 
 Guard rails, enforced in a transaction:
 
@@ -344,10 +383,11 @@ the admin screen says "coming later".
 
 ```ts
 // server/src/auth/policy.ts
-can(account, 'accounts.invite')   // → true or false; class permissions take the class with phase 3
+await can(c, account, 'accounts.invite')   // → true or false; class permissions take the class with phase 3
 ```
 
-- `can()` looks up the account's global roles (and, from phase 3, its membership in the class).
+- `can()` reads the account's roles from `roles` (one small query; none for admin or an account without roles), and
+  from phase 3 its membership in the class. A change to a role counts from the next request on.
 - **Deny by default:** every route declares in its options either `{ public: true }` or `{ permission }`. A route with
   neither, or both, stops the server from starting, and a test checks every registered route and its permission
   against the table in §7.
@@ -355,7 +395,8 @@ can(account, 'accounts.invite')   // → true or false; class permissions take t
   accept, and the new-password check and confirm.
 - A route's `permission` is what it needs at least. A request that does more checks more in the handler: inviting with
   a role also needs `roles.grant`, and each field of an admin change needs its own permission (§7).
-- The table in §4.2 is the policy, written once in `policy.ts` and tested row by row.
+- The table in §4.2 is where the built-in roles start, written once in `policy.ts` and tested; what counts is the stored
+  role (§3.8).
 - `GET /api/v1/me` returns the account's permissions and premium, so the app shows only what someone may use. The
   server checks every request anyway; hiding a button is not security.
 
@@ -634,14 +675,19 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `PUT /progress` | `progress.own` | `rev`, `prefs` and `progress` → the saved copy, with the next rev. A `rev` the account has moved on from (or never had) is refused with 409 `rev_conflict` and the account's copy in `current`. Of two first saves at once, one gets the conflict. |
 | `DELETE /progress` | `progress.own` | Reset progress: the progress is emptied, the prefs stay, `resetAt` is now and the rev goes up. Without a saved copy it changes nothing (rev 0). |
 | `GET /admin/accounts?q=&status=` | `accounts.read` | Newest first, at most 500. `q` matches name or email as plain text, without case; `status` is invited, active or blocked. There is no role filter (the first plan had one). |
-| `POST /admin/invites` | `accounts.invite`, plus `roles.grant` when roles are given | Email, name and roles → the invited account and its link. |
+| `POST /admin/invites` | `accounts.invite`, plus `roles.grant` and every permission in the roles when roles are given | Email, name and roles → the invited account and its link. |
 | `GET /admin/accounts/:id` | `accounts.read` | The account, how many devices are signed in, and while invited, when its link stops working (null when none works). |
-| `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite`, roles `roles.grant`, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
+| `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite`, roles `roles.grant` and every permission in each role granted or taken away, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
 | `POST /admin/accounts/:id/invite-link` | `accounts.invite` | An invited account only: a new invite link; the old one stops working. |
 | `POST /admin/accounts/:id/reset-link` | `accounts.invite` | An active account only: a new-password link for 24 hours. It lets its holder into the account, as an invite does, hence the same permission. |
 | `DELETE /admin/accounts/:id?expect=` | `accounts.delete` | Cancels an invite or deletes an account (never yourself, never the last admin). A deleted account (not a cancelled invite) leaves a closure of kind `admin` (§3.7). With `expect` (a status), it is refused with 409 `wrong_status` when the account has another status: Cancel invite sends `expect=invited`, so an invite accepted meanwhile is not deleted. |
 | `GET /admin/closures` | `accounts.read` | Deleted accounts (§3.7), newest day first, at most 500: `id`, `day` (YYYY-MM-DD), `kind`, `feedback` and `archive`. |
 | `GET /admin/audit?limit=&before=` | `audit.read` | Newest first: 100 by default, at most 500. `before` is the last id of the previous page. No screen shows it yet. |
+| `GET /admin/roles` | `accounts.read` | Every role with its permissions and how many accounts have it: the built-in ones first, then the custom ones by name. The account screens show the custom ones by these names. |
+| `POST /admin/roles` | `roles.manage`, plus every permission put in | Id, name, optional description and permissions → the role. 409 `role_exists` for an id in use (a built-in one too). |
+| `PATCH /admin/roles/:id` | `roles.manage`, plus every permission added or taken out | Name, description and permissions; only the fields sent change. 409 `built_in_role` for a built-in role's name or description, or admin's permissions. |
+| `DELETE /admin/roles/:id` | `roles.manage`, plus every permission in it, and `roles.grant` while accounts have it | A custom role only (409 `built_in_role`); every account that had it loses it. |
+| `POST /feedback` | `feedback.give` | A feedback report (`shared/feedback.ts`) → the GitHub issue the server opened for it (`{ number, url }`). The server builds the issue and opens it with its own token (DEPLOY.md, *The API*): 503 `feedback_unavailable` without one, 502 `feedback_failed` when GitHub refuses or does not answer, 429 after 30 in an hour from one account. [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md). |
 
 Planned: `POST
 /classes`, `GET /classes`, `GET /classes/:id`, `PATCH /classes/:id`, `POST /classes/join`, `GET /classes/:id/progress`
@@ -650,11 +696,13 @@ and `DELETE /classes/:id/members/:accountId` in phase 3; content in phase 4, des
 Errors are `{ "error": "code", "message": "…" }`, plus `retryAfter` with `too_many_attempts` and `busy`. The `code` is
 stable, and the app shows its own English or Dutch text for it. The codes are in `ERROR_CODES` (`shared/api.ts`):
 `bad_request` (400), `unauthenticated`, `invalid_credentials` and `wrong_password` (401), `forbidden` and `bad_origin`
-(403), `not_found` (404), `email_taken`, `last_admin`, `own_account`, `wrong_status` and `rev_conflict` (409), `link_invalid` (410),
-`password_length`, `password_common`, `password_has_email` and `email_invalid` (422), `too_many_attempts` (a counter's
-wait) and `busy` (the hash queue is full, §5.2) (429), and `internal` (500). Fastify's own refusals (a body that is
+(403), `not_found` (404), `email_taken`, `last_admin`, `own_account`, `wrong_status`, `rev_conflict`, `role_exists`
+and `built_in_role` (409), `link_invalid` (410), `password_length`, `password_common`, `password_has_email` and
+`email_invalid` (422), `too_many_attempts` (a counter's wait) and `busy` (the hash queue is full, §5.2) (429),
+`internal` (500), `feedback_failed` (502) and `feedback_unavailable` (503). Fastify's own refusals (a body that is
 broken, too big, or not JSON) keep their status (400, 413, 415) with the code `bad_request`. With `rev_conflict` the
-body also has `current`, the account's copy of the progress. When the API does not answer at all, the app uses its own code, `unavailable`.
+body also has `current`, the account's copy of the progress. When the API does not answer at all, the app uses its own
+code, `unavailable`.
 
 ## 8. Privacy and security
 

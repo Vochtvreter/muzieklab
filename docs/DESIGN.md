@@ -1445,11 +1445,19 @@ server.
     clock and *Saving your progress…*; a clock and *Not saved yet. Your progress is saved when you're back online.*;
     or an alert icon, *Your progress couldn't be saved.* and **Try again** beside it (under it when the words need the
     room). It is not read out: it changes after every exercise. Then *Accounts* (*Invite people and manage roles*) →
-    the admin screens, only with `accounts.read`; and *Sign out*.
+    the admin screens, only with `accounts.read`; since 0.17.0 a *Feedback button* switch (*On this device: mark part
+    of a screen and send what should change.*), only with `feedback.give`; and *Sign out*.
   - *Sign out* opens a confirm in place (as *Sign out everywhere*: the question in ink, a tonal button): *Sign out on
     this device?*, *Your progress stays on your account. On a shared device, remove it from this one.*, then a
     two-choice segmented control, *Progress on this device*: **Keep** (chosen when it opens) · **Remove**, then Cancel
     and Sign out. It saves the last change first. Cancel puts the choice back to Keep.
+- **The feedback tool** (0.17.0, [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md); no board yet): for an account with
+  `feedback.give`, a button floats over every screen (phone: a 48 px round icon above the tab bar; tablet and desktop: a
+  pill with the word, bottom right). It marks an element or a drawn box, then a sheet (desktop: a dialog beside the
+  spot) takes the kind, what should change and a title, and sends it. Built from the sheet, button and field styles
+  of the existing screens.
+- **Roles on the admin screens** (0.17.0): the role switches list the built-in roles (Admin, Editor, Teacher, in the
+  app's words), then the custom roles admins made, by their names and descriptions.
   - No answer from the API, with a cached account: the account row, then *Muzieklab can't be reached right now. You
     can change your account again once it can.* with **Try again**. (Not "Offline": the device may be online while
     the API restarts or answers 502.) Try again keeps its focus while it checks and shows *Checking…* for at least
@@ -1642,6 +1650,7 @@ src/
     learn/ chapters.ts  # the Learn chapters as data (docs/ADDING-CONTENT.md); Blocks.tsx draws them
     components/ ...     # Form.tsx: text fields, confirm, copy field (§9.2)
   i18n/ en.json nl.json # every user-facing string, one catalog per locale (found automatically)
+  feedback/             # admin feedback reports -> GitHub issues (docs/FEEDBACK-LOOP.md); ui/feedback/ draws the tool
 shared/
   api.ts                # the API's contract: request and response types, error codes, permissions (types only)
 server/                 # the API (Fastify + MongoDB), its own package and tests (BACKEND-PLAN.md §1.2)

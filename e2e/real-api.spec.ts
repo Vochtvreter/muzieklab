@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expect, test as base, type BrowserContext, type Page } from '@playwright/test';
-import type { InviteCreated, Me } from '../shared/api';
+import type { InviteCreated, Me, RoleInfo } from '../shared/api';
 
 /**
  * Accounts against the real API (BACKEND-PLAN.md §5): the app's production build in a real browser, the API bundle and
@@ -458,3 +458,38 @@ test('progress on the account: two devices merge, and a reset on one resets the 
   await expect.poll(async () => (await progressOf(phone))?.xp ?? 0).toBe(0);
   await expect(syncLine(phone)).toHaveText('Progress saved to your account');
 });
+
+test('a role an admin makes gives its permission: with feedback.give the member gets the Feedback button', async ({ person }) => {
+  const admin = await anAdmin(person);
+  const member = await aMember(person, admin);
+  const id = `testers-${Date.now().toString(36)}${(made++).toString(36)}`;
+  const role = await post<RoleInfo>(admin, '/admin/roles', { id, name: `Testers ${id}`, description: 'Send feedback from the app.', permissions: ['feedback.give'] });
+  expect(role).toMatchObject({ id, permissions: ['feedback.give'], builtIn: false, accounts: 0 });
+
+  const fab = member.page.getByRole('button', { name: 'Feedback: mark a part of this screen' });
+  await member.page.goto('./#/settings');
+  await expect(accountRow(member.page, member.name)).toBeVisible();
+  await expect(fab).toHaveCount(0);
+
+  // The admin gives the role on the member's account screen, where it shows by the name it was given.
+  await admin.page.goto(`./#/admin/account/${member.me.id}`);
+  const toggle = admin.page.getByRole('switch', { name: role.name });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+  // The member's app picks it up on its next look at the account.
+  await member.page.reload();
+  await expect(fab).toBeVisible();
+  await expect(accountSection(member.page).getByRole('switch', { name: 'Feedback button' })).toHaveAttribute('aria-checked', 'true');
+
+  // This API has no GitHub token: the app says so, and offers GitHub's own page instead.
+  await fab.click();
+  const row = (await accountRow(member.page, member.name).boundingBox())!;
+  await member.page.mouse.click(row.x + row.width / 2, row.y + row.height / 2);
+  const form = member.page.getByRole('dialog', { name: 'Feedback' });
+  await form.getByLabel('What should change?').fill('Show my roles here.');
+  await form.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(form.getByRole('alert')).toContainText("This site can't send feedback yet.");
+  await expect(form.getByRole('link', { name: 'Open on GitHub' })).toHaveAttribute('href', /^https:\/\/github\.com\/Vochtvreter\/muzieklab\/issues\/new\?/);
+});
+

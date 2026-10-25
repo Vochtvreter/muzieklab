@@ -711,6 +711,8 @@
     "signInSub": "Alleen met een uitnodiging.",
     "accounts": "Accounts",
     "accountsSub": "Mensen uitnodigen en rollen beheren",
+    "feedbackButton": "Feedbackknop",
+    "feedbackButtonSub": "Op dit apparaat: markeer een deel van een scherm en stuur wat er anders moet.",
     "signOut": "Uitloggen",
     "signingOut": "Uitloggen…",
     "privacy": "Privacy",
@@ -802,7 +804,11 @@
     "internal": "Er ging bij ons iets mis. Probeer het later opnieuw.",
     "unavailable": "Muzieklab is nu niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
     "waitSeconds": "Te veel pogingen. Probeer het over {count, plural, one {# seconde} other {# seconden}} opnieuw.",
-    "waitMinutes": "Te veel pogingen. Probeer het over {count, plural, one {# minuut} other {# minuten}} opnieuw."
+    "waitMinutes": "Te veel pogingen. Probeer het over {count, plural, one {# minuut} other {# minuten}} opnieuw.",
+    "role_exists": "Er is al een rol met deze id.",
+    "built_in_role": "Ingebouwde rollen houden hun naam, en Beheerder mag altijd alles.",
+    "feedback_failed": "GitHub nam de feedback niet aan. Probeer het opnieuw, of open het op GitHub.",
+    "feedback_unavailable": "Deze site kan nog geen feedback versturen. Open het op GitHub."
   },
   "accountRole": {
     "admin": "Beheerder",
@@ -2444,6 +2450,39 @@
       }
     }
   },
+  "feedback": {
+    "open": "Feedback",
+    "openLabel": "Feedback: markeer een deel van dit scherm",
+    "markHint": "Klik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen. Esc annuleert.",
+    "markHintTouch": "Tik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen.",
+    "cancel": "Annuleren",
+    "title": "Feedback",
+    "marked": "Gemarkeerd",
+    "markedArea": "Gemarkeerd gebied",
+    "markAgain": "Opnieuw markeren",
+    "kindGroup": "Soort feedback",
+    "kind": {
+      "bug": "Fout",
+      "change": "Wijziging",
+      "idea": "Idee"
+    },
+    "descLabel": "Wat moet er anders?",
+    "descPlaceholder": "Wat is hier mis, en wat verwacht je in plaats daarvan",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Een korte samenvatting (niet verplicht)",
+    "attached": "Het wordt een openbaar GitHub-issue, met dit scherm, de gemarkeerde plek, de schermgrootte, het thema, de taal en de instellingen. Niet je naam of je voortgang.",
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd",
+    "send": "Versturen",
+    "sending": "Versturen…",
+    "openGithub": "Openen op GitHub",
+    "sent": "Verstuurd als issue #{number}",
+    "sentText": "Het wacht op triage. De analyse en het plan verschijnen bij het issue, zodat je ze kunt beoordelen.",
+    "view": "Bekijk het issue",
+    "another": "Nog iets markeren",
+    "close": "Sluiten",
+    "hide": "Verberg de feedbackknop op dit apparaat"
+  },
   "changelog": {
     "title": "Wat is er nieuw",
     "back": "Terug naar instellingen",
@@ -2466,6 +2505,11 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_17_0": {
+      "title": "Feedback op de plek zelf",
+      "feedback": "Voor het team: een account dat feedback mag geven krijgt een feedbackknop. Markeer een deel van een scherm en stuur wat er anders moet; het wordt een GitHub-issue, met het scherm, de plek en het apparaat erbij.",
+      "roles": "Voor beheerders: wat elke rol mag, staat nu op de server, zodat rollen kunnen veranderen en er nieuwe kunnen komen zonder nieuwe versie van de app."
+    },
     "v0_16_1": {
       "title": "Ingelogd blijven na herladen",
       "signedIn": "Als je de app herlaadde net toen je inlog zich vernieuwde, of de verbinding toen even wegviel, kon je worden uitgelogd. Nu blijf je ingelogd."

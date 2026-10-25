@@ -2,8 +2,9 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
+import type { FeedbackReport } from '../shared/feedback';
 import {
-  ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll,
   expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, QUARTERS, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT,
   SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
@@ -1759,6 +1760,127 @@ test.describe('the status filter at every phone width', () => {
       await expectNoSideScroll(page);
     });
   }
+});
+
+/** The feedback tool (docs/FEEDBACK-LOOP.md): for an account with feedback.give, sending through the API. */
+const FAB = 'Feedback: mark a part of this screen';
+const SENT_42 = { json: { number: 42, url: 'https://github.com/Vochtvreter/muzieklab/issues/42' } };
+
+for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
+  test.describe(`${name}: feedback`, () => {
+    test.use({ viewport: VIEWPORTS[name], hasTouch: !name.startsWith('desktop') && !name.startsWith('laptop'), serviceWorkers: 'block' });
+
+    test('only with feedback.give; mark a spot or draw a box, and send it through the API', async ({ page }) => {
+      const fab = page.getByRole('button', { name: FAB });
+      // An account without feedback.give: no button.
+      const api = await mockApi(page, { ...MEMBER, 'POST /feedback': SENT_42 });
+      await seedAccount(page, ME_MEMBER);
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await expect(page.getByRole('link', { name: /^Sam Jansen/ })).toBeVisible();
+      await expect(fab).toHaveCount(0);
+
+      // An admin has it.
+      api.set(ADMIN);
+      await seedAccount(page, ME_ADMIN);
+      await page.reload();
+      await expectClickable(fab, { scroll: false });
+
+      const spot = page.getByText('Fair timing for most players.');
+      await spot.evaluate((n) => n.scrollIntoView({ block: 'center' }));
+      await fab.click();
+      await expect(page.getByRole('dialog', { name: /part you mean/ })).toBeVisible();
+      const r = (await spot.boundingBox())!;
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      await expect(form).toBeVisible();
+      await expect(form.locator('.fb-marked').first()).toContainText('Fair timing for most players.');
+      // Nothing to send until it says what should change.
+      await expect(form.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
+      await form.getByLabel('What should change?').fill('Say what each leniency does in milliseconds too.');
+      await expectClickable(form.getByRole('button', { name: 'Send', exact: true }));
+      await expectClickable(form.getByRole('button', { name: 'Copy' }));
+      await expectNoClippedLabels(page);
+      await form.getByRole('button', { name: 'Send', exact: true }).click();
+
+      const done = page.getByRole('dialog', { name: 'Sent as issue #42' });
+      await expect(done).toBeVisible();
+      await expect(done.getByRole('link', { name: 'View the issue' })).toHaveAttribute('href', 'https://github.com/Vochtvreter/muzieklab/issues/42');
+      const report = api.callsTo('POST /feedback')[0].body as FeedbackReport;
+      expect(report).toMatchObject({ kind: 'change', description: 'Say what each leniency does in milliseconds too.', context: { route: '/settings' } });
+      expect(report.context.viewport).toMatchObject({ width: VIEWPORTS[name].width, height: VIEWPORTS[name].height });
+      expect(report.target.text).toContain('Fair timing for most players.');
+
+      // Mark another, drawing a box this time.
+      await done.getByRole('button', { name: 'Mark another' }).click();
+      await expect(page.getByRole('dialog', { name: /part you mean/ })).toBeVisible();
+      const vp = VIEWPORTS[name];
+      await page.mouse.move(vp.width * 0.2, vp.height * 0.4);
+      await page.mouse.down();
+      await page.mouse.move(vp.width * 0.5, vp.height * 0.5, { steps: 4 });
+      await page.mouse.move(vp.width * 0.7, vp.height * 0.6, { steps: 4 });
+      await page.mouse.up();
+      await expect(form.locator('.fb-marked').first()).toContainText('Marked area');
+      await expect(form.getByLabel('What should change?')).toHaveValue('');
+      await form.getByRole('button', { name: 'Close' }).click();
+      await expect(form).toHaveCount(0);
+      await expect(fab).toBeVisible();
+      await expectNoSideScroll(page);
+    });
+  });
+}
+
+test.describe('feedback: when sending fails, and hiding the button', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('offers GitHub’s own page when the server cannot send; keys stay in the form; the button hides and comes back', async ({ page }) => {
+    const api = await mockApi(page, { ...ADMIN, 'POST /feedback': apiError('feedback_unavailable', 503) });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/');
+    const fab = page.getByRole('button', { name: FAB });
+    await fab.click();
+    const target = (await page.getByRole('button', { name: 'Start lesson' }).boundingBox())!;
+    await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    await form.getByRole('button', { name: 'Bug' }).click();
+    // Keys typed in the form never reach the screen's own shortcuts (the pad and the pianos listen on the window).
+    await page.evaluate(() => {
+      (window as unknown as { keys: number }).keys = 0;
+      window.addEventListener('keydown', () => (window as unknown as { keys: number }).keys++);
+    });
+    await form.getByLabel('What should change?').pressSequentially('Start lesson does nothing on the first tap.');
+    expect(await page.evaluate(() => (window as unknown as { keys: number }).keys)).toBe(0);
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+
+    await expect(form.getByRole('alert')).toContainText("This site can't send feedback yet.");
+    const link = new URL((await form.getByRole('link', { name: 'Open on GitHub' }).getAttribute('href'))!);
+    expect(link.origin + link.pathname).toBe('https://github.com/Vochtvreter/muzieklab/issues/new');
+    expect(link.searchParams.get('title')).toBe('Bug: button “Start lesson” on /');
+    expect(link.searchParams.get('labels')).toBe('feedback,type:bug,status:triage');
+
+    // Then it works: Send again sends the same report.
+    api.set({ 'POST /feedback': SENT_42 });
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    const done = page.getByRole('dialog', { name: 'Sent as issue #42' });
+    await expect(done).toBeVisible();
+    const calls = api.callsTo('POST /feedback');
+    expect(calls).toHaveLength(2);
+    expect(calls[1].body).toEqual(calls[0].body);
+    await page.keyboard.press('Escape');
+    await expect(done).toHaveCount(0);
+
+    // Hidden on this device, and back from Settings → Account.
+    await fab.click();
+    await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
+    await form.getByRole('button', { name: 'Hide the feedback button on this device' }).click();
+    await expect(fab).toHaveCount(0);
+    await page.goto('./#/settings');
+    const toggle = page.getByRole('switch', { name: 'Feedback button' });
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.click();
+    await expect(fab).toBeVisible();
+  });
 });
 
 test('a touch screen at desktop width (tablet in landscape) gets the desktop layout without keyboard hints', async ({ browser }) => {

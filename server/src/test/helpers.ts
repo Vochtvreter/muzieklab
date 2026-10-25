@@ -4,6 +4,7 @@ import type { InjectOptions, LightMyRequestResponse } from 'fastify';
 import type { Role } from '../../../shared/api.js';
 import { buildApp } from '../app.js';
 import type { AttemptLimits } from '../auth/attempts.js';
+import type { GitHubSettings } from '../config.js';
 import { SERVER_LANE, hashPassword } from '../auth/passwords.js';
 import { collections, ensureIndexes, type AccountDoc } from '../db.js';
 
@@ -61,11 +62,20 @@ export interface TestApp {
 
 export async function makeApp(
   mongo: Mongo,
-  opts: { cookieSecure?: boolean; limits?: AttemptLimits } = {},
+  opts: { cookieSecure?: boolean; limits?: AttemptLimits; github?: GitHubSettings | null; fetch?: typeof fetch } = {},
 ): Promise<TestApp> {
   const db = await freshDb(mongo);
   const clock = new TestClock();
-  const app = buildApp({ db, commit: 'test', now: clock.now, cookieSecure: opts.cookieSecure, limits: opts.limits });
+  const app = buildApp({
+    db,
+    commit: 'test',
+    now: clock.now,
+    cookieSecure: opts.cookieSecure,
+    limits: opts.limits,
+    github: opts.github,
+    // No test reaches the real GitHub: a test that sends feedback passes its own.
+    fetch: opts.fetch ?? (() => Promise.reject(new Error('no fetch in tests'))),
+  });
   await app.ready();
   const [cookieName, refreshName] = opts.cookieSecure === false ? ['session', 'refresh'] : [COOKIE, REFRESH_COOKIE];
   const call: TestApp['call'] = ({ cookie, refresh, headers, ...options }) => {
