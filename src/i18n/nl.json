@@ -62,7 +62,14 @@
     "topRank": "De hoogste rang",
     "ranks": "Rangen",
     "continue": "Verder",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "achievement": "Prestatie behaald",
+    "best": "Nieuw persoonlijk record",
+    "bestLesson": "Les {id} · {pct}",
+    "bestDaily": "Uitdaging van de dag · {pct}",
+    "bestLessonLine": "Je beste score op deze les tot nu toe",
+    "bestDailyLine": "Je beste score op een uitdaging van de dag tot nu toe",
+    "seeProgress": "Bekijk voortgang"
   },
   "home": {
     "title": "Start",
@@ -614,6 +621,7 @@
     "streakKept": "Reeks gehouden · {count, plural, one {# dag} other {# dagen}}",
     "newBest": "Nieuw persoonlijk record",
     "newBestTitle": "Je beste score op een uitdaging van de dag tot nu toe",
+    "achievement": "Prestatie behaald · {name}",
     "unlocked": "Les {id} is open",
     "pathDone": "Leerpad klaar",
     "needStars": "Haal {count, plural, one {# ster} other {# sterren}} om les {id} te openen",
@@ -2401,6 +2409,184 @@
       }
     }
   },
+  "progress": {
+    "title": "Voortgang",
+    "show": "Voortgang tonen voor",
+    "view": {
+      "rhythm": "Ritme",
+      "notes": "Noten",
+      "scales": "Toonladders"
+    },
+    "xpOf": "{total} / {next} XP",
+    "xpBar": "{into} van {span} XP, {pct} procent op weg naar level {next}",
+    "toNextRank": "Nog {count} XP tot level {next} · volgende rang {rank}",
+    "toNext": "Nog {xp} tot level {next}",
+    "xp": "{count} XP",
+    "ranks": "Rangen",
+    "rankNow": "Level {level} · nu",
+    "rankNext": "volgende",
+    "rankDone": "behaald",
+    "skillsSub": "{total} van {max} niveaus · {count, plural, one {# vaardigheid} other {# vaardigheden}} · {due, plural, =0 {niets te herhalen} other {# te herhalen}}",
+    "calendar": {
+      "range": "{from} – {to}",
+      "label": "Oefenkalender, {from} tot {to}. {details}.",
+      "practised": "{count} van {total} dagen geoefend",
+      "missed": "gemist: {days}",
+      "missedCount": "{count, plural, one {# dag} other {# dagen}} gemist",
+      "streakToday": "reeks van {start} tot vandaag, {today}",
+      "streakUntil": "reeks van {start} tot {end}",
+      "streakDay": "een reeks van 1 dag op {day}",
+      "noStreak": "nog geen reeks",
+      "join": "{a}; {b}",
+      "day": "{date}: {state}",
+      "state": {
+        "streak": "reeksdag",
+        "streakToday": "reeksdag (vandaag)",
+        "practised": "geoefend",
+        "missed": "niet geoefend",
+        "today": "vandaag",
+        "future": "komt nog"
+      },
+      "legendStreak": "Reeks",
+      "legendPractised": "Geoefend",
+      "legendMissed": "Gemist",
+      "legendToday": "Vandaag",
+      "count": "{count} van {total} dagen"
+    },
+    "accuracy": {
+      "title": "Score · 14 dagen",
+      "average": "{value} gemiddeld",
+      "label": "Ritmescore per dag van {from} tot {to}{trend}{today}{gaps}. Gemiddeld {mean}%.",
+      "rise": ", stijgend van {first}% naar {peak}% op {date}",
+      "high": ", hoogste {peak}% op {date}",
+      "today": ", vandaag {value}%",
+      "gaps": "; niet geoefend op {days}",
+      "gapCount": "; {count, plural, one {# dag} other {# dagen}} niet geoefend",
+      "point": "{date}: {value}%",
+      "empty": "Geen ritmerondes in de laatste 14 dagen."
+    },
+    "timing": {
+      "title": "Timingneiging",
+      "tendency": {
+        "steady": "Gelijk",
+        "rushing": "Jaagt",
+        "dragging": "Sleept"
+      },
+      "word": {
+        "steady": "gelijk",
+        "rushing": "jagend",
+        "dragging": "slepend"
+      },
+      "label": "Gemiddelde timing per dag van {from} tot {to}: {trend}, {where, select, steady {binnen} rushing {onder} other {boven}} de stabiele zone van {lo} tot {hi}.",
+      "trend": "van {first}, {word}, naar {latest} {when}",
+      "trendOne": "{latest} {when}",
+      "today": "vandaag",
+      "on": "op {date}",
+      "spoken": "{sign, select, minus {min {value} ms} plus {plus {value} ms} other {{value} ms}}",
+      "spokenNumber": "{sign, select, minus {min {value}} plus {plus {value}} other {{value}}}",
+      "band": "gelijk",
+      "late": "laat · slepen",
+      "early": "vroeg · jagen",
+      "point": "{date}: {value}",
+      "was": "Eerst {word} ({value}).",
+      "nowEarly": "Een beetje vroeg is normaal.",
+      "nowSteady": "Precies op de tel.",
+      "nowRushing": "Wacht op de tel voor je tikt.",
+      "nowDragging": "Tik iets eerder, met de klik mee.",
+      "empty": "Geen ritmerondes in de laatste 14 dagen."
+    },
+    "minutes": {
+      "title": "Minuten deze week",
+      "total": "{value} min",
+      "label": "Minuten geoefend deze week: {days}; {total} minuten in totaal.",
+      "day": "{day} {value}",
+      "dayToday": "vandaag {day} {value}",
+      "bar": "{day}: {value} min",
+      "today": "Vandaag",
+      "empty": "Deze week nog niet geoefend."
+    },
+    "cells": {
+      "title": "Ritmekaart · onderdelen",
+      "meta": "laatste 6 weken",
+      "value": "{name}: {value}%",
+      "weak": "{name}: {value}%, zwak punt",
+      "none": "{name}: nog te weinig noten",
+      "locked": "{name}: op slot tot blok {unit}",
+      "lockedShort": "Op slot",
+      "legendHigh": "90%+",
+      "legendMid": "80–89%",
+      "legendWeak": "Onder 80% · zwak punt",
+      "practice": "Zwakke punten oefenen"
+    },
+    "achievements": {
+      "title": "Prestaties",
+      "earned": "{count} behaald",
+      "statusEarned": "Behaald",
+      "statusLocked": "Op slot"
+    },
+    "clefs": {
+      "title": "Score per sleutel",
+      "meta": "alle rondes",
+      "label": "Score bij noten lezen: {parts}.",
+      "part": "{clef} {value}%",
+      "partNone": "{clef} nog geen noten",
+      "empty": "Nog geen ronde Noten lezen."
+    },
+    "slow": {
+      "title": "Traagste noten",
+      "meta": "gemiddelde antwoordtijd",
+      "where": "{pos} · {clef}",
+      "seconds": "{value, number, ::.0} s",
+      "empty": "Nog geen ronde Noten lezen.",
+      "few": "Beantwoord elke noot een paar keer om te zien welke traag gaan."
+    },
+    "clef": {
+      "treble": "viool",
+      "bass": "bas"
+    },
+    "pos": {
+      "line1": "onderste lijn",
+      "line2": "tweede lijn",
+      "line3": "middelste lijn",
+      "line4": "vierde lijn",
+      "line5": "bovenste lijn",
+      "space1": "onderste tussenruimte",
+      "space2": "tweede tussenruimte",
+      "space3": "derde tussenruimte",
+      "space4": "bovenste tussenruimte",
+      "spaceBelow": "onder de balk",
+      "spaceAbove": "boven de balk",
+      "ledgerBelow": "{n, select, 1 {eerste} other {tweede}} hulplijn eronder",
+      "ledgerAbove": "{n, select, 1 {eerste} other {tweede}} hulplijn erboven",
+      "underLedger": "onder de {n, select, 1 {eerste} other {tweede}} hulplijn",
+      "overLedger": "boven de {n, select, 1 {eerste} other {tweede}} hulplijn"
+    },
+    "key": {
+      "title": "Toonsoort",
+      "meta": "laatste ronde · {clef}",
+      "label": "Voortekening van {major}: {signs}",
+      "empty": "Nog geen ronde Noten lezen.",
+      "read": "Noten lezen"
+    },
+    "majors": {
+      "title": "Majeurtoonladders",
+      "count": "{done} van {total}",
+      "meta": "{count} met ★★ of meer",
+      "label": "{done} van {total} majeurtoonladders met twee sterren of meer",
+      "tile": "{name}: {stars}"
+    },
+    "minors": {
+      "title": "Mineurtoonladders",
+      "count": "{done} van {total}",
+      "meta": "{count} begonnen",
+      "key": "Toonsoort",
+      "natural": "Natuurlijk",
+      "harmonic": "Harmonisch",
+      "melodic": "Melodisch",
+      "empty": "Nog geen mineurtoonladder begonnen.",
+      "circle": "Open de kwintencirkel"
+    }
+  },
   "skills": {
     "title": "Vaardigheden",
     "name": {
@@ -2541,6 +2727,51 @@
     "review": {
       "title": "Herhalen",
       "text": "{count, plural, one {# dag} other {# dagen}} geleden voor het laatst geoefend. Je niveau blijft; één ronde haalt dit weg."
+    },
+    "list": {
+      "back": "Terug naar Voortgang",
+      "total": "{total} / {max}",
+      "totalWord": "niveaus",
+      "totalLabel": "{total} van {max} niveaus",
+      "recent": "Laatste 30 dagen",
+      "gained": "{count, plural, one {niveau omhoog in 30 dagen} other {niveaus omhoog in 30 dagen}}",
+      "review": "te herhalen · {names}",
+      "noReview": "Niets te herhalen",
+      "yours": "Je vaardigheden",
+      "each": "{count} niveaus per vaardigheid",
+      "level": "Niveau {level}",
+      "next": "volgende: {name}",
+      "allPassed": "alle niveaus gehaald",
+      "rowLevel": "{name}: niveau {level} van {max}.",
+      "rowChecks": "{done} van {total} voorwaarden voor niveau {n}, {next}.",
+      "rowLater": "Niveau {n}, {next}, komt later.",
+      "rowDone": "Alle niveaus gehaald.",
+      "legendPassed": "Gehaald",
+      "legendChecks": "Voorwaarden gehaald voor het volgende niveau",
+      "focus": "Oefen hierna",
+      "foot": "Een niveau is gehaald als aan alle voorwaarden is voldaan, en het blijft gehaald. Een vaardigheid die je {count} dagen niet hebt geoefend, toont {review} tot je er één ronde van speelt."
+    },
+    "detail": {
+      "back": "Terug naar Vaardigheden",
+      "of": "van {max}",
+      "meter": "Niveau {level} van {max}, en {done} van {total} voorwaarden voor niveau {n}",
+      "meterLevel": "Niveau {level} van {max}",
+      "next": "Volgende · niveau {n}",
+      "checks": "{total, plural, one {{progress} voorwaarde} other {{progress} voorwaarden}}",
+      "progress": "{done} van {total}",
+      "checksDone": "{done} van {total} voorwaarden gehaald",
+      "done": "Gehaald",
+      "top": "Niveau {n}",
+      "allPassed": "Alle niveaus gehaald",
+      "history": "Niveau · {count} weken",
+      "gain": "{count, plural, =0 {Geen verandering in 30 dagen} other {+# in 30 dagen}}",
+      "historyLabel": "Niveau over de laatste {weeks} weken: van {from} naar {to}.",
+      "historySame": "Niveau over de laatste {weeks} weken: steeds {level}.",
+      "weeksAgo": "{count} weken geleden",
+      "thisWeek": "deze week",
+      "ladder": "Alle niveaus",
+      "passed": "Gehaald",
+      "later": "Later"
     }
   },
   "achievements": {

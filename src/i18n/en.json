@@ -62,7 +62,14 @@
     "topRank": "The top rank",
     "ranks": "Ranks",
     "continue": "Continue",
-    "close": "Close"
+    "close": "Close",
+    "achievement": "Achievement unlocked",
+    "best": "New personal best",
+    "bestLesson": "Lesson {id} · {pct}",
+    "bestDaily": "Daily challenge · {pct}",
+    "bestLessonLine": "Your best accuracy on this lesson so far",
+    "bestDailyLine": "Your best accuracy on a daily challenge so far",
+    "seeProgress": "See progress"
   },
   "home": {
     "title": "Home",
@@ -614,6 +621,7 @@
     "streakKept": "Streak kept · {count, plural, one {# day} other {# days}}",
     "newBest": "New personal best",
     "newBestTitle": "Your best accuracy on a daily so far",
+    "achievement": "Achievement unlocked · {name}",
     "unlocked": "Lesson {id} unlocked",
     "pathDone": "Learning path done",
     "needStars": "Get {count, plural, one {# star} other {# stars}} to open lesson {id}",
@@ -2401,6 +2409,184 @@
       }
     }
   },
+  "progress": {
+    "title": "Progress",
+    "show": "Show progress for",
+    "view": {
+      "rhythm": "Rhythm",
+      "notes": "Notes",
+      "scales": "Scales"
+    },
+    "xpOf": "{total} / {next} XP",
+    "xpBar": "{into} of {span} XP, {pct} percent of the way to level {next}",
+    "toNextRank": "{count} XP to level {next} · next rank {rank}",
+    "toNext": "{xp} to level {next}",
+    "xp": "{count} XP",
+    "ranks": "Ranks",
+    "rankNow": "Level {level} · now",
+    "rankNext": "next",
+    "rankDone": "reached",
+    "skillsSub": "{total} of {max} levels · {count, plural, one {# skill} other {# skills}} · {due, plural, =0 {no review due} one {# review due} other {# reviews due}}",
+    "calendar": {
+      "range": "{from} – {to}",
+      "label": "Practice calendar, {from} to {to}. {details}.",
+      "practised": "Practised {count} of {total} days",
+      "missed": "missed {days}",
+      "missedCount": "missed {count, plural, one {# day} other {# days}}",
+      "streakToday": "streak from {start} to today, {today}",
+      "streakUntil": "streak from {start} to {end}",
+      "streakDay": "a 1-day streak on {day}",
+      "noStreak": "no streak yet",
+      "join": "{a}; {b}",
+      "day": "{date}: {state}",
+      "state": {
+        "streak": "streak day",
+        "streakToday": "streak day (today)",
+        "practised": "practised",
+        "missed": "no practice",
+        "today": "today",
+        "future": "coming up"
+      },
+      "legendStreak": "Streak",
+      "legendPractised": "Practised",
+      "legendMissed": "Missed",
+      "legendToday": "Today",
+      "count": "{count} of {total} days"
+    },
+    "accuracy": {
+      "title": "Accuracy · 14 days",
+      "average": "{value} average",
+      "label": "Rhythm accuracy per day from {from} to {to}{trend}{today}{gaps}. Average {mean}%.",
+      "rise": ", rising from {first}% to {peak}% on {date}",
+      "high": ", highest {peak}% on {date}",
+      "today": ", {value}% today",
+      "gaps": "; no practice on {days}",
+      "gapCount": "; no practice on {count, plural, one {# day} other {# days}}",
+      "point": "{date}: {value}%",
+      "empty": "No rhythm rounds in the last 14 days."
+    },
+    "timing": {
+      "title": "Timing tendency",
+      "tendency": {
+        "steady": "Steady",
+        "rushing": "Rushing",
+        "dragging": "Dragging"
+      },
+      "word": {
+        "steady": "steady",
+        "rushing": "rushing",
+        "dragging": "dragging"
+      },
+      "label": "Average timing offset per day from {from} to {to}: {trend}, {where, select, steady {inside} rushing {below} other {above}} the steady band from {lo} to {hi}.",
+      "trend": "from {first}, {word}, to {latest} {when}",
+      "trendOne": "{latest} {when}",
+      "today": "today",
+      "on": "on {date}",
+      "spoken": "{sign, select, minus {minus {value} ms} plus {plus {value} ms} other {{value} ms}}",
+      "spokenNumber": "{sign, select, minus {minus {value}} plus {plus {value}} other {{value}}}",
+      "band": "steady",
+      "late": "late · dragging",
+      "early": "early · rushing",
+      "point": "{date}: {value}",
+      "was": "Was {word} ({value}).",
+      "nowEarly": "A little early is normal.",
+      "nowSteady": "Right with the beat.",
+      "nowRushing": "Wait for the beat before you tap.",
+      "nowDragging": "Tap a little sooner, with the click.",
+      "empty": "No rhythm rounds in the last 14 days."
+    },
+    "minutes": {
+      "title": "Minutes this week",
+      "total": "{value} min",
+      "label": "Minutes practised this week: {days}; {total} minutes in total.",
+      "day": "{day} {value}",
+      "dayToday": "today {day} {value}",
+      "bar": "{day}: {value} min",
+      "today": "Today",
+      "empty": "No practice this week yet."
+    },
+    "cells": {
+      "title": "Skill map · rhythm cells",
+      "meta": "rolling accuracy",
+      "value": "{name}: {value}%",
+      "weak": "{name}: {value}%, weak spot",
+      "none": "{name}: not enough notes yet",
+      "locked": "{name}: locked until unit {unit}",
+      "lockedShort": "Locked",
+      "legendHigh": "90%+",
+      "legendMid": "80–89%",
+      "legendWeak": "Under 80% · weak spot",
+      "practice": "Practice weak spots"
+    },
+    "achievements": {
+      "title": "Achievements",
+      "earned": "{count} earned",
+      "statusEarned": "Earned",
+      "statusLocked": "Locked"
+    },
+    "clefs": {
+      "title": "Accuracy per clef",
+      "meta": "all rounds",
+      "label": "Note reading accuracy: {parts}.",
+      "part": "{clef} {value}%",
+      "partNone": "{clef} no notes yet",
+      "empty": "No Read notes round yet."
+    },
+    "slow": {
+      "title": "Slowest notes",
+      "meta": "average answer time",
+      "where": "{pos} · {clef}",
+      "seconds": "{value, number, ::.0} s",
+      "empty": "No Read notes round yet.",
+      "few": "Answer each note a few times to see which ones are slow."
+    },
+    "clef": {
+      "treble": "treble",
+      "bass": "bass"
+    },
+    "pos": {
+      "line1": "bottom line",
+      "line2": "second line",
+      "line3": "middle line",
+      "line4": "fourth line",
+      "line5": "top line",
+      "space1": "bottom space",
+      "space2": "second space",
+      "space3": "third space",
+      "space4": "top space",
+      "spaceBelow": "below the staff",
+      "spaceAbove": "above the staff",
+      "ledgerBelow": "{n, select, 1 {first} other {second}} ledger line below",
+      "ledgerAbove": "{n, select, 1 {first} other {second}} ledger line above",
+      "underLedger": "below the {n, select, 1 {first} other {second}} ledger line",
+      "overLedger": "above the {n, select, 1 {first} other {second}} ledger line"
+    },
+    "key": {
+      "title": "Key",
+      "meta": "last round · {clef}",
+      "label": "Key signature of {major}: {signs}",
+      "empty": "No Read notes round yet.",
+      "read": "Read notes"
+    },
+    "majors": {
+      "title": "Major scales",
+      "count": "{done} of {total}",
+      "meta": "{count} with ★★ or more",
+      "label": "{done} of {total} major scales with two stars or more",
+      "tile": "{name}: {stars}"
+    },
+    "minors": {
+      "title": "Minor scales",
+      "count": "{done} of {total}",
+      "meta": "{count} started",
+      "key": "Key",
+      "natural": "Natural",
+      "harmonic": "Harmonic",
+      "melodic": "Melodic",
+      "empty": "No minor scale started yet.",
+      "circle": "Open the circle of fifths"
+    }
+  },
   "skills": {
     "title": "Skill levels",
     "name": {
@@ -2541,6 +2727,51 @@
     "review": {
       "title": "Review due",
       "text": "Last practised {count, plural, one {# day} other {# days}} ago. Your level stays; one round clears this."
+    },
+    "list": {
+      "back": "Back to Progress",
+      "total": "{total} / {max}",
+      "totalWord": "levels",
+      "totalLabel": "{total} of {max} levels",
+      "recent": "Last 30 days",
+      "gained": "{count, plural, one {level up in 30 days} other {levels up in 30 days}}",
+      "review": "{count, plural, one {review due} other {reviews due}} · {names}",
+      "noReview": "No review due",
+      "yours": "Your skills",
+      "each": "{count} levels each",
+      "level": "Level {level}",
+      "next": "next: {name}",
+      "allPassed": "every level passed",
+      "rowLevel": "{name}: level {level} of {max}.",
+      "rowChecks": "{done} of {total} checks for level {n}, {next}.",
+      "rowLater": "Level {n}, {next}, comes later.",
+      "rowDone": "Every level passed.",
+      "legendPassed": "Passed",
+      "legendChecks": "Checks done for the next level",
+      "focus": "Focus next",
+      "foot": "A level is passed when all its checks are met, and it stays passed. A skill you have not practised for {count} days shows {review} until you play one round of it."
+    },
+    "detail": {
+      "back": "Back to Skill levels",
+      "of": "of {max}",
+      "meter": "Level {level} of {max}, and {done} of {total} checks for level {n}",
+      "meterLevel": "Level {level} of {max}",
+      "next": "Next · level {n}",
+      "checks": "{total, plural, one {{progress} check} other {{progress} checks}}",
+      "progress": "{done} of {total}",
+      "checksDone": "{done} of {total} checks done",
+      "done": "Done",
+      "top": "Level {n}",
+      "allPassed": "Every level passed",
+      "history": "Level · {count} weeks",
+      "gain": "{count, plural, =0 {No change in 30 days} other {+# in 30 days}}",
+      "historyLabel": "Level over the last {weeks} weeks: from {from} to {to}.",
+      "historySame": "Level over the last {weeks} weeks: {level} all along.",
+      "weeksAgo": "{count} weeks ago",
+      "thisWeek": "this week",
+      "ladder": "All levels",
+      "passed": "Passed",
+      "later": "Later"
     }
   },
   "achievements": {

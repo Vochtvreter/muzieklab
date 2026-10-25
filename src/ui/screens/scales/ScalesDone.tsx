@@ -9,7 +9,7 @@ import { levelInfo } from '../../../game/xp';
 import { t } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
-import { LevelUpContent } from '../../components/Reward';
+import { AchievementBadges, LevelUpContent } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
 import { circleLabel, keyName, scaleName } from '../../lib/scaleText';
@@ -55,20 +55,30 @@ export function ScalesDone(): JSX.Element | null {
   const again = (): void => start(s, { replace: true });
   const change = (): void => dispatch({ type: 'scaleSettings', settings: s });
   const minor = !s.types.includes('major');
+  // Achievements the round earned without a level (a 7-day streak): badges under the score; with a level, the level-up
+  // sheet lists them.
+  const achieved = leveledUp ? [] : reward.achievements;
 
   const score = (
-    <div className="score sdone-score">
-      <div className="score-pct" role="img" aria-label={t('scales.done.cleanAria', { clean: r.clean, total: r.total })}>
-        <span aria-hidden="true">{r.clean}</span>
-        <span aria-hidden="true" className="sdone-of">
-          {' '}
-          / {r.total}
-        </span>
+    <>
+      <div className="score sdone-score">
+        <div className="score-pct" role="img" aria-label={t('scales.done.cleanAria', { clean: r.clean, total: r.total })}>
+          <span aria-hidden="true">{r.clean}</span>
+          <span aria-hidden="true" className="sdone-of">
+            {' '}
+            / {r.total}
+          </span>
+        </div>
+        <div className="muted-text score-sub">
+          {r.total === 0 ? t('scales.done.none') : t('scales.done.score', { count: r.mistakes })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
+        </div>
       </div>
-      <div className="muted-text score-sub">
-        {r.total === 0 ? t('scales.done.none') : t('scales.done.score', { count: r.mistakes })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
-      </div>
-    </div>
+      {achieved.length > 0 && (
+        <div className="badges">
+          <AchievementBadges ids={achieved} />
+        </div>
+      )}
+    </>
   );
 
   const review = (
@@ -151,7 +161,8 @@ export function ScalesDone(): JSX.Element | null {
       </div>
       {sheet && (
         <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="levelup" labelledBy="leveluptitle" maxWidth={bp === 'desktop' ? 460 : undefined}>
-          <LevelUpContent xpBefore={reward.xpBefore} xpAfter={reward.xpAfter} onDone={() => setLevelUp(null)} />
+          <LevelUpContent xpBefore={reward.xpBefore} xpAfter={reward.xpAfter} achievements={reward.achievements} best={reward.best}
+            onDone={() => setLevelUp(null)} />
         </Sheet>
       )}
     </ExerciseFrame>

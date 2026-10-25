@@ -1,2 +1,610 @@
 /* Progress → Skill levels and one skill: App design canvas, Mobile · Progress · skill levels. Every colour is a token
-   from tokens.css, so light and dark both work. */
+   from tokens.css, so light and dark both work. Tablet and desktop have no board: the 640 px column under the top
+   header, as Settings' sub-pages. */
+
+/* ---------- Page ---------- */
+/* The board's head starts 46 px down a 390 × 844 phone (the page's top padding is --pt less 36 px, see .page). */
+.skill-page {
+  --pt: 46px;
+  --pb: 26px;
+  gap: 12px;
+}
+.skill-page > *,
+.skill-body > * {
+  flex-shrink: 0;
+}
+.skill-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+.skill-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/*
+ * A phone at least 700 px tall: the head stays at the top and the cards scroll under it, as on the board, in a box of
+ * their own (as on the Progress tab), so a card that takes keyboard focus is never scrolled behind the head. The box
+ * spans the page's width, so its scrollbar (with a mouse) is at the window's edge. A shorter phone (a phone browser,
+ * 375 × 553) scrolls the whole page, head included, so the cards keep their room.
+ */
+@media (max-width: 699.98px) and (min-height: 700px) {
+  .skill-page {
+    overflow: hidden;
+    padding-bottom: 0;
+    gap: 0;
+  }
+  .skill-head {
+    padding-bottom: 10px;
+  }
+  .skill-page > .skill-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0 calc(-1 * var(--px));
+    padding: 6px var(--px) calc(var(--pb) - 12px + env(safe-area-inset-bottom, 0px));
+    /* Room for the focus ring of a card scrolled to the box's edge. */
+    scroll-padding: 6px 0;
+  }
+}
+@media (min-width: 700px) {
+  .skill-page {
+    --pt: 40px;
+    --pb: 40px;
+  }
+}
+/* A phone in landscape: little height, so the page starts near the top. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .skill-page {
+    --pt: 20px;
+  }
+}
+
+/* The way back: a chevron and the screen's name, in the link colour. */
+.skill-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  margin-left: -8px;
+  padding: 0 10px 0 4px;
+  border-radius: 10px;
+  color: var(--link);
+  font-size: 14.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.skill-back:hover {
+  color: var(--link-hover);
+}
+/* A narrow phone with a longer translation ("25 / 60 niveaus") puts the pill under the title. */
+.skill-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+}
+.skill-total {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 13px;
+  font-weight: 600;
+}
+.skill-total-n {
+  font-family: var(--font-mono);
+}
+
+/* ---------- Shared pieces ---------- */
+.skill-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.skill-section-head,
+.skill-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.skill-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+.skill-meta-n {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--ink);
+}
+/* A skill's button: the board's primary button, a little smaller than the exercise screens' Start. */
+.skill-cta {
+  padding: 12px 18px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+.skill-icon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.skill-icon--big {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+}
+.skill-glyph {
+  font-family: var(--font-music);
+  font-size: 23px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.skill-icon--big .skill-glyph {
+  font-size: 27px;
+}
+/* The level meter: ten segments, the passed levels in the accent, the next one in gold as far as its checks go. */
+.skill-meter {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 3px;
+}
+.skill-seg {
+  display: block;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+.skill-meter--big .skill-seg {
+  height: 7px;
+}
+.skill-seg-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+}
+.skill-seg-fill.is-part {
+  background: var(--reward);
+}
+
+/* ---------- Skill levels (the list) ---------- */
+.skill-tiles {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.skill-tile {
+  border-radius: 14px;
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.skill-tile--gain {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.skill-tile--review {
+  background: var(--reward-soft);
+  color: var(--reward-text);
+}
+/* No review due: nothing to act on, so no gold. */
+.skill-tile--calm {
+  background: var(--ground);
+  color: var(--muted);
+}
+.skill-tile-n {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.1;
+}
+.skill-tile-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.skill-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skill-section-head {
+  padding: 2px 2px 0;
+}
+.skill-section-head .skill-meta {
+  font-size: 12.5px;
+}
+.skill-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px 12px 12px;
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+}
+.skill-row:hover {
+  color: var(--ink);
+}
+.skill-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.skill-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+/*
+ * A narrow phone puts every row's chip under its name, rather than cutting a name off, and all rows alike: the list is
+ * narrower than the longest name and the longest chip side by side ("Rhythm reading", "+10 this month"; Dutch is
+ * longer, "Ritme op gehoor", "+10 deze maand").
+ */
+.skill-list {
+  container: skill-list / inline-size;
+}
+@container skill-list (max-width: 334.98px) {
+  .skill-row-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+@container skill-list (max-width: 344.98px) {
+  :lang(nl) .skill-row-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+.skill-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 700;
+}
+.skill-chip {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.skill-chip--review {
+  background: var(--reward-soft);
+  color: var(--reward-text);
+}
+.skill-chip--gain {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.skill-row-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.skill-row-line b {
+  color: var(--ink);
+}
+.skill-chevron {
+  flex: none;
+  color: var(--muted);
+}
+.skill-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 0 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.skill-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.skill-swatch {
+  flex: none;
+  width: 14px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--accent);
+}
+.skill-swatch.is-part {
+  background: var(--reward);
+}
+.skill-focus-text {
+  font-size: 15px;
+  line-height: 1.4;
+}
+.skill-foot {
+  padding: 0 2px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.skill-foot b {
+  color: var(--reward-text);
+}
+
+/* ---------- One skill ---------- */
+.skill-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.skill-hero-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.skill-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 21px;
+  line-height: 1.15;
+}
+.skill-hero-level {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.skill-hero-level .skill-meta {
+  flex: none;
+}
+.skill-hero-level .skill-meter {
+  flex: 1;
+}
+/* Review due: the gold card, with the skill's button in dark ink. */
+.skill-review {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: var(--reward-soft);
+  color: var(--ink);
+}
+.skill-review-text {
+  flex: 1 1 130px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.skill-review h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--reward-text);
+}
+.skill-review p {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.skill-review-btn {
+  flex: none;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+.skill-next-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.25;
+}
+.skill-later {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.skill-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--divider);
+  overflow: hidden;
+}
+.skill-bar > div {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--reward);
+  transition: width 0.3s ease-out;
+}
+.skill-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.skill-checks li {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 10px 0;
+  border-top: 1px solid var(--divider);
+}
+.skill-check-mark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.skill-checks li.is-done .skill-check-mark {
+  background: var(--accent);
+  color: var(--on-fill);
+  box-shadow: none;
+}
+.skill-check-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+.skill-check-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.skill-checks li.is-done .skill-check-label {
+  color: var(--muted);
+}
+.skill-check-now {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.skill-check-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--divider);
+  overflow: hidden;
+}
+.skill-check-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+}
+.skill-check-value {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+/* Level · 12 weeks: a bar per week, level 10 the full height; this week's darker. */
+.skill-hist {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 66px;
+  border-bottom: 1px solid var(--line);
+}
+.skill-hist > span {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+  transition: height 0.3s ease-out;
+}
+.skill-hist > span.is-now {
+  background: var(--accent-ink);
+}
+.skill-hist-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+/* All levels: passed, the next one, and the ones after it. */
+.skill-ladder {
+  padding-bottom: 8px;
+  gap: 6px;
+}
+.skill-ladder h2 {
+  margin-bottom: 4px;
+}
+.skill-ladder ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.skill-ladder li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 4px 0;
+  border-top: 1px solid var(--divider);
+}
+.skill-ladder-n {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 13px;
+}
+.skill-ladder-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.skill-ladder-mark {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+.skill-ladder li.is-passed .skill-ladder-n {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.skill-ladder li.is-passed .skill-ladder-mark {
+  color: var(--accent);
+}
+.skill-ladder li.is-next .skill-ladder-n {
+  background: var(--accent);
+  color: var(--on-fill);
+}
+.skill-ladder li.is-next .skill-ladder-mark {
+  color: var(--reward-text);
+}
+.skill-ladder li.is-later .skill-ladder-n {
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1.5px var(--rule-strong);
+}
+.skill-ladder li.is-later .skill-ladder-name {
+  color: var(--muted);
+  font-weight: 500;
+}

@@ -1,2 +1,946 @@
 /* Progress tab (v1.5): App design canvas, Mobile · Progress, ProgressTablet and ProgressDesktop. Every colour is a token
    from tokens.css, so light and dark both work. */
+
+/* ---------- Page: phone ---------- */
+.prog > * {
+  flex-shrink: 0;
+}
+.prog-head {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 12px;
+}
+.prog-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.prog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+/*
+ * A phone at least 700 px tall: the head stays at the top and the cards scroll under it (the board). The scroll area
+ * spans the page's width, so its scrollbar (with a mouse) is at the window's edge. Shorter, the whole page scrolls.
+ */
+@media (max-width: 699.98px) and (min-height: 700px) {
+  .prog--phone {
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .prog--phone > .prog-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0 calc(-1 * var(--px));
+    padding: 6px var(--px) calc(var(--pb) - 12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ---------- Level ---------- */
+.prog-level {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.prog-level-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.prog-level-row b,
+.prog-level-next b,
+.prog-lvl-xp b {
+  color: var(--ink);
+}
+.prog-mono {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.prog-level-next {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.prog-xp {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+.prog-xp > div {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--reward);
+}
+
+/* Tablet and desktop: the Level card with the Ranks ladder */
+.prog-lvl {
+  gap: 10px;
+}
+.prog-lvl-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.prog-lvl-level {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.prog-lvl-rank {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.prog-lvl-xp {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.prog-ranks-label {
+  margin-top: auto;
+  padding-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.prog-ranks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.prog-rank {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--ground);
+  color: var(--muted);
+}
+.prog-rank.is-done {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.prog-rank.is-current {
+  background: var(--accent);
+  color: var(--on-fill);
+  font-weight: 700;
+}
+.prog-rank-note {
+  font-size: 12px;
+  font-weight: 600;
+}
+.prog-rank.is-next .prog-rank-note {
+  color: var(--ink);
+}
+
+/* ---------- Cards ---------- */
+.prog-card {
+  background: var(--paper);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.prog-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.prog-meta {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+}
+.prog-meta b {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.prog-meta b.prog-meta-word {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+}
+.prog-meta-mono {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.prog-empty,
+.prog-caption {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.prog-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.prog-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.prog-legend-end {
+  margin-left: auto;
+  color: var(--ink);
+  font-weight: 600;
+}
+.prog-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.prog-swatch.is-streak {
+  background: var(--reward);
+}
+.prog-swatch.is-practised {
+  background: var(--reward-soft);
+}
+.prog-swatch.is-missed {
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.prog-swatch.is-now {
+  width: 8px;
+  height: 8px;
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* Buttons (App design canvas: filled 48 px and outlined 46 px, 15 px words and an arrow) */
+.prog-btn {
+  min-height: 48px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.prog-btn--outline {
+  min-height: 46px;
+  padding: 11px 16px;
+  color: var(--accent-ink);
+}
+.prog-btn--outline:hover {
+  color: var(--accent-ink);
+  border-color: var(--accent-ring);
+}
+.prog-btn--end {
+  margin-top: auto;
+}
+
+/* ---------- Skill levels link ---------- */
+.prog-skills {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+}
+.prog-skills:hover {
+  color: var(--ink);
+}
+.prog-skills-icon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.prog-skills-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.prog-skills-text b {
+  font-size: 15px;
+}
+.prog-skills-text span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.prog-skills-chevron {
+  flex: none;
+  color: var(--muted);
+}
+
+/* ---------- Streak calendar ---------- */
+.prog-streak-head {
+  align-items: center;
+}
+.prog-streak-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.prog-streak-dot {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--reward);
+}
+.prog-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.prog-cal-wd {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.prog-cal-wd.is-today {
+  color: var(--ink);
+}
+.prog-cal-day {
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.prog-cal-day.is-practised {
+  background: var(--reward-soft);
+  color: var(--reward-text);
+}
+.prog-cal-day.is-missed,
+.prog-cal-day.is-today {
+  background: var(--ground);
+  color: var(--muted);
+}
+/* Streak days: dark ink on the gold in both themes (the gold stays bright in dark; SPEC §0.8). */
+.prog-cal-day.is-streak {
+  background: var(--reward);
+  color: var(--on-reward);
+  font-weight: 600;
+}
+.prog-cal-day.is-now {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.prog-cal-day.is-future {
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--divider);
+}
+
+/* ---------- Charts ---------- */
+.prog-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.prog-gridline {
+  stroke: var(--divider);
+  stroke-width: 1;
+}
+.prog-zero {
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+.prog-gap {
+  stroke: var(--rule);
+  stroke-width: 1.5;
+}
+.prog-band {
+  fill: var(--ground);
+}
+.prog-axis,
+.prog-axis text {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  fill: var(--muted);
+}
+.prog-chart-note {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  fill: var(--muted);
+}
+.prog-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.prog-dot {
+  fill: var(--accent);
+}
+.prog-end {
+  fill: var(--accent);
+  stroke: var(--paper);
+  stroke-width: 2;
+}
+.prog-end-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.prog-hit {
+  fill: transparent;
+}
+.prog-base {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.prog-bar {
+  fill: var(--accent);
+}
+.prog-bar-value {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.prog-bar-day {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--muted);
+}
+.prog-bar-day.is-today {
+  font-weight: 700;
+  fill: var(--ink);
+}
+
+/* ---------- Skill map ---------- */
+.prog-cells {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.prog-cell {
+  min-height: 70px;
+  border-radius: 12px;
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+.prog-cell-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+.prog-cell-glyph {
+  font-family: var(--font-music);
+  font-size: 20px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.prog-cell-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+}
+.prog-cell-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.prog-cell-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.prog-cell.is-high {
+  background: var(--accent-ink);
+  color: var(--on-fill);
+}
+.prog-cell.is-mid {
+  background: var(--accent);
+  color: var(--on-fill);
+}
+.prog-cell.is-weak {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 2px var(--miss);
+}
+.prog-cell.is-weak .prog-cell-value svg {
+  color: var(--miss);
+}
+.prog-cell.is-locked {
+  background: var(--ground);
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1.5px var(--rule-strong);
+}
+/* Open, but under 12 notes yet: "—". */
+.prog-cell.is-none {
+  background: var(--ground);
+  color: var(--ink);
+}
+.prog-map-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.prog-map-legend .prog-swatch {
+  width: 12px;
+  height: 12px;
+}
+.prog-swatch.is-high {
+  background: var(--accent-ink);
+}
+.prog-swatch.is-mid {
+  background: var(--accent);
+}
+.prog-swatch.is-weak {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--miss);
+}
+.prog-map-legend {
+  gap: 6px 12px;
+}
+
+/* ---------- Achievements ---------- */
+/* Five in a row while the longest word of a name fits ("zestienden"); a narrow card (a small phone, a tablet's half
+   column at 700 px) takes three in a row instead of breaking words. */
+.prog-ach {
+  container-type: inline-size;
+}
+.prog-badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+.prog-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  min-width: 0;
+}
+.prog-badge-icon {
+  width: 46px;
+  max-width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ground);
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1.5px var(--rule-strong);
+}
+.prog-badge.is-earned .prog-badge-icon {
+  background: var(--reward-soft);
+  color: var(--reward-ink);
+  box-shadow: none;
+}
+.prog-badge-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.prog-badge.is-earned .prog-badge-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+.prog-badge-status {
+  font-size: 11px;
+  color: var(--muted);
+}
+.prog-badge.is-earned .prog-badge-status {
+  color: var(--reward-text);
+}
+@container (max-width: 315.98px) {
+  .prog-badges {
+    gap: 3px;
+  }
+  .prog-badge-name {
+    font-size: 11.5px;
+  }
+}
+@container (max-width: 299.98px) {
+  .prog-badges {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 6px;
+  }
+  .prog-badge-name {
+    font-size: 12px;
+  }
+}
+
+/* ---------- Notes view ---------- */
+.prog-clefs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.prog-clef {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.prog-clef-glyph {
+  width: 26px;
+  flex: none;
+  font-family: var(--font-music);
+  font-size: 26px;
+  line-height: 1;
+  color: var(--accent);
+}
+.prog-clef-name {
+  width: 54px;
+  flex: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+.prog-meter {
+  flex: 1;
+  min-width: 0;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--ground);
+  overflow: hidden;
+}
+.prog-meter > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.prog-clef-value {
+  width: 40px;
+  flex: none;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+}
+.prog-slow-card {
+  gap: 6px;
+}
+.prog-slow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.prog-slow-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--divider);
+}
+.prog-slow-glyph {
+  width: 24px;
+  flex: none;
+  font-family: var(--font-music);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--muted);
+}
+.prog-slow-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.prog-slow-text b {
+  font-size: 15px;
+}
+.prog-slow-text span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.prog-meter--slow {
+  flex: none;
+  width: 64px;
+  height: 8px;
+  border-radius: 4px;
+}
+.prog-slow-time {
+  width: 50px;
+  flex: none;
+  text-align: right;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+.prog-key {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.prog-key-staff {
+  width: 72px;
+  flex: none;
+}
+.prog-key-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-width: 0;
+}
+.prog-key-text b {
+  font-size: 15px;
+}
+.prog-key-text span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- Scales view ---------- */
+.prog-track {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--divider);
+  overflow: hidden;
+}
+.prog-track > div {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+}
+.prog-majors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.prog-major {
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+.prog-major-name {
+  font-size: 14.5px;
+  font-weight: 700;
+}
+.prog-major-stars {
+  font-size: 10px;
+  letter-spacing: -1px;
+  color: var(--muted);
+}
+.prog-major.is-1 .prog-major-stars {
+  color: var(--reward-ink);
+}
+.prog-major.is-2 {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.prog-major.is-2 .prog-major-name {
+  color: var(--accent-ink);
+}
+.prog-major.is-2 .prog-major-stars {
+  color: var(--reward-text);
+}
+.prog-minors {
+  width: 100%;
+  border-collapse: collapse;
+}
+.prog-minors thead th {
+  padding: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+.prog-minors thead th:first-child {
+  text-align: left;
+}
+.prog-minors tbody tr {
+  border-top: 1px solid var(--divider);
+}
+.prog-minors tbody th {
+  padding: 7px 0;
+  text-align: left;
+  font-size: 14.5px;
+  font-weight: 700;
+}
+.prog-minors td {
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: -1px;
+  color: var(--muted);
+}
+.prog-minors td.is-on {
+  color: var(--reward-ink);
+}
+
+/* ---------- Tablet and desktop ---------- */
+.prog--wide {
+  --pt: 24px;
+  --px: 32px;
+  --pb: 28px;
+  gap: 16px;
+}
+.prog-wide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.prog-wide-head .page-title {
+  font-size: 24px;
+}
+.prog-wide-head .prog-seg {
+  flex: none;
+  width: 340px;
+}
+.prog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.prog-grid--top {
+  align-items: start;
+}
+.prog-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@media (min-width: 700px) {
+  .prog-cells {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .prog-cell {
+    min-height: 66px;
+  }
+  .prog-cal-day {
+    height: 30px;
+  }
+  .prog-badge-icon {
+    width: 48px;
+  }
+  .prog-map-foot {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .prog-map-legend {
+    flex: 1 1 auto;
+  }
+}
+
+/* Desktop: the Level card, Skill levels and the streak calendar beside the view's cards; the calendar stretches. */
+.prog--desk {
+  --pt: 20px;
+  --pb: 24px;
+  --px: max(40px, calc((100% - 1160px) / 2));
+}
+.prog--desk .prog-wide-head {
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+.prog--desk .prog-wide-head .prog-seg {
+  width: 360px;
+}
+.prog-desk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 16px;
+}
+.prog-aside {
+  flex: 1 1 340px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.prog-main {
+  flex: 999 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.prog-aside .prog-streak {
+  flex: 1;
+}
+.prog-aside .prog-cal {
+  flex: 1;
+  grid-template-rows: auto repeat(5, minmax(0, 1fr));
+}
+.prog-aside .prog-cal-day {
+  height: auto;
+  min-height: 28px;
+}
+@media (min-width: 1100px) {
+  .prog-cell {
+    min-height: 58px;
+  }
+  .prog-badge-icon {
+    width: 40px;
+  }
+}
