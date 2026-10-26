@@ -127,11 +127,10 @@ that commit.
 
 ## Known app bugs
 
-One app bug is known.
+No app bug is known.
 
-- `scales: a finished scale looks up no missing message` fails on purpose (`test.fail`): when a scale is done, Scales
-  looks up the step after the last note, and the console says `[i18n] missing message: scales.how.undefined`. Once
-  the bug is fixed the test fails, which says so: remove `test.fail`.
-
-Several tabs opened at once was the other one until 0.17.1 (tabs that started together each renewed the session, and
-one could sign itself out): `staying signed in: tabs opened one after another, and at once…` checks it now.
+A done scale looked up the step after its last note until 0.17.2 (the console said `[i18n] missing message:
+scales.how.undefined`): `scales: a G major round played on the computer keyboard, three stars` checks it now, as every
+test fails on a missing message. Several tabs opened at once was the other one until 0.17.1 (tabs that started together
+each renewed the session, and one could sign itself out): `staying signed in: tabs opened one after another, and at
+once…` checks it now.

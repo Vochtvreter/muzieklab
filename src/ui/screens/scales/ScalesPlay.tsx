@@ -230,7 +230,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   // The feedback line: what to play or spell next, a wrong answer and why, the hint, or the scale done.
   const prev = pos > 0 ? noteName(notes[pos - 1]) : '';
   const way = dir === 'upDown' && pos >= PAGE ? 'down' : 'up';
-  const how = pos > 0 ? stepHow(steps[pos - 1]) : '';
+  const how = pos > 0 && !done ? stepHow(steps[pos - 1]) : '';
   let feedback: string;
   let tone = '';
   if (done) {

@@ -343,6 +343,9 @@ test('learn: a rhythm practice link starts the exercise for its section; Quit, R
 });
 
 test('scales: from Home to the circle, a G major round played with the keyboard, and the stars on the circle', async ({ page }) => {
+  // A done scale once looked up the step after its last note ("[i18n] missing message: scales.how.undefined").
+  const missing: string[] = [];
+  page.on('console', (m) => m.text().startsWith('[i18n] missing message') && missing.push(m.text()));
   await page.setViewportSize(VIEWPORTS.desktop);
   await page.goto('./');
   await page.getByRole('link', { name: /^Scales/ }).click();
@@ -372,6 +375,7 @@ test('scales: from Home to the circle, a G major round played with the keyboard,
   await page.getByRole('link', { name: 'Back to Scales' }).click();
   await expect(page.getByRole('button', { name: 'G major: 2 stars' })).toBeVisible();
   await expect(page.getByText('1 of 15')).toBeVisible();
+  expect(missing).toEqual([]);
 });
 
 test('learn: chapter 11 links to the Scales setup and the circle', async ({ page }) => {
