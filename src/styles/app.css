@@ -3521,12 +3521,15 @@ button.lesson-stars:hover {
 .row-link:hover {
   color: var(--ink);
 }
+/* A long word with no break point (an email, a one-word name, a route in a report's title) wraps rather than running
+   under the chevron and out of the card. */
 .row-link-text {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
+  overflow-wrap: anywhere;
 }
 .row-link-text b {
   font-size: 15px;

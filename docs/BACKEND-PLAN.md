@@ -719,13 +719,16 @@ Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
   that merging a copy with itself gives it back.
 - **First sign-in on a device:** there is no base yet, so the account's prefs win, and this device's progress is merged
   in, so nothing done before having an account is lost. Settings → Account says so ("The progress on this device is on
-  your account now too").
+  your account now too"). A link (an invite, a new password) opened while another account is signed in on the device
+  asks to sign out first, with the question below opening on Remove: progress kept on the device is added to the
+  link's account at its first sign-in, and the link's screen says so.
 - **Reset progress** while signed in resets the account too (`DELETE /progress`), at once or, offline, as soon as the
   API answers. The account's `resetAt` changes; another device that last saw an older `resetAt` takes the account's
   progress instead of merging its own back in. Its prefs still merge.
-- **Signing out** saves the last change first, then asks whether this device keeps its progress (the default) or
-  removes it (for a shared device). Either way the device forgets the base: a save sends the whole copy, so it may
-  only ever be made on top of the account's own. A session that ended (a 401) signs out and keeps the progress here.
+- **Signing out** saves the last change first, then asks whether this device keeps its progress (the default, except on
+  such a link) or removes it (for a shared device). Either way the device forgets the base: a save sends the whole
+  copy, so it may only ever be made on top of the account's own. A session that ended (a 401) signs out and keeps the
+  progress here.
 - **Settings → Account** shows whether it is saved: saved, saving, not saved yet (no connection; it goes when the
   device is back online), or could not be saved, with Try again.
 

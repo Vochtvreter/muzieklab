@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { AccountDetail, AdminUpdateRequest, InviteRequest, Me } from '../shared/api';
+import type { AccountDetail, AdminUpdateRequest, InviteRequest, Me, SaveProgressRequest } from '../shared/api';
 import {
   ACCOUNTS, accountDetail, adminApi, announcer, apiError, CLOSURES, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, recordAnnouncements,
   RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
@@ -229,6 +229,94 @@ test('new password: saved, signed in, and Settings says the other devices are si
   await expect(notice(page)).toHaveCount(0);
 });
 
+/** What a link's screen says while someone else (Sam) is signed in on the device. */
+const SAM_SIGNED_IN = "You're signed in as Sam Jansen on this device. Sign out first to use this link. Progress you keep on this device is added to this link's account too.";
+const SAMS_PROGRESS = { xp: 340, lessons: { '1.1': { stars: 3, bestAccuracy: 97 } } };
+
+test('accept invite on a device where someone else is signed in: sign out first, on Remove, so their progress stays theirs', async ({ page }) => {
+  await seed(page, { progress: SAMS_PROGRESS });
+  await seedAccount(page, ME_MEMBER);
+  const api = await mockApi(page, { ...MEMBER, 'POST /auth/invite/check': { json: LINK }, 'POST /auth/invite/accept': { json: LIES } });
+  await page.goto('./#/invite/' + TOKEN);
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome, Lies Bakker' })).toBeVisible();
+  // Sam is signed in here: no form, but who is, and Sign out, which asks about this device's progress as in Settings.
+  await expect(page.getByText(SAM_SIGNED_IN)).toBeVisible();
+  await expect(page.getByLabel('New password')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  const confirm = page.getByRole('alertdialog', { name: 'Sign out on this device?' });
+  // The device is shared, so the confirm opens on Remove, and Cancel puts it back there.
+  const remove = confirm.getByRole('button', { name: 'Remove' });
+  await expect(remove).toHaveAttribute('aria-pressed', 'true');
+  await expect(remove).toBeFocused();
+  await confirm.getByRole('button', { name: 'Keep' }).click();
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(remove).toHaveAttribute('aria-pressed', 'true');
+  await confirm.getByRole('button', { name: 'Sign out' }).click();
+  // Signed out: the form, with the focus on its first field.
+  await expect(page.getByLabel('Name')).toBeFocused();
+  expect(api.callsTo('POST /auth/sign-out')).toHaveLength(1);
+  const sams = api.callsTo('PUT /progress').length;
+  await page.getByLabel('New password').fill('a tune in seven notes');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(accountSection(page).getByRole('link', { name: /^Lies Bakker/ })).toBeVisible();
+  await expect(notice(page)).toHaveText("You're signed in. Welcome to Muzieklab.");
+  // Lies's new account starts with nothing of Sam's.
+  await expect.poll(() => api.callsTo('PUT /progress').length).toBeGreaterThan(sams);
+  for (const { body } of api.callsTo('PUT /progress').slice(sams)) {
+    const { progress } = body as SaveProgressRequest;
+    expect(progress.xp ?? 0).toBe(0);
+    expect(progress).not.toHaveProperty(['lessons', '1.1']);
+  }
+});
+
+test('accept invite after signing someone else out with Keep: their progress goes to the new account, as the screen said', async ({ page }) => {
+  await seed(page, { progress: SAMS_PROGRESS });
+  await seedAccount(page, ME_MEMBER);
+  const api = await mockApi(page, { ...MEMBER, 'POST /auth/invite/check': { json: LINK }, 'POST /auth/invite/accept': { json: LIES } });
+  await page.goto('./#/invite/' + TOKEN);
+  await expect(page.getByText(SAM_SIGNED_IN)).toBeVisible();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  const confirm = page.getByRole('alertdialog', { name: 'Sign out on this device?' });
+  await confirm.getByRole('button', { name: 'Keep' }).click();
+  await confirm.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByLabel('Name')).toBeFocused();
+  const sams = api.callsTo('PUT /progress').length;
+  await page.getByLabel('New password').fill('a tune in seven notes');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  // Kept, Sam's progress is this device's at Lies's first sign-in on it, which adds it to her account.
+  await expect(notice(page)).toHaveText('The progress on this device is on your account now too.');
+  await expect.poll(() => api.callsTo('PUT /progress').length).toBeGreaterThan(sams);
+  const { progress } = api.callsTo('PUT /progress')[sams].body as SaveProgressRequest;
+  expect(progress.xp).toBe(340);
+  expect(progress).toHaveProperty(['lessons', '1.1'], expect.objectContaining({ stars: 3, bestAccuracy: 97 }));
+});
+
+test("new password while signed in: the account's own link shows the form; another account's asks to sign out first", async ({ page }) => {
+  await seedAccount(page, ME_MEMBER);
+  const api = await mockApi(page, { ...MEMBER, 'POST /auth/reset/check': { json: { ...LINK, email: ME_MEMBER.email, name: ME_MEMBER.name } } });
+  await page.goto('./#/reset/' + TOKEN);
+  await expect(page.getByLabel('New password')).toBeVisible();
+  await expect(page.getByText(/^You're signed in as/)).toHaveCount(0);
+
+  // Lies's link, opened on Sam's device.
+  api.set({ 'POST /auth/reset/check': { json: LINK }, 'POST /auth/reset/confirm': { json: LIES } });
+  await page.reload();
+  await expect(page.getByText(SAM_SIGNED_IN)).toBeVisible();
+  await expect(page.getByLabel('New password')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  const confirm = page.getByRole('alertdialog', { name: 'Sign out on this device?' });
+  await expect(confirm.getByRole('button', { name: 'Remove' })).toHaveAttribute('aria-pressed', 'true');
+  await confirm.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByLabel('New password')).toBeFocused();
+  await page.getByLabel('New password').fill('a tune in seven notes');
+  await page.getByRole('button', { name: 'Save password' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(accountSection(page).getByRole('link', { name: /^Lies Bakker/ })).toBeVisible();
+});
+
 test('account: name, email and password', async ({ page }) => {
   let me = { ...ME_MEMBER };
   const api = await mockApi(page, {
@@ -269,10 +357,13 @@ test('account: name, email and password', async ({ page }) => {
   await page.getByRole('button', { name: 'Save email' }).click();
   await expect(page.getByText("That's not your current password.")).toBeVisible();
   await page.getByLabel('Current password').first().fill('my password here');
-  await page.getByRole('button', { name: 'Save email' }).click();
+  // Enter in the field, as on a keyboard: the form closes with the focus in it, and the focus goes back to Change
+  // email, as after Cancel, not to the page.
+  await page.getByLabel('Current password').first().press('Enter');
   await expect(done(page, 'Email changed. Sign in with it from now on.')).toBeVisible();
   await expect(announcer(page)).toHaveText('Email changed. Sign in with it from now on.');
   await expect(page.getByText('sam.j@example.com')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Change email' })).toBeFocused();
 
   // Password.
   const passwords = page.getByRole('region', { name: 'Password' });

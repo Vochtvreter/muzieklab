@@ -202,4 +202,16 @@ describe('Settings → Account', () => {
     await waitFor(() => expect(localStorage.getItem(PROGRESS_KEY)).toBeNull());
     expect(localStorage.getItem(SYNC_KEY)).toBeNull();
   });
+
+  it('opens Sign out with the focus on its choice, so Escape closes it, with the focus back on Sign out', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    const confirm = screen.getByRole('alertdialog', { name: 'Sign out on this device?' });
+    // Inside the confirm (on Keep, the choice it opens with), not on the page: a screen reader reads it out.
+    expect(document.activeElement).toBe(within(confirm).getByRole('button', { name: 'Keep' }));
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Sign out' }));
+  });
 });

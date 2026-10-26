@@ -840,7 +840,8 @@
     "password": "New password",
     "submit": "Create account",
     "busy": "Creating account…",
-    "home": "Home"
+    "home": "Home",
+    "signedInAs": "You're signed in as {name} on this device. Sign out first to use this link. Progress you keep on this device is added to this link's account too."
   },
   "reset": {
     "title": "New password",

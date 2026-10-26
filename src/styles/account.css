@@ -692,9 +692,6 @@
 .acct-row .row-link-text {
   gap: 2px;
 }
-.acct-row .row-sub {
-  overflow-wrap: anywhere;
-}
 .acct-row {
   padding-top: 10px;
   padding-bottom: 10px;
@@ -733,10 +730,6 @@
   font-size: 15px;
   line-height: 1.45;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-/* A feedback report in the list (Feedback): a made-up title holds a screen's route, which has no spaces to break at. */
-.report-row b {
   overflow-wrap: anywhere;
 }
 /* One feedback report: what should change, under its label. */

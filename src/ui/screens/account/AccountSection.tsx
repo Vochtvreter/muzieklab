@@ -37,8 +37,6 @@ export function AccountSection(): JSX.Element | null {
   const account = useAccount();
   const { me, api: reach, notice, setNotice } = account;
   const { state, dispatch } = useStore();
-  const [keep, setKeep] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   // After Try again found the API: the section's first row (the account, or Sign in).
   const refocus = useRefocus(() => document.querySelector<HTMLElement>(ACCOUNT_ROWS));
 
@@ -56,22 +54,6 @@ export function AccountSection(): JSX.Element | null {
   if (!me && reach !== 'reachable') return null;
   const offline = reach === 'unreachable';
 
-  // Keeps the confirm open with the error when signing out failed; false closes it.
-  const signOut = async (): Promise<boolean> => {
-    setError(null);
-    // What is not saved yet goes to the account first, so removing it from this device loses nothing.
-    await progressSync()?.flush();
-    try {
-      await account.signOut();
-    } catch (e) {
-      setError(errorMessage(e));
-      return false;
-    }
-    if (!keep) dispatch({ type: 'resetProgress' });
-    setKeep(true);
-    return true;
-  };
-
   return (
     <Section id="account" title={t('settings.account')}>
       {me ? (
@@ -84,20 +66,7 @@ export function AccountSection(): JSX.Element | null {
             <SwitchRow label={t('settings.feedbackButton')} description={t('settings.feedbackButtonSub')} on={state.prefs.feedbackButton}
               onChange={(on) => dispatch({ type: 'prefs', patch: { feedbackButton: on } })} />
           )}
-          {reach === 'reachable' && (
-            <ConfirmAction label={t('settings.signOut')} icon="quit" tone="plain" question={t('settings.signOutQuestion')} detail={t('settings.signOutDetail')}
-              confirmLabel={t('settings.signOut')} busyLabel={t('settings.signingOut')} error={error} onConfirm={async () => (await signOut()) ? undefined : false}
-              onCancel={() => {
-                setError(null);
-                setKeep(true);
-              }}>
-              <Segmented label={t('settings.signOutChoice')} className="confirm-seg" value={keep ? 'keep' : 'clear'} onChange={(v) => setKeep(v === 'keep')}
-                options={[
-                  { value: 'keep', label: t('settings.signOutKeep') },
-                  { value: 'clear', label: t('settings.signOutClear') },
-                ]} />
-            </ConfirmAction>
-          )}
+          {reach === 'reachable' && <SignOut account={account} />}
           {offline && <OfflineNote account={account} className="row-note" onBack={refocus} />}
         </>
       ) : (
@@ -110,6 +79,52 @@ export function AccountSection(): JSX.Element | null {
         </div>
       )}
     </Section>
+  );
+}
+
+/**
+ * Sign out on this device, confirmed, with the choice of what happens to this device's progress: kept (the default), or
+ * removed, for a shared device. The last change is saved first. In Settings, and on a link (an invite, a new password)
+ * opened while someone else is signed in; `onSignedOut` runs once they are. There the device is shared, and progress
+ * kept on it goes to the link's account at its first sign-in here, so the confirm opens on Remove (`removeFirst`).
+ */
+export function SignOut({ account, removeFirst = false, onSignedOut }: { account: UseAccount; removeFirst?: boolean; onSignedOut?(): void }): JSX.Element {
+  const { dispatch } = useStore();
+  const [keep, setKeep] = useState(!removeFirst);
+  const [error, setError] = useState<string | null>(null);
+
+  // Keeps the confirm open with the error when signing out failed; false closes it.
+  const signOut = async (): Promise<boolean> => {
+    setError(null);
+    // What is not saved yet goes to the account first, so removing it from this device loses nothing.
+    await progressSync()?.flush();
+    try {
+      await account.signOut();
+    } catch (e) {
+      setError(errorMessage(e));
+      return false;
+    }
+    if (!keep) dispatch({ type: 'resetProgress' });
+    setKeep(!removeFirst);
+    onSignedOut?.();
+    return true;
+  };
+
+  // The chosen one takes the focus when the confirm opens (the row button that had it is gone), as Delete account's
+  // does, so a screen reader reads the confirm out and Escape reaches it.
+  return (
+    <ConfirmAction label={t('settings.signOut')} icon="quit" tone="plain" question={t('settings.signOutQuestion')} detail={t('settings.signOutDetail')}
+      confirmLabel={t('settings.signOut')} busyLabel={t('settings.signingOut')} error={error} onConfirm={async () => (await signOut()) ? undefined : false}
+      onCancel={() => {
+        setError(null);
+        setKeep(!removeFirst);
+      }}>
+      <Segmented label={t('settings.signOutChoice')} className="confirm-seg" value={keep ? 'keep' : 'clear'} onChange={(v) => setKeep(v === 'keep')} autoFocus
+        options={[
+          { value: 'keep', label: t('settings.signOutKeep') },
+          { value: 'clear', label: t('settings.signOutClear') },
+        ]} />
+    </ConfirmAction>
   );
 }
 
@@ -142,15 +157,16 @@ function SyncLine({ status }: { status: SyncStatus }): JSX.Element | null {
 }
 
 /**
- * Focus for after Try again found the API: the note and its button are gone, so focus goes to `target` (what the note
- * stood for) once the screen shows the answer, not to the page. Returns the function that asks for it.
+ * Focus for after the element that had it is gone (Try again's note once the API answers, a form that closed on save,
+ * Sign out on a link page): focus goes to `target`, what replaced it, once the render that shows that is done, not to
+ * the page. Returns the function that asks for it.
  */
 export function useRefocus(target: () => HTMLElement | null | undefined): () => void {
   const [asked, setAsked] = useState(0);
   const latest = useRef(target);
   latest.current = target;
-  // After the render that shows the answer (it is dispatched before this is asked for, so it is in that render), and
-  // only while focus is lost with the button: focus that was moved on meanwhile stays where it is.
+  // After the render that shows what replaced it (that change is made before this is asked for, so it is in that
+  // render), and only while focus is lost with the element: focus that was moved on meanwhile stays where it is.
   useEffect(() => {
     if (asked && (!document.activeElement || document.activeElement === document.body)) latest.current()?.focus();
   }, [asked]);

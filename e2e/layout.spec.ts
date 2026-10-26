@@ -91,6 +91,21 @@ async function failedSecondLink(page: Page, button: string, alert: string): Prom
 }
 
 /**
+ * A row link's words stay in their column, left of the chevron: a long name or email with no break point wraps instead
+ * of running under the chevron and out of the card.
+ */
+async function expectWordsInRow(row: Locator): Promise<void> {
+  await row.evaluate(() => document.fonts.ready.then(() => undefined));
+  const m = await row.evaluate((el) => {
+    const text = el.querySelector('.row-link-text')!;
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    return { words: Math.max(...[...range.getClientRects()].map((r) => r.right)), column: text.getBoundingClientRect().right };
+  });
+  expect(m.words, 'the words run out of their column').toBeLessThanOrEqual(m.column + 0.5);
+}
+
+/**
  * A feedback report's facts (the label, and its value beside or under it) and its description stay inside their cards:
  * a long value (the selector, the browser, a word with no spaces) wraps instead of running out of the card or being cut.
  */
@@ -1704,6 +1719,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('settings and the accounts list with a long name and email: they wrap inside the row', async ({ page }) => {
+        known(name, 'settings-long-email');
+        // No break point in 65 characters, as some real addresses have, and a one-word name of 62 (up to 80 may be): each
+        // wider than the row's words at every size, a desktop's too, so neither fits without wrapping.
+        const long = { name: 'Wilhelminaalexandrinejohannesmariavandenbroeckevanoranjenassau', email: 'averyveryverylongemailaddressforateacheratschool1@example.invalid' };
+        const me = { ...ME_ADMIN, ...long };
+        await mockApi(page, adminApi(ACCOUNTS.map((a) => (a.id === me.id ? { ...a, ...long } : a)), me));
+        await page.goto('./#/settings');
+        const row = account(page).getByRole('link', { name: new RegExp('^' + long.name) });
+        await expect(row).toContainText(long.email);
+        await expectWordsInRow(row);
+        await expectNoSideScroll(page);
+        await account(page).getByRole('link', { name: /^Accounts/ }).click();
+        const own = page.locator('a.acct-row').filter({ hasText: long.email });
+        await expect(own).toContainText(long.name + ' (you)');
+        await expectWordsInRow(own);
+        await expectNoSideScroll(page);
+      });
+
       test('settings and account with no answer from the API: the note, and Try again in reach', async ({ page }) => {
         known(name, 'account-offline');
         await seedAccount(page, ME_MEMBER);
@@ -1777,6 +1811,30 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.getByRole('alert')).toContainText("This link doesn't work anymore.");
         await expectClickable(page.getByRole('link', { name: 'Home', exact: true }));
         await expectTouchHeight(page.getByRole('link', { name: 'Home', exact: true }));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('accept invite with someone else signed in: who is, and Sign out with its choice in reach', async ({ page }) => {
+        known(name, 'invite-signed-in');
+        await seedAccount(page, ME_MEMBER);
+        await mockApi(page, { ...MEMBER, 'POST /auth/invite/check': { json: INVITE_LINK } });
+        await page.goto('./#/invite/' + TOKEN);
+        await expect(page.getByRole('heading', { level: 1, name: 'Welcome, Lies Bakker' })).toBeVisible();
+        const note = page.getByText("You're signed in as Sam Jansen on this device. Sign out first to use this link. Progress you keep on this device is added to this link's account too.");
+        await expect(note).toBeVisible();
+        await expect(mainNav(page)).toHaveCount(0);
+        const signOut = page.getByRole('button', { name: 'Sign out' });
+        await expectClickable(signOut);
+        await expectTouchHeight(signOut);
+        await expectNoOverlap(note, signOut);
+        await signOut.click();
+        const confirm = page.getByRole('alertdialog', { name: 'Sign out on this device?' });
+        for (const label of ['Keep', 'Remove', 'Cancel', 'Sign out']) {
+          await expectClickable(confirm.getByRole('button', { name: label }));
+          await expectTouchHeight(confirm.getByRole('button', { name: label }));
+        }
+        await expectNotSqueezed(page.locator('.set-card'));
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });

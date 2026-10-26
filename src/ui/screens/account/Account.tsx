@@ -151,6 +151,8 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const mounted = useMounted();
+  // Saved: the form goes with the focus in it, so the focus goes back to Change email once that is there again.
+  const refocusOpener = useRefocus(() => opener.current);
 
   const close = (): void => {
     setOpen(false);
@@ -178,6 +180,7 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
       setEmail('');
       setPassword('');
       setSaved(true);
+      refocusOpener();
     } catch (e) {
       if (!mounted.current) return;
       const f = failureOf(account.handleError(e));

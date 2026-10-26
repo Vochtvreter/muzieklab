@@ -840,7 +840,8 @@
     "password": "Nieuw wachtwoord",
     "submit": "Account maken",
     "busy": "Account maken…",
-    "home": "Naar Start"
+    "home": "Naar Start",
+    "signedInAs": "Je bent op dit apparaat ingelogd als {name}. Log eerst uit om deze link te gebruiken. Voortgang die je op dit apparaat houdt, komt ook op het account van deze link."
   },
   "reset": {
     "title": "Nieuw wachtwoord",

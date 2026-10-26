@@ -102,6 +102,12 @@ test('sign out keeps this device’s progress, or removes it for a shared device
   const confirm = section.getByRole('alertdialog', { name: 'Sign out on this device?' });
   await expect(confirm).toContainText('Your progress stays on your account.');
   await expect(confirm.getByRole('button', { name: 'Keep' })).toHaveAttribute('aria-pressed', 'true');
+  // It opens with the focus on that choice, so a screen reader reads it out and Escape closes it.
+  await expect(confirm.getByRole('button', { name: 'Keep' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(confirm).toBeHidden();
+  await expect(section.getByRole('button', { name: 'Sign out' })).toBeFocused();
+  await section.getByRole('button', { name: 'Sign out' }).click();
   // Cancel goes back to the row, and the choice starts at Keep again.
   await confirm.getByRole('button', { name: 'Remove' }).click();
   await confirm.getByRole('button', { name: 'Cancel' }).click();
