@@ -2608,6 +2608,20 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_18_1": {
+      "title": "Verbeteringen na een volledige test van de app",
+      "tabs": "Met de app open in twee tabbladen overschrijft het ene tabblad niet meer de voortgang en instellingen die het andere bewaarde. Je thema staat er vanaf het eerste moment, zonder dat eerst het andere even te zien is.",
+      "pause": "Pauze en Verder spelen de gepauzeerde maat opnieuw en beoordelen hem één keer: een tik van vlak voor de pauze telt niet meer als extra tik, en een noot die in die maat is overgebonden wordt niet meer te kort genoemd.",
+      "staves": "Notenbalken passen op hun scherm: op een smalle telefoon blijft elke noot in zijn eigen maat en op de notenbalk, de 3 van een triool staat er helemaal, de slotstreep staat alleen aan het eind van de oefening, en de tellen onder een voorbeeld lopen niet meer in elkaar.",
+      "fit": "Spelen, Noten lezen en Toonladders passen weer op een lage telefoon en een laptop van 1280 × 720, ook met de analoge metronoom, hulplijnen, Op & neer en zestien maten.",
+      "readNotes": "Noten lezen: na een fout toont de groene knop de goede naam (F♯, niet F), tijden hebben een decimale komma, C♯ en C♭ groot krijgen hun tip over de voortekening, en Enter of Spatie op een knop waar je met Tab naartoe ging, drukt die knop in.",
+      "scales": "Toonladders: Enter na een klik speelt niet nog eens dezelfde toets, Hint werkt na een fout, de goede noot in het verkeerde octaaf zegt dat ook, en De cirkel rond zegt niet meer dat de toonladders door elkaar staan.",
+      "learn": "Leren: een oefenlink houdt je eigen metronoom, Terug vanaf een oefenscherm brengt je naar het onderdeel waar je vandaan kwam, de ondertitel van elk hoofdstuk staat er helemaal, en een link naar een onderdeel neemt de toetsenbordfocus mee.",
+      "accounts": "Open je een uitnodigings- of nieuw-wachtwoordlink terwijl iemand anders op dit apparaat is ingelogd, dan vraagt de app eerst om die persoon uit te loggen, zodat diens voortgang niet bij het nieuwe account komt.",
+      "admin": "Voor beheerders: een rolschakelaar verandert alleen die rol, dus hij maakt nooit de wijziging van een andere beheerder ongedaan; een link die door een nieuw e-mailadres niet meer werkt, blijft niet op het scherm staan; en de feedbackmodus aanzetten bereikt elk apparaat.",
+      "keyboard": "Toetsenbord en schermlezers: de focus gaat naar elk nieuw scherm en komt terug na een venster of een bevestiging, Escape sluit elke bevestiging, elke focusrand is helemaal te zien, en snel twee keer tikken op Start drukt geen knop meer in op het volgende scherm.",
+      "misc": "Kleinere verbeteringen: Nederlandse meervouden, lange e-mailadressen die afbreken, smalle rijen in Instellingen die passen, tikvlakken van 44 px voor Theorie: Leren en Meer opties, en duidelijke meldingen voor een naam met een tab erin of een feedbacktekst die te lang is."
+    },
     "v0_18_0": {
       "title": "Feedbackmodus",
       "mode": "Voor beheerders: de feedbackmodus, in Instellingen → Account → Feedback, zet de feedbackknop voor iedereen aan en uit. Hij staat eerst uit: niemand ziet de knop tot een beheerder hem aanzet."
