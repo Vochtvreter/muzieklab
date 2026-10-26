@@ -1684,7 +1684,7 @@ what to do. For accounts:
 | UI | **React** + small store (Zustand) | Familiar, enough for a handful of screens. |
 | Notation | **VexFlow** (SVG) | Mature engraving: beams, ties, tuplets, rests. |
 | Audio | **Web Audio API**, own scheduler | Sample-accurate timing, zero dependencies. |
-| Storage | `localStorage` (settings) + **IndexedDB** (history, stats); the signed-in account's cache, `muzieklab.account.v1` | Offline, no account needed. The cache holds only what `GET /me` returns (never a password or a token), so a signed-in device shows its account offline. |
+| Storage | `localStorage` (settings) + **IndexedDB** (history, stats); the signed-in account's cache, `muzieklab.account.v1` | Offline, no account needed. The cache holds only what `GET /me` returns (never a password or a token), so a signed-in device shows its account offline. The tabs of one browser share it: each takes up the prefs and progress another tab saves (the `storage` event), so none saves its older copy over them. |
 | Offline / install | **PWA** (`vite-plugin-pwa`) | Home-screen app on phones. |
 | Tests | **Vitest** + **fast-check** (property tests) | Generator correctness over thousands of seeds. |
 | Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)), with an optional API on the same server under `/api` | The app needs no backend: it works fully without the API, and shows no account then. |

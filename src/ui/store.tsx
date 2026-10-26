@@ -52,6 +52,8 @@ import {
   loadPrefs,
   loadProgress,
   localDateIso,
+  PREFS_KEY,
+  PROGRESS_KEY,
   resetProgress as clearStoredProgress,
   saveAccount,
   savePrefs,
@@ -317,7 +319,12 @@ export type Action =
    * both last agreed on. With `reset`, the account was reset since: its progress replaces this device's.
    */
   | { type: 'syncApply'; remote: Synced; base: Synced | null; reset: boolean }
-  | { type: 'syncStatus'; status: SyncStatus };
+  | { type: 'syncStatus'; status: SyncStatus }
+  /**
+   * Another tab of the app saved its prefs or progress (the tabs of a browser share its storage): this tab takes up
+   * what is stored now, so it does not save its older copy over it.
+   */
+  | { type: 'storageChanged'; prefs: Prefs; progress: Progress };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -374,6 +381,13 @@ export function reducer(state: AppState, action: Action): AppState {
       return state.account.sync === action.status ? state : { ...state, account: { ...state.account, sync: action.status } };
     case 'syncApply':
       return applySynced(state, action.remote, action.base, action.reset);
+    case 'storageChanged': {
+      // Nothing new (another tab saved what this one has) changes nothing.
+      const prefs = sameValue(state.prefs, action.prefs) ? state.prefs : action.prefs;
+      const progress = sameValue(state.progress, action.progress) ? state.progress : action.progress;
+      if (prefs === state.prefs && progress === state.progress) return state;
+      return followSetups(state, { ...state, prefs, progress });
+    }
     case 'apiUnreachable':
       return state.account.api === 'unreachable' ? state : { ...state, account: { ...state.account, api: 'unreachable' } };
     case 'accountNotice':
@@ -466,9 +480,22 @@ function applySynced(state: AppState, remote: Synced, base: Synced | null, reset
     : mergeSynced(local, remote, base);
   const prefs = { ...state.prefs, ...merged.prefs };
   const progress = { ...merged.progress };
+  const next = followSetups(state, { ...state, prefs, progress });
+  if (reset) {
+    next.last = null;
+    next.noteLast = null;
+    next.scaleLast = null;
+  }
+  return next;
+}
+
+/**
+ * `next`, a new state with progress from elsewhere (the account's copy merged in, another tab's), with the setups shown
+ * on their screens following that progress where it changed them.
+ */
+function followSetups(state: AppState, next: AppState): AppState {
   const was = state.progress;
-  const next: AppState = { ...state, prefs, progress };
-  // The setups shown on their screens follow the progress when the merge changed them.
+  const { prefs, progress } = next;
   if (!sameValue(was.lastSettings, progress.lastSettings)) {
     next.settings = practiceSettings({ prefs, progress }, progress.lastSettings ?? DEFAULT_SETTINGS);
   }
@@ -476,11 +503,6 @@ function applySynced(state: AppState, remote: Synced, base: Synced | null, reset
   if (!sameValue(was.scales.settings, progress.scales.settings)) {
     next.scaleSettings = progress.scales.settings ?? { ...DEFAULT_SCALE_SETTINGS };
     next.scaleHub = { ...state.scaleHub, key: next.scaleSettings.keys[0] };
-  }
-  if (reset) {
-    next.last = null;
-    next.noteLast = null;
-    next.scaleLast = null;
   }
   return next;
 }
@@ -588,13 +610,15 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }): JSX.Element {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const first = useRef(true);
+  // The prefs and progress last taken up from another tab: in storage already, so not saved again.
+  const stored = useRef<Pick<AppState, 'prefs' | 'progress'> | null>(null);
 
   useEffect(() => {
-    if (first.current) return;
+    if (first.current || state.prefs === stored.current?.prefs) return;
     savePrefs(state.prefs);
   }, [state.prefs]);
   useEffect(() => {
-    if (first.current) return;
+    if (first.current || state.progress === stored.current?.progress) return;
     if (isEmptyProgress(state.progress)) {
       clearStoredProgress();
     } else {
@@ -617,6 +641,18 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
     if (first.current) return;
     saveAccount(state.account.me);
   }, [state.account.me]);
+  // The tabs of a browser share its storage, and each saves its whole copy of the prefs and progress: a tab takes up
+  // what another saved, or its next change would put its older copy back over it (the XP and stars earned there gone,
+  // a pref picked there undone).
+  useEffect(() => {
+    const changed = (e: StorageEvent): void => {
+      if (e.key !== null && e.key !== PREFS_KEY && e.key !== PROGRESS_KEY) return;
+      stored.current = { prefs: loadPrefs(), progress: loadProgress() };
+      dispatch({ type: 'storageChanged', ...stored.current });
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, []);
   useEffect(() => {
     first.current = false;
   }, []);

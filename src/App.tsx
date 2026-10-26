@@ -1,5 +1,5 @@
 /** Routes and app-wide effects (theme, language). */
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect } from 'react';
 import { resolveLocale, setLocale, t } from './i18n';
 import { Announcer } from './ui/components/Announcer';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
@@ -43,13 +43,17 @@ const RenderDemo = import.meta.env.DEV ? lazy(() => import('./render/RenderDemo'
 /** The test site names the branch it was built from (deploy-test.yml), so a tester knows what they are trying. */
 const BRANCH = import.meta.env.VITE_DEPLOY_BRANCH;
 
-/** data-theme on <html> overrides the system scheme (the staff redraws when it changes). */
+/**
+ * data-theme on <html> overrides the system scheme (the staff redraws when it changes). A layout effect, so it is set
+ * before the screens paint, not a frame after them in the device's theme; index.html sets it before the app loads.
+ */
 function useTheme(theme: 'system' | 'light' | 'dark'): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (theme === 'system') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', theme);
-    // Browser chrome colour follows the forced theme too.
+    // Browser chrome colour follows the forced theme too: the browser takes the first theme-color meta that matches, and
+    // one of index.html's two always matches the device, so the forced one goes first (index.html may have added it).
     let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"][data-forced]');
     if (theme === 'system') {
       meta?.remove();
@@ -58,7 +62,7 @@ function useTheme(theme: 'system' | 'light' | 'dark'): void {
         meta = document.createElement('meta');
         meta.name = 'theme-color';
         meta.dataset.forced = '';
-        document.head.appendChild(meta);
+        document.head.insertBefore(meta, document.querySelector('meta[name="theme-color"]'));
       }
       meta.content = theme === 'dark' ? '#101415' : '#eef1f0';
     }

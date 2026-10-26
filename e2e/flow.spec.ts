@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { announcer, pad, pathUpTo, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
@@ -88,6 +88,88 @@ test('Settings: Reset progress, confirmed, says so; the line is read out, as the
   await expect(page.locator('.reset-done')).not.toHaveAttribute('role', 'status');
   await expect(announcer(page)).toHaveText('Progress was reset.');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('muzieklab.progress.v1') ?? '{}').lessons ?? {})).toEqual({});
+});
+
+test('two tabs open: neither saves its older copy over what the other saved, progress or prefs', async ({ context }) => {
+  // Tab A opens first and stays open, as a tab left in the background does.
+  const a = await context.newPage();
+  await a.goto('./#/notes');
+  const b = await context.newPage();
+  await b.goto('./');
+  await b.getByRole('button', { name: 'Start lesson' }).click();
+  const names = b.getByRole('group', { name: 'Note names' }).getByRole('button');
+  for (let i = 0; i < 10; i++) {
+    await names.first().click();
+    await b.getByRole('button', { name: /^(Next note|See summary)/ }).click();
+  }
+  await expect(b.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
+  const stored = (key: string): Promise<Record<string, unknown>> => a.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? '{}'), key);
+  const earned = await stored('muzieklab.progress.v1');
+  expect(earned.xp).toBeGreaterThan(0);
+
+  // A setup change in tab A keeps the lesson tab B played, and tab A shows it too.
+  await a.getByRole('button', { name: 'Bass F clef' }).click();
+  await expect.poll(() => stored('muzieklab.progress.v1')).toMatchObject({ notes: { settings: { clefs: ['treble', 'bass'] } } });
+  expect(await stored('muzieklab.progress.v1')).toMatchObject({ xp: earned.xp, lessons: earned.lessons, practiceDays: earned.practiceDays });
+  await a.evaluate(() => (location.hash = '#/'));
+  await expect(a.getByText('1-day streak')).toBeVisible();
+
+  // A pref picked in each tab: both are kept, and each tab follows the other's.
+  await a.evaluate(() => (location.hash = '#/settings'));
+  await b.evaluate(() => (location.hash = '#/settings'));
+  await a.getByRole('button', { name: 'Dark' }).click();
+  await b.getByRole('button', { name: 'Strict' }).click();
+  await expect.poll(() => stored('muzieklab.prefs.v1')).toMatchObject({ theme: 'dark', leniency: 'strict' });
+  await expect(b.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(a.getByRole('button', { name: 'Strict' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+/** The browser bar's colour in each theme (index.html's theme-color metas). */
+const BAR = { light: '#eef1f0', dark: '#101415' } as const;
+
+/**
+ * The colour the browser gives its bar (an installed app, its status bar): the first theme-color meta that matches, in
+ * document order (the HTML standard; Chromium and WebKit do so).
+ */
+const browserBar = (page: Page): Promise<string | null> =>
+  page.evaluate(() => [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].find((m) => !m.media || matchMedia(m.media).matches)?.content ?? null);
+
+// The page before the app has run (its script held back) is in the theme Settings picked, not the device's, and so is
+// the browser bar.
+for (const [device, theme, ground] of [['light', 'dark', 'rgb(16, 20, 21)'], ['dark', 'light', 'rgb(238, 241, 240)']] as const) {
+  test(`Theme ${theme} on a ${device} device shows from the first paint, page and browser bar, before the app has loaded`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: device });
+    await seed(page, { prefs: { theme } });
+    let release = (): void => undefined;
+    const held = new Promise<void>((go) => (release = go));
+    await page.route(/\/assets\/index-[\w-]+\.js$/, async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto('./#/settings', { waitUntil: 'commit' });
+    await expect.poll(() => page.evaluate(() => (document.body ? getComputedStyle(document.body).backgroundColor : null))).toBe(ground);
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
+    expect(await browserBar(page)).toBe(BAR[theme]);
+    release();
+    await expect(page.getByRole('button', { name: theme === 'dark' ? 'Dark' : 'Light' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    expect(await browserBar(page)).toBe(BAR[theme]);
+  });
+}
+
+test('the browser bar takes the theme picked in Settings, after a reload too, and follows the device again on System', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('./#/settings');
+  expect(await browserBar(page)).toBe(BAR.light);
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect.poll(() => browserBar(page)).toBe(BAR.dark);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true');
+  expect(await browserBar(page)).toBe(BAR.dark);
+  await page.getByRole('button', { name: 'System' }).click();
+  await expect.poll(() => browserBar(page)).toBe(BAR.light);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  expect(await browserBar(page)).toBe(BAR.dark);
 });
 
 test('a reload on Play keeps the lesson and waits for Start', async ({ page }) => {

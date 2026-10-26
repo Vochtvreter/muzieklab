@@ -234,6 +234,53 @@ describe('reducer: reset progress', () => {
   });
 });
 
+describe('reducer: another tab saved', () => {
+  const notes = { ...DEFAULT_NOTE_SETTINGS, clefs: ['treble' as const, 'bass' as const] };
+  const scales: ScaleSettings = { ...DEFAULT_SCALE_SETTINGS, keyMode: 'one', keys: ['D'] };
+  const stored = (progress: Partial<Progress> = {}, prefs: Partial<Prefs> = {}): { prefs: Prefs; progress: Progress } => ({
+    prefs: { ...DEFAULT_PREFS, ...prefs },
+    progress: { ...defaultProgress(), ...progress },
+  });
+
+  it('takes up the prefs and progress another tab saved, so this tab does not save its older copy over them', () => {
+    const other = stored({ xp: 25, lessons: { 'notes:1.1': { stars: 3, bestAccuracy: 100 } }, practiceDays: ['2026-10-26'] }, { theme: 'dark' });
+    const next = reducer({ ...state(), prefs: { ...DEFAULT_PREFS, leniency: 'strict' } }, { type: 'storageChanged', ...other });
+    expect(next.prefs).toBe(other.prefs);
+    expect(next.progress).toBe(other.progress);
+    // What this tab does next adds to it.
+    const toggled = reducer(next, { type: 'noteSettings', settings: notes });
+    expect(toggled.progress).toMatchObject({ xp: 25, lessons: { 'notes:1.1': { stars: 3 } }, practiceDays: ['2026-10-26'] });
+  });
+
+  it('the setups follow the ones the other tab saved, and stay as they are when it saved the same', () => {
+    const edited = { ...state(), settings: { ...DEFAULT_SETTINGS, tempo: 100 } };
+    const other = stored({ notes: { settings: notes, weak: {} }, scales: { settings: scales, stars: {} }, lastSettings: { ...DEFAULT_SETTINGS, tempo: 132 } });
+    const next = reducer(edited, { type: 'storageChanged', ...other });
+    expect(next.noteSettings).toEqual(notes);
+    expect(next.scaleSettings).toEqual(scales);
+    expect(next.scaleHub).toEqual({ tab: 'major', key: 'D' });
+    expect(next.settings).toEqual({ ...DEFAULT_SETTINGS, tempo: 132, hold: false });
+    // Only the XP changed there: the setup being edited here stays.
+    const xp = reducer(edited, { type: 'storageChanged', ...stored({ xp: 40 }) });
+    expect(xp.progress.xp).toBe(40);
+    expect(xp.settings).toBe(edited.settings);
+    expect(xp.noteSettings).toBe(edited.noteSettings);
+    expect(xp.scaleHub).toBe(edited.scaleHub);
+  });
+
+  it('what this tab has already (its own save, read back) changes nothing', () => {
+    const s = state();
+    expect(reducer(s, { type: 'storageChanged', prefs: { ...s.prefs }, progress: JSON.parse(JSON.stringify(s.progress)) })).toBe(s);
+  });
+
+  it('a reset in another tab resets this one, setups included', () => {
+    const played = reducer(state(), { type: 'noteSettings', settings: notes });
+    const next = reducer(played, { type: 'storageChanged', ...stored() });
+    expect(next.progress).toEqual(defaultProgress());
+    expect(next.noteSettings).toEqual(DEFAULT_NOTE_SETTINGS);
+  });
+});
+
 describe('practice hold', () => {
   // Rhythm unit 1 and the note unit after it (mi) passed: rhythm unit 2, which teaches holding, is open.
   const unit1Done = { ...defaultProgress(), lessons: pathPassed(3) };
