@@ -28,7 +28,7 @@ import { Icon } from '../../components/Icon';
 import { LevelUpContent, OutcomeBadge } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
-import { starsLabel } from '../../lib/format';
+import { andList, starsLabel } from '../../lib/format';
 import { useLearnReturn } from '../../lib/learnReturn';
 import { letterName, majorName, positionText, signWord, solfegeName, spokenName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
@@ -335,13 +335,6 @@ function Chip({ c, kind, system, room }: { c: NoteChip; kind: string; system: Na
       {kind === 'slow' && <span aria-hidden="true" className="nchip-tag">{t('notes.play.seconds', { value: secs(c.ms) })}</span>}
     </span>
   );
-}
-
-/** "F, C and G" */
-function andList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? '';
-  const head = items.slice(0, -1).reduce((a, b) => t('common.commaList', { a, b }));
-  return t('common.and', { a: head, b: items[items.length - 1] });
 }
 
 /** Right answers by sign, and (one key) a tip when misses had the right letter but not the key signature's sign. */

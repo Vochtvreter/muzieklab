@@ -371,7 +371,8 @@ Learn and practice major and minor scales in all 15 keys.
   notes) · scales (major, natural minor, harmonic minor, melodic minor; each shows its
   step pattern) · answer with (piano · names · mixed) · direction (up · up and down) ·
   write with (♯ ♭ signs · key signature) · show the steps (W and H) · play each note.
-  A minor scale uses the relative minor of the chosen key (G → E minor).
+  A minor scale uses the relative minor of the chosen key (G → E minor). The summary above Start says how the round
+  goes: shuffled, or in circle order when it goes round the circle (all 15).
 - **Piano:** a keyboard window that starts on the tonic, or on the white key just below it
   when the tonic is a black key (F♯, D♭ …): 9 white keys, enough for one octave from any
   starting note. The white keys always show their letters (A–G), whatever the label setting in
@@ -379,20 +380,25 @@ Learn and practice major and minor scales in all 15 keys.
   The player plays the scale note by note; each right
   note is written on the staff and fills the next degree box. The W/H steps sit between
   the boxes. A wrong key flashes red and the feedback names the step ("From G, go a whole
-  step: skip one key"). *Hear it so far* and *Start over* appear once the first note is played (since 0.10.0; before
-  that they would do nothing). They are hidden but keep their place, so nothing moves when they come. When the scale is
-  done, *Hear it so far* reads *Hear the scale*. This holds for play and spell, on phone and tablet (the row under the
-  feedback) and on desktop (the side panel). Computer keys
+  step: skip one key"). The note's own key an octave off is a mistake too, as the octave counts; the feedback says so
+  (*Right note, wrong octave: play the lower C.*), not *Not C*. A key the window has twice, an octave apart, reads
+  *low* or *high* after its name to a screen reader (*C, low*), and each degree box reads its note once answered, else
+  *now* or *not yet* (after the given letter when spelling: *F, now*). *Hear it so far* and *Start over* appear once
+  the first note is played (since 0.10.0; before that they would do nothing). They are hidden but keep their place,
+  so nothing moves when they come. When the scale is done, *Hear it so far* reads *Hear the scale*. This holds for
+  play and spell, on phone and tablet (the row under the feedback) and on desktop (the side panel). Computer keys
   on desktop, as in Read notes: A S D F G H J K L for the white keys, and for a black key
   the letter above the gap between its two white keys (W E R T Y U I O). Space is *Hear it so far* and Enter goes on,
   except on a button the player reached with Tab: that button takes Space and Enter itself (since 0.9.0). After a click
-  Space stays *Hear it so far*, so a piano key that kept the focus is not pressed again.
+  Space stays *Hear it so far*, and Enter does nothing until the scale is done, so a piano key or a sign that kept the
+  focus is not pressed again.
 - **Names (spelling):** the letters are given, one per degree, because a scale uses each
   letter once; the player chooses ♭, ♮ or ♯ for each (keys − 0 =, as in Read notes). This
   drills exactly what changes between keys and between the minor forms (D♯ in E harmonic
   minor). Double sharps (F𝄪 in G♯ harmonic minor, C𝄪 in D♯, G𝄪 in A♯) appear only in keys
   that need them: then a fourth button, 𝄪 (key X), joins the row. No scale here needs a
-  double flat.
+  double flat. *Hint* names the step from the note before. Right after a wrong sign it takes the place of why and of
+  the sign's red mark; the next mistake says why again, and Hint can be asked once more.
 - **Up and down** adds the way back: the degree row gets a second line, from 7 down to 1, and
   the piano window stays the same.
 - **Melodic minor down** is written as natural minor (the classical form).
@@ -402,8 +408,8 @@ Learn and practice major and minor scales in all 15 keys.
   has ★★★ (starting values, to tune).
 - **Round done** lists each scale with its mistakes and stars (a scale with mistakes is
   marked *Came back at the end of the round*) and how far the circle is filled, with
-  *Change setup* and *New round* (the same setup, shuffled again). Its back arrow goes to the
-  Scales hub.
+  *Change setup* and *New round* (the same setup: shuffled again, or round the circle in circle order again). Its back
+  arrow goes to the Scales hub.
 - **Layout:** setup, play, spell and round done are exercise screens (no tab bar or header):
   the phone layout, in the 640 px column on tablet. On desktop, play and spell use the wide
   exercise layout of Read notes: the exercise header (title, scale *n* of *m*, progress,
@@ -1161,6 +1167,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   staff; with bar lines, the cursor stays in the bar of the note it marks. It keeps one size while its notes come in
   or stay hidden: on every page of a Read notes key and clef, and through a scale's page (`fitNotes` in
   `render/pitchDraw.ts`).
+- A screen's title is never narrower than its longest word, so it does not draw over what is beside it. A text link
+  beside it (the Scales hub's *Learn scales* on a phone, Key's *What is a key?*) takes two lines, right aligned, when
+  the two do not fit on one, and under 375 px wide such a title is 18 px (20 px on the board): in Dutch both fit on one
+  line at 360 px, and at 320 px the link takes two (*Toonladders* beside *Over toonladders*).
 - **Phone browsers** (since 0.10.0). In Safari or Chrome the toolbars take about 180 px of a phone's screen, so the
   sizes to check include the visible area: 390 × 664 (an iPhone 14 in Safari) and 375 × 553 (an iPhone SE in Safari),
   `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import en from './en.json';
 import { formatMessage } from './format';
 import { formatDecimal, getLocale, hasMessage, isLocale, LOCALES, resolveLocale, setLocale, t, tipText, translateParams, tx } from './index';
-import { orList } from '../ui/lib/format';
+import { andList, orList } from '../ui/lib/format';
 import { majorName, spokenName } from '../ui/lib/noteText';
 
 describe('formatMessage', () => {
@@ -84,6 +84,16 @@ describe('t()', () => {
     expect(t('notes.done.chartLabel', { count: 12, avg: formatDecimal(2.2), missed: 0 })).toBe(
       'Answer time for each of the 12 notes. Average 2.2 seconds. No notes missed.',
     );
+  });
+
+  it('counts the scales of Round done for one scale too, and lists the new ones with "and"', () => {
+    expect(t('scales.done.cleanAria', { clean: 1, total: 1 })).toBe('1 of 1 scale without a mistake');
+    expect(t('scales.done.cleanAria', { clean: 0, total: 1 })).toBe('0 of 1 scale without a mistake');
+    expect(t('scales.done.cleanAria', { clean: 2, total: 3 })).toBe('2 of 3 scales without a mistake');
+    expect(andList(['C major'])).toBe('C major');
+    expect(andList(['C major', 'G major', 'D major'])).toBe('C major, G major and D major');
+    expect(t('scales.done.reached', { names: 'C major', count: 1 })).toBe('C major reached ★★ this round.');
+    expect(t('scales.done.reached', { names: andList(['C major', 'G major']), count: 2 })).toBe('C major and G major reached ★★ this round.');
   });
 
   it('has every value and rest key the engine can produce', () => {
@@ -217,6 +227,15 @@ describe('Dutch', () => {
     expect(t('notes.done.chartLabel', { count: 12, avg: formatDecimal(2.2), missed: 0 })).toBe(
       'Antwoordtijd voor elk van de 12 noten. Gemiddeld 2,2 seconden. Geen noten gemist.',
     );
+  });
+
+  it('counts the scales of Round done for one scale too, and has a plural verb for the new ones', () => {
+    setLocale('nl');
+    expect(t('scales.done.cleanAria', { clean: 1, total: 1 })).toBe('1 van 1 ladder zonder fout');
+    expect(t('scales.done.cleanAria', { clean: 2, total: 3 })).toBe('2 van 3 ladders zonder fout');
+    expect(andList(['C majeur', 'G majeur', 'D majeur'])).toBe('C majeur, G majeur en D majeur');
+    expect(t('scales.done.reached', { names: 'C majeur', count: 1 })).toBe('C majeur haalde deze ronde ★★.');
+    expect(t('scales.done.reached', { names: andList(['C majeur', 'G majeur']), count: 2 })).toBe('C majeur en G majeur haalden deze ronde ★★.');
   });
 
   it('names sharps and flats the Dutch way for screen readers', () => {

@@ -300,11 +300,22 @@
 .screen-title {
   margin: 0;
   flex: 1;
-  min-width: 0;
+  /* Never narrower than its longest word, which would draw over what is beside it: a text link there wraps instead. */
+  min-width: min-content;
   font-family: var(--font-display);
   font-weight: 500;
   font-size: 20px;
   line-height: 1.2;
+}
+/* A text link beside the title (the Scales hub, Key) takes two lines when the two do not fit on one (Dutch at 320 px). */
+.screen-head > .text-btn--link {
+  text-align: right;
+}
+/* A narrow phone: a title with a text link beside it is smaller, so in Dutch both still fit on one line at 360 px. */
+@media (max-width: 374.98px) {
+  .screen-head--link > .screen-title {
+    font-size: 18px;
+  }
 }
 .muted-text {
   font-size: 13px;

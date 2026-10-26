@@ -12,6 +12,7 @@ import { Icon } from '../../components/Icon';
 import { LevelUpContent } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
+import { andList } from '../../lib/format';
 import { circleLabel, keyName, scaleName } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore, type ScaleLast } from '../../store';
@@ -199,7 +200,7 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
   return (
     <div className="card cprog">
       <svg viewBox="0 0 176 176" className="cprog-svg" role="img"
-        aria-label={t(minor ? 'scales.done.circleMinorAria' : 'scales.done.circleMajorAria', { count: n1, total, fresh: names.join(', ') || t('scales.done.noneNew') })}>
+        aria-label={t(minor ? 'scales.done.circleMinorAria' : 'scales.done.circleMajorAria', { count: n1, total, fresh: andList(names) || t('scales.done.noneNew') })}>
         <circle cx={C} cy={C} r={R} className="cprog-ring" />
         {dots}
         <text x={C} y={C + 3} textAnchor="middle" className="cprog-count">
@@ -222,7 +223,7 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
         </div>
         <div className="muted-text">
           {t(minor ? 'scales.done.minorCount' : 'scales.done.majorCount')}{' '}
-          {names.length > 0 ? t('scales.done.reached', { names: names.join(', '), count: names.length }) : t('scales.done.nothingNew')}
+          {names.length > 0 ? t('scales.done.reached', { names: andList(names), count: names.length }) : t('scales.done.nothingNew')}
         </div>
       </div>
     </div>

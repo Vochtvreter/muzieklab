@@ -562,6 +562,118 @@ test('scales: from Home to the circle, a G major round played with the keyboard,
   expect(missing).toEqual([]);
 });
 
+/** Starts a one-scale round (major, up, silent) from the setup, with these settings on top. */
+async function startScale(page: Page, settings: object): Promise<void> {
+  await seedStorage(page, {
+    prefs: { seenHowTo: true, seenHold: true },
+    progress: { scales: { settings: { keyMode: 'one', types: ['major'], direction: 'up', write: 'signs', showSteps: true, playNotes: false, ...settings }, stars: {} } },
+  });
+  await page.goto('./#/scales/setup');
+  // A fresh load, so the app reads the settings just seeded (a new hash alone keeps the app and its settings).
+  await page.reload();
+  await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+}
+
+test('scales: after a click, Enter does not press the piano key or the sign again; once the scale is done it goes on', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  const feedback = page.locator('.nfeedback');
+  const mistakes = page.locator('.sstats .nstat-big');
+  // The G key keeps the focus after the click: Enter is the exercise's, which has nothing to do before the scale is done.
+  await startScale(page, { keys: ['G'], input: 'piano' });
+  await page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button').first().click();
+  await expect(feedback).toHaveText(/^Degree 2: up a whole step/);
+  await page.keyboard.press('Enter');
+  await expect(feedback).toHaveText(/^Degree 2: up a whole step/);
+  await expect(mistakes).toHaveText('0');
+  await expect(page.locator('.spiano .is-wrong')).toHaveCount(0);
+
+  // Spelling: the ♮ clicked for G is A's ♮ next, and later F's: Enter neither answers A nor counts F♮ as a mistake.
+  await startScale(page, { keys: ['G'], input: 'names' });
+  const natural = page.getByRole('button', { name: /natural, key 0$/ });
+  await natural.click();
+  await expect(feedback).toHaveText('Which sign does A get?');
+  await page.keyboard.press('Enter');
+  await expect(feedback).toHaveText('Which sign does A get?');
+  for (let i = 0; i < 5; i++) await natural.click();
+  await expect(feedback).toHaveText('Which sign does F get?');
+  await page.keyboard.press('Enter');
+  await expect(feedback).toHaveText('Which sign does F get?');
+  await expect(mistakes).toHaveText('0');
+  await page.getByRole('button', { name: 'F sharp, key =' }).click();
+  await natural.click();
+  await expect(feedback).toHaveText(/^G major: done, no mistakes/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+});
+
+test('scales: Hint right after a wrong sign shows the hint, and a new mistake says why again', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await startScale(page, { keys: ['A'], input: 'names' });
+  const feedback = page.locator('.nfeedback');
+  const hint = page.getByRole('button', { name: 'Hint' });
+  // A and B natural, then C natural: wrong, A major has C♯.
+  for (const k of ['0', '0', '0']) await page.keyboard.press(k);
+  await expect(feedback).toHaveText('Not C. From B, go up a whole step (skip one key).');
+  await expect(page.locator('.ssign.is-wrong')).toHaveCount(1);
+  // The hint takes the place of the wrong answer and its red mark (the ScaleSpell boards).
+  await hint.click();
+  await expect(feedback).toHaveText('Hint: from B the step up is W, a whole step (skip one key).');
+  await expect(page.locator('.ssign.is-wrong')).toHaveCount(0);
+  await expect(hint).toBeDisabled();
+  await page.keyboard.press('0');
+  await expect(feedback).toHaveText('Not C. From B, go up a whole step (skip one key).');
+  await expect(page.locator('.ssign.is-wrong')).toHaveCount(1);
+  await expect(hint).toBeEnabled();
+  await hint.click();
+  await expect(feedback).toHaveText('Hint: from B the step up is W, a whole step (skip one key).');
+  await page.keyboard.press('=');
+  await expect(feedback).toHaveText('Which sign does D get?');
+});
+
+test('scales: the right note in the wrong octave says so, and the two keys of a note are told apart', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await startScale(page, { keys: ['C'], input: 'piano' });
+  const piano = page.getByRole('group', { name: 'Piano keyboard from C to D' });
+  const key = (name: string): Locator => piano.getByRole('button', { name, exact: true });
+  const feedback = page.locator('.nfeedback');
+  // C D E F G A B C D, with C♯ twice: a screen reader hears which is which.
+  expect(await piano.getByRole('button').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))).toEqual([
+    'C, low', 'D, low', 'E', 'F', 'G', 'A', 'B', 'C, high', 'D, high',
+    'C sharp or D flat, low', 'D sharp or E flat', 'F sharp or G flat', 'G sharp or A flat', 'A sharp or B flat', 'C sharp or D flat, high',
+  ]);
+  // The upper C first, then the upper D: the right notes an octave too high, each a mistake.
+  await key('C, high').click();
+  await expect(feedback).toHaveText('Right note, wrong octave: play the lower C.');
+  await key('C, low').click();
+  await key('D, high').click();
+  await expect(feedback).toHaveText('Right note, wrong octave: play the lower D.');
+  // At the top, the lower C: an octave too low.
+  for (const k of ['D, low', 'E', 'F', 'G', 'A', 'B', 'C, low']) await key(k).click();
+  await expect(feedback).toHaveText('Right note, wrong octave: play the higher C.');
+  await expect(page.getByRole('img', { name: '3 mistakes' })).toBeVisible();
+  // Another note is still "Not …".
+  await key('D, high').click();
+  await expect(feedback).toHaveText(/^Not D\. From B, go up a half step/);
+});
+
+test('scales: going round the circle keeps the circle order, and the setup says so', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/scales');
+  await page.getByRole('button', { name: /^Go round the circle/ }).click();
+  const summary = page.locator('.ssetup-summary');
+  await expect(summary).toContainText('In circle order; a scale with mistakes comes back at the end.');
+  await expect(summary).not.toContainText('Shuffled');
+  // Two scales of one key are shuffled.
+  const keys = page.getByRole('group', { name: 'Keys' });
+  await keys.getByRole('button', { name: 'C major' }).click();
+  await page.getByRole('button', { name: /^Natural minor/ }).click();
+  await expect(summary).toContainText('Shuffled; a scale with mistakes comes back at the end.');
+  await keys.getByRole('button', { name: 'All 15' }).click();
+  await expect(summary).toContainText('In circle order');
+  await page.getByRole('button', { name: 'Start · 30 scales' }).click();
+  await expect(page.locator('.splay-title')).toHaveText('C major');
+});
+
 test('learn: chapter 11 links to the Scales setup and the circle', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/learn/11');

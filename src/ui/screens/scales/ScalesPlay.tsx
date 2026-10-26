@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'reac
 import {
   afterScale,
   isRightNote,
+  isWrongOctave,
   keyAlter,
   letterOf,
   pianoWindow,
@@ -127,6 +128,8 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
       } else {
         setMistakes(mistakes + 1);
         setWrong(g);
+        // Why this one is wrong takes the hint's place, and Hint can be asked again.
+        setHinted(false);
       }
     },
     [done, cur, pos, mistakes, sound],
@@ -153,11 +156,11 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
       // A button reached with Tab (a sign, Start over, Skip) takes Space and Enter itself.
       if (keyForTabbedControl(e)) return;
       const k = e.key.toUpperCase();
+      // After a click the key or sign keeps the focus: Enter is Next scale, once the scale is done, and never presses
+      // that key or sign again (focusModality.ts).
       if (e.key === 'Enter') {
-        if (done) {
-          e.preventDefault();
-          next();
-        }
+        e.preventDefault();
+        if (done) next();
         return;
       }
       if (e.key === ' ') {
@@ -216,8 +219,9 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const cell = (i: number): DegreeCell => {
     const n = notes[i];
     const state: DegreeCell['state'] = i < pos ? 'done' : i === pos ? 'current' : 'next';
-    const text = i < pos ? noteName(n) : piano ? (i === pos ? '?' : '') : t('notes.letter.' + letterOf(n.step));
-    return { degree: n.degree, text, state };
+    const letter = t('notes.letter.' + letterOf(n.step));
+    const text = i < pos ? noteName(n) : piano ? (i === pos ? '?' : '') : letter;
+    return { degree: n.degree, text, given: piano ? undefined : letter, state };
   };
   const stepCells = s.showSteps ? steps : steps.map(() => null);
   const upCells = notes.slice(0, PAGE).map((_, i) => cell(i));
@@ -240,7 +244,9 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     tone = 'right';
   } else if (wrong) {
     const given = wrong.kind === 'piano' ? keyNames(wrong.midi) : letterName(curLetter, wrong.alter);
-    feedback = pos === 0 ? t('scales.play.wrongStart', { given, scale: scaleName(sc) }) : t(way === 'up' ? 'scales.play.wrongUp' : 'scales.play.wrongDown', { given, prev, how });
+    // The note's own key an octave off: "Not C" would deny the C that was played.
+    if (wrong.kind === 'piano' && isWrongOctave(cur, wrong)) feedback = t(wrong.midi > cur.midi ? 'scales.play.wrongOctaveHigh' : 'scales.play.wrongOctaveLow', { note: noteName(cur) });
+    else feedback = pos === 0 ? t('scales.play.wrongStart', { given, scale: scaleName(sc) }) : t(way === 'up' ? 'scales.play.wrongUp' : 'scales.play.wrongDown', { given, prev, how });
     tone = 'wrong';
   } else if (hinted) {
     feedback = pos === 0 ? t('scales.play.hintStart', { scale: scaleName(sc) }) : t(way === 'up' ? 'scales.play.hintUp' : 'scales.play.hintDown', { prev, step: stepLabel(steps[pos - 1]), how });
@@ -288,9 +294,14 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   );
   // Piano: Next scale takes Start over's place once the scale is done. Names: Hint and Next scale under the signs.
   const second = piano && done ? nextBtn : overBtn;
+  // The hint takes the place of a wrong answer, and of its red mark, as on the boards (ScaleSpell).
+  const hint = (): void => {
+    setWrong(null);
+    setHinted(true);
+  };
   const answerActions = piano ? null : (
     <div className="nactions">
-      <button type="button" className="btn btn--outline" disabled={done || hinted} onClick={() => setHinted(true)}>
+      <button type="button" className="btn btn--outline" disabled={done || hinted} onClick={hint}>
         {t('scales.play.hint')}
       </button>
       {nextBtn}

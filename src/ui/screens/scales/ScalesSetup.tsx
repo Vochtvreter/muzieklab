@@ -157,7 +157,8 @@ export function ScalesSetup(): JSX.Element {
                   direction: t(s.direction === 'up' ? 'scales.setup.upWord' : 'scales.setup.upDownWord'),
                 })}
               </b>
-              <span className="muted-text">{t(count > 1 ? 'scales.setup.summaryMany' : 'scales.setup.summaryOne')}</span>
+              {/* Going round the circle keeps the circle's order (generateScaleRound); other rounds are shuffled. */}
+              <span className="muted-text">{t(count === 1 ? 'scales.setup.summaryOne' : s.keyMode === 'circle' ? 'scales.setup.summaryCircle' : 'scales.setup.summaryMany')}</span>
             </div>
 
             <button type="button" className="btn btn--accent start-btn" onClick={() => start(s)}>

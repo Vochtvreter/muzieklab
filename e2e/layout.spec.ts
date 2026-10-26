@@ -130,6 +130,27 @@ async function expectCountsApart(page: Page): Promise<void> {
   expect(out, 'counts that overlap').toEqual([]);
 }
 
+/**
+ * A screen's head keeps its title whole beside what is next to it (DESIGN.md §9): the title's words fit its box, and
+ * nothing in the head runs past its right edge (Dutch on a 320 px phone: "Toonladders" beside "Over toonladders").
+ */
+async function expectHeadFits(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.screen-head')]
+      .filter((head) => head.offsetParent !== null)
+      .flatMap((head) => {
+        const right = head.getBoundingClientRect().right;
+        return [...head.querySelectorAll<HTMLElement>(':scope > *, .screen-title')].flatMap((el) => {
+          const name = (el.textContent ?? '').trim() || el.tagName.toLowerCase();
+          if (el.scrollWidth > el.clientWidth + 1) return [`${name}: runs out of its box`];
+          return el.getBoundingClientRect().right > right + 0.5 ? [`${name}: runs past the head`] : [];
+        });
+      }),
+  );
+  expect(out, 'screen heads').toEqual([]);
+}
+
 /** Nothing on a staff is cut off at the top of its svg, such as a triplet's 3 over the first row. */
 async function expectStaffNotCut(svg: Locator): Promise<void> {
   const top = (): Promise<number> =>
@@ -1027,7 +1048,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
       await page.getByRole('button', { name: /^See the round/ }).click();
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
-      await expect(page.getByLabel('1 of 1 scales without a mistake')).toBeVisible();
+      await expect(page.getByLabel('1 of 1 scale without a mistake')).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'New round' }));
       await expectClickable(page.getByRole('link', { name: 'Change setup' }));
       // Tablet and desktop: the scales and the circle on the left; the score and the actions in the side panel beside them.
@@ -1039,7 +1060,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         expect(s.y < m.y + m.height && m.y < s.y + s.height, 'the side panel is beside the main column').toBe(true);
         await expect(main.getByRole('list', { name: 'Scales in this round' })).toBeVisible();
         await expect(main.locator('.cprog')).toBeVisible();
-        await expect(side.getByLabel('1 of 1 scales without a mistake')).toBeVisible();
+        await expect(side.getByLabel('1 of 1 scale without a mistake')).toBeVisible();
         await expectClickable(side.getByRole('button', { name: 'New round' }));
         await expectClickable(side.getByRole('link', { name: 'Change setup' }));
       } else {
@@ -2135,6 +2156,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/calibrate', 'Timing kalibreren', 'Tikpad'],
       ['#/notes', 'Noten lezen', 'Start · '],
       ['#/notes/key', 'Toonsoort', 'Kies '],
+      ['#/scales/key', 'Toonsoort', 'Kies '],
       ['#/learn', 'Leren', ''],
       ['#/learn/1', 'Puls en maat', ''],
       ['#/learn/2', 'Notenwaarden', 'Rusten'],
@@ -2166,6 +2188,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           expect(width, 'the start prompt fits on screen').toBeLessThanOrEqual(VIEWPORTS[name].width - 32);
         }
         if (hash.startsWith('#/learn/')) await expectCountsApart(page);
+        await expectHeadFits(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });

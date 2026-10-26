@@ -130,7 +130,7 @@ export function ScalesHub(): JSX.Element {
     </button>
   );
   const head = (
-    <div className="screen-head hub-head">
+    <div className="screen-head screen-head--link hub-head">
       <Link to="/" aria-label={t('scales.hub.back')} className="icon-btn icon-btn--edge">
         <Icon name="back" />
       </Link>

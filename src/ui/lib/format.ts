@@ -64,6 +64,13 @@ export function orList(keys: string[]): string {
   return t('common.orList', { a: head, b: items[items.length - 1] });
 }
 
+/** "F, C and G", from names already translated. */
+export function andList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  const head = items.slice(0, -1).reduce((a, b) => t('common.commaList', { a, b }));
+  return t('common.and', { a: head, b: items[items.length - 1] });
+}
+
 /** A fresh exercise seed (UI only; the engine itself never uses Math.random). */
 export function newSeed(): number {
   const c = globalThis.crypto;

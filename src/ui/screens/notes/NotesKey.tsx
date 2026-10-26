@@ -90,7 +90,7 @@ export function KeyScreen({ keys, mix: mixed, back, backQuery, mixText, onUse }:
   return (
     <ExerciseFrame className="frame--setup" wide>
       <div className="page setup nkeys no-scrollbar">
-        <div className="screen-head">
+        <div className="screen-head screen-head--link">
           <Link to={back} query={backQuery} aria-label={t('notes.keys.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
