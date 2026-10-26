@@ -304,10 +304,11 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     return () => window.removeEventListener('keydown', onKey);
   }, [mode, done, sign, signs, answer, pressKey, next, desktop, task, writing, ghost, move, letters]);
 
-  // A round that writes notes draws a taller staff with fewer bars, so a line or space is easy to point at. A tablet keeps
-  // six bars (NoteTablet draws eight): at its staff size eight leave no room for a sharp or flat before the last note.
+  // A round that writes notes draws a taller staff with fewer bars (on a phone, on its side too), so a line or space is
+  // easy to point at. A tablet keeps six bars (NoteTablet draws eight): at its staff size eight leave no room for a sharp
+  // or flat before the last note.
   const big = useMemo(() => notes.some((n) => n.task === 'write'), [notes]);
-  const size = desktop ? 8 : big && bp === 'phone' ? 4 : 6;
+  const size = desktop ? 8 : big && !tablet ? 4 : 6;
   const page = staffPage(notes, i, size);
   // Notes to hear or write stay hidden until answered (an empty slot); the one being written shows where it sits now.
   const shown = useMemo(
@@ -319,6 +320,11 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         return at === i && n.task === 'write' && ghost !== null ? { step: ghost, sign: null } : null;
       }),
     [notes, page.from, page.to, i, done, ghost],
+  );
+  // Room on the staff for every note in this clef and key, hidden ones too: the staff keeps one size from page to page.
+  const fitNotes = useMemo(
+    () => notes.filter((n) => n.clef === note.clef && n.key === note.key).map((n): PitchNote => ({ step: n.step, sign: n.sign })),
+    [notes, note.clef, note.key],
   );
   const marks = useMemo(
     () => notes.slice(page.from, page.to).map((_, j) => markOf(answers[page.from + j]) ?? (page.from + j === i && ghost !== null && !done ? 'ghost' : undefined)),
@@ -405,8 +411,9 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     place(stepAtY(note.clef, room, ((e.clientY - r.top) / r.height) * h));
   };
   const staffSvg = (
-    <PitchStaff clef={note.clef} keyId={note.key} notes={shown} slots={size} marks={marks} cursor={i - page.from} scale={big ? (desktop ? 2 : bp === 'tablet' ? 2.6 : shorter ? 1.5 : 2.1) : desktop ? 1.6 : bp === 'tablet' ? 2 : shorter ? 1.15 : 1.45}
-      room={room} label={writing ? undefined : staffLabel} className="nplay-staff-svg" />
+    <PitchStaff clef={note.clef} keyId={note.key} notes={shown} fitNotes={fitNotes} slots={size} marks={marks} cursor={i - page.from}
+      scale={big ? (desktop ? 2 : tablet ? 2.6 : shorter ? 1.5 : 2.1) : desktop ? 1.6 : tablet ? 2 : shorter ? 1.15 : 1.45} room={room}
+      label={writing ? undefined : staffLabel} className="nplay-staff-svg" />
   );
   // A slider for screen readers and the keyboard: its value is where the note sits.
   const staff = writing ? (

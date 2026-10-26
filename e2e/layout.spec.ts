@@ -1,12 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
+import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteSettings } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
+import { pianoWindow, scaleNotes, type Scale } from '../src/core/scale';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import type { Me } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
 import {
   ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap,
-  expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo,
+  expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectStavesFit, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo,
   QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
 
@@ -743,6 +744,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/notes');
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /staff in C major/ })).toBeVisible();
+      await expectStavesFit(page);
       const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
       await expect(names).toHaveCount(7);
       // Everything in view without scrolling, in a phone browser too (DESIGN.md §9).
@@ -796,6 +798,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Sharps ♯' }).click();
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /staff in C major/ })).toBeVisible();
+      await expectStavesFit(page);
       for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }), inPlace);
       const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
       for (let i = 0; i < 7; i++) await expectClickable(names.nth(i), inPlace);
@@ -809,6 +812,33 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+    });
+
+    test('read notes: seven sharps and extra signs, every note in its own bar on the staff', async ({ page }) => {
+      known(name, 'notes-wide-key');
+      // C♯ major's signature takes the most room, and extra signs put a sharp, flat or natural before most notes.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['C#'], extras: 'both' };
+      const seed = 28;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      await expect(page.getByRole('img', { name: /staff in C♯ major/ })).toBeVisible();
+      const bars = VIEWPORTS[name].width >= 1100 ? 8 : 6;
+      await expect(page.locator('.nplay-staff-svg .vf-stavenote')).toHaveCount(bars);
+      await expectStavesFit(page);
+      await expectNoSideScroll(page);
+      // The cursor on every note of the page (notes 2 and 3 carry a natural) and on the next page's first: it stays in
+      // its note's bar, and the staff keeps its size from note to note and page to page (on a phone the next page has
+      // no natural, and a staff sized for its own notes only would be drawn bigger).
+      const size = (): Promise<(string | null)[]> => page.locator('.nplay-staff-svg svg').evaluate((svg) => [svg.getAttribute('width'), svg.getAttribute('height')]);
+      const first = await size();
+      for (const [i, n] of generateRound(settings, seed).slice(0, bars).entries()) {
+        const wrong = letterOf(n.step) === 'C' ? 'D' : 'C';
+        await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${wrong}(,|$)`) }).click();
+        await page.getByRole('button', { name: /^Next note/ }).click();
+        await expect(page.getByRole('img', { name: new RegExp(`Note ${i + 2} of 20 is highlighted`) })).toBeVisible();
+        await expectStavesFit(page);
+        expect(await size(), `the staff's size at note ${i + 2}`).toEqual(first);
+      }
     });
 
     test('read notes: round done with the missed notes on small staves, named as the player reads them', async ({ page }) => {
@@ -948,6 +978,44 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+    });
+
+    test('scales: C♯ major with its signs and A♯ melodic minor with the key signature fit on the staff, the cursor too', async ({ page }) => {
+      known(name, 'scales-staff-fit');
+      // The computer keys of the Scales piano: A S D … on the white keys, W E R … on the black keys between them.
+      const keysFor = (s: Scale): string[] => {
+        const w = pianoWindow(s);
+        return scaleNotes(s).map((n) => (w.whites.includes(n.midi) ? 'ASDFGHJKL'[w.whites.indexOf(n.midi)] : 'WERTYUIO'[w.blacks.find((b) => b.midi === n.midi)!.after - 1]));
+      };
+      const scales = [
+        { scale: { key: 'C#', type: 'major' } as Scale, write: 'signs', done: /^C♯ major: done/ },
+        { scale: { key: 'C#', type: 'melodic' } as Scale, write: 'keySig', done: /^A♯ melodic minor: done/ },
+      ];
+      for (const { scale, write, done } of scales) {
+        await seed(page, {
+          progress: { scales: { settings: { keyMode: 'one', keys: [scale.key], types: [scale.type], input: 'piano', direction: 'up', write, showSteps: true, playNotes: false }, stars: {} } },
+        });
+        await page.goto('./#/scales/setup');
+        // A fresh load, so the app reads the settings just seeded (a new hash alone keeps the app and its settings).
+        await page.reload();
+        await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+        // The staff keeps one size while the notes come in.
+        const staff = page.locator('.splay-staff-svg svg');
+        const size = (): Promise<(string | null)[]> => staff.evaluate((svg) => [svg.getAttribute('width'), svg.getAttribute('height')]);
+        await expect(staff).toBeVisible();
+        const first = await size();
+        const keys = keysFor(scale);
+        // Seven notes in: the seventh and the eighth note's place are inside the staff.
+        for (const k of keys.slice(0, 7)) await page.keyboard.press(k);
+        await expect(page.locator('.splay-staff-svg .vf-stavenote')).toHaveCount(7);
+        await expectStavesFit(page);
+        expect(await size(), 'the staff after seven notes').toEqual(first);
+        await page.keyboard.press(keys[7]);
+        await expect(page.locator('.nfeedback')).toHaveText(done);
+        await expect(page.locator('.splay-staff-svg .vf-stavenote')).toHaveCount(8);
+        await expectStavesFit(page);
+        expect(await size(), 'the staff when done').toEqual(first);
+      }
     });
 
     test('scales: spell E harmonic minor with the signs', async ({ page }) => {
@@ -1111,6 +1179,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.learn-check--section')).toHaveCount(c.sections.length);
         await expect(page.locator('.learn-practice')).toHaveCount(c.sections.filter((s) => s.practice).length);
         await expectNoSideScroll(page);
+        await expectStavesFit(page);
         if (c.sections.some((s) => s.practice)) await expectClickable(page.locator('.learn-practice').last());
         await expectClickable(page.getByRole('link', { name: 'Back to all chapters' }));
       }

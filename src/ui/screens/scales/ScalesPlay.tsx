@@ -193,20 +193,22 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   // The staff: the notes so far on this page (up, or the way down from the top note) and the next note's place.
   const start = dir === 'upDown' && pos >= PAGE ? PAGE - 1 : 0;
   const keyId = s.write === 'keySig' ? sc.key : 'C';
-  const shown = useMemo<PitchNote[]>(
+  // The whole page as it will be written: the staff keeps room for it, so its size stays the same as the notes come in.
+  const pageNotes = useMemo<PitchNote[]>(
     () =>
-      notes.slice(start, Math.min(pos, start + PAGE)).map((n) => {
+      notes.slice(start, start + PAGE).map((n) => {
         const sig = keyId === 'C' ? 0 : keyAlter(keyId, letterOf(n.step));
         return { step: n.step, sign: n.alter === sig ? null : n.alter };
       }),
-    [notes, start, pos, keyId],
+    [notes, start, keyId],
   );
+  const shown = useMemo(() => pageNotes.slice(0, pos - start), [pageNotes, pos, start]);
   const staffLabel = t('scales.play.staffLabel', {
     scale: scaleSpoken(sc),
     notes: notes.slice(0, pos).map(noteName).join(', ') || t('scales.play.none'),
   });
   const staff = (
-    <PitchStaff clef="treble" keyId={keyId} notes={shown} slots={PAGE} cursor={done ? null : pos - start} barlines={false} room={2.2}
+    <PitchStaff clef="treble" keyId={keyId} notes={shown} fitNotes={pageNotes} slots={PAGE} cursor={done ? null : pos - start} barlines={false} room={2.2}
       scale={desktop ? 1.7 : short || shorter ? 1.1 : bp === 'tablet' ? 1.8 : 1.25} label={staffLabel} className="splay-staff-svg" />
   );
 

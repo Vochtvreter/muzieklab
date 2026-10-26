@@ -105,6 +105,55 @@ export async function expectNoSideScroll(page: Page): Promise<void> {
   expect(wide, 'no horizontal scroll').toBe(false);
 }
 
+/**
+ * Every pitch staff on the page has room for its notes: each whole note inside its own bar, after the clef and key
+ * signature and clear of the note before it (DESIGN.md §3.5), and the notes, the cursor and the labels inside the
+ * drawing. With bar lines, the cursor stays in the bar of the note it marks: clear of the bar lines on either side, of
+ * the clef and key signature and of the notes next to it. The svg cuts off what runs past its edge, so the page never
+ * scrolls sideways and expectNoSideScroll misses it.
+ */
+export async function expectStavesFit(page: Page): Promise<void> {
+  const wrong = await page.evaluate(() =>
+    [...document.querySelectorAll<SVGSVGElement>('.pitch-staff svg')].flatMap((svg, k) => {
+      const span = (el: Element): [number, number] => {
+        const b = (el as SVGGraphicsElement).getBBox();
+        return [b.x, b.x + b.width];
+      };
+      const width = svg.viewBox.baseVal.width;
+      const head = Math.max(0, ...[...svg.querySelectorAll('.vf-clef, .vf-keysignature')].map((el) => span(el)[1]));
+      const out: string[] = [];
+      let before = head;
+      const notes = [...svg.querySelectorAll('.vf-stavenote')].map((note, i) => {
+        const [l, r] = span(note);
+        // Each bar is a stave of its own, drawn just before its note.
+        let bar = note.previousElementSibling;
+        while (bar && !bar.matches('.vf-stave')) bar = bar.previousElementSibling;
+        const [start, end] = bar ? span(bar) : [0, width];
+        if (l < Math.max(start, before) - 0.5) out.push(`staff ${k + 1}: note ${i + 1} runs into the bar line, signature or note before it`);
+        if (r > Math.min(end, width) + 0.5) out.push(`staff ${k + 1}: note ${i + 1} runs over its bar line or off the staff`);
+        before = r;
+        return [l, r];
+      });
+      // The bars of a staff with bar lines, each from its bar line (1 unit wide) to the next one.
+      const bars = [...svg.querySelectorAll('.vf-stave')].map(span);
+      for (const el of svg.querySelectorAll(':scope > rect')) {
+        const [l, r] = span(el);
+        if (l < -0.5 || r > width + 0.5) out.push(`staff ${k + 1}: the cursor is cut off`);
+        const bar = bars.length > 1 && bars.find(([start, end]) => start <= (l + r) / 2 && (l + r) / 2 <= end);
+        if (!bar) continue;
+        if (l < (bar === bars[0] ? head : bar[0] + 1) - 0.5 || r > bar[1] + 0.5) out.push(`staff ${k + 1}: the cursor runs over a bar line or the key signature`);
+        if (notes.filter(([a, b]) => a < r - 0.5 && b > l + 0.5).length > 1) out.push(`staff ${k + 1}: the cursor covers two notes`);
+      }
+      for (const el of svg.querySelectorAll('text')) {
+        const [l, r] = span(el);
+        if (l < -0.5 || r > width + 0.5) out.push(`staff ${k + 1}: the label ${el.textContent} is cut off`);
+      }
+      return out;
+    }),
+  );
+  expect(wrong, 'notes that do not fit their staff').toEqual([]);
+}
+
 /** Seeds localStorage before the app loads. */
 export async function seed(page: Page, data: { prefs?: object; progress?: object }): Promise<void> {
   await page.addInitScript((d) => {

@@ -276,10 +276,10 @@ Start tap and from every answer tap.
   system in brackets) and its slot on the staff is empty, with the cursor. The player taps the staff where the note
   goes: the nearest line or space gets a note in the cursor's slate, which can be dragged, moved a line or space at a
   time with ▲ ▼ (or ↑ ↓ on a keyboard), and is taken with **Check** (Enter). The staff is drawn taller in a round
-  that writes (4 bars on a phone) so a line or space is easy to point at, and does not scroll the page while
-  dragging. Screen readers get the staff as a slider whose value is the place (*the 2nd space*). After Check the note
-  is drawn where it belongs, green or red as when reading; a wrong one says where it went: *You wrote sol (G), on the
-  2nd line; la (A) goes on the 2nd space.* The hint is the reading hint (the nearest landmark and the way from it).
+  that writes (4 bars on a phone, on its side too) so a line or space is easy to point at, and does not scroll the page
+  while dragging. Screen readers get the staff as a slider whose value is the place (*the 2nd space*). After Check the
+  note is drawn where it belongs, green or red as when reading; a wrong one says where it went: *You wrote sol (G), on
+  the 2nd line; la (A) goes on the 2nd space.* The hint is the reading hint (the nearest landmark and the way from it).
 - **Hear it**: sol (G4) sounds, then the note, 0.9 s apart; the slot stays empty until the note is named, and *Hear
   it again* plays both again. The note always sounds, also with *Hear the notes* off. Answers are the name buttons (or
   the piano), and the feedback places the note from sol: *Right: mi (E), 2 steps below sol.* The hint says only that:
@@ -304,7 +304,9 @@ notes read the same.
   the player picks ♯ and F (or the F♯ black key). F without ♯ is wrong, and the feedback
   says why ("G major has F♯ in the key signature").
 - Every whole note is drawn in **its own bar** (a bar line after each note). An accidental
-  only lasts until the next bar line, so a sign never carries over to the next note.
+  only lasts until the next bar line, so a sign never carries over to the next note. Each bar has room for its note
+  and its sign: in a narrow bar the note moves back toward its bar line, and where that is not enough the staff is
+  drawn smaller (§9). The highlight around the note to name, its sign included, stays inside that note's bar.
 - With **Extra sharps and flats** on, a note can also carry a sign that changes the key
   signature's note: ♯ or ♭, or ♮ to cancel it (F♮ in G major). Alterations that would
   need a double sharp or double flat are left out.
@@ -1140,7 +1142,17 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 **Breakpoints.** Phone < 700 px; tablet 700–1099 px; desktop ≥ 1100 px.
 - A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Scales, Calibration) out in
   two columns, so the pad or the answer buttons stay in view next to the notation (Scales: the staff and the degree row
-  on the left, the piano or the sign buttons on the right).
+  on the left, the piano or the sign buttons on the right). Its Read notes staff is the phone's (1.45, or 2.1 with 4
+  bars in a round that writes), in the narrow column, not the tablet's.
+- A pitch staff (Read notes, Scales, Learn, Home's Continue card) is drawn at its screen's size, or smaller when its
+  notes need more room than its width leaves at that size: a key signature with many signs, sharps and flats before
+  the notes, a 320 px phone. A bar first gives up the room VexFlow leaves before its note (on a phone, keys with up to
+  three sharps or flats keep the full size), and a staff without bar lines keeps its size as long as its notes, the
+  cursor and the labels fit on it with the notes apart (on a phone, C, G and D major with their signs; Learn's scales
+  at 375 px and wider). Every whole note keeps its own bar, and the notes, the cursor and the labels stay inside the
+  staff; with bar lines, the cursor stays in the bar of the note it marks. It keeps one size while its notes come in
+  or stay hidden: on every page of a Read notes key and clef, and through a scale's page (`fitNotes` in
+  `render/pitchDraw.ts`).
 - **Phone browsers** (since 0.10.0). In Safari or Chrome the toolbars take about 180 px of a phone's screen, so the
   sizes to check include the visible area: 390 × 664 (an iPhone 14 in Safari) and 375 × 553 (an iPhone SE in Safari),
   `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens
@@ -1154,9 +1166,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only *Tap* in the ring,
     without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
   - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
-    0.8, the Read notes staff at 1.15 (not 1.45) and the Scales staff at 1.1 (not 1.25). The floors are lower (pad
-    72 px, Read notes piano 80 px, Scales piano 110 px), and so are the name buttons (56 px), the feedback, the
-    degrees, the sign buttons, Echo's listen card and Calibration's intro.
+    0.8, the Read notes staff at 1.15 (not 1.45) and the Scales staff at 1.1 (not 1.25), or smaller still to fit their
+    notes. The floors are lower (pad 72 px, Read notes piano 80 px, Scales piano 110 px), and so are the name buttons
+    (56 px), the feedback, the degrees, the sign buttons, Echo's listen card and Calibration's intro.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
