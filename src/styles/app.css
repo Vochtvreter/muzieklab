@@ -2070,12 +2070,18 @@ button.lesson-stars:hover {
   gap: 14px;
 }
 /*
- * Tall phones have room under the staff: a bigger pendulum reads better at arm's length. Eight bars leave room for it
- * from about 790 px tall; lower, it would push Skip off the screen (the pad is at its floor).
+ * Tall phones have room under the staff: a bigger pendulum reads better at arm's length. A phone under 800 px tall has
+ * not: with eight bars the pad is at its floor, so the pendulum gives up height and Skip stays on the screen (under
+ * 600 px tall it is as high as the digits' row, below).
  */
 @media (min-height: 800px) and (max-width: 1099.98px) {
   .play .beats--analog {
     height: 84px;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
+  .play .beats--analog {
+    height: 52px;
   }
 }
 .analog {
@@ -2264,10 +2270,6 @@ button.lesson-stars:hover {
   .cal .pad-ring {
     height: min(150px, 100cqh - 16px);
     width: auto;
-  }
-  /* With two staff rows the pad is at its floor: the pendulum gives up height too. */
-  .play .beats--analog {
-    height: 52px;
   }
 }
 @media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {

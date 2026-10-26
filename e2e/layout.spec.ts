@@ -923,9 +923,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
       if (portraitLayout) await expectFits(page);
-      // A wrong key: two lines of why ("That was F♯ (fa♯): the top line, sharp from the key signature.").
-      await keys.first().dispatchEvent('click');
-      await expect(page.locator('.nfeedback')).toHaveText(/^That was F♯/);
+      // The mistake this lesson trains, F for F♯: three lines of why on a phone ("That was F♯ (fa♯): the top line is F,
+      // and the sharp in the key signature makes it F♯ (fa♯)."). A 320 px phone leaves out "Any octave counts" for it.
+      await page.getByRole('button', { name: /^F, fa(, key |$)/ }).dispatchEvent('click');
+      await expect(page.locator('.nfeedback')).toHaveText(/^That was F♯ \(fa♯\): the top line is F, and the sharp/);
+      await expect(page.getByText('Any octave counts')).toBeAttached();
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
       if (portraitLayout) await expectFits(page);
       await expectNoSideScroll(page);
@@ -1506,10 +1508,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('play with the analog metronome: the tallest exercise fits, with the pendulum, the pad and Skip in view', async ({ page }) => {
+    test('play with the analog metronome: eight bars fit (sixteen on desktop), with the pendulum, the pad and Skip in view', async ({ page }) => {
       known(name, 'play-analog-tall');
       // The pendulum is taller than the digits. On phone and tablet eight bars, as lessons go up to; the desktop layout
-      // with the most Setup allows, sixteen bars, whose timing lane takes four rows under the staff.
+      // with the most Setup allows, sixteen bars, whose timing lane takes four rows under the staff. Setup allows
+      // sixteen on a phone too, but more than eight bars do not fit a short phone yet, with the digits as well: its
+      // timing lane draws every bar, in up to four rows.
       const bars = desktopLayout ? 16 : 8;
       await seed(page, {
         prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap', metronomeLook: 'analog' },
@@ -2357,6 +2361,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /notenbalk in C majeur/ })).toBeVisible();
       await expectClickable(page.getByRole('radio', { name: 'kruis' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      // On the piano, the key labels' switch beside "Elk octaaf telt": "Geen namen" fits its segment at every size.
+      await page.getByRole('group', { name: 'Antwoord met' }).getByRole('button', { name: 'Piano' }).click();
+      await expect(page.getByRole('group', { name: 'Namen op de toetsen' })).toBeVisible();
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });

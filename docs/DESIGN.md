@@ -1184,17 +1184,19 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     (214 px on the board), 120 px for the Read notes piano (200 px) and 140 px for the Scales piano (210 px). The pad
     is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only *Tap* in the ring,
     without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
-    The analog beat counter is 52 px tall (84 px on the board, which phones from 800 px tall keep; 64 px in between).
-    Read notes draws a range with ledger lines smaller, at most one staff space taller than *On the staff* (8 spaces
-    high: 1.05 for +2 ledger lines, 1.29 for +1), and from 360 px wide its key labels sit beside *Any octave counts*.
-    The scale's name is 18 px (22 px on the board), so a long one (*A♯ harmonisch mineur*) stays on one line at
-    375 px, and Up & down's two degree rows are 40 px high, 4 px apart.
+    The analog beat counter is 52 px tall, on a phone up to 800 px tall too (84 px on the board, which taller phones
+    keep). Read notes draws a range with ledger lines smaller, at most one staff space taller than *On the staff*
+    (8 spaces high: 1.05 for +2 ledger lines, 1.29 for +1), and from 360 px wide its key labels sit beside *Any octave
+    counts*. The scale's name is 18 px (22 px on the board), so a long one (*A♯ harmonisch mineur*) stays on one line
+    at 375 px, and Up & down's two degree rows are 40 px high, 4 px apart.
   - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
     0.8, the Read notes staff at 1.15 (not 1.45; 0.84 and 1.02 with ledger lines) and the Scales staff at 1.1 (not
     1.25), or smaller still to fit their notes. The floors are lower (pad 72 px, Read notes piano 64 px with its black
-    keys kept at 44 px, Scales piano 110 px), and so are the name buttons (56 px), the feedback, the degrees (32 px
-    with Up & down, where the gaps are 6 px), the sign buttons, the analog beat counter (44 px, as the digits' row), Echo's
-    listen card and Calibration's intro.
+    keys kept at 44 px and the white keys' labels below them, Scales piano 110 px), and so are the name buttons
+    (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign buttons, the analog
+    beat counter (44 px, as the digits' row), Echo's listen card and Calibration's intro. At 320 px wide Read notes
+    leaves out *Any octave counts* above the key labels (screen readers still read it), so the why of a wrong key in a
+    lesson in a key fits on its three lines.
 - **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a
   1280 × 720 laptop, `laptop-720`) the page's padding (20 px at the top, 16 px at the bottom), its gap (16 px) and the
   staff card's padding (20 × 40 px, 16 px at the bottom) tighten, and the stat cards are lower (12 px × 18 px), so two
