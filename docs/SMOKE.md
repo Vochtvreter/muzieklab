@@ -24,8 +24,8 @@ sessions run it to check the test site.
   lesson, a Read notes round, a Scales round, a Learn chapter.
 - **Accounts** with the real API (`accounts.spec.ts`): the admin's own screens, looked at; an invite made on the admin
   screen and accepted in another browser; a wrong password; signing out with Keep and with Remove; staying signed in
-  across reloads, and in several tabs opened one after another; the account and admin screens at every size, light
-  and dark. Several tabs opened at once: a known bug, noted and not checked (*Known app bugs* below).
+  across reloads, and in several tabs opened and reloaded one after another and at once (one renewal for tabs that
+  start together); the account and admin screens at every size, light and dark.
 - **Progress on the account** (`sync.spec.ts`): played on a phone, it is on a laptop that signs in; a theme set there
   comes back; Remove on sign-out takes it off the phone.
 - **Roles** (`roles.spec.ts`): one account goes through every built-in role in `shared/api.ts` (`BUILT_IN_ROLES`), then
@@ -127,13 +127,11 @@ that commit.
 
 ## Known app bugs
 
-Two app bugs are known, and the tests treat them differently.
+One app bug is known.
 
 - `scales: a finished scale looks up no missing message` fails on purpose (`test.fail`): when a scale is done, Scales
   looks up the step after the last note, and the console says `[i18n] missing message: scales.how.undefined`. Once
   the bug is fixed the test fails, which says so: remove `test.fail`.
-- Several tabs opened at once: tabs that start together each renew the session, and one may sign itself out (or the
-  API may end the session). It depends on timing, so it cannot be a check that fails. `staying signed in: tabs opened
-  one after another stay signed in…` checks tabs opened in turn, then opens three at once and only notes what happened:
-  a `known bug` annotation in the report, and a line `Smoke, several tabs at once: …` in the output. Nothing turns red
-  when it is fixed: once it is, make that part a check like the first.
+
+Several tabs opened at once was the other one until 0.17.1 (tabs that started together each renewed the session, and
+one could sign itself out): `staying signed in: tabs opened one after another, and at once…` checks it now.

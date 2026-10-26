@@ -2604,6 +2604,10 @@
       "title": "Feedbackmodus",
       "mode": "Voor beheerders: de feedbackmodus, in Instellingen → Account → Feedback, zet de feedbackknop voor iedereen aan en uit. Hij staat eerst uit: niemand ziet de knop tot een beheerder hem aanzet."
     },
+    "v0_17_1": {
+      "title": "Ingelogd blijven met meerdere tabbladen",
+      "tabs": "Als je meerdere tabbladen met de app tegelijk opende of herlaadde, kon een deel ervan je als uitgelogd tonen, en soms werd je in allemaal uitgelogd. Nu blijft elk tabblad ingelogd."
+    },
     "v0_17_0": {
       "title": "Feedback op de plek zelf",
       "feedback": "Voor het team: een account dat feedback mag geven krijgt een feedbackknop. Markeer een deel van een scherm en stuur wat er anders moet, met het scherm, de plek en het apparaat erbij. Meldingen worden bewaard, zodat een beheerder ze kan beoordelen in Instellingen → Account → Feedback.",

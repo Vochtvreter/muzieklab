@@ -2,6 +2,7 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Me } from '../../shared/api';
+import { RENEWED_KEY } from '../api/client';
 import { ACCOUNT_KEY } from '../game/storage';
 import { keepSignedIn, RECHECK_MS, RENEW_MS, resetAccountCheck, useAccount, type UseAccount } from './account';
 import { StoreProvider } from './store';
@@ -110,10 +111,44 @@ describe('useAccount', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     // Hours later: renewed again.
     const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now + RENEW_MS);
+    vi.spyOn(Date, 'now').mockReturnValue(now + RENEW_MS + 1);
     document.dispatchEvent(new Event('visibilitychange'));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     vi.restoreAllMocks();
+  });
+
+  it("keepSignedIn counts another tab's renewal: none on start soon after it, one once it is RENEW_MS ago", async () => {
+    fetchMock.mockImplementation(async () => new Response(null, { status: 204 }));
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    const renewedElsewhere = Date.now() - 60_000;
+    localStorage.setItem(RENEWED_KEY, String(renewedElsewhere));
+    keepSignedIn();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.spyOn(Date, 'now').mockReturnValue(renewedElsewhere + RENEW_MS + 1);
+    document.dispatchEvent(new Event('visibilitychange'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/auth/refresh');
+    // And leaves its own for the other tabs.
+    await waitFor(() => expect(localStorage.getItem(RENEWED_KEY)).toBe(String(renewedElsewhere + RENEW_MS + 1)));
+    vi.restoreAllMocks();
+  });
+
+  it('keepSignedIn does not try again for RENEW_MS after a refusal, but does after no answer', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    keepSignedIn();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 0));
+    // Offline: again when the app comes back into view; refused this time.
+    fetchMock.mockResolvedValueOnce(json(401, { error: 'unauthenticated', message: '' }));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 0));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('no answer keeps the cached account, as offline', async () => {

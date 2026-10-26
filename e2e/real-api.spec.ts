@@ -247,6 +247,52 @@ test('a renewal whose answer never came back (a reload on the way) is made again
   expect(await cookie('refresh')).not.toBe(refresh);
 });
 
+test('tabs opened at once, and reloaded at once, all stay signed in, and the session goes on', async ({ person }) => {
+  const admin = await anAdmin(person);
+  const member = await aMember(person, admin);
+  const { ctx, page } = member;
+  await page.goto('./#/account');
+  await expect(page.getByLabel('Name')).toHaveValue(member.name);
+  await page.waitForLoadState('networkidle');
+  // As if the session was last renewed over 12 hours ago, so every tab that starts wants to renew it.
+  const twelveHoursOn = () => page.evaluate(() => localStorage.removeItem('muzieklab.renewed.v1'));
+  let renewals = 0;
+  ctx.on('request', (r) => {
+    if (r.url().endsWith('/api/v1/auth/refresh')) renewals++;
+  });
+  // A tab shows the cached account at once, so each is checked once nothing is on its way: still on Account, and
+  // still signed in in Settings.
+  const stayed = async (tabs: Page[], when: string) => {
+    await Promise.all(tabs.map((tab) => tab.waitForLoadState('networkidle')));
+    for (const [i, tab] of tabs.entries()) {
+      await expect(tab, `tab ${i + 1} of ${tabs.length}, ${when}`).toHaveURL(/#\/account$/);
+      await expect(tab.getByLabel('Name')).toHaveValue(member.name);
+      await tab.evaluate(() => void (location.hash = '#/settings'));
+      await expect(accountRow(tab, member.name), `tab ${i + 1} of ${tabs.length}, ${when}`).toContainText(member.email);
+      await tab.evaluate(() => void (location.hash = '#/account'));
+    }
+  };
+
+  // One of them renews; the others wait for it and use its renewal, and what they sent with the session token it
+  // replaced is sent again.
+  await twelveHoursOn();
+  const tabs = [page, ...(await Promise.all([1, 2, 3].map(() => ctx.newPage())))];
+  await Promise.all(tabs.slice(1).map((tab) => tab.goto('./#/account')));
+  await stayed(tabs, 'opened at once');
+  expect(renewals, 'renewals by the 3 tabs opened at once').toBe(1);
+
+  await twelveHoursOn();
+  renewals = 0;
+  await Promise.all(tabs.map((tab) => tab.reload()));
+  await stayed(tabs, 'reloaded at once');
+  expect(renewals, 'renewals by the 4 tabs reloaded at once').toBe(1);
+
+  // The session goes on: its session token works, and so does its refresh token.
+  expect((await ctx.request.get(API + '/me')).status()).toBe(200);
+  expect((await ctx.request.post(API + '/auth/refresh', { headers: { Origin: ORIGIN } })).status()).toBe(204);
+  expect((await ctx.request.get(API + '/me')).status()).toBe(200);
+});
+
 test('blocking signs a member out at their next request and refuses sign-in until unblocked', async ({ person }) => {
   const admin = await anAdmin(person);
   const member = await aMember(person, admin);
