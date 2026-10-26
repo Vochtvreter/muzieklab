@@ -226,8 +226,9 @@ const ALWAYS: Allowed[] = [
 ];
 
 /**
- * Signed in, a request sent just before the session was renewed (every full page load renews it) is answered 401, and
- * the app renews and sends it again (src/api/client.ts). Allowed only when that same request then gets another answer.
+ * Signed in, a request sent just before the session was renewed (a page load renews it when its last renewal, in any
+ * tab, is 12 hours ago) is answered 401, and the app sends it again with the new cookies (src/api/client.ts). Allowed
+ * only when that same request then gets another answer.
  */
 const RETRIED: Allowed[] = [
   { method: 'GET', path: /^\/api\/v1\//, status: 401 },

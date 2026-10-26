@@ -2597,6 +2597,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_17_1": {
+      "title": "Still signed in with several tabs open",
+      "tabs": "If you opened or reloaded several tabs of the app at once, some of them could show you as signed out, and now and then you were signed out in all of them. Now every tab stays signed in."
+    },
     "v0_17_0": {
       "title": "Feedback on the spot",
       "feedback": "For the team: an account allowed to give feedback gets a Feedback button. Mark any part of a screen and send what should change, with the screen, the spot and the device attached. Reports are saved for an admin to review in Settings → Account → Feedback.",
