@@ -29,9 +29,15 @@ export function useMediaQuery(query: string): boolean {
 }
 
 /**
+ * A phone in portrait under 700 px tall: a phone browser's screen (DESIGN.md §9: 390 × 664 on an iPhone 14 in Safari).
+ * The CSS tightens gaps and paddings there with the same query, and Read notes draws a staff with ledger lines smaller.
+ */
+export const SHORT_PHONE = '(max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait)';
+
+/**
  * A phone in portrait under 600 px tall: what a phone browser leaves of a small phone under its toolbars (DESIGN.md §9:
  * 375 × 553 on an iPhone SE in Safari). Exercise screens draw their staff smaller there; the CSS tightens the rest with
- * the same query, and from 700 px down already tightens gaps and paddings.
+ * the same query, and from 700 px down already tightens gaps and paddings (SHORT_PHONE).
  */
 export const SHORTER_PHONE = '(max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait)';
 

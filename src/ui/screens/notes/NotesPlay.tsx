@@ -38,7 +38,7 @@ import { Segmented } from '../../components/Controls';
 import { ExerciseHeader } from '../../components/ExerciseHeader';
 import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
-import { SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useMediaQuery } from '../../hooks';
+import { SHORT_PHONE, SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useMediaQuery } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
 import {
   feedbackText,
@@ -101,6 +101,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const tablet = useExerciseLayout() === 'tablet';
   // A phone browser on a small phone (375 × 553): a smaller staff, so the answer buttons fit below it (DESIGN.md §9).
   const shorter = useMediaQuery(SHORTER_PHONE);
+  const short = useMediaQuery(SHORT_PHONE);
   const keys = useKeyboardHints(bp);
   useDocTitle(t('app.docTitle', { page: t('notes.play.docTitle') }));
   const notes = run.notes;
@@ -331,6 +332,10 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     [notes, page.from, page.to, answers, i, ghost, done],
   );
   const room = run.settings.range === 'staff' ? 1.5 : run.settings.range === 'ledger1' ? 2.5 : 3.5;
+  // The staff is 4 + 2 × room staff spaces high. On a phone browser's short screen a range with ledger lines is drawn
+  // smaller, at most one space higher than the staff alone (8 spaces, not 9 or 11): the answer controls under it have no
+  // more height to give, and Hint and Next note would go off the screen (DESIGN.md §9).
+  const ledgerFit = short ? Math.min(1, 8 / (4 + 2 * room)) : 1;
 
   const right = answers.filter((a) => a.outcome === 'right').length;
   const answeredCount = answers.length;
@@ -412,7 +417,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   };
   const staffSvg = (
     <PitchStaff clef={note.clef} keyId={note.key} notes={shown} fitNotes={fitNotes} slots={size} marks={marks} cursor={i - page.from}
-      scale={big ? (desktop ? 2 : tablet ? 2.6 : shorter ? 1.5 : 2.1) : desktop ? 1.6 : tablet ? 2 : shorter ? 1.15 : 1.45} room={room}
+      scale={big ? (desktop ? 2 : tablet ? 2.6 : shorter ? 1.5 : 2.1) : (desktop ? 1.6 : tablet ? 2 : shorter ? 1.15 : 1.45) * ledgerFit} room={room}
       label={writing ? undefined : staffLabel} className="nplay-staff-svg" />
   );
   // A slider for screen readers and the keyboard: its value is where the note sits.

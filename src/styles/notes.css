@@ -291,7 +291,9 @@
   font-size: 15px;
   font-weight: 700;
 }
+/* The count keeps its width and stays on one line beside a long eyebrow (a lesson in a key): the eyebrow wraps. */
 .nplay-score {
+  flex: none;
   text-align: right;
 }
 .nplay-score-n {
@@ -299,6 +301,7 @@
   font-weight: 600;
   font-size: 20px;
   line-height: 1;
+  white-space: nowrap;
 }
 .nplay-staff {
   flex: none;
@@ -2058,15 +2061,22 @@
   .nplay .name-btn {
     height: 56px;
   }
+  /* Low enough for two ledger lines with a timer on a 320 px phone; the black keys stay a touch target. */
   .nplay .piano {
-    min-height: 80px;
+    min-height: 64px;
+  }
+  .nplay .piano-black {
+    min-height: 44px;
   }
   .nplay .nactions .btn {
     min-height: 44px;
   }
 }
-/* From 360 px wide the piano labels fit beside "Any octave counts" again, which leaves the piano 24 px more. */
-@media (min-width: 360px) and (max-width: 389.98px) and (max-height: 599.98px) and (orientation: portrait) {
+/*
+ * From 360 px wide the piano labels fit beside "Any octave counts" again, which leaves the piano 23 px more on a phone
+ * browser's short screen (375 × 667 as well as 375 × 553).
+ */
+@media (min-width: 360px) and (max-width: 389.98px) and (max-height: 699.98px) and (orientation: portrait) {
   .nlabels {
     flex-direction: row;
     align-items: center;

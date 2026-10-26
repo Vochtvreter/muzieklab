@@ -1158,17 +1158,31 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens
   (Play, Echo, Read notes, Scales, Calibration) must fit them without scrolling during play, with the pad, the piano
   and the answer buttons in view and at least 44 px tall. A phone in portrait has two short-screen steps (CSS
-  `max-height: 699.98px` and `599.98px`; the second is `SHORTER_PHONE` in `ui/hooks.ts`). 390 × 844, tablets, desktop
-  and phone landscape do not change.
+  `max-height: 699.98px` and `599.98px`; `SHORT_PHONE` and `SHORTER_PHONE` in `ui/hooks.ts`). 390 × 844, tablets and
+  phone landscape do not change. The analog beat counter, Read notes' ranges with ledger lines and Scales' Up & down,
+  which take more height, have steps of their own.
   - Under 700 px tall (390 × 664, 375 × 667): the gaps tighten to 10 px, and so do the page padding (10 px at the top,
     12 px at the bottom) and the staff card's. Then the pad and the pianos give up height, down to 112 px for the pad
     (214 px on the board), 120 px for the Read notes piano (200 px) and 140 px for the Scales piano (210 px). The pad
     is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only *Tap* in the ring,
     without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
+    The analog beat counter is 52 px tall (84 px on the board, which phones from 800 px tall keep; 64 px in between).
+    Read notes draws a range with ledger lines smaller, at most one staff space taller than *On the staff* (8 spaces
+    high: 1.05 for +2 ledger lines, 1.29 for +1), and from 360 px wide its key labels sit beside *Any octave counts*.
+    The scale's name is 18 px (22 px on the board), so a long one (*A♯ harmonisch mineur*) stays on one line at
+    375 px, and Up & down's two degree rows are 40 px high, 4 px apart.
   - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
-    0.8, the Read notes staff at 1.15 (not 1.45) and the Scales staff at 1.1 (not 1.25), or smaller still to fit their
-    notes. The floors are lower (pad 72 px, Read notes piano 80 px, Scales piano 110 px), and so are the name buttons
-    (56 px), the feedback, the degrees, the sign buttons, Echo's listen card and Calibration's intro.
+    0.8, the Read notes staff at 1.15 (not 1.45; 0.84 and 1.02 with ledger lines) and the Scales staff at 1.1 (not
+    1.25), or smaller still to fit their notes. The floors are lower (pad 72 px, Read notes piano 64 px with its black
+    keys kept at 44 px, Scales piano 110 px), and so are the name buttons (56 px), the feedback, the degrees (32 px
+    with Up & down, where the gaps are 6 px), the sign buttons, the analog beat counter (44 px, as the digits' row), Echo's
+    listen card and Calibration's intro.
+- **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a
+  1280 × 720 laptop, `laptop-720`) the page's padding (20 px at the top, 16 px at the bottom), its gap (16 px) and the
+  staff card's padding (20 × 40 px, 16 px at the bottom) tighten, and the stat cards are lower (12 px × 18 px), so two
+  staff rows, a timing lane of four rows (16 bars) and the analog pendulum fit. Under 820 px only the room under the
+  pad row is smaller (16 px, not 36 px), which shows only when 16 bars with the pendulum fill a 1280 × 800 window.
+  Read notes and Scales keep their spacing; on a laptop their page scrolls.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the

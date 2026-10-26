@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteSettings } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { pianoWindow, scaleNotes, type Scale } from '../src/core/scale';
+import { noteLessonSettings } from '../src/game/notesPath';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import type { Me } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
@@ -841,6 +842,74 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
     });
 
+    test('read notes: ledger lines with a key signature and a timer fit, on the piano and with the name buttons', async ({ page }) => {
+      known(name, 'notes-ledger');
+      // The ranges with ledger lines draw a taller staff, a key with a signature makes the idle line two lines long,
+      // and the timer adds its bar: on a short phone the staff is drawn smaller, so the answer controls stay in view.
+      const rounds: Partial<NoteSettings>[] = [
+        { input: 'piano', range: 'ledger2', keys: ['G'], timer: 5 },
+        { input: 'piano', range: 'ledger1', keys: ['G'], timer: 5 },
+        { input: 'names', range: 'ledger2', keys: ['G'], extras: 'both', timer: 5 },
+      ];
+      for (const round of rounds) {
+        const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, ...round };
+        await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 4242, focus: [] });
+        await page.goto('./#/notes/play');
+        // A fresh load, so the app reads the round just seeded (a new hash alone keeps the app and its round).
+        await page.reload();
+        await expect(page.getByRole('img', { name: /staff in G major/ })).toBeVisible();
+        // Within the note's 5 s: the idle line, then the hint, each two lines long on a phone.
+        if (portraitLayout) await expectFits(page);
+        await page.getByRole('button', { name: 'Hint' }).dispatchEvent('click');
+        await expect(page.locator('.nfeedback')).toHaveClass(/is-hint/);
+        if (portraitLayout) await expectFits(page);
+        if (round.input === 'piano') {
+          const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+          await expect(keys).toHaveCount(12);
+          for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i), inPlace);
+          // The black keys stay a touch target when the piano gives up height.
+          await expectTouchHeight(page.locator('.piano-black').first());
+        } else {
+          for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }), inPlace);
+          const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
+          for (let i = 0; i < 7; i++) await expectClickable(names.nth(i), inPlace);
+        }
+        await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+        await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+        await expectTouchHeight(page.getByRole('button', { name: 'Hint' }));
+        await expectStavesFit(page);
+      }
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes lesson in a key: the count stays on one line beside a long eyebrow, and the round fits', async ({ page }) => {
+      known(name, 'notes-lesson-key');
+      // Lesson 22.3 (Keys, G major in both clefs, on the piano): "Lesson 22.3 · Treble clef · G major" over the
+      // question and the two-line idle line. Seed 27 starts on F♯ in the treble clef.
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), {
+        settings: noteLessonSettings('keys', '2.3'),
+        seed: 27,
+        focus: [],
+        lesson: { track: 'keys', id: '2.3' },
+      });
+      await page.goto('./#/notes/play');
+      await expect(page.getByRole('img', { name: /staff in G major/ })).toBeVisible();
+      await expect(page.getByText('Mind the key signature.', { exact: false })).toBeVisible();
+      // Phone and tablet show the count beside the eyebrow: "0 / 0" on one line (20 px), however long the eyebrow.
+      if (!desktopLayout) expect((await page.locator('.nplay-score-n').boundingBox())!.height, 'the count on one line').toBeLessThan(30);
+      const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+      for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i), inPlace);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      if (portraitLayout) await expectFits(page);
+      // A wrong key: two lines of why ("That was F♯ (fa♯): the top line, sharp from the key signature.").
+      await keys.first().dispatchEvent('click');
+      await expect(page.locator('.nfeedback')).toHaveText(/^That was F♯/);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      if (portraitLayout) await expectFits(page);
+      await expectNoSideScroll(page);
+    });
+
     test('read notes: round done with the missed notes on small staves, named as the player reads them', async ({ page }) => {
       known(name, 'notes-done-chips');
       // A known round (treble, C major, on the staff): the first three notes answered with a wrong letter.
@@ -1015,6 +1084,44 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.splay-staff-svg .vf-stavenote')).toHaveCount(8);
         await expectStavesFit(page);
         expect(await size(), 'the staff when done').toEqual(first);
+      }
+    });
+
+    test('scales: up and down fits with its second degree row, on the piano and with the signs', async ({ page }) => {
+      known(name, 'scales-up-down');
+      // Up and down adds the way back as a second degree row (DESIGN.md §3.7): G major on the piano, and A♯ harmonic
+      // minor with the signs, whose long name and four sign buttons take the most room on a 320 px phone.
+      const rounds = [
+        { keys: ['G'], types: ['major'], input: 'piano', title: 'G major' },
+        { keys: ['C#'], types: ['harmonic'], input: 'names', title: 'A♯ harmonic minor' },
+      ];
+      for (const { title, ...round } of rounds) {
+        await seed(page, { progress: { scales: { settings: { keyMode: 'one', direction: 'upDown', write: 'signs', showSteps: true, playNotes: false, ...round }, stars: {} } } });
+        await page.goto('./#/scales/setup');
+        // A fresh load, so the app reads the settings just seeded.
+        await page.reload();
+        await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+        await expect(page.getByText(title, { exact: true })).toBeVisible();
+        await expect(page.getByRole('list', { name: 'Scale degrees going down' })).toBeVisible();
+        if (round.input === 'piano') {
+          const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
+          for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i), inPlace);
+          if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
+        } else {
+          const signs = page.getByRole('group', { name: 'Sign for A' }).getByRole('button');
+          await expect(signs).toHaveCount(4);
+          for (let i = 0; i < 4; i++) await expectClickable(signs.nth(i), inPlace);
+          await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+          await expectTouchHeight(signs.first());
+        }
+        await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
+        if (portraitLayout) await expectFits(page);
+        // A wrong first note: the feedback says why, on two lines on a narrow phone, and the page still fits.
+        if (round.input === 'piano') await page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button', { name: /^A(,|$)/ }).first().dispatchEvent('click');
+        else await page.getByRole('group', { name: 'Sign for A' }).getByRole('button').first().dispatchEvent('click');
+        await expect(page.locator('.nfeedback')).toHaveClass(/is-wrong/);
+        if (portraitLayout) await expectFits(page);
+        await expectNoSideScroll(page);
       }
     });
 
@@ -1251,7 +1358,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
       // A phone in landscape has no Skip link: the pad takes the right column.
       if (portraitLayout) await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
-      if (!desktopLayout) await expectFits(page);
+      await expectFits(page);
       // Tablet (App design canvas, PlayTablet): the exercise header with the brand, Pause and Quit, the count and combo
       // cards, and a big pad. A phone on its side keeps the phone layout in two columns.
       if (tabletLayout && portraitLayout) {
@@ -1270,7 +1377,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('play: eight bars fit, with the staff, the lane, the beat counter, the pad and Skip in view', async ({ page }) => {
       known(name, 'play-eight-bars');
-      // Lessons go up to 8 bars: the staff shows two rows and the timing lane two, the tallest Play gets.
+      // Lessons go up to 8 bars: the staff shows two rows and the timing lane two. Desktop Play does not scroll either,
+      // on a 1280 × 720 laptop too (DESIGN.md §9 Scrolling).
       await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, notes: ['quarter', 'eighth', 'half'], bars: 8, tempo: 60 } } });
       await page.goto('./#/setup');
       await page.getByRole('button', { name: /^Start · / }).click();
@@ -1287,8 +1395,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (!desktopLayout) {
         await expectClickable(pad(page), { scroll: false });
         await expectTouchHeight(pad(page));
-        await expectFits(page);
       }
+      await expectFits(page);
       if (tablet) {
         // Tablet: four bars a row. A smaller tablet window (700 × 1000, a tablet-wide window on a laptop) still fits,
         // with the pad tall enough.
@@ -1319,7 +1427,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(staff).toHaveAttribute('viewBox', /^0 0 [\d.]+ 178$/);
       await expectStaffNotCut(staff);
       // The taller staff still fits without scrolling: on the shortest phone (375 × 553) the pad gives up the room.
-      if (!desktopLayout) await expectFits(page);
+      await expectFits(page);
       await expectNoSideScroll(page);
     });
 
@@ -1375,6 +1483,51 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectFits(page);
       }
       await expectNoSideScroll(page);
+    });
+
+    test('play with the analog metronome: the tallest exercise fits, with the pendulum, the pad and Skip in view', async ({ page }) => {
+      known(name, 'play-analog-tall');
+      // The pendulum is taller than the digits. On phone and tablet eight bars, as lessons go up to; the desktop layout
+      // with the most Setup allows, sixteen bars, whose timing lane takes four rows under the staff.
+      const bars = desktopLayout ? 16 : 8;
+      await seed(page, {
+        prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap', metronomeLook: 'analog' },
+        progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, notes: ['quarter', 'eighth', 'half'], bars, tempo: 60 } },
+      });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.locator('.beats--analog')).toBeVisible();
+      if (portraitLayout) {
+        await expect(page.locator('.beats--analog')).toBeInViewport({ ratio: 1 });
+        await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+      }
+      if (desktopLayout) {
+        // The key-cap pad and the four stat cards, the Metronome switch last, all in the window.
+        await expect(page.locator('.dpad')).toBeInViewport({ ratio: 1 });
+        await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
+      } else {
+        await expectClickable(pad(page), { scroll: false });
+        await expectTouchHeight(pad(page));
+      }
+      await expectFits(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('play: the pause menu shows all four rows', async ({ page }) => {
+      known(name, 'play-pause');
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+      await page.getByRole('button', { name: /^Pause/ }).click();
+      const sheet = page.getByRole('dialog', { name: 'Paused' });
+      await expect(sheet.getByRole('button', { name: 'Resume' })).toBeVisible();
+      // A sheet taller than the screen (a phone on its side) scrolls; the menu never cuts off its own last row.
+      await expectNotSqueezed(page.locator('.menu'));
+      const [menu, quit] = [(await page.locator('.menu').boundingBox())!, (await sheet.getByRole('button', { name: 'Quit practice' }).boundingBox())!];
+      expect(quit.y + quit.height, 'Quit practice ends inside the menu').toBeLessThanOrEqual(menu.y + menu.height + 1);
+      for (const row of ['Restart exercise', 'How to play', 'Practice settings', 'Quit practice']) await expectClickable(sheet.getByRole('button', { name: new RegExp('^' + row) }));
+      await expectClickable(sheet.getByRole('button', { name: 'Resume' }));
     });
 
     /**

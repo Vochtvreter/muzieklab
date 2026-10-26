@@ -2058,8 +2058,11 @@ button.lesson-stars:hover {
   align-items: center;
   gap: 14px;
 }
-/* Tall phones and tablets have room under the staff: a bigger pendulum reads better at arm's length. */
-@media (min-height: 700px) and (max-width: 1099.98px) {
+/*
+ * Tall phones have room under the staff: a bigger pendulum reads better at arm's length. Eight bars leave room for it
+ * from about 790 px tall; lower, it would push Skip off the screen (the pad is at its floor).
+ */
+@media (min-height: 800px) and (max-width: 1099.98px) {
   .play .beats--analog {
     height: 84px;
   }
@@ -2251,6 +2254,10 @@ button.lesson-stars:hover {
     height: min(150px, 100cqh - 16px);
     width: auto;
   }
+  /* With two staff rows the pad is at its floor: the pendulum gives up height too. */
+  .play .beats--analog {
+    height: 52px;
+  }
 }
 @media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
   .play {
@@ -2269,6 +2276,10 @@ button.lesson-stars:hover {
   /* Play's Skip link; Read notes and Scales set their own margins (.nplay-skip). */
   .skip-link {
     margin-top: 0;
+  }
+  /* The pendulum as high as the digits' row. */
+  .play .beats--analog {
+    height: 44px;
   }
 }
 /* A pad squeezed under 104 px (8 bars on a short phone): the note glyph no longer fits in the ring, "Tap" does. */
@@ -2558,6 +2569,29 @@ button.lesson-stars:hover {
   font-weight: 700;
   font-size: 14px;
   color: var(--ink);
+}
+/*
+ * A shorter desktop window: Play does not scroll there either (DESIGN.md §9 Scrolling). Under 820 px tall the room
+ * under the pad row is smaller, which shows only when 16 bars with the pendulum fill a 1280 × 800 window (the boards'
+ * size). Under 800 px (a 1280 × 720 laptop) the spacing tightens and the stat cards are lower, so two staff rows, a
+ * timing lane of four rows (16 bars) and the pendulum fit. Read notes and Scales keep theirs and scroll (.nplay-main).
+ */
+@media (min-width: 1100px) and (max-height: 819.98px) {
+  .dplay-main:not(.nplay-main) {
+    padding-bottom: 16px;
+  }
+}
+@media (min-width: 1100px) and (max-height: 799.98px) {
+  .dplay-main:not(.nplay-main) {
+    padding-top: 20px;
+    gap: 16px;
+  }
+  .dplay-staff {
+    padding: 20px 40px 16px;
+  }
+  .dstats .stat {
+    padding: 12px 18px;
+  }
 }
 
 /* ---------- Play (tablet) ---------- */
@@ -2944,7 +2978,9 @@ button.lesson-stars:hover {
   border-color: var(--accent-ring);
   color: var(--accent-ink);
 }
+/* The Pause menu keeps its rows whole in a sheet taller than the screen (a phone on its side): the sheet scrolls. */
 .menu {
+  flex: none;
   border: 1px solid var(--divider);
   border-radius: 18px;
   overflow: hidden;

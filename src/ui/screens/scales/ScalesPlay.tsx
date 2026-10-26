@@ -415,7 +415,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
 
   return (
     <ExerciseFrame className="frame--play">
-      <div className="page play nplay splay no-scrollbar">
+      <div className={'page play nplay splay no-scrollbar' + (dir === 'upDown' ? ' splay--updown' : '')}>
         <h1 className="sr-only">{t(piano ? 'scales.play.headingPiano' : 'scales.play.headingNames')}</h1>
         <div className="play-top">
           <Link to="/scales" aria-label={t('scales.play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
