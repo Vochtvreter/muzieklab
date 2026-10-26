@@ -69,9 +69,16 @@ example *Testers*, `POST /admin/roles`), and gives that role to accounts on Sett
 given the same way (for example to a *Reviewers* role), by someone who has it. Players without an account never see the
 tool, and their app sends no request for it.
 
-A signed-in account with `feedback.give` sees the tool on every screen. **Settings → Account → Feedback button** turns
-it off on one device (and on again); the form's *Hide the feedback button on this device* does the same. An account
-with `feedback.review` has a **Feedback** row there too, which opens the reports.
+The tool shows only in **feedback mode**, which an admin turns on and off for everyone with the **Feedback mode** switch
+above the reports (Settings → Account → Feedback; `PUT /admin/feedback-mode`, `feedback.review`). It starts off, so
+nobody sees the button until an admin turns it on, for a round of testing for example. The app learns it with the
+account (`Me.feedbackMode`, from GET /me when the app starts), so others see the change the next time they open the
+app; the admin who switched it sees it at once.
+
+While it is on, a signed-in account with `feedback.give` sees the tool on every screen. **Settings → Account → Feedback
+button** turns it off on one device (and on again); the form's *Hide the feedback button on this device* does the same.
+While feedback mode is off, that switch is not shown either. An account with `feedback.review` has a **Feedback** row
+there too, which opens the reports.
 
 ### Marking and sending
 
@@ -101,7 +108,8 @@ kept.
 
 ### Reviewing
 
-For an account with `feedback.review`, from Settings → Account → Feedback (DESIGN.md §9.2 has the screens):
+For an account with `feedback.review`, from Settings → Account → Feedback (DESIGN.md §9.2 has the screens). Above the
+list, **Feedback mode** turns the Feedback button on and off for everyone (*Who has it*, above).
 
 1. **Feedback** (`#/admin/feedback`) lists the reports, newest first, with a filter by status that counts each:
    New 3 · Accepted 1 · Declined 0 · All 4. It starts on New, the reports nobody has reviewed yet. A row shows the
@@ -156,12 +164,12 @@ The app takes no screenshot itself (§10). The triage step renders the screen ag
 |---|---|
 | `shared/feedback.ts` | Report types; the review's statuses and bodies; the issue (title, body, labels); reading a report back from an issue. Used by the app and the API |
 | `src/feedback/dom.ts` | The selector, the readable name and the markup of the marked element; the device context |
-| `src/ui/feedback/FeedbackTool.tsx` | Shows the tool for an account with `feedback.give`; loads it in its own chunk |
+| `src/ui/feedback/FeedbackTool.tsx` | Shows the tool in feedback mode, for an account with `feedback.give`; loads it in its own chunk |
 | `src/ui/feedback/FeedbackOn.tsx` | The button, the marking layer and the form, which sends to the API |
 | `src/styles/feedback.css` | Their styles |
-| `src/ui/screens/admin/AdminFeedback.tsx` | Feedback: the reports, with the status filter |
+| `src/ui/screens/admin/AdminFeedback.tsx` | Feedback: the Feedback mode switch, and the reports, with the status filter |
 | `src/ui/screens/admin/AdminFeedbackReport.tsx` | One report: everything it holds, the review (status and note), Copy as Markdown and Delete report |
-| `server/src/routes/feedback.ts` | `POST /feedback`: checks the report and stores it; `/admin/feedback`: the list, one report, the review and Delete (`feedback.review`) |
+| `server/src/routes/feedback.ts` | `POST /feedback`: checks the report and stores it; `/admin/feedback`: the list, one report, the review and Delete (`feedback.review`); `PUT /admin/feedback-mode`: feedback mode on or off |
 | `server/src/accounts/remove.ts` | What becomes of the reports when an account is deleted (BACKEND-PLAN.md §3.9) |
 | `server/src/routes/roles.ts` | The roles: which permissions each has, `feedback.give` and `feedback.review` among them |
 | `e2e/layout.spec.ts`, `e2e/real-api.spec.ts` | *feedback* tests at every size in `e2e/helpers.ts`; a role with `feedback.give` against the real API |

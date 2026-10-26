@@ -25,21 +25,31 @@ import { premiumOf } from './premium.js';
 // From stored documents to the bodies of shared/api.ts and shared/feedback.ts: ids as hex strings, dates as ISO
 // strings.
 
-export function toMe(account: AccountDoc, now: Date, permissions: Permission[], roleNames: Record<Role, string>): Me {
-  return { ...ownAccount(account, now), roleNames, permissions };
+export function toMe(
+  account: AccountDoc,
+  now: Date,
+  permissions: Permission[],
+  roleNames: Record<Role, string>,
+  feedbackMode: boolean,
+): Me {
+  return { ...ownAccount(account, now), roleNames, permissions, feedbackMode };
 }
 
-/** Me for this account: its permissions and its custom roles' names come from the stored roles. */
+/**
+ * Me for this account: its permissions and its custom roles' names come from the stored roles, and whether feedback
+ * mode is on from the app's settings.
+ */
 export async function meOf(c: Collections, account: AccountDoc, now: Date): Promise<Me> {
   const custom = account.roles.filter((r) => !isBuiltInRole(r));
-  const [permissions, docs] = await Promise.all([
+  const [permissions, docs, settings] = await Promise.all([
     permissionsOf(c, account),
     custom.length ? c.roles.find({ _id: { $in: custom } }, { projection: { name: 1 } }).toArray() : [],
+    c.settings.findOne({ _id: 'app' }, { projection: { feedbackMode: 1 } }),
   ]);
-  return toMe(account, now, permissions, Object.fromEntries(docs.map((d) => [d._id, d.name])));
+  return toMe(account, now, permissions, Object.fromEntries(docs.map((d) => [d._id, d.name])), settings?.feedbackMode === true);
 }
 
-function ownAccount(account: AccountDoc, now: Date): Omit<Me, 'permissions' | 'roleNames'> {
+function ownAccount(account: AccountDoc, now: Date): Omit<Me, 'permissions' | 'roleNames' | 'feedbackMode'> {
   return {
     id: account._id.toHexString(),
     email: account.email,

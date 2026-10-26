@@ -7,6 +7,7 @@ import {
   FEEDBACK_STATUSES,
   type FeedbackDetail,
   type FeedbackListResponse,
+  type FeedbackMode,
   type FeedbackPerson,
   type FeedbackReport,
   type FeedbackSaved,
@@ -24,7 +25,8 @@ import * as s from './schemas.js';
 
 // Feedback reports (docs/FEEDBACK-LOOP.md, step 1; BACKEND-PLAN.md §3.9, §7). An account with feedback.give sends what
 // it marked in the app, and the API stores it. An admin with feedback.review reads the reports in the app, accepts or
-// declines them, and keeps a note for the team. Nothing goes to GitHub from here yet: opening issues for the accepted
+// declines them, and keeps a note for the team; they also turn feedback mode on and off, which decides whether the app
+// shows the Feedback button at all (Me.feedbackMode). Nothing goes to GitHub from here yet: opening issues for the accepted
 // reports is the next step, and the server's GitHub token comes with it.
 // (Not the feedback someone leaves when deleting their account: that is accounts/closures.ts.)
 
@@ -273,6 +275,24 @@ export const feedbackRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (ap
         );
       });
       return reply.code(204).send();
+    },
+  );
+
+  app.put<{ Body: FeedbackMode }>(
+    '/admin/feedback-mode',
+    { config: REVIEW, schema: { body: s.body({ on: { type: 'boolean' } }, ['on']) } },
+    async (request): Promise<FeedbackMode> => {
+      const actor = signedIn(request).account;
+      const { on } = request.body;
+      const now = ctx.now();
+      await inTransaction(ctx.db, async (session) => {
+        const before = await c.settings.findOne({ _id: 'app' }, { session });
+        // Switching it to what it is already changes nothing, and is not logged.
+        if ((before?.feedbackMode === true) === on) return;
+        await c.settings.updateOne({ _id: 'app' }, { $set: { feedbackMode: on, updatedAt: now } }, { session, upsert: true });
+        await writeAudit(c, now, { actorId: actor._id, action: 'feedback.mode', targetId: null, details: { on } }, session);
+      });
+      return { on };
     },
   );
 };

@@ -4,20 +4,22 @@
  * from Settings → Account. A status filter with how many there are of each (New, the ones nobody looked at yet, first);
  * a row opens the report (AdminFeedbackReport) and shows its title (or one made up from its kind and screen), its kind,
  * the marked spot, who sent it and the day. Built from Deleted accounts' design language. A filter whose list does not
- * come keeps the chips, with the counts they had, so another one can be chosen.
+ * come keeps the chips, with the counts they had, so another one can be chosen. Above the list, the Feedback mode
+ * switch: only while it is on does anyone see the Feedback button (PUT /admin/feedback-mode, for everyone).
  * Needs `feedback.review`; without it the screen says so, with the way back to Settings. A filter's result, and the
  * message from the report screen ("The report was deleted."), are announced (ui/lib/announce.ts).
  * (Not the feedback someone leaves when deleting their account: that is in Accounts → Deleted accounts.)
  */
 import { useEffect, useRef, useState } from 'react';
-import { FEEDBACK_STATUSES, type FeedbackListResponse, type FeedbackStatus, type FeedbackSummary } from '../../../../shared/feedback';
+import { FEEDBACK_STATUSES, type FeedbackListResponse, type FeedbackMode, type FeedbackStatus, type FeedbackSummary } from '../../../../shared/feedback';
 import { api } from '../../../api/client';
 import { formatLongDate, t } from '../../../i18n';
 import { useAccount } from '../../account';
 import { Chip } from '../../components/Controls';
-import { ErrorRetry, FormDone } from '../../components/Form';
+import { ErrorRetry, FormDone, FormError, SwitchRow } from '../../components/Form';
 import { RowLink, Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
+import { useMounted } from '../../hooks';
 import { clearListNotice, peekListNotice } from '../../lib/admin';
 import { announce } from '../../lib/announce';
 import { errorMessage } from '../../lib/apiErrors';
@@ -145,6 +147,7 @@ function ReportList(): JSX.Element {
           <FormDone live={false}>{notice}</FormDone>
         </div>
       )}
+      <ModeCard />
       {counts !== null && !none && (
         <div role="group" aria-label={t('admin.statusGroup')} className="filter-chips">
           {FILTER_PAIRS.map((pair) => (
@@ -181,6 +184,47 @@ function ReportList(): JSX.Element {
           <p className="acct-empty">{t('feedbackReview.emptyStatus')}</p>
         ))}
     </>
+  );
+}
+
+/**
+ * Feedback mode, for everyone: while it is off nobody sees the Feedback button. The switch shows what it is changing to
+ * until the answer comes; a failure puts it back and says why. Others pick the change up on their next GET /me.
+ */
+function ModeCard(): JSX.Element | null {
+  const account = useAccount();
+  const { me, setMe, handleError } = account;
+  const [pending, setPending] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const mounted = useMounted();
+  if (!me) return null;
+  const on = pending ?? me.feedbackMode;
+
+  const toggle = async (next: boolean): Promise<void> => {
+    if (pending !== null) return;
+    setPending(next);
+    setError(null);
+    try {
+      const res = await api.put<FeedbackMode>('/admin/feedback-mode', { on: next });
+      // The account as the app keeps it: its own Feedback button comes or goes at once.
+      setMe({ ...me, feedbackMode: res.on });
+    } catch (e) {
+      if (mounted.current) setError(errorMessage(handleError(e)));
+    } finally {
+      if (mounted.current) setPending(null);
+    }
+  };
+
+  return (
+    <Section id="mode" title={t('feedbackReview.modeTitle')}>
+      <SwitchRow label={t('feedbackReview.modeTitle')} description={t(on ? 'feedbackReview.modeOn' : 'feedbackReview.modeOff')} on={on}
+        onChange={(v) => void toggle(v)} />
+      {error && (
+        <div className="row-pad">
+          <FormError error={error} />
+        </div>
+      )}
+    </Section>
   );
 }
 

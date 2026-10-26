@@ -1587,6 +1587,24 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(mainNav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
         await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
         await expect(page.getByText('Reports sent from the app.')).toBeVisible();
+        // Feedback mode, for everyone: on, so the Feedback button floats over this screen too. Off takes it away.
+        const mode = page.getByRole('switch', { name: 'Feedback mode' });
+        const fab = page.getByRole('button', { name: 'Feedback: mark a part of this screen' });
+        await expect(mode).toHaveAttribute('aria-checked', 'true');
+        await expect(mode).toContainText('On: everyone who can send feedback sees the Feedback button on every screen.');
+        await expectClickable(mode);
+        await expectTouchHeight(mode);
+        await expectNotSqueezed(mode);
+        await expect(fab).toBeVisible();
+        await mode.click();
+        await expect(mode).toHaveAttribute('aria-checked', 'false');
+        await expect(mode).toContainText('Off: nobody sees the Feedback button. Turn it on to collect feedback.');
+        await expect(fab).toHaveCount(0);
+        await expectNoClippedLabels(page);
+        await mode.click();
+        await expect(mode).toHaveAttribute('aria-checked', 'true');
+        await expect(fab).toBeVisible();
+        expect(api.callsTo('PUT /admin/feedback-mode').map((c) => c.body)).toEqual([{ on: false }, { on: true }]);
         // New first: the reports nobody has looked at yet. Each chip says how many it holds.
         const filter = page.getByRole('group', { name: 'Status' });
         await expect(filter.getByRole('button')).toHaveText(['New 3', 'Accepted 1', 'Declined 0', 'All 4']);
@@ -2040,11 +2058,20 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('link', { name: /^Sam Jansen/ })).toBeVisible();
       await expect(fab).toHaveCount(0);
 
-      // An admin has it.
+      // An admin has it, in feedback mode only: off, there is no button and no switch for it on this device.
+      const off = { ...ME_ADMIN, feedbackMode: false };
+      api.set(signedInAs(off));
+      await seedAccount(page, off);
+      await page.reload();
+      await expect(page.getByRole('link', { name: /^Ann de Vries/ })).toBeVisible();
+      await expect.poll(() => api.callsTo('GET /me').length).toBeGreaterThan(0);
+      await expect(page.getByRole('switch', { name: 'Feedback button' })).toHaveCount(0);
+      await expect(fab).toHaveCount(0);
       api.set(ADMIN);
       await seedAccount(page, ME_ADMIN);
       await page.reload();
       await expectClickable(fab, { scroll: false });
+      await expect(page.getByRole('switch', { name: 'Feedback button' })).toHaveAttribute('aria-checked', 'true');
 
       const spot = page.getByText('Fair timing for most players.');
       await spot.evaluate((n) => n.scrollIntoView({ block: 'center' }));
@@ -2116,7 +2143,9 @@ test.describe('feedback: when saving fails, Review it, and hiding the button', (
 
   test('an error keeps the form and Send tries again; keys stay in the form; the button hides and comes back', async ({ page }) => {
     // A tester: feedback.give through a role, without feedback.review.
-    const tester: Me = { ...ME_MEMBER, roles: ['testers'], roleNames: { testers: 'Testers' }, permissions: [...ME_MEMBER.permissions, 'feedback.give'] };
+    const tester: Me = {
+      ...ME_MEMBER, roles: ['testers'], roleNames: { testers: 'Testers' }, permissions: [...ME_MEMBER.permissions, 'feedback.give'], feedbackMode: true,
+    };
     const server = feedbackServer(FEEDBACK, tester);
     const api = await mockApi(page, { ...signedInAs(tester), ...server.routes, 'POST /feedback': apiError('internal', 500) });
     await seedAccount(page, tester);

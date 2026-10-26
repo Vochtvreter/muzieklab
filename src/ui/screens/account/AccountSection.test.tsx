@@ -41,6 +41,7 @@ const ME: Me = {
   permissions: ['self.manage'],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
+  feedbackMode: true,
 };
 const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -102,6 +103,26 @@ describe('Settings → Account', () => {
     const section = await screen.findByRole('region', { name: 'Account' });
     await within(section).findByRole('switch', { name: 'Feedback button' });
     expect(within(section).queryByRole('link', { name: /^Feedback/ })).toBeNull();
+  });
+
+  it('shows the Feedback button, and its switch, only while an admin has feedback mode on', async () => {
+    me = { ...ME, permissions: ['self.manage', 'feedback.give'], feedbackMode: false };
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(me));
+    render(<App />);
+    const section = await screen.findByRole('region', { name: 'Account' });
+    await within(section).findByRole('link', { name: /^Ann de Vries/ });
+    // GET /me answered (it says the same): still no switch, and no button.
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some((c) => String(c[0]).endsWith('/me'))).toBe(true));
+    expect(within(section).queryByRole('switch', { name: 'Feedback button' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Feedback: mark a part of this screen' })).toBeNull();
+    cleanup();
+
+    // Feedback mode on: the app picks it up from GET /me.
+    resetAccountCheck();
+    me = { ...me, feedbackMode: true };
+    render(<App />);
+    await screen.findByRole('switch', { name: 'Feedback button' });
+    await screen.findByRole('button', { name: 'Feedback: mark a part of this screen' });
   });
 
   it('reads a notice out once, when it happens: switching the language shows it again without saying it again', async () => {

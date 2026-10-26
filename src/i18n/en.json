@@ -1085,6 +1085,9 @@
   "feedbackReview": {
     "title": "Feedback",
     "lead": "Reports sent from the app.",
+    "modeTitle": "Feedback mode",
+    "modeOn": "On: everyone who can send feedback sees the Feedback button on every screen.",
+    "modeOff": "Off: nobody sees the Feedback button. Turn it on to collect feedback.",
     "noAccessSub": "Only admins review feedback reports.",
     "loading": "Loading reports…",
     "empty": "No reports yet. They appear here when someone sends feedback from the app.",
@@ -2597,6 +2600,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_18_0": {
+      "title": "Feedback mode",
+      "mode": "For admins: Feedback mode, on Settings → Account → Feedback, turns the Feedback button on and off for everyone. It starts off: nobody sees the button until an admin turns it on."
+    },
     "v0_17_0": {
       "title": "Feedback on the spot",
       "feedback": "For the team: an account allowed to give feedback gets a Feedback button. Mark any part of a screen and send what should change, with the screen, the spot and the device attached. Reports are saved for an admin to review in Settings → Account → Feedback.",

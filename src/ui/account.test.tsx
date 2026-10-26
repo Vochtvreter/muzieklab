@@ -16,6 +16,7 @@ const ME: Me = {
   permissions: ['self.manage', 'accounts.read'],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
+  feedbackMode: false,
 };
 
 const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });

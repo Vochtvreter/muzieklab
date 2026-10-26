@@ -282,6 +282,7 @@ describe('account storage (muzieklab.account.v1)', () => {
     permissions: ['self.manage', 'accounts.read'],
     premium: { active: true, until: '2027-01-31' },
     createdAt: '2026-10-01T09:00:00.000Z',
+    feedbackMode: false,
   };
   beforeEach(() => localStorage.clear());
 
@@ -297,7 +298,7 @@ describe('account storage (muzieklab.account.v1)', () => {
   it("stores only Me's fields: never a password or a token", () => {
     saveAccount({ ...me, password: 'hunter2hunter2', token: 'abc', session: 'xyz' } as unknown as Me);
     const raw = localStorage.getItem(ACCOUNT_KEY) ?? '';
-    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['createdAt', 'email', 'id', 'locale', 'name', 'permissions', 'premium', 'roleNames', 'roles']);
+    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['createdAt', 'email', 'feedbackMode', 'id', 'locale', 'name', 'permissions', 'premium', 'roleNames', 'roles']);
     expect(raw).not.toMatch(/hunter2|password|token|session/);
   });
 

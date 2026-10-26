@@ -174,6 +174,16 @@ export interface LockDoc {
   rev: number;
 }
 
+/**
+ * The app's own settings, for everyone: one document. feedbackMode: whether accounts with feedback.give see the
+ * Feedback button (an admin switches it, PUT /admin/feedback-mode); off until one does.
+ */
+export interface SettingsDoc {
+  _id: 'app';
+  feedbackMode: boolean;
+  updatedAt: Date;
+}
+
 export interface Collections {
   accounts: Collection<AccountDoc>;
   roles: Collection<RoleDoc>;
@@ -184,6 +194,7 @@ export interface Collections {
   progress: Collection<ProgressDoc>;
   closures: Collection<ClosureDoc>;
   feedback: Collection<FeedbackDoc>;
+  settings: Collection<SettingsDoc>;
 }
 
 export function collections(db: Db): Collections {
@@ -197,6 +208,7 @@ export function collections(db: Db): Collections {
     progress: db.collection<ProgressDoc>('progress'),
     closures: db.collection<ClosureDoc>('closures'),
     feedback: db.collection<FeedbackDoc>('feedback'),
+    settings: db.collection<SettingsDoc>('settings'),
   };
 }
 
@@ -244,6 +256,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
     c.feedback.createIndex({ reviewerId: 1 }, { name: 'reviewerId' }),
     // The lock document exists before the first transaction needs it, so no transaction has to create a collection.
     c.locks.updateOne({ _id: 'admins' }, { $setOnInsert: { rev: 0 } }, { upsert: true }),
+    // Feedback mode starts off; once an admin switched it, it stays as they left it.
+    c.settings.updateOne({ _id: 'app' }, { $setOnInsert: { feedbackMode: false, updatedAt: now } }, { upsert: true }),
   ]);
 }
 

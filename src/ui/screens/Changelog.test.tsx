@@ -30,8 +30,8 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Feedback on the spot' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 25 · 1 new · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Feedback mode' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 26 · 1 new')).toBeTruthy();
     // Accounts (0.12.0) are by invitation: the release promises no sign-up.
     fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();
@@ -67,8 +67,8 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Feedback op de plek zelf' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('25 okt · 1 nieuw · 1 beter')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Feedbackmodus' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('26 okt · 1 nieuw')).toBeTruthy();
     fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
@@ -79,7 +79,7 @@ describe("What's new", () => {
     render(<Changelog />);
     const card = screen.getByRole('article');
     expect(within(card).getAllByText('New')).toHaveLength(1);
-    expect(within(card).getAllByText('Better')).toHaveLength(1);
+    expect(within(card).queryAllByText('Better')).toHaveLength(0);
     expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
   });
 
@@ -89,8 +89,8 @@ describe("What's new", () => {
     const list = screen.getByRole('navigation', { name: 'Releases' });
     expect(within(list).getAllByRole('button')).toHaveLength(RELEASES.length);
     expect(release(RELEASES[0].version).getAttribute('aria-current')).toBe('true');
-    expect(screen.getByRole('heading', { level: 2, name: 'Feedback on the spot' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('October 25, 2026 · 1 new · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Feedback mode' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('October 26, 2026 · 1 new')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
     expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
 

@@ -330,6 +330,7 @@ const ME: Me = {
   permissions: ['self.manage', 'progress.own', 'class.join'],
   premium: { active: false, until: null },
   createdAt: '2026-10-20T09:00:00.000Z',
+  feedbackMode: false,
 };
 
 describe('reducer: account', () => {

@@ -17,6 +17,7 @@ const ME: Me = {
   permissions: ['self.manage'],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
+  feedbackMode: false,
 };
 
 const json = (status: number, body: unknown): Response =>

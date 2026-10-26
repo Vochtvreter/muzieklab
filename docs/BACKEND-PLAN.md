@@ -123,7 +123,8 @@ Transactions need a replica set, so MongoDB runs as a single-node replica set (`
 
 Field names are as stored (`server/src/db.ts`). `_id` is an `ObjectId` unless shown otherwise; the API sends ids as
 hex strings and dates as ISO strings. Phase 1 has five collections: `accounts`, `sessions`, `tokens`, `audit` and
-`locks`. `progress` came with phase 2, `closures` with 0.16.0, and `roles` and `feedback` with 0.17.0; `classes` and
+`locks`. `progress` came with phase 2, `closures` with 0.16.0, `roles` and `feedback` with 0.17.0, and `settings` with
+0.18.0; `classes` and
 `memberships` (phase 3) and `content` (phase 4) come later. The indexes are made when the API starts (§9.2).
 
 ### 3.1 accounts
@@ -226,7 +227,8 @@ collection.
   `role.delete` (with `targetId` null and the role's id in `details.role`), and three for feedback reports (§3.9),
   with `targetId` null and the report's id in `details.report`: `feedback.send` (`{ report, kind }`: who sent it),
   `feedback.review` (`{ report, status, note }`: `status` is the new one, when it changed, and `note: true` says the
-  note changed, never what it says) and `feedback.delete` (`{ report }`).
+  note changed, never what it says) and `feedback.delete` (`{ report }`); since 0.18.0 `feedback.mode` (`{ on }`:
+  feedback mode switched on or off, §3.10).
 - `details` never hold a password or a token. Personal data goes only under the keys `email`, `name`, `previousEmail`
   and `previousName`.
 - Entries are kept for two years (a TTL index on `at`).
@@ -350,6 +352,22 @@ say who sent it, if they wrote that in it.
 
 Accepted reports are to become GitHub issues, a later step (FEEDBACK-LOOP.md §3, *Sending to GitHub*). That step will
 add the issue's number and link to the report.
+
+### 3.10 settings: the app's own settings (0.18.0)
+
+```js
+{
+  _id: "app",                           // the one document
+  feedbackMode: false,                  // whether accounts with feedback.give see the Feedback button
+  updatedAt: ISODate("…"),
+}
+```
+
+Settings for everyone, not for one account. The API makes the document when it starts, with feedback mode off; once an
+admin switched it, it stays as they left it. `feedbackMode` is sent in every `Me`, so the app learns it with the
+account (GET /me, when the app starts); `PUT /admin/feedback-mode` (`feedback.review`) switches it, and the log keeps
+`feedback.mode` with who did it. While it is off the app shows no Feedback button, nor its switch in Settings → Account.
+`POST /feedback` still takes a report, so one being written when it went off is not lost.
 
 ## 4. Permissions
 
@@ -742,6 +760,7 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `GET /admin/feedback/:id` | `feedback.review` | One report: the list's fields, the report as sent, the note, the reviewer (`{ id, name }` or null) and `reviewedAt`. 404 `not_found` for a report that is not there. |
 | `PATCH /admin/feedback/:id` | `feedback.review` | `status` and `note` → the report, as GET. Only the fields sent change. A change records who made it, as the reviewer, and when; sending what is there already changes nothing. A note of more than 2000 characters, or with a control character other than a line break, is 400 `bad_request`; 404 as GET. |
 | `DELETE /admin/feedback/:id` | `feedback.review` | Deletes the report: 204, or 404 as GET. |
+| `PUT /admin/feedback-mode` | `feedback.review` | `{ on }` → `{ on }`: feedback mode on or off, for everyone (§3.10). Every `Me` says which (`feedbackMode`). Switching it to what it is already changes nothing and is not logged. |
 
 Planned: `POST
 /classes`, `GET /classes`, `GET /classes/:id`, `PATCH /classes/:id`, `POST /classes/join`, `GET /classes/:id/progress`

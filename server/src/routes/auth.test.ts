@@ -68,6 +68,7 @@ describe('POST /auth/sign-in', () => {
       permissions: ['self.manage', 'progress.own', 'class.join', 'class.create'],
       premium: { active: false, until: null },
       createdAt: account.createdAt.toISOString(),
+      feedbackMode: false,
     });
     const c = collections(t.db);
     expect((await c.accounts.findOne({ _id: account._id }))?.lastSignInAt).toEqual(t.clock.now());
@@ -951,6 +952,7 @@ describe('deny by default', () => {
         'GET /api/v1/admin/feedback/:id feedback.review',
         'PATCH /api/v1/admin/feedback/:id feedback.review',
         'DELETE /api/v1/admin/feedback/:id feedback.review',
+        'PUT /api/v1/admin/feedback-mode feedback.review',
       ].sort(),
     );
     // HEAD routes Fastify adds for GET ones carry the same config.

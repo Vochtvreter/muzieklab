@@ -231,3 +231,11 @@ export interface FeedbackUpdateRequest {
 
 export const FEEDBACK_NOTE_MAX = 2000;
 
+/**
+ * PUT /admin/feedback-mode (feedback.review) → FeedbackMode: feedback mode on or off, for everyone. Only while it is on
+ * does an account with feedback.give see the Feedback button (Me.feedbackMode). Off until an admin turns it on.
+ */
+export interface FeedbackMode {
+  on: boolean;
+}
+

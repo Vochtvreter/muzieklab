@@ -48,7 +48,7 @@ export interface Prefs {
   pianoLabels: 'letters' | 'solfege' | 'off';
   /**
    * Settings → Account → Feedback button: whether the feedback tool's button shows on this device, for an account with
-   * feedback.give (docs/FEEDBACK-LOOP.md §3). On unless turned off here.
+   * feedback.give while feedback mode is on (docs/FEEDBACK-LOOP.md §3). On unless turned off here.
    */
   feedbackButton: boolean;
 }
@@ -365,6 +365,7 @@ export function sanitizeMe(v: unknown): Me | null {
     permissions: subset(v.permissions, PERMISSIONS) ?? [],
     premium,
     createdAt: v.createdAt,
+    feedbackMode: v.feedbackMode === true,
   };
 }
 export function loadAccount(): Me | null {
