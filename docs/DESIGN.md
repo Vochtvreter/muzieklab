@@ -1400,7 +1400,8 @@ count shares the room between its neighbours by how wide their words are. Where 
 - Read notes links start the round.
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
   to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip
-  (§6.1).
+  (§6.1). The browser's Back from the screen the link opened returns to the section too: the link first sets the
+  chapter's own place in the history to it (`#/learn/8?s=8.3`).
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
 - Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.
@@ -1473,7 +1474,8 @@ by side (lines | spaces, example | rule, text | keyboard) and stack again on nar
 so notation keeps a readable size instead of stretching. Desktop adds the chapter sidebar;
 on tablet the sidebar becomes a row of section chips under the title. The canvas shows chapter 8 at 834 px (tablet) and 1280 px (desktop).
 Both use the full width (up to 1160 px of content) instead of the 640 px column, and the Learn tab's chapter list
-(up to 960 px) shows a chapter's sections in two columns, read down.
+(up to 960 px) shows a chapter's sections in two columns, read down. A jump to a section (a chip, the sidebar, or a
+link to `#/learn/8?s=8.3`) brings it into view and gives it focus, so Tab goes on inside the section.
 
 The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings. The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
 

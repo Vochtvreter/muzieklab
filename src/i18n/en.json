@@ -1924,7 +1924,7 @@
         "placeAlt": "Two bars of 4/4 on the one-line staff: a whole rest hanging below the line, counted (1 2 3 4), then a half rest sitting on the line, counted (1 2), and a half note counted 3 (4)",
         "count": "Keep counting through every rest. Silent counts are shown in grey brackets:",
         "countAlt": "A bar of 4/4: quarter on 1, quarter rest on (2), quarter on 3, quarter rest on (4); then a half rest on (1 2) and a half note on 3 (4)",
-        "game": "In the game: let go when a note ends and stay off through the rest. With Hold notes for their length on, as in the Learning Path from unit 2, the moment you let go is judged too.",
+        "game": "In the game: let go when a note ends and stay off through the rest. With Hold notes for their length on, as in the Learning Path from unit 4, the moment you let go is judged too.",
         "practice": "Practice rests",
         "check": {
           "question": "On the one-line staff of the game, which rest hangs below the line?",

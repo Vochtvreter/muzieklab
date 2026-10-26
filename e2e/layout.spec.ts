@@ -7,7 +7,7 @@ import { CHAPTERS } from '../src/ui/learn/chapters';
 import type { Me } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
 import {
-  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectFocusRing, expectNoClippedLabels, expectNoOverlap,
   expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectStavesFit, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo,
   QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
@@ -1190,6 +1190,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         ['1.1', '1.3'].map((id) => [...document.querySelectorAll('a')].find((el) => el.textContent?.trim().startsWith(id))!.getBoundingClientRect().y),
       );
       expect(third === first, 'sections in two columns').toBe(layout !== 'phone');
+      // Subtitles wrap rather than end in "…", and a chapter's ring shows around it (its card once cut it off).
+      await expectNoClippedLabels(page);
+      await expectFocusRing(page.getByRole('button', { name: /^2\s*Note values/ }));
+      // So does a section's, also at the top of a column (the open chapter's inner box once cut off its top edge).
+      await expectFocusRing(page.getByRole('link', { name: /^1\.1/ }));
+      await expectFocusRing(page.getByRole('link', { name: /^1\.3/ }));
       // Opening chapter 10 closes chapter 1.
       const ch10 = page.getByRole('button', { name: /^10\s*Key signatures/ });
       await expectClickable(ch10);
@@ -1200,6 +1206,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
       await page.getByRole('link', { name: /^10\.2/ }).click();
       await expect(page.getByRole('heading', { name: /10\.2\s*The order of sharps and flats/ })).toBeInViewport();
+      // A link into the chapter at ?s= gives the section focus too (on phone this list is the only way to jump).
+      await expect(page.locator('#s10-2')).toBeFocused();
       // Jumping to a section: section chips on tablet, the chapter sidebar on desktop, the chapter list on phone.
       const jump = page.getByRole('navigation', { name: 'Sections' });
       await expect(jump).toHaveCount(layout === 'phone' ? 0 : 1);
@@ -1208,12 +1216,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(jump.getByRole('link', { name: /Naming the key/ }));
         await jump.getByRole('link', { name: /Naming the key/ }).click();
         await expect(page.getByRole('heading', { name: /10\.3\s*Naming the key/ })).toBeInViewport();
+        // Focus goes along, so Tab goes on in the section and does not scroll back up to the link.
+        await expect(page.locator('#s10-3')).toBeFocused();
+        await page.keyboard.press('Tab');
+        expect(await page.evaluate(() => !!document.activeElement?.closest('#s10-3')), 'Tab stays in 10.3').toBe(true);
       }
       if (layout === 'desktop') {
         await expectClickable(jump.getByRole('link', { name: 'Quick check' }));
         await jump.getByRole('link', { name: 'Quick check' }).click();
         await expect(page.getByRole('button', { name: 'D', exact: true })).toBeInViewport();
+        await expect(page.locator('#scheck')).toBeFocused();
         await expectClickable(page.locator('.learn-side').getByRole('link', { name: /Notes on the staff/ }));
+        await expectFocusRing(page.locator('.learn-side').getByRole('link', { name: /Notes on the staff/ }));
       }
       await expectClickable(page.getByRole('link', { name: 'Practice keys up to three signs →' }));
       await expectClickable(page.getByRole('link', { name: /Previous\s*9 · Sharps, flats and naturals/ }));

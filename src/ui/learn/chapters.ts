@@ -192,7 +192,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'text', text: 'middle' },
           { kind: 'tip', text: 'game' },
         ],
-        practice: { rhythm: { ...RHYTHM, meters: ['3/4', '4/4'], metronome: 'accent' } },
+        practice: { rhythm: { ...RHYTHM, meters: ['3/4', '4/4'] } },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },

@@ -526,6 +526,37 @@ test('learn: a rhythm practice link starts the exercise for its section; Quit, R
   await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
 });
 
+test("learn: the browser's Back from a practice link returns to its section, as Quit does", async ({ page }) => {
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  const links: [number, string, string, RegExp][] = [
+    [8, '8.4', 'Practice with ledger lines →', /#\/notes\/play\?from=8\.4$/],
+    [3, '3.2', 'Practice reading rests →', /#\/play\?from=3\.2$/],
+    [11, '11.4', 'Practice A minor in all three forms →', /#\/scales\/setup\?from=11\.4$/],
+  ];
+  for (const [n, id, name, to] of links) {
+    // Opened at the top, scrolled down to the link: the chapter's place in the history did not say where the reader was.
+    await page.goto(`./#/learn/${n}`);
+    const link = page.getByRole('link', { name });
+    await link.scrollIntoViewIfNeeded();
+    // On the way out the chapter does not jump to the section (the Scales link once scrolled it and gave it focus for
+    // a frame before its setup opened).
+    await page.locator('.learn-chapter').evaluate((el) => {
+      const moved: string[] = [];
+      const top = el.scrollTop;
+      (window as unknown as { moved: string[] }).moved = moved;
+      el.addEventListener('scroll', () => el.scrollTop !== top && moved.push(`scroll ${top} → ${el.scrollTop}`));
+      el.addEventListener('focusin', (e) => (e.target as Element).matches('section') && moved.push('focus ' + (e.target as Element).id));
+    });
+    await link.click();
+    await expect(page).toHaveURL(to);
+    expect(await page.evaluate(() => (window as unknown as { moved: string[] }).moved), `${id}: the chapter stays put`).toEqual([]);
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`#/learn/${n}\\?s=${id.replace('.', '\\.')}$`));
+    await expect(page.getByRole('heading', { name: new RegExp(`^${id.replace('.', '\\.')}\\s*\\D`) })).toBeInViewport();
+  }
+});
+
 test('scales: from Home to the circle, a G major round played with the keyboard, and the stars on the circle', async ({ page }) => {
   // A done scale once looked up the step after its last note ("[i18n] missing message: scales.how.undefined").
   const missing: string[] = [];

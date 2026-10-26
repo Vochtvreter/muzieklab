@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, LETTERS, PPQ, checkSettings, getMeter, sanitizeNoteSettings, sanitizeScaleSettings } from '../../core/api';
-import { PATH_UNITS } from '../../game/tracks';
+import { ALL_LESSONS, lessonSettings } from '../../game/path';
+import { PATH_UNITS, pathUnitOf } from '../../game/tracks';
 import { parseBars } from '../../render/notationText';
-import { hasMessage } from '../../i18n';
+import { hasMessage, setLocale, t } from '../../i18n';
 import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, parsePitch, sectionKey, type Block, type Quiz, type Section } from './chapters';
 
 /** Every text key a block uses, relative to its section. */
@@ -133,6 +134,30 @@ describe('Learn chapters', () => {
         expect(settings.mode, s.id).toBe('tap');
         expect(checkSettings(settings).playable.length, s.id).toBeGreaterThan(0);
       }
+    }
+  });
+
+  it('leave tempo, bars and the metronome of rhythm practice to the player', () => {
+    // A link's preset becomes the player's setup (Free practice opens with it), so one that set these would keep them.
+    for (const s of sections) {
+      if (s.practice && 'rhythm' in s.practice) {
+        for (const k of ['tempo', 'bars', 'metronome'] as const) expect(s.practice.rhythm, `${s.id} ${k}`).not.toHaveProperty(k);
+      }
+    }
+  });
+
+  it("name in 3.1's tip the Path unit where holding starts, by its number in the Path", () => {
+    // Rhythm unit 2 is the Path's unit 4 (tracks.ts), as chapter 3's header says.
+    const rhythm = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson.id).hold)!.unit.id;
+    const unit = pathUnitOf('rhythm', rhythm)!;
+    expect(CHAPTERS.find((c) => c.n === 3)!.units).toContain(unit);
+    try {
+      for (const [locale, text] of [['en', `from unit ${unit},`], ['nl', `vanaf blok ${unit},`]]) {
+        setLocale(locale);
+        expect(t(sectionKey('3.1', 'game')), locale).toContain(text);
+      }
+    } finally {
+      setLocale('en');
     }
   });
 });

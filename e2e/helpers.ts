@@ -74,15 +74,54 @@ export async function expectNoOverlap(a: Locator, b: Locator): Promise<void> {
   expect(overlap, 'boxes overlap').toBe(false);
 }
 
-/** No button or segmented choice cuts its words off (longer translations must wrap or fit, DESIGN.md §11). */
+/**
+ * No button or segmented choice cuts its words off (longer translations must wrap or fit, DESIGN.md §11), nor a line
+ * inside one that clips its own text (a Learn chapter's subtitle once ended in "…").
+ */
 export async function expectNoClippedLabels(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  const clipped = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('button, .seg-btn, a.btn, select')]
-      .filter((el) => el.offsetParent !== null && /\p{L}/u.test(el.textContent ?? '') && el.scrollWidth > el.clientWidth + 1)
-      .map((el) => (el.textContent ?? '').trim() || el.getAttribute('aria-label') || el.tagName),
-  );
+  const clipped = await page.evaluate(() => {
+    const words = (el: Element): boolean => /\p{L}/u.test(el.textContent ?? '');
+    const cut = (el: Element): boolean => el.scrollWidth > el.clientWidth + 1;
+    // A line that clips; text for screen readers only (.sr-only, a box of 1 px) is not shown at all.
+    const clips = (el: Element): boolean => el.clientWidth > 1 && getComputedStyle(el).overflowX !== 'visible';
+    return [...document.querySelectorAll<HTMLElement>('button, .seg-btn, a.btn, select')]
+      .filter((el) => el.offsetParent !== null && words(el))
+      .filter((el) => cut(el) || [...el.querySelectorAll('*')].some((x) => clips(x) && words(x) && cut(x)))
+      .map((el) => (el.textContent ?? '').trim() || el.getAttribute('aria-label') || el.tagName);
+  });
   expect(clipped, 'labels cut off').toEqual([]);
+}
+
+/**
+ * The element's focus ring shows on every side when the keyboard reaches it: no box around it cuts the ring off (a
+ * card with overflow: hidden, a side list that scrolls on its own). A list that scrolls up and down is only checked at
+ * its sides: focus scrolls the element into its view.
+ */
+export async function expectFocusRing(el: Locator): Promise<void> {
+  // Back one stop and forward again, so the element has focus from the keyboard (:focus-visible).
+  await el.focus();
+  await el.page().keyboard.press('Shift+Tab');
+  await el.page().keyboard.press('Tab');
+  await expect(el).toBeFocused();
+  const cutBy = await el.evaluate((node) => {
+    const style = getComputedStyle(node);
+    if (!node.matches(':focus-visible') || style.outlineStyle === 'none') return 'no focus ring';
+    // How far the ring reaches outside the element: 3 px wide, 2 px away (base.css), or nothing when drawn inside.
+    const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+    const r = node.getBoundingClientRect();
+    for (let box = node.parentElement; box; box = box.parentElement) {
+      const o = getComputedStyle(box);
+      const b = box.getBoundingClientRect();
+      const left = b.left + box.clientLeft;
+      const top = b.top + box.clientTop;
+      const name = box.tagName.toLowerCase() + '.' + box.className;
+      if (o.overflowX !== 'visible' && (r.left - ring < left - 0.5 || r.right + ring > left + box.clientWidth + 0.5)) return name;
+      if (/hidden|clip/.test(o.overflowY) && (r.top - ring < top - 0.5 || r.bottom + ring > top + box.clientHeight + 0.5)) return name;
+    }
+    return null;
+  });
+  expect(cutBy, 'the focus ring is cut off by').toBeNull();
 }
 
 /**

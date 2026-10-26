@@ -18,7 +18,7 @@ import { Blocks } from '../learn/Blocks';
 import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
 import { stopLearnSound } from '../learn/Listen';
 import { letterName } from '../lib/noteText';
-import { hashQuery, Link, useHash, type Route } from '../router';
+import { hashQuery, Link, navigate, useHash, type Route } from '../router';
 import { useStore } from '../store';
 import { useStartNotes } from './notes/start';
 import { useStartPractice } from './start';
@@ -27,8 +27,16 @@ export const chapterRoute = (n: number): Route => `/learn/${n}`;
 const sectionTitle = (id: string): string => t(sectionKey(id, 'title'));
 /** The element id a section (or the quick check, 'check') scrolls to. */
 const anchor = (id: string): string => 's' + id.replace('.', '-');
-/** A jump link to the section already in the address does not change the hash; scroll there anyway. */
-const jumpTo = (id: string) => (): void => document.getElementById(anchor(id))?.scrollIntoView({ block: 'start' });
+/**
+ * Scrolls to a section and gives it focus, so Tab goes on from there and not from the link left behind (the hash route
+ * names no element, so the browser does not move focus itself). A jump link to the section already in the address
+ * does not change the hash; it jumps anyway.
+ */
+const jumpTo = (id: string) => (): void => {
+  const el = document.getElementById(anchor(id));
+  el?.scrollIntoView({ block: 'start' });
+  el?.focus({ preventScroll: true });
+};
 
 type Status = 'done' | 'reading' | 'new';
 function chapterStatus(read: string[], sections: string[]): Status {
@@ -103,7 +111,7 @@ function SectionCard({ section, read, onRight }: { section: Section; read: boole
   const { id } = section;
   const h = 'h' + id.replace('.', '-');
   return (
-    <section id={anchor(id)} className="card learn-section" aria-labelledby={h}>
+    <section id={anchor(id)} tabIndex={-1} className="card learn-section" aria-labelledby={h}>
       <h2 id={h} className="learn-section-title">
         <span className="mono-accent">{id}</span>
         {sectionTitle(id)}
@@ -134,7 +142,8 @@ function SectionCheck({ section, read, onRight }: { section: Section; read: bool
 /**
  * "Practice the treble clef →": a Read notes round or a rhythm exercise straight away, or the Scales setup, set up for
  * the section on top of the player's own setup. Play and the summary carry ?from=8.2, so Quit and their back arrow
- * return to the section, and the setup they open keeps the preset.
+ * return to the section, and the setup they open keeps the preset. The browser's Back returns there too: the chapter's
+ * own entry in the history is set to the section first, as the chapter is built afresh on the way back.
  */
 function PracticeLink({ section }: { section: Section }): JSX.Element {
   const { state, dispatch } = useStore();
@@ -143,14 +152,17 @@ function PracticeLink({ section }: { section: Section }): JSX.Element {
   const p = section.practice!;
   const from = 'from=' + section.id;
   const start = (e: MouseEvent): void => {
+    e.preventDefault();
+    const here = '#' + chapterRoute(Number(section.id.split('.')[0])) + '?s=' + section.id;
+    // Only the address changes (no hashchange): the practice screen opens next, in this same click, so the chapter
+    // never renders with ?s= in the address and jumps to the section on its way out.
+    if (window.location.hash !== here) window.history.replaceState(window.history.state, '', here);
     if ('scales' in p) {
       const settings = { ...state.scaleSettings, ...p.scales };
       dispatch({ type: 'scaleSettings', settings });
       if (settings.keyMode === 'one') dispatch({ type: 'scaleHub', hub: { ...state.scaleHub, key: settings.keys[0] } });
-      return;
-    }
-    e.preventDefault();
-    if ('notes' in p) {
+      navigate('/scales/setup', { query: from });
+    } else if ('notes' in p) {
       const settings = { ...state.noteSettings, ...p.notes };
       dispatch({ type: 'noteSettings', settings });
       startNotes(settings, [], { query: from });
@@ -225,7 +237,7 @@ function QuickCheck({ base, quiz, labelId, reveal, hint, onRight }: { base: stri
 
 function ChapterCheck({ chapter }: { chapter: Chapter }): JSX.Element {
   return (
-    <section id={anchor('check')} className="card learn-check" aria-labelledby="quiz-q">
+    <section id={anchor('check')} tabIndex={-1} className="card learn-check" aria-labelledby="quiz-q">
       <span className="eyebrow">{t('learn.check')}</span>
       <QuickCheck base={`learn.ch${chapter.n}.quiz`} quiz={chapter.quiz} labelId="quiz-q" reveal />
     </section>
