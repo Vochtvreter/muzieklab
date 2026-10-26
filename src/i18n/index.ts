@@ -111,6 +111,14 @@ export function tx(keyOrText: string, params?: MessageParams): string {
   return hasMessage(keyOrText) ? t(keyOrText, params) : keyOrText;
 }
 
+/**
+ * A number with a fixed count of decimals, written for the locale: "2.0" and "1.7" in English, "2,0" and "1,7" in Dutch
+ * (Read notes times). As a number param of t() it would read "2", and "1.75" with two decimals.
+ */
+export function formatDecimal(n: number, digits = 1): string {
+  return new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false }).format(n);
+}
+
 /** Locale-aware short date, e.g. "Oct 12". */
 export function formatShortDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);

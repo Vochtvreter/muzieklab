@@ -1476,7 +1476,7 @@
       "legendHint": "met een hint",
       "legendMissed": "gemist",
       "legendSlow": "meer dan 3 s = langzaam",
-      "chartLabel": "Antwoordtijd voor elk van de {count} noten. Gemiddeld {avg} seconden. {missed, plural, =0 {Geen noten gemist.} one {1 noot gemist.} other {# noten gemist.}}",
+      "chartLabel": "Antwoordtijd voor {count, plural, one {# noot} other {elk van de # noten}}. Gemiddeld {avg} seconden. {missed, plural, =0 {Geen noten gemist.} one {1 noot gemist.} other {# noten gemist.}}",
       "needs": "Nog oefenen",
       "missed": "Gemist",
       "slow": "Langzaam",

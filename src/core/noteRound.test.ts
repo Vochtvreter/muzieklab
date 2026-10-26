@@ -6,11 +6,13 @@ import {
   isRight,
   missKind,
   missedIds,
+  noteDifficulty,
   noteId,
   noteRoundXp,
   noteMidi,
   noteStars,
   pianoKeyMidi,
+  roundExtras,
   roundHasSigns,
   roundLetters,
   sanitizeNoteSettings,
@@ -149,6 +151,21 @@ describe('the sign row', () => {
 
   it('holds for every note of a round it leaves out', () => {
     for (const [s, seed] of corpus) if (!roundHasSigns(s)) for (const n of generateRound(s, seed)) expect([n.alter, n.sign]).toEqual([0, null]);
+  });
+});
+
+describe('extra signs', () => {
+  it('Sharps adds none in C♯ major, where every letter is sharp already: no promise of them and no harder round', () => {
+    const s: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['C#'], extras: 'sharps', count: 50 };
+    for (const seed of [1, 2, 3, 4, 5]) expect(generateRound(s, seed).filter((n) => n.sign !== null)).toEqual([]);
+    expect(roundExtras(s)).toBe('none');
+    expect(noteDifficulty(s)).toBe(noteDifficulty({ ...s, extras: 'none' }));
+    // Both still draws naturals there; another key in the mix, or a letter the key leaves plain (F♯ major's B), takes sharps.
+    expect(roundExtras({ ...s, extras: 'both' })).toBe('both');
+    expect(roundExtras({ ...s, keys: ['C#', 'G'], mixKeys: true })).toBe('sharps');
+    expect(roundExtras({ ...s, keys: ['C#', 'G'] })).toBe('none');
+    expect(roundExtras({ ...s, keys: ['F#'] })).toBe('sharps');
+    expect(noteDifficulty({ ...s, keys: ['F#'] })).toBeGreaterThan(noteDifficulty({ ...s, keys: ['F#'], extras: 'none' }));
   });
 });
 

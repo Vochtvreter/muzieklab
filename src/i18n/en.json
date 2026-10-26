@@ -1476,7 +1476,7 @@
       "legendHint": "with a hint",
       "legendMissed": "missed",
       "legendSlow": "over 3 s = slow",
-      "chartLabel": "Answer time for each of the {count} notes. Average {avg} seconds. {missed, plural, =0 {No notes missed.} one {1 note missed.} other {# notes missed.}}",
+      "chartLabel": "Answer time for {count, plural, one {# note} other {each of the # notes}}. Average {avg} seconds. {missed, plural, =0 {No notes missed.} one {1 note missed.} other {# notes missed.}}",
       "needs": "Needs practice",
       "missed": "Missed",
       "slow": "Slow",

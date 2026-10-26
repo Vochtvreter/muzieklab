@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { DEFAULT_NOTE_SETTINGS, generateRound, noteMidi, pianoKeyMidi } from '../src/core/noteRound';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { DEFAULT_NOTE_SETTINGS, generateRound, noteMidi, pianoKeyMidi, type NoteSettings } from '../src/core/noteRound';
 import { LETTERS, letterOf, pitchClass } from '../src/core/pitch';
 import { noteLessonSettings } from '../src/game/notesPath';
 import { DEFAULT_SETTINGS } from '../src/core/defaults';
@@ -25,6 +25,28 @@ async function listenForTones(page: Page): Promise<void> {
   });
 }
 const tones = (page: Page): Promise<number[]> => page.evaluate(() => (window as Window & { tones?: number[] }).tones ?? []);
+
+/** Plays this round when the page opens: the same settings and seed draw the same notes here and in the app. */
+async function seedRun(page: Page, settings: NoteSettings, seed: number): Promise<void> {
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+}
+
+/** The first seed whose round starts with notes of these signs (1 sharp, 0 none), so a test knows what it answers. */
+function seedStartingWith(settings: NoteSettings, alters: number[]): number {
+  for (let seed = 1; ; seed++) {
+    const notes = generateRound(settings, seed);
+    if (alters.every((a, i) => notes[i].alter === a)) return seed;
+  }
+}
+
+/** Presses Tab until `target` has the focus, as a player on the keyboard gets there. */
+async function tabTo(page: Page, target: Locator): Promise<void> {
+  for (let i = 0; i < 60; i++) {
+    if (await target.evaluate((el) => el === document.activeElement)) return;
+    await page.keyboard.press('Tab');
+  }
+  throw new Error('Tab does not reach ' + String(target));
+}
 
 test('read notes: a G major round from Home to the summary, answered with the keyboard', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.desktop);
@@ -118,7 +140,9 @@ test('read notes lesson: skipping to the summary counts the notes left as missed
   await expect(page.getByRole('heading', { name: 'Lesson 1.1 done' })).toBeVisible();
   // One note answered, ten in the score; the time chart shows the one answered.
   await expect(page.getByText(/^[01] of 10 notes right/)).toBeVisible();
-  await expect(page.getByRole('img', { name: /^Answer time for each of the 1 notes/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /^Answer time for 1 note\. / })).toBeVisible();
+  // One label under the one bar, not a second "1" at the start.
+  await expect(page.locator('svg.nchart text')).toHaveText(['3 s', '1']);
   await expect(page.getByText('Get 2 stars to open lesson 1.2')).toBeVisible();
   await page.getByRole('button', { name: 'New round' }).click();
   await expect(page.getByText('Lesson 1.1 · Treble clef · C major')).toBeVisible();
@@ -251,6 +275,166 @@ test('read notes: round done names the missed notes in do re mi after a round in
   await expect(chip).toHaveText(solfege[letterOf(first.step)]);
   await expect(chip).toHaveAccessibleName(new RegExp(`^${solfege[letterOf(first.step)]}, ${letterOf(first.step)} on the .+ \\(treble clef\\), missed once$`));
   await expect(chip.locator('.pitch-staff svg')).toBeVisible();
+});
+
+test('read notes: after a miss the green name button reads the right name, its sign included', async ({ page }) => {
+  // A major: F, C and G are sharp. The round starts with a sharp note, then one without a sign.
+  const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['A'], count: 10, playNotes: false };
+  const seed = seedStartingWith(settings, [1, 0]);
+  const [first, second] = generateRound(settings, seed);
+  await seedStorage(page, { prefs: { noteNames: 'letters' } });
+  await seedRun(page, settings, seed);
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes/play');
+  const names = page.getByRole('group', { name: 'Note names' });
+  const green = names.locator('.name-btn.is-right');
+  const red = names.locator('.name-btn.is-wrong');
+  // F♯ with the sign left on ♮ and a wrong letter: the button tapped is red, as it reads; the green one reads F♯.
+  const L1 = letterOf(first.step);
+  const wrong1 = LETTERS.find((L) => L !== L1)!;
+  await names.getByRole('button', { name: wrong1, exact: true }).click();
+  await expect(page.locator('.nfeedback')).toHaveText(new RegExp(`^That was ${L1}♯`));
+  await expect(red.locator('.name-main')).toHaveText(wrong1);
+  await expect(green.locator('.name-main')).toHaveText(L1 + '♯');
+  await expect(green).toHaveAccessibleName(L1 + ' sharp');
+  // A plain note answered with ♯ and a wrong letter: the green button reads the plain name.
+  await page.getByRole('button', { name: /^Next note/ }).click();
+  await page.keyboard.press('=');
+  const L2 = letterOf(second.step);
+  const wrong2 = LETTERS.find((L) => L !== L2)!;
+  await names.getByRole('button', { name: wrong2 + ' sharp', exact: true }).click();
+  await expect(page.locator('.nfeedback')).toHaveText(new RegExp(`^That was ${L2} `));
+  await expect(red.locator('.name-main')).toHaveText(wrong2 + '♯');
+  await expect(green.locator('.name-main')).toHaveText(L2);
+  await expect(green).toHaveAccessibleName(L2);
+});
+
+test('read notes: when the time is up, the green name button reads the right name, its sign included', async ({ page }) => {
+  const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['A'], count: 10, timer: 3, playNotes: false };
+  const seed = seedStartingWith(settings, [1]);
+  const [first] = generateRound(settings, seed);
+  await seedStorage(page, { prefs: { noteNames: 'letters' } });
+  await seedRun(page, settings, seed);
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes/play');
+  await expect(page.locator('.nfeedback')).toHaveText(/^Time's up/, { timeout: 6000 });
+  const green = page.getByRole('group', { name: 'Note names' }).locator('.name-btn.is-right');
+  await expect(green.locator('.name-main')).toHaveText(letterOf(first.step) + '♯');
+  await expect(green).toHaveAccessibleName(letterOf(first.step) + ' sharp');
+});
+
+test('read notes: Enter and Space on a control reached with Tab press that control, not Next note', async ({ page }) => {
+  const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, count: 10, playNotes: false };
+  const seed = 4242;
+  const notes = generateRound(settings, seed);
+  const wrong = (i: number): string => LETTERS.find((L) => L !== letterOf(notes[i].step))!;
+  await seedStorage(page, { prefs: { noteNames: 'letters' } });
+  await seedRun(page, settings, seed);
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes/play');
+  const count = page.locator('.nplay-count');
+  const feedback = page.locator('.nfeedback');
+  // A name button: Enter answers. Once the note is answered the button has nothing more to do, so Enter goes on.
+  await tabTo(page, page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: wrong(0), exact: true }));
+  await page.keyboard.press('Enter');
+  await expect(feedback).toHaveText(/^That was/);
+  await page.keyboard.press('Enter');
+  await expect(count).toHaveText('2 / 10');
+  // After a wrong answer, Space on the Piano mode switches to the piano and the note stays.
+  await page.keyboard.press(wrong(1).toLowerCase());
+  await expect(feedback).toHaveText(/^That was/);
+  const piano = page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' });
+  await tabTo(page, piano);
+  await page.keyboard.press(' ');
+  await expect(piano).toHaveAttribute('aria-pressed', 'true');
+  await expect(count).toHaveText('2 / 10');
+  // The mode already chosen has nothing more to do either: Enter there goes on, and so does Space after a wrong key on
+  // the computer's piano (A S D F G H J = C D E F G A B).
+  await page.keyboard.press('Enter');
+  await expect(count).toHaveText('3 / 10');
+  const n = notes[2];
+  await page.keyboard.press('asdfghj'[LETTERS.findIndex((L) => pitchClass(L, 0) !== pitchClass(letterOf(n.step), n.alter))]);
+  await expect(feedback).toHaveText(/^That was/);
+  await expect(piano).toBeFocused();
+  await page.keyboard.press(' ');
+  await expect(count).toHaveText('4 / 10');
+  // Enter on Skip to summary opens the summary.
+  await tabTo(page, page.getByRole('button', { name: 'Skip to summary' }));
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  await expect(page.getByText(/^0 of 3 notes right/)).toBeVisible();
+});
+
+test('read notes lesson: Enter and Space on Higher reached with Tab move the note to write, and do not check it', async ({ page }) => {
+  // Lesson 1.2 writes sol.
+  await seedStorage(page, { progress: { lessons: pathUpTo('1.1', 3, 100) }, prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Start lesson 1.2' }).click();
+  const slider = page.getByRole('slider');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Not on the staff yet');
+  await tabTo(page, page.getByRole('button', { name: 'Higher' }));
+  await page.keyboard.press('Enter');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'the middle line');
+  await page.keyboard.press('Enter');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'the 3rd space');
+  await page.keyboard.press(' ');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'the 4th line');
+  await expect(page.getByRole('progressbar', { name: 'Round progress' })).toHaveAttribute('aria-valuenow', '0');
+  await expect(page.locator('.nfeedback')).not.toHaveText(/^You wrote/);
+});
+
+test('read notes in Dutch: times with a decimal comma, on the desktop play screen and on Round done', async ({ page }) => {
+  const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, count: 10, playNotes: false };
+  const seed = 4242;
+  const [first] = generateRound(settings, seed);
+  await seedStorage(page, { prefs: { language: 'nl', noteNames: 'letters' } });
+  await seedRun(page, settings, seed);
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./#/notes/play');
+  await page.keyboard.press(LETTERS.find((L) => L !== letterOf(first.step))!.toLowerCase());
+  await expect(page.locator('.nfeedback')).toHaveText(/^Dat was/);
+  await expect(page.locator('.stat', { hasText: 'Gem. tijd' }).locator('.nstat-big')).toHaveText(/^\d+,\d s$/);
+  await page.getByRole('button', { name: 'Naar het overzicht' }).click();
+  await expect(page.getByRole('heading', { name: 'Ronde klaar' })).toBeVisible();
+  await expect(page.getByText(/^0 van 1 noot goed · gem\. \d+,\d s/)).toBeVisible();
+  await expect(page.locator('.ncard-head')).toHaveText(/^Tijd per noot ?gem\. \d+,\d s$/);
+  await expect(page.getByRole('img', { name: /^Antwoordtijd voor 1 noot\. Gemiddeld \d+,\d seconden\. 1 noot gemist\.$/ })).toBeVisible();
+});
+
+test('read notes: in C♯ major, misses that forgot the key signature get the By sign card with its tip', async ({ page }) => {
+  // Every letter is sharp in C♯ major: all the notes are in one sign group.
+  const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['C#'], count: 10, playNotes: false };
+  const seed = 4242;
+  await seedRun(page, settings, seed);
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./#/notes/play');
+  for (const [i, n] of generateRound(settings, seed).slice(0, 2).entries()) {
+    await expect(page.getByText(`Note ${i + 1} of 10`)).toBeVisible();
+    await page.keyboard.press(letterOf(n.step).toLowerCase());
+    await expect(page.locator('.nfeedback')).toHaveText(/^Right (line|space), but C♯ major has .♯ in the key signature/);
+    await page.keyboard.press('Enter');
+  }
+  await expect(page.getByText('Note 3 of 10')).toBeVisible();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  await expect(page.getByText('By sign', { exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'F♯, C♯, G♯, D♯, A♯, E♯ and B♯ from the key signature: 0 of 2 right' })).toBeVisible();
+  await expect(page.getByText("2 misses had the right letter but not the key signature's sign. In C♯ major, every F, C, G, D, A, E and B is sharp.")).toBeVisible();
+});
+
+test('read notes setup: Sharps promises no extra signs in C♯ major, where every letter is sharp already', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes');
+  const pool = page.locator('.nsetup-summary-text > span');
+  await page.getByRole('button', { name: 'Sharps ♯' }).click();
+  await expect(pool).toHaveText('11 staff positions per clef · C major · extra signs appear');
+  await page.getByRole('link', { name: /^Key: C major/ }).click();
+  await page.getByRole('button', { name: /^C♯ major or A♯ minor/ }).click();
+  await page.getByRole('button', { name: 'Use C♯ major' }).click();
+  await expect(pool).toHaveText('11 staff positions per clef · C♯ major');
+  await page.getByRole('button', { name: 'Both ♯ ♭' }).click();
+  await expect(pool).toHaveText('11 staff positions per clef · C♯ major · extra signs appear');
 });
 
 test('learn: the Key screen links to key signatures; the quick check answers', async ({ page }) => {

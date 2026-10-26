@@ -22,7 +22,7 @@ import { findPathLesson, pathLessonOf, pathOutcome } from '../../../game/tracks'
 import { levelInfo } from '../../../game/xp';
 import { PitchStaff } from '../../../render/PitchStaff';
 import { useElementWidth } from '../../../render/theme';
-import { t, tx } from '../../../i18n';
+import { formatDecimal, t, tx } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
 import { LevelUpContent, OutcomeBadge } from '../../components/Reward';
@@ -37,7 +37,7 @@ import { useStartPathLesson } from '../start';
 import { useStartNoteLesson, useStartNotes } from './start';
 
 const shownLevelUp = new WeakSet<NoteLast>();
-const secs = (ms: number): string => (ms / 1000).toFixed(1);
+const secs = (ms: number): string => formatDecimal(ms / 1000);
 
 export function NotesDone(): JSX.Element | null {
   const { state, dispatch } = useStore();
@@ -74,6 +74,7 @@ export function NotesDone(): JSX.Element | null {
   const d = run.lesson ? scoreRound(run.notes, answers) : r;
   const s = run.settings;
   const keys = roundKeys(s);
+  const oneKey = keys.length === 1 ? keys[0] : null;
   const clefs = s.clefs.length > 1 ? t('notes.setup.clefsBoth').toLowerCase() : t('notes.clefLower.' + s.clefs[0]);
   const keyText = keys.length > 1 ? t('notes.done.keysMix', { count: keys.length }) : majorName(keys[0]);
   const missed = missedIds(run.notes, answers);
@@ -117,12 +118,15 @@ export function NotesDone(): JSX.Element | null {
 
   // Nothing answered: no cards, only the score and the actions.
   const answered = d.total > 0;
+  // By sign with one group only repeats the score, unless it carries the key signature's tip: in C♯ major or C♭ major
+  // every note is in the key's group.
+  const keyTip = oneKey !== null && keySigns(oneKey).length > 0 && d.keySignMisses > 0;
   const cards = answered && (
     <>
       <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />
       {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
       {(d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} system={state.prefs.noteNames} />}
-      {d.bySign.length > 1 && <BySign r={d} keyId={keys.length === 1 ? keys[0] : null} />}
+      {(d.bySign.length > 1 || keyTip) && <BySign r={d} keyId={oneKey} />}
     </>
   );
 
@@ -252,9 +256,12 @@ function TimeChart({ answers, avgMs, missed }: { answers: NoteAnswer[]; avgMs: n
             <rect key={i} x={i * slot + (slot - bw) / 2} y={y(a.ms)} width={bw} height={Math.max(2, base - y(a.ms))} rx={2.5}
               className={'nchart-bar is-' + (a.outcome === 'right' ? 'right' : a.outcome === 'hinted' ? 'hint' : 'missed')} />
           ))}
-          <text x={0} y={H - 2} className="nchart-text">
-            1
-          </text>
+          {/* One note: its "1" under its bar, not a second one at the start. */}
+          {n > 1 && (
+            <text x={0} y={H - 2} className="nchart-text">
+              1
+            </text>
+          )}
           <text x={(n - 1) * slot + slot / 2} y={H - 2} textAnchor="middle" className="nchart-text">
             {n}
           </text>

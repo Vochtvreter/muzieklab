@@ -240,6 +240,9 @@ like the rhythm notation.
   update to show it (D♯, re♯). The written spelling is required: right letter with the
   wrong sign is wrong, and F♯ is not accepted for a written G♭. Desktop keys: − = ♭,
   0 = ♮, = = ♯, then the letter.
+  After a wrong letter or a timeout the right button turns green with the note's own name (F♯ also when ♮ is picked,
+  D when ♯ is), so the green mark never sits on a name that is wrong; a right letter with the wrong sign stays red, as
+  it reads.
   A round in C major / A minor with no extra signs has no sign row, no *Pick the sign if there is one, then the name.*
   line and no − 0 = keys: seven buttons for seven answers (since 0.10.0). The idle line is then empty on phone and
   tablet (the question *Which note is highlighted?* sits above the staff); desktop shows *Which note is highlighted?*
@@ -248,6 +251,10 @@ like the rhythm notation.
 - Desktop: names are typed with the letter keys (A–G); the piano maps to the
   computer keyboard with the common layout **A S D F G H J** = C D E F G A B and
   **W E T Y U** = C♯ D♯ F♯ G♯ A♯.
+- Enter or Space goes to the next note once one is answered, and checks a note to write, except on a control the
+  player reached with Tab, as in Scales: a button takes Space and Enter itself (Skip to summary, another answer mode,
+  a piano key, ▲ ▼), and the Quit link Enter. A name button, or the answer mode or key labels already chosen, has
+  nothing to do once its note is answered, so there they still go on.
 - **Do re mi or letters** on the name buttons is a saved preference, switched on the play screen. A new player gets
   do re mi when the device language is French, Italian, Spanish, Portuguese, Romanian or Dutch in Belgium (`nl-BE`),
   and letters otherwise (since 0.10.0; before, do re mi for everyone). A new player is one with nothing saved at all,
@@ -309,7 +316,8 @@ notes read the same.
   drawn smaller (§9). The highlight around the note to name, its sign included, stays inside that note's bar.
 - With **Extra sharps and flats** on, a note can also carry a sign that changes the key
   signature's note: ♯ or ♭, or ♮ to cancel it (F♮ in G major). Alterations that would
-  need a double sharp or double flat are left out.
+  need a double sharp or double flat are left out. So *Sharps* adds none in C♯ major, where every letter is sharp
+  already: there the setup's summary does not say *extra signs appear*, and the round is not counted as harder (XP).
 - Learn chapter 9 *Sharps, flats and naturals* and chapter 10 *Key signatures* explain all of this; the Key screen
   ("What is a key?") links to 10.1.
 

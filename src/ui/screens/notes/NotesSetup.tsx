@@ -2,7 +2,7 @@
  * Read notes setup (DESIGN.md §3.5 Settings): clefs, key, answer with, range, extra signs, notes per round and time,
  * and whether the notes sound.
  */
-import { CLEFS, DEFAULT_NOTE_SETTINGS, MAX_NOTES, MIN_NOTES, rangeSteps, roundHasSigns, roundKeys, type Clef, type Extras, type NoteInput, type NoteSettings, type NoteTimer, type Range } from '../../../core/api';
+import { CLEFS, DEFAULT_NOTE_SETTINGS, MAX_NOTES, MIN_NOTES, rangeSteps, roundExtras, roundHasSigns, roundKeys, type Clef, type Extras, type NoteInput, type NoteSettings, type NoteTimer, type Range } from '../../../core/api';
 import { PitchStaff } from '../../../render/PitchStaff';
 import { t } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
@@ -171,7 +171,8 @@ export function NotesSetup(): JSX.Element {
               </span>
               <span className="nsetup-summary-text">
                 <b>{t('notes.setup.summary', { clefs: clefsWord, input: t('notes.setup.inputWord.' + s.input) })}</b>
-                <span>{s.extras === 'none' ? pool : t('notes.setup.poolExtras', { pool })}</span>
+                {/* Sharps in C♯ major adds none: every letter is sharp already. */}
+                <span>{roundExtras(s) === 'none' ? pool : t('notes.setup.poolExtras', { pool })}</span>
               </span>
             </div>
 

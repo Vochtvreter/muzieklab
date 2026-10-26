@@ -31,7 +31,7 @@ import {
 import { pathLessonOf } from '../../../game/tracks';
 import { PitchStaff, type PitchMark, type PitchNote } from '../../../render/PitchStaff';
 import { stepAtY } from '../../../render/pitchDraw';
-import { t } from '../../../i18n';
+import { formatDecimal, t } from '../../../i18n';
 import { engine, unlockAudio } from '../../audio';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
@@ -39,6 +39,7 @@ import { ExerciseHeader } from '../../components/ExerciseHeader';
 import { Icon } from '../../components/Icon';
 import { BLACK_KBD, NameButtons, Piano, SignRow, WHITE_KBD, type KeyMark } from '../../components/NoteInputs';
 import { SHORT_PHONE, SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useMediaQuery } from '../../hooks';
+import { keyForTabbedControl } from '../../lib/focusModality';
 import { useLearnReturn } from '../../lib/learnReturn';
 import {
   feedbackText,
@@ -260,6 +261,10 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      // A button reached with Tab (Skip, another mode, a piano key, ▲ ▼) takes Space and Enter itself, and the Quit link
+      // Enter. A name button, or a segment already chosen (the mode, the key labels), has nothing more to do once the
+      // note is answered: there they still go on.
+      if (keyForTabbedControl(e) && !(done && target?.closest('.name-btn, [aria-pressed="true"]'))) return;
       const k = e.key.toUpperCase();
       if (e.key === 'Enter' || e.key === ' ') {
         if (done) {
@@ -377,6 +382,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
 
   // Answer marks on the buttons: the right one green, a wrong pick red.
   const nameMarks: Partial<Record<Letter, KeyMark>> = {};
+  // The green button reads the note's own name (F♯, also with ♮ picked): a mark has to fit the name it shows.
+  const nameSigns: Partial<Record<Letter, Alter>> = {};
   const keyMarks: Partial<Record<number, KeyMark>> = {};
   if (done) {
     const L = letterOf(note.step);
@@ -386,11 +393,13 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       else {
         nameMarks[given.letter] = 'wrong';
         nameMarks[L] = 'right';
+        nameSigns[L] = note.alter;
       }
     } else if (task === 'write') {
       // Written on the staff: no buttons to mark.
     } else if (given === null && mode !== 'piano') {
       nameMarks[L] = 'right';
+      nameSigns[L] = note.alter;
     } else {
       if (given?.kind === 'piano') keyMarks[given.pc] = 'wrong';
       const pc = (WHITE_PCS[L] + note.alter + 12) % 12;
@@ -493,7 +502,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     ) : (
       <>
         {signs && <SignRow value={sign} onChange={setSign} disabled={done} kbd={keys} />}
-        <NameButtons system={system} sign={sign} marks={nameMarks} onPick={(L) => answer({ kind: 'name', letter: L, alter: sign })} kbd={keys} letters={letters} />
+        <NameButtons system={system} sign={sign} signs={nameSigns} marks={nameMarks} onPick={(L) => answer({ kind: 'name', letter: L, alter: sign })} kbd={keys} letters={letters} />
       </>
     );
   const feedbackBox = (
@@ -637,7 +646,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
               </div>
               <div className="card stat">
                 <span className="label">{t('notes.play.avgTitle')}</span>
-                <span className="stat-mono nstat-big">{avg === null ? t('common.dash') : t('notes.play.seconds', { value: avg.toFixed(1) })}</span>
+                <span className="stat-mono nstat-big">{avg === null ? t('common.dash') : t('notes.play.seconds', { value: formatDecimal(avg) })}</span>
               </div>
               <div className="card stat nstat-wide">
                 <span className="label">{t('notes.play.needsTitle')}</span>

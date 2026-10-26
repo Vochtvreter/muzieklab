@@ -53,6 +53,8 @@ export function SignRow({ value, onChange, disabled, kbd }: SignRowProps): JSX.E
 interface NameButtonsProps {
   system: NameSystem;
   sign: Alter;
+  /** A button's own sign instead of `sign` (after a miss, the right answer shows its full name). */
+  signs?: Partial<Record<Letter, Alter>>;
   marks: Partial<Record<Letter, KeyMark>>;
   onPick(letter: Letter): void;
   disabled?: boolean;
@@ -62,7 +64,7 @@ interface NameButtonsProps {
 }
 
 /** Seven name buttons (or the round's own, fewer) showing the chosen sign: do re mi … in scale order, or A B C … in alphabetical order. */
-export function NameButtons({ system, sign, marks, onPick, disabled, kbd, letters }: NameButtonsProps): JSX.Element {
+export function NameButtons({ system, sign, signs, marks, onPick, disabled, kbd, letters }: NameButtonsProps): JSX.Element {
   const order = (system === 'solfege' ? LETTERS : ALPHA).filter((L) => !letters || letters.includes(L));
   const few = order.length < 7;
   return (
@@ -70,9 +72,10 @@ export function NameButtons({ system, sign, marks, onPick, disabled, kbd, letter
       aria-label={t('notes.play.names')} style={few ? { gridTemplateColumns: `repeat(${order.length}, minmax(0, 1fr))`, maxWidth: order.length * 96 } : undefined}>
       {order.map((L) => {
         const mark = marks[L];
-        const main = system === 'solfege' ? solfegeName(L, sign) : letterName(L, sign);
-        const sub = system === 'solfege' ? letterName(L, sign) : solfegeName(L, sign);
-        const aria = system === 'solfege' ? `${solfegeName(L, 0)}, ${spokenName(L, sign)}` : spokenName(L, sign);
+        const a = signs?.[L] ?? sign;
+        const main = system === 'solfege' ? solfegeName(L, a) : letterName(L, a);
+        const sub = system === 'solfege' ? letterName(L, a) : solfegeName(L, a);
+        const aria = system === 'solfege' ? `${solfegeName(L, 0)}, ${spokenName(L, a)}` : spokenName(L, a);
         return (
           <button key={L} type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key: L }) : aria}
             className={'name-btn' + (mark ? ' is-' + mark : '')} onClick={() => onPick(L)}>

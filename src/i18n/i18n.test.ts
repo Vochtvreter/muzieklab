@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import en from './en.json';
 import { formatMessage } from './format';
-import { getLocale, hasMessage, isLocale, LOCALES, resolveLocale, setLocale, t, tipText, translateParams, tx } from './index';
+import { formatDecimal, getLocale, hasMessage, isLocale, LOCALES, resolveLocale, setLocale, t, tipText, translateParams, tx } from './index';
 import { orList } from '../ui/lib/format';
 import { majorName, spokenName } from '../ui/lib/noteText';
 
@@ -73,6 +73,16 @@ describe('t()', () => {
     // Early is a calibration that no longer fits, never the speaker: a device delay only makes taps late.
     expect(tipText({ key: 'tip.latency', params: { ms: 110, dir: 'early' } })).toBe(
       'Your taps came about 110 ms early every time. If you calibrated with other headphones or another speaker, calibrate again.',
+    );
+  });
+
+  it('writes Read notes times with one decimal, and the chart of one note in the singular', () => {
+    expect(formatDecimal(1.7)).toBe('1.7');
+    expect(formatDecimal(3)).toBe('3.0');
+    expect(formatDecimal(1234.56)).toBe('1234.6');
+    expect(t('notes.done.chartLabel', { count: 1, avg: formatDecimal(2.2), missed: 1 })).toBe('Answer time for 1 note. Average 2.2 seconds. 1 note missed.');
+    expect(t('notes.done.chartLabel', { count: 12, avg: formatDecimal(2.2), missed: 0 })).toBe(
+      'Answer time for each of the 12 notes. Average 2.2 seconds. No notes missed.',
     );
   });
 
@@ -195,6 +205,18 @@ describe('Dutch', () => {
     expect(t('common.bars', { count: 4 })).toBe('4 maten');
     expect(t('streak.pill', { count: 0 })).toBe('Nog geen reeks');
     expect(orList(['value.quarter', 'rest.quarter', 'value.dottedHalf'])).toBe('kwartnoot, kwartrust of gepunteerde halve');
+  });
+
+  it('writes Read notes times with a decimal comma, and the chart of one note in the singular', () => {
+    setLocale('nl');
+    expect(formatDecimal(1.7)).toBe('1,7');
+    expect(formatDecimal(3)).toBe('3,0');
+    expect(formatDecimal(1234.56)).toBe('1234,6');
+    expect(t('notes.done.avg', { value: formatDecimal(2.25) })).toBe('gem. 2,3 s');
+    expect(t('notes.done.chartLabel', { count: 1, avg: formatDecimal(2.2), missed: 1 })).toBe('Antwoordtijd voor 1 noot. Gemiddeld 2,2 seconden. 1 noot gemist.');
+    expect(t('notes.done.chartLabel', { count: 12, avg: formatDecimal(2.2), missed: 0 })).toBe(
+      'Antwoordtijd voor elk van de 12 noten. Gemiddeld 2,2 seconden. Geen noten gemist.',
+    );
   });
 
   it('names sharps and flats the Dutch way for screen readers', () => {

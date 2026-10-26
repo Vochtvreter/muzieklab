@@ -624,7 +624,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         const [m, s] = [(await main.boundingBox())!, (await side.boundingBox())!];
         expect(s.x, 'the side panel is right of the main column').toBeGreaterThanOrEqual(m.x + m.width);
         expect(s.y < m.y + m.height && m.y < s.y + s.height, 'the side panel is beside the main column').toBe(true);
-        await expect(main.getByRole('img', { name: /^Answer time for each of the / })).toBeVisible();
+        await expect(main.getByRole('img', { name: /^Answer time for 1 note\. / })).toBeVisible();
         await expect(side.locator('.score-pct')).toBeVisible();
         await expectClickable(side.getByRole('button', { name: 'New round' }));
         await expectClickable(side.getByRole('link', { name: 'Change setup' }));

@@ -139,6 +139,15 @@ export function roundHasSigns(s: NoteSettings): boolean {
   return s.extras !== 'none' || roundKeys(s).some((k) => KEYS[k].fifths !== 0);
 }
 
+/**
+ * The extra signs a round can really have. Sharps adds none when every key of the round has all seven letters sharp
+ * already (C♯ major): one more would be a double sharp, which is left out (§3.5). The setup then promises no extra
+ * signs, and the round is not counted as harder.
+ */
+export function roundExtras(s: NoteSettings): Extras {
+  return s.extras === 'sharps' && roundKeys(s).every((k) => LETTERS.every((L) => keyAlter(k, L) === 1)) ? 'none' : s.extras;
+}
+
 export interface RoundNote {
   clef: Clef;
   key: KeyId;
@@ -439,7 +448,7 @@ export function noteDifficulty(s: NoteSettings): number {
   const d =
     { staff: 0, ledger1: 1.5, ledger2: 3 }[s.range] +
     signs * 0.4 +
-    { none: 0, sharps: 1, both: 1.5 }[s.extras] +
+    { none: 0, sharps: 1, both: 1.5 }[roundExtras(s)] +
     (s.clefs.length > 1 ? 0.5 : 0) +
     (keys.length > 1 ? 1 : 0) +
     (s.timer === 3 ? 1.5 : s.timer === 5 ? 0.75 : 0);
