@@ -1,6 +1,6 @@
 /** Pure helpers for the Play screen: segments after a pause, staff windows, beats, live score. */
-import { EXTRA_TAP_POINTS, POINTS } from '../../core/api';
-import type { Judgement, JudgeResult, LivePress, NoteResult, Tap, Timeline, TimedNote } from '../../core/api';
+import { EXTRA_TAP_POINTS, noteWindows, POINTS } from '../../core/api';
+import type { Judgement, JudgeResult, Leniency, LivePress, NoteResult, Tap, Timeline, TimedNote } from '../../core/api';
 
 /**
  * The part of a timeline from bar `fromBar` on, re-based so that bar `fromBar` starts at 0 s / tick 0 and
@@ -24,14 +24,54 @@ export function sliceTimeline(tl: Timeline, fromBar: number, barTicks: number, b
 }
 
 /**
- * Taps kept when resuming at `fromBar` after pausing at `pausedAt` (global seconds): presses before the bar stay,
- * presses inside it are dropped (the bar is played again), and a hold still going at the pause ends there.
+ * Tells whether a press at a time (global seconds) falls inside the Good window of a note of bar `fromBar` or later, by
+ * the final judge's windows. Judged again after a resume at `fromBar`, a press from before the pause in such a window
+ * would take that note from the press that plays it again.
  */
-export function tapsBeforeBar(taps: Tap[], fromBar: number, barSeconds: number, pausedAt: number): Tap[] {
+export function replayedWindows(tl: Timeline, fromBar: number, leniency: Leniency): (time: number) => boolean {
+  const wins = noteWindows(tl, leniency);
+  const replayed = tl.notes.flatMap((n, i) => (n.bar >= fromBar ? [{ onset: n.onset, good: wins[i].good }] : []));
+  return (time) => replayed.some((n) => Math.abs(time - n.onset) <= n.good + 1e-9);
+}
+
+export interface KeptTaps {
+  /** The note the live judge matched a press to. */
+  noteOf?: (tap: Tap) => TimedNote | undefined;
+  /** Whether a press at this time falls in the window of a replayed note (replayedWindows). */
+  inReplayedWindow?: (time: number) => boolean;
+  /** The press still down at the pause, which ended its hold there. */
+  held?: Tap | null;
+}
+
+/**
+ * Taps kept when resuming at `fromBar` after pausing at `pausedAt` (global seconds). The bar is played again, so the
+ * presses that played its notes are dropped and those that played earlier notes stay, by the note the live judge
+ * matched (`noteOf`): a press for the bar's first note can come just before the bar line, one for the note before it
+ * just after. A press that matched no note (an extra tap) stays when it came before the bar line, unless it falls in the
+ * window of a replayed note (`inReplayedWindow`), such as a second press just before the bar's first note: judged
+ * again, it would take that note from the press that plays it again. `held` is the press still down at the pause, which
+ * ended it there: on a note tied over into the bar and paused before the note's end, it counts as held to that end, as
+ * the note is not played again. A hold never released ends at the bar line, or at the pause if that came first.
+ */
+export function tapsBeforeBar(
+  taps: Tap[],
+  fromBar: number,
+  barSeconds: number,
+  pausedAt: number,
+  { noteOf = () => undefined, inReplayedWindow = () => false, held = null }: KeptTaps = {},
+): Tap[] {
   const cut = fromBar * barSeconds;
   return taps
-    .filter((tp) => tp.down < cut)
-    .map((tp) => (tp.up === null || tp.up > pausedAt ? { ...tp, up: Math.min(pausedAt, Math.max(tp.down, cut)) } : tp));
+    .filter((tp) => {
+      const note = noteOf(tp);
+      return note ? note.bar < fromBar : tp.down < cut && !inReplayedWindow(tp.down);
+    })
+    .map((tp) => {
+      const end = noteOf(tp)?.end ?? -Infinity;
+      if (tp === held && end > pausedAt) return { ...tp, up: end };
+      // Only a hold never released: a tied hold that an earlier resume ended after this pause keeps its end.
+      return tp.up === null ? { ...tp, up: Math.min(pausedAt, Math.max(tp.down, cut)) } : tp;
+    });
 }
 
 /** First bar of the staff window: the current row, so the row being played sits on top with the next one below. */

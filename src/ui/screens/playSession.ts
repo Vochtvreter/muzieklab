@@ -23,7 +23,7 @@ import { exerciseHas, introId, unseenIntros, type Intro } from '../../game/intro
 import type { Prefs } from '../../game/storage';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import type { ExerciseView } from '../exerciseView';
-import { beatAt, cursorAt, holdProgress, partialResult, pressFeedback, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
+import { beatAt, cursorAt, holdProgress, partialResult, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
 import type { Run } from '../store';
 
 export type Phase = 'intro' | 'running' | 'paused' | 'done';
@@ -188,6 +188,8 @@ export function usePlaySession(
   const pausedAt = useRef(0);
   /** The bar to resume at, kept as an integer: pausedAt / barSec can land just below a whole bar (2.9999…). */
   const pausedBar = useRef(0);
+  /** The press still down when the pause came (the pause ended its hold). */
+  const heldAtPause = useRef<Tap | null>(null);
   const raf = useRef<number | null>(null);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -315,6 +317,7 @@ export function usePlaySession(
     current.current = null;
     ignoredPress.current = false;
     everPaused.current = false;
+    heldAtPause.current = null;
     setMarks({});
     setFeedback(null);
     setCombo(0);
@@ -336,6 +339,7 @@ export function usePlaySession(
       cur.tap.up = Math.max(cur.tap.down, tg);
       seg.current.judge.release(tg - seg.current.fromBar * barSec);
     }
+    heldAtPause.current = cur?.tap ?? null;
     current.current = null;
     ignoredPress.current = false;
     // Paused during a resumed segment's lead-in or count-in: tg is still before the bar it resumed at. Resume there,
@@ -359,8 +363,18 @@ export function usePlaySession(
       return;
     }
     const cut = b * barSec;
-    taps.current = tapsBeforeBar(taps.current, b, barSec, pausedAt.current);
-    extras.current = extras.current.filter((tp) => tp.down < cut);
+    // The note each press played, from the live judge: whether a press near the bar line is played again.
+    const noteOf = new Map<Tap, TimedNote>();
+    for (const [gi, r] of live.current) {
+      const note = view.timeline.notes[gi];
+      if (r.tap && note) noteOf.set(r.tap, note);
+    }
+    // An extra tap in the window of a replayed note would take that note when the run is judged again.
+    const inReplayedWindow = replayedWindows(view.timeline, b, opts.leniency);
+    taps.current = tapsBeforeBar(taps.current, b, barSec, pausedAt.current, { noteOf: (tp) => noteOf.get(tp), inReplayedWindow, held: heldAtPause.current });
+    heldAtPause.current = null;
+    // The live count of extra taps keeps the same ones.
+    extras.current = extras.current.filter((tp) => tp.down < cut && !inReplayedWindow(tp.down));
     for (const [gi] of live.current) {
       if ((view.timeline.notes[gi]?.bar ?? 0) >= b) live.current.delete(gi);
     }
@@ -372,7 +386,7 @@ export function usePlaySession(
     setFeedback(null);
     setCombo(0);
     startSegment(b, Math.max(1, ex.settings.countIn));
-  }, [ex, barSec, view, startSegment]);
+  }, [ex, barSec, view, startSegment, opts.leniency]);
 
   const down = useCallback((timeStamp: number) => {
     const s = seg.current;

@@ -207,6 +207,121 @@ describe('usePlaySession', () => {
     }
   });
 
+  it("a press for the paused bar's first note made just before its bar line is played again, not judged twice", () => {
+    for (const hold of [false, true]) {
+      for (const early of [0.001, 0.03, 0.1]) {
+        const label = `hold ${hold}, ${early * 1000} ms early`;
+        const { hook, view, done, origin } = setup({ notes: ['quarter'], hold });
+        let o = origin(0, 0);
+        const notes = view.timeline.notes;
+        const play = (n: (typeof notes)[number]): void => {
+          at(o + n.onset);
+          key('keydown');
+          at(o + n.end - 0.01);
+          key('keyup');
+        };
+        notes.filter((n) => n.bar < 2).forEach(play);
+        const downbeat = notes.find((n) => n.bar === 2)!;
+        at(o + downbeat.onset - early);
+        key('keydown');
+        at(o + downbeat.onset + 0.2);
+        key('keyup');
+        at(o + downbeat.onset + 0.25);
+        act(() => hook.result.current.openSheet('pause'));
+        const resumedAt = clock.heard;
+        act(() => hook.result.current.closeSheet()); // bar 3 is played again
+        o = origin(resumedAt, 2);
+        notes.filter((n) => n.bar >= 2).forEach(play);
+        at(clock.heard + 2);
+        expect(done.result, label).not.toBeNull();
+        expect(done.result!.extraTaps, label).toBe(0);
+        expect(done.result!.counts.perfect, label).toBe(notes.length);
+        expect(done.result!.holds, label).toEqual(hold ? { right: notes.length, short: 0, long: 0 } : { right: 0, short: 0, long: 0 });
+      }
+    }
+  });
+
+  it("an extra press in the paused bar's first note's window, just before its bar line, is dropped with that note", () => {
+    // A double tap: the press 115 ms early played the downbeat, the bounce 80 ms early was an extra tap. Kept, the final
+    // judge gives the downbeat to that bounce (Good, cut short at the next press) and the replayed press is the extra.
+    for (const hold of [false, true]) {
+      for (const again of [false, true]) {
+        const label = `hold ${hold}, ${again ? 'in a replay paused again' : 'before the first pause'}`;
+        const { hook, view, done, origin } = setup({ notes: ['quarter'], hold });
+        let o = origin(0, 0);
+        const notes = view.timeline.notes;
+        const play = (n: (typeof notes)[number]): void => {
+          at(o + n.onset);
+          key('keydown');
+          at(o + n.end - 0.01);
+          key('keyup');
+        };
+        notes.filter((n) => n.bar < 2).forEach(play);
+        const downbeat = notes.find((n) => n.bar === 2)!;
+        const pauseInBar2 = (double: boolean): void => {
+          if (double) {
+            at(o + downbeat.onset - 0.115);
+            key('keydown');
+            at(o + downbeat.onset - 0.1);
+            key('keyup');
+          }
+          at(o + downbeat.onset - (double ? 0.08 : 0));
+          key('keydown');
+          at(o + downbeat.onset + 0.2);
+          key('keyup');
+          at(o + downbeat.onset + 0.3);
+          act(() => hook.result.current.openSheet('pause'));
+          const resumedAt = clock.heard;
+          act(() => hook.result.current.closeSheet()); // bar 3 is played again
+          o = origin(resumedAt, 2);
+        };
+        if (again) pauseInBar2(false);
+        pauseInBar2(true);
+        expect(hook.result.current.extraTaps, label).toBe(0);
+        notes.filter((n) => n.bar >= 2).forEach(play);
+        at(clock.heard + 2);
+        expect(done.result, label).not.toBeNull();
+        const r = done.result!;
+        expect(r.notes[downbeat.index].judgement, label).toBe('perfect');
+        expect(r.notes[downbeat.index].tap!.down, label).toBeCloseTo(downbeat.onset, 6); // the replayed press
+        expect(r.extraTaps, label).toBe(0);
+        expect(r.counts.perfect, label).toBe(notes.length);
+        expect(r.holds.short, label).toBe(0);
+      }
+    }
+  });
+
+  it('a tied note still held when the pause comes in the bar it is tied into counts as held to its end', () => {
+    const { hook, view, done, origin } = setup({ ties: true, rests: ['quarter'] });
+    const notes = view.timeline.notes;
+    // Tied over a bar line and followed by a rest: the replay from the next bar does not play it again.
+    const tied = notes.find((n) => n.end > (n.bar + 1) * view.barSeconds + 1e-6 && n.next !== 'note')!;
+    expect(tied).toBeDefined();
+    const b = tied.bar + 1;
+    let o = origin(0, 0);
+    const play = (n: (typeof notes)[number]): void => {
+      at(o + n.onset);
+      key('keydown');
+      at(o + n.end - 0.01);
+      key('keyup');
+    };
+    notes.filter((n) => n.index < tied.index).forEach(play);
+    at(o + tied.onset);
+    key('keydown');
+    // Still holding it, just after the bar line: well before it may be let go.
+    at(o + b * view.barSeconds + 0.1);
+    act(() => hook.result.current.openSheet('pause'));
+    key('keyup');
+    const resumedAt = clock.heard;
+    act(() => hook.result.current.closeSheet());
+    o = origin(resumedAt, b);
+    notes.filter((n) => n.bar >= b).forEach(play);
+    at(clock.heard + 2);
+    expect(done.result).not.toBeNull();
+    expect(done.result!.notes[tied.index].hold).toBe('right');
+    expect(done.result!.holds).toEqual({ right: notes.length, short: 0, long: 0 });
+  });
+
   it('the count-in is not bar 1: no note highlighted until the first beat, also in the count-in after a pause', () => {
     const { hook, view, origin } = setup();
     expect(hook.result.current.frame.cursor).toBeNull();

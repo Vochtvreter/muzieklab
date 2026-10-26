@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type Stars, type Timeline } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
 import { defaultProgress, type Progress } from '../../game/storage';
 import { PATH_UNITS } from '../../game/tracks';
 import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
 import { continueLesson, lessonOutcome, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
-import { beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
+import { beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
 import { setupHints, startBlockedKey } from './setupHints';
 import { describeBars } from './notation';
 
@@ -129,6 +129,44 @@ describe('play maths', () => {
       { down: 0.01, up: 0.9 },
       { down: 1.0, up: 2 },
     ]);
+  });
+
+  it('drops the presses that played the replayed bar by their note, also one made just before its bar line', () => {
+    const second = { down: 1.0, up: 1.9 };
+    const early = { down: 1.98, up: 2.3 }; // the replayed bar's first note, a little early
+    const extraBefore = { down: 1.9, up: 1.92 };
+    const extraAfter = { down: 2.6, up: 2.7 };
+    const late = { down: 2.03, up: 2.2 }; // a late press for the note before the bar line (as if bar 1 began with a rest)
+    const noteOf = new Map<Tap, TimedNote>([
+      [second, TL.notes[1]],
+      [early, TL.notes[2]],
+      [late, TL.notes[1]],
+    ]);
+    expect(tapsBeforeBar([second, extraBefore, early, late, extraAfter], 1, 2, 2.8, { noteOf: (tp) => noteOf.get(tp) })).toEqual([second, extraBefore, late]);
+  });
+
+  it('drops an extra tap in the window of a replayed note too: judged again, it would take that note', () => {
+    const replayed = replayedWindows(TL, 1, 'normal');
+    // The final judge's Good windows, 120 ms here: bar 1's notes at 2 s and 3 s, not bar 0's at 1 s.
+    expect([1.87, 1.88, 2.12, 2.13, 2.95, 0.95].map(replayed)).toEqual([false, true, true, false, true, false]);
+    expect(replayedWindows(TL, 1, 'relaxed')(1.85)).toBe(true);
+    const played = { down: 1.9, up: 1.92 }; // bar 1's first note, a little early
+    const bounce = { down: 1.93, up: 2.3 }; // a second press in its window: an extra tap
+    const extra = { down: 1.5, up: 1.6 }; // an extra tap away from the replayed notes
+    const noteOf = new Map<Tap, TimedNote>([[played, TL.notes[2]]]);
+    expect(tapsBeforeBar([extra, played, bounce], 1, 2, 2.5, { noteOf: (tp) => noteOf.get(tp), inReplayedWindow: replayed })).toEqual([extra]);
+  });
+
+  it('a hold the pause cut short, on a note tied into the replayed bar, counts as held to the note’s end', () => {
+    // Tied over the bar line at 2 s and followed by a rest: the replay from bar 1 does not play it again.
+    const tied = { index: 1, bar: 0, tick: 96, onset: 1, end: 2.75, durationTicks: 168, next: 'rest' as const };
+    const held = { down: 1.0, up: 2.3 };
+    expect(tapsBeforeBar([held], 1, 2, 2.3, { noteOf: () => tied, held })).toEqual([{ down: 1.0, up: 2.75 }]);
+    // Still held when the note had ended: held too long, as played.
+    const over = { down: 1.0, up: 2.9 };
+    expect(tapsBeforeBar([over], 1, 2, 2.9, { noteOf: () => tied, held: over })).toEqual([over]);
+    // Paused again in the count-in before the replay: the hold keeps that end.
+    expect(tapsBeforeBar([{ down: 1.0, up: 2.75 }], 1, 2, 2, { noteOf: () => tied })).toEqual([{ down: 1.0, up: 2.75 }]);
   });
 
   it('finds the beat, including the count-in', () => {
