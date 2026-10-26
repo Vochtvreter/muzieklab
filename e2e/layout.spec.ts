@@ -2579,6 +2579,43 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       expect(report).toMatchObject({ kind: 'change', description: 'Say what each leniency does in milliseconds too.', context: { route: '/settings' } });
       expect(report.context.viewport).toMatchObject({ width: VIEWPORTS[name].width, height: VIEWPORTS[name].height });
       expect(report.target.text).toContain('Fair timing for most players.');
+      // The box with the scroll offset finds the spot again on the page scrolled back to its top: the page scrolls in
+      // .page, not the window.
+      const foundAgain = async (sent: FeedbackReport): Promise<void> => {
+        const top = await page.evaluate((selector) => {
+          const el = document.querySelector(selector)!;
+          for (let n = el.parentElement; n; n = n.parentElement) n.scrollTop = 0;
+          return el.getBoundingClientRect().y;
+        }, sent.target.selector);
+        expect(Math.abs(sent.target.rect.y + sent.target.scroll.y - top), `box y ${sent.target.rect.y} + scroll ${sent.target.scroll.y}`).toBeLessThan(2);
+      };
+      await foundAgain(report);
+
+      // Settings' side column on a wider screen stays put while the page scrolls (position: sticky), so the page's
+      // scroll is left out of its offset; on a phone in landscape it scrolls with the page, and that scroll counts.
+      const side = page.locator('.set-side');
+      if (await side.count()) {
+        const item = side.getByRole('button', { name: 'Sound' });
+        // Scrolled as far down as the page goes with the item in view.
+        await page.locator('.page').evaluate((n) => {
+          n.scrollTop = n.scrollHeight;
+        });
+        await item.scrollIntoViewIfNeeded();
+        const scrolledBy = await page.locator('.page').evaluate((n) => n.scrollTop);
+        const sticky = await side.evaluate((n) => getComputedStyle(n).position === 'sticky');
+        await done.getByRole('button', { name: 'Mark another' }).click();
+        await expect(page.getByRole('dialog', { name: /part you mean/ })).toBeVisible();
+        const s = (await item.boundingBox())!;
+        await page.mouse.click(s.x + s.width / 2, s.y + s.height / 2);
+        await form.getByLabel('What should change?').fill('Show which section is on screen.');
+        await form.getByRole('button', { name: 'Send', exact: true }).click();
+        await expect(done).toBeVisible();
+        const inSide = api.callsTo('POST /feedback')[1].body as FeedbackReport;
+        expect(await page.evaluate((selector) => !!document.querySelector(selector)?.closest('.set-side'), inSide.target.selector)).toBe(true);
+        expect(scrolledBy).toBeGreaterThan(0);
+        expect(inSide.target.scroll).toEqual({ x: 0, y: sticky ? 0 : scrolledBy });
+        await foundAgain(inSide);
+      }
 
       // Mark another, drawing a box this time.
       await done.getByRole('button', { name: 'Mark another' }).click();
@@ -2594,10 +2631,37 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await form.getByRole('button', { name: 'Close' }).click();
       await expect(form).toHaveCount(0);
       await expect(fab).toBeVisible();
+      // The focus is back on the button that opened the tool, so the keyboard and a screen reader keep their place.
+      await expect(fab).toBeFocused();
       await expectNoSideScroll(page);
     });
   });
 }
+
+test.describe('feedback: marking a staff drawing', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('logs no errors: its long path is cut in a copy outside the page', async ({ page }) => {
+    // Errors the page logs; not a request the mocked API leaves unanswered (a 404), which the browser logs too.
+    const errors: string[] = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(m.text());
+    });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/');
+    const staff = page.locator('main svg').first();
+    await expect(staff).toBeVisible();
+    // A path longer than the report's markup keeps of a value.
+    expect(await staff.evaluate((svg) => Math.max(...[...svg.querySelectorAll('path')].map((p) => p.getAttribute('d')?.length ?? 0)))).toBeGreaterThan(120);
+    await page.getByRole('button', { name: FAB }).click();
+    const r = (await staff.boundingBox())!;
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+    await expect(page.getByRole('dialog', { name: 'Feedback' }).locator('.fb-marked')).toContainText('drawing');
+    expect(errors).toEqual([]);
+  });
+});
 
 test.describe('feedback: when saving fails, Review it, and hiding the button', () => {
   test.use({ serviceWorkers: 'block' });
@@ -2654,6 +2718,7 @@ test.describe('feedback: when saving fails, Review it, and hiding the button', (
     expect(server.reports()[0]).toMatchObject({ status: 'new', kind: 'bug', description: 'Start lesson does nothing on the first tap.', author: { name: tester.name } });
     await page.keyboard.press('Escape');
     await expect(done).toHaveCount(0);
+    await expect(fab).toBeFocused();
 
     // Hidden on this device, and back from Settings → Account.
     await markStart(page);

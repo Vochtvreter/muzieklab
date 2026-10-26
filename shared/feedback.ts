@@ -40,7 +40,11 @@ export interface FeedbackTarget {
   html: string;
   /** The marked box in CSS px, relative to the viewport. */
   rect: Rect;
-  /** The page's scroll offset when it was marked, so the box can be found again on a long page. */
+  /**
+   * The page's scroll offset when it was marked, so the box can be found again on a long page: the window's plus that
+   * of the boxes around the element (a screen scrolls inside .page), leaving out scroll that does not move it (the box
+   * a sticky part sticks in; all of it for a fixed part). The box plus it is the spot on the unscrolled page.
+   */
   scroll: { x: number; y: number };
 }
 
@@ -63,9 +67,13 @@ export interface FeedbackContext {
   prefs: unknown;
 }
 
+/** The longest description the API stores (counted as code points; a text field's maxLength counts no fewer). */
+export const FEEDBACK_DESCRIPTION_MAX = 5000;
+
 export interface FeedbackReport {
   kind: FeedbackKind;
   title: string;
+  /** What should change, up to FEEDBACK_DESCRIPTION_MAX characters. */
   description: string;
   target: FeedbackTarget;
   context: FeedbackContext;

@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { ObjectId, type Filter } from 'mongodb';
 import type { AuditEntry } from '../../../shared/api.js';
 import {
+  FEEDBACK_DESCRIPTION_MAX,
   FEEDBACK_KINDS,
   FEEDBACK_NOTE_MAX,
   FEEDBACK_STATUSES,
@@ -45,7 +46,7 @@ const obj = <P extends Record<string, object>>(properties: P) => s.body(properti
 const report = obj({
   kind: { enum: FEEDBACK_KINDS },
   title: text(200),
-  description: text(5000),
+  description: text(FEEDBACK_DESCRIPTION_MAX),
   target: obj({
     mode: { enum: ['element', 'area'] },
     selector: text(2000),

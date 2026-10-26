@@ -781,7 +781,8 @@
     "save": "Save",
     "saving": "Saving…",
     "passwordEmpty": "Type your password.",
-    "emailEmpty": "Type your email."
+    "emailEmpty": "Type your email.",
+    "hiddenCharacters": "Remove the tabs and other hidden characters."
   },
   "apiError": {
     "bad_request": "Something in the form isn't right. Check it and try again.",
@@ -1160,7 +1161,6 @@
     "notReviewed": "Not reviewed yet.",
     "note": "Note for the team",
     "noteHint": "Only people who review feedback see it, not the person who sent it. Up to {max} characters.",
-    "noteBadCharacters": "Remove the tabs and other hidden characters.",
     "saveNote": "Save note",
     "actions": "Actions",
     "copy": "Copy as Markdown",

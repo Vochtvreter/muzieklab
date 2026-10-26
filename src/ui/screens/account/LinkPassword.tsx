@@ -16,7 +16,7 @@ import { useAccount } from '../../account';
 import { ErrorRetry, FormError, HiddenUsername, onSubmit, PasswordField, SubmitButton, TextField } from '../../components/Form';
 import { FocusedPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
-import { errorMessage, failureOf, fieldError, formError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
+import { errorMessage, failureOf, fieldError, formError, nameCharactersError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
 import { SignOut, useRefocus } from './AccountSection';
 
@@ -44,6 +44,7 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState<Failure | null>(null);
   const [nameEmpty, setNameEmpty] = useState(false);
+  const [badName, setBadName] = useState<string | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const mounted = useMounted();
@@ -113,8 +114,10 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
   const submit = async (): Promise<void> => {
     setFail(null);
     const noName = kind === 'invite' && !name.trim();
+    const bad = kind === 'invite' ? nameCharactersError(name) : null;
     setNameEmpty(noName);
-    if (noName) {
+    setBadName(bad);
+    if (noName || bad) {
       nameRef.current?.focus();
       return;
     }
@@ -152,7 +155,7 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
         <HiddenUsername email={link.email} />
         {kind === 'invite' && (
           <TextField label={t('invite.name')} autoComplete="name" name="name" value={name} onChange={setName} maxLength={NAME_MAX} inputRef={nameRef}
-            error={nameEmpty ? t('account.nameEmpty') : null} />
+            error={nameEmpty ? t('account.nameEmpty') : badName} />
         )}
         <PasswordField label={t(kind === 'invite' ? 'invite.password' : 'reset.password')} autoComplete="new-password" name="new-password" value={password}
           onChange={setPassword} inputRef={passwordRef} hint={t('form.passwordRules', { min: PASSWORD_MIN })} error={fieldError(fail, 'password')} />

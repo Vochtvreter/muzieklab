@@ -86,7 +86,7 @@ function parseLastDay(until: string | null, now: Date): string | null {
 function patchNeeds(body: AdminUpdateRequest): Permission[] {
   const needs: Permission[] = ['accounts.read'];
   if (body.name !== undefined || body.email !== undefined) needs.push('accounts.invite');
-  if (body.roles !== undefined) needs.push('roles.grant');
+  if (body.roles !== undefined || body.addRoles !== undefined || body.removeRoles !== undefined) needs.push('roles.grant');
   if (body.status !== undefined) needs.push('accounts.block');
   if (body.premium !== undefined) needs.push('entitlements.grant');
   return needs;
@@ -206,7 +206,7 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       config: { permission: 'accounts.read' },
       schema: {
         params: s.idParams,
-        body: s.body({ name: s.name, email: s.email, roles, status: { enum: ['active', 'blocked'] }, premium }),
+        body: s.body({ name: s.name, email: s.email, roles, addRoles: roles, removeRoles: roles, status: { enum: ['active', 'blocked'] }, premium }),
       },
     },
     async (request): Promise<AccountDetail> => {
@@ -216,6 +216,9 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       if (!(await canAll(c, actor, needs))) throw forbidden();
       const targetId = parseId(request.params.id);
       if (!targetId) throw notFound();
+      const oneByOne = body.addRoles !== undefined || body.removeRoles !== undefined;
+      if (oneByOne && body.roles !== undefined) throw new ApiError('bad_request', 'Send roles, or addRoles and removeRoles, not both');
+      if (body.addRoles?.some((r) => body.removeRoles?.includes(r))) throw new ApiError('bad_request', 'A role is in addRoles and removeRoles');
       const name = body.name === undefined ? undefined : validName(body.name);
       const email = body.email === undefined ? undefined : normalizeEmail(body.email);
       const now = ctx.now();
@@ -236,8 +239,13 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
           const set: Partial<AccountDoc> = {};
           const audit: Omit<AuditInput, 'actorId' | 'targetId'>[] = [];
 
-          if (body.roles !== undefined) {
-            const next = sortRoleIds(body.roles);
+          // `roles` is the whole new set. addRoles and removeRoles change the roles the account has now, inside this
+          // transaction: a role switch then never undoes what another admin changed after the switch's screen loaded.
+          const roleIds = oneByOne
+            ? [...target.roles.filter((r) => !body.removeRoles?.includes(r)), ...(body.addRoles ?? [])]
+            : body.roles;
+          if (roleIds !== undefined) {
+            const next = sortRoleIds(roleIds);
             const added = next.filter((r) => !target.roles.includes(r));
             const removed = target.roles.filter((r) => !next.includes(r));
             if (added.length > 0 || removed.length > 0) {

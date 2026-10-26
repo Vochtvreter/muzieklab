@@ -240,8 +240,11 @@ test('a renewal whose answer never came back (a reload on the way) is made again
   const lost = await request.post(API + '/auth/refresh', { headers: { Origin: ORIGIN, Cookie: `refresh=${refresh}` } });
   expect(lost.status()).toBe(204);
 
-  // On start the app renews with that token again, moments later, and gets the pair the lost answer had.
+  // On start the app renews with that token again, moments later, and gets the pair the lost answer had. The cached
+  // name shows before the renewal answers, so the cookies are read once it has.
+  const renewed = page.waitForResponse((r) => r.url().endsWith('/api/v1/auth/refresh') && r.status() === 204);
   await page.reload();
+  await renewed;
   await expect(page.getByLabel('Name')).toHaveValue(member.name);
   expect(await cookie('session')).toBeDefined();
   expect(await cookie('refresh')).not.toBe(refresh);
@@ -540,8 +543,12 @@ test('a role an admin makes gives its permission: in feedback mode, with feedbac
   await expect(mode).toHaveAttribute('aria-checked', 'false');
   await mode.click();
   await expect(mode).toHaveAttribute('aria-checked', 'true');
+  // The member's app opens again on Home, not on an account screen: its account, kept while the mode was off, still
+  // asks GET /me when the app starts, and so learns that the mode is on.
+  await member.page.goto('./#/');
   await member.page.reload();
   await expect(fab).toBeVisible();
+  await member.page.goto('./#/settings');
   await expect(accountSection(member.page).getByRole('switch', { name: 'Feedback button' })).toHaveAttribute('aria-checked', 'true');
   // Reviewing is not part of the role: no Feedback row to the reports.
   await expect(accountRow(member.page, 'Feedback')).toHaveCount(0);

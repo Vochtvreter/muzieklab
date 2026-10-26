@@ -73,3 +73,12 @@ export function passwordLengthFailure(password: string): Failure | null {
   const n = [...password].length;
   return n < PASSWORD_MIN || n > PASSWORD_MAX ? failureOf(new ApiError(422, 'password_length')) : null;
 }
+
+/**
+ * A name the server would refuse for what is in it: a tab or another control character inside it (a name pasted from
+ * two spreadsheet cells has a tab, which hardly shows). Its answer names no field, so the name is checked before the
+ * request is sent: the message for the name field, or null. Around the name it is only space, which is trimmed.
+ */
+export function nameCharactersError(name: string): string | null {
+  return /\p{Cc}/u.test(name.trim()) ? t('form.hiddenCharacters') : null;
+}

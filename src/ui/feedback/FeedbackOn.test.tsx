@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, type Me } from '../../../shared/api';
-import type { FeedbackReport } from '../../../shared/feedback';
+import { FEEDBACK_DESCRIPTION_MAX, type FeedbackReport } from '../../../shared/feedback';
 import { ACCOUNT_KEY } from '../../game/storage';
 import { setLocale } from '../../i18n';
 import { resetAccountCheck } from '../account';
@@ -118,5 +118,65 @@ describe('Feedback tool: sending a report', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await screen.findByRole('dialog', { name: 'Saved for review' });
     expect(sent()).toHaveLength(2);
+  });
+
+  it('the description takes no more than the API stores', async () => {
+    await markStart();
+    const area = screen.getByPlaceholderText('What is wrong here, and what you expect instead') as HTMLTextAreaElement;
+    expect(area.maxLength).toBe(FEEDBACK_DESCRIPTION_MAX);
+  });
+});
+
+describe('Feedback tool: closing it', () => {
+  const fab = (): HTMLElement => screen.getByRole('button', { name: 'Feedback: mark a part of this screen' });
+  const mark = (): void => {
+    const layer = screen.getByRole('dialog', { name: /^Click the part you mean/ });
+    fireEvent.pointerDown(layer, { clientX: 40, clientY: 40 });
+    fireEvent.pointerUp(layer, { clientX: 40, clientY: 40 });
+  };
+
+  it('puts the focus back on the Feedback button: the X, Cancel or Esc while marking', async () => {
+    await markStart();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(document.activeElement).toBe(fab()));
+
+    fireEvent.click(fab());
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(document.activeElement).toBe(fab()));
+
+    fireEvent.click(fab());
+    fireEvent.keyDown(screen.getByRole('dialog', { name: /^Click the part you mean/ }), { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement).toBe(fab()));
+  });
+
+  it('puts the focus back on the Feedback button: Esc in the form, and Close once it was sent', async () => {
+    await markStart();
+    fireEvent.keyDown(screen.getByPlaceholderText('What is wrong here, and what you expect instead'), { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement).toBe(fab()));
+
+    fireEvent.click(fab());
+    mark();
+    fireEvent.change(await screen.findByPlaceholderText('What is wrong here, and what you expect instead'), { target: { value: 'Start is cut off.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    const done = await screen.findByRole('dialog', { name: 'Saved for review' });
+    fireEvent.click(within(done).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(document.activeElement).toBe(fab()));
+  });
+
+  it('not after Review it, which opens the report instead', async () => {
+    await markStart();
+    fireEvent.keyDown(screen.getByPlaceholderText('What is wrong here, and what you expect instead'), { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement).toBe(fab()));
+    // Esc on the Feedback button closes nothing, and leaves nothing behind for the next close.
+    fireEvent.keyDown(fab(), { key: 'Escape' });
+    fireEvent.click(fab());
+    mark();
+    fireEvent.change(await screen.findByPlaceholderText('What is wrong here, and what you expect instead'), { target: { value: 'Start is cut off.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    const done = await screen.findByRole('dialog', { name: 'Saved for review' });
+    fireEvent.click(within(done).getByRole('link', { name: 'Review it' }));
+    await waitFor(() => expect(fab()).toBeTruthy());
+    await new Promise((r) => setTimeout(r, 50));
+    expect(document.activeElement).not.toBe(fab());
   });
 });

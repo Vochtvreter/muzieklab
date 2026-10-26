@@ -781,7 +781,8 @@
     "save": "Bewaren",
     "saving": "Bewaren…",
     "passwordEmpty": "Typ je wachtwoord.",
-    "emailEmpty": "Typ je e-mailadres."
+    "emailEmpty": "Typ je e-mailadres.",
+    "hiddenCharacters": "Haal de tabs en andere onzichtbare tekens weg."
   },
   "apiError": {
     "bad_request": "Er klopt iets niet in het formulier. Kijk het na en probeer het opnieuw.",
@@ -1160,7 +1161,6 @@
     "notReviewed": "Nog niet beoordeeld.",
     "note": "Notitie voor het team",
     "noteHint": "Alleen wie feedback beoordeelt ziet dit, niet degene die het stuurde. Maximaal {max} tekens.",
-    "noteBadCharacters": "Haal de tabs en andere onzichtbare tekens weg.",
     "saveNote": "Notitie bewaren",
     "actions": "Acties",
     "copy": "Kopiëren als Markdown",

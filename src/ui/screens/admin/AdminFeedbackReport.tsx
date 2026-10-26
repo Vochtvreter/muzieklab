@@ -320,7 +320,7 @@ function ReviewCard({ detail, onChange, fail }: ChangeProps): JSX.Element {
       </div>
       <form className="card-pad" noValidate onSubmit={onSubmit(() => void saveNote(), busy)}>
         <TextAreaField label={t('feedbackReview.note')} name="note" value={note} maxLength={FEEDBACK_NOTE_MAX} inputRef={noteRef}
-          hint={t('feedbackReview.noteHint', { max: FEEDBACK_NOTE_MAX })} error={badNote ? t('feedbackReview.noteBadCharacters') : null} onChange={(v) => {
+          hint={t('feedbackReview.noteHint', { max: FEEDBACK_NOTE_MAX })} error={badNote ? t('form.hiddenCharacters') : null} onChange={(v) => {
             type(v);
             setSaved(false);
             setBadNote(false);

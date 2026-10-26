@@ -2,6 +2,7 @@ import { Collection, ObjectId } from 'mongodb';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AccountExport, AuditListResponse, Me } from '../../../shared/api.js';
 import {
+  FEEDBACK_DESCRIPTION_MAX,
   FEEDBACK_NOTE_MAX,
   type FeedbackDetail,
   type FeedbackListResponse,
@@ -154,6 +155,8 @@ describe('POST /feedback', () => {
     const prefs = (value: unknown) => ({ ...report, context: { ...report.context, prefs: value } });
     for (const payload of [
       { ...report, description: '   ' },
+      // Longer than the app's field lets anyone type.
+      { ...report, description: 'x'.repeat(FEEDBACK_DESCRIPTION_MAX + 1) },
       { ...report, kind: 'rant' },
       { ...report, labels: ['status:approved'] },
       { ...report, status: 'accepted' },
@@ -171,6 +174,7 @@ describe('POST /feedback', () => {
     expect(await collections(t.db).feedback.countDocuments()).toBe(0);
     // Dots and dollars inside keys and values are only text.
     expect((await send(t, admin.cookie, prefs({ 'a.b': '$1', price$: 2 }))).statusCode).toBe(200);
+    expect((await send(t, admin.cookie, { ...report, description: 'x'.repeat(FEEDBACK_DESCRIPTION_MAX) })).statusCode).toBe(200);
   });
 
   it(`takes at most ${FEEDBACK_PER_HOUR} reports an hour from one account`, async () => {

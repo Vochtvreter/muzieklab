@@ -273,7 +273,14 @@ export interface InviteCreated extends LinkCreated {
 export interface AdminUpdateRequest {
   name?: string;
   email?: string;
+  /** Every role the account has from now on. */
   roles?: Role[];
+  /**
+   * Roles to give and to take away, changed in the roles the account has when the change arrives, so what another admin
+   * changed meanwhile stays (the role switches send these). Not with `roles`, and no role in both.
+   */
+  addRoles?: Role[];
+  removeRoles?: Role[];
   /** Block or unblock. An invited account cannot be set to active here: it becomes active by accepting the invite. */
   status?: 'active' | 'blocked';
   /** Premium on (through a last day, YYYY-MM-DD, or null for no end) or off. A last day already over is refused. */

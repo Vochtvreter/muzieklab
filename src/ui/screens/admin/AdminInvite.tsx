@@ -13,7 +13,7 @@ import { Icon } from '../../components/Icon';
 import { Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
-import { failureOf, fieldError, formError, type Failure } from '../../lib/apiErrors';
+import { failureOf, fieldError, formError, nameCharactersError, type Failure } from '../../lib/apiErrors';
 import { Link } from '../../router';
 import { GateMessage, LinkResult, RoleSwitches, useAdminGate } from './AdminParts';
 
@@ -50,6 +50,7 @@ function InviteForm({ account, focus, onCreated }: { account: UseAccount; focus:
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState<Failure | null>(null);
   const [empty, setEmpty] = useState<{ email?: boolean; name?: boolean }>({});
+  const [badName, setBadName] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const mounted = useMounted();
@@ -57,9 +58,11 @@ function InviteForm({ account, focus, onCreated }: { account: UseAccount; focus:
 
   const submit = async (): Promise<void> => {
     const missing = { email: !email.trim(), name: !name.trim() };
+    const bad = nameCharactersError(name);
     setEmpty(missing);
+    setBadName(bad);
     setFail(null);
-    if (missing.email || missing.name) {
+    if (missing.email || missing.name || bad) {
       (missing.email ? emailRef : nameRef).current?.focus();
       return;
     }
@@ -84,7 +87,7 @@ function InviteForm({ account, focus, onCreated }: { account: UseAccount; focus:
           <TextField label={t('admin.email')} type="email" autoComplete="off" inputMode="email" name="invite-email" value={email} onChange={setEmail}
             inputRef={emailRef} autoFocus={focus} maxLength={EMAIL_MAX} error={empty.email ? t('admin.emailEmpty') : fieldError(fail, 'email')} />
           <TextField label={t('admin.name')} autoComplete="off" name="invite-name" value={name} onChange={setName} inputRef={nameRef} maxLength={NAME_MAX}
-            error={empty.name ? t('admin.nameEmpty') : null} />
+            error={empty.name ? t('admin.nameEmpty') : badName} />
         </div>
       </Section>
       {canGrant && (

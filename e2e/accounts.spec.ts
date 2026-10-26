@@ -168,6 +168,15 @@ test('accept invite: a weak password is refused at the field; then signed in, an
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByText('Use 10 to 128 characters.')).toBeVisible();
   expect(api.callsTo('POST /auth/invite/accept')).toHaveLength(0);
+  // A tab in the name (pasted from a spreadsheet): said at the field too, as the server would refuse it.
+  await page.getByLabel('Name').fill('Lies\tBakker');
+  await page.getByLabel('New password').fill('a tune in seven notes');
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('Remove the tabs and other hidden characters.')).toBeVisible();
+  await expect(page.getByLabel('Name')).toBeFocused();
+  await expect(page.getByLabel('Name')).toHaveAttribute('aria-invalid', 'true');
+  expect(api.callsTo('POST /auth/invite/accept')).toHaveLength(0);
+  await page.getByLabel('Name').fill('Lies Bakker');
 
   await page.getByLabel('New password').fill('password1234');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -801,9 +810,10 @@ test('admin one account: a role and premium are saved at once; a guard rail come
     'GET /admin/accounts/:id': { json: sam },
     'PATCH /admin/accounts/:id': ({ body }) => {
       const b = body as AdminUpdateRequest;
-      // As if another admin had made Sam the only admin meanwhile.
-      if (b.roles && !b.roles.includes('admin') && sam.roles.includes('admin')) return apiError('last_admin', 409);
-      if (b.roles) sam = { ...sam, roles: b.roles };
+      // A switch gives or takes away its own role, in the roles Sam has then. As if another admin had made Sam the only
+      // admin meanwhile, taking admin away is refused.
+      if (b.removeRoles?.includes('admin') && sam.roles.includes('admin')) return apiError('last_admin', 409);
+      if (b.addRoles || b.removeRoles) sam = { ...sam, roles: [...sam.roles.filter((r) => !b.removeRoles?.includes(r)), ...(b.addRoles ?? [])] };
       if (b.premium) sam = { ...sam, premium: b.premium.active ? { active: true, until: b.premium.until } : { active: false, until: null } };
       return { json: sam };
     },
@@ -818,10 +828,11 @@ test('admin one account: a role and premium are saved at once; a guard rail come
   const admin = page.getByRole('switch', { name: 'Admin' });
   await admin.click();
   await expect(admin).toHaveAttribute('aria-checked', 'true');
-  expect(await sent(1)).toEqual({ roles: ['admin'] });
+  expect(await sent(1)).toEqual({ addRoles: ['admin'] });
   await admin.click();
   await expect(page.getByRole('region', { name: 'Roles' }).getByRole('alert')).toHaveText("You're the last admin. Make someone else admin first.");
   await expect(admin).toHaveAttribute('aria-checked', 'true');
+  expect(await sent(2)).toEqual({ removeRoles: ['admin'] });
 
   // Premium: on without an end, then with a last day, then off.
   const premium = page.getByRole('switch', { name: 'Premium' });
@@ -1237,6 +1248,13 @@ test('account: a failed save is the form error, never the name field; an empty f
   await expect(name).toHaveAttribute('aria-invalid', 'true');
   expect(await name.getAttribute('aria-describedby')).toBe(await empty.getAttribute('id'));
   expect(api.callsTo('PATCH /me')).toHaveLength(1);
+  // A tab in it (pasted from a spreadsheet): said at the field as well, and nothing is sent.
+  await name.fill('Sam\tJansen');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Remove the tabs and other hidden characters.' })).toBeVisible();
+  await expect(name).toBeFocused();
+  await expect(name).toHaveAttribute('aria-invalid', 'true');
+  expect(api.callsTo('PATCH /me')).toHaveLength(1);
 
   // Change email with nothing typed: each field says what is missing, as Sign in does; nothing is sent.
   await page.getByRole('button', { name: 'Change email' }).click();
@@ -1301,6 +1319,33 @@ test('admin one account: another admin changed the status meanwhile (wrong_statu
   const why = page.getByRole('alert');
   await expect(why).toHaveText('Sam Jansen was blocked meanwhile, so no new link was made.');
   await expect(page.locator('section[aria-labelledby="h-access"] .row-pad').first()).toBeFocused();
+
+  // Ann unblocks him: the message goes with the next press, as it no longer says how things are.
+  api.set({ 'PATCH /admin/accounts/:id': { json: accountDetail(SAM_ACTIVE) } });
+  await page.getByRole('button', { name: /^Unblock/ }).click();
+  await expect(page.getByRole('region', { name: 'Access' }).locator('.row-status')).toHaveText('Unblocked. They can sign in again.');
+  await expect(statusPill(page)).toHaveText('Active');
+  await expect(page.getByText('Sam Jansen was blocked meanwhile, so no new link was made.')).toHaveCount(0);
+});
+
+test('admin one account: the invite accepted meanwhile is said until the next press, such as a new password link', async ({ page }) => {
+  let lies: AccountDetail = accountDetail(LIES_INVITED);
+  await mockApi(page, {
+    ...adminApi(),
+    'GET /admin/accounts/:id': () => ({ json: lies }),
+    'DELETE /admin/accounts/:id': () => apiError('wrong_status', 409),
+    'POST /admin/accounts/:id/reset-link': { json: RESET_LINK_CREATED },
+  });
+  await page.goto('./#/admin/account/' + LIES_INVITED.id);
+  await expect(statusPill(page)).toHaveText('Invited');
+  lies = { ...lies, status: 'active', inviteExpiresAt: null, sessions: 1, lastSignInAt: '2026-10-23T12:00:00.000Z' };
+  await page.getByRole('button', { name: /^Cancel invite/ }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel invite' }).click();
+  const why = page.getByText('Lies Bakker accepted the invite meanwhile, so the account was not removed.');
+  await expect(why).toBeVisible();
+  await page.getByRole('button', { name: /^New password link/ }).click();
+  await expect(done(page, 'New link ready. Send it yourself.')).toBeVisible();
+  await expect(why).toHaveCount(0);
 });
 
 test('admin one account: a new invite link after the invite was accepted meanwhile says so, and keeps focus', async ({ page }) => {

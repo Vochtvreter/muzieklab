@@ -72,8 +72,9 @@ tool, and their app sends no request for it.
 The tool shows only in **feedback mode**, which an admin turns on and off for everyone with the **Feedback mode** switch
 above the reports (Settings → Account → Feedback; `PUT /admin/feedback-mode`, `feedback.review`). It starts off, so
 nobody sees the button until an admin turns it on, for a round of testing for example. The app learns it with the
-account (`Me.feedbackMode`, from GET /me when the app starts), so others see the change the next time they open the
-app; the admin who switched it sees it at once.
+account (`Me.feedbackMode`, from GET /me when the app starts, on any screen: every account kept on the device asks,
+also one kept while the mode was off), so others see the change the next time they open the app; the admin who
+switched it sees it at once.
 
 While it is on, a signed-in account with `feedback.give` sees the tool on every screen. **Settings → Account → Feedback
 button** turns it off on one device (and on again); the form's *Hide the feedback button on this device* does the same.
@@ -86,10 +87,11 @@ there too, which opens the reports.
    it sits in the bottom-right corner.
 2. Press it, then tap or click the part you mean, or drag to draw a box. With a mouse, the element a click would mark is
    outlined. Press Esc or Cancel to stop. To mark something further down the page, scroll first, then press Feedback.
+   However the tool closes (Esc, Cancel, or the sheet's X or Close), the focus goes back to the Feedback button.
 3. A sheet opens (a dialog on desktop, beside the marked spot). The spot stays lit and the rest of the screen dims.
-   Choose **Bug**, **Change** or **Idea**, then say what should change. A title is optional; without one, the review
-   screens name the report by its kind and screen (*Bug on #/settings*), and its issue by the kind, the spot and the
-   screen.
+   Choose **Bug**, **Change** or **Idea**, then say what should change (at most 5000 characters). A title is
+   optional; without one, the review screens name the report by its kind and screen (*Bug on #/settings*), and its
+   issue by the kind, the spot and the screen.
 4. Send the report:
    - **Send**: the app sends the report to the API (`POST /api/v1/feedback`), which stores it as New. The sheet then
      says *Saved for review*: an admin reads it in Settings → Account → Feedback, and picks what goes on to GitHub.
@@ -146,7 +148,10 @@ Each report holds (`shared/feedback.ts`; stored as it was sent, BACKEND-PLAN.md 
 
 - **What should change:** the kind, the title and the description.
 - **Where:** the route (`#/settings`) and the marked element: its CSS selector, a readable name (`button “Start”`), its
-  text and its markup (shortened). It also holds the marked box in CSS pixels and the page's scroll offset.
+  text and its markup (shortened). It also holds the marked box in CSS pixels and the page's scroll offset: how far
+  the boxes around the element are scrolled (a screen scrolls inside the page, not the window), leaving out scroll that
+  does not move it (a sticky part, such as Settings' side column, stays put while the page scrolls; a fixed one stays
+  put whatever scrolls), so the box plus the offset is where the spot is on the page scrolled to its top.
 - **Device:** the viewport and pixel ratio, the breakpoint (phone, tablet or desktop), the orientation, touch or mouse,
   the theme (setting and shown), the language, the app version and the user agent.
 - **State:** the player's preferences (`muzieklab.prefs.v1`), so the agent can seed them and see the same screen.

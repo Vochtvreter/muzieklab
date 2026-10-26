@@ -1,0 +1,90 @@
+// @vitest-environment jsdom
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Me } from '../../../shared/api';
+import { ACCOUNT_KEY } from '../../game/storage';
+import { resetAccountCheck } from '../account';
+import { StoreProvider } from '../store';
+import { FeedbackTool } from './FeedbackTool';
+
+// Phone width for useBreakpoint; a mouse, and the light theme.
+window.matchMedia = (query: string) =>
+  ({
+    get matches() {
+      const min = /min-width: (\d+)px/.exec(query);
+      return min ? 390 >= Number(min[1]) : false;
+    },
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }) as unknown as MediaQueryList;
+
+/** A tester: sends feedback, does not review it. */
+const TESTER: Me = {
+  id: '6718f0c2a1b2c3d4e5f60001',
+  email: 'sam@example.com',
+  name: 'Sam Jansen',
+  locale: 'en',
+  roles: [],
+  roleNames: {},
+  permissions: ['self.manage', 'feedback.give'],
+  premium: { active: false, until: null },
+  createdAt: '2026-10-01T09:00:00.000Z',
+  feedbackMode: false,
+};
+const FAB = 'Feedback: mark a part of this screen';
+
+const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+
+/** GET /me's answer. */
+let me: Me;
+let fetchMock: ReturnType<typeof vi.fn>;
+const asked = (): number => fetchMock.mock.calls.filter((c) => String(c[0]) === '/api/v1/me').length;
+
+beforeEach(() => {
+  localStorage.clear();
+  resetAccountCheck();
+  me = TESTER;
+  fetchMock = vi.fn((path: string) => Promise.resolve(path === '/api/v1/me' ? json(200, me) : json(404, { error: 'not_found', message: '' })));
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+const open = () =>
+  render(
+    <StoreProvider>
+      <FeedbackTool />
+    </StoreProvider>,
+  );
+
+describe('Feedback tool: feedback mode', () => {
+  it('turned on since the device last asked: the app asks GET /me when it starts, and the button shows', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(TESTER));
+    me = { ...TESTER, feedbackMode: true };
+    open();
+    await screen.findByRole('button', { name: FAB }, { timeout: 5000 });
+    expect(asked()).toBe(1);
+  });
+
+  it('turned off since: the button the device kept goes once GET /me says so', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ ...TESTER, feedbackMode: true }));
+    // GET /me answers only once the kept account's button is there.
+    let reply = (): void => undefined;
+    const held = new Promise<void>((resolve) => (reply = resolve));
+    fetchMock.mockImplementation((path: string) => held.then(() => (path === '/api/v1/me' ? json(200, me) : json(404, { error: 'not_found', message: '' }))));
+    open();
+    await screen.findByRole('button', { name: FAB }, { timeout: 5000 });
+    reply();
+    await waitFor(() => expect(screen.queryByRole('button', { name: FAB })).toBeNull());
+    expect(asked()).toBe(1);
+  });
+
+  it('a player who never signed in sends no request, and sees no button', async () => {
+    open();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: FAB })).toBeNull();
+  });
+});

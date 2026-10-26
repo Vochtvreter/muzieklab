@@ -144,6 +144,33 @@ describe('PATCH /admin/accounts/:id', () => {
     expect(bad.statusCode).toBe(400);
   });
 
+  it('gives or takes away one role in the roles the account has now, so a change made meanwhile stays', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const ann = await seedAccount(t.db, { email: 'ann@example.com', roles: ['teacher'] });
+    const id = ann._id.toHexString();
+    const actions = async () => (await collections(t.db).audit.find({ targetId: ann._id }).sort({ _id: 1 }).toArray()).map((e) => [e.action, e.details]);
+    // Teacher was given in another tab; this one only switches Editor on.
+    const added = await patch(t, admin.cookie, id, { addRoles: ['editor'] });
+    expect(added.statusCode).toBe(200);
+    expect(added.json<AccountDetail>().roles).toEqual(['editor', 'teacher']);
+    expect(await actions()).toEqual([['role.grant', { roles: ['editor'] }]]);
+    const removed = await patch(t, admin.cookie, id, { removeRoles: ['teacher'] });
+    expect(removed.json<AccountDetail>().roles).toEqual(['editor']);
+    // A role it has already, or does not have, changes nothing and writes nothing.
+    await patch(t, admin.cookie, id, { addRoles: ['editor'], removeRoles: ['teacher'] });
+    expect(await actions()).toEqual([
+      ['role.grant', { roles: ['editor'] }],
+      ['role.revoke', { roles: ['teacher'] }],
+    ]);
+    // A whole list and a change to it at once, or one role in both, say nothing clear: refused.
+    for (const payload of [{ roles: ['editor'], addRoles: ['teacher'] }, { addRoles: ['teacher'], removeRoles: ['teacher'] }, { addRoles: ['pope'] }]) {
+      const res = await patch(t, admin.cookie, id, payload);
+      expect(res.statusCode, JSON.stringify(payload)).toBe(400);
+    }
+    expect((await collections(t.db).accounts.findOne({ _id: ann._id }))?.roles).toEqual(['editor']);
+  });
+
   it('blocks (signing the account out everywhere) and unblocks', async () => {
     const t = await makeApp(mongo);
     const admin = await signedInAdmin(t);
@@ -308,6 +335,8 @@ describe('PATCH /admin/accounts/:id', () => {
       [{ name: 'Ann' }, 'accounts.invite'],
       [{ email: 'ann2@example.com' }, 'accounts.invite'],
       [{ roles: ['teacher'] }, 'roles.grant'],
+      [{ addRoles: ['teacher'] }, 'roles.grant'],
+      [{ removeRoles: ['teacher'] }, 'roles.grant'],
       [{ status: 'blocked' }, 'accounts.block'],
       [{ premium: { active: false } }, 'entitlements.grant'],
     ];
@@ -334,7 +363,7 @@ describe('PATCH /admin/accounts/:id', () => {
     const admin = await signedInAdmin(t);
     await seedAccount(t.db, { email: 'second@example.com', roles: ['admin'] });
     const id = admin.account._id.toHexString();
-    for (const payload of [{ roles: ['admin', 'teacher'] }, { roles: [] }, { status: 'blocked' }]) {
+    for (const payload of [{ roles: ['admin', 'teacher'] }, { roles: [] }, { addRoles: ['teacher'] }, { removeRoles: ['admin'] }, { status: 'blocked' }]) {
       const res = await patch(t, admin.cookie, id, payload);
       expect(res.statusCode).toBe(409);
       expect(res.json()).toMatchObject({ error: 'own_account' });
@@ -354,7 +383,7 @@ describe('PATCH /admin/accounts/:id', () => {
     const cookie = await signIn(t, 'ed@example.com');
     const id = only._id.toHexString();
     {
-      for (const payload of [{ roles: [] }, { roles: ['teacher'] }, { status: 'blocked' }]) {
+      for (const payload of [{ roles: [] }, { roles: ['teacher'] }, { removeRoles: ['admin'] }, { status: 'blocked' }]) {
         const res = await patch(t, cookie, id, payload);
         expect(res.statusCode, JSON.stringify(payload)).toBe(409);
         expect(res.json()).toMatchObject({ error: 'last_admin' });

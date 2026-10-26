@@ -19,7 +19,7 @@ import { Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { rolesText } from '../../lib/admin';
-import { errorMessage, failureOf, fieldError, formError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
+import { errorMessage, failureOf, fieldError, formError, nameCharactersError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { navigate } from '../../router';
 import { OfflineNote, useRefocus } from './AccountSection';
 
@@ -87,13 +87,14 @@ function Info({ label, value, children }: { label: string; value: string; childr
 }
 
 /**
- * The name, saved with its own Save button (PATCH /me). Only an empty name is the field's error; a request that fails
- * (no answer, a server error) is the form's, so a valid name is never marked invalid.
+ * The name, saved with its own Save button (PATCH /me). Only an empty name, or one with a tab in it, is the field's
+ * error; a request that fails (no answer, a server error) is the form's, so a valid name is never marked invalid.
  */
 function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
   const [name, setName] = useState(me.name);
   const [busy, setBusy] = useState(false);
   const [empty, setEmpty] = useState(false);
+  const [badName, setBadName] = useState<string | null>(null);
   const [fail, setFail] = useState<Failure | null>(null);
   const [saved, setSaved] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -105,8 +106,10 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
   const submit = async (): Promise<void> => {
     setSaved(false);
     setFail(null);
+    const bad = nameCharactersError(name);
     setEmpty(!name.trim());
-    if (!name.trim()) {
+    setBadName(bad);
+    if (!name.trim() || bad) {
       nameRef.current?.focus();
       return;
     }
@@ -128,7 +131,7 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
       <TextField label={t('account.name')} autoComplete="name" name="name" value={name} onChange={(v) => {
         setName(v);
         setSaved(false);
-      }} maxLength={NAME_MAX} inputRef={nameRef} error={empty ? t('account.nameEmpty') : null} />
+      }} maxLength={NAME_MAX} inputRef={nameRef} error={empty ? t('account.nameEmpty') : badName} />
       <FormError error={fail?.message} />
       <div className="form-actions">
         {saved && <FormDone>{t('account.nameSaved')}</FormDone>}

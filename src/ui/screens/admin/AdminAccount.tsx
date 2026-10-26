@@ -22,7 +22,7 @@ import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { dayOfUntil, setListNotice, sortRoles, today, type LinkKind } from '../../lib/admin';
 import { announce } from '../../lib/announce';
-import { errorMessage, failureOf, fieldError, formError, type Failure } from '../../lib/apiErrors';
+import { errorMessage, failureOf, fieldError, formError, nameCharactersError, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
 import { GateMessage, LinkResult, NoAccess, RoleSwitches, useAdminGate } from './AdminParts';
 
@@ -190,6 +190,7 @@ function ProfileCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [empty, setEmpty] = useState<{ name?: boolean; email?: boolean }>({});
+  const [badName, setBadName] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -204,9 +205,11 @@ function ProfileCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
     setSaved(false);
     setFailure(null);
     const missing = { name: !name.trim(), email: !email.trim() };
+    const bad = nameCharactersError(name);
     setEmpty(missing);
-    if (missing.name || missing.email) {
-      (missing.name ? nameRef : emailRef).current?.focus();
+    setBadName(bad);
+    if (missing.name || missing.email || bad) {
+      (missing.name || bad ? nameRef : emailRef).current?.focus();
       return;
     }
     if (!nameChanged && !emailChanged) return;
@@ -233,7 +236,7 @@ function ProfileCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
     <Section id="profile" title={t('admin.profile')}>
       <form className="card-pad" noValidate onSubmit={onSubmit(() => void submit(), busy)}>
         <TextField label={t('admin.name')} autoComplete="off" name="account-name" value={name} onChange={edit(setName)} maxLength={NAME_MAX} readOnly={!canEdit}
-          inputRef={nameRef} error={empty.name ? t('admin.nameEmpty') : null} />
+          inputRef={nameRef} error={empty.name ? t('admin.nameEmpty') : badName} />
         <TextField label={t('admin.email')} type="email" autoComplete="off" inputMode="email" name="account-email" value={email} onChange={edit(setEmail)}
           maxLength={EMAIL_MAX} readOnly={!canEdit} inputRef={emailRef} error={empty.email ? t('admin.emailEmpty') : fieldError(failure, 'email')} />
         <FormError error={formError(failure)} />
@@ -262,7 +265,10 @@ function RolesCard({ detail, self, account, onChange, fail }: CardProps): JSX.El
     setPending(next);
     setError(null);
     try {
-      onChange(await api.patch<AccountDetail>(`/admin/accounts/${detail.id}`, { roles: next }));
+      // Only this role: the server changes it in the roles the account has now. The whole list as this screen last saw
+      // it would undo what another admin (or tab) changed meanwhile, which the answer shows instead.
+      const change: AdminUpdateRequest = on ? { addRoles: [role] } : { removeRoles: [role] };
+      onChange(await api.patch<AccountDetail>(`/admin/accounts/${detail.id}`, change));
     } catch (e) {
       if (mounted.current) setError(fail(e).message);
     } finally {
@@ -377,7 +383,8 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // A refusal because the account changed meanwhile (409 wrong_status): the account reloads and the row that was pressed
-  // goes away, so its message is shown here, and focus (which was on the gone button) moves to it.
+  // goes away, so its message is shown here, and focus (which was on the gone button) moves to it. It stays through
+  // that reload, and goes when the admin presses something here again (Unblock, Block, a new link…).
   const [changedMeanwhile, setChangedMeanwhile] = useState<string | null>(null);
   const changedRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -398,6 +405,7 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
 
   const setStatus = async (next: 'active' | 'blocked', onError: (m: string) => void): Promise<boolean> => {
     setDone(null);
+    setChangedMeanwhile(null);
     try {
       onChange(await api.patch<AccountDetail>(path, { status: next }));
       const message = t(next === 'blocked' ? 'admin.blockedDone' : 'admin.unblockedDone');
@@ -418,6 +426,7 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   const remove = async (): Promise<boolean> => {
     setRemoveError(null);
     setError(null);
+    setChangedMeanwhile(null);
     const invited = status === 'invited';
     try {
       // Cancel invite deletes only an account that is still invited: one whose invite was accepted meanwhile is
@@ -440,12 +449,14 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   };
 
   const rows: JSX.Element[] = [];
+  // A new email cancels the links made for the old one (BACKEND-PLAN.md §5.3), so a link shown here goes with it: the
+  // row starts over (keyed by the email), with only its button.
   if (status === 'invited' && can('accounts.invite')) {
-    rows.push(<LinkMaker key="invite" kind="invite" detail={detail} fail={fail} onMade={reload}
+    rows.push(<LinkMaker key={'invite:' + detail.email} kind="invite" detail={detail} fail={fail} onMade={reload} onPress={() => setChangedMeanwhile(null)}
       onChangedMeanwhile={() => setChangedMeanwhile(t('admin.inviteAcceptedNoLink', { name }))} />);
   }
   if (status === 'active' && can('accounts.invite')) {
-    rows.push(<LinkMaker key="reset" kind="reset" detail={detail} fail={fail}
+    rows.push(<LinkMaker key={'reset:' + detail.email} kind="reset" detail={detail} fail={fail} onPress={() => setChangedMeanwhile(null)}
       onChangedMeanwhile={() => setChangedMeanwhile(t('admin.notActiveNoLink', { name }))} />);
   }
   if (status === 'active' && can('accounts.block')) {
@@ -518,13 +529,16 @@ function reveal(answer: HTMLElement): void {
  * New invite link or New password link: makes one (the earlier one stops working) and shows it once. Each answer stays
  * where it is until the next one takes its place, so the page keeps its height and nothing above or below it moves (the
  * admin is usually scrolled down to it): while a press runs, the earlier answer is dimmed; if it fails, why takes the
- * place of "New link ready…" and the earlier link stays dimmed and not usable, as it may no longer work.
+ * place of "New link ready…" and the earlier link stays dimmed and not usable, as it may no longer work. A new email
+ * cancels the link (AccessCard keys the row by the email), so the row then starts over.
  */
-function LinkMaker({ kind, detail, fail, onMade, onChangedMeanwhile }: {
+function LinkMaker({ kind, detail, fail, onMade, onPress, onChangedMeanwhile }: {
   kind: LinkKind;
   detail: AccountDetail;
   fail(e: unknown): Failure;
   onMade?(): void;
+  /** The button was pressed: a new try, so an earlier refusal's message goes. */
+  onPress(): void;
   /** Refused because the account's status changed meanwhile: the account reloads and this row goes away. */
   onChangedMeanwhile(): void;
 }): JSX.Element {
@@ -541,6 +555,7 @@ function LinkMaker({ kind, detail, fail, onMade, onChangedMeanwhile }: {
   }, [made, failures]);
   const make = async (): Promise<void> => {
     setBusy(true);
+    onPress();
     try {
       const link = await api.post<LinkCreated>(`/admin/accounts/${detail.id}/${kind}-link`);
       if (!mounted.current) return;

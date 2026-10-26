@@ -76,7 +76,9 @@ export function elementAt(x: number, y: number, doc: Document = document): Eleme
 
 /** Markup with the tool's own elements and long attribute values left out, cut to `max` characters. */
 function markup(el: Element, max = 1500): string {
-  const copy = el.cloneNode(true) as Element;
+  // The copy is made in a document of its own, which renders nothing: a cut value (an SVG <path d> cut mid-number) set
+  // on a copy in the page's document is parsed there, and the browser logs it as an error.
+  const copy = el.ownerDocument.implementation.createHTMLDocument('').importNode(el, true);
   copy.querySelectorAll(`[${TOOL_ATTR}]`).forEach((n) => n.remove());
   for (const n of [copy, ...copy.querySelectorAll('*')]) {
     for (const a of [...n.attributes]) if (a.value.length > 120) n.setAttribute(a.name, a.value.slice(0, 117) + '…');
@@ -87,6 +89,41 @@ function markup(el: Element, max = 1500): string {
 
 const toRect = (r: DOMRect | Rect): Rect => ({ x: r.x, y: r.y, width: r.width, height: r.height });
 
+/** A box its content scrolls in (overflow auto, scroll or hidden); visible and clip leave that to a box further out. */
+const scrollsIn = (s: CSSStyleDeclaration): boolean => [s.overflowX, s.overflowY].some((o) => o === 'auto' || o === 'scroll' || o === 'hidden');
+
+/**
+ * How far the page under the element is scrolled: the window's offset plus that of every box around the element that
+ * scrolls. The app's screens scroll inside .page (or .shell-main), never the window, so the window alone always says
+ * 0, 0. Scroll that does not move the element is left out, so the box plus the offset stays the spot on the page
+ * scrolled to its top: a sticky part (Settings' side column, Setup's Start) stays put while the box it sticks in
+ * scrolls, and a fixed one while anything around it does.
+ */
+function scrollOf(el: Element, win: Window): { x: number; y: number } {
+  const { body, documentElement } = win.document;
+  let x = 0;
+  let y = 0;
+  // Set by a sticky box: the next box around it that scrolls is the one it sticks in.
+  let stuck = false;
+  for (let n: Element | null = el; n && n !== body && n !== documentElement; n = n.parentElement) {
+    const style = win.getComputedStyle(n);
+    if (n !== el && scrollsIn(style)) {
+      if (!stuck) {
+        x += n.scrollLeft;
+        y += n.scrollTop;
+      }
+      stuck = false;
+    }
+    if (style.position === 'fixed') return { x: Math.round(x), y: Math.round(y) };
+    if (style.position === 'sticky') stuck = true;
+  }
+  if (!stuck) {
+    x += win.scrollX;
+    y += win.scrollY;
+  }
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
 /** The target for a marked element, or for a drawn box with the element under its centre. */
 export function targetFor(el: Element, area?: Rect, win: Window = window): FeedbackTarget {
   return {
@@ -96,7 +133,7 @@ export function targetFor(el: Element, area?: Rect, win: Window = window): Feedb
     text: clip(el.textContent ?? '', 300),
     html: markup(el),
     rect: toRect(area ?? el.getBoundingClientRect()),
-    scroll: { x: Math.round(win.scrollX), y: Math.round(win.scrollY) },
+    scroll: scrollOf(el, win),
   };
 }
 

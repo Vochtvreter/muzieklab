@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import pkg from '../../../package.json';
-import { buildIssue, FEEDBACK_KINDS, type FeedbackKind, type FeedbackReport, type FeedbackSaved, type FeedbackTarget, type Rect } from '../../../shared/feedback';
+import { buildIssue, FEEDBACK_DESCRIPTION_MAX, FEEDBACK_KINDS, type FeedbackKind, type FeedbackReport, type FeedbackSaved, type FeedbackTarget, type Rect } from '../../../shared/feedback';
 import { api, type ApiError } from '../../api/client';
 import { boxFrom, captureContext, elementAt, targetFor, TOOL_ATTR } from '../../feedback/dom';
 import { getLocale, t } from '../../i18n';
@@ -35,12 +35,27 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
   const [marks, setMarks] = useState(0);
   const bp = useBreakpoint();
   const { shown, closing } = useLingering(step === 'form' ? target : null, 240);
+  // Closing the tool takes away the control that had the focus (Cancel, the form), and the Feedback button comes back
+  // as a new element: the focus goes to it, so the keyboard and a screen reader keep their place. Only closing an open
+  // tool asks for that: Esc on the button itself closes nothing, and a request left by it would move the focus after
+  // Review it, which leaves the focus to the report.
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const refocus = useRef(false);
+  const close = (): void => {
+    if (step !== 'idle') refocus.current = true;
+    setStep('idle');
+  };
+  useEffect(() => {
+    if (step !== 'idle' || !refocus.current) return;
+    refocus.current = false;
+    fabRef.current?.focus({ preventScroll: true });
+  }, [step]);
   // The desktop dialog stands beside the marked spot, on the side with more room, so the spot stays in view.
   // Esc closes the tool, also when focus has left it (the form's button went away after sending).
   useEffect(() => {
     if (step === 'idle') return;
     const esc = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setStep('idle');
+      if (e.key === 'Escape') close();
     };
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
@@ -52,10 +67,10 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
     // Esc closes the tool.
     <div className={'fb-root' + side} {...tool} onKeyDown={(e) => {
       e.stopPropagation();
-      if (e.key === 'Escape') setStep('idle');
+      if (e.key === 'Escape') close();
     }}>
       {step === 'idle' && (
-        <button type="button" className={'fb-fab fb-fab--' + bp} aria-label={t('feedback.openLabel')} onClick={() => setStep('marking')}>
+        <button ref={fabRef} type="button" className={'fb-fab fb-fab--' + bp} aria-label={t('feedback.openLabel')} onClick={() => setStep('marking')}>
           <Icon name="feedback" size={20} />
           {/* Phone: the icon alone, so it hides less of the screen under it. */}
           {bp !== 'phone' && <span>{t('feedback.open')}</span>}
@@ -63,7 +78,7 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
       )}
       {step === 'marking' && (
         <MarkLayer
-          onCancel={() => setStep('idle')}
+          onCancel={close}
           onMark={(tg) => {
             setTarget(tg);
             setMarks((n) => n + 1);
@@ -75,7 +90,7 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
         <>
           <div className={'fb-spot' + (closing ? ' m-fade-out' : '')} style={boxStyle(shown.rect)} aria-hidden="true" />
           <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="feedback" labelledBy="fb-title" maxWidth={bp === 'desktop' ? 480 : undefined}>
-            <FeedbackForm key={marks} target={shown} onClose={() => setStep('idle')} onRemark={() => setStep('marking')} onHide={onHide} />
+            <FeedbackForm key={marks} target={shown} onClose={close} onLeave={() => setStep('idle')} onRemark={() => setStep('marking')} onHide={onHide} />
           </Sheet>
         </>
       )}
@@ -142,9 +157,11 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
   );
 }
 
-function FeedbackForm({ target, onClose, onRemark, onHide }: {
+function FeedbackForm({ target, onClose, onLeave, onRemark, onHide }: {
   target: FeedbackTarget;
   onClose(): void;
+  /** Closes the tool for another screen (Review it), which takes the focus itself. */
+  onLeave(): void;
   onRemark(): void;
   onHide(): void;
 }): JSX.Element {
@@ -198,7 +215,7 @@ function FeedbackForm({ target, onClose, onRemark, onHide }: {
         </div>
         {/* Someone who reviews feedback too opens it there; the tool closes, as the report's screen replaces this one. */}
         {account.can('feedback.review') && (
-          <Link to={`/admin/feedback/${saved.id}`} className="btn btn--outline" onClick={onClose}>
+          <Link to={`/admin/feedback/${saved.id}`} className="btn btn--outline" onClick={onLeave}>
             {t('feedback.review')}
           </Link>
         )}
@@ -237,8 +254,8 @@ function FeedbackForm({ target, onClose, onRemark, onHide }: {
       <Segmented<FeedbackKind> label={t('feedback.kindGroup')} value={kind} onChange={setKind} options={FEEDBACK_KINDS.map((k) => ({ value: k, label: t('feedback.kind.' + k) }))} />
       <label className="field">
         <span className="fb-label">{t('feedback.descLabel')}</span>
-        <textarea className="fb-input fb-input--area" rows={4} value={description} data-autofocus placeholder={t('feedback.descPlaceholder')}
-          onChange={(e) => setDescription(e.target.value)} />
+        <textarea className="fb-input fb-input--area" rows={4} value={description} maxLength={FEEDBACK_DESCRIPTION_MAX} data-autofocus
+          placeholder={t('feedback.descPlaceholder')} onChange={(e) => setDescription(e.target.value)} />
       </label>
       <label className="field">
         <span className="fb-label">{t('feedback.titleLabel')}</span>

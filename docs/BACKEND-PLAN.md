@@ -598,6 +598,9 @@ stops working when:
 - for an invite: an admin corrects the email of the invited account. The account then shows that no link works, and
   the admin makes a new one for the corrected address.
 
+A link the admin's screen still shows (an invite or a new-password link just made) goes from it when the admin saves a
+new email there, as it no longer works.
+
 While an account is blocked, its new-password link does not work. If it is unblocked before the link expires, the link
 works again (a known gap, §11).
 
@@ -761,7 +764,7 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `GET /admin/accounts?q=&status=` | `accounts.read` | Newest first, at most 500. `q` matches name or email as plain text, without case; `status` is invited, active or blocked. There is no role filter (the first plan had one). |
 | `POST /admin/invites` | `accounts.invite`, plus `roles.grant` and every permission in the roles when roles are given | Email, name and roles → the invited account and its link. |
 | `GET /admin/accounts/:id` | `accounts.read` | The account, how many devices are signed in, and while invited, when its link stops working (null when none works). |
-| `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite`, roles `roles.grant` and every permission in each role granted or taken away, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
+| `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite`, roles (`roles`, `addRoles`, `removeRoles`) `roles.grant` and every permission in each role granted or taken away, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. `roles` is the whole new set; `addRoles` and `removeRoles` give and take away roles in the ones the account has when the change arrives, so what another admin changed meanwhile stays (the role switches send one of these; never with `roles`, and no role in both). Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
 | `POST /admin/accounts/:id/invite-link` | `accounts.invite` | An invited account only: a new invite link; the old one stops working. |
 | `POST /admin/accounts/:id/reset-link` | `accounts.invite` | An active account only: a new-password link for 24 hours. It lets its holder into the account, as an invite does, hence the same permission. |
 | `DELETE /admin/accounts/:id?expect=` | `accounts.delete` | Cancels an invite or deletes an account (never yourself, never the last admin). A deleted account (not a cancelled invite) leaves a closure of kind `admin` (§3.7); the feedback reports it sent stay without its name (§3.9). With `expect` (a status), it is refused with 409 `wrong_status` when the account has another status: Cancel invite sends `expect=invited`, so an invite accepted meanwhile is not deleted. |
