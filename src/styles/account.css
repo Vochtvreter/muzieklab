@@ -308,16 +308,28 @@
 .small-btn[aria-disabled='true'] {
   opacity: 0.6;
 }
-/* A choice inside a confirm (Sign out: Keep · Remove): buttons as tall as the confirm's own, for a finger. Words that
-   do not fit half the confirm (Keep anonymously at 320 px) go onto a second line instead of being cut. */
-.confirm-seg .seg-btn {
+/* A choice inside a confirm (Sign out: Keep · Remove), or a feedback report's status: buttons as tall as the confirm's
+   own, for a finger. Words that do not fit half the confirm (Keep anonymously at 320 px) go onto a second line instead
+   of being cut. */
+.confirm-seg .seg-btn,
+.review-seg .seg-btn {
   min-height: 44px;
   white-space: normal;
   line-height: 1.2;
 }
+/* The smallest phones: a status in a longer language is one word that cannot wrap ("Afgewezen" fills a third of the
+   card at 320 px to the pixel), so the three buttons give it a little more room. */
+@media (max-width: 359.98px) {
+  .review-seg .seg-btn {
+    padding-inline: 2px;
+    font-size: 13px;
+  }
+}
 /* A labelled choice inside a confirm (Delete account: the label, Keep anonymously · Delete too, and what the chosen one
-   does), spaced like a text field. */
-.confirm-choice {
+   does), or a feedback report's status (the label, New · Accepted · Declined, and who reviewed it), spaced like a text
+   field. */
+.confirm-choice,
+.review-choice {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -556,6 +568,21 @@
   color: var(--accent-ink);
 }
 
+/* Where a feedback report stands (Feedback): New in the invited gold (waiting for a look), Accepted in green, Declined
+   in a quiet grey; AA contrast in both themes, as the status pills. */
+.status-pill.is-new {
+  background: var(--reward-soft);
+  color: var(--reward-ink);
+}
+.status-pill.is-accepted {
+  background: var(--good-soft);
+  color: var(--good-ink);
+}
+.status-pill.is-declined {
+  background: var(--track);
+  color: var(--muted);
+}
+
 /* ---------- Privacy ---------- */
 .prose {
   padding: 12px 16px 14px;
@@ -636,6 +663,11 @@
   font-weight: 700;
   font-size: 14px;
 }
+/* How many a filter holds, beside its name (Feedback: New 3), lighter than the name. */
+.chip-count {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
 /* On a phone the chips fill the row under the search field. Two and two is an even 2 × 2 grid: each pair takes the
    row, and its chips share it equally (never narrower than their words). */
 @media (max-width: 699.98px) {
@@ -690,8 +722,10 @@
   gap: 4px 8px;
   font-size: 15px;
 }
-/* What they wrote, as they wrote it: their line breaks kept, a long word broken rather than widening the card. */
-.closure-feedback {
+/* What they wrote, as they wrote it (a deleted account's feedback, a feedback report's description): their line breaks
+   kept, a long word broken rather than widening the card. */
+.closure-feedback,
+.report-quote {
   margin: 0;
   padding: 8px 12px;
   border-radius: 12px;
@@ -700,6 +734,20 @@
   line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+/* A feedback report in the list (Feedback): a made-up title holds a screen's route, which has no spaces to break at. */
+.report-row b {
+  overflow-wrap: anywhere;
+}
+/* One feedback report: what should change, under its label. */
+.report-text {
+  padding: 12px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.report-text b {
+  font-size: 15px;
 }
 .acct-empty {
   padding: 14px 16px;
@@ -825,4 +873,16 @@
   font-size: 14px;
   color: var(--muted);
   text-align: right;
+}
+/* A long value (a feedback report's marked text, its selector, the browser): under its label, read from the left. */
+.fact-row--long dd {
+  flex-basis: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+/* Code (a route, a selector, a version): in the mono face. */
+.fact-row .fact-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }

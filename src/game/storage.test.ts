@@ -278,6 +278,7 @@ describe('account storage (muzieklab.account.v1)', () => {
     name: 'Ann de Vries',
     locale: 'nl',
     roles: ['admin'],
+    roleNames: {},
     permissions: ['self.manage', 'accounts.read'],
     premium: { active: true, until: '2027-01-31' },
     createdAt: '2026-10-01T09:00:00.000Z',
@@ -296,7 +297,7 @@ describe('account storage (muzieklab.account.v1)', () => {
   it("stores only Me's fields: never a password or a token", () => {
     saveAccount({ ...me, password: 'hunter2hunter2', token: 'abc', session: 'xyz' } as unknown as Me);
     const raw = localStorage.getItem(ACCOUNT_KEY) ?? '';
-    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['createdAt', 'email', 'id', 'locale', 'name', 'permissions', 'premium', 'roles']);
+    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['createdAt', 'email', 'id', 'locale', 'name', 'permissions', 'premium', 'roleNames', 'roles']);
     expect(raw).not.toMatch(/hunter2|password|token|session/);
   });
 
@@ -305,8 +306,25 @@ describe('account storage (muzieklab.account.v1)', () => {
     expect(loadAccount()).toBeNull();
     localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ name: 'No id' }));
     expect(loadAccount()).toBeNull();
-    localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ ...me, roles: ['admin', 'king'], permissions: ['fly', 'accounts.read'], locale: 'xx', premium: 'yes' }));
-    expect(loadAccount()).toEqual({ ...me, roles: ['admin'], permissions: ['accounts.read'], locale: null, premium: { active: false, until: null } });
+    localStorage.setItem(
+      ACCOUNT_KEY,
+      JSON.stringify({
+        ...me,
+        roles: ['admin', 'King of all', 'testers', 7],
+        roleNames: { testers: 'Testers', 'Bad id': 'x', other: 5 },
+        permissions: ['fly', 'accounts.read'],
+        locale: 'xx',
+        premium: 'yes',
+      }),
+    );
+    expect(loadAccount()).toEqual({
+      ...me,
+      roles: ['admin', 'testers'],
+      roleNames: { testers: 'Testers' },
+      permissions: ['accounts.read'],
+      locale: null,
+      premium: { active: false, until: null },
+    });
   });
 
   it('resetting progress keeps the account', () => {

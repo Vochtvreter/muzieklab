@@ -198,6 +198,7 @@ describe('GET /me/export', () => {
         lastSignInAt: t.clock.now().toISOString(),
         passwordChangedAt: null,
       },
+      feedback: [],
       sessions: [{ device: 'Unknown device', createdAt: t.clock.now().toISOString(), lastSeenAt: t.clock.now().toISOString() }],
       audit: [
         {

@@ -1,5 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { PERMISSIONS, type AccountDetail, type AccountSummary, type ApiErrorBody, type Closure, type ErrorCode, type Me, type SavedProgress, type SaveProgressRequest } from '../shared/api';
+import {
+  FEEDBACK_STATUSES, type FeedbackDetail, type FeedbackListResponse, type FeedbackReport, type FeedbackSaved, type FeedbackStatus, type FeedbackSummary,
+  type FeedbackUpdateRequest,
+} from '../shared/feedback';
 import { PATH_UNITS } from '../src/game/tracks';
 
 /** Screen sizes the app must work at: the canvas boards plus small, landscape and laptop screens. */
@@ -274,6 +278,7 @@ export const ME_MEMBER: Me = {
   name: 'Sam Jansen',
   locale: null,
   roles: [],
+  roleNames: {},
   permissions: ['self.manage', 'progress.own', 'class.join'],
   premium: { active: true, until: '2027-01-31' },
   createdAt: '2026-10-20T09:00:00.000Z',
@@ -286,6 +291,7 @@ export const ME_ADMIN: Me = {
   name: 'Ann de Vries',
   locale: 'en',
   roles: ['admin'],
+  roleNames: {},
   permissions: [...PERMISSIONS],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
@@ -437,6 +443,198 @@ export function adminApi(accounts: AccountSummary[] = ACCOUNTS, me: Me = ME_ADMI
     'GET /admin/accounts/:id': ({ params }) => {
       const a = accounts.find((x) => x.id === params.id);
       return a ? { json: accountDetail(a) } : apiError('not_found', 404);
+    },
+  };
+}
+
+/**
+ * A feedback report as the app sends it (POST /feedback): a bug on Home, marked on a phone in the dark theme, with the
+ * long selector and browser a real report has.
+ */
+export const FEEDBACK_REPORT: FeedbackReport = {
+  kind: 'bug',
+  title: 'Start lesson does nothing on the first tap',
+  description: 'On my phone the first tap on Start lesson does nothing.\nThe second tap starts the lesson.',
+  target: {
+    mode: 'element',
+    selector: '#root > div.shell > main.shell-main > div.page > section.home-hero > div.home-actions > button.btn.btn--accent',
+    label: 'button “Start lesson”',
+    text: 'Start lesson',
+    html: '<button type="button" class="btn btn--accent">Start lesson</button>',
+    rect: { x: 16.5, y: 412.25, width: 358, height: 52 },
+    scroll: { x: 0, y: 0 },
+  },
+  context: {
+    version: '0.17.0',
+    url: 'https://test.vivanova.app/#/',
+    route: '/',
+    viewport: { width: 390, height: 844, dpr: 3 },
+    breakpoint: 'phone',
+    orientation: 'portrait',
+    pointer: 'coarse',
+    theme: { setting: 'system', shown: 'dark' },
+    locale: 'en',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
+    at: '2026-10-25T11:58:00.000Z',
+    prefs: { theme: 'system', language: 'en', seenHowTo: true },
+  },
+};
+
+const feedbackDetail = (id: string, report: FeedbackReport, more: Partial<FeedbackDetail> = {}): FeedbackDetail => ({
+  id,
+  kind: report.kind,
+  title: report.title,
+  description: report.description,
+  route: report.context.route,
+  label: report.target.label,
+  mode: report.target.mode,
+  status: 'new',
+  author: { id: ME_MEMBER.id, name: ME_MEMBER.name },
+  createdAt: '2026-10-25T12:00:00.000Z',
+  report,
+  note: '',
+  reviewer: null,
+  reviewedAt: null,
+  ...more,
+});
+
+/**
+ * Feedback reports (Settings → Account → Feedback), newest first: three new ones and an accepted one, none declined
+ * (New 3 · Accepted 1 · Declined 0 · All 4). The second has no title (the app names it "Change on #/settings") and
+ * comes from an account deleted since; the third has the longest title and description a screen should show whole.
+ * Every time is midday UTC, so each is the same day in every time zone the tests run in.
+ */
+export const FEEDBACK: FeedbackDetail[] = [
+  feedbackDetail('6718f0c2a1b2c3d4e5f6b001', FEEDBACK_REPORT),
+  feedbackDetail(
+    '6718f0c2a1b2c3d4e5f6b002',
+    {
+      kind: 'change',
+      title: '',
+      description: 'Say what each leniency does in milliseconds too.',
+      target: {
+        mode: 'area',
+        selector: '#set-timing > div.set-card > div.seg-row',
+        label: 'group “Timing leniency”',
+        text: 'Strict Normal Relaxed Fair timing for most players.',
+        html: '<div class="seg-row">…</div>',
+        rect: { x: 340, y: 210, width: 560, height: 120 },
+        scroll: { x: 0, y: 320 },
+      },
+      context: {
+        ...FEEDBACK_REPORT.context,
+        url: 'https://test.vivanova.app/#/settings',
+        route: '/settings',
+        viewport: { width: 1280, height: 800, dpr: 2 },
+        breakpoint: 'desktop',
+        orientation: 'landscape',
+        pointer: 'fine',
+        theme: { setting: 'light', shown: 'light' },
+        locale: 'nl',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+      },
+    },
+    { author: null, createdAt: '2026-10-24T12:00:00.000Z' },
+  ),
+  feedbackDetail(
+    '6718f0c2a1b2c3d4e5f6b003',
+    {
+      kind: 'idea',
+      title: 'Let me choose which notes Read notes asks for, so I can practise only the ones I keep getting wrong',
+      description:
+        'I always mix up the notes above the staff (A5, B5 and C6), but Read notes asks for every note of the clef. ' +
+        'If I could tick the notes I want, I would practise those for a week and then add the rest again.\n\n' +
+        'Maybe the setup screen could show the staff with a check box under each note, and remember what I picked.',
+      target: {
+        mode: 'element',
+        selector: '#root > div.shell > main.shell-main > div.page > div.screen-head > h1.screen-title',
+        label: 'heading “Read notes”',
+        text: 'Read notes',
+        html: '<h1 class="screen-title">Read notes</h1>',
+        rect: { x: 48, y: 96, width: 738, height: 40 },
+        scroll: { x: 0, y: 0 },
+      },
+      context: {
+        ...FEEDBACK_REPORT.context,
+        url: 'https://test.vivanova.app/#/notes',
+        route: '/notes',
+        viewport: { width: 834, height: 1194, dpr: 2 },
+        breakpoint: 'tablet',
+        theme: { setting: 'light', shown: 'light' },
+        userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
+      },
+    },
+    { author: { id: ACCOUNTS[0].id, name: ACCOUNTS[0].name }, createdAt: '2026-10-23T12:00:00.000Z' },
+  ),
+  feedbackDetail(
+    '6718f0c2a1b2c3d4e5f6b004',
+    {
+      ...FEEDBACK_REPORT,
+      title: 'The tab bar covers the last row of Settings',
+      description: 'The About row is under the tab bar and cannot be tapped.',
+      target: { ...FEEDBACK_REPORT.target, selector: '#set-about > div.set-card > a.row', label: 'link “About”', text: 'About' },
+      context: { ...FEEDBACK_REPORT.context, url: 'https://test.vivanova.app/#/settings', route: '/settings' },
+    },
+    {
+      status: 'accepted',
+      createdAt: '2026-10-22T12:00:00.000Z',
+      note: 'Picked up for 0.17.1, with the tab bar fix.',
+      reviewer: { id: ME_ADMIN.id, name: ME_ADMIN.name },
+      reviewedAt: '2026-10-23T12:00:00.000Z',
+    },
+  ),
+];
+
+/** When the feedback mock says a review was saved. */
+export const REVIEWED_AT = '2026-10-25T12:30:00.000Z';
+
+/**
+ * The feedback routes as the server answers them, keeping what one test changes (a copy of `start` of its own): POST
+ * /feedback stores a new report from `me`; the admin list (filtered by `status`, with every status's count); one report;
+ * its review (PATCH: only a real change names `me` as the reviewer); and DELETE. Call it in the test, so no two tests
+ * share the reports; a table of routes made once for several tests (the Dutch screens) must only read them.
+ */
+export function feedbackServer(start: FeedbackDetail[] = FEEDBACK, me: Me = ME_ADMIN): { routes: MockRoutes; reports(): FeedbackDetail[] } {
+  let reports = start.map((r) => ({ ...r }));
+  let made = 0;
+  // The list's rows: no report, note or review.
+  const summary = (r: FeedbackDetail): FeedbackSummary => ({
+    id: r.id, kind: r.kind, title: r.title, description: r.description, route: r.route, label: r.label, mode: r.mode, status: r.status, author: r.author,
+    createdAt: r.createdAt,
+  });
+  const find = (id: string): FeedbackDetail | undefined => reports.find((r) => r.id === id);
+  return {
+    reports: () => reports,
+    routes: {
+      'POST /feedback': ({ body }) => {
+        const id = '6718f0c2a1b2c3d4e5f6c' + String(++made).padStart(3, '0');
+        reports = [feedbackDetail(id, body as FeedbackReport, { author: { id: me.id, name: me.name }, createdAt: '2026-10-25T12:15:00.000Z' }), ...reports];
+        return { json: { id } satisfies FeedbackSaved };
+      },
+      'GET /admin/feedback': ({ query }) => {
+        const status = query.get('status');
+        const counts = Object.fromEntries(FEEDBACK_STATUSES.map((s) => [s, reports.filter((r) => r.status === s).length])) as Record<FeedbackStatus, number>;
+        return { json: { reports: reports.filter((r) => !status || r.status === status).map(summary), counts } satisfies FeedbackListResponse };
+      },
+      'GET /admin/feedback/:id': ({ params }) => {
+        const r = find(params.id);
+        return r ? { json: r } : apiError('not_found', 404);
+      },
+      'PATCH /admin/feedback/:id': ({ params, body }) => {
+        const r = find(params.id);
+        if (!r) return apiError('not_found', 404);
+        const { status, note } = body as FeedbackUpdateRequest;
+        const change: Partial<FeedbackDetail> = {};
+        if (status !== undefined && status !== r.status) change.status = status;
+        if (note !== undefined && note.trim() !== r.note) change.note = note.trim();
+        if (Object.keys(change).length) Object.assign(r, change, { reviewer: { id: me.id, name: me.name }, reviewedAt: REVIEWED_AT });
+        return { json: r };
+      },
+      'DELETE /admin/feedback/:id': ({ params }) => {
+        if (!find(params.id)) return apiError('not_found', 404);
+        reports = reports.filter((r) => r.id !== params.id);
+        return { status: 204 };
+      },
     },
   };
 }

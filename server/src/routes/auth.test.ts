@@ -64,6 +64,7 @@ describe('POST /auth/sign-in', () => {
       name: 'Ann',
       locale: null,
       roles: ['teacher'],
+      roleNames: {},
       permissions: ['self.manage', 'progress.own', 'class.join', 'class.create'],
       premium: { active: false, until: null },
       createdAt: account.createdAt.toISOString(),
@@ -941,6 +942,15 @@ describe('deny by default', () => {
         'DELETE /api/v1/admin/accounts/:id accounts.delete',
         'GET /api/v1/admin/closures accounts.read',
         'GET /api/v1/admin/audit audit.read',
+        'GET /api/v1/admin/roles accounts.read',
+        'POST /api/v1/admin/roles roles.manage',
+        'PATCH /api/v1/admin/roles/:id roles.manage',
+        'DELETE /api/v1/admin/roles/:id roles.manage',
+        'POST /api/v1/feedback feedback.give',
+        'GET /api/v1/admin/feedback feedback.review',
+        'GET /api/v1/admin/feedback/:id feedback.review',
+        'PATCH /api/v1/admin/feedback/:id feedback.review',
+        'DELETE /api/v1/admin/feedback/:id feedback.review',
       ].sort(),
     );
     // HEAD routes Fastify adds for GET ones carry the same config.

@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import type { Db } from 'mongodb';
-import { ROLES } from '../../../shared/api.js';
 import { writeAudit } from '../accounts/audit.js';
+import { sortRoleIds } from '../accounts/roles.js';
 import { normalizeEmail, validName } from '../accounts/validate.js';
 import { createLink } from '../auth/links.js';
 import { originFromUrl } from '../auth/origin.js';
@@ -106,7 +106,7 @@ export async function createAdmin(db: Db, args: string[], io: CommandIo): Promis
     if (granted) {
       await c.accounts.updateOne(
         { _id: existing._id },
-        { $set: { roles: ROLES.filter((r) => r === 'admin' || existing.roles.includes(r)), updatedAt: now } },
+        { $set: { roles: sortRoleIds([...existing.roles, 'admin']), updatedAt: now } },
         { session },
       );
       await writeAudit(c, now, { actorId: null, action: 'role.grant', targetId: existing._id, details: { roles: ['admin'] } }, session);

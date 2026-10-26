@@ -9,7 +9,7 @@ import type {
 } from '../../../shared/api.js';
 import { writeAudit } from '../accounts/audit.js';
 import { isEmail, validName } from '../accounts/validate.js';
-import { toMe } from '../accounts/views.js';
+import { meOf } from '../accounts/views.js';
 import { linkKeys, pairKey, passwordKeys } from '../auth/attempts.js';
 import { signedIn } from '../auth/guard.js';
 import { findLink } from '../auth/links.js';
@@ -58,7 +58,7 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
       );
       // Signing in always makes a new token: the session this browser had, if any, ends.
       await replaceSession(c, request, reply, ctx.cookies, account._id, now);
-      return toMe(updated ?? account, now);
+      return meOf(c, updated ?? account, now);
     },
   );
 
@@ -195,7 +195,7 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
       });
       const now = ctx.now();
       await replaceSession(c, request, reply, ctx.cookies, account._id, now);
-      return toMe(account, now);
+      return meOf(c, account, now);
     },
   );
 
@@ -209,7 +209,7 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
       ctx.attempts.clear(pairKey(account.email, request.ip));
       const now = ctx.now();
       await replaceSession(c, request, reply, ctx.cookies, account._id, now);
-      return toMe(account, now);
+      return meOf(c, account, now);
     },
   );
 };

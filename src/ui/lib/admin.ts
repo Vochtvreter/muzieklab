@@ -3,7 +3,7 @@
  * email or chat with a link, premium's last day (a calendar day) in the date field, and the one-line message the
  * accounts list shows after an account was removed on the one-account screen.
  */
-import { ROLES, type Role } from '../../../shared/api';
+import { BUILT_IN_ROLES, isBuiltInRole, type Role } from '../../../shared/api';
 import { formatDateTime, t } from '../../i18n';
 
 /** Which link a message is for: an invite (7 days) or a new password (24 hours). */
@@ -36,10 +36,26 @@ export function dayOfUntil(until: string | null): string {
   return Number.isNaN(d.getTime()) ? '' : `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
-/** Roles in the contract's order, for a list of switches or "Admin · Teacher". */
-export function rolesText(roles: readonly Role[]): string {
-  const names = ROLES.filter((r) => roles.includes(r)).map((r) => t('accountRole.' + r));
-  return names.length ? names.reduce((a, b) => t('common.join', { a, b })) : '';
+/**
+ * A role's name: a built-in role's in the app's language, a custom role's as an admin named it (`names`, from GET
+ * /admin/roles or Me.roleNames), else its id.
+ */
+export function roleName(id: Role, names: Readonly<Record<Role, string>> = {}): string {
+  return isBuiltInRole(id) ? t('accountRole.' + id) : (names[id] ?? id);
+}
+
+/** Role ids in the API's order: the built-in ones first, as in BUILT_IN_ROLES, then the custom ones by id; each once. */
+export function sortRoles(roles: readonly Role[]): Role[] {
+  const set = new Set(roles);
+  return [...BUILT_IN_ROLES.filter((r) => set.has(r)), ...[...set].filter((r) => !isBuiltInRole(r)).sort()];
+}
+
+/** "Admin · Testers": the built-in roles first, in the contract's order, then the custom ones by name. */
+export function rolesText(roles: readonly Role[], names: Readonly<Record<Role, string>> = {}): string {
+  const builtIn = BUILT_IN_ROLES.filter((r) => roles.includes(r)).map((r) => roleName(r));
+  const custom = roles.filter((r) => !isBuiltInRole(r)).map((r) => roleName(r, names)).sort((a, b) => a.localeCompare(b));
+  const all = [...builtIn, ...custom];
+  return all.length ? all.reduce((a, b) => t('common.join', { a, b })) : '';
 }
 
 /**

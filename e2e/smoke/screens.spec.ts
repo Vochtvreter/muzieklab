@@ -48,6 +48,8 @@ const SCREENS: (readonly [string, string | RegExp])[] = [
   ['#/admin/invite', 'Sign in'],
   ['#/admin/deleted', 'Sign in'],
   ['#/admin/account/0123456789abcdef01234567', 'Sign in'],
+  ['#/admin/feedback', 'Sign in'],
+  ['#/admin/feedback/0123456789abcdef01234567', 'Sign in'],
   // Not a screen (the render page is only in development builds): Home.
   ['#/dev/render', 'Home'],
   ['#/no-such-screen', 'Home'],
