@@ -3560,7 +3560,9 @@ button.lesson-stars:hover {
   flex: none;
   width: 238px;
 }
-/* Settings → Metronome style: the chosen counter ticking at 80 BPM, on the ground colour like a small stage. */
+/* Settings → Metronome style: the chosen counter ticking at 80 BPM, on the ground colour like a small stage. The gap
+   is 18 px, but gives way down to 10 px where the preview is narrower than the four Digital beats (160 px), the tempo
+   (44 px), 18 px and 2 px to spare: a 320 px screen, a tablet's third column. */
 .look-preview {
   margin-top: 4px;
   padding: 10px 16px;
@@ -3569,13 +3571,16 @@ button.lesson-stars:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  column-gap: clamp(10px, calc(100% - 206px), 18px);
   min-height: 84px;
 }
 .look-preview .beats {
   align-self: center;
 }
+/* One line, as on Play: squeezed, it broke after the "=". */
 .look-preview-tempo {
+  flex: none;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
@@ -3618,8 +3623,9 @@ button.lesson-stars:hover {
   flex: 1;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  column-gap: 8px;
 }
 .about-version b {
   font-size: 15px;
@@ -3628,9 +3634,11 @@ button.lesson-stars:hover {
   font-size: 14px;
   font-weight: 600;
 }
-/* The test site's branch (VITE_DEPLOY_BRANCH), after the version: cut short when it is long. */
+/* The test site's branch (VITE_DEPLOY_BRANCH), after the version. Where the row is narrow (a tablet's third column,
+   320 px) it goes under the version instead of shrinking to nothing; it is cut short only when longer than the row. */
 .about-version .about-branch {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3671,15 +3679,15 @@ button.lesson-stars:hover {
 .reset-btn svg {
   flex: none;
 }
+/* The question and its line, then Cancel and the verb under them (.confirm-actions), as in every confirm (ConfirmAction,
+   DESIGN.md: Destructive confirm). Beside the buttons, a longer language left the words a column a word or two wide. */
 .reset-confirm {
-  min-height: 60px;
-  padding: 6px 0;
+  padding: 10px 0 12px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
 }
 .reset-text {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;

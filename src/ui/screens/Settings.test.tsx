@@ -1,0 +1,84 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { App } from '../../App';
+import { setLocale } from '../../i18n';
+import { resetAccountCheck } from '../account';
+
+// Phone width for useBreakpoint; the app scrolls to the top on every route.
+window.matchMedia = (query: string) =>
+  ({
+    get matches() {
+      const min = /min-width: (\d+)px/.exec(query);
+      return min ? 390 >= Number(min[1]) : false;
+    },
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+  }) as unknown as MediaQueryList;
+window.scrollTo = () => undefined;
+
+/** One frame: focus that goes back to a button once it is there again. */
+const frame = (): Promise<void> => act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+
+beforeEach(() => {
+  localStorage.clear();
+  resetAccountCheck();
+  window.location.hash = '#/settings';
+  // No API: Settings without its Account section.
+  vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  setLocale('en');
+});
+
+describe('Settings → Reset progress', () => {
+  it('closes on Escape and on Cancel, with the focus back on the row button (DESIGN.md, Destructive confirm)', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset progress' }));
+    const confirm = screen.getByRole('alertdialog', { name: 'Erase all progress?' });
+    expect(document.activeElement).toBe(within(confirm).getByRole('button', { name: 'Cancel' }));
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await frame();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reset progress' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset progress' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await frame();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reset progress' }));
+  });
+});
+
+describe('Settings → Language', () => {
+  it('keeps the focus on the language control: the switch remounts the screen', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Nederlands' }));
+    await screen.findByRole('heading', { level: 1, name: 'Instellingen' });
+    const nl = within(screen.getByRole('group', { name: 'Taal van de app' })).getByRole('button', { name: 'Nederlands' });
+    expect(document.activeElement).toBe(nl);
+    fireEvent.click(within(screen.getByRole('group', { name: 'Taal van de app' })).getByRole('button', { name: 'English' }));
+    await screen.findByRole('heading', { level: 1, name: 'Settings' });
+    expect(document.activeElement).toBe(within(screen.getByRole('group', { name: 'App language' })).getByRole('button', { name: 'English' }));
+  });
+
+  it('takes no focus when nothing remounted: the language already in use, picked again, then Settings opened later', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'English' }));
+    act(() => {
+      window.location.hash = '#/';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    await screen.findByRole('link', { name: 'Settings' });
+    act(() => {
+      window.location.hash = '#/settings';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Settings' });
+    expect(document.activeElement).toBe(document.body);
+  });
+});

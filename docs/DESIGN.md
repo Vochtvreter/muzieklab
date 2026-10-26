@@ -1373,7 +1373,8 @@ phone the card still fills the screen. The lesson tiles show their stars as on t
 **Settings** (since 0.10.0). Sound has one *Metronome* row (volume and on/off). The Display row for the digital or
 analog look is *Beat counter* (nl *Telteller*), with the group label *Beat counter style*. The leniency hints describe
 each level in words, with no milliseconds: Strict *Tight timing, for confident players.*, Normal *Fair timing for most
-players.*, Relaxed *Wide timing, for young beginners.* Calibration is in §6.1.
+players.*, Relaxed *Wide timing, for young beginners.* Calibration is in §6.1. Picking another language redraws the
+screen in that language, and the focus stays on the language control.
 
 ### 9.1 Learn: theory in chapters
 

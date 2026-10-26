@@ -396,6 +396,27 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByText('Fair timing for most players.')).toBeVisible();
       await expect(page.getByText('Metronome', { exact: true })).toHaveCount(1);
       await expectClickable(page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }));
+      // The Beat counter preview keeps its tempo on one line, as on Play, inside the preview (it broke after "=" at 320 px).
+      for (const look of ['Digital', 'Analog']) {
+        await page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: look }).click();
+        const tempo = await page.locator('.look-preview-tempo').evaluate((el) => {
+          const h = el.getBoundingClientRect().height;
+          el.style.whiteSpace = 'nowrap';
+          const one = el.getBoundingClientRect().height;
+          el.style.whiteSpace = '';
+          const box = el.parentElement!;
+          const pad = parseFloat(getComputedStyle(box).paddingRight);
+          return { wraps: h > one + 1, past: el.getBoundingClientRect().right - (box.getBoundingClientRect().right - pad) };
+        });
+        expect(tempo.wraps, `${look}: the preview's tempo breaks over two lines`).toBe(false);
+        expect(tempo.past, `${look}: the preview's tempo runs past its padding`).toBeLessThanOrEqual(0.5);
+      }
+      // The test site's branch after the version (VITE_DEPLOY_BRANCH, which this build has not), put in as Settings.tsx
+      // renders it: a short name shows in full beside the status, at every size (it was squeezed to nothing).
+      await page.locator('.about-version').evaluate((el) => el.insertAdjacentHTML('beforeend', '<span class="mono-muted about-branch">test</span>'));
+      const branch = page.locator('.about-branch');
+      expect(await branch.evaluate((el) => el.scrollWidth - el.clientWidth), 'the branch name is cut').toBeLessThanOrEqual(1);
+      await expectNoOverlap(branch, page.locator('.offline'));
       await expectClickable(page.getByRole('button', { name: 'Reset progress' }));
       const sections = page.getByRole('navigation', { name: 'Settings sections' });
       if (desktopLayout || tabletLayout) {
@@ -423,14 +444,38 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/settings');
       const group = page.getByRole('group', { name: 'App language' });
       await expectClickable(group.getByRole('button', { name: 'Nederlands' }));
-      await group.getByRole('button', { name: 'Nederlands' }).click();
+      await group.getByRole('button', { name: 'Nederlands' }).focus();
+      await page.keyboard.press('Enter');
       await expect(page.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('lang', 'nl');
-      // The switch remounts the screen; the thumb still slides over from English like the other rows.
-      const thumb = page.getByRole('group', { name: 'Taal van de app' }).locator('.seg-thumb');
-      await expect(thumb).toHaveCSS('animation-name', 'm-slide-a');
+      // The switch remounts the screen; the thumb still slides over from English like the other rows, and the focus
+      // stays on the language control.
+      const nl = page.getByRole('group', { name: 'Taal van de app' });
+      await expect(nl.locator('.seg-thumb')).toHaveCSS('animation-name', 'm-slide-a');
+      await expect(nl.getByRole('button', { name: 'Nederlands' })).toBeFocused();
+      await page.keyboard.press('Shift+Tab');
+      await expect(nl.getByRole('button', { name: 'English' })).toBeFocused();
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      // Reset progress: the question and its line across the confirm, then Cancel and the verb under them (DESIGN.md,
+      // Destructive confirm). Beside the buttons, the Dutch words got a column a word or two wide.
+      const reset = page.getByRole('button', { name: 'Voortgang wissen' });
+      await expectClickable(reset);
+      await reset.click();
+      const confirm = page.getByRole('alertdialog', { name: 'Alle voortgang wissen?' });
+      const text = (await confirm.locator('.reset-text').boundingBox())!;
+      expect(text.width, 'the question is as wide as the confirm').toBeGreaterThanOrEqual((await confirm.boundingBox())!.width - 1);
+      for (const name of ['Annuleren', 'Wissen']) {
+        const button = confirm.getByRole('button', { name, exact: true });
+        expect((await button.boundingBox())!.y, `${name} is under the question`).toBeGreaterThanOrEqual(text.y + text.height - 1);
+        await expectTouchHeight(button);
+      }
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      // Escape closes it, with the focus back on the row button.
+      await page.keyboard.press('Escape');
+      await expect(confirm).toHaveCount(0);
+      await expect(reset).toBeFocused();
       await page.reload();
       await expect(page.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
       await page.getByRole('group', { name: 'Taal van de app' }).getByRole('button', { name: 'English' }).click();
