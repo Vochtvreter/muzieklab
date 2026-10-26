@@ -1489,17 +1489,22 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('play: eight bars fit, with the staff, the lane, the beat counter, the pad and Skip in view', async ({ page }) => {
-      known(name, 'play-eight-bars');
-      // Lessons go up to 8 bars: the staff shows two rows and the timing lane two. Desktop Play does not scroll either,
-      // on a 1280 × 720 laptop too (DESIGN.md §9 Scrolling).
-      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, notes: ['quarter', 'eighth', 'half'], bars: 8, tempo: 60 } } });
+    test('play: sixteen bars fit, with the staff, the lane, the beat counter, the pad and Skip in view', async ({ page }) => {
+      known(name, 'play-sixteen-bars');
+      // The most Setup allows, holding each note: the staff shows a window of two rows. On a phone the timing lane shows
+      // two rows of four bars, from the row being played (all four rows pushed Skip off a short phone); tablet and
+      // desktop draw every bar. Desktop Play does not scroll either, on a 1280 × 720 laptop too (DESIGN.md §9 Scrolling).
+      await seed(page, {
+        prefs: { seenHowTo: true, seenHold: true, holdMode: 'hold', holdEarly: 'tap' },
+        progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, hold: true, notes: ['quarter', 'eighth', 'half'], bars: 16, tempo: 60 } },
+      });
       await page.goto('./#/setup');
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
       await expect(page.locator('.staff-fallback')).toHaveCount(0);
-      // A phone in landscape scrolls the staff card in its own column; the pad is beside it.
+      // A phone in landscape keeps the phone layout. It scrolls the staff card in its own column; the pad is beside it.
       const tablet = tabletLayout && portraitLayout;
+      await expect(page.locator('.lane-head')).toContainText(desktopLayout || tablet ? 'bars 1–16' : 'bars 1–8');
       if (portraitLayout) {
         await expect(page.locator(tablet ? '.tplay-staff' : '.play-staff')).toBeInViewport({ ratio: 1 });
         await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
@@ -1599,16 +1604,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('play with the analog metronome: eight bars fit (sixteen on desktop), with the pendulum, the pad and Skip in view', async ({ page }) => {
+    test('play with the analog metronome: sixteen bars fit, with the pendulum, the pad and Skip in view', async ({ page }) => {
       known(name, 'play-analog-tall');
-      // The pendulum is taller than the digits. On phone and tablet eight bars, as lessons go up to; the desktop layout
-      // with the most Setup allows, sixteen bars, whose timing lane takes four rows under the staff. Setup allows
-      // sixteen on a phone too, but more than eight bars do not fit a short phone yet, with the digits as well: its
-      // timing lane draws every bar, in up to four rows.
-      const bars = desktopLayout ? 16 : 8;
+      // The pendulum is taller than the digits, with the most bars Setup allows. Tablet and desktop draw the timing lane's
+      // every bar, four rows under the staff; a phone two rows, around the bars being played.
       await seed(page, {
         prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap', metronomeLook: 'analog' },
-        progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, notes: ['quarter', 'eighth', 'half'], bars, tempo: 60 } },
+        progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, notes: ['quarter', 'eighth', 'half'], bars: 16, tempo: 60 } },
       });
       await page.goto('./#/setup');
       await page.getByRole('button', { name: /^Start · / }).click();

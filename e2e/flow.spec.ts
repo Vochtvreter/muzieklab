@@ -187,6 +187,32 @@ test('a reload on Play keeps the lesson and waits for Start', async ({ page }) =
   await expect(page.getByRole('img', { name: /Count-in, beat|Counting beat/ })).toBeAttached({ timeout: 3000 });
 });
 
+test("a phone's timing lane follows the bars being played, two rows at a time; Results shows every bar", async ({ page }) => {
+  test.setTimeout(40_000);
+  // Sixteen bars at 200 BPM, a bar every 1.2 s. All four rows of the lane pushed Skip to results off a short phone.
+  await seed(page, { prefs: { seenHowTo: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 16, tempo: 200 } } });
+  await page.setViewportSize(VIEWPORTS['phone-se-browser']);
+  await page.goto('./#/setup');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  const head = page.locator('.lane-head');
+  const lane = page.getByRole('img', { name: 'Note lengths compared with how long each note was held' });
+  await expect(head).toContainText('bars 1–8');
+  for (const bars of ['bars 5–12', 'bars 9–16']) {
+    await expect(head).toContainText(bars, { timeout: 8000 });
+    // Two rows of four bars, 26 px each. The window has just moved on, so the row being played is on top.
+    await expect(lane).toHaveAttribute('viewBox', /^0 0 [\d.]+ 52$/);
+    await expect(lane.locator('line[stroke-width="2.5"]')).toHaveAttribute('y1', '0');
+  }
+  // At the end the window keeps the last two rows: bars 13–16 are played on the lower one.
+  await expect(lane.locator('line[stroke-width="2.5"]')).toHaveAttribute('y1', '26', { timeout: 8000 });
+  await expect(head).toContainText('bars 9–16');
+  await expect(lane).toHaveAttribute('viewBox', /^0 0 [\d.]+ 52$/);
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  // Results shows the whole exercise, two bars a row (8 rows of 30 px).
+  await expect(page).toHaveURL(/#\/results$/);
+  await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toHaveAttribute('viewBox', /^0 0 [\d.]+ 240$/);
+});
+
 test('after quitting, Back does not walk into the exercise again', async ({ page }) => {
   await seed(page, { progress: { lessons: SOL_DONE } });
   await page.setViewportSize(VIEWPORTS.phone);

@@ -83,6 +83,11 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    that fills while you hold, reaching full at the moment the note ends. Under the notation
    a **length lane** draws every note to scale in gray (so durations are visible at a
    glance) and your holds on top in color; a note let go too early gets a dashed outline.
+   The lane has four bars a row, and its head names the bars it shows (*bars 1–8*). Tablet and desktop show every
+   bar; Results shows the whole exercise. A phone shows two rows (eight bars) at a time, from the row being played, as
+   the staff shows a window of its bars. At the end it keeps the last two rows, so the last row is played on the lower
+   one (bars 9–16 from bar 9 of 16, bars 5–12 from bar 5 of 12). With every row, 12 or 16 bars took three or four rows
+   and pushed the pad and *Skip to results* off a short phone.
    A combo counter grows on consecutive notes that were both started well and held right.
    A missed note also gets a small × under it, so a miss is shape as well as colour (§9).
    The pad itself only says what it is, a quarter-note symbol and **Tap** (nl *Tik*; since 0.10.0, before
@@ -1181,7 +1186,8 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   and the answer buttons in view and at least 44 px tall. A phone in portrait has two short-screen steps (CSS
   `max-height: 699.98px` and `599.98px`; `SHORT_PHONE` and `SHORTER_PHONE` in `ui/hooks.ts`). 390 × 844, tablets and
   phone landscape do not change. The analog beat counter, Read notes' ranges with ledger lines and Scales' Up & down,
-  which take more height, have steps of their own.
+  which take more height, have steps of their own. Play's timing lane takes at most two rows on a phone (§3.1), so
+  the 16 bars Setup allows fit as 8 do.
   - Under 700 px tall (390 × 664, 375 × 667): the gaps tighten to 10 px, and so do the page padding (10 px at the top,
     12 px at the bottom) and the staff card's. Then the pad and the pianos give up height, down to 112 px for the pad
     (214 px on the board), 120 px for the Read notes piano (200 px) and 140 px for the Scales piano (210 px). The pad

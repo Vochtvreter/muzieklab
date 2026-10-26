@@ -22,6 +22,9 @@ export interface LengthLaneProps {
    * and without this the lane took the results height then, so it jumped when the first beat came.
    */
   live?: boolean;
+  /** Live on a phone: only `rowsShown` rows, from the row of bar `fromBar` (layoutLane). */
+  fromBar?: number;
+  rowsShown?: number;
 }
 
 const DEFAULT_WIDTH = 342;
@@ -77,6 +80,8 @@ export function LengthLane(props: LengthLaneProps): JSX.Element {
     result: props.result,
     now: props.now,
     hold: props.hold,
+    fromBar: props.fromBar,
+    rowsShown: props.rowsShown,
     width,
     rowHeight: laneRowHeight(width, !props.live && props.result !== undefined && props.now == null),
   });

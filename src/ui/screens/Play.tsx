@@ -34,6 +34,9 @@ import { howToEyebrow, usePlaySession } from './playSession';
 
 /** The staff's size on the shortest phone screens: two rows of notes take 139 px instead of 174. */
 const STAFF_SHORTER = 0.8;
+/** The live timing lane: four bars a row; a phone shows two of its rows (eight bars) at a time. */
+const LANE_PER_ROW = 4;
+const PHONE_LANE_ROWS = 2;
 
 export function Play(): JSX.Element | null {
   const { state } = useStore();
@@ -181,6 +184,12 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   // Room for a triplet's 3 on every window when the exercise has one: the staff keeps its height as the window moves.
   const tuplets = useMemo(() => view.bars.some((b) => b.symbols.some((sym) => sym.tuplet)), [view.bars]);
   const rhythm = useMemo(() => describeBars(shownBars, ex.meter.id, from + 1), [shownBars, ex.meter.id, from]);
+  // A phone's lane follows the bar being played as the staff does: with every bar, 12 or 16 bars took three or four
+  // rows and pushed Skip to results off a short phone, which Play cannot scroll (DESIGN.md §9). Tablet and desktop
+  // have the room for every bar, and Results shows them all.
+  const laneRows = wide ? undefined : PHONE_LANE_ROWS;
+  const laneFrom = laneRows ? windowStart(curBar, LANE_PER_ROW, laneRows, bars) : 0;
+  const laneTo = laneRows ? Math.min(bars, laneFrom + LANE_PER_ROW * laneRows) : bars;
   const echoCard = echo && (
     <EchoCard taps={s.taps.length} playsLeft={echo.playsLeft} onDone={s.skip}
       onHearAgain={() => {
@@ -193,8 +202,8 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       end={from + shownBars.length >= view.bars.length} tupletSpace={tuplets} />
   );
   const lane = (
-    <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={4} taps={s.taps} result={s.liveResult}
-      now={s.phase === 'running' && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} hold={ex.settings.hold} live />
+    <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={LANE_PER_ROW} fromBar={laneFrom} rowsShown={laneRows} taps={s.taps}
+      result={s.liveResult} now={s.phase === 'running' && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} hold={ex.settings.hold} live />
   );
   const laneHead = (
     <div className="lane-head">
@@ -207,7 +216,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
           <b>{t('play.tapTiming')}</b> · {t(wide ? 'play.tapLegendLong' : 'play.tapLegend')}
         </span>
       )}
-      <span>{bars > 1 ? t('play.barsRange', { from: 1, to: bars }) : t('play.barsOne', { from: 1 })}</span>
+      <span>{laneTo > laneFrom + 1 ? t('play.barsRange', { from: laneFrom + 1, to: laneTo }) : t('play.barsOne', { from: laneFrom + 1 })}</span>
     </div>
   );
 
