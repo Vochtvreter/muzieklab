@@ -76,6 +76,11 @@ export interface Me {
   permissions: Permission[];
   premium: Premium;
   createdAt: string;
+  /**
+   * Whether feedback mode is on, for everyone (an admin turns it on and off: FeedbackMode in shared/feedback.ts). Only
+   * then does an account with feedback.give see the Feedback button.
+   */
+  feedbackMode: boolean;
 }
 
 // --- sign in, invites, new passwords (BACKEND-PLAN.md §5) -----------------------------------------------------------
@@ -165,7 +170,7 @@ export interface OwnFeedback {
 /** GET /me/export: everything stored about the account, as a download (Content-Disposition: attachment). */
 export interface AccountExport {
   exportedAt: string;
-  account: Omit<Me, 'permissions' | 'roleNames'> & { status: AccountStatus; lastSignInAt: string | null; passwordChangedAt: string | null };
+  account: Omit<Me, 'permissions' | 'roleNames' | 'feedbackMode'> & { status: AccountStatus; lastSignInAt: string | null; passwordChangedAt: string | null };
   /** The feedback reports the account sent from the app, with what the review made of them (docs/FEEDBACK-LOOP.md). */
   feedback: OwnFeedback[];
   sessions: { device: string; createdAt: string; lastSeenAt: string }[];
@@ -361,7 +366,8 @@ export interface UpdateRoleRequest {
 
 // --- feedback reports (feedback.give to send, feedback.review to review; docs/FEEDBACK-LOOP.md) ---------------------
 // The bodies are in shared/feedback.ts, with the report itself: POST /feedback → FeedbackSaved; GET /admin/feedback →
-// FeedbackListResponse; GET and PATCH /admin/feedback/:id → FeedbackDetail; DELETE /admin/feedback/:id → 204.
+// FeedbackListResponse; GET and PATCH /admin/feedback/:id → FeedbackDetail; DELETE /admin/feedback/:id → 204;
+// PUT /admin/feedback-mode → FeedbackMode.
 // (Not to be mixed up with the feedback someone leaves when deleting their account: Closure.feedback above.)
 
 /** GET /admin/audit?limit=&before= → { entries }, newest first. */
@@ -402,6 +408,7 @@ export const AUDIT_ACTIONS = [
   'feedback.send',
   'feedback.review',
   'feedback.delete',
+  'feedback.mode',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

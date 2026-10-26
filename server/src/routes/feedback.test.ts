@@ -1,10 +1,11 @@
 import { Collection, ObjectId } from 'mongodb';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { AccountExport, AuditListResponse } from '../../../shared/api.js';
+import type { AccountExport, AuditListResponse, Me } from '../../../shared/api.js';
 import {
   FEEDBACK_NOTE_MAX,
   type FeedbackDetail,
   type FeedbackListResponse,
+  type FeedbackMode,
   type FeedbackReport,
   type FeedbackSaved,
 } from '../../../shared/feedback.js';
@@ -495,6 +496,54 @@ describe('DELETE /admin/feedback/:id', () => {
     });
     const [entry] = await auditOf(t, admin.cookie);
     expect(entry).toMatchObject({ action: 'feedback.delete', actorId: admin.account._id.toHexString(), targetId: null, details: { report: id } });
+  });
+});
+
+describe('PUT /admin/feedback-mode', () => {
+  const mode = (t: TestApp, cookie: string | undefined, payload: object) => t.call({ method: 'PUT', url: '/api/v1/admin/feedback-mode', cookie, payload });
+  const modeOf = async (t: TestApp, cookie: string) => (await t.call({ method: 'GET', url: '/api/v1/me', cookie })).json<Me>().feedbackMode;
+
+  it('is off until an admin turns it on, for everyone, and back off; each change is logged once', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const ted = await reporter(t, 'ted@example.com', 'Ted');
+    expect(await modeOf(t, ted.cookie)).toBe(false);
+    expect(await modeOf(t, admin.cookie)).toBe(false);
+
+    const on = await mode(t, admin.cookie, { on: true });
+    expect(on.statusCode).toBe(200);
+    expect(on.json<FeedbackMode>()).toEqual({ on: true });
+    // Every account's Me says so, also the ones that only send.
+    expect(await modeOf(t, ted.cookie)).toBe(true);
+    expect(await modeOf(t, admin.cookie)).toBe(true);
+    // On again changes nothing.
+    expect((await mode(t, admin.cookie, { on: true })).json<FeedbackMode>()).toEqual({ on: true });
+
+    t.clock.advance(1000);
+    expect((await mode(t, admin.cookie, { on: false })).json<FeedbackMode>()).toEqual({ on: false });
+    expect(await modeOf(t, ted.cookie)).toBe(false);
+    expect(await collections(t.db).settings.findOne({ _id: 'app' })).toMatchObject({ feedbackMode: false, updatedAt: t.clock.now() });
+
+    const entries = (await auditOf(t, admin.cookie)).filter((e) => e.action === 'feedback.mode');
+    expect(entries.map((e) => [e.actorId, e.details])).toEqual([
+      [admin.account._id.toHexString(), { on: false }],
+      [admin.account._id.toHexString(), { on: true }],
+    ]);
+  });
+
+  it('needs feedback.review, and takes only { on }', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const ted = await reporter(t, 'ted@example.com', 'Ted');
+    expect((await mode(t, ted.cookie, { on: true })).statusCode).toBe(403);
+    expect((await mode(t, undefined, { on: true })).statusCode).toBe(401);
+    for (const payload of [{}, { on: 'yes' }, { on: true, everyone: true }]) {
+      expect((await mode(t, admin.cookie, payload)).statusCode, JSON.stringify(payload)).toBe(400);
+    }
+    expect(await modeOf(t, admin.cookie)).toBe(false);
+    await collections(t.db).roles.updateOne({ _id: 'teacher' }, { $addToSet: { permissions: 'feedback.review' } });
+    expect((await mode(t, ted.cookie, { on: true })).statusCode).toBe(200);
+    expect(await modeOf(t, admin.cookie)).toBe(true);
   });
 });
 

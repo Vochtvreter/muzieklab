@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { PERMISSIONS, type AccountDetail, type AccountSummary, type ApiErrorBody, type Closure, type ErrorCode, type Me, type SavedProgress, type SaveProgressRequest } from '../shared/api';
 import {
   FEEDBACK_STATUSES, type FeedbackDetail, type FeedbackListResponse, type FeedbackReport, type FeedbackSaved, type FeedbackStatus, type FeedbackSummary,
-  type FeedbackUpdateRequest,
+  type FeedbackMode, type FeedbackUpdateRequest,
 } from '../shared/feedback';
 import { PATH_UNITS } from '../src/game/tracks';
 
@@ -282,6 +282,7 @@ export const ME_MEMBER: Me = {
   permissions: ['self.manage', 'progress.own', 'class.join'],
   premium: { active: true, until: '2027-01-31' },
   createdAt: '2026-10-20T09:00:00.000Z',
+  feedbackMode: false,
 };
 
 /** A signed-in admin: every permission. */
@@ -295,6 +296,7 @@ export const ME_ADMIN: Me = {
   permissions: [...PERMISSIONS],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
+  feedbackMode: true,
 };
 
 /** The account had no progress saved: GET /progress before the first save. */
@@ -635,6 +637,7 @@ export function feedbackServer(start: FeedbackDetail[] = FEEDBACK, me: Me = ME_A
         reports = reports.filter((r) => r.id !== params.id);
         return { status: 204 };
       },
+      'PUT /admin/feedback-mode': ({ body }) => ({ json: { on: (body as FeedbackMode).on } satisfies FeedbackMode }),
     },
   };
 }

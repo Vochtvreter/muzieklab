@@ -30,6 +30,7 @@ const ADMIN: Me = {
   permissions: [...PERMISSIONS],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
+  feedbackMode: true,
 };
 /** A tester: sends feedback, does not review it. */
 const TESTER: Me = { ...ADMIN, id: '6718f0c2a1b2c3d4e5f60001', name: 'Sam Jansen', roles: [], permissions: ['self.manage', 'feedback.give'] };

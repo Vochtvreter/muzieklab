@@ -505,7 +505,7 @@ test('progress on the account: two devices merge, and a reset on one resets the 
   await expect(syncLine(phone)).toHaveText('Progress saved to your account');
 });
 
-test('a role an admin makes gives its permission: with feedback.give the member sends a report, and an admin reviews it', async ({ person }) => {
+test('a role an admin makes gives its permission: in feedback mode, with feedback.give the member sends a report, and an admin reviews it', async ({ person }) => {
   const admin = await anAdmin(person);
   const member = await aMember(person, admin);
   const id = `testers-${Date.now().toString(36)}${(made++).toString(36)}`;
@@ -523,7 +523,23 @@ test('a role an admin makes gives its permission: with feedback.give the member 
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
 
-  // The member's app picks it up on its next look at the account.
+  // The member's app picks it up on its next look at the account, but shows no button while feedback mode is off. The API
+  // starts with it off; a run before this one may have left it on (the database outlives a test), so it is turned off
+  // first. This is the only test that changes it.
+  const off = await admin.ctx.request.put(API + '/admin/feedback-mode', { data: { on: false }, headers: { Origin: ORIGIN } });
+  expect(off.ok(), `PUT /admin/feedback-mode: ${off.status()}`).toBe(true);
+  await member.page.reload();
+  await expect(accountRow(member.page, member.name)).toBeVisible();
+  await expect(accountSection(member.page).getByRole('switch', { name: 'Feedback button' })).toHaveCount(0);
+  await expect(fab).toHaveCount(0);
+
+  // The admin turns feedback mode on, above the reports on Settings → Account → Feedback.
+  await admin.page.goto('./#/admin/feedback');
+  await admin.page.reload();
+  const mode = admin.page.getByRole('switch', { name: 'Feedback mode' });
+  await expect(mode).toHaveAttribute('aria-checked', 'false');
+  await mode.click();
+  await expect(mode).toHaveAttribute('aria-checked', 'true');
   await member.page.reload();
   await expect(fab).toBeVisible();
   await expect(accountSection(member.page).getByRole('switch', { name: 'Feedback button' })).toHaveAttribute('aria-checked', 'true');

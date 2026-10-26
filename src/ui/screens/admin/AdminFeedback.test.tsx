@@ -2,7 +2,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, type Me } from '../../../../shared/api';
-import type { FeedbackDetail, FeedbackListResponse, FeedbackReport, FeedbackStatus, FeedbackSummary } from '../../../../shared/feedback';
+import type { FeedbackDetail, FeedbackListResponse, FeedbackMode, FeedbackReport, FeedbackStatus, FeedbackSummary } from '../../../../shared/feedback';
+import { ACCOUNT_KEY } from '../../../game/storage';
 import { setLocale } from '../../../i18n';
 import { resetAccountCheck } from '../../account';
 import { ANNOUNCE_DELAY_MS, Announcer } from '../../components/Announcer';
@@ -32,6 +33,7 @@ const ADMIN: Me = {
   permissions: [...PERMISSIONS],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
+  feedbackMode: true,
 };
 const MEMBER: Me = { ...ADMIN, id: '6718f0c2a1b2c3d4e5f60001', name: 'Sam Jansen', email: 'sam@example.com', roles: [], permissions: ['self.manage', 'feedback.give'] };
 /** A teacher whose role was given feedback.review: no Accounts, but the reports. */
@@ -159,6 +161,43 @@ const inStore = (ui: JSX.Element) =>
       <StoreProvider>{ui}</StoreProvider>
     </>,
   );
+
+describe('Admin: Feedback mode', () => {
+  it('turns the Feedback button on and off for everyone, and says why when it could not', async () => {
+    let mode = false;
+    let fail = false;
+    const reports = feedbackApi({ ...ADMIN, feedbackMode: false });
+    answer = (path, init) => {
+      if (path !== '/api/v1/admin/feedback-mode') return reports(path, init);
+      if (fail) return json(500, { error: 'internal', message: '' });
+      mode = (JSON.parse(String(init.body)) as FeedbackMode).on;
+      return json(200, { on: mode } satisfies FeedbackMode);
+    };
+    inStore(<AdminFeedback />);
+    const toggle = await screen.findByRole('switch', { name: 'Feedback mode' });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    expect(toggle.textContent).toContain('Off: nobody sees the Feedback button.');
+    // The reports are there whether it is on or off.
+    await screen.findByRole('heading', { name: '1 new report' });
+
+    fireEvent.click(toggle);
+    await waitFor(() => expect(mode).toBe(true));
+    await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'));
+    expect(toggle.textContent).toContain('On: everyone who can send feedback sees the Feedback button on every screen.');
+    // The account as this device keeps it: its own Feedback button comes at once.
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? '{}')).toMatchObject({ feedbackMode: true }));
+
+    // Turning it off fails: it stays on, and says why.
+    fail = true;
+    fireEvent.click(toggle);
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Something went wrong on our side. Try again later.'));
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(calls().filter((c) => c.path === '/api/v1/admin/feedback-mode').map((c) => [c.method, c.body])).toEqual([
+      ['PUT', { on: true }],
+      ['PUT', { on: false }],
+    ]);
+  });
+});
 
 describe('Admin: Feedback', () => {
   it('lists the new reports first, with how many there are of each status, and filters by status', async () => {

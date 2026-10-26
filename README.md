@@ -97,8 +97,9 @@ The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
 - [Accounts and permissions](docs/BACKEND-PLAN.md): the back-end design; phases 0 (the API, MongoDB, backups), 1
   (accounts) and 2 (progress on the account) are built.
-- [Feedback loop](docs/FEEDBACK-LOOP.md): with the `feedback.give` permission, mark a spot in the app and send what
-  should change, for admins (`feedback.review`) to accept or decline in Settings → Account → Feedback; and the plan for
+- [Feedback loop](docs/FEEDBACK-LOOP.md): while an admin has feedback mode on, with the `feedback.give` permission, mark
+  a spot in the app and send what should change, for admins (`feedback.review`) to accept or decline in Settings →
+  Account → Feedback; and the plan for
   sending the accepted reports to GitHub as issues, and for the agents that take them from there to a deployed change.
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
