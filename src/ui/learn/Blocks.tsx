@@ -264,7 +264,7 @@ function RhythmBlock({ id, block: b }: { id: string; block: BlockOf<'rhythm'> })
     <Heard sound={rhythmSound(meter, bars, b.tempo ?? LEARN_TEMPO)} first={verdict || head} more={verdict && head}>
       <div className="learn-rhythm" style={{ maxWidth: fit }}>
         <Staff bars={bars} meter={meter} barsPerRow={Math.min(bars.length, bp === 'phone' ? 2 : 4)} label={t(sectionKey(id, b.alt))}
-          countText={syllable} timeSig={b.common ? 'C' : undefined} />
+          countText={syllable} timeSig={b.common ? 'C' : undefined} shrinkToFit />
       </div>
     </Heard>
   );
@@ -434,7 +434,7 @@ function NoteTree(): JSX.Element {
                 <span className="mono-accent">{t('learn.tree.len.' + r.value)}</span>
               </div>
             }>
-            <Staff bars={r.bars} meter={meter} barsPerRow={1} label={t('learn.tree.alt', { count: r.count, name })} />
+            <Staff bars={r.bars} meter={meter} barsPerRow={1} label={t('learn.tree.alt', { count: r.count, name })} shrinkToFit />
           </Heard>
         );
       })}

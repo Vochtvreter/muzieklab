@@ -2261,9 +2261,10 @@ button.lesson-stars:hover {
   .play-staff {
     padding: 8px 8px 6px;
   }
+  /* Low enough for eight bars with triplets, whose staff keeps room for the 3 (3 px more, DESIGN.md §5.7). */
   .play .pad,
   .cal .pad {
-    min-height: 76px;
+    min-height: 72px;
   }
   /* Play's Skip link; Read notes and Scales set their own margins (.nplay-skip). */
   .skip-link {

@@ -109,6 +109,39 @@ async function expectFactsInCards(page: Page): Promise<void> {
 }
 
 /**
+ * The counts under Learn's rhythm examples stay apart (DESIGN.md §9.1): no two side by side overlap, also on a 320 px
+ * phone and in Dutch ("en" for "&"), where the staff is drawn smaller to make room.
+ */
+async function expectCountsApart(page: Page): Promise<void> {
+  await expect.poll(() => page.locator('.learn-rhythm:not(:has(svg))').count(), { message: 'every example is drawn' }).toBe(0);
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.locator('.learn-rhythm').evaluateAll((els) =>
+    els.flatMap((el, k) => {
+      const counts = [...el.querySelectorAll('.staff-counts text')].map((t) => ({ r: t.getBoundingClientRect(), text: t.textContent ?? '' }));
+      return counts.flatMap((c, i) => {
+        const a = counts[i - 1];
+        const over = a && Math.abs(a.r.top - c.r.top) < 1 ? a.r.right - c.r.left : 0;
+        return over > 0.5 ? [`example ${k + 1}: "${a.text}" and "${c.text}" overlap by ${over.toFixed(1)} px`] : [];
+      });
+    }),
+  );
+  expect(out, 'counts that overlap').toEqual([]);
+}
+
+/** Nothing on a staff is cut off at the top of its svg, such as a triplet's 3 over the first row. */
+async function expectStaffNotCut(svg: Locator): Promise<void> {
+  const top = (): Promise<number> =>
+    svg.evaluate((el) => Math.min(...[...el.querySelectorAll('path, rect')].map((p) => (p as SVGGraphicsElement).getBBox().y)));
+  await expect.poll(top, { message: 'the top of the notation, in the svg' }).toBeGreaterThanOrEqual(0);
+}
+
+/** A free-practice run that Play restores (sessionStorage): the same exercise every time for one seed. */
+async function seedRun(page: Page, settings: object, runSeed: number): Promise<void> {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' } });
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.run.v1', JSON.stringify(run)), { settings, seed: runSeed, lessonId: null, daily: null });
+}
+
+/**
  * Calibrates on the keyboard: the first press starts the 16 clicks (90 BPM, the first 1 s later), then one press on each
  * click. As in tapLate, each key event carries its own time stamp.
  */
@@ -242,6 +275,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('button', { name: /6\/8/ })).toHaveCount(0);
       // Tablet and desktop: the options on the left, the preview and Start in a side panel beside them.
       if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
+      await expectNoSideScroll(page);
+
+      // With Triplets on, the preview keeps room for a 3 whether its bar has a triplet or not (80 + 12): every change of
+      // the settings draws a new bar, and the card keeps one height.
+      await seed(page, { progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, meters: ['2/4'], notes: ['quarter', 'eighth'], triplets: true, bars: 4 } } });
+      await page.reload();
+      const preview = page.locator('.preview-card svg:has(.vf-stave)');
+      for (const next of ['Echo', 'Tap', 'Echo', 'Tap', 'Echo', 'Tap', 'Echo', 'Tap']) {
+        await expect(preview).toHaveAttribute('viewBox', /^0 0 [\d.]+ 92$/);
+        await expectStaffNotCut(preview);
+        await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: next }).click();
+      }
       await expectNoSideScroll(page);
     });
 
@@ -490,6 +535,22 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.wide')).toHaveCount(0);
       }
       await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test("results: a triplet's 3 over the first row is drawn in full, and the exercise ends with the final barline", async ({ page }) => {
+      known(name, 'results-triplets');
+      // Four bars of 4/4 with triplets in bars 1 and 3 (seed 111). Desktop Play has no Skip link: skip on a phone.
+      await seedRun(page, { ...QUARTERS, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'], dotted: true, ties: true, triplets: true, bars: 4, tempo: 80 }, 111);
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      const staff = page.locator('.results-staff svg:has(.vf-stave)');
+      await expect(staff).toBeVisible();
+      await expectStaffNotCut(staff);
+      await expect(staff.locator('rect[width="3"]')).toHaveCount(1);
       await expectNoSideScroll(page);
     });
 
@@ -983,10 +1044,28 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/learn/2?s=2.2');
       const tree = page.locator('.learn-tree');
       await expect(tree.getByText(/^sixteenth note$/i)).toBeVisible();
+      // Each row's last note or rest ends before the final bar line, also the sixteenths on a 320 px phone.
+      const clear = (): Promise<number> =>
+        tree.locator('.learn-tree-row svg:has(.vf-stave)').evaluateAll((svgs) =>
+          Math.min(...svgs.map((svg) => {
+            const notes = svg.querySelectorAll('g.vf-stavenote');
+            const bar = Math.max(...[...svg.querySelectorAll('rect[width="1"]')].map((r) => r.getBoundingClientRect().left));
+            return bar - notes[notes.length - 1].getBoundingClientRect().right;
+          })),
+        );
+      await expect.poll(clear, { message: 'room between the last note and the final bar line' }).toBeGreaterThan(0);
       await expectClickable(tree.getByRole('button', { name: 'Rests' }));
       await tree.getByRole('button', { name: 'Rests' }).click();
       await expect(tree.getByText(/^sixteenth rest$/i)).toBeVisible();
+      await expect.poll(clear, { message: 'room between the last rest and the final bar line' }).toBeGreaterThan(0);
       await expectNoSideScroll(page);
+
+      // The counts stay apart: 3.2's Write example, 5.1–5.3 and 7.1's triplets were the tightest on a 320 px phone.
+      for (const n of [3, 5, 7]) {
+        await page.goto(`./#/learn/${n}`);
+        await expect(page.getByRole('heading', { level: 1 })).toContainText(String(n));
+        await expectCountsApart(page);
+      }
 
       // Answers in words get a row each and stay clickable.
       await page.goto('./#/learn/5?s=check');
@@ -1152,6 +1231,26 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
         await expectFits(page);
       }
+      await expectNoSideScroll(page);
+    });
+
+    test("play: a window of a longer exercise ends with a plain bar line, and keeps room for a triplet's 3", async ({ page }) => {
+      known(name, 'play-window');
+      // Eight bars of 2/4 with a triplet only in bar 8 (seed 2), at 60 BPM: the window stays on bars 1–4 for 6 s.
+      await seedRun(page, { ...QUARTERS, meters: ['2/4'], notes: ['quarter', 'eighth'], triplets: true, bars: 8, tempo: 60 }, 2);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+      const staff = page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)');
+      // Two bars a row show bars 1–4: the exercise goes on, so the last ends with a plain bar line. Four a row show all 8.
+      const shown = await staff.locator('.vf-stave').count();
+      expect([4, 8]).toContain(shown);
+      await expect(staff.locator('rect[width="3"]')).toHaveCount(shown === 8 ? 1 : 0);
+      // Room above for the 3 although bars 1–4 have no triplet: the staff keeps one height (2 × 86 + 12 − 6) as it moves.
+      await expect(staff).toHaveAttribute('viewBox', /^0 0 [\d.]+ 178$/);
+      await expectStaffNotCut(staff);
+      // The taller staff still fits without scrolling: on the shortest phone (375 × 553) the pad gives up the room.
+      if (!desktopLayout) await expectFits(page);
       await expectNoSideScroll(page);
     });
 
@@ -1844,6 +1943,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           });
           expect(width, 'the start prompt fits on screen').toBeLessThanOrEqual(VIEWPORTS[name].width - 32);
         }
+        if (hash.startsWith('#/learn/')) await expectCountsApart(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });

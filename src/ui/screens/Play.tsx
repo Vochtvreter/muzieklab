@@ -159,6 +159,8 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const perRow = wide ? 4 : 2;
   const from = windowStart(curBar, perRow, 2, bars);
   const shownBars = useMemo(() => view.bars.slice(from, from + perRow * 2), [view.bars, from, perRow]);
+  // Room for a triplet's 3 on every window when the exercise has one: the staff keeps its height as the window moves.
+  const tuplets = useMemo(() => view.bars.some((b) => b.symbols.some((sym) => sym.tuplet)), [view.bars]);
   const rhythm = useMemo(() => describeBars(shownBars, ex.meter.id, from + 1), [shownBars, ex.meter.id, from]);
   const echoCard = echo && (
     <EchoCard taps={s.taps.length} playsLeft={echo.playsLeft} onDone={s.skip}
@@ -168,7 +170,8 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       }} />
   );
   const staff = (
-    <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={shorter ? STAFF_SHORTER : 1} />
+    <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={shorter ? STAFF_SHORTER : 1}
+      end={from + shownBars.length >= view.bars.length} tupletSpace={tuplets} />
   );
   const lane = (
     <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={4} taps={s.taps} result={s.liveResult}

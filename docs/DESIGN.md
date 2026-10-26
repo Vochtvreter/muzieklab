@@ -635,7 +635,11 @@ note/rest). A separate **speller** turns it into **notation** following engravin
 - **Beaming** per beat (simple meters) or per dotted-quarter (compound); never across
   beats 2–3 in 4/4. Four eighths may be beamed as a half-bar group (beats 1–2 or 3–4) in
   4/4, an accepted alternative; the default beams per beat. Sixteenths beamed per beat.
-- Triplets get a bracket/number per beat.
+- Triplets get a bracket/number per beat. The staff keeps room above its first row for the number. Play keeps it on
+  every window of an exercise with triplets, and the Setup preview whenever Triplets is on, so neither changes height
+  as the window moves or a new preview bar is drawn.
+- The final barline (thin and thick) closes the exercise's last bar. Play shows two rows of bars at a time: a window
+  that stops before the exercise's end closes with a plain bar line.
 
 Keeping rhythm and spelling separate lets dictation compare *what you heard* rather than
 *how you wrote it*, and lets the scoring engine ignore ties (a tie is not an onset).
@@ -1151,7 +1155,7 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
   - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
     0.8, the Read notes staff at 1.15 (not 1.45) and the Scales staff at 1.1 (not 1.25). The floors are lower (pad
-    76 px, Read notes piano 80 px, Scales piano 110 px), and so are the name buttons (56 px), the feedback, the
+    72 px, Read notes piano 80 px, Scales piano 110 px), and so are the name buttons (56 px), the feedback, the
     degrees, the sign buttons, Echo's listen card and Calibration's intro.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
@@ -1337,6 +1341,11 @@ answered right (since 0.6.0; before, scrolling past it was enough). A wrong answ
 giving the answer away, and the player tries again. Chapter headers show which Learning Path units use them. The contents follow the research in
 `LEARN-CHAPTERS.md`, which compares them with Flemish and Dutch courses (*Allemaal nootjes*, AMV, HaFaBra) and with
 ABRSM, Trinity, RCM and Kodály.
+
+**Narrow phones.** A rhythm example keeps two bars a row on every phone. When its counts would touch (two busy bars on
+a 320 px phone, or Dutch *en*, wider than *&*, at 375 and 390 px) or its notes would run into the bar line (the note
+tree's sixteenths at 320 px), the staff is drawn smaller, down to 0.75, as Play's staff is on a short screen. A held
+count shares the room between its neighbours by how wide their words are. Where everything fits, nothing changes.
 
 **Practice links** start practice for the section straight away (since 0.10.0; before, they opened the setup, with
 13 controls between the section and the exercise):

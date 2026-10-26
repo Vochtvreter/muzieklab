@@ -238,7 +238,9 @@ export function Setup(): JSX.Element {
                 </span>
               </div>
               {preview ? (
-                <StaffBox bars={preview.bars} meter={preview.run.exercise.meter} barsPerRow={1} label={describeBars(preview.bars, preview.run.exercise.meter.id)} />
+                // With Triplets on, room for a 3 whether or not this bar has one: the card keeps one height.
+                <StaffBox bars={preview.bars} meter={preview.run.exercise.meter} barsPerRow={1} label={describeBars(preview.bars, preview.run.exercise.meter.id)}
+                  tupletSpace={s.triplets} />
               ) : (
                 <p className="preview-none">{t('setup.previewNone')}</p>
               )}

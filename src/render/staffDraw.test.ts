@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEMO_44, DEMO_BARS_44, DEMO_LESSON } from './demoFixtures';
 import { getMeter } from '../core/api';
-import { plainSyllable } from './counting';
+import { plainSyllable, type CountMark } from './counting';
 import { parseBars } from './notationText';
 import { drawStaff, missMarkPath, type StaffPalette } from './staffDraw';
 
@@ -13,6 +13,28 @@ function draw(opts: Partial<Parameters<typeof drawStaff>[1]> = {}) {
   const host = document.createElement('div');
   const size = drawStaff(host, { bars: DEMO_BARS_44, meter: DEMO_44, barsPerRow: 2, width: 342, palette: DARK, cursorSpace: false, ...opts });
   return { host, size, svg: host.querySelector('svg')! };
+}
+
+/** The numbers of a path, as [x, y] points (VexFlow writes M, L, C and Q commands: every number pairs up). */
+const points = (p: Element): number[][] => {
+  const n = (p.getAttribute('d')!.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+  return n.flatMap((v, i) => (i % 2 ? [] : [[v, n[i + 1]]]));
+};
+
+/** The highest point drawn (the svg cuts off anything above 0). */
+const topOf = (svg: SVGSVGElement): number =>
+  Math.min(...[...svg.querySelectorAll('path')].flatMap((p) => points(p).map(([, y]) => y)), ...[...svg.querySelectorAll('rect')].map((r) => Number(r.getAttribute('y'))));
+
+/** The final barline's thick bar (3 wide; a plain bar line is one thin bar). */
+const finalBarlines = (svg: SVGSVGElement): number => [...svg.querySelectorAll('rect')].filter((r) => r.getAttribute('width') === '3').length;
+
+/** Counts side by side whose words (13 px mono, 7.8 per letter) overlap, as "a/b". */
+function touching(svg: SVGSVGElement): string[] {
+  const counts = [...svg.querySelectorAll('.staff-counts text')].map((t) => ({ x: Number(t.getAttribute('x')), y: t.getAttribute('y'), text: t.textContent! }));
+  return counts.flatMap((c, i) => {
+    const a = counts[i - 1];
+    return a && a.y === c.y && c.x - a.x < ((a.text.length + c.text.length) * 7.8) / 2 ? [`${a.text}/${c.text}`] : [];
+  });
 }
 
 describe('drawStaff', () => {
@@ -91,6 +113,63 @@ describe('drawStaff', () => {
     const { svg } = draw();
     expect(svg.querySelectorAll('.vf-stavetie').length).toBe(3); // one within a bar, one split across rows
     expect(svg.querySelectorAll('.vf-beam').length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("keeps a triplet's 3 inside the drawing: Results and the Setup preview, and Play's windows", () => {
+    const meter = getMeter('2/4');
+    const triplet = parseBars(meter, ['[8t 8t 8t] q', 'q [8 8]']);
+    // A staff without a cursor gets the room only when its first row has a triplet, so the others keep the board heights.
+    expect(draw({ bars: parseBars(meter, ['[8 8] q']), meter, barsPerRow: 1, width: 310 }).size.height).toBe(80);
+    expect(topOf(draw({ bars: triplet, meter, barsPerRow: 1, width: 310 }).svg)).toBeGreaterThanOrEqual(0);
+    expect(topOf(draw({ bars: triplet, meter, barsPerRow: 2, width: 720 }).svg)).toBeGreaterThanOrEqual(0);
+    // Play: above the cursor's room too, and on a window without a triplet of an exercise with one, so the height stays.
+    const play = draw({ bars: triplet, meter, barsPerRow: 1, width: 342, cursorSpace: true, tupletSpace: true });
+    expect(topOf(play.svg)).toBeGreaterThanOrEqual(0);
+    expect(draw({ bars: parseBars(meter, ['q q', 'h']), meter, barsPerRow: 1, width: 342, cursorSpace: true, tupletSpace: true }).size.height).toBe(play.size.height);
+    expect(draw({ bars: DEMO_LESSON, cursorSpace: true }).size.height).toBe(174);
+  });
+
+  it('ends with the final barline only where the piece ends, not after a window of Play', () => {
+    const piece = draw({ bars: DEMO_LESSON }).svg;
+    expect(finalBarlines(piece)).toBe(1);
+    expect(finalBarlines(draw({ bars: DEMO_LESSON, cursorSpace: true, end: true }).svg)).toBe(1);
+    const window = draw({ bars: DEMO_LESSON, cursorSpace: true, end: false }).svg;
+    expect(finalBarlines(window)).toBe(0);
+    // A plain bar line still closes its last bar: the final barline's thin bar without the thick one.
+    expect(window.querySelectorAll('rect[width="1"]')).toHaveLength(piece.querySelectorAll('rect[width="1"]').length);
+  });
+
+  it('draws a Learn staff smaller when its counts or notes do not fit: a 320 px phone (248 px staff), Dutch at 375 px', () => {
+    const dutch = (m: CountMark): string => (m.part === 'and' ? 'en' : plainSyllable(m));
+    const meter = getMeter('4/4');
+    const examples = [['h. q', 'q. 8 h'], ['[8t 8t 8t] q [8t 8t 8t] q'], ['hr q q', 'q qr qr q'], ['q q q q~', 'q q h'], ['[8. 16] [8. 16] q q']];
+    for (const [text, width] of [[plainSyllable, 248], [dutch, 248], [dutch, 303], [dutch, 318]] as const) {
+      for (const src of examples) {
+        const { svg } = draw({ bars: parseBars(meter, src), meter, barsPerRow: 2, width, counts: { text, held: DARK.staff }, shrinkToFit: true });
+        expect(touching(svg), `${src.join(' | ')} at ${width}`).toEqual([]);
+      }
+    }
+    // Where they fit, nothing changes: English at 390 px (318) is drawn as on the boards.
+    for (const src of examples) {
+      const { svg } = draw({ bars: parseBars(meter, src), meter, barsPerRow: 2, width: 318, counts: { text: plainSyllable, held: DARK.staff }, shrinkToFit: true });
+      expect(svg.getAttribute('viewBox'), src.join(' | ')).toMatch(/^0 0 318 /);
+    }
+    // A held count shares the room by how wide its neighbours' words are, so the staff is drawn only a little smaller:
+    // Dutch 5.2 at 390 px ("(2)" next to "en"), and 3.2's "(2)(3)" on a 320 px phone.
+    const scaleOf = (src: string[], text: (m: CountMark) => string, width: number): number => {
+      const { svg } = draw({ bars: parseBars(meter, src), meter, barsPerRow: 2, width, counts: { text, held: DARK.staff }, shrinkToFit: true });
+      return width / Number(svg.getAttribute('viewBox')!.split(' ')[2]);
+    };
+    expect(scaleOf(['h. q', 'q. 8 h'], dutch, 318)).toBeGreaterThan(0.95);
+    expect(scaleOf(['hr q q', 'q qr qr q'], plainSyllable, 248)).toBeGreaterThan(0.9);
+    // The note tree's bar of sixteenths (notes and rests): the last one ends before the final bar line.
+    for (const src of [Array(4).fill('[16 16 16 16]').join(' '), Array(16).fill('16r').join(' ')]) {
+      const { svg } = draw({ bars: parseBars(meter, [src]), meter, barsPerRow: 1, width: 248, shrinkToFit: true });
+      const notes = svg.querySelectorAll('g.vf-stavenote');
+      const right = Math.max(...[...notes[notes.length - 1].querySelectorAll('path')].flatMap((p) => points(p).map(([x]) => x)));
+      const bar = Math.max(...[...svg.querySelectorAll('rect[width="1"]')].map((r) => Number(r.getAttribute('x'))));
+      expect(right, src.slice(0, 3)).toBeLessThan(bar);
+    }
   });
 
   it('writes the counts under the notes, held and silent ones grey, in a taller row', () => {

@@ -77,6 +77,8 @@ interface StaffBoxProps {
   marks?: Record<number, NoteMark>;
   cursor?: number | null;
   scale?: number;
+  end?: boolean;
+  tupletSpace?: boolean;
 }
 
 /** The VexFlow staff; if drawing fails, the text alternative is shown instead of breaking the screen. */
