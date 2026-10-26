@@ -213,7 +213,7 @@ test('staying signed in: a reload renews the session, and a lost session token i
 
 /**
  * Every tab renews the session when it starts, if its last renewal is over 12 hours ago, and a renewal ends the session
- * token it replaces. Until 0.16.2 a tab whose request was sent with a token another tab had replaced since got a 401 on
+ * token it replaces. Until 0.17.1 a tab whose request was sent with a token another tab had replaced since got a 401 on
  * its one retry, and showed itself signed out: of three tabs opened at once on the test site, one or two landed on
  * #/signin, and with four reloaded at once the session itself was ended. Now the tabs renew one at a time and use each
  * other's renewals (src/api/client.ts, renewSession): of tabs that start together, one renews.

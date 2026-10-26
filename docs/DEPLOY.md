@@ -307,6 +307,11 @@ All of this runs on the server, as your own user. The files named come from this
    The settings file holds `PORT` and `MONGODB_URI`, and may hold `LOG_LEVEL` (*What the API logs*, below). It is
    readable by root only; systemd reads it before it starts the service as `muzieklab-api`.
 
+   **Feedback from the app** (0.17.0, [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md)) needs no setting: the API stores the
+   reports in its database, and admins review them in the app. Nothing goes to GitHub yet; the GitHub token comes with
+   the step that sends accepted reports there, and so do its instructions. Test builds before the 0.17.0 release read
+   a `GITHUB_TOKEN` from this file: if you added one, take that line out and revoke the token on GitHub.
+
    **Never put `COOKIE_SECURE` in it.** That setting is for development over plain http only (README). Set to
    `false`, it drops `Secure` and the `__Host-` and `__Secure-` prefixes from the session cookies, so the browser would
    also send them over plain http and other subdomains could set them. Without it they are `__Host-session` and

@@ -1241,7 +1241,7 @@ test('admin screens with no answer from the API: Try again, then the screen', as
   await expect(page.locator('section[aria-labelledby="h-accounts"]').getByRole('heading', { name: '4 accounts' })).toBeVisible();
 });
 
-for (const hash of ['#/admin', '#/admin/invite', '#/admin/account/' + ACCOUNTS[0].id, '#/admin/deleted']) {
+for (const hash of ['#/admin', '#/admin/invite', '#/admin/account/' + ACCOUNTS[0].id, '#/admin/deleted', '#/admin/feedback', '#/admin/feedback/6718f0c2a1b2c3d4e5f6b001']) {
   test(`admin screens signed out (${hash}): Sign in instead`, async ({ page }) => {
     const api = await mockApi(page, SIGNED_OUT);
     await page.goto('./' + hash);

@@ -11,7 +11,7 @@ import type {
   Permission,
   Role,
 } from '../../../shared/api.js';
-import { ROLE_PERMISSIONS } from '../auth/policy.js';
+import { PERMISSIONS } from '../../../shared/api.js';
 import { collections } from '../db.js';
 import {
   PASSWORD,
@@ -43,16 +43,23 @@ const DAY = 24 * 60 * 60_000;
 const Y = new Date().getUTCFullYear() + 1;
 const LEAP = [Y + 1, Y + 2, Y + 3, Y + 4].find((y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0)!;
 
-/** Gives editors some admin permissions for one test, to check each permission on its own. */
-async function withEditorPermissions(extra: Permission[], fn: () => Promise<void>) {
-  const table = ROLE_PERMISSIONS as Record<Role, readonly Permission[]>;
-  const before = table.editor;
-  table.editor = [...before, ...extra];
+/** Gives editors more permissions for one test (in their stored role), to check each permission on its own. */
+async function withEditorPermissions(t: TestApp, extra: Permission[], fn: () => Promise<void>) {
+  const roles = collections(t.db).roles;
+  const before = (await roles.findOne({ _id: 'editor' }))!.permissions;
+  await roles.updateOne({ _id: 'editor' }, { $set: { permissions: [...before, ...extra] } });
   try {
     await fn();
   } finally {
-    table.editor = before;
+    await roles.updateOne({ _id: 'editor' }, { $set: { permissions: before } });
   }
+}
+
+/** A custom role with every permission, as only such a role (or admin) may give out or take away admin. */
+async function seedEverythingRole(t: TestApp, id = 'everything'): Promise<Role> {
+  const now = new Date();
+  await collections(t.db).roles.insertOne({ _id: id, name: 'Everything', description: '', permissions: [...PERMISSIONS], builtIn: false, createdAt: now, updatedAt: now });
+  return id;
 }
 
 function patch(t: TestApp, cookie: string, id: string, payload: object) {
@@ -307,11 +314,12 @@ describe('PATCH /admin/accounts/:id', () => {
     // Without accounts.read, the route itself is closed.
     expect((await patch(t, cookie, target, { name: 'Ann' })).statusCode).toBe(403);
     for (const [payload, permission] of fields) {
-      await withEditorPermissions(['accounts.read'], async () => {
+      await withEditorPermissions(t, ['accounts.read'], async () => {
         const res = await patch(t, cookie, target, payload);
         expect(res.statusCode, `${JSON.stringify(payload)} without ${permission}`).toBe(403);
       });
-      await withEditorPermissions(['accounts.read', permission], async () => {
+      // Granting teacher also needs what teacher lets someone do (class.create): nobody gives out more than they have.
+      await withEditorPermissions(t, ['accounts.read', permission, ...(permission === 'roles.grant' ? (['class.create'] as const) : [])], async () => {
         const res = await patch(t, cookie, target, payload);
         expect(res.statusCode, `${JSON.stringify(payload)} with ${permission}`).toBe(200);
         // Two fields need both permissions.
@@ -341,10 +349,11 @@ describe('PATCH /admin/accounts/:id', () => {
   it('never leaves no active admin: role, block and delete', async () => {
     const t = await makeApp(mongo);
     const only = await seedAccount(t.db, { email: 'admin@example.com', roles: ['admin'] });
-    await seedAccount(t.db, { email: 'ed@example.com', roles: ['editor'] });
+    // Not an admin, but with every permission: may take admin away, so the guard rail is what stops it.
+    await seedAccount(t.db, { email: 'ed@example.com', roles: [await seedEverythingRole(t)] });
     const cookie = await signIn(t, 'ed@example.com');
     const id = only._id.toHexString();
-    await withEditorPermissions(['accounts.read', 'roles.grant', 'accounts.block', 'accounts.delete'], async () => {
+    {
       for (const payload of [{ roles: [] }, { roles: ['teacher'] }, { status: 'blocked' }]) {
         const res = await patch(t, cookie, id, payload);
         expect(res.statusCode, JSON.stringify(payload)).toBe(409);
@@ -359,7 +368,7 @@ describe('PATCH /admin/accounts/:id', () => {
       expect((await patch(t, cookie, id, { roles: [] })).statusCode).toBe(409);
       // Adding roles is always fine.
       expect((await patch(t, cookie, id, { roles: ['admin', 'teacher'] })).statusCode).toBe(200);
-    });
+    }
     expect((await collections(t.db).accounts.findOne({ _id: only._id }))?.roles).toEqual(['admin', 'teacher']);
   });
 

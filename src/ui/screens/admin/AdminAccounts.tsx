@@ -20,7 +20,7 @@ import { clearListNotice, peekListNotice, rolesText } from '../../lib/admin';
 import { announce } from '../../lib/announce';
 import { errorMessage } from '../../lib/apiErrors';
 import { Link } from '../../router';
-import { GateMessage, NoAccess, useAdminGate } from './AdminParts';
+import { GateMessage, NoAccess, roleNames, useAdminGate, useRoleList } from './AdminParts';
 
 /** How long typing has to pause before the list is asked again. */
 export const SEARCH_DELAY_MS = 250;
@@ -74,6 +74,8 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
   const [status, setStatus] = useState<Filter>('all');
   const [attempt, setAttempt] = useState(0);
   const [list, setList] = useState<List>({ state: 'loading' });
+  // Custom roles show by the names admins gave them.
+  const names = roleNames(useRoleList());
   // Set once the first answer came (the list, or an error): from then on, each answer (a search, a filter, Try again)
   // is read out. The first list is not, as the screen's own heading covers it.
   const loaded = useRef(false);
@@ -162,7 +164,7 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
                 meta={
                   <>
                     <StatusPill status={a.status} />
-                    {a.roles.length > 0 && <span className="row-sub">{rolesText(a.roles)}</span>}
+                    {a.roles.length > 0 && <span className="row-sub">{rolesText(a.roles, names)}</span>}
                   </>
                 } />
             ))}

@@ -711,6 +711,10 @@
     "signInSub": "Accounts are by invitation.",
     "accounts": "Accounts",
     "accountsSub": "Invite people and manage roles",
+    "feedbackReports": "Feedback",
+    "feedbackReportsSub": "Review the reports sent from the app",
+    "feedbackButton": "Feedback button",
+    "feedbackButtonSub": "On this device: mark part of a screen and send what should change.",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
     "privacy": "Privacy",
@@ -802,7 +806,9 @@
     "internal": "Something went wrong on our side. Try again later.",
     "unavailable": "Can't reach Muzieklab right now. Check your connection and try again.",
     "waitSeconds": "Too many tries. Try again in {count, plural, one {# second} other {# seconds}}.",
-    "waitMinutes": "Too many tries. Try again in {count, plural, one {# minute} other {# minutes}}."
+    "waitMinutes": "Too many tries. Try again in {count, plural, one {# minute} other {# minutes}}.",
+    "role_exists": "There's already a role with this id.",
+    "built_in_role": "Built-in roles keep their name, and Admin can always do everything."
   },
   "accountRole": {
     "admin": "Admin",
@@ -932,7 +938,10 @@
     "deleteRemove": "Delete them too: nothing of your account is kept.",
     "deleteFeedback": "Either way, we note the day an account was deleted, and keep what you wrote about why you're leaving, if you wrote anything, without your name or email.",
     "deleteBackups": "The nightly backups still hold your account for up to 14 days.",
-    "keepClosures": "Deleted accounts: the anonymous copy, the feedback and the day, 2 years."
+    "keepClosures": "Deleted accounts: the anonymous copy, the feedback and the day, 2 years.",
+    "accountReports": "the feedback reports you send from the app, if your account can send them: what you wrote, the screen and the spot you marked, your device and browser, and your settings, never your progress. The people who review them see your name. A report that is picked up becomes a public GitHub issue, without your name",
+    "keepReports": "Feedback reports: until the team deletes them, or you delete your account.",
+    "deleteReports": "The feedback reports you sent from the app are deleted with your account, whichever you choose. If an admin deletes your account, they're kept without your name."
   },
   "admin": {
     "title": "Accounts",
@@ -1067,6 +1076,96 @@
     "archived": "Archived",
     "removed": "Data deleted",
     "admin": "By an admin"
+  },
+  "feedbackStatus": {
+    "new": "New",
+    "accepted": "Accepted",
+    "declined": "Declined"
+  },
+  "feedbackReview": {
+    "title": "Feedback",
+    "lead": "Reports sent from the app.",
+    "noAccessSub": "Only admins review feedback reports.",
+    "loading": "Loading reports…",
+    "empty": "No reports yet. They appear here when someone sends feedback from the app.",
+    "emptyStatus": "No reports with this status.",
+    "count": "{count, plural, one {# report} other {# reports}}",
+    "countNew": "{count, plural, one {# new report} other {# new reports}}",
+    "countAccepted": "{count, plural, one {# accepted report} other {# accepted reports}}",
+    "countDeclined": "{count, plural, one {# declined report} other {# declined reports}}",
+    "newest": "Showing the newest {count}.",
+    "untitled": "{kind} on {route}",
+    "deletedAccount": "A deleted account",
+    "backToList": "Back to feedback",
+    "reportTitle": "Report",
+    "loadingReport": "Loading the report…",
+    "gone": "This report isn't there anymore.",
+    "report": "Report",
+    "kind": "Kind",
+    "description": "What should change",
+    "noDescription": "No description.",
+    "where": "Where",
+    "screen": "Screen",
+    "openScreen": "Open this screen",
+    "marked": "Marked",
+    "text": "Text there",
+    "selector": "Selector",
+    "mode": "Marked as",
+    "modeValue": {
+      "element": "An element",
+      "area": "A drawn area"
+    },
+    "box": "Box",
+    "boxValue": "x {x}, y {y}, {width} × {height} px",
+    "boxScrolled": "{box}, scrolled to {x}, {y}",
+    "device": "Device",
+    "viewport": "Viewport",
+    "viewportValue": "{width} × {height} px, pixel ratio {dpr}",
+    "size": "Size",
+    "sizeValue": {
+      "phone": "Phone",
+      "tablet": "Tablet",
+      "desktop": "Desktop"
+    },
+    "orientation": "Orientation",
+    "orientationValue": {
+      "portrait": "Portrait",
+      "landscape": "Landscape"
+    },
+    "pointer": "Input",
+    "pointerValue": {
+      "coarse": "Touch",
+      "fine": "Mouse"
+    },
+    "theme": "Theme",
+    "themeValue": {
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "themeFromSystem": "{theme}, from the system setting",
+    "language": "Language",
+    "version": "App version",
+    "browser": "Browser",
+    "sent": "Sent",
+    "from": "From",
+    "date": "Date",
+    "review": "Review",
+    "status": "Status",
+    "reviewedBy": "Reviewed by {name}, {date}",
+    "reviewedByGone": "Reviewed by a deleted account, {date}",
+    "notReviewed": "Not reviewed yet.",
+    "note": "Note for the team",
+    "noteHint": "Only people who review feedback see it, not the person who sent it. Up to {max} characters.",
+    "noteBadCharacters": "Remove the tabs and other hidden characters.",
+    "saveNote": "Save note",
+    "actions": "Actions",
+    "copy": "Copy as Markdown",
+    "copySub": "The title and text for a GitHub issue, to make by hand for now.",
+    "markdown": "Markdown",
+    "delete": "Delete report",
+    "deleteQuestion": "Delete this report?",
+    "deleteDetail": "It is removed from the app for everyone. No undo.",
+    "deleted": "The report was deleted."
   },
   "noteButton": {
     "whole": "Whole note",
@@ -2444,6 +2543,38 @@
       }
     }
   },
+  "feedback": {
+    "open": "Feedback",
+    "openLabel": "Feedback: mark a part of this screen",
+    "markHint": "Click the part you mean, or drag to draw a box around it. Esc cancels.",
+    "markHintTouch": "Tap the part you mean, or drag to draw a box around it.",
+    "cancel": "Cancel",
+    "title": "Feedback",
+    "marked": "Marked",
+    "markedArea": "Marked area",
+    "markAgain": "Mark again",
+    "kindGroup": "Kind of feedback",
+    "kind": {
+      "bug": "Bug",
+      "change": "Change",
+      "idea": "Idea"
+    },
+    "descLabel": "What should change?",
+    "descPlaceholder": "What is wrong here, and what you expect instead",
+    "titleLabel": "Title",
+    "titlePlaceholder": "A short summary (optional)",
+    "attached": "Saved for the team to review, with this screen, the marked spot, the screen size, the theme, the language and the settings. Not your progress. If it is picked up, it becomes a public GitHub issue, without your name.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "send": "Send",
+    "sending": "Sending…",
+    "saved": "Saved for review",
+    "savedText": "An admin reads it in Settings → Account → Feedback, and picks what goes on to GitHub.",
+    "review": "Review it",
+    "another": "Mark another",
+    "close": "Close",
+    "hide": "Hide the feedback button on this device"
+  },
   "changelog": {
     "title": "What's new",
     "back": "Back to settings",
@@ -2466,9 +2597,14 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
-    "v0_16_2": {
+    "v0_17_1": {
       "title": "Still signed in with several tabs open",
       "tabs": "If you opened or reloaded several tabs of the app at once, some of them could show you as signed out, and now and then you were signed out in all of them. Now every tab stays signed in."
+    },
+    "v0_17_0": {
+      "title": "Feedback on the spot",
+      "feedback": "For the team: an account allowed to give feedback gets a Feedback button. Mark any part of a screen and send what should change, with the screen, the spot and the device attached. Reports are saved for an admin to review in Settings → Account → Feedback.",
+      "roles": "Admins: what each role may do is now stored on the server, so roles can change, and new ones can be made, without a new version of the app."
     },
     "v0_16_1": {
       "title": "Still signed in after a reload",

@@ -105,7 +105,7 @@ async function failure(res: Response): Promise<ApiError> {
  * Every tab of the site has the same cookies, and a renewal ends the session token it replaces, which another tab may
  * have just sent. So a tab renews only while no other tab does (a Web Lock), and the time of the last renewal is kept
  * where every tab sees it (RENEWED_KEY): a tab that starts just after another one renewed does not renew again, and a
- * request that another tab's renewal answered with a 401 is sent again with the new cookies. Until 0.16.2 every tab
+ * request that another tab's renewal answered with a 401 is sent again with the new cookies. Until 0.17.1 every tab
  * renewed by itself, and of several tabs opened at once some showed themselves signed out.
  */
 export const RENEWED_KEY = 'muzieklab.renewed.v1';

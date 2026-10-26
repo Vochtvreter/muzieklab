@@ -18,6 +18,7 @@ import { ConfirmAction, ErrorRetry, FormDone, FormError, HiddenUsername, onSubmi
 import { Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
+import { rolesText } from '../../lib/admin';
 import { errorMessage, failureOf, fieldError, formError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { navigate } from '../../router';
 import { OfflineNote, useRefocus } from './AccountSection';
@@ -228,7 +229,8 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
 
 /** The roles ("Admin · Teacher") and premium, as a muted line, when there are any. */
 function Facts({ me }: { me: Me }): JSX.Element | null {
-  const parts = me.roles.map((r) => t('accountRole.' + r));
+  const roles = rolesText(me.roles, me.roleNames);
+  const parts = roles ? [roles] : [];
   if (me.premium.active) parts.push(me.premium.until ? t('account.premiumUntil', { date: formatDay(me.premium.until) }) : t('account.premium'));
   if (!parts.length) return null;
   return <p className="row-note">{parts.reduce((a, b) => t('common.join', { a, b }))}</p>;

@@ -6,7 +6,7 @@ import { parseScaleId, type ScaleStars } from '../core/scale';
 import { sanitizeScaleSettings, type ScaleSettings } from '../core/scaleRound';
 import type { Volumes } from '../audio/engine';
 import { isLocale } from '../i18n';
-import { LOCALES as ACCOUNT_LOCALES, PERMISSIONS, ROLES, type Me } from '../../shared/api';
+import { LOCALES as ACCOUNT_LOCALES, PERMISSIONS, ROLE_ID_PATTERN, type Me } from '../../shared/api';
 import { INTRO_IDS, introsOf } from './intro';
 
 export interface Prefs {
@@ -46,6 +46,11 @@ export interface Prefs {
   noteNames: 'solfege' | 'letters';
   /** Read notes: the piano keys' labels. */
   pianoLabels: 'letters' | 'solfege' | 'off';
+  /**
+   * Settings → Account → Feedback button: whether the feedback tool's button shows on this device, for an account with
+   * feedback.give (docs/FEEDBACK-LOOP.md §3). On unless turned off here.
+   */
+  feedbackButton: boolean;
 }
 
 export interface LessonProgress {
@@ -106,6 +111,7 @@ export const DEFAULT_PREFS: Prefs = {
   metronomeLook: 'digital',
   noteNames: 'letters',
   pianoLabels: 'letters',
+  feedbackButton: true,
 };
 
 export function defaultProgress(): Progress {
@@ -201,6 +207,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
     noteNames: oneOf(raw.noteNames, ['solfege', 'letters'] as const, d.noteNames),
     pianoLabels: oneOf(raw.pianoLabels, ['letters', 'solfege', 'off'] as const, d.pianoLabels),
+    feedbackButton: bool(raw.feedbackButton, d.feedbackButton),
   };
 }
 
@@ -340,6 +347,7 @@ export function saveProgress(p: Progress): void {
   writeJson(PROGRESS_KEY, p);
 }
 const str = (v: unknown): v is string => typeof v === 'string';
+const ROLE_ID = new RegExp(ROLE_ID_PATTERN);
 
 /** A stored Me, field by field; null when it is not one (or names no account). Unknown fields are dropped. */
 export function sanitizeMe(v: unknown): Me | null {
@@ -350,7 +358,10 @@ export function sanitizeMe(v: unknown): Me | null {
     email: v.email,
     name: v.name,
     locale: (ACCOUNT_LOCALES as readonly unknown[]).includes(v.locale) ? (v.locale as Me['locale']) : null,
-    roles: subset(v.roles, ROLES) ?? [],
+    roles: Array.isArray(v.roles) ? v.roles.filter((r): r is string => str(r) && ROLE_ID.test(r)) : [],
+    roleNames: isObj(v.roleNames)
+      ? Object.fromEntries(Object.entries(v.roleNames).filter((e): e is [string, string] => ROLE_ID.test(e[0]) && str(e[1])))
+      : {},
     permissions: subset(v.permissions, PERMISSIONS) ?? [],
     premium,
     createdAt: v.createdAt,

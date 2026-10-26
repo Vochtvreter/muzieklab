@@ -6,7 +6,7 @@ const ID = '6718f0c2a1b2c3d4e5f60001';
 
 describe('parseHash', () => {
   it('knows the account routes', () => {
-    for (const r of ['/signin', '/account', '/privacy', '/admin', '/admin/invite']) expect(parseHash('#' + r)).toBe(r);
+    for (const r of ['/signin', '/account', '/privacy', '/admin', '/admin/invite', '/admin/deleted', '/admin/feedback']) expect(parseHash('#' + r)).toBe(r);
   });
 
   it('takes invite and new-password links with a base64url token of 20–128 characters', () => {
@@ -34,6 +34,14 @@ describe('parseHash', () => {
     expect(parseHash('#/admin/account')).toBe('/');
   });
 
+  it('takes a feedback report id of 24 hex characters, and nothing else', () => {
+    expect(parseHash('#/admin/feedback/' + ID)).toBe('/admin/feedback/' + ID);
+    expect(parseHash('#/admin/feedback/' + ID + '/')).toBe('/admin/feedback/' + ID);
+    expect(parseHash('#/admin/feedback/' + ID.slice(1))).toBe('/');
+    expect(parseHash('#/admin/feedback/zz18f0c2a1b2c3d4e5f60001')).toBe('/');
+    expect(parseHash('#/admin/feedback/')).toBe('/admin/feedback');
+  });
+
   it('ignores a trailing slash and the query', () => {
     expect(parseHash('#/signin/')).toBe('/signin');
     expect(parseHash('#/invite/' + TOKEN + '/')).toBe('/invite/' + TOKEN);
@@ -55,5 +63,7 @@ describe('routeParam', () => {
     expect(routeParam(parseHash('#/invite/' + TOKEN), '/reset/')).toBeNull();
     expect(routeParam(parseHash('#/admin/account/' + ID), '/admin/account/')).toBe(ID);
     expect(routeParam('/admin/invite', '/admin/account/')).toBeNull();
+    expect(routeParam(parseHash('#/admin/feedback/' + ID), '/admin/feedback/')).toBe(ID);
+    expect(routeParam('/admin/feedback', '/admin/feedback/')).toBeNull();
   });
 });

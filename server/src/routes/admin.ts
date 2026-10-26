@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { ClientSession, Filter, ObjectId } from 'mongodb';
+import type { Filter } from 'mongodb';
 import {
   ACCOUNT_STATUSES,
-  ROLES,
+  ROLE_ID_PATTERN,
   type AccountDetail,
   type AccountListResponse,
   type AccountStatus,
@@ -13,18 +13,18 @@ import {
   type InviteRequest,
   type LinkCreated,
   type Permission,
-  type Role,
 } from '../../../shared/api.js';
 import { writeAudit, type AuditInput } from '../accounts/audit.js';
 import { toClosure, writeClosure } from '../accounts/closures.js';
 import { isDay, lastDayOf, premiumEnd } from '../accounts/premium.js';
 import { isActiveAdmin, otherActiveAdmins, removeAccount } from '../accounts/remove.js';
+import { assertHolds, findRoles, rolePermissions, sortRoleIds } from '../accounts/roles.js';
 import { normalizeEmail, validName } from '../accounts/validate.js';
 import { toAuditEntry, toDetail, toSummary } from '../accounts/views.js';
 import { signedIn } from '../auth/guard.js';
 import { createLink, inviteExpiresAt } from '../auth/links.js';
 import { siteOrigin } from '../auth/origin.js';
-import { can } from '../auth/policy.js';
+import { canAll, stillHeld } from '../auth/policy.js';
 import type { AppContext } from '../context.js';
 import {
   inTransaction,
@@ -48,7 +48,8 @@ const notFound = () => new ApiError('not_found', 'No such account');
 const forbidden = () => new ApiError('forbidden', 'This account may not do this');
 const emailTaken = () => new ApiError('email_taken', 'Another account has this email');
 
-const roles = { type: 'array', items: { enum: ROLES }, uniqueItems: true, maxItems: ROLES.length } as const;
+/** Role ids: whether each exists is checked in code (400 bad_request for one that does not). */
+const roles = { type: 'array', items: { type: 'string', pattern: ROLE_ID_PATTERN }, uniqueItems: true, maxItems: 50 } as const;
 
 const premium = {
   oneOf: [
@@ -71,11 +72,6 @@ const premium = {
 /** Regular-expression characters in `q` match themselves: an admin searches text, not patterns. */
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** Roles in the order of ROLES, so the stored list (and the comparison below) does not depend on the order sent. */
-function sortRoles(list: readonly Role[]): Role[] {
-  return ROLES.filter((role) => list.includes(role));
 }
 
 /** Premium's last day as sent: null for no end, or a real date (YYYY-MM-DD) that is not over yet anywhere. */
@@ -115,15 +111,6 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
     return account;
   }
 
-  /**
-   * Inside a transaction: the actor still has these permissions. The guard checked them when the request came in,
-   * but another admin may have changed this account since, and the guard rails must see the state they commit on.
-   */
-  async function actorStillCan(actorId: ObjectId, needs: readonly Permission[], session: ClientSession) {
-    const actor = await c.accounts.findOne({ _id: actorId }, { session });
-    if (!actor || !needs.every((p) => can(actor, p))) throw forbidden();
-  }
-
   app.get<{ Querystring: { q?: string; status?: AccountStatus } }>(
     '/admin/accounts',
     {
@@ -160,17 +147,18 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       const actor = signedIn(request).account;
       const email = normalizeEmail(request.body.email);
       const name = validName(request.body.name);
-      const accountRoles = sortRoles(request.body.roles);
+      const accountRoles = sortRoleIds(request.body.roles);
       // Inviting with a role grants it.
       const needs: Permission[] = accountRoles.length > 0 ? ['accounts.invite', 'roles.grant'] : ['accounts.invite'];
-      if (!needs.every((p) => can(actor, p))) throw forbidden();
+      if (!(await canAll(c, actor, needs))) throw forbidden();
       // Any status: an invited or blocked account keeps its address until it is deleted.
       if (await c.accounts.findOne({ email }, { projection: { _id: 1 } })) throw emailTaken();
       const now = ctx.now();
       const origin = siteOrigin(request);
       try {
         const { account, link } = await inTransaction(ctx.db, async (session) => {
-          await actorStillCan(actor._id, needs, session);
+          const held = await stillHeld(c, actor._id, needs, session);
+          assertHolds(held, (await findRoles(c, accountRoles, session)).flatMap(rolePermissions));
           const doc: Omit<AccountDoc, '_id'> = {
             email,
             name,
@@ -225,7 +213,7 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       const actor = signedIn(request).account;
       const body = request.body;
       const needs = patchNeeds(body);
-      if (!needs.every((p) => can(actor, p))) throw forbidden();
+      if (!(await canAll(c, actor, needs))) throw forbidden();
       const targetId = parseId(request.params.id);
       if (!targetId) throw notFound();
       const name = body.name === undefined ? undefined : validName(body.name);
@@ -241,7 +229,7 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       try {
         const updated = await inTransaction(ctx.db, async (session) => {
           await lockAdmins(c, session);
-          await actorStillCan(actor._id, needs, session);
+          const held = await stillHeld(c, actor._id, needs, session);
           const target = await c.accounts.findOne({ _id: targetId }, { session });
           if (!target) throw notFound();
           const self = target._id.equals(actor._id);
@@ -249,11 +237,18 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
           const audit: Omit<AuditInput, 'actorId' | 'targetId'>[] = [];
 
           if (body.roles !== undefined) {
-            const next = sortRoles(body.roles);
+            const next = sortRoleIds(body.roles);
             const added = next.filter((r) => !target.roles.includes(r));
             const removed = target.roles.filter((r) => !next.includes(r));
             if (added.length > 0 || removed.length > 0) {
               if (self) throw new ApiError('own_account', 'Another admin must change your roles');
+              // Granting needs every permission of the role, and so does taking it away (a role deleted meanwhile
+              // counts as none).
+              const changed = [
+                ...(await findRoles(c, added, session)),
+                ...(await c.roles.find({ _id: { $in: removed } }, { session }).toArray()),
+              ];
+              assertHolds(held, changed.flatMap(rolePermissions));
               set.roles = next;
               if (added.length > 0) audit.push({ action: 'role.grant', details: { roles: added } });
               if (removed.length > 0) audit.push({ action: 'role.revoke', details: { roles: removed } });
@@ -395,7 +390,7 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       const now = ctx.now();
       await inTransaction(ctx.db, async (session) => {
         await lockAdmins(c, session);
-        await actorStillCan(actor._id, ['accounts.delete'], session);
+        await stillHeld(c, actor._id, ['accounts.delete'], session);
         const target = await c.accounts.findOne({ _id: targetId }, { session });
         if (!target) throw notFound();
         // "Cancel invite" expects an invited account: one whose invite was accepted meanwhile stays.
@@ -408,7 +403,8 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
         }
         // A cancelled invite was never used, so it is not a deleted account.
         if (target.status !== 'invited') await writeClosure(c, target, now, { kind: 'admin' }, session);
-        await removeAccount(c, target._id, session);
+        // The reports it sent stay without its name: they are about the app, and the account did not ask for them to go.
+        await removeAccount(c, target._id, { reports: 'keep' }, session);
         // Cancelling an invite and deleting an account are one action; the status tells them apart.
         await writeAudit(
           c,

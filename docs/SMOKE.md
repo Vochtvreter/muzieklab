@@ -28,9 +28,10 @@ sessions run it to check the test site.
   start together); the account and admin screens at every size, light and dark.
 - **Progress on the account** (`sync.spec.ts`): played on a phone, it is on a laptop that signs in; a theme set there
   comes back; Remove on sign-out takes it off the phone.
-- **Roles** (`roles.spec.ts`): one account goes through every role in `shared/api.ts` (`ROLES`), then none, then
-  premium. Each time `/me` has the right permissions, and only an admin sees Accounts and the admin screens; the
-  others see "You don't have access" and get 403 from every admin route. An admin cannot change its own roles. Each
+- **Roles** (`roles.spec.ts`): one account goes through every built-in role in `shared/api.ts` (`BUILT_IN_ROLES`), then
+  none, then premium. Each time `/me` has the permissions the site stores for the role (`GET /admin/roles`), and only an
+  admin sees Accounts, Feedback and the admin screens; the others see "You don't have access" and get 403 from every
+  admin route. An admin cannot change its own roles. Each
   step starts from the roles the account has, so a step that fails does not skip the others: they go on in a new
   worker, with a new account.
 - **The admin screens** (`admin.spec.ts`): search and the status filter, a new invite link, canceling an invite,
@@ -132,5 +133,5 @@ One app bug is known.
   looks up the step after the last note, and the console says `[i18n] missing message: scales.how.undefined`. Once
   the bug is fixed the test fails, which says so: remove `test.fail`.
 
-Several tabs opened at once was the other one until 0.16.2 (tabs that started together each renewed the session, and
+Several tabs opened at once was the other one until 0.17.1 (tabs that started together each renewed the session, and
 one could sign itself out): `staying signed in: tabs opened one after another, and at once…` checks it now.

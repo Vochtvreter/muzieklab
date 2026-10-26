@@ -11,9 +11,11 @@ import { ApiError } from './errors.js';
 import { requestLine } from './log.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
+import { feedbackRoutes } from './routes/feedback.js';
 import { healthRoutes } from './routes/health.js';
 import { meRoutes } from './routes/me.js';
 import { progressRoutes } from './routes/progress.js';
+import { roleRoutes } from './routes/roles.js';
 
 export interface AppOptions {
   db: Db;
@@ -109,5 +111,7 @@ export function buildApp({
   app.register(meRoutes, { prefix: PREFIX, ctx });
   app.register(progressRoutes, { prefix: PREFIX, ctx });
   app.register(adminRoutes, { prefix: PREFIX, ctx });
+  app.register(roleRoutes, { prefix: PREFIX, ctx });
+  app.register(feedbackRoutes, { prefix: PREFIX, ctx });
   return app;
 }

@@ -2,10 +2,12 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
 import { CHAPTERS } from '../src/ui/learn/chapters';
+import type { Me } from '../shared/api';
+import type { FeedbackReport } from '../shared/feedback';
 import {
-  ACCOUNTS, accountDetail, ADMIN, adminApi, apiError, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoSideScroll,
-  expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo, QUARTERS, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT,
-  SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap,
+  expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo,
+  QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
 
 /**
@@ -45,7 +47,10 @@ const known = (vp: string, screen: string): void => {
   test.fail(!!why, why);
 };
 
-/** Tablet and desktop: a wide screen's side panel (summary and main button) is beside its main column, not under it. */
+/**
+ * Tablet and desktop: a wide screen's side panel (summary and main button) is beside its main column, not under it.
+ * Wait for the screen first: right after a link to another screen, both locators can still find the old one.
+ */
 async function expectBeside(main: Locator, side: Locator): Promise<void> {
   // From the top: further down the side panel stays in view while the main column scrolls on.
   await main.evaluate((el) => el.closest('.page')?.scrollTo(0, 0));
@@ -81,6 +86,26 @@ async function failedSecondLink(page: Page, button: string, alert: string): Prom
   await expectFieldsFit(page);
   await expectNoClippedLabels(page);
   await expectNoSideScroll(page);
+}
+
+/**
+ * A feedback report's facts (the label, and its value beside or under it) and its description stay inside their cards:
+ * a long value (the selector, the browser, a word with no spaces) wraps instead of running out of the card or being cut.
+ */
+async function expectFactsInCards(page: Page): Promise<void> {
+  const out = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.facts dt, .facts dd, .report-quote')]
+      .filter((el) => el.offsetParent !== null)
+      .flatMap((el) => {
+        const card = el.closest('.set-card')?.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        const name = (el.textContent ?? '').slice(0, 40);
+        if (!card) return [`${name}: not in a card`];
+        if (r.left < card.left - 0.5 || r.right > card.right + 0.5) return [`${name}: runs out of its card`];
+        return el.scrollWidth > el.clientWidth + 1 ? [`${name}: cut off`] : [];
+      }),
+  );
+  expect(out, 'report facts').toEqual([]);
 }
 
 /**
@@ -632,6 +657,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
       if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
       await page.getByRole('link', { name: /^Key: / }).click();
+      // The Key screen takes the setup's place on the hashchange, a moment after the click: wait for it, or the setup
+      // is measured (or its main column comes back null, swapped out between finding and measuring it).
+      await expect(page.getByRole('heading', { name: 'Key', exact: true })).toBeVisible();
       if (desktopLayout || tabletLayout) {
         // The keys on the left; the chosen key's signature, large, with what it means and Use beside them.
         await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
@@ -1182,8 +1210,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     });
 
     /**
-     * Accounts (no board yet: built from Settings' design language). The API is mocked; the service worker is blocked so
-     * page.route sees the requests.
+     * Accounts, and the admin's Feedback reports (no board yet: built from Settings' design language). The API is mocked;
+     * the service worker is blocked so page.route sees the requests.
      */
     test.describe('accounts', () => {
       test.use({ serviceWorkers: 'block' });
@@ -1222,7 +1250,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
-      test('settings signed in as an admin: the account, Accounts and Sign out', async ({ page }) => {
+      test('settings signed in as an admin: the account, Accounts, Feedback and Sign out', async ({ page }) => {
         known(name, 'settings-admin');
         await mockApi(page, ADMIN);
         await page.goto('./#/settings');
@@ -1230,6 +1258,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(section.getByRole('link', { name: /^Ann de Vries/ }));
         await expect(section.getByRole('link', { name: /^Ann de Vries/ })).toContainText('ann@example.com');
         await expectClickable(section.getByRole('link', { name: /^Accounts/ }));
+        // Feedback (feedback.review): the reports to review, right under Accounts.
+        const reports = section.getByRole('link', { name: /^Feedback/ });
+        await expect(reports).toContainText('Review the reports sent from the app');
+        await expectClickable(reports);
+        await expectTouchHeight(reports);
+        const [accounts, feedback] = await Promise.all([section.getByRole('link', { name: /^Accounts/ }).boundingBox(), reports.boundingBox()]);
+        expect(Math.abs(feedback!.y - (accounts!.y + accounts!.height)), 'Feedback is the row under Accounts').toBeLessThanOrEqual(2);
         const signOut = section.getByRole('button', { name: 'Sign out' });
         await expectClickable(signOut);
         await expectTouchHeight(signOut);
@@ -1541,6 +1576,204 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await failedSecondLink(page, 'New password link',
           "Can't reach Muzieklab right now. Check your connection and try again. The link below may not work anymore.");
       });
+
+      test('admin feedback: from Settings, the status filter with its counts, and the reports', async ({ page }) => {
+        known(name, 'admin-feedback');
+        const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+        await page.goto('./#/settings');
+        await account(page).getByRole('link', { name: /^Feedback/ }).click();
+        await expect(page.getByRole('heading', { level: 1, name: 'Feedback' })).toBeVisible();
+        await expect(page).toHaveTitle('Feedback · Muzieklab');
+        await expect(mainNav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+        await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
+        await expect(page.getByText('Reports sent from the app.')).toBeVisible();
+        // New first: the reports nobody has looked at yet. Each chip says how many it holds.
+        const filter = page.getByRole('group', { name: 'Status' });
+        await expect(filter.getByRole('button')).toHaveText(['New 3', 'Accepted 1', 'Declined 0', 'All 4']);
+        await expect(filter.getByRole('button', { name: 'New 3' })).toHaveAttribute('aria-pressed', 'true');
+        for (const chip of await filter.getByRole('button').all()) await expectTouchHeight(chip);
+        await expectEvenChipRows(page);
+        const list = page.locator('section[aria-labelledby="h-reports"]');
+        await expect(list.getByRole('heading', { name: '3 new reports' })).toBeVisible();
+        const rows = list.getByRole('link');
+        await expect(rows).toHaveCount(3);
+        for (const row of await rows.all()) {
+          await expectTouchHeight(row);
+          await expectNotSqueezed(row);
+        }
+        // A row: the title (or one made up from the kind and the screen), then kind · marked spot · who · day.
+        await expect(rows.nth(0)).toHaveAttribute('href', '#/admin/feedback/' + FEEDBACK[0].id);
+        await expect(rows.nth(0)).toContainText('Start lesson does nothing on the first tap');
+        await expect(rows.nth(0)).toContainText('Bug · button “Start lesson” · Sam Jansen · October 25, 2026');
+        await expect(rows.nth(1)).toContainText('Change on #/settings');
+        await expect(rows.nth(1)).toContainText('Change · group “Timing leniency” · A deleted account · October 24, 2026');
+        await expectClickable(rows.last());
+        await expectNotSqueezed(list.locator('.set-card'));
+        await expect(list.locator('.status-pill')).toHaveCount(0);
+
+        // All: every report, each with where it stands.
+        await expectClickable(filter.getByRole('button', { name: 'All 4' }));
+        await filter.getByRole('button', { name: 'All 4' }).click();
+        await expect(list.getByRole('heading', { name: '4 reports' })).toBeVisible();
+        await expect(announcer(page)).toHaveText('4 reports');
+        await expect(list.locator('.status-pill')).toHaveText(['New', 'New', 'New', 'Accepted']);
+        for (const pill of await list.locator('.status-pill').all()) await expectClickable(pill);
+        await expectNotSqueezed(list.locator('.set-card'));
+        await expectScrollbarAtEdge(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+
+        // A status with none: one line says so.
+        await filter.getByRole('button', { name: 'Declined 0' }).click();
+        await expect(page.locator('.acct-empty')).toHaveText('No reports with this status.');
+        await expect(announcer(page)).toHaveText('No reports with this status.');
+        expect(api.callsTo('GET /admin/feedback').map((c) => c.query.get('status'))).toEqual(['new', null, 'declined']);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin one feedback report: the report, where, the device, who sent it, the review, Copy and Delete', async ({ page, context }) => {
+        known(name, 'admin-feedback-report');
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+        const [first] = FEEDBACK;
+        const region = (title: string) => page.getByRole('region', { name: title, exact: true });
+        await page.goto('./#/admin/feedback');
+        await page.getByRole('link', { name: /^Start lesson does nothing/ }).click();
+        await expect(page).toHaveURL(new RegExp('#/admin/feedback/' + first.id + '$'));
+        await expect(page.getByRole('heading', { level: 1, name: first.title })).toBeVisible();
+        await expect(page).toHaveTitle(first.title + ' · Muzieklab');
+        await expect(mainNav(page).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+        await expectClickable(page.getByRole('link', { name: 'Back to feedback' }));
+
+        // Report: the kind, and what should change as it was written (its line break kept).
+        await expect(region('Report')).toContainText('Bug');
+        expect(await region('Report').locator('.report-quote').innerText()).toBe(first.description);
+        // Where: the screen and the marked spot, and the way to that screen.
+        const where = region('Where');
+        for (const fact of ['#/', first.report.target.label, 'Start lesson', first.report.target.selector, 'An element', 'x 17, y 412, 358 × 52 px']) {
+          await expect(where).toContainText(fact);
+        }
+        const open = where.getByRole('link', { name: 'Open this screen' });
+        await expect(open).toHaveAttribute('href', '#/');
+        await expectClickable(open);
+        await expectTouchHeight(open);
+        // Device and Sent.
+        for (const fact of ['390 × 844 px, pixel ratio 3', 'Phone', 'Portrait', 'Touch', 'Dark, from the system setting', 'English', '0.17.0', 'iPhone OS 18_1']) {
+          await expect(region('Device')).toContainText(fact);
+        }
+        await expect(region('Sent')).toContainText('Sam Jansen');
+        await expect(region('Sent')).toContainText('October 25, 2026');
+        for (const card of await page.locator('.set-card').all()) await expectNotSqueezed(card);
+        await expectFactsInCards(page);
+
+        // Review: the status is saved at once, and says who changed it.
+        const review = region('Review');
+        const status = review.getByRole('group', { name: 'Status' });
+        await expect(status.getByRole('button')).toHaveText(['New', 'Accepted', 'Declined']);
+        await expect(status.getByRole('button', { name: 'New' })).toHaveAttribute('aria-pressed', 'true');
+        for (const choice of await status.getByRole('button').all()) {
+          await expectClickable(choice);
+          await expectTouchHeight(choice);
+        }
+        await expect(review).toContainText('Not reviewed yet.');
+        await status.getByRole('button', { name: 'Accepted' }).click();
+        await expect(review).toContainText('Reviewed by Ann de Vries, October 25, 2026');
+        await expect(status.getByRole('button', { name: 'Accepted' })).toHaveAttribute('aria-pressed', 'true');
+        // The note for the team, saved with Save (trimmed).
+        const note = review.getByLabel('Note for the team');
+        const save = review.getByRole('button', { name: 'Save note' });
+        await expectClickable(note);
+        await expect(save).toBeDisabled();
+        await note.fill('  Picked up for 0.17.1.\nAfter the tab bar fix.  ');
+        await expectClickable(save);
+        await expectTouchHeight(save);
+        await save.click();
+        await expect(review.getByText('Saved.')).toBeVisible();
+        await expect(note).toHaveValue('Picked up for 0.17.1.\nAfter the tab bar fix.');
+        expect(api.callsTo('PATCH /admin/feedback/:id').map((c) => [c.params.id, c.body])).toEqual([
+          [first.id, { status: 'accepted' }],
+          [first.id, { note: 'Picked up for 0.17.1.\nAfter the tab bar fix.' }],
+        ]);
+
+        // Copy as Markdown: the GitHub issue the report would become, to make by hand for now.
+        const actions = region('Actions');
+        const copy = actions.getByRole('button', { name: /^Copy as Markdown/ });
+        await expectClickable(copy);
+        await expectTouchHeight(copy);
+        await copy.click();
+        await expect(actions.getByRole('button', { name: /^Copied/ })).toBeVisible();
+        const markdown = await page.evaluate(() => navigator.clipboard.readText());
+        expect(markdown.startsWith(`# ${first.title}\n\n**Bug** · reported in the app (v0.17.0)`), markdown.slice(0, 120)).toBe(true);
+        expect(markdown).toContain('<!-- muzieklab-feedback:v1 -->');
+
+        for (const card of await page.locator('.set-card').all()) await expectNotSqueezed(card);
+        await expectFieldsFit(page);
+        await expectScrollbarAtEdge(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+
+        // Delete report asks first, then goes back to the list, which says so once.
+        await actions.getByRole('button', { name: 'Delete report' }).click();
+        const confirm = actions.getByRole('alertdialog', { name: 'Delete this report?' });
+        await expect(confirm).toContainText('It is removed from the app for everyone. No undo.');
+        for (const label of ['Cancel', 'Delete']) {
+          await expectClickable(confirm.getByRole('button', { name: label, exact: true }));
+          await expectTouchHeight(confirm.getByRole('button', { name: label, exact: true }));
+        }
+        await expectNotSqueezed(confirm);
+        await expectNoClippedLabels(page);
+        await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+        await expect(page).toHaveURL(/#\/admin\/feedback$/);
+        await expect(page.getByRole('heading', { level: 1, name: 'Feedback' })).toBeVisible();
+        await expect(page.locator('.acct-card--status')).toContainText('The report was deleted.');
+        await expect(announcer(page)).toHaveText('The report was deleted.');
+        await expect(page.getByRole('group', { name: 'Status' }).getByRole('button')).toHaveText(['New 2', 'Accepted 1', 'Declined 0', 'All 3']);
+        await expect(page.getByRole('link', { name: /^Start lesson does nothing/ })).toHaveCount(0);
+        expect(api.callsTo('DELETE /admin/feedback/:id').map((c) => c.params.id)).toEqual([first.id]);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('admin feedback: no access, a list that does not come, no reports yet, and a report that is gone', async ({ page }) => {
+        known(name, 'admin-feedback-states');
+        const api = await mockApi(page, { ...MEMBER, ...feedbackServer().routes });
+        await page.goto('./#/admin/feedback');
+        await expect(page.getByText("You don't have access to this page.")).toBeVisible();
+        await expect(page.getByText('Only admins review feedback reports.')).toBeVisible();
+        const back = page.locator('.acct-message').getByRole('link', { name: 'Back to settings' });
+        await expectClickable(back);
+        await expectTouchHeight(back);
+        expect(api.callsTo('GET /admin/feedback')).toHaveLength(0);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+
+        // An admin, and the list does not come: why, and Try again.
+        api.set({ ...ADMIN, 'GET /admin/feedback': apiError('internal', 500) });
+        await page.reload();
+        await expect(page.getByRole('alert')).toHaveText('Something went wrong on our side. Try again later.');
+        const retry = page.getByRole('button', { name: 'Try again' });
+        await expectClickable(retry);
+        await expectTouchHeight(retry);
+        await expectNoOverlap(page.getByRole('alert'), retry);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+
+        // No reports yet: one line says where they come from, and there is nothing to filter.
+        api.set({ 'GET /admin/feedback': { json: { reports: [], counts: { new: 0, accepted: 0, declined: 0 } } } });
+        await retry.click();
+        await expect(page.locator('.acct-empty')).toHaveText('No reports yet. They appear here when someone sends feedback from the app.');
+        await expect(page.getByRole('group', { name: 'Status' })).toHaveCount(0);
+        await expectNoSideScroll(page);
+
+        // A report deleted meanwhile (by another admin): it says so, with the way back to the list.
+        await page.goto('./#/admin/feedback/6718f0c2a1b2c3d4e5f6b0ff');
+        await expect(page.getByText("This report isn't there anymore.")).toBeVisible();
+        const toList = page.locator('.acct-message').getByRole('link', { name: 'Back to feedback' });
+        await expectClickable(toList);
+        await expectTouchHeight(toList);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
     });
   });
 }
@@ -1614,6 +1847,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         ['admin account', '#/admin/account/' + ACCOUNTS[1].id, adminApi(), 'Sam Jansen', 'Link voor een nieuw wachtwoord'],
         ['admin account, invited', '#/admin/account/' + ACCOUNTS[0].id, adminApi(), 'Lies Bakker', 'Nieuwe uitnodigingslink'],
         ['admin deleted accounts', '#/admin/deleted', adminApi(), 'Verwijderde accounts', 'Downloaden als bestand'],
+        // Made once for every test here: they only read the reports.
+        ['admin feedback', '#/admin/feedback', { ...ADMIN, ...feedbackServer().routes }, 'Feedback', 'Nieuw 3'],
+        ['admin feedback report', '#/admin/feedback/' + FEEDBACK[1].id, { ...ADMIN, ...feedbackServer().routes }, 'Wijziging op #/settings', 'Melding verwijderen'],
       ];
       for (const [screen, hash, routes, title, action] of rows) {
         test(`${screen}: ${title}`, async ({ page }) => {
@@ -1623,7 +1859,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           await expect(page).toHaveTitle(new RegExp(title));
           await expect(page.locator('h1')).toBeVisible();
           if (action) await expectClickable(page.getByRole('button', { name: new RegExp('^' + action) }).first());
-          if (hash === '#/settings' && routes === ADMIN) await expectClickable(page.getByRole('link', { name: /^Accounts/ }));
+          if (hash === '#/settings' && routes === ADMIN) {
+            await expectClickable(page.getByRole('link', { name: /^Accounts/ }));
+            await expectClickable(page.getByRole('link', { name: /^Feedback/ }));
+          }
           if (hash === '#/settings' && routes === SIGNED_OUT) await expectClickable(page.getByRole('link', { name: /^Inloggen/ }));
           if (hash === '#/account') {
             await page.getByRole('button', { name: /^Account verwijderen/ }).click();
@@ -1635,6 +1874,31 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
             // Gegevens gewist and Door beheerder are long: two and two, never three and a lone one.
             await expectEvenChipRows(page, '', 'Hoe het is verwijderd');
             await expect(page.getByRole('article').first()).toContainText('Begonnen in maart 2026');
+          }
+          if (hash === '#/admin/feedback') {
+            await expect(page.getByRole('group', { name: 'Status' }).getByRole('button')).toHaveText(['Nieuw 3', 'Opgepakt 1', 'Afgewezen 0', 'Alle 4']);
+            await expectEvenChipRows(page);
+            const untitled = page.getByRole('link', { name: /^Wijziging op #\/settings/ });
+            await expect(untitled).toContainText('Een verwijderd account');
+            await expectNotSqueezed(untitled);
+          }
+          if (hash.startsWith('#/admin/feedback/')) {
+            // Nieuw · Opgepakt · Afgewezen: each whole, a finger's height, in a third of the card at 320 px.
+            for (const label of ['Nieuw', 'Opgepakt', 'Afgewezen']) {
+              const choice = page.getByRole('group', { name: 'Status' }).getByRole('button', { name: label });
+              await expectClickable(choice);
+              await expectTouchHeight(choice);
+            }
+            await expect(page.getByRole('region', { name: 'Apparaat' })).toContainText('Computer');
+            await expectClickable(page.getByRole('link', { name: 'Open dit scherm' }));
+            await expectClickable(page.getByLabel('Notitie voor het team'));
+            await expectClickable(page.getByRole('button', { name: /^Kopiëren als Markdown/ }));
+            for (const card of await page.locator('.set-card').all()) await expectNotSqueezed(card);
+            await expectFactsInCards(page);
+            await page.getByRole('button', { name: /^Melding verwijderen/ }).click();
+            const confirm = page.getByRole('alertdialog', { name: 'Deze melding verwijderen?' });
+            await expectClickable(confirm.getByRole('button', { name: 'Verwijderen', exact: true }));
+            await expectClickable(confirm.getByRole('button', { name: 'Annuleren', exact: true }));
           }
           if (hash === '#/admin') {
             await expectClickable(page.getByRole('link', { name: 'Iemand uitnodigen' }));
@@ -1740,19 +2004,188 @@ test.describe('the status filter at every phone width', () => {
   test.use({ serviceWorkers: 'block', hasTouch: true });
   // The fixed sizes miss widths in between (an Android phone is often 360 px wide, where Dutch once broke 3 + 1).
   for (const language of ['en', 'nl']) {
-    test(`${language}: all four chips on one line, or two and two, from 320 to 699 px`, async ({ page }) => {
-      await seed(page, { prefs: { language, seenHowTo: true, seenHold: true } });
-      await mockApi(page, adminApi());
-      await page.setViewportSize({ width: 320, height: 800 });
-      await page.goto('./#/admin');
-      await expect(page.getByRole('group', { name: 'Status' }).getByRole('button')).toHaveCount(4);
-      for (let width = 320; width < 700; width += 2) {
-        await page.setViewportSize({ width, height: 800 });
-        await expectEvenChipRows(page, `${width} px:`);
+    for (const [screen, hash] of [['Accounts', '#/admin'], ['Feedback', '#/admin/feedback']]) {
+      test(`${language}, ${screen}: all four chips on one line, or two and two, from 320 to 699 px`, async ({ page }) => {
+        await seed(page, { prefs: { language, seenHowTo: true, seenHold: true } });
+        await mockApi(page, { ...adminApi(), ...feedbackServer().routes });
+        await page.setViewportSize({ width: 320, height: 800 });
+        await page.goto('./' + hash);
+        await expect(page.getByRole('group', { name: 'Status' }).getByRole('button')).toHaveCount(4);
+        for (let width = 320; width < 700; width += 2) {
+          await page.setViewportSize({ width, height: 800 });
+          await expectEvenChipRows(page, `${width} px:`);
+        }
+        await expectNoSideScroll(page);
+      });
+    }
+  }
+});
+
+/** The feedback tool (docs/FEEDBACK-LOOP.md): for an account with feedback.give, saving the report for an admin to review. */
+const FAB = 'Feedback: mark a part of this screen';
+const SAVED_TEXT = 'An admin reads it in Settings → Account → Feedback, and picks what goes on to GitHub.';
+
+for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
+  test.describe(`${name}: feedback`, () => {
+    test.use({ viewport: VIEWPORTS[name], hasTouch: !name.startsWith('desktop') && !name.startsWith('laptop'), serviceWorkers: 'block' });
+
+    test('only with feedback.give; mark a spot or draw a box, and save it for review', async ({ page }) => {
+      const fab = page.getByRole('button', { name: FAB });
+      const server = feedbackServer();
+      // An account without feedback.give: no button.
+      const api = await mockApi(page, { ...MEMBER, ...server.routes });
+      await seedAccount(page, ME_MEMBER);
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await expect(page.getByRole('link', { name: /^Sam Jansen/ })).toBeVisible();
+      await expect(fab).toHaveCount(0);
+
+      // An admin has it.
+      api.set(ADMIN);
+      await seedAccount(page, ME_ADMIN);
+      await page.reload();
+      await expectClickable(fab, { scroll: false });
+
+      const spot = page.getByText('Fair timing for most players.');
+      await spot.evaluate((n) => n.scrollIntoView({ block: 'center' }));
+      await fab.click();
+      await expect(page.getByRole('dialog', { name: /part you mean/ })).toBeVisible();
+      const r = (await spot.boundingBox())!;
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      await expect(form).toBeVisible();
+      await expect(form.locator('.fb-marked').first()).toContainText('Fair timing for most players.');
+      await expect(form.getByText(/^Saved for the team to review, with this screen, .* If it is picked up, it becomes a public GitHub issue, without your name\.$/)).toBeVisible();
+      // Nothing to send until it says what should change.
+      await expect(form.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
+      await form.getByLabel('What should change?').fill('Say what each leniency does in milliseconds too.');
+      await expectClickable(form.getByRole('button', { name: 'Send', exact: true }));
+      await expectClickable(form.getByRole('button', { name: 'Copy' }));
+      await expectNoClippedLabels(page);
+      await form.getByRole('button', { name: 'Send', exact: true }).click();
+
+      // Saved in the app, not sent on to GitHub: no issue to link to. An admin can review it straight away.
+      const done = page.getByRole('dialog', { name: 'Saved for review' });
+      await expect(done).toBeVisible();
+      await expect(done.getByText(SAVED_TEXT)).toBeVisible();
+      const [saved] = server.reports();
+      await expect(done.getByRole('link', { name: 'Review it' })).toHaveAttribute('href', '#/admin/feedback/' + saved.id);
+      await expect(done.getByRole('link', { name: /issue|GitHub/ })).toHaveCount(0);
+      for (const control of [done.getByRole('link', { name: 'Review it' }), done.getByRole('button', { name: 'Mark another' }), done.getByRole('button', { name: 'Close' })]) {
+        await expectClickable(control);
+        await expectTouchHeight(control);
       }
+      await expectNoClippedLabels(page);
+      const report = api.callsTo('POST /feedback')[0].body as FeedbackReport;
+      expect(report).toMatchObject({ kind: 'change', description: 'Say what each leniency does in milliseconds too.', context: { route: '/settings' } });
+      expect(report.context.viewport).toMatchObject({ width: VIEWPORTS[name].width, height: VIEWPORTS[name].height });
+      expect(report.target.text).toContain('Fair timing for most players.');
+
+      // Mark another, drawing a box this time.
+      await done.getByRole('button', { name: 'Mark another' }).click();
+      await expect(page.getByRole('dialog', { name: /part you mean/ })).toBeVisible();
+      const vp = VIEWPORTS[name];
+      await page.mouse.move(vp.width * 0.2, vp.height * 0.4);
+      await page.mouse.down();
+      await page.mouse.move(vp.width * 0.5, vp.height * 0.5, { steps: 4 });
+      await page.mouse.move(vp.width * 0.7, vp.height * 0.6, { steps: 4 });
+      await page.mouse.up();
+      await expect(form.locator('.fb-marked').first()).toContainText('Marked area');
+      await expect(form.getByLabel('What should change?')).toHaveValue('');
+      await form.getByRole('button', { name: 'Close' }).click();
+      await expect(form).toHaveCount(0);
+      await expect(fab).toBeVisible();
       await expectNoSideScroll(page);
     });
+  });
+}
+
+test.describe('feedback: when saving fails, Review it, and hiding the button', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  /** Marks Home's Start lesson and says what is wrong with it, as a bug. */
+  async function markStart(page: Page): Promise<Locator> {
+    await page.getByRole('button', { name: FAB }).click();
+    const target = (await page.getByRole('button', { name: 'Start lesson' }).boundingBox())!;
+    await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    await form.getByRole('button', { name: 'Bug' }).click();
+    return form;
   }
+
+  test('an error keeps the form and Send tries again; keys stay in the form; the button hides and comes back', async ({ page }) => {
+    // A tester: feedback.give through a role, without feedback.review.
+    const tester: Me = { ...ME_MEMBER, roles: ['testers'], roleNames: { testers: 'Testers' }, permissions: [...ME_MEMBER.permissions, 'feedback.give'] };
+    const server = feedbackServer(FEEDBACK, tester);
+    const api = await mockApi(page, { ...signedInAs(tester), ...server.routes, 'POST /feedback': apiError('internal', 500) });
+    await seedAccount(page, tester);
+    await page.goto('./#/');
+    const fab = page.getByRole('button', { name: FAB });
+    const form = await markStart(page);
+    // Keys typed in the form never reach the screen's own shortcuts (the pad and the pianos listen on the window).
+    await page.evaluate(() => {
+      (window as unknown as { keys: number }).keys = 0;
+      window.addEventListener('keydown', () => (window as unknown as { keys: number }).keys++);
+    });
+    await form.getByLabel('What should change?').pressSequentially('Start lesson does nothing on the first tap.');
+    expect(await page.evaluate(() => (window as unknown as { keys: number }).keys)).toBe(0);
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+
+    // Why, and the form as it was: no way round the app (GitHub's own page is gone), Send is the way.
+    await expect(form.getByRole('alert')).toHaveText('Something went wrong on our side. Try again later.');
+    await expect(form.getByRole('link')).toHaveCount(0);
+    await expect(form.getByLabel('What should change?')).toHaveValue('Start lesson does nothing on the first tap.');
+    await expect(form.getByRole('button', { name: 'Bug' })).toHaveAttribute('aria-pressed', 'true');
+    await expectClickable(form.getByRole('button', { name: 'Send', exact: true }));
+    await expectNoOverlap(form.getByRole('alert'), form.getByRole('button', { name: 'Send', exact: true }));
+
+    // Then it works: Send again sends the same report, and it is saved.
+    api.set({ 'POST /feedback': server.routes['POST /feedback'] });
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    const done = page.getByRole('dialog', { name: 'Saved for review' });
+    await expect(done).toBeVisible();
+    await expect(done.getByText(SAVED_TEXT)).toBeVisible();
+    // Only someone who reviews feedback gets the way to the report.
+    await expect(done.getByRole('link', { name: 'Review it' })).toHaveCount(0);
+    const calls = api.callsTo('POST /feedback');
+    expect(calls).toHaveLength(2);
+    expect(calls[1].body).toEqual(calls[0].body);
+    expect(server.reports()[0]).toMatchObject({ status: 'new', kind: 'bug', description: 'Start lesson does nothing on the first tap.', author: { name: tester.name } });
+    await page.keyboard.press('Escape');
+    await expect(done).toHaveCount(0);
+
+    // Hidden on this device, and back from Settings → Account.
+    await markStart(page);
+    await form.getByRole('button', { name: 'Hide the feedback button on this device' }).click();
+    await expect(fab).toHaveCount(0);
+    await page.goto('./#/settings');
+    const toggle = page.getByRole('switch', { name: 'Feedback button' });
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.click();
+    await expect(fab).toBeVisible();
+  });
+
+  test('an admin goes from the saved report to it: Review it closes the tool and opens the report', async ({ page }) => {
+    const server = feedbackServer();
+    await mockApi(page, { ...ADMIN, ...server.routes });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/');
+    const form = await markStart(page);
+    await form.getByLabel('What should change?').fill('Start lesson does nothing on the first tap.');
+    await form.getByLabel('Title').fill('The first tap is lost');
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    const done = page.getByRole('dialog', { name: 'Saved for review' });
+    await done.getByRole('link', { name: 'Review it' }).click();
+    await expect(done).toHaveCount(0);
+    const [saved] = server.reports();
+    await expect(page).toHaveURL(new RegExp('#/admin/feedback/' + saved.id + '$'));
+    await expect(page.getByRole('heading', { level: 1, name: 'The first tap is lost' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Report', exact: true })).toContainText('Start lesson does nothing on the first tap.');
+    await expect(page.getByRole('region', { name: 'Where', exact: true })).toContainText('button “Start lesson”');
+    await expect(page.getByRole('region', { name: 'Sent', exact: true })).toContainText('Ann de Vries');
+    await expect(page.getByRole('region', { name: 'Review', exact: true }).getByRole('button', { name: 'New' })).toHaveAttribute('aria-pressed', 'true');
+  });
 });
 
 test('a touch screen at desktop width (tablet in landscape) gets the desktop layout without keyboard hints', async ({ browser }) => {

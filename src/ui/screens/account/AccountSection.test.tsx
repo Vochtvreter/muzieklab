@@ -37,6 +37,7 @@ const ME: Me = {
   name: 'Ann de Vries',
   locale: 'en',
   roles: [],
+  roleNames: {},
   permissions: ['self.manage'],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
@@ -45,6 +46,7 @@ const json = (status: number, body: unknown): Response => new Response(JSON.stri
 
 /** GET /me's answer: the account, or no answer (offline, the API restarting). */
 let reachable: boolean;
+let me: Me;
 /** The account's progress (GET and PUT /progress). */
 let saved: { rev: number; data: unknown; resetAt: string | null; updatedAt: string | null };
 const said = (): string[] => vi.mocked(announce).mock.calls.map((c) => c[0]);
@@ -54,13 +56,14 @@ beforeEach(() => {
   resetAccountCheck();
   vi.mocked(announce).mockClear();
   reachable = true;
+  me = ME;
   saved = { rev: 0, data: null, resetAt: null, updatedAt: null };
   window.location.hash = '#/settings';
   vi.stubGlobal(
     'fetch',
     vi.fn((path: string, init?: RequestInit) => {
       if (!reachable) return Promise.reject(new TypeError('Failed to fetch'));
-      if (path.endsWith('/me')) return Promise.resolve(json(200, ME));
+      if (path.endsWith('/me')) return Promise.resolve(json(200, me));
       if (path.endsWith('/progress')) {
         if (init?.method === 'PUT') {
           const body = JSON.parse(String(init.body)) as { rev: number; prefs: unknown; progress: unknown };
@@ -80,6 +83,27 @@ afterEach(() => {
 });
 
 describe('Settings → Account', () => {
+  it('leads an account with feedback.review to the feedback reports, right after Accounts', async () => {
+    me = { ...ME, permissions: ['self.manage', 'accounts.read', 'feedback.give', 'feedback.review'] };
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(me));
+    render(<App />);
+    const section = await screen.findByRole('region', { name: 'Account' });
+    await waitFor(() => expect(within(section).getByRole('link', { name: /^Feedback/ }).getAttribute('href')).toBe('#/admin/feedback'));
+    expect(within(section).getAllByRole('link').map((a) => a.querySelector('b')?.textContent)).toEqual(['Ann de Vries', 'Accounts', 'Feedback']);
+    expect(within(section).getByRole('link', { name: /^Feedback/ }).textContent).toContain('Review the reports sent from the app');
+    // The button on this device is another thing: the switch.
+    expect(within(section).getByRole('switch', { name: 'Feedback button' })).toBeTruthy();
+  });
+
+  it('shows no feedback reports row without feedback.review', async () => {
+    me = { ...ME, permissions: ['self.manage', 'feedback.give'] };
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(me));
+    render(<App />);
+    const section = await screen.findByRole('region', { name: 'Account' });
+    await within(section).findByRole('switch', { name: 'Feedback button' });
+    expect(within(section).queryByRole('link', { name: /^Feedback/ })).toBeNull();
+  });
+
   it('reads a notice out once, when it happens: switching the language shows it again without saying it again', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
