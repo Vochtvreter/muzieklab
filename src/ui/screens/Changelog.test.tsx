@@ -107,4 +107,23 @@ describe("What's new", () => {
     fireEvent.click(screen.getByRole('button', { name: /^Newer 0\.3\.0/ }));
     expect(release('0.3.0').getAttribute('aria-current')).toBe('true');
   });
+
+  it('on a computer, the step left takes the focus when Older reaches the first release or Newer the latest', () => {
+    width = 1280;
+    render(<Changelog />);
+    // Pressed from the keyboard: the button has the focus.
+    const press = (name: RegExp): void => {
+      const btn = screen.getByRole('button', { name });
+      btn.focus();
+      fireEvent.click(btn);
+    };
+    fireEvent.click(release(RELEASES[RELEASES.length - 2].version));
+    press(/^Older/);
+    expect(screen.queryByRole('button', { name: /^Older/ })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Newer/ }));
+    fireEvent.click(release(RELEASES[1].version));
+    press(/^Newer/);
+    expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Older/ }));
+  });
 });

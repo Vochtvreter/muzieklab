@@ -1188,16 +1188,24 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 2px 10px;
+  /* Once the line wraps (320 px), the room Theory: Learn's 44 px box and its focus ring need under the stars. */
+  gap: 12px 10px;
   font-size: 13px;
 }
 .track-theory {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  min-height: 32px;
+  /* A 44 px touch target; the negative margins keep the line 32 px tall. */
+  min-height: 44px;
+  margin-block: -6px;
   font-weight: 600;
   text-decoration: none;
+}
+/* Its ring reaches over the units under it: lifted, so the current unit's halo does not paint over it. */
+.track-theory:focus-visible {
+  position: relative;
+  z-index: 1;
 }
 .units {
   list-style: none;
@@ -1704,6 +1712,8 @@ button.lesson-stars:hover {
   --pt: 52px;
   --pb: 26px;
   gap: 16px;
+  /* Scrolling to a control (Tab, or a script) leaves it above the sticky Start button. */
+  scroll-padding-bottom: 80px;
 }
 .switch-row {
   flex: none;
@@ -1819,7 +1829,11 @@ button.lesson-stars:hover {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 32px;
+  /* A 44 px touch target; the negative margins keep the row 32 px tall. Above the options it opens, so they do not
+     take its lower edge. */
+  position: relative;
+  min-height: 44px;
+  margin-block: -6px;
   border: 0;
   background: transparent;
   padding: 0;
@@ -2996,7 +3010,6 @@ button.lesson-stars:hover {
   flex: none;
   border: 1px solid var(--divider);
   border-radius: 18px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -3019,6 +3032,20 @@ button.lesson-stars:hover {
 }
 .menu-item + .menu-item {
   border-top: 1px solid var(--divider);
+}
+/*
+ * The rows round the menu's corners themselves (its 18 px less its border): a menu that clipped them would cut off the
+ * focus ring outside a row. The focused row is lifted, so the next row's background does not paint over its ring.
+ */
+.menu-item:first-child {
+  border-radius: 17px 17px 0 0;
+}
+.menu-item:last-child {
+  border-radius: 0 0 17px 17px;
+}
+.menu-item:focus-visible {
+  position: relative;
+  z-index: 1;
 }
 .menu-item:active:not(:disabled) {
   transform: none;

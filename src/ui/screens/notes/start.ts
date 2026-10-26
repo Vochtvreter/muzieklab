@@ -5,6 +5,7 @@ import { noteLessonSettings, type NoteTrackId } from '../../../game/notesPath';
 import { pathLessonOpen } from '../../../game/tracks';
 import { unlockAudio } from '../../audio';
 import { newSeed } from '../../lib/format';
+import { guardFollowUpTap } from '../../lib/tapGuard';
 import { navigate } from '../../router';
 import { makeNoteRun, useStore } from '../../store';
 
@@ -17,6 +18,8 @@ export function useStartNotes(): (settings: NoteSettings, focus?: string[], opts
       // Inside the tap, so iOS lets the notes sound.
       if (settings.playNotes || settings.tasks.includes('hear')) unlockAudio();
       dispatch({ type: 'noteStart', run: makeNoteRun(settings, newSeed(), weak, focus) });
+      // A double tap on Start: its second tap must not answer the first note or skip the round.
+      guardFollowUpTap();
       navigate('/notes/play', opts);
     },
     [weak, dispatch],
@@ -40,6 +43,7 @@ export function useStartNoteLesson(): (track: NoteTrackId, lessonId: string, opt
       const settings = { ...preset, playNotes };
       if (playNotes || preset.tasks.includes('hear')) unlockAudio();
       dispatch({ type: 'noteStart', run: makeNoteRun(settings, newSeed(), progress.notes.weak, [], { track, id: lessonId }) });
+      guardFollowUpTap();
       navigate('/notes/play', opts);
     },
     [progress, playNotes, dispatch],

@@ -497,8 +497,6 @@
 /* ---------- Setup ---------- */
 .ssetup {
   gap: 13px;
-  /* Scrolling to a control (Tab, or a script) leaves it above the sticky Start button. */
-  scroll-padding-bottom: 80px;
 }
 .ssetup > * {
   flex-shrink: 0;

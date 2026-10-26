@@ -66,7 +66,7 @@ describe('Settings → Language', () => {
     expect(document.activeElement).toBe(within(screen.getByRole('group', { name: 'App language' })).getByRole('button', { name: 'English' }));
   });
 
-  it('takes no focus when nothing remounted: the language already in use, picked again, then Settings opened later', async () => {
+  it('the language control takes no focus when nothing remounted: the language in use, picked again, then Settings opened later (its heading has it)', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'English' }));
     act(() => {
@@ -78,7 +78,7 @@ describe('Settings → Language', () => {
       window.location.hash = '#/settings';
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
-    await screen.findByRole('heading', { level: 1, name: 'Settings' });
-    expect(document.activeElement).toBe(document.body);
+    // A new screen's own focus, on its heading (App.tsx), not the language control.
+    expect(document.activeElement).toBe(await screen.findByRole('heading', { level: 1, name: 'Settings' }));
   });
 });

@@ -133,7 +133,7 @@ function PathInfo({ view: v }: { view: PathView }): JSX.Element {
   const n = { unit: v.unit.id, total: v.track.units.length, stars: v.stars.earned, max: v.stars.max };
   return (
     <div className="track-info">
-      <span className="mono-muted" role="img" aria-label={t('path.trackStarsLabel', n)}>
+      <span className="mono-muted" role="img" aria-label={t(v.next ? 'path.trackStarsLabel' : 'path.trackStarsDoneLabel', n)}>
         {v.next ? t('path.trackStars', n) : t('path.trackStarsDone', n)}
       </span>
       <Link to="/learn" className="track-theory">

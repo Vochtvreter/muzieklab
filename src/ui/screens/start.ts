@@ -5,6 +5,7 @@ import { dailyChallenge, dailyTier } from '../../game/daily';
 import { findPathLesson } from '../../game/tracks';
 import { unlockAudio } from '../audio';
 import { newSeed } from '../lib/format';
+import { guardFollowUpTap } from '../lib/tapGuard';
 import { navigate } from '../router';
 import { makeLessonRun, makeRun, practiceSettings, runSettings, todayIso, useStore, type Run } from '../store';
 import { useStartNoteLesson } from './notes/start';
@@ -21,6 +22,8 @@ export function useStartLesson(): (lessonId: string, opts?: { replace?: boolean 
       const run = makeLessonRun(runSettings(state, lessonId), newSeed(), lessonId);
       if (!run) return;
       dispatch({ type: 'start', run });
+      // A double tap on Start: its second tap must not press what Play has under it (Skip to results).
+      guardFollowUpTap();
       navigate('/play', { replace: opts.replace });
     },
     [state, dispatch],
@@ -57,6 +60,7 @@ export function useStartPractice(): (settings: Settings, opts?: { query?: string
       const run = makeRun(practiceSettings(state, settings), newSeed(), null);
       if (!run) return;
       dispatch({ type: 'start', run });
+      guardFollowUpTap();
       navigate('/play', opts);
     },
     [state, dispatch],
@@ -77,6 +81,7 @@ export function useStartDaily(): () => void {
     const run = makeRun({ ...settings, hold: settings.hold && state.prefs.holdMode === 'hold' }, seed, null, day);
     if (!run) return;
     dispatch({ type: 'start', run });
+    guardFollowUpTap();
     navigate('/play');
   }, [state.progress, state.prefs.holdMode, dispatch]);
 }
@@ -98,6 +103,7 @@ export function useReplay(): (prev: Run, same: boolean, query?: string) => void 
           : makeRun(exercise.settings, newSeed(), null);
       if (!run) return;
       dispatch({ type: 'start', run });
+      guardFollowUpTap();
       // Results is swapped for Play (and Play for Results at the end), so Back leaves the exercise, not replays it.
       navigate('/play', { replace: true, query });
     },

@@ -1,9 +1,10 @@
 /** Routes and app-wide effects (theme, language). */
-import { lazy, Suspense, useEffect, useLayoutEffect } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react';
 import { resolveLocale, setLocale, t } from './i18n';
 import { Announcer } from './ui/components/Announcer';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { FeedbackTool } from './ui/feedback/FeedbackTool';
+import { focusHeading, focusLost } from './ui/lib/screenFocus';
 import { routeParam, useRoute } from './ui/router';
 import { AccountScreen } from './ui/screens/account/Account';
 import { AcceptInvite, NewPassword } from './ui/screens/account/LinkPassword';
@@ -89,8 +90,15 @@ function Screens(): JSX.Element {
 
 function Route(): JSX.Element {
   const route = useRoute();
+  // A new screen puts focus on its heading: the control that led there went with the old screen, so focus would fall
+  // to the page and a screen reader would hear nothing of the new one (Results after a run). Not on the first screen,
+  // whose page load is read out, nor when the new screen took focus itself (a field, a sheet).
+  const shown = useRef(route);
   useEffect(() => {
     window.scrollTo(0, 0);
+    if (shown.current === route) return;
+    shown.current = route;
+    if (focusLost()) focusHeading();
   }, [route]);
   if (route.startsWith('/learn/')) {
     const chapter = findChapter(Number(route.slice('/learn/'.length)));

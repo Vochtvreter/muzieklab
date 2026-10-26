@@ -896,7 +896,9 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   MVP canvas, Read notes: *Round done · after a path lesson*).
 - On a short screen (an 8-bar exercise, a 1280 × 800 laptop) Results scrolls and Listen, Retry and Next stay at the
   bottom, as Start does on Setup; the round summaries of Read notes and Scales do the same. A control that is scrolled
-  or tabbed to (Calibrate in the tip) stays above those sticky actions (`scroll-padding-bottom`, since 0.10.0).
+  or tabbed to (Calibrate in the tip) stays above those sticky actions (`scroll-padding-bottom`, since 0.10.0), and on
+  a phone above the setups' Start and the key lists' Use too (Rhythm, Read notes, Scales; before, only Scales' setup
+  had it, and Tab could leave Dotted or a key under Start).
 
 ---
 
@@ -996,7 +998,8 @@ How write and hear work is in §3.5, *Write it, hear it*.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
   said once, under the first locked unit: *Opens with 2 stars on every unit N lesson* (since 0.10.0; before, every
   locked unit repeated it).
-- Under the header: *Unit N of 26 · stars* and *Theory: Learn*. Desktop: the title and a *Notes and rhythm* card with
+- Under the header: *Unit N of 26 · stars* and *Theory: Learn*; a screen reader hears *Unit N of 26, 40 of 390 stars*
+  (at the end *All done, …*), not only the stars. Desktop: the title and a *Notes and rhythm* card with
   a progress bar on the left; the current unit's name, the same line and Start over the units on the right.
 - In Dutch a path unit is a *blok* (*Blok 3 · Les 1 van 5*, *Blok 1 van 8*, *Leerpad, blokken 1, 3, 5*), so it is not
   confused with a Learn chapter, which stays a *hoofdstuk* (since 0.10.0, §11).
@@ -1675,7 +1678,11 @@ what to do. For accounts:
 ### UX principles
 
 - **One-thumb mobile**: primary actions at the bottom; tap pad is huge; no scroll during play.
-- No accidental zoom/scroll during play (`touch-action: none` on the pad, Wake Lock on).
+- No accidental zoom/scroll during play (`touch-action: none` on the pad, Wake Lock on). A double tap on a Start
+  button starts once: a touch tap that comes down within 450 ms of the tap that started is dropped, so it does not
+  press what the exercise screen has there (Skip to results, an answer, a piano key; `ui/lib/tapGuard.ts`). The same
+  goes for the buttons on Play's sheets that start or resume the run (How to play's Got it, the intro's and Ready's
+  Start, Resume, Restart exercise), whose sheet is gone in 240 ms, and for Echo's Tap it back (Hear again is under it).
 - Feedback by **colour + shape/icon** (colour-blind safe), sound optional. A missed note gets a × on the staff as
   well as the red (since 0.10.0; §9).
 - Full keyboard support; `prefers-reduced-motion` respected; light & dark theme.
@@ -1808,6 +1815,12 @@ without code changes:
 - `lang` attribute set from the active locale; right-to-left support is not planned.
 - Screen-reader labels for controls; notation itself gets a text alternative
   ("quarter, quarter, half").
+- Focus is never left on the page when the control that had it goes away (`ui/lib/screenFocus.ts`). A new screen puts
+  it on its heading, so a screen reader hears it (*Exercise done* when a run ends), unless the screen took it itself
+  (a field, a sheet); the first screen is left to the page load. A sheet that closes gives it back to the control that
+  opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or the screen's heading (the
+  level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new phase's heading takes it.
+  On What's new (desktop), Newer or Older that goes away at the end hands it to the one left.
 - High-contrast theme; big touch targets (≥ 48 px).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,

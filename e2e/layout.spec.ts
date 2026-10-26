@@ -311,6 +311,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }));
       // Only the time signatures that can be played: no disabled "6/8 soon" chip.
       await expect(page.getByRole('button', { name: /6\/8/ })).toHaveCount(0);
+      await expectTouchHeight(page.getByRole('button', { name: 'More options' }));
       // Tablet and desktop: the options on the left, the preview and Start in a side panel beside them.
       if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
       await expectNoSideScroll(page);
@@ -373,7 +374,23 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // One path since 0.11.0: no switcher.
       await expect(page.getByRole('group', { name: 'Paths' })).toHaveCount(0);
       await expect(page.getByText('Unit 1 of 26 · 0 / 390 ★')).toBeVisible();
-      await expectClickable(page.getByRole('link', { name: 'Theory: Learn' }));
+      // A screen reader hears the unit too, not only the stars.
+      await expect(page.getByRole('img', { name: 'Unit 1 of 26, 0 of 390 stars' })).toBeVisible();
+      const theory = page.getByRole('link', { name: 'Theory: Learn' });
+      await expectClickable(theory);
+      await expectTouchHeight(theory);
+      // Its ring, beyond the 32 px line, stays clear of the stars when the line wraps (320 px), and is lifted above the
+      // units under it, whose current node's halo would paint over it.
+      await expectFocusRing(theory);
+      const ringHits = await theory.evaluate((node) => {
+        const style = getComputedStyle(node);
+        const ring = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+        const r = node.getBoundingClientRect();
+        const s = node.parentElement!.firstElementChild!.getBoundingClientRect();
+        if (s.bottom > r.top - ring && s.top < r.bottom + ring && s.right > r.left - ring && s.left < r.right + ring) return 'the stars';
+        return style.position === 'static' || style.zIndex === 'auto' ? 'the units (it is not lifted)' : null;
+      });
+      expect(ringHits, 'the focus ring runs into').toBeNull();
       // The current unit is open: sol's lessons by name, the first one to play.
       const sol = page.getByRole('button', { name: /^1 · Sol: the G line/ });
       await expect(sol).toHaveAttribute('aria-expanded', 'true');
@@ -1628,6 +1645,84 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       for (const row of ['Restart exercise', 'How to play', 'Practice settings', 'Quit practice']) await expectClickable(sheet.getByRole('button', { name: new RegExp('^' + row) }));
       await expectClickable(sheet.getByRole('button', { name: 'Resume' }));
     });
+
+    test('play: closing How to play hands focus to Pause, so Tab stays on the screen and does not pause', async ({ page }) => {
+      known(name, 'play-sheet-focus');
+      await seed(page, { prefs: { holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 8, tempo: 60 } } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.getByRole('button', { name: 'Got it' })).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /^Pause( Esc)?$/ })).toBeFocused();
+      // The next Tab stays on Play: focus left on the page went past the screen's end, out of the window, which pauses.
+      await page.keyboard.press('Tab');
+      expect(await page.evaluate(() => document.hasFocus() && document.activeElement !== document.body)).toBe(true);
+      await page.waitForTimeout(300);
+      await expect(page.getByRole('dialog', { name: 'Paused' })).toHaveCount(0);
+    });
+
+    test('pause: each menu row shows its whole focus ring, not cut off by the menu or painted over by the next row', async ({ page }) => {
+      known(name, 'pause-focus');
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 8, tempo: 60 } } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      if (desktopLayout) await page.keyboard.press('Escape');
+      else await page.getByRole('button', { name: 'Pause', exact: true }).click();
+      const menu = page.getByRole('dialog', { name: 'Paused' }).locator('.menu');
+      await expect(menu).toBeVisible();
+      for (const row of await menu.getByRole('button').all()) {
+        await expectFocusRing(row);
+        const over = await row.evaluate((node) => {
+          const style = getComputedStyle(node);
+          const ring = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+          const r = node.getBoundingClientRect();
+          // A later row that reaches into the ring paints over it, unless the focused row is lifted above it.
+          const lifted = style.position !== 'static' && style.zIndex !== 'auto';
+          let next = node.nextElementSibling;
+          for (; next; next = next.nextElementSibling) {
+            const b = next.getBoundingClientRect();
+            if (b.top < r.bottom + ring && b.bottom > r.top - ring && b.left < r.right + ring && b.right > r.left - ring) break;
+          }
+          return next && !lifted ? (next.textContent ?? '').trim() : null;
+        });
+        expect(over, 'the focus ring is painted over by').toBeNull();
+      }
+    });
+
+    /**
+     * Phones: Setup's Start (Use … on the key lists) stays at the bottom of the screen while the page scrolls under it,
+     * and a control reached with Tab is scrolled above it, not left under it (scroll-padding-bottom, DESIGN.md §6.4).
+     */
+    if (portraitLayout && !tabletLayout) {
+      for (const [hash, more] of [['#/setup', false], ['#/setup', true], ['#/notes', false], ['#/notes/key', false], ['#/scales/setup', false], ['#/scales/key', false]] as const) {
+        test(`${hash}${more ? ' with More options' : ''}: Tab never leaves a control under the sticky Start button`, async ({ page }) => {
+          known(name, 'tab-above-start' + hash);
+          await page.goto('./' + hash);
+          await page.evaluate(() => document.fonts.ready.then(() => undefined));
+          if (more) {
+            await page.getByRole('button', { name: 'More options' }).click();
+            await expect(page.locator('#setup-more')).toHaveCSS('opacity', '1');
+          }
+          const start = page.locator('.page .start-btn');
+          for (let i = 0; i < 80; i++) {
+            await page.keyboard.press('Tab');
+            const where = await page.evaluate(() => {
+              const el = document.activeElement as HTMLElement | null;
+              const btn = document.querySelector('.page .start-btn');
+              if (!el || !btn || !el.closest('.page')) return 'outside';
+              if (el === btn) return 'start';
+              const r = el.getBoundingClientRect();
+              const covered = r.bottom > btn.getBoundingClientRect().top + 1;
+              return covered ? 'covered: ' + (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim() : 'ok';
+            });
+            if (where === 'start') break;
+            expect(where, 'a focused control under the Start button').not.toMatch(/^covered/);
+          }
+          await expect(start).toBeFocused();
+        });
+      }
+    }
 
     /**
      * Accounts, and the admin's Feedback reports (no board yet: built from Settings' design language). The API is mocked;

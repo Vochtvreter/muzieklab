@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { announcer, pad, pathUpTo, seed, SOL_DONE, VIEWPORTS } from './helpers';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { announcer, pad, pathUpTo, QUARTERS, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
  * The main loop: Home → lesson 2.1 (rhythm: quarter notes, 60 BPM, 2 bars, one bar of count-in; after sol's unit) →
@@ -431,4 +431,139 @@ test('hearing a note: sol, then the note, named from the notes learned so far', 
   await names.first().click();
   await expect(page.locator('.nfeedback')).toHaveText(/^(Right: mi \(E\), 2 steps below sol\.|That was sol \(G\), the same as sol\.)$/);
   await expect(page.getByRole('img', { name: /Note 1 of 10 is highlighted/ })).toBeVisible();
+});
+
+/**
+ * A double tap on a Start button (two taps 120 ms apart, a touch screen): the first starts the exercise and the screen
+ * changes at once; the second must not press what the new screen has at that spot (Skip to results, an answer, a piano
+ * key).
+ */
+test.describe('a double tap on Start', () => {
+  test.use({ hasTouch: true, isMobile: true });
+  // Each touch carries the time the finger came down, as a phone's does: the second tap is `gap` ms (120) after the
+  // first even when the page (and the test, which waits for it) is still busy drawing the new screen.
+  const doubleTap = async (page: Page, button: Locator, gap = 120): Promise<void> => {
+    const box = (await button.boundingBox())!;
+    const touchPoints = [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }];
+    const cdp = await page.context().newCDPSession(page);
+    const tap = async (at: number): Promise<void> => {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints, timestamp: at });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [], timestamp: at + 0.03 });
+    };
+    const t0 = Date.now() / 1000;
+    await tap(t0);
+    await page.waitForTimeout(gap + 30);
+    await tap(t0 + gap / 1000);
+    await page.waitForTimeout(500);
+  };
+
+  test('rhythm on a phone: Play starts, and Skip to results under the finger is not pressed', async ({ page }) => {
+    await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 8, tempo: 60 } } });
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/setup');
+    await doubleTap(page, page.getByRole('button', { name: /^Start · / }));
+    await expect(page).toHaveURL(/#\/play$/);
+    await expect(page.getByRole('button', { name: 'Skip to results' })).toBeVisible();
+    // A tap meant for it, after the double tap, still works.
+    await page.getByRole('button', { name: 'Skip to results' }).tap();
+    await expect(page).toHaveURL(/#\/results$/);
+  });
+
+  /**
+   * The sheets that start or resume the run: How to play's Got it (every new player sees it first), the intro's and
+   * Ready's Start, Pause's Resume and Restart. A sheet closes in 240 ms, so the second tap, 300 ms on, lands on Play.
+   */
+  for (const [size, sheet] of [['phone', 'How to play'], ['tablet', 'Paused']] as const) {
+    test(`${sheet} on a ${size}: its button closes it, and Skip to results under the finger is not pressed`, async ({ page }) => {
+      const seen = sheet === 'Paused' ? { seenHowTo: true, seenHold: true } : {};
+      await seed(page, { prefs: { ...seen, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 8, tempo: 60 } } });
+      await page.setViewportSize(VIEWPORTS[size]);
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).tap();
+      // Each tap once the one before has had its 450 ms: a tap that soon after Start is dropped.
+      await page.waitForTimeout(500);
+      if (sheet === 'Paused') {
+        await page.getByRole('button', { name: 'Pause', exact: true }).tap();
+        await page.waitForTimeout(500);
+      }
+      const button = page.getByRole('dialog', { name: sheet }).getByRole('button', { name: sheet === 'Paused' ? 'Resume' : 'Got it' });
+      await expect(button).toBeVisible();
+      await doubleTap(page, button, 300);
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page).toHaveURL(/#\/play$/);
+      await expect(page.getByRole('button', { name: 'Skip to results' })).toBeVisible();
+    });
+  }
+
+  test('echo on a phone: Tap it back starts the tapping, and Hear again under the finger is not pressed', async ({ page }) => {
+    await seed(page, { prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, mode: 'echo' } } });
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/setup');
+    await page.getByRole('button', { name: /^Start · / }).tap();
+    // Once Start's own guard is over.
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: 'Play the rhythm' }).tap();
+    const tapBack = page.getByRole('button', { name: 'Tap it back' });
+    await expect(tapBack).toBeVisible({ timeout: 15_000 });
+    await doubleTap(page, tapBack);
+    await expect(page.getByRole('heading', { name: 'Now tap it back' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Hear again · 1 left' })).toBeVisible();
+  });
+
+  test('a path lesson on a tablet: the round starts with nothing answered and is not skipped', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.tablet);
+    await page.goto('./#/path');
+    await doubleTap(page, page.getByRole('button', { name: 'Start lesson 1.1' }));
+    await expect(page).toHaveURL(/#\/notes\/play$/);
+    await expect(page.getByRole('button', { name: /^Next note/ })).toBeDisabled();
+    expect(await page.evaluate(() => localStorage.getItem('muzieklab.progress.v1') ?? '')).not.toContain('pitch:1.1');
+  });
+
+  test('scales on a phone: the piano key under the finger is not pressed', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/scales');
+    await page.getByRole('group', { name: 'Circle of fifths, major keys' }).getByRole('button', { name: /^G major/ }).tap();
+    await doubleTap(page, page.getByRole('button', { name: 'Practice G major' }));
+    await expect(page).toHaveURL(/#\/scales\/play$/);
+    await expect(page.getByRole('img', { name: 'No mistakes' })).toBeVisible();
+  });
+});
+
+test('a new screen puts focus on its heading, so a screen reader hears it: Setup, Play, then Results', async ({ page }) => {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: QUARTERS } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./');
+  await page.getByRole('link', { name: /^Rhythm/ }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { level: 1, name: 'Free practice' })).toBeFocused();
+  await page.getByRole('button', { name: /^Start · / }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/play$/);
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  // The run ends without the player doing anything: Results' heading takes the focus that Play's had.
+  await expect(page.getByRole('heading', { level: 1, name: 'Exercise done' })).toBeFocused({ timeout: 10_000 });
+  // The first screen is left alone: its page load is read out.
+  await page.goto('./#/setup');
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Free practice' })).toBeVisible();
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+});
+
+test('echo: Tap it back and Hear again swap the screen inside Play, and its heading takes the focus', async ({ page }) => {
+  test.setTimeout(90_000);
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, mode: 'echo' } } });
+  for (const size of ['phone', 'tablet', 'desktop'] as const) {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await page.goto('./#/setup');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    await page.getByRole('button', { name: 'Play the rhythm' }).click();
+    const tapBack = page.getByRole('button', { name: 'Tap it back' });
+    await expect(tapBack).toBeVisible({ timeout: 15_000 });
+    await tapBack.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { level: 1, name: 'Tap the rhythm' }), size).toBeFocused();
+    // Clicked: while the run is on, Enter and Space are taps, also on a button.
+    await page.getByRole('button', { name: /^Hear again/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Listen to the rhythm' }), size).toBeFocused();
+  }
 });

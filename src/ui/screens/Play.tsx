@@ -5,7 +5,7 @@
  * pad and four small stat cards; sheets become dialogs. Echo: a listen phase first (Echo.tsx), then the same screen
  * with the staff and lane swapped for the tap-back card.
  */
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import type { JudgeResult, Tap } from '../../core/api';
 import { findLesson } from '../../game/path';
 import { pathLessonOf } from '../../game/tracks';
@@ -23,6 +23,8 @@ import { useLearnReturn } from '../lib/learnReturn';
 import { liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
+import { focusHeading, focusLost } from '../lib/screenFocus';
+import { guardFollowUpTap } from '../lib/tapGuard';
 import { Link, navigate } from '../router';
 import { todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
@@ -60,15 +62,25 @@ function EchoPlay({ run, view }: { run: Run; view: ExerciseView }): JSX.Element 
   const [autoPlay, setAutoPlay] = useState(false);
   const onPlayed = useCallback(() => setPlays((n) => n + 1), []);
   const where = echoWhere(runWhere(run));
-  // A fresh run object for each attempt: Play starts it straight away (the tap on Tap it back is the gesture).
+  // A fresh run object for each attempt: Play starts it straight away (the tap on Tap it back is the gesture). On a
+  // phone the tap-back card's Hear again comes in where Tap it back was: a double tap's second tap must not press it.
   const tapBack = (): void => {
     dispatch({ type: 'start', run: { exercise: run.exercise, lessonId: run.lessonId, daily: run.daily } });
+    guardFollowUpTap();
     setTapping(true);
   };
   const hearAgain = (): void => {
     setAutoPlay(true);
     setTapping(false);
   };
+  // Tap it back and Hear again swap the screen inside Play, where the route does not change and so does not move focus
+  // (App.tsx): the new phase's heading takes the focus that went with the button pressed.
+  const wasTapping = useRef(tapping);
+  useEffect(() => {
+    if (wasTapping.current === tapping) return;
+    wasTapping.current = tapping;
+    if (focusLost()) focusHeading();
+  }, [tapping]);
   if (tapping) return <PlayRun run={run} view={view} echo={{ playsLeft: ECHO_PLAYS - plays, onHearAgain: hearAgain }} />;
   return <EchoListen run={run} view={view} where={where} playsLeft={ECHO_PLAYS - plays} autoPlay={autoPlay} onPlayed={onPlayed} onTapBack={tapBack} />;
 }
@@ -116,10 +128,17 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const [fresh] = useState(() => !isEcho && !!run.lessonId && !!state.last && state.last.run.lessonId !== run.lessonId);
   const s = usePlaySession(run, view, prefs, onSeen, onFinish, fresh);
   const listen = useListen(ex, view.timeline, state.prefs);
-  // Every way out of a sheet: Start's count-in takes the audio over from the intro sheet's Listen.
+  // Every way out of a sheet: Start's count-in takes the audio over from the intro sheet's Listen. Got it, Start and
+  // Resume start or resume the run, and Play is under the finger once the sheet is gone (240 ms): a double tap's second
+  // tap must not press Skip to results there (tapGuard.ts).
   const closeSheet = (): void => {
     listen.halt();
+    guardFollowUpTap();
     s.closeSheet();
+  };
+  const restart = (): void => {
+    guardFollowUpTap();
+    s.restart();
   };
   const help = (): void => {
     listen.stop();
@@ -219,12 +238,15 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   };
 
   const { shown: sheetShown, closing } = useLingering(s.sheet, 240);
+  // A sheet that opened by itself (How to play, the intro, Ready) hands focus to Pause when it closes: Tab then goes on
+  // through Play's controls instead of leaving the page, which would pause the run.
+  const pauseRef = useRef<HTMLButtonElement>(null);
   // How to play says why it opened; opened with ? before the start when it was not due, it names the run.
   const howToKey = howToEyebrow(s.phase, s.intro);
   const sheet = sheetShown && (
     <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey={sheetShown}
       labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'new' ? 'introtitle' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
-      maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined} low={sheetShown === 'new' || sheetShown === 'ready'}>
+      maxWidth={desktop ? (sheetShown === 'help' ? 520 : 440) : undefined} low={sheetShown === 'new' || sheetShown === 'ready'} returnFocus={() => pauseRef.current}>
       {sheetShown === 'help' ? (
         <HowToContent eyebrow={echo ? t('howto.echo.eyebrow') : howToKey ? t(howToKey) : where} desktop={keys} hold={ex.settings.hold} echo={!!echo}
           onDone={closeSheet} />
@@ -235,7 +257,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
           detail={t('ready.detail', { bars: t('common.bars', { count: bars }), meter: metersLabel([ex.meter.id]), bpm: ex.tempo })} />
       ) : (
         <PauseContent context={t('pause.context', { where, bar: curBar + 1, total: bars })} desktop={keys} lesson={!!lesson} interrupted={s.interrupted}
-          onResume={closeSheet} onRestart={s.restart} onHelp={help} onSettings={toSettings} onQuit={quit} />
+          onResume={closeSheet} onRestart={restart} onHelp={help} onSettings={toSettings} onQuit={quit} />
       )}
     </Sheet>
   );
@@ -263,7 +285,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
         aria-label={t(desktop ? 'play.helpShortcut' : 'play.help')} title={t(desktop ? 'play.helpTitle' : 'play.help')} onClick={() => s.openSheet('help')}>
         <Icon name="help" size={20} strokeWidth={1.8} />
       </button>
-      <button type="button" className="btn-outline" aria-haspopup="dialog" aria-keyshortcuts={desktop ? 'Escape' : undefined} title={desktop ? t('play.pauseTitle') : undefined}
+      <button ref={pauseRef} type="button" className="btn-outline" aria-haspopup="dialog" aria-keyshortcuts={desktop ? 'Escape' : undefined} title={desktop ? t('play.pauseTitle') : undefined}
         onClick={() => s.openSheet('pause')}>
         <Icon name="pause" size={16} />
         {t('play.pause')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
@@ -334,7 +356,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
             onClick={() => s.openSheet('help')}>
             <Icon name="help" size={20} strokeWidth={1.8} />
           </button>
-          <button type="button" className="icon-btn icon-btn--edge-sm-r" aria-label={t('play.pause')} aria-haspopup="dialog" aria-expanded={s.sheet === 'pause'}
+          <button ref={pauseRef} type="button" className="icon-btn icon-btn--edge-sm-r" aria-label={t('play.pause')} aria-haspopup="dialog" aria-expanded={s.sheet === 'pause'}
             onClick={() => s.openSheet('pause')}>
             <Icon name="pause" size={22} />
           </button>
