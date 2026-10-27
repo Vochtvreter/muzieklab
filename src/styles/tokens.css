@@ -36,6 +36,10 @@
   --reward-soft: #f8edd2;
   --reward-ink: #8a6412;
   --reward-star: #c48a12;
+  /* Gold text on the gold tint or on paper (Progress: a practised day, "Earned", stars on a scale tile), and the ink on
+     a gold fill (a streak day), which stays dark in dark mode because the gold stays bright. */
+  --reward-text: #7a540c;
+  --on-reward: #161b1c;
   --diamond: #4cbfe3;
   --diamond-hi: #d9f6ff;
   --diamond-deep: #2576bd;
@@ -128,6 +132,8 @@
     --reward-soft: #3a2f14;
     --reward-ink: #f0c35a;
     --reward-star: #f0c35a;
+    --reward-text: #f0c35a;
+    --on-reward: #101415;
   --diamond: #7fd8f2;
   --diamond-hi: #f2fdff;
   --diamond-deep: #4a9fe0;
@@ -207,6 +213,8 @@
   --reward-soft: #3a2f14;
   --reward-ink: #f0c35a;
   --reward-star: #f0c35a;
+  --reward-text: #f0c35a;
+  --on-reward: #101415;
   --good: #4cc38a;
   --gold: #f0b429;
   --gold-ink: #f0c35a;

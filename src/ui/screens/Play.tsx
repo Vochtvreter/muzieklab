@@ -69,12 +69,14 @@ function EchoPlay({ run, view }: { run: Run; view: ExerciseView }): JSX.Element 
     setAutoPlay(true);
     setTapping(false);
   };
-  if (tapping) return <PlayRun run={run} view={view} echo={{ playsLeft: ECHO_PLAYS - plays, onHearAgain: hearAgain }} />;
+  if (tapping) return <PlayRun run={run} view={view} echo={{ playsLeft: ECHO_PLAYS - plays, plays, onHearAgain: hearAgain }} />;
   return <EchoListen run={run} view={view} where={where} playsLeft={ECHO_PLAYS - plays} autoPlay={autoPlay} onPlayed={onPlayed} onTapBack={tapBack} />;
 }
 
 interface EchoProps {
   playsLeft: number;
+  /** Times the rhythm was played to listen so far (minutes practised; more than one is a replay). */
+  plays: number;
   onHearAgain(): void;
 }
 
@@ -97,11 +99,14 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const exit = back?.to ?? '/';
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
 
+  const plays = echo?.plays;
   const onFinish = useCallback(
     (result: JudgeResult, taps: Tap[]) => {
-      dispatch({ type: 'finish', result, taps, today: todayIso() });
+      // Echo: how it was heard (minutes practised; No replays needed counts any listen after the first, Hear again too).
+      const heard = plays === undefined ? {} : { echo: { plays, replays: Math.max(0, plays - 1) } };
+      dispatch({ type: 'finish', result, taps, today: todayIso(), ...heard });
     },
-    [dispatch],
+    [dispatch, plays],
   );
   // Go to Results once the store holds this run's result (not before, or Results would see the old state).
   useEffect(() => {

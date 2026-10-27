@@ -5,6 +5,7 @@
  * has Play's layout, with the listen card where the staff goes, so the screen looks the same before and after.
  */
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
+import { LISTEN_LEAD_IN_S as LEAD_IN_S } from '../../game/stats';
 import { t } from '../../i18n';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
@@ -23,7 +24,6 @@ import { HowToContent } from './PlaySheets';
 
 /** How often the rhythm can be heard (the first listen included). */
 export const ECHO_PLAYS = 2;
-const LEAD_IN_S = 0.3;
 const IDLE_BEAT: BeatState = { inBar: null, countIn: false };
 
 /** "Echo · Free practice", "Echo · Lesson 2.3", "Echo · Daily challenge". */

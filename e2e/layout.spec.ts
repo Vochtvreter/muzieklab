@@ -5,10 +5,11 @@ import { CHAPTERS } from '../src/ui/learn/chapters';
 import type { Me } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
 import {
-  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoPageScroll,
   expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo,
   QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
+import { emptyProgress, PROGRESS_CLOCK, PROGRESS_PREFS, richProgress } from './progressFixture';
 
 /**
  * The status filter's chips sit in rows of the same size: all four on one line, or two and two as an even grid (the
@@ -543,6 +544,65 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByText('Calibrated. Your next exercise uses it.', { exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Calibrate' })).toHaveCount(0);
       await expectNoSideScroll(page);
+    });
+
+    test('results: the level-up sheet lists the achievement, with See progress and Continue in reach', async ({ page }) => {
+      known(name, 'levelup');
+      test.setTimeout(60_000);
+      // 5 XP short of level 8: one bar played on the beat levels up and earns Perfect bar (App design canvas, Resolve ·
+      // Level up: the rows under the XP bar, then See progress and Continue).
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: QUARTERS, xp: 1745 } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await tapLate(page, 4, 500, 0);
+      const sheet = page.getByRole('dialog', { name: 'Level 8 · Groove' });
+      await expect(sheet).toBeVisible({ timeout: 10_000 });
+      await expect(sheet.getByText('Achievement unlocked')).toBeVisible();
+      await expect(sheet.getByText('Perfect bar', { exact: true })).toBeVisible();
+      for (const row of await sheet.locator('.levelup-row').all()) await expectNotSqueezed(row);
+      const see = sheet.getByRole('link', { name: 'See progress' });
+      const done = sheet.getByRole('button', { name: 'Continue' });
+      await expectClickable(see);
+      await expectTouchHeight(see);
+      await expectClickable(done);
+      await expectTouchHeight(done);
+      await expectNoOverlap(see, done);
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await done.click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible();
+    });
+
+    test('results: a level-up sheet with several rows never focuses a button out of sight', async ({ page }) => {
+      known(name, 'levelup-rows');
+      test.setTimeout(60_000);
+      // Level 8 with two achievements, Perfect bar and Played at 160 BPM: on a phone on its side the sheet scrolls, and
+      // Continue starts below what it shows. Focus is then on the sheet itself, and Tab goes on to the buttons.
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, tempo: 160 }, xp: 1745 } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await tapLate(page, 4, 375, 0);
+      const sheet = page.getByRole('dialog', { name: 'Level 8 · Groove' });
+      await expect(sheet).toBeVisible({ timeout: 10_000 });
+      await expect(sheet.getByText('Achievement unlocked')).toHaveCount(2);
+      const focusShown = (): Promise<string> =>
+        page.evaluate(() => {
+          const el = document.activeElement as HTMLElement | null;
+          if (!el?.closest('[role="dialog"]')) return 'focus is outside the sheet';
+          const r = el.getBoundingClientRect();
+          return r.top >= -1 && r.bottom <= window.innerHeight + 1 ? 'ok' : `"${(el.textContent ?? '').trim().slice(0, 24)}" is focused out of sight`;
+        });
+      const done = sheet.getByRole('button', { name: 'Continue' });
+      for (let i = 0; i < 3 && !(await done.evaluate((el) => el === document.activeElement)); i++) {
+        await expect.poll(focusShown, { timeout: 3000 }).toBe('ok');
+        await page.keyboard.press('Tab');
+      }
+      await expect(done).toBeFocused();
+      await expect.poll(focusShown, { timeout: 3000 }).toBe('ok');
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible();
     });
 
     test('read notes: round done', async ({ page }) => {
@@ -1081,10 +1141,251 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('heading', { name: /1\.1\s*The beat and tempo/ })).toBeInViewport();
     });
 
+    test('progress: rhythm, notes and scales', async ({ page }) => {
+      known(name, 'progress');
+      const wide = desktopLayout || tabletLayout;
+      // The boards' sample player on the boards' today, Thursday 15 October 2026 (e2e/progressFixture.ts).
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      await seed(page, { progress: richProgress(), prefs: PROGRESS_PREFS });
+      await page.goto('./#/progress');
+      await expect(page.getByRole('heading', { level: 1, name: 'Progress' })).toBeVisible();
+      // A tab of its own, the fourth of five: current in the tab bar on phone and in the header on tablet and desktop.
+      const nav = wide ? page.getByRole('banner').getByRole('navigation', { name: 'Main' }) : page.getByRole('navigation', { name: 'Main' });
+      await expect(nav.getByRole('link')).toHaveText(['Home', 'Path', 'Learn', 'Progress', 'Settings']);
+      const tab = nav.getByRole('link', { name: 'Progress', exact: true });
+      await expect(tab).toHaveAttribute('aria-current', 'page');
+      await expectClickable(tab);
+      if (!wide) await expectTouchHeight(tab);
+
+      const h2 = page.getByRole('main').getByRole('heading', { level: 2 });
+      const views = page.getByRole('group', { name: 'Show progress for' });
+      const skills = page.getByRole('link', { name: /^Skill levels/ });
+      const show = async (view: string): Promise<void> => {
+        // The app's segmented control (40 px buttons in their track), checked as in the other screens' tests.
+        const button = views.getByRole('button', { name: view, exact: true });
+        await expectClickable(button);
+        await button.click();
+        await expect(button).toHaveAttribute('aria-pressed', 'true');
+        // Skill levels heads every view.
+        await expectClickable(skills);
+        await expectTouchHeight(skills);
+      };
+      // Tablet and desktop: the Level card with its ranks and the streak calendar head every view (App design canvas,
+      // ProgressTablet and ProgressDesktop); phone has the level line, and the calendar only in Rhythm (Mobile · Progress).
+      const level = page.getByRole('region', { name: 'Level 7 · Measure' });
+      const streak = page.getByRole('region', { name: '12-day streak' });
+      const head = wide ? ['Level 7 · Measure', '12-day streak'] : [];
+
+      // Rhythm, where every visit starts.
+      await expect(views.getByRole('button', { name: 'Rhythm', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await show('Rhythm');
+      await expect(skills).toContainText('25 of 60 levels · 6 skills · 1 review due');
+      await expect(h2).toHaveText(
+        wide
+          ? [...head, 'Accuracy · 14 days', 'Timing tendency', 'Skill map · rhythm cells', 'Minutes this week', 'Achievements']
+          : ['12-day streak', 'Accuracy · 14 days', 'Minutes this week', 'Skill map · rhythm cells', 'Timing tendency', 'Achievements'],
+      );
+      await expect(page.getByRole('img', { name: /^Practice calendar, Sep 14 to Oct 18\. Practised 28 of 32 days;/ })).toBeVisible();
+      await expect(page.locator('.prog-cal-day.is-now')).toHaveText('15');
+      await expect(page.getByRole('img', { name: /^Rhythm accuracy per day from Oct 2 to Oct 15, .*80% today/ })).toBeVisible();
+      await expect(page.getByRole('img', { name: /^Average timing offset per day from Oct 2 to Oct 15:/ })).toBeVisible();
+      await expect(page.getByRole('img', { name: /^Minutes practised this week: .*; 51 minutes in total\.$/ })).toBeVisible();
+      await expect(page.getByRole('listitem', { name: 'Ties: 78%, weak spot' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Achievements' }).getByText('3 earned')).toBeVisible();
+      const practice = page.getByRole('link', { name: 'Practice weak spots' });
+      await expectClickable(practice);
+      await expectTouchHeight(practice);
+      if (wide) {
+        await expect(level.getByRole('list', { name: 'Ranks' }).locator('[aria-current="step"]')).toContainText('Measure');
+        await expect(level.getByText('1445 / 1750 XP')).toBeVisible();
+        if (tabletLayout) {
+          // Tablet: the Level card beside the streak calendar, then the cards two by two (the skill map full width).
+          await expectNoOverlap(level, streak);
+          const [l, s] = [(await level.boundingBox())!, (await streak.boundingBox())!];
+          expect(s.x, 'the streak calendar is right of the Level card').toBeGreaterThanOrEqual(l.x + l.width - 1);
+          expect(Math.abs(s.y - l.y), 'the Level card and the streak calendar start level').toBeLessThan(2);
+          await expectNoOverlap(page.getByRole('region', { name: 'Accuracy · 14 days' }), page.getByRole('region', { name: 'Timing tendency' }));
+          await expectNoOverlap(page.getByRole('region', { name: 'Minutes this week' }), page.getByRole('region', { name: 'Achievements' }));
+        } else {
+          // Desktop: the Level card, Skill levels and the streak calendar in a column on the left, the cards beside it.
+          const aside = page.locator('.prog-aside');
+          const main = page.locator('.prog-main');
+          await expect(aside.getByRole('region', { name: 'Level 7 · Measure' })).toBeVisible();
+          await expect(aside.getByRole('link', { name: /^Skill levels/ })).toBeVisible();
+          await expect(aside.getByRole('region', { name: '12-day streak' })).toBeVisible();
+          await expectNoOverlap(aside, main);
+          const [a, m] = [(await aside.boundingBox())!, (await main.boundingBox())!];
+          expect(m.x, 'the cards are right of the left column').toBeGreaterThanOrEqual(a.x + a.width - 1);
+          await expect(main.getByRole('region', { name: 'Accuracy · 14 days' })).toBeVisible();
+        }
+      } else {
+        await expect(page.getByText('1445 / 1750 XP')).toBeVisible();
+        await expect(page.locator('.prog-head .streak-pill')).toHaveText('12-day streak');
+        await expect(page.getByRole('list', { name: 'Ranks' })).toHaveCount(0);
+      }
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
+
+      // Notes: accuracy per clef, the slowest notes and the last key.
+      await show('Notes');
+      await expect(h2).toHaveText(wide ? [...head, 'Accuracy per clef', 'Key', 'Slowest notes'] : ['Accuracy per clef', 'Slowest notes', 'Key']);
+      await expect(page.getByRole('img', { name: 'Note reading accuracy: treble clef 88% and bass clef 74%.' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Slowest notes' }).getByRole('listitem')).toHaveCount(3);
+      await expect(page.getByText('G major · E minor')).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: 'Read notes', exact: true }));
+      await expectTouchHeight(page.getByRole('link', { name: 'Read notes', exact: true }));
+      if (tabletLayout) await expectNoOverlap(page.getByRole('region', { name: 'Accuracy per clef' }), page.getByRole('region', { name: 'Slowest notes' }));
+      if (wide) await expect(streak).toBeVisible();
+      else await expect(streak).toHaveCount(0);
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
+
+      // Scales: the major scales round the circle and the minor keys started.
+      await show('Scales');
+      await expect(h2).toHaveText([...head, 'Major scales', 'Minor scales']);
+      await expect(page.getByRole('img', { name: '5 of 15 major scales with two stars or more' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Major scales' }).getByRole('listitem')).toHaveCount(15);
+      await expect(page.getByRole('table').getByRole('row')).toHaveCount(5);
+      await expectClickable(page.getByRole('link', { name: 'Open the circle of fifths' }));
+      await expectTouchHeight(page.getByRole('link', { name: 'Open the circle of fifths' }));
+      if (tabletLayout) await expectNoOverlap(page.getByRole('region', { name: 'Major scales' }), page.getByRole('region', { name: 'Minor scales' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
+    });
+
+    test('progress: a new player', async ({ page }) => {
+      known(name, 'progress-new');
+      const wide = desktopLayout || tabletLayout;
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      await seed(page, { progress: emptyProgress(), prefs: PROGRESS_PREFS });
+      await page.goto('./#/progress');
+      await expect(page.getByRole('heading', { level: 1, name: 'Progress' })).toBeVisible();
+      // A short line for each card instead of an empty chart, and no Practice weak spots until a cell has enough notes.
+      await expect(page.getByText('0 of 60 levels · 6 skills · no review due')).toBeVisible();
+      await expect(page.getByRole('img', { name: /^Practice calendar, .*; no streak yet\.$/ })).toBeVisible();
+      await expect(page.getByText('No rhythm rounds in the last 14 days.')).toHaveCount(2);
+      await expect(page.getByText('No practice this week yet.')).toBeVisible();
+      await expect(page.getByRole('img', { name: /^Rhythm accuracy/ })).toHaveCount(0);
+      await expect(page.getByRole('link', { name: 'Practice weak spots' })).toHaveCount(0);
+      await expect(page.getByRole('region', { name: 'Achievements' }).getByText('0 earned')).toBeVisible();
+      if (wide) await expect(page.getByRole('region', { name: 'Level 1 · Tick' }).getByText('0 / 100 XP')).toBeVisible();
+      else await expect(page.getByText('0 / 100 XP')).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: /^Skill levels/ }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
+      const views = page.getByRole('group', { name: 'Show progress for' });
+      await views.getByRole('button', { name: 'Notes', exact: true }).click();
+      await expect(page.getByText('No Read notes round yet.')).toHaveCount(3);
+      await expectClickable(page.getByRole('link', { name: 'Read notes', exact: true }));
+      await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
+      await views.getByRole('button', { name: 'Scales', exact: true }).click();
+      await expect(page.getByRole('img', { name: '0 of 15 major scales with two stars or more' })).toBeVisible();
+      await expect(page.getByText('No minor scale started yet.')).toBeVisible();
+      await expectClickable(page.getByRole('link', { name: 'Open the circle of fifths' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
+    });
+
+    test('progress: practice weak spots opens the setup', async ({ page }) => {
+      known(name, 'progress-weak-spots');
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      await seed(page, { progress: richProgress(), prefs: PROGRESS_PREFS });
+      await page.goto('./#/progress');
+      const practice = page.getByRole('link', { name: 'Practice weak spots' });
+      await expectClickable(practice);
+      await practice.click();
+      await expect(page).toHaveURL(/#\/setup$/);
+      await expect(page.getByRole('heading', { level: 1, name: 'Free practice' })).toBeVisible();
+      // The weak spots, ties (78%) and the dotted quarter + eighth (72%): ties and dotted notes on, with quarters and
+      // eighths, ready to start.
+      await expect(page.getByRole('button', { name: 'Ties', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Dotted', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Quarter note', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Eighth note', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expectClickable(page.getByRole('button', { name: /^Start · / }));
+      await expectNoSideScroll(page);
+    });
+
+    test('skill levels: list and one skill', async ({ page }) => {
+      known(name, 'skills');
+      const wide = desktopLayout || tabletLayout;
+      const nav = wide ? page.getByRole('banner').getByRole('navigation', { name: 'Main' }) : page.getByRole('navigation', { name: 'Main' });
+      const tab = nav.getByRole('link', { name: 'Progress', exact: true });
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      await seed(page, { progress: richProgress(), prefs: PROGRESS_PREFS });
+      await page.goto('./#/progress');
+      await page.getByRole('link', { name: /^Skill levels/ }).click();
+      await expect(page).toHaveURL(/#\/progress\/skills$/);
+      // Skill levels (App design canvas, Mobile · Progress · skill levels; tablet and desktop: the 640 px column). The
+      // Progress tab stays current.
+      await expect(page.getByRole('heading', { level: 1, name: 'Skill levels' })).toBeVisible();
+      await expect(tab).toHaveAttribute('aria-current', 'page');
+      await expect(page.getByRole('img', { name: '25 of 60 levels' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Last 30 days' })).toContainText('review due · Theory');
+      const rows = page.getByRole('region', { name: 'Your skills' }).getByRole('link');
+      await expect(rows).toHaveCount(6);
+      const skills = [['Rhythm reading', 6], ['Rhythm by ear', 4], ['Treble clef', 5], ['Bass clef', 3], ['Scales', 3], ['Theory', 4]] as const;
+      for (const [skill, n] of skills) {
+        const row = page.getByRole('link', { name: new RegExp(`^${skill}: level ${n} of 10\\.`) });
+        await expectClickable(row);
+        await expectTouchHeight(row);
+      }
+      const focus = page.getByRole('region', { name: 'Focus next' });
+      await expect(focus.getByText(/is your lowest skill/)).toHaveText('Bass clef is your lowest skill: level 3, 2 levels behind treble clef.');
+      await expectClickable(focus.getByRole('link', { name: 'Read bass notes' }));
+      await expectTouchHeight(focus.getByRole('link', { name: 'Read bass notes' }));
+      const back = page.getByRole('link', { name: 'Back to Progress' });
+      await expect(back).toHaveAttribute('href', '#/progress');
+      await expectClickable(back);
+      await expectTouchHeight(back);
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
+
+      // One skill: its level, the next level's checks with its button, 12 weeks and all ten levels.
+      await page.getByRole('link', { name: /^Bass clef: level 3 of 10\./ }).click();
+      await expect(page).toHaveURL(/#\/progress\/skills\/bass$/);
+      await expect(page.getByRole('heading', { level: 1, name: 'Bass clef' })).toBeVisible();
+      await expect(tab).toHaveAttribute('aria-current', 'page');
+      await expect(page.getByRole('img', { name: /^Level 3 of 10, and 0 of \d checks for level 4$/ })).toBeVisible();
+      const next = page.getByRole('region', { name: 'Next · level 4' });
+      await expect(next.getByText('Middle C down to F', { exact: true })).toBeVisible();
+      await expect(next.getByRole('listitem').first()).toBeVisible();
+      await expectClickable(next.getByRole('link', { name: 'Read bass notes' }));
+      await expectTouchHeight(next.getByRole('link', { name: 'Read bass notes' }));
+      await expect(page.getByRole('region', { name: 'Level · 12 weeks' }).getByRole('img')).toBeVisible();
+      const ladder = page.getByRole('region', { name: 'All levels' });
+      await expect(ladder.getByRole('listitem')).toHaveCount(10);
+      await expect(ladder.getByText('Passed', { exact: true })).toHaveCount(3);
+      const up = page.getByRole('link', { name: 'Back to Skill levels' });
+      await expect(up).toHaveAttribute('href', '#/progress/skills');
+      await expectClickable(up);
+      await expectTouchHeight(up);
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await expectNoPageScroll(page);
+      await up.click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Skill levels' })).toBeVisible();
+      await page.getByRole('link', { name: 'Back to Progress' }).click();
+      await expect(page).toHaveURL(/#\/progress$/);
+      await expect(page.getByRole('heading', { level: 1, name: 'Progress' })).toBeVisible();
+
+      // A skill with checks met: their "Done:" for screen readers stays in the page, which the document does not scroll.
+      await page.goto('./#/progress/skills/theory');
+      await expect(page.getByRole('region', { name: 'Next · level 5' }).locator('.skill-checks li.is-done').first()).toBeVisible();
+      await expectNoPageScroll(page);
+    });
+
     test('scrolling: every page and the Path units scroll at the window\'s edge, not the column\'s', async ({ page }) => {
       known(name, 'scroll-edge');
       const screens = ['#/', '#/path', '#/setup', '#/settings', '#/changelog', '#/calibrate', '#/notes', '#/notes/key', '#/scales', '#/scales/setup',
-        '#/learn', '#/learn/1', '#/learn/9', '#/signin', '#/privacy'];
+        '#/learn', '#/learn/1', '#/learn/9', '#/progress', '#/progress/skills', '#/progress/skills/rhythm', '#/signin', '#/privacy'];
       for (const hash of screens) {
         await page.goto('./' + hash);
         await expect(page.getByRole('main')).toBeVisible();
@@ -1828,6 +2129,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/learn/11', 'Toonladders', ''],
       ['#/scales', 'Toonladders', 'Oefen C majeur'],
       ['#/scales/setup', 'Toonladders oefenen', 'Start · '],
+      ['#/progress', 'Voortgang', 'Ritme'],
+      ['#/progress/skills', 'Vaardigheden', ''],
+      ['#/progress/skills/rhythm', 'Ritme lezen', ''],
     ];
     for (const [hash, title, action] of screens) {
       test(`${hash || '#/'}: ${title}`, async ({ page }) => {
@@ -1848,6 +2152,31 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
     }
+
+    test('#/progress with the sample player: every view, Skill levels and one skill', async ({ page }) => {
+      known(name, 'nl#/progress-rich');
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      await seed(page, { progress: richProgress(), prefs: { ...PROGRESS_PREFS, language: 'nl' } });
+      await page.goto('./#/progress');
+      await expect(page).toHaveTitle(/^Voortgang/);
+      await expect(page.getByText('25 van 60 niveaus · 6 vaardigheden · 1 te herhalen')).toBeVisible();
+      for (const view of ['Ritme', 'Noten', 'Toonladders']) {
+        const button = page.getByRole('group', { name: 'Voortgang tonen voor' }).getByRole('button', { name: view, exact: true });
+        await button.click();
+        await expect(button).toHaveAttribute('aria-pressed', 'true');
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
+      await page.getByRole('link', { name: /^Vaardigheden/ }).click();
+      await expect(page).toHaveTitle(/^Vaardigheden/);
+      await expect(page.getByRole('img', { name: '25 van 60 niveaus' })).toBeVisible();
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      await page.getByRole('link', { name: /^Ritme lezen: niveau 6 van 10\./ }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Ritme lezen' })).toBeVisible();
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
 
     test.describe('accounts', () => {
       test.use({ serviceWorkers: 'block' });

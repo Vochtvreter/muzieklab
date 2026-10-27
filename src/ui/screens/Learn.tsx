@@ -19,7 +19,7 @@ import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type
 import { stopLearnSound } from '../learn/Listen';
 import { letterName } from '../lib/noteText';
 import { hashQuery, Link, useHash, type Route } from '../router';
-import { useStore } from '../store';
+import { todayIso, useStore } from '../store';
 import { useStartNotes } from './notes/start';
 import { useStartPractice } from './start';
 
@@ -255,7 +255,7 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
   const title = t(`learn.chapters.${n}.title`);
   useDocTitle(t('app.docTitle', { page: title }));
   const read = state.progress.learnRead;
-  const passed = useMemo(() => (id: string) => dispatch({ type: 'learnRead', ids: [id] }), [dispatch]);
+  const passed = useMemo(() => (id: string) => dispatch({ type: 'learnRead', ids: [id], today: todayIso() }), [dispatch]);
   const at = CHAPTERS.indexOf(chapter);
   const prev = CHAPTERS[at - 1];
   const next = CHAPTERS[at + 1];

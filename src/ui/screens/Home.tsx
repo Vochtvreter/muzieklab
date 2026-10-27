@@ -17,7 +17,7 @@ import { levelInfo, type LevelInfo } from '../../game/xp';
 import { dateParts, t, tx } from '../../i18n';
 import { AppShell } from '../components/AppShell';
 import { LessonTiles, StaffBox } from '../components/Bits';
-import { DateTile, LevelContent, XpBar } from '../components/Reward';
+import { DateTile, LevelContent, StreakPill, XpBar } from '../components/Reward';
 import { Sheet } from '../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering, useToday } from '../hooks';
 import { seedFromString } from '../lib/format';
@@ -27,15 +27,6 @@ import { describeBars } from '../lib/notation';
 import { Link } from '../router';
 import { todayIso, useStore } from '../store';
 import { useStartDaily, useStartPathLesson } from './start';
-
-function StreakPill({ days }: { days: number }): JSX.Element {
-  return (
-    <div className="streak-pill">
-      <span className="streak-dot" aria-hidden="true" />
-      {t('streak.pill', { count: days })}
-    </div>
-  );
-}
 
 const RING_R = 5;
 const RING_C = 2 * Math.PI * RING_R;

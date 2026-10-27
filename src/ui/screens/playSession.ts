@@ -20,6 +20,7 @@ import {
 import { attachTapInput } from '../../input/tapInput';
 import type { NoteMark } from '../../render/Staff';
 import { exerciseHas, introId, unseenIntros, type Intro } from '../../game/intro';
+import { PLAY_LEAD_IN_S as LEAD_IN_S } from '../../game/stats';
 import type { Prefs } from '../../game/storage';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import type { ExerciseView } from '../exerciseView';
@@ -70,7 +71,6 @@ interface Segment {
   countInBeats: number;
 }
 
-const LEAD_IN_S = 0.4;
 /** Presses this long before the first beat (during the count-in) are ignored, not counted as extra taps. */
 const EARLY_IGNORE_S = 0.25;
 /** After the last beat, wait this long for the last release before finishing. */

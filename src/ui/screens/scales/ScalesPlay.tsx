@@ -7,7 +7,7 @@
  * the degrees and the tools under them, the feedback and the answer card. Desktop: the exercise header, a wide staff, the answer card with
  * computer keys and the side panel.
  */
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import {
   afterScale,
   isRightNote,
@@ -21,6 +21,7 @@ import {
   type ScaleAlter,
   type ScaleGiven,
 } from '../../../core/api';
+import { SCALE_CAP_S } from '../../../game/stats';
 import { t } from '../../../i18n';
 import { PitchStaff, type PitchNote } from '../../../render/PitchStaff';
 import { engine, unlockAudio } from '../../audio';
@@ -71,6 +72,14 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const [mistakes, setMistakes] = useState(0);
   const [wrong, setWrong] = useState<ScaleGiven | null>(null);
   const [hinted, setHinted] = useState(false);
+  // Minutes practised (the Progress tab): the time on each scale, from when it is shown, at most SCALE_CAP_S each.
+  const time = useRef({ sum: 0, since: performance.now() });
+  const lap = (): number => {
+    const now = performance.now();
+    time.current.sum += Math.min(SCALE_CAP_S, Math.max(0, (now - time.current.since) / 1000));
+    time.current.since = now;
+    return time.current.sum;
+  };
 
   const sc = queue[idx];
   const notes = useMemo(() => scaleNotes(sc, dir), [sc, dir]);
@@ -92,7 +101,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
 
   const finish = useCallback(
     (list: PlayedScale[]) => {
-      dispatch({ type: 'scaleFinish', played: list, today: todayIso() });
+      dispatch({ type: 'scaleFinish', played: list, today: todayIso(), seconds: Math.round(lap()) });
     },
     [dispatch],
   );
@@ -106,6 +115,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     const list = [...played, { scale: sc, mistakes }];
     const q = afterScale(queue, idx, mistakes);
     if (idx + 1 >= q.length) return finish(list);
+    lap();
     setPlayed(list);
     setQueue(q);
     setIdx(idx + 1);

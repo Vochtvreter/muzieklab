@@ -105,6 +105,18 @@ export async function expectNoSideScroll(page: Page): Promise<void> {
   expect(wide, 'no horizontal scroll').toBe(false);
 }
 
+/**
+ * The document itself does not scroll: the page scrolls in its own box and the shell (tab bar, header) stays on screen.
+ * Text for screen readers (.sr-only, absolutely placed) in a box that is not positioned would stretch the document.
+ */
+export async function expectNoPageScroll(page: Page): Promise<void> {
+  const over = await page.evaluate(() => {
+    const doc = document.scrollingElement ?? document.documentElement;
+    return doc.scrollHeight - doc.clientHeight;
+  });
+  expect(over, 'the document scrolls under the shell').toBeLessThanOrEqual(1);
+}
+
 /** Seeds localStorage before the app loads. */
 export async function seed(page: Page, data: { prefs?: object; progress?: object }): Promise<void> {
   await page.addInitScript((d) => {
@@ -115,28 +127,14 @@ export async function seed(page: Page, data: { prefs?: object; progress?: object
 
 export const pad = (page: Page): Locator => page.getByRole('button', { name: 'Tap pad' });
 
-type Lessons = Record<string, { stars: number; bestAccuracy: number }>;
-
-/**
- * Progress `lessons` with `stars` on every Learning path lesson up to and including `id` (its number in the path, "3.5"),
- * under their progress keys ("pitch:1.1", rhythm "1.1"). The path starts with sol (unit 1), then rhythm unit 1 (unit 2).
- */
-export function pathUpTo(id: string, stars = 2, bestAccuracy = 88): Lessons {
-  const all = PATH_UNITS.flatMap((u) => u.lessons);
-  const n = all.findIndex((l) => l.id === id);
-  return Object.fromEntries(all.slice(0, n + 1).map((l) => [l.key, { stars, bestAccuracy }]));
-}
-
-/** Sol's unit passed: the path goes on with rhythm lesson 1.1, which the path calls lesson 2.1. */
-export const SOL_DONE: Lessons = pathUpTo('1.5');
-
 /** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
 export const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
   metronome: 'on', countIn: 1, density: 'balanced', restAmount: 'few' };
 
 /**
- * Plays along on the keyboard, every beat `lateMs` after it, from the first counted beat on Play: a steady late tapper
- * (Bluetooth headphones). Each key event carries its own time stamp, so a timer that fires late does not move a tap.
+ * Plays along on the keyboard, every beat `lateMs` after it, from the first counted beat on Play: on the beat with 0, a
+ * steady late tapper (Bluetooth headphones) with more. Each key event carries its own time stamp, so a timer that fires
+ * late does not move a tap.
  */
 export async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number): Promise<void> {
   await page.evaluate(
@@ -164,6 +162,21 @@ export async function tapLate(page: Page, beats: number, beatMs: number, lateMs:
     { beats, beatMs, lateMs },
   );
 }
+
+type Lessons = Record<string, { stars: number; bestAccuracy: number }>;
+
+/**
+ * Progress `lessons` with `stars` on every Learning path lesson up to and including `id` (its number in the path, "3.5"),
+ * under their progress keys ("pitch:1.1", rhythm "1.1"). The path starts with sol (unit 1), then rhythm unit 1 (unit 2).
+ */
+export function pathUpTo(id: string, stars = 2, bestAccuracy = 88): Lessons {
+  const all = PATH_UNITS.flatMap((u) => u.lessons);
+  const n = all.findIndex((l) => l.id === id);
+  return Object.fromEntries(all.slice(0, n + 1).map((l) => [l.key, { stars, bestAccuracy }]));
+}
+
+/** Sol's unit passed: the path goes on with rhythm lesson 1.1, which the path calls lesson 2.1. */
+export const SOL_DONE: Lessons = pathUpTo('1.5');
 
 // --- accounts: the API, mocked (no API server runs for e2e) -------------------------------------------------------
 

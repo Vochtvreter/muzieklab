@@ -1,7 +1,8 @@
 /**
- * Results (DESIGN.md §6.4): stars, accuracy and XP, the daily challenge's badges, counts, holds, the judged staff (in
- * Echo the notation's reveal), the timing and length lane, a tip (with Calibrate when the tip is about latency, or a
- * line once the player has calibrated since), the actions with Copy code, and the level-up sheet.
+ * Results (DESIGN.md §6.4): stars, accuracy and XP, the badges (the daily challenge's, an achievement earned without a
+ * level), counts, holds, the judged staff (in Echo the notation's reveal), the timing and length lane, a tip (with
+ * Calibrate when the tip is about latency, or a line once the player has calibrated since), the actions with Copy code,
+ * and the level-up sheet.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { coachTip, DIAMOND, encodeCode, MAX_STARS, SHOWN_STARS, type Judgement } from '../../core/api';
@@ -15,7 +16,7 @@ import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
 import { StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
-import { CodeCopy, LevelUpContent, OutcomeBadge } from '../components/Reward';
+import { AchievementBadges, CodeCopy, LevelUpContent, OutcomeBadge } from '../components/Reward';
 import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
@@ -143,7 +144,9 @@ export function Results(): JSX.Element | null {
         ? t('results.echoDone')
         : t('results.practiceDone');
   const outcomeBadge = outcome && outcome.kind !== 'passed' ? <OutcomeBadge outcome={outcome} /> : null;
-  const badges = (run.daily && (reward.streak !== null || reward.dailyBest)) || outcomeBadge;
+  // Achievements a run earned without a level: badges here (with a level, the level-up sheet lists them).
+  const achieved = leveledUp ? [] : reward.achievements;
+  const badges = (run.daily && (reward.streak !== null || reward.dailyBest)) || outcomeBadge || achieved.length > 0;
   const countOf = (k: Judgement | 'extra'): number => (k === 'extra' ? result.extraTaps : result.counts[k]);
   /** Next lesson when the path goes on, else a new exercise with the same settings (Next exercise; New exercise under 2 stars). */
   const moveOn = (className: string): JSX.Element =>
@@ -213,6 +216,7 @@ export function Results(): JSX.Element | null {
             </span>
           )}
           {outcomeBadge}
+          <AchievementBadges ids={achieved} />
         </div>
       )}
 
@@ -343,7 +347,8 @@ export function Results(): JSX.Element | null {
       </div>
       {levelUpSheet && (
         <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="levelup" labelledBy="leveluptitle" maxWidth={bp === 'desktop' ? 460 : undefined}>
-          <LevelUpContent xpBefore={reward.xpBefore} xpAfter={reward.xpAfter} onDone={() => setLevelUp(null)} />
+          <LevelUpContent xpBefore={reward.xpBefore} xpAfter={reward.xpAfter} achievements={reward.achievements} best={reward.best}
+            onDone={() => setLevelUp(null)} />
         </Sheet>
       )}
     </ExerciseFrame>

@@ -3,6 +3,48 @@ import type { CSSProperties } from 'react';
 
 const PATHS = {
   home: <path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" />,
+  /** The Progress tab (MVP canvas, Home with the Progress tab). */
+  progress: <path d="M5 20V11M12 20V4M19 20v-6" />,
+  /** Skill levels: a stair of levels (App design canvas, Mobile · Progress, the Skill levels card). */
+  stairs: <path d="M3 20h5v-5h5v-5h5V5h3" />,
+  /** Achievement badges (App design canvas, Progress, Achievements; ui/lib/achievementIcons.ts). 7-day streak. */
+  calendarCheck: (
+    <>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+      <path d="M8 3v4M16 3v4M3.5 10h17M9 15l2 2 4-4" />
+    </>
+  ),
+  /** Perfect bar. */
+  target: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="0.8" />
+    </>
+  ),
+  /** No replays needed. */
+  speakerCheck: (
+    <>
+      <path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" />
+      <path d="M15 12l2 2 4-4.5" />
+    </>
+  ),
+  /** First sixteenths: two notes under two beams. */
+  sixteenths: (
+    <>
+      <ellipse cx="7" cy="18.5" rx="2.5" ry="2" />
+      <ellipse cx="17" cy="16.5" rx="2.5" ry="2" />
+      <path d="M9.5 18.5V5.5l10-2v13M9.5 9.5l10-2" />
+    </>
+  ),
+  /** Played at 160 BPM: a speed gauge with the needle high. */
+  gauge: (
+    <>
+      <path d="M4 17a8.5 8.5 0 1 1 16 0" />
+      <path d="M12 14l4-5" />
+      <circle cx="12" cy="14" r="1.3" />
+    </>
+  ),
   path: (
     <>
       <circle cx="6" cy="5" r="2" />
@@ -24,6 +66,8 @@ const PATHS = {
     </>
   ),
   back: <path d="M15 5l-7 7 7 7" />,
+  /** A button that goes on to another screen (App design canvas, Progress and Skill levels: Practice weak spots, a skill's button). */
+  arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
   // A speech bubble with a mark in it: the feedback tool (docs/FEEDBACK-LOOP.md).
   feedback: (
     <>
@@ -86,6 +130,14 @@ const PATHS = {
     <>
       <path d="M8 4h8v5a4 4 0 0 1-8 0z" />
       <path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4" />
+    </>
+  ),
+  /** An achievement unlocked (App design canvas, Resolve · Level up: the level-up sheet's row; a result's badge). */
+  medal: (
+    <>
+      <circle cx="12" cy="9" r="5.5" />
+      <path d="M8.5 13.5L7 21l5-2.5 5 2.5-1.5-7.5" />
+      <path d="M9.8 9.2l1.5 1.5 3-3" />
     </>
   ),
   speaker: (
