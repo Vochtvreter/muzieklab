@@ -391,8 +391,9 @@
 .tone-gold {
   color: var(--gold-ink);
 }
+/* Red words use --miss-ink: --miss, a fill, is 4.3:1 on the pad's card (desktop Play's MISS). */
 .tone-miss {
-  color: var(--miss);
+  color: var(--miss-ink);
 }
 .tone-ink {
   color: var(--ink);
@@ -1474,9 +1475,12 @@ button.lesson-item:active:not(:disabled) {
     box-shadow: inset 0 0 0 1.5px var(--accent);
   }
 }
+/* A unit's five lessons with four stars each (the diamond, the 4th star) take a second line on a 320 px phone, instead
+   of running out of the unit and making the list scroll sideways. */
 .unit-stars {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 10px 6px;
   font-size: 12px;
   letter-spacing: -1px;
   color: var(--rule);
@@ -4027,16 +4031,17 @@ button.lesson-stars:hover {
   font-size: 14px;
   line-height: 1.4;
 }
+/* At least as wide as the English words, and wider for a longer one (Dutch OPGELOST): no fixed-width text boxes. */
 .cl-kind {
   flex: none;
-  width: 54px;
+  min-width: 54px;
   margin-top: 1px;
   text-align: center;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 3px 0;
+  padding: 3px 6px;
   border-radius: 6px;
 }
 .cl-kind--new {
@@ -4143,7 +4148,7 @@ button.lesson-stars:hover {
   gap: 12px;
 }
 .changelog--wide .cl-kind {
-  width: 56px;
+  min-width: 56px;
 }
 .changelog--wide .cl-earlier {
   gap: 10px;
@@ -4269,7 +4274,10 @@ button.lesson-stars:hover {
   border-radius: 20px;
   background: var(--paper);
 }
+/* A row keeps the height of its text (flex: none): shrunk to its min-height in the scrolling list, a title and a line
+   on two lines each (in Dutch) ran into the next row. */
 .cl-nav-item {
+  flex: none;
   width: 100%;
   min-height: 60px;
   border: 0;
@@ -4347,9 +4355,10 @@ button.lesson-stars:hover {
   font-size: 30px;
   line-height: 1.12;
 }
-/* The staff drawing keeps the top right corner: a long title wraps before it instead of running under it. */
+/* The staff drawing keeps the top right corner: a long title wraps before it instead of running under it. The staff
+   covers the card's right 280 px (.cl-card-staff), 32 of them its padding; 12 more keep the title off it. */
 .cl-card--latest .cl-card-head {
-  padding-right: min(240px, 25%);
+  padding-right: 260px;
 }
 .cl-card--latest .cl-card-title {
   font-weight: 600;
@@ -4378,7 +4387,7 @@ button.lesson-stars:hover {
   line-height: 1.45;
 }
 .cl-card-changes .cl-kind {
-  width: 58px;
+  min-width: 58px;
   margin-top: 2px;
 }
 .cl-card-changes.cl-fill-changes {

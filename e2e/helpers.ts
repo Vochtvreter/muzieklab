@@ -140,13 +140,14 @@ export async function expectScrollbarAtEdge(page: Page): Promise<void> {
 }
 
 /**
- * Nothing scrolls sideways: not the window, and not a page that scrolls on its own. A page scrolls up and down
- * (overflow-y: auto), which makes it scroll sideways too when a row is wider than it, while the window does not.
+ * Nothing scrolls sideways: not the window, and not a page or a list that scrolls on its own (.m-scroll: the Path's
+ * units). They scroll up and down (overflow-y: auto), which makes them scroll sideways too when a row is wider than
+ * they are, while the window does not.
  */
 export async function expectNoSideScroll(page: Page): Promise<void> {
   const wide = await page.evaluate(() => [
     ...(document.documentElement.scrollWidth > window.innerWidth + 1 ? ['the window'] : []),
-    ...[...document.querySelectorAll<HTMLElement>('.page')].filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.className),
+    ...[...document.querySelectorAll<HTMLElement>('.page, .m-scroll')].filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.className),
   ]);
   expect(wide, 'no horizontal scroll').toEqual([]);
 }

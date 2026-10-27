@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type NotatedSymbol, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
+import { introId, lessonIntros } from '../../game/intro';
+import { ALL_LESSONS } from '../../game/path';
 import { defaultProgress, type Progress } from '../../game/storage';
 import { PATH_UNITS } from '../../game/tracks';
 import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
@@ -316,5 +318,37 @@ describe('lesson preview', () => {
 
   it('is the same every visit', () => {
     expect(lessonPreview('4.1')!.run.exercise.seed).toBe(lessonPreview('4.1')!.run.exercise.seed);
+  });
+
+  // A phone shows that one bar: it has what the title names, not just something new over the lesson before (3.4's half
+  // rest is new over 3.3 too, 7.2 adds no symbol, 4.3 adds half rests as well as half notes).
+  const is = (kind: NotatedSymbol['kind'], value: NotatedSymbol['value'], dots = 0) => (s: NotatedSymbol) =>
+    s.kind === kind && s.value === value && s.dots === dots;
+  const tie = (s: NotatedSymbol): boolean => s.tieToNext;
+  const rest = (s: NotatedSymbol): boolean => s.kind === 'rest';
+  it.each([
+    ['3.4', 'Whole rests', [is('rest', 'whole')]],
+    ['4.3', 'Eighths with half notes', [is('note', 'eighth'), is('note', 'half')]],
+    ['5.3', 'Eighth rests in two-four', [is('rest', 'eighth')]],
+    ['6.3', 'Ties in three-four', [tie]],
+    ['6.4', 'Ties and rests', [tie, rest]],
+    ['7.2', 'Dotted halves in four-four', [is('note', 'half', 1)]],
+    ['7.3', 'Dotted quarter + eighth', [is('note', 'quarter', 1), is('note', 'eighth')]],
+    ['7.4', 'Dotted quarters in three-four', [is('note', 'quarter', 1)]],
+  ])('%s %s: its bar shows what the lesson is about', (id, _title, checks) => {
+    const p = lessonPreview(id)!;
+    const bar = exerciseView(p.run.exercise)!.bars[p.bar];
+    for (const check of checks) expect(bar.symbols.some(check)).toBe(true);
+  });
+
+  it('every lesson shows the symbols it is the first in the path to use (game/intro.ts)', () => {
+    for (const { lesson } of ALL_LESSONS) {
+      const ids = lessonIntros(lesson.id).map(introId).filter((x) => !x.startsWith('meter:'));
+      const p = lessonPreview(lesson.id)!;
+      const shown = new Set(
+        exerciseView(p.run.exercise)!.bars[p.bar].symbols.flatMap((s) => [s.kind + ':' + s.value, ...(s.dots ? ['dotted'] : []), ...(s.tieToNext ? ['ties'] : [])]),
+      );
+      expect(ids.filter((x) => !shown.has(x)), lesson.id).toEqual([]);
+    }
   });
 });

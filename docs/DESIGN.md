@@ -1020,8 +1020,8 @@ How write and hear work is in §3.5, *Write it, hear it*.
   played before 0.11.0 can be played again; the path goes on from its first lesson without two stars (for a player
   with rhythm progress: sol).
 - Every open unit is a button that opens and closes it (the current unit is open). An open unit shows its lessons by
-  name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars; any open lesson can
-  be played again. The current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already
+  name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars, on a second line
+  where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again. The current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already
   says it. A note unit's node shows its note (*sol*), a rhythm unit's its glyph.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
   said once, under the first locked unit: *Opens with 2 stars on every unit N lesson* (since 0.10.0; before, every
@@ -1616,7 +1616,9 @@ reserved for feedback; gold only for rewards (stars, streak, XP).
 | Perfect / great | `#1f8a5b` | `#4cc38a` |
 | Perfect / great text (`--good-ink`) | `#176c47` | `#7ad9a8` |
 | Good (early/late) | `#b7791f` | `#f0b429` |
+| Good text (`--gold-ink`) | `#835d0c` | `#f0c35a` |
 | Miss | `#d64545` | `#ff6b6b` |
+| Miss text (`--miss-ink`) | `#a12f2f` | `#ff9a9a` |
 | Field border (`--field-line`, since 0.12.0) | `#7a8687` | `#738080` |
 | Gold text (`--reward-text`, since 0.19.0) | `#7a540c` | `#f0c35a` |
 | Ink on gold (`--on-reward`, since 0.19.0) | `#161b1c` | `#101415` |
@@ -2169,7 +2171,8 @@ without code changes:
 - Theory content (Learn pages) is stored as structured, translatable content, with its
   sources kept per locale (for example Dutch Wikipedia for Dutch note names, already
   checked in `THEORY-SOURCES.md`).
-- `lang` attribute set from the active locale; right-to-left support is not planned.
+- `lang` attribute set from the active locale, and on each language's name in Settings → Language, which is in that
+  language (*Nederlands*); right-to-left support is not planned.
 - Screen-reader labels for controls; notation itself gets a text alternative
   ("quarter, quarter, half").
 - Focus is never left on the page when the control that had it goes away (`ui/lib/screenFocus.ts`). A new screen puts
@@ -2177,21 +2180,24 @@ without code changes:
   (a field, a sheet); the first screen is left to the page load. So does a screen redrawn in a language picked
   elsewhere, and what Try again brings in place of its message. A button that is busy, or has nothing to do (a Save once
   saved), keeps the focus: it is `aria-disabled`, not disabled, which drops it to the page. A button that gives way to
-  another hands it on (Block and Unblock; Sign out to Sign in). A sheet that closes gives it back to the control that
-  opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or the screen's heading (the
-  level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new phase's heading takes it.
-  On What's new (desktop), Newer or Older that goes away at the end hands it to the one left. In Read notes and Scales a
-  control that a step disables or removes hands it on: an answer that ends the note or the scale (the last sign or key,
-  the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and Start over to the
-  answers (the first name button, sign or piano key, or the next note's staff to write on). There Space and Enter stay
-  the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5, §3.7), so the
-  Enter after one on Next note does not answer with the name button the focus went to. Echo's play button keeps it while
-  the rhythm plays (`aria-disabled`), then Tap it back takes it.
+  another hands it on (Block and Unblock; Sign out to Sign in; Calibrate's Try again to the Tap pad). Reset progress
+  leaves only its line (*Progress was reset.*, read out), so it hands it to the About heading. A sheet that closes gives
+  it back to the control that opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or
+  the screen's heading (the level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new
+  phase's heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it to the one left.
+  In Read notes and Scales a control that a step disables or removes hands it on: an answer that ends the note or the
+  scale (the last sign or key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale
+  and Start over to the answers (the first name button, sign or piano key, or the next note's staff to write on). There
+  Space and Enter stay the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`;
+  §3.5, §3.7), so the Enter after one on Next note does not answer with the name button the focus went to. Echo's play
+  button keeps it while the rhythm plays (`aria-disabled`), then Tap it back takes it.
 - High-contrast theme; big touch targets (≥ 48 px).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,
-  borders and bars. The total after a score (Read notes' "2 / 3", Scales' "1 / 1" on Round done) is `--muted`:
-  `--faint` is 2.7:1 on the page in light.
+  borders and bars. Gold and red text use `--gold-ink` and `--miss-ink` the same way: Play's GOOD · LATE and MISS are
+  4.5:1 or more on the page, on desktop's pad card (Accent soft) and on paper (`src/styles/fieldContrast.test.ts`). The
+  total after a score (Read notes' "2 / 3", Scales' "1 / 1" on Round done) is `--muted`: `--faint` is 2.7:1 on the page
+  in light.
 
 ---
 

@@ -15,6 +15,7 @@ import { Icon } from '../components/Icon';
 import { useDocTitle } from '../hooks';
 import { signed, signedMs } from '../lib/format';
 import { calibrateBackQuery } from '../lib/learnReturn';
+import { focusLost } from '../lib/screenFocus';
 import { hashQuery, Link, navigate, useHash } from '../router';
 import { useStore } from '../store';
 
@@ -58,6 +59,8 @@ export function Calibration(): JSX.Element {
   const clicks = useRef<number[]>([]);
   const rawTaps = useRef<number[]>([]);
   const [pad, setPad] = useState<HTMLButtonElement | null>(null);
+  // Set by Try again, whose button the pad replaces: the pad takes the focus, which would otherwise fall to the page.
+  const focusPad = useRef(false);
   const prefsRef = useRef(state.prefs);
   prefsRef.current = state.prefs;
 
@@ -91,6 +94,12 @@ export function Calibration(): JSX.Element {
     });
   }, [phase, pad]);
 
+  useEffect(() => {
+    if (!pad || !focusPad.current) return;
+    focusPad.current = false;
+    if (focusLost()) pad.focus();
+  }, [pad]);
+
   // Done once the last click has passed.
   useEffect(() => {
     if (phase !== 'measuring') return;
@@ -121,6 +130,7 @@ export function Calibration(): JSX.Element {
     engine().stop();
     rawTaps.current = [];
     setTaps([]);
+    focusPad.current = true;
     setPhase('idle');
   };
 

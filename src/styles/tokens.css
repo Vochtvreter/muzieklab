@@ -52,7 +52,8 @@
   /* Feedback. Names read by src/render/theme.ts: --good = perfect/great, --gold = good (early/late) */
   --good: #1f8a5b;
   --gold: #b7791f;
-  --gold-ink: #9a6a10;
+  /* Gold words (GOOD · LATE on Play): 4.5:1 on the page and on the pad's card (--accent-soft), as --miss-ink is. */
+  --gold-ink: #835d0c;
   --miss: #c23b3b;
   /* Answer feedback fills (Read notes, Learn checks). Green text uses --good-ink: --good is only 4.3:1 on paper. */
   --good-soft: #e3f2ea;

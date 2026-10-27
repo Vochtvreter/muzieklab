@@ -47,8 +47,8 @@ function LevelChip({ info, onOpen, chipRef }: { info: LevelInfo; onOpen(): void;
 }
 
 /**
- * The lesson as a preview (same every visit): a bar that shows what the lesson adds, e.g. a half rest in "Half rests".
- * One bar on phones; two from tablet up, where one bar left most of the card empty.
+ * The lesson as a preview (same every visit): a bar that shows what the lesson is about, e.g. a half rest in "Half
+ * rests" (lessonPreview). One bar on phones; two from tablet up, where one bar left most of the card empty.
  */
 function LessonPreview({ lessonId, wide, count = 1 }: { lessonId: string; wide?: boolean; count?: 1 | 2 }): JSX.Element | null {
   const preview = useMemo(() => lessonPreview(lessonId), [lessonId]);
@@ -142,9 +142,11 @@ export function Home(): JSX.Element {
       {dailyDone && <div className="daily-done">{t('home.dailyDone', { accuracy: Math.round(dailyDone.accuracy) })}</div>}
     </div>
   );
-  // Outlined: Continue is the one filled button on Home.
+  // Outlined: Continue is the one filled button on Home. Its name starts with the words on it, so saying them presses it
+  // (voice control, WCAG 2.5.3).
   const dailyButton = (
-    <button type="button" className="btn btn--outline daily-btn" aria-label={t('home.dailyPlayLabel', { date: dateParts(today).long })} onClick={startDaily}>
+    <button type="button" className="btn btn--outline daily-btn" aria-label={t(dailyDone ? 'home.dailyAgainLabel' : 'home.dailyPlayLabel', { date: dateParts(today).long })}
+      onClick={startDaily}>
       {t(dailyDone ? 'home.dailyAgain' : 'home.dailyPlay')}
     </button>
   );

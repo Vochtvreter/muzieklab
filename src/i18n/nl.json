@@ -89,7 +89,8 @@
     "dailyPlay": "Spelen",
     "dailyAgain": "Nog een keer",
     "dailyDone": "Vandaag gedaan · {accuracy}%",
-    "dailyPlayLabel": "Speel de uitdaging van {date}",
+    "dailyPlayLabel": "Spelen: de uitdaging van {date}",
+    "dailyAgainLabel": "Nog een keer: de uitdaging van {date}",
     "freeHeading": "Vrij oefenen",
     "rhythmTile": "Ritme",
     "rhythmTileSub": "Eindeloos oefenen",
@@ -1717,7 +1718,7 @@
       "circleMajorAria": "Kwintencirkel, majeurtoonsoorten met 2 of meer sterren: {count} van {total}. Nieuw deze ronde: {fresh}.",
       "circleMinorAria": "Kwintencirkel, mineurvormen met 2 of meer sterren: {count} van {total}. Nieuw deze ronde: {fresh}.",
       "noneNew": "geen",
-      "change": "Setup wijzigen",
+      "change": "Instellingen wijzigen",
       "newRound": "Nieuwe ronde"
     }
   },

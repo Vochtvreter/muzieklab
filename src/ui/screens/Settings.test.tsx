@@ -52,9 +52,27 @@ describe('Settings → Reset progress', () => {
     await frame();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reset progress' }));
   });
+
+  it('after Reset, the focus goes to the About heading, not the page: the button and the row button are gone', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset progress' }));
+    const reset = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Reset' });
+    reset.focus();
+    fireEvent.click(reset);
+    expect(screen.getByText('Progress was reset.')).toBeTruthy();
+    await frame();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2, name: 'About' }));
+  });
 });
 
 describe('Settings → Language', () => {
+  it('names each language in its own language (lang), so a screen reader says it in that voice', async () => {
+    render(<App />);
+    const group = await screen.findByRole('group', { name: 'App language' });
+    expect(within(group).getByRole('button', { name: 'English' }).getAttribute('lang')).toBe('en');
+    expect(within(group).getByRole('button', { name: 'Nederlands' }).getAttribute('lang')).toBe('nl');
+  });
+
   it('keeps the focus on the language control: the switch remounts the screen', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'Nederlands' }));

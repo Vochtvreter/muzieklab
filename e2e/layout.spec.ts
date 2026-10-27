@@ -169,6 +169,30 @@ async function expectHeadFits(page: Page): Promise<void> {
   expect(out, 'screen heads').toEqual([]);
 }
 
+/**
+ * What's new keeps its words in their boxes: each kind chip holds its word (Dutch OPGELOST is longer than FIXED), each
+ * row of the desktop list holds its title and line (in Dutch a line on two lines ran into the next row), and the
+ * latest card's title keeps clear of the staff drawing in its corner.
+ */
+async function expectChangelogFits(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll<HTMLElement>('.cl-kind')]
+      .filter((el) => el.getClientRects().length && el.scrollWidth > el.clientWidth + 1)
+      .map((el) => `chip ${el.textContent}: wider than its box`);
+    const rows = [...document.querySelectorAll<HTMLElement>('.cl-nav-item')].flatMap((el) => {
+      const r = el.getBoundingClientRect();
+      const text = el.querySelector('.cl-release-text')!.getBoundingClientRect();
+      return text.top < r.top - 0.5 || text.bottom > r.bottom + 0.5 ? [`row ${el.querySelector('.cl-ver')!.textContent}: its text runs out of the row`] : [];
+    });
+    const staff = document.querySelector('.cl-card-staff')?.getBoundingClientRect();
+    const head = document.querySelector<HTMLElement>('.cl-card--latest .cl-card-head');
+    const end = head ? head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight) : 0;
+    return [...chips, ...rows, ...(staff && end > staff.left + 0.5 ? [`the latest title can run ${(end - staff.left).toFixed(0)} px under the staff`] : [])];
+  });
+  expect(out, "what's new").toEqual([]);
+}
+
 /** Nothing on a staff is cut off at the top of its svg, such as a triplet's 3 over the first row. */
 async function expectStaffNotCut(svg: Locator): Promise<void> {
   const top = (): Promise<number> =>
@@ -427,6 +451,24 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('path: a unit of four-star lessons keeps its stars in its column', async ({ page }) => {
+      known(name, 'path-stars');
+      // Four stars (the diamond, or the 4th star) are wider than three: a unit's five do not fit on one line at 320 px.
+      const four = { stars: 4, bestAccuracy: 97 };
+      const diamond = { stars: 5, bestAccuracy: 100 };
+      await seed(page, { progress: { lessons: { ...SOL_DONE, '1.1': diamond, '1.2': diamond, '1.3': four, '1.4': diamond, '1.5': four } }, prefs: { seenHowTo: true, seenHold: true } });
+      await page.goto('./#/path');
+      await expect(page.getByRole('button', { name: /^Play lesson 2\.5 · / })).toBeVisible();
+      const out = await page.locator('.unit-stars').evaluateAll((rows) =>
+        rows.flatMap((row) => {
+          const right = row.closest('.unit-body')!.getBoundingClientRect().right;
+          return [...row.children].filter((el) => el.getBoundingClientRect().right > right + 1).map((el) => el.getAttribute('aria-label'));
+        }),
+      );
+      expect(out, 'stars past their unit').toEqual([]);
+      await expectNoSideScroll(page);
+    });
+
     test('setup: start button', async ({ page }) => {
       known(name, 'setup');
       await page.goto('./#/setup');
@@ -671,6 +713,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('link', { name: /^What's new/ }).click();
       await expect(page.getByRole('heading', { level: 1, name: "What's new" })).toBeVisible();
       await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
+      await expectChangelogFits(page);
       if (desktopLayout) {
         // Desktop: the releases on the left, the chosen one beside them (the MVP canvas's Desktop · What's new).
         const list = page.getByRole('navigation', { name: 'Releases' });
@@ -3048,6 +3091,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         }
         if (hash.startsWith('#/learn/')) await expectCountsApart(page);
         if (hash.endsWith('/key')) await expectKeyNamesFit(page);
+        if (hash === '#/changelog') {
+          // The latest release first, then one with a fix (its chips are in the list on a phone, on the card on desktop).
+          await expectChangelogFits(page);
+          await page.getByRole('button', { name: /^0\.17\.1/ }).click();
+          await expectChangelogFits(page);
+        }
         await expectHeadFits(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);

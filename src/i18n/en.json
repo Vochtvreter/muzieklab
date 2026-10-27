@@ -90,6 +90,7 @@
     "dailyAgain": "Play again",
     "dailyDone": "Done today · {accuracy}%",
     "dailyPlayLabel": "Play the daily challenge for {date}",
+    "dailyAgainLabel": "Play again: the daily challenge for {date}",
     "freeHeading": "Free practice",
     "rhythmTile": "Rhythm",
     "rhythmTileSub": "Endless exercises",

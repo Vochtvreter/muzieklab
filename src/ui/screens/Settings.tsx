@@ -130,7 +130,7 @@ export function SettingsScreen(): JSX.Element {
     </Section>
   );
   const about = (
-    <Section id="about" title={t('settings.about')}>
+    <Section id="about" title={t('settings.about')} focusable>
       <Link to="/changelog" className="row-link">
         <span className="row-link-text">
           <b>{t('changelog.title')}</b>
@@ -177,8 +177,10 @@ export function SettingsScreen(): JSX.Element {
                 if (state.account.me) progressSync()?.reset();
                 setConfirm(false);
                 setWiped(true);
-                // The button that was pressed is gone: the line under it is read out (ui/lib/announce.ts).
+                // The button that was pressed is gone, and so is the row button: the line under it is read out
+                // (ui/lib/announce.ts), and the focus goes to the section's heading instead of the page.
                 announce(t('settings.resetDone'));
+                requestAnimationFrame(() => document.getElementById('h-about')?.focus({ preventScroll: true }));
               }}>
                 {t('settings.resetConfirm')}
               </button>
@@ -338,7 +340,7 @@ interface SegRowProps<T extends string> {
   label: string;
   group: string;
   value: T;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; lang?: string }[];
   onChange(v: T): void;
   hint: string;
   first?: boolean;
@@ -398,7 +400,7 @@ function LanguageRow({ onChange }: { onChange(code: string): void }): JSX.Elemen
   if (LOCALES.length <= SEGMENTED_LOCALES) {
     return (
       <SegRow label={t('settings.language')} group={t('settings.languageGroup')} value={value} onChange={pick} hint={t('settings.hintLanguage')}
-        options={LOCALES.map((l) => ({ value: l.code, label: l.name }))} from={shownLocale} autoFocus={refocus} first />
+        options={LOCALES.map((l) => ({ value: l.code, label: l.name, lang: l.code }))} from={shownLocale} autoFocus={refocus} first />
     );
   }
   return (

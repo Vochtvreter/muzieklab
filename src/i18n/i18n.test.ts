@@ -184,6 +184,16 @@ describe('locales', () => {
     expect(LOCALES.find((l) => l.code === 'nl')?.name).toBe('Nederlands');
   });
 
+  it("names the daily challenge's button by the words on it first, in every language (WCAG 2.5.3, Label in Name)", () => {
+    for (const { code } of LOCALES) {
+      setLocale(code);
+      for (const [label, words] of [['home.dailyPlayLabel', 'home.dailyPlay'], ['home.dailyAgainLabel', 'home.dailyAgain']]) {
+        expect(t(label, { date: '27' }).toLowerCase(), `${code} ${label}`).toMatch(new RegExp('^' + t(words).toLowerCase() + '\\b'));
+      }
+    }
+    setLocale('en');
+  });
+
   for (const [path, catalog] of Object.entries(catalogs)) {
     const code = path.slice(2, -'.json'.length);
     if (code === 'en') continue;
@@ -321,6 +331,12 @@ describe('Dutch', () => {
     }
     expect(t('apiError.link_invalid')).toBe('Deze link werkt niet meer. Vraag degene die je heeft uitgenodigd om een nieuwe link.');
     expect(t('admin.selfSub')).toBe('Je wachtwoord wijzigen of je account verwijderen doe je in Account.');
+  });
+
+  it('says Change setup one way on every Round done, with no English word in it', () => {
+    setLocale('nl');
+    expect(t('scales.done.change')).toBe(t('notes.done.change'));
+    expect([...flatten(catalogs['./nl.json']).entries()].filter(([, msg]) => /\bsetup\b/i.test(msg)).map(([key]) => key)).toEqual([]);
   });
 
   it('falls back to English for a key a catalog lacks', () => {

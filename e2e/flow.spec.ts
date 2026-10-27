@@ -81,14 +81,16 @@ for (const [name, input] of [['phone', 'pad'], ['desktop', 'key']] as const) {
   });
 }
 
-test('Settings: Reset progress, confirmed, says so; the line is read out, as the buttons are gone', async ({ page }) => {
+test('Settings: Reset progress, confirmed, says so; the line is read out, as the buttons are gone, and the About heading takes the focus', async ({ page }) => {
   await seed(page, { progress: { lessons: SOL_DONE } });
   await page.goto('./#/settings');
   await page.getByRole('button', { name: 'Reset progress' }).click();
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Reset', exact: true }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Reset', exact: true }).focus();
+  await page.keyboard.press('Enter');
   await expect(page.locator('.reset-done')).toHaveText('Progress was reset.');
   await expect(page.locator('.reset-done')).not.toHaveAttribute('role', 'status');
   await expect(announcer(page)).toHaveText('Progress was reset.');
+  await expect(page.getByRole('heading', { level: 2, name: 'About' })).toBeFocused();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('muzieklab.progress.v1') ?? '{}').lessons ?? {})).toEqual({});
 });
 
@@ -837,4 +839,19 @@ test('echo: the play button keeps the focus while the rhythm plays, and Tap it b
     }
     await expect(page.getByText('No plays left'), size).toBeVisible();
   }
+});
+
+test('calibrate: Try again gives the focus to the Tap pad that comes back in its place', async ({ page }) => {
+  test.setTimeout(40_000);
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/calibrate');
+  await expect(pad(page)).toBeVisible();
+  // A key starts the 16 clicks; with no tap on them the run ends on Too few taps, after about 12 s.
+  await page.keyboard.press('j');
+  const again = page.getByRole('button', { name: 'Try again' });
+  await expect(again).toBeVisible({ timeout: 20_000 });
+  await again.focus();
+  await page.keyboard.press('Enter');
+  await expect(pad(page)).toBeFocused();
+  await expect(page.getByText('PRESS THE PAD TO START')).toBeVisible();
 });

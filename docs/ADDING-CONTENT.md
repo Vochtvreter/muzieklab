@@ -93,12 +93,17 @@ Set `PLANNED_CHAPTERS` in `chapters.ts` when the plan grows ("chapter 9 of 11").
 ## A Learning Path unit
 
 1. **Data:** add a `unit(…)` to `UNITS` in `src/game/path.ts`, numbered after the last rhythm unit: a base with every musical
-   setting, and five lessons that each add one thing, the fifth a review with more bars and a faster tempo.
+   setting, and five lessons that each add one thing, the fifth a review with more bars and a faster tempo. Home's
+   Continue card shows a bar with what a lesson is about: the symbols it is the first to use, else what it adds over
+   the lesson before, with the dot, tie or triplet when it has them (`src/ui/lib/lessons.ts`). Where the title names
+   something else, say what the bar must show with `preview` (*Eighths with half notes*: `['note:eighth',
+   'note:half']`; *Dotted quarter + eighth*: `['dotted:quarter', 'note:eighth']`).
 2. **Text:** `path.u{n}.title` and `path.u{n}.l1` … `l5` in `en.json`.
 3. **Place it:** add `['rhythm', n]` to `ORDER` in `src/game/tracks.ts`, where it belongs in the Learning path
    (DESIGN.md §8.2: rhythm units take turns with the note units). The path numbers its units in that order.
 4. **Run `npm test`.** `src/game/path.test.ts` checks the numbering, the texts, that every lesson can be played, and
-   the teaching order of §8.2 in DESIGN.md; `src/game/tracks.test.ts` checks the path order.
+   the teaching order of §8.2 in DESIGN.md; `src/game/tracks.test.ts` checks the path order, and
+   `src/ui/lib/helpers.test.ts` that each lesson's Home preview shows the symbols it introduces.
 
 Then link it from the chapter that explains it: the chapter's `units` in `chapters.ts` (by its number in the path),
 its row of DESIGN.md §9.1 and `LEARN-CHAPTERS.md` §5.

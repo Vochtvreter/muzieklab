@@ -177,3 +177,22 @@ describe('the total beside a score', () => {
     });
   }
 });
+
+// Play's judgement words (GOOD · LATE, MISS: 16 px bold, not large text) sit on the page (--ground) on a phone, on the
+// pad's card (--accent-soft) on desktop, and on a card (--paper) elsewhere (Scales' mistakes, a save that failed): each
+// tone's words are 4.5:1 or more on all three (WCAG 1.4.3), in light and in dark.
+describe('judgement words', () => {
+  const tones = [...css('app.css').matchAll(/\.tone-(good|gold|miss)\s*\{\s*color:\s*var\((--[\w-]+)\);/g)].map((m) => ({ name: m[1], ink: m[2] }));
+
+  it('finds every tone', () => {
+    expect(tones.map((x) => x.name)).toEqual(['good', 'gold', 'miss']);
+  });
+
+  for (const [name, t] of themes) {
+    it(`${name}: each tone is 4.5:1 or more on the page, the pad's card and a card`, () => {
+      for (const x of tones) {
+        for (const surface of ['--ground', '--accent-soft', '--paper']) expect(contrast(t[x.ink], t[surface]), `${x.name} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+});
