@@ -53,7 +53,7 @@ function barsOf(svg: SVGSVGElement): { left: number; right: number; notes: Eleme
 const intoBarLine = (svg: SVGSVGElement): number[] =>
   barsOf(svg).flatMap((b, i) => (b.notes.some((n) => Math.max(...[...n.querySelectorAll('path')].flatMap((p) => points(p).map(([x]) => x))) >= b.right) ? [i + 1] : []));
 
-/** Lesson 8.5 (Unit 8 review) with seed 150: bar 3 has thirteen notes, bar 7 twelve. */
+/** Lesson 8.5 (Unit 8 review) with seed 150: bars 3 and 7 have twelve symbols each (eleven notes and a rest). */
 const BUSY = ['h q [16 8 16]', 'h [8 16 16] [16 8 16]', '[16 8 16] 8 8r [16 16 16 16] [16 8 16]', 'h q [16 8 16]', 'h q [16 8 16]', 'h [8 16 16] [16 8 16]', '[16 16 16 16] qr [16 16 16 16] [16 8 16]', 'h h'];
 
 /** Counts side by side whose words (13 px mono, 7.8 per letter) overlap, as "a/b". */
@@ -200,7 +200,9 @@ describe('drawStaff', () => {
     }
   });
 
-  it("draws Play's and Results' staff smaller when a busy bar's notes do not fit, so they stay inside their bar", () => {
+  it("shrinkToFit keeps lesson 8.5's busy bars inside their bar lines at the Play and Results widths", () => {
+    // That Play and Results pass shrinkToFit is checked by the layout test "play and results: a busy bar's notes stay
+    // inside it" (e2e/layout.spec.ts).
     const meter = getMeter('4/4');
     const bars = parseBars(meter, BUSY);
     // At full size bar 3 runs into its bar line on a 390 px phone (342 px) and on desktop Results (720 px), bar 7 too.

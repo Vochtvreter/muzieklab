@@ -689,8 +689,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test("play and results: a busy bar's notes stay inside it, clear of its bar line and the staff's edge", async ({ page }) => {
       known(name, 'busy-bars');
-      // Lesson 8.5 (Unit 8 review) with seed 150: bar 3 has thirteen notes, more than its share of the row has room for
-      // at full size on a phone, on tablet Play and on desktop Results. The staff is drawn smaller instead.
+      // Lesson 8.5 (Unit 8 review) with seed 150: bars 3 and 7 have twelve symbols each (eleven notes and a rest), and
+      // at full size bar 3 needs more room than its share of the row on a phone, on tablet Play and on desktop Results.
+      // The staff is drawn smaller instead.
       await seedRun(page, lessonSettings('8.5'), 150);
       await page.goto('./#/play');
       await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();

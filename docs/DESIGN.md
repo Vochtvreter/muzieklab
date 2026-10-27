@@ -1427,6 +1427,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   the staff's end, where the drawing cuts them off. Play draws every window of the exercise at the size the busiest
   one needs, after the time signature each window starts with, so the staff keeps one height as the window moves
   (`fitWindows` in `render/staffDraw.ts`). Learn's examples are drawn smaller the same way (§9.1, Narrow phones).
+  At 0.75 the busiest bars can still run over the bar line, and on a phone past the staff's end, where their last
+  notes are cut off: sixteenths at Setup's Busy density on a phone, on tablet Play and on desktop Results, and lesson
+  8.5 on a 320 px phone (about 1 exercise in 20). A lower floor for the rhythm staff (about 0.65) or a bar per row on a
+  phone is waiting on a design decision.
 - A pitch staff (Read notes, Scales, Learn, Home's Continue card) is drawn at its screen's size, or smaller when its
   notes need more room than its width leaves at that size: a key signature with many signs, sharps and flats before
   the notes, a 320 px phone. A bar first gives up the room VexFlow leaves before its note (on a phone, keys with up to
