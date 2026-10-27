@@ -1471,13 +1471,13 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only *Tap* in the ring,
     without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
     The analog beat counter is 52 px tall, on a phone up to 800 px tall too (84 px on the board, which taller phones
-    keep). Read notes draws a staff more than 8 staff spaces high smaller, at 8 spaces (one more than *On the staff*):
-    a range with ledger lines (about 1.05 for +2 ledger lines, 1.29 for +1), and signs or the cursor that reach far
+    keep). Read notes draws a staff more than 8 staff spaces high smaller, at 8 spaces (*On the staff* is about 7.3):
+    a range with ledger lines (about 1.03 for +2 ledger lines, 1.26 for +1), and signs or the cursor that reach far
     over or under the staff. From 360 px wide its key labels sit beside *Any octave counts*. The scale's name is 18 px
     (22 px on the board), so a long one (*A♯ harmonisch mineur*) stays on one line at 375 px, and Up & down's two
     degree rows are 40 px high, 4 px apart.
   - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
-    0.8, the Read notes staff at 1.15 (not 1.45; about 0.84 and 1.02 with ledger lines) and the Scales staff at 1.1 (not
+    0.8, the Read notes staff at 1.15 (not 1.45; about 0.82 and 1.0 with ledger lines) and the Scales staff at 1.1 (not
     1.25), or smaller still to fit their notes. The floors are lower (pad 72 px, Read notes piano 64 px with its black
     keys kept at 44 px and the white keys' labels below them, Scales piano 110 px), and so are the name buttons
     (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign buttons, the analog

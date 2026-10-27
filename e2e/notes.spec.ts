@@ -384,6 +384,30 @@ test('read notes lesson: Enter and Space on Higher reached with Tab move the not
   await expect(page.locator('.nfeedback')).not.toHaveText(/^You wrote/);
 });
 
+test('read notes: a tap on a staff line writes the note on that line, under the room for a flat over the staff', async ({ page }) => {
+  // B♭ major with extra signs, seed 59: the first note is G♭5, whose flat puts the top line lower in the drawing.
+  const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['Bb'], extras: 'both', tasks: ['write'], playNotes: false };
+  const [first] = generateRound(settings, 59);
+  expect([first.step, first.sign], 'the first note is G♭5 with its flat').toEqual([39, -1]);
+  await seedRun(page, settings, 59);
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/notes/play');
+  const slider = page.getByRole('slider');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Not on the staff yet');
+  // The five lines of the first bar, top to bottom, where the page shows them.
+  const lines = await page.locator('.nplay-staff-svg .vf-stave').first().evaluate((stave) =>
+    [...stave.querySelectorAll('path')].map((p) => {
+      const r = p.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }).sort((a, b) => a.y - b.y),
+  );
+  expect(lines).toHaveLength(5);
+  for (const [k, text] of ['the top line', 'the 4th line', 'the middle line', 'the 2nd line', 'the bottom line'].entries()) {
+    await page.mouse.click(lines[k].x, lines[k].y);
+    await expect(slider).toHaveAttribute('aria-valuetext', text);
+  }
+});
+
 test('read notes in Dutch: times with a decimal comma, on the desktop play screen and on Round done', async ({ page }) => {
   const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, count: 10, playNotes: false };
   const seed = 4242;

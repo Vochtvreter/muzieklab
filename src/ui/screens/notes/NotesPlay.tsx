@@ -328,9 +328,14 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     [notes, page.from, page.to, i, done, ghost],
   );
   // Room on the staff for every note in this clef and key, hidden ones too: the staff keeps one size from page to page.
+  // A round that writes notes keeps room for the two ends of the range too, where the note being written and the
+  // cursor's box round it can go.
   const fitNotes = useMemo(
-    () => notes.filter((n) => n.clef === note.clef && n.key === note.key).map((n): PitchNote => ({ step: n.step, sign: n.sign })),
-    [notes, note.clef, note.key],
+    () => [
+      ...notes.filter((n) => n.clef === note.clef && n.key === note.key).map((n): PitchNote => ({ step: n.step, sign: n.sign })),
+      ...(big ? [steps[0], steps[steps.length - 1]].map((step): PitchNote => ({ step, sign: null })) : []),
+    ],
+    [notes, note.clef, note.key, big, steps],
   );
   const marks = useMemo(
     () => notes.slice(page.from, page.to).map((_, j) => markOf(answers[page.from + j]) ?? (page.from + j === i && ghost !== null && !done ? 'ghost' : undefined)),

@@ -931,6 +931,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (portraitLayout) await expectFits(page);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      // At either end of the range, the note and the cursor's box round it are drawn whole, on a staff of one size.
+      for (const [button, end] of [['Higher', 'aria-valuemax'], ['Lower', 'aria-valuemin']]) {
+        const to = (await staff.getAttribute(end))!;
+        while ((await staff.getAttribute('aria-valuenow')) !== to) await page.getByRole('button', { name: button }).click();
+        await expectStavesFit(page);
+        expect((await staff.locator('svg').boundingBox())!.height, `the staff's height with the note at its ${end}`).toBeCloseTo(svg.height, 1);
+      }
       await page.getByRole('button', { name: 'Check' }).click();
       await expect(page.locator('.nfeedback')).toHaveText(/^(Right|You wrote)/);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
@@ -1085,6 +1092,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'notes-sign-above');
       // B♭ major with extra signs, seed 59: the first note is G♭5, whose flat reaches more than two spaces over the staff.
       const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['Bb'], extras: 'both' };
+      const [first] = generateRound(settings, 59);
+      expect([first.step, first.sign], 'the first note is G♭5 with its flat').toEqual([39, -1]);
       await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 59, focus: [] });
       await page.goto('./#/notes/play');
       await expect(page.getByRole('img', { name: /staff in B♭ major/ })).toBeVisible();
