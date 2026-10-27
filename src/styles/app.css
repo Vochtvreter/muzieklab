@@ -1476,11 +1476,12 @@ button.lesson-item:active:not(:disabled) {
   }
 }
 /* A unit's five lessons with four stars each (the diamond, the 4th star) take a second line on a 320 px phone, instead
-   of running out of the unit and making the list scroll sideways. */
+   of running out of the unit and making the list scroll sideways. The lines are 28 px apart, twice the 14 px each
+   lesson's hit area reaches above and below its stars: the areas meet, so a tap on one line never opens the other's. */
 .unit-stars {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 6px;
+  gap: 28px 6px;
   font-size: 12px;
   letter-spacing: -1px;
   color: var(--rule);

@@ -841,16 +841,18 @@ test('echo: the play button keeps the focus while the rhythm plays, and Tap it b
   }
 });
 
-test('calibrate: Try again gives the focus to the Tap pad that comes back in its place', async ({ page }) => {
+test('calibrate: the result takes the focus from the Tap pad, and Try again gives it to the pad that comes back', async ({ page }) => {
   test.setTimeout(40_000);
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/calibrate');
   await expect(pad(page)).toBeVisible();
-  // A key starts the 16 clicks; with no tap on them the run ends on Too few taps, after about 12 s.
-  await page.keyboard.press('j');
+  // Space on the focused pad starts the 16 clicks; with no tap on them the run ends on Too few taps, after about 12 s,
+  // and its Try again takes the focus.
+  await pad(page).focus();
+  await page.keyboard.press(' ');
   const again = page.getByRole('button', { name: 'Try again' });
   await expect(again).toBeVisible({ timeout: 20_000 });
-  await again.focus();
+  await expect(again).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(pad(page)).toBeFocused();
   await expect(page.getByText('PRESS THE PAD TO START')).toBeVisible();

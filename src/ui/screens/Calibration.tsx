@@ -61,6 +61,9 @@ export function Calibration(): JSX.Element {
   const [pad, setPad] = useState<HTMLButtonElement | null>(null);
   // Set by Try again, whose button the pad replaces: the pad takes the focus, which would otherwise fall to the page.
   const focusPad = useRef(false);
+  // Set when the run ends with the focus on the pad, which the result replaces: its first button takes the focus.
+  const focusResult = useRef(false);
+  const actions = useRef<HTMLDivElement>(null);
   const prefsRef = useRef(state.prefs);
   prefsRef.current = state.prefs;
 
@@ -76,6 +79,11 @@ export function Calibration(): JSX.Element {
     setPhase('measuring');
   };
 
+  const finish = (): void => {
+    focusResult.current = !!pad && pad === document.activeElement;
+    setPhase('done');
+  };
+
   // Input: the first press starts the clicks; later presses are measured.
   useEffect(() => {
     if (phase === 'done') return;
@@ -88,7 +96,7 @@ export function Calibration(): JSX.Element {
         rawTaps.current.push(engine().eventToAudioTime(ts));
         const m = matchedTaps(rawTaps.current, clicks.current);
         setTaps(m);
-        if (m.length >= CLICKS) setPhase('done');
+        if (m.length >= CLICKS) finish();
       },
       up: () => undefined,
     });
@@ -100,15 +108,22 @@ export function Calibration(): JSX.Element {
     if (focusLost()) pad.focus();
   }, [pad]);
 
+  // The result's first button, Save or else Try again, takes the focus from the pad it replaces.
+  useEffect(() => {
+    if (phase !== 'done' || !focusResult.current) return;
+    focusResult.current = false;
+    if (focusLost()) actions.current?.querySelector('button')?.focus();
+  }, [phase]);
+
   // Done once the last click has passed.
   useEffect(() => {
     if (phase !== 'measuring') return;
     const id = window.setInterval(() => {
       const last = clicks.current[clicks.current.length - 1] ?? 0;
-      if (engine().now() > last + 0.6) setPhase('done');
+      if (engine().now() > last + 0.6) finish();
     }, 100);
     return () => window.clearInterval(id);
-  }, [phase]);
+  }, [phase, pad]);
 
   // Leaving without saving restores the stored offset.
   useEffect(
@@ -224,7 +239,7 @@ export function Calibration(): JSX.Element {
               <span className="cal-result-n">{fmt(median)}</span>
               <span className="cal-result-text">{t(resultKey, { count: n, ms: signed(Math.abs(median)).replace(/^[+−]/, '') })}</span>
             </div>
-            <div className="cal-actions m-in">
+            <div ref={actions} className="cal-actions m-in">
               <button type="button" className="btn btn--accent" onClick={save}>
                 {t('calibrate.save')}
               </button>
@@ -238,7 +253,7 @@ export function Calibration(): JSX.Element {
             <div className="card cal-result m-in" role="status">
               <span className="cal-result-text">{t('calibrate.tooFew', { count: n })}</span>
             </div>
-            <div className="cal-actions m-in">
+            <div ref={actions} className="cal-actions m-in">
               <button type="button" className="btn btn--accent" onClick={again}>
                 {t('calibrate.again')}
               </button>

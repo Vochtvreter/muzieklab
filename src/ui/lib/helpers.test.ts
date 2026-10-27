@@ -5,7 +5,7 @@ import { ALL_LESSONS } from '../../game/path';
 import { defaultProgress, type Progress } from '../../game/storage';
 import { PATH_UNITS } from '../../game/tracks';
 import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
-import { continueLesson, lessonOutcome, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
+import { barFeatures, continueLesson, lessonOutcome, lessonPreview, newFeatures, previewFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
 import { barAt, beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
 import { setupHints, startBlockedKey } from './setupHints';
@@ -321,12 +321,15 @@ describe('lesson preview', () => {
   });
 
   // A phone shows that one bar: it has what the title names, not just something new over the lesson before (3.4's half
-  // rest is new over 3.3 too, 7.2 adds no symbol, 4.3 adds half rests as well as half notes).
+  // rest is new over 3.3 too, 7.2 adds no symbol, 4.3 adds half rests as well as half notes, 2.4 only quarter rests,
+  // and 3.2's half rest never fits a three-four exercise).
   const is = (kind: NotatedSymbol['kind'], value: NotatedSymbol['value'], dots = 0) => (s: NotatedSymbol) =>
     s.kind === kind && s.value === value && s.dots === dots;
   const tie = (s: NotatedSymbol): boolean => s.tieToNext;
   const rest = (s: NotatedSymbol): boolean => s.kind === 'rest';
   it.each([
+    ['2.4', 'Quarter and half rests', [is('rest', 'quarter'), is('rest', 'half')]],
+    ['3.2', 'Rests in three-four', [rest]],
     ['3.4', 'Whole rests', [is('rest', 'whole')]],
     ['4.3', 'Eighths with half notes', [is('note', 'eighth'), is('note', 'half')]],
     ['5.3', 'Eighth rests in two-four', [is('rest', 'eighth')]],
@@ -339,6 +342,17 @@ describe('lesson preview', () => {
     const p = lessonPreview(id)!;
     const bar = exerciseView(p.run.exercise)!.bars[p.bar];
     for (const check of checks) expect(bar.symbols.some(check)).toBe(true);
+  });
+
+  // A unit review names nothing: its bar shows what it can of the unit's symbols. Every other lesson's shows all of
+  // what it is about, so a lesson that adds what its exercises never have (3.2's half rest in three-four) says so in
+  // `preview`.
+  it('every lesson but the unit reviews shows all of what it is about', () => {
+    for (const { lesson } of ALL_LESSONS.filter(({ lesson }) => !lesson.id.endsWith('.5'))) {
+      const p = lessonPreview(lesson.id)!;
+      const shown = barFeatures(exerciseView(p.run.exercise)!.bars[p.bar]);
+      expect(previewFeatures(lesson.id).filter((k) => !shown.has(k)), lesson.id).toEqual([]);
+    }
   });
 
   it('every lesson shows the symbols it is the first in the path to use (game/intro.ts)', () => {

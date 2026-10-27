@@ -1021,8 +1021,9 @@ How write and hear work is in §3.5, *Write it, hear it*.
   with rhythm progress: sol).
 - Every open unit is a button that opens and closes it (the current unit is open). An open unit shows its lessons by
   name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars, on a second line
-  where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again. The current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already
-  says it. A note unit's node shows its note (*sol*), a rhythm unit's its glyph.
+  where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again. The
+  current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already says it. A note unit's
+  node shows its note (*sol*), a rhythm unit's its glyph.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
   said once, under the first locked unit: *Opens with 2 stars on every unit N lesson* (since 0.10.0; before, every
   locked unit repeated it).
@@ -2180,17 +2181,18 @@ without code changes:
   (a field, a sheet); the first screen is left to the page load. So does a screen redrawn in a language picked
   elsewhere, and what Try again brings in place of its message. A button that is busy, or has nothing to do (a Save once
   saved), keeps the focus: it is `aria-disabled`, not disabled, which drops it to the page. A button that gives way to
-  another hands it on (Block and Unblock; Sign out to Sign in; Calibrate's Try again to the Tap pad). Reset progress
-  leaves only its line (*Progress was reset.*, read out), so it hands it to the About heading. A sheet that closes gives
-  it back to the control that opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or
-  the screen's heading (the level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new
-  phase's heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it to the one left.
-  In Read notes and Scales a control that a step disables or removes hands it on: an answer that ends the note or the
-  scale (the last sign or key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale
-  and Start over to the answers (the first name button, sign or piano key, or the next note's staff to write on). There
-  Space and Enter stay the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`;
-  §3.5, §3.7), so the Enter after one on Next note does not answer with the name button the focus went to. Echo's play
-  button keeps it while the rhythm plays (`aria-disabled`), then Tap it back takes it.
+  another hands it on (Block and Unblock; Sign out to Sign in; Calibrate's Try again to the Tap pad, and the Tap pad,
+  when the run ends, to Save or else Try again). Reset progress leaves only its line (*Progress was reset.*, read out),
+  so it hands it to the About heading. A sheet that closes gives it back to the control that opened it, else to Pause on
+  Play (How to play, the intro and Ready open by themselves) or the screen's heading (the level-up sheet). Echo's Tap it
+  back and Hear again swap the screen inside Play, so the new phase's heading takes it. On What's new (desktop), Newer
+  or Older that goes away at the end hands it to the one left. In Read notes and Scales a control that a step disables
+  or removes hands it on: an answer that ends the note or the scale (the last sign or key, the staff written on and
+  checked) to Next note or Next scale; Hint, Next note, Next scale and Start over to the answers (the first name button,
+  sign or piano key, or the next note's staff to write on). There Space and Enter stay the exercise's keys, as after a
+  click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5, §3.7), so the Enter after one on Next note does
+  not answer with the name button the focus went to. Echo's play button keeps it while the rhythm plays
+  (`aria-disabled`), then Tap it back takes it.
 - High-contrast theme; big touch targets (≥ 48 px).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,

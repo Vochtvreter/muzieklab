@@ -46,7 +46,8 @@ function settingFeatures(s: Settings): Set<string> {
   return f;
 }
 
-function barFeatures(bar: NotatedBar): Set<string> {
+/** What a bar shows, as feature keys: 'rest:half', 'dotted', 'dotted:quarter', 'ties', 'triplets'. */
+export function barFeatures(bar: NotatedBar): Set<string> {
   const f = new Set<string>();
   for (const sym of bar.symbols) {
     f.add(sym.kind + ':' + sym.value);
@@ -69,11 +70,12 @@ export function newFeatures(lessonId: string): string[] {
 
 /**
  * What the Home preview's bar shows: the lesson's `preview` (path.ts) where its title names more than its symbols do,
- * else the symbols it is the first in the path to use (game/intro.ts: the whole rest of "Whole rests", whose half rest
- * is new over the lesson before too), else what it adds over the lesson before; with the dot, the tie or the triplet
- * whenever the lesson has them, as their units are about them ("Dotted halves in four-four" adds no symbol).
+ * or other ones, else the symbols it is the first in the path to use (game/intro.ts: the whole rest of "Whole rests",
+ * whose half rest is new over the lesson before too), else what it adds over the lesson before; with the dot, the tie
+ * or the triplet whenever the lesson has them, as their units are about them ("Dotted halves in four-four" adds no
+ * symbol).
  */
-function previewFeatures(lessonId: string): string[] {
+export function previewFeatures(lessonId: string): string[] {
   const found = findLesson(lessonId);
   if (!found) return [];
   if (found.lesson.preview) return found.lesson.preview;

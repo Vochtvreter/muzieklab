@@ -466,6 +466,23 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         }),
       );
       expect(out, 'stars past their unit').toEqual([]);
+      // A tap on a lesson's stars opens that lesson, and so does one halfway down to a second line: the 44 px hit areas
+      // of two lines meet without one lying over the other's stars.
+      const last = page.getByRole('button', { name: /^Play lesson 2\.5 · / });
+      await last.scrollIntoViewIfNeeded();
+      const missed = await last.locator('xpath=..').evaluate((row) => {
+        const stars = [...row.querySelectorAll<HTMLElement>('button.lesson-stars')];
+        return stars.flatMap((el) => {
+          const r = el.getBoundingClientRect();
+          const below = stars.map((o) => o.getBoundingClientRect()).find((o) => o.top > r.bottom);
+          const x = r.left + r.width / 2;
+          const ys = [r.top + 1, r.bottom - 1, ...(below ? [(r.bottom + below.top) / 2 - 1] : [])];
+          return ys
+            .filter((y) => document.elementFromPoint(x, y)?.closest('.lesson-stars') !== el)
+            .map((y) => `${el.getAttribute('aria-label')} at ${Math.round(y - r.top)} px`);
+        });
+      });
+      expect(missed, 'taps that open another lesson').toEqual([]);
       await expectNoSideScroll(page);
     });
 
@@ -909,9 +926,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('link', { name: 'Back to results' })).toHaveAttribute('href', '#/results?from=1.1');
 
       // Calibrated from the tip: Save returns to the same run, whose tip is still about how it was played. In place of
-      // Calibrate, one line says the next exercise uses the calibration.
+      // Calibrate, one line says the next exercise uses the calibration. Save takes the focus from the pad it replaces.
+      await pad(page).focus();
       await calibrateAlong(page);
       const save = page.getByRole('button', { name: 'Save' });
+      await expect(save).toBeFocused();
       await expectClickable(save);
       await expectNoSideScroll(page);
       await save.click();

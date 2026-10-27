@@ -8,8 +8,9 @@ export { UNLOCK_STARS } from './track';
 export interface Lesson extends TrackLesson {
   settings: Partial<Settings>; // preset on top of the unit's base
   /**
-   * What the bar of Home's preview must show, where the title names more than the symbols the lesson adds
-   * (ui/lib/lessons.ts): 'note:half', 'rest:eighth', 'dotted:quarter'.
+   * What the bar of Home's preview must show, where the title names more than the symbols the lesson adds, or other
+   * ones (3.2 adds the half rest, which a three-four exercise never has; ui/lib/lessons.ts): 'note:half',
+   * 'rest:eighth', 'dotted:quarter'.
    */
   preview?: string[];
 }
@@ -66,12 +67,12 @@ export const UNITS: Unit[] = [
     { rests: [], bars: 2, tempo: 60 }, // Hold for the length
     { rests: ['quarter'], restAmount: 'few', bars: 2, tempo: 60 }, // Quarter rests
     { rests: ['half'], bars: 4, tempo: 70 }, // Half rests
-    { rests: ['half', 'quarter'], bars: 4, tempo: 80 }, // Quarter and half rests
+    { rests: ['half', 'quarter'], bars: 4, tempo: 80, preview: ['rest:quarter', 'rest:half'] }, // Quarter and half rests
     { rests: ['half', 'quarter'], restAmount: 'many', bars: 8, tempo: 90 }, // Unit review
   ]),
   unit(3, '3/4', { ...BASE, meters: ['3/4'], notes: ['half', 'quarter'], rests: ['quarter'] }, [
     { bars: 2, tempo: 70 }, // Three beats in a bar
-    { rests: ['half', 'quarter'], bars: 4, tempo: 80 }, // Rests in three-four
+    { rests: ['half', 'quarter'], bars: 4, tempo: 80, preview: ['rest:quarter'] }, // Rests in three-four
     { meters: ['4/4'], notes: ['whole', 'half', 'quarter'], density: 'sparse', bars: 4, tempo: 70 }, // Whole notes
     { meters: ['4/4'], notes: ['whole', 'half', 'quarter'], rests: ['whole', 'half', 'quarter'], bars: 4, tempo: 80 }, // Whole rests
     { rests: ['whole', 'half', 'quarter'], bars: 8, tempo: 90 }, // Unit review
