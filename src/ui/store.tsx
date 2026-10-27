@@ -35,13 +35,16 @@ import {
   type Tap,
 } from '../core/api';
 import { Rng } from '../core/rng';
+import { awardAchievements, roundAchievements } from '../game/achievements';
 import { dailyTier } from '../game/daily';
 import { mergePrefs, mergeSynced, sameValue, type Synced } from '../game/merge';
 import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, lessonSettings, recordLessonResult } from '../game/path';
-import { pathLessonOpen } from '../game/tracks';
-import { progressKey } from '../game/track';
+import { passSkills } from '../game/skills';
+import { markSeen, recordNotes, recordRhythm, recordScales, SCALE_CAP_S, type EchoPlays } from '../game/stats';
+import { pathLessonOf, pathLessonOpen } from '../game/tracks';
+import { progressKey, type TrackId } from '../game/track';
 import { xpForResult } from '../game/xp';
 import type { Me } from '../../shared/api';
 import {
@@ -60,6 +63,7 @@ import {
   saveProgress,
   streak,
   sanitizeSettings,
+  type AchievementId,
   type Prefs,
   type Progress,
 } from '../game/storage';
@@ -197,6 +201,13 @@ export function restoreScaleRun(): ScaleRun | null {
   }
 }
 
+/**
+ * A new personal best a run set, for the level-up sheet's "New personal best" row: a lesson played before whose best
+ * accuracy went up (`lesson` is its number in the Learning path, "4.2"), or the daily challenge's best (as dailyBest).
+ * Accuracy as a whole %.
+ */
+export type PersonalBest = { kind: 'lesson'; lesson: string; accuracy: number } | { kind: 'daily'; accuracy: number };
+
 /** What a finished run earned, for Results and the level-up sheet. */
 export interface Reward {
   xp: number;
@@ -207,6 +218,10 @@ export interface Reward {
   streak: number | null;
   /** A daily challenge beat the best daily accuracy so far. */
   dailyBest: boolean;
+  /** Achievements this run earned (game/achievements.ts), in the Progress tab's order. */
+  achievements: AchievementId[];
+  /** A new personal best, or null. */
+  best: PersonalBest | null;
 }
 
 export interface LastResult {
@@ -297,16 +312,20 @@ export type Action =
   | { type: 'prefs'; patch: Partial<Prefs> }
   | { type: 'settings'; settings: Settings }
   | { type: 'start'; run: Run }
-  | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string }
+  /** `echo`: how an Echo round was heard (every play to listen, and the replays among them); none for Tap. */
+  | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string; echo?: EchoPlays }
   | { type: 'resetProgress' }
   | { type: 'noteSettings'; settings: NoteSettings }
   | { type: 'noteStart'; run: NoteRun }
   | { type: 'noteFinish'; answers: NoteAnswer[]; today: string }
-  | { type: 'learnRead'; ids: string[] }
+  | { type: 'learnRead'; ids: string[]; today: string }
   | { type: 'scaleSettings'; settings: ScaleSettings }
   | { type: 'scaleHub'; hub: ScaleHub }
   | { type: 'scaleStart'; run: ScaleRun }
-  | { type: 'scaleFinish'; played: PlayedScale[]; today: string }
+  /** `seconds`: the round's time on its play screen (at most SCALE_CAP_S a scale), for minutes practised. */
+  | { type: 'scaleFinish'; played: PlayedScale[]; today: string; seconds: number }
+  /** Achievements and skill levels met by the progress as it is (once when the app starts: progress from before). */
+  | { type: 'evaluate'; today: string }
   /** The API answered with this account (signed in, or an account change): it is the account from now on. */
   | { type: 'signedIn'; me: Me; notice?: AccountNotice }
   /** The API says nobody is signed in (signed out, the session ended, the account was deleted). */
@@ -338,15 +357,20 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, run: action.run, progress };
     }
     case 'finish': {
-      if (!state.run) return state;
+      const run = state.run;
+      // Scored once: a second finish of the same run must not add its XP and figures again.
+      if (!run || state.last?.run === run) return state;
       // The streak counts a day with real practice: at least one note hit (letting a run play out untouched does not).
       const { result } = action;
       const practised = result.notes.some((n) => n.judgement !== 'miss');
-      const lessonStarsBefore = state.run.lessonId ? (state.progress.lessons[state.run.lessonId]?.stars ?? 0) : 0;
+      const lessonStarsBefore = run.lessonId ? (state.progress.lessons[run.lessonId]?.stars ?? 0) : 0;
+      const before = run.lessonId ? state.progress.lessons[run.lessonId] : undefined;
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
-      if (state.run.lessonId) progress = recordLessonResult(progress, state.run.lessonId, result.stars, result.accuracy);
+      if (run.lessonId) progress = recordLessonResult(progress, run.lessonId, result.stars, result.accuracy);
+      // The Progress tab's figures count real practice too.
+      if (practised) progress = recordRhythm(progress, run.exercise, result, action.today, state.prefs.leniency, action.echo);
       let dailyBest = false;
-      const day = state.run.daily;
+      const day = run.daily;
       const firstDaily = !!day && practised && progress.daily?.day !== day;
       if (day && practised) {
         const prev = progress.daily?.day === day ? progress.daily : null;
@@ -363,12 +387,31 @@ export function reducer(state: AppState, action: Action): AppState {
           dailyBest: Math.max(progress.dailyBest, result.accuracy),
         };
       }
-      const xp = xpForResult(state.run.exercise, result, firstDaily);
+      const xp = xpForResult(run.exercise, result, firstDaily);
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
-      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest };
+      const met = evaluate(progress, action.today, roundAchievements(run.exercise, result, action.echo));
+      progress = met.progress;
+      const best: PersonalBest | null = dailyBest
+        ? { kind: 'daily', accuracy: Math.round(result.accuracy) }
+        : run.lessonId
+          ? lessonBest('rhythm', run.lessonId, before?.bestAccuracy, result.accuracy)
+          : null;
+      const reward: Reward = {
+        xp,
+        xpBefore,
+        xpAfter: xpBefore + xp,
+        streak: practised ? streak(progress.practiceDays, action.today) : null,
+        dailyBest,
+        achievements: met.achievements,
+        best,
+      };
       const { calibrationMs, calibratedAt } = state.prefs;
-      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
+      return { ...state, progress, last: { run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
+    }
+    case 'evaluate': {
+      const { progress } = evaluate(state.progress, action.today);
+      return progress === state.progress ? state : { ...state, progress };
     }
     case 'signedIn': {
       // The same account again (GET /me, a change of name…) keeps its sync status; another one starts over.
@@ -428,11 +471,23 @@ export function reducer(state: AppState, action: Action): AppState {
       progress = { ...progress, notes: { ...progress.notes, weak: updateWeak(progress.notes.weak, run.notes, given) } };
       const lessonKey = run.lesson ? progressKey(run.lesson.track, run.lesson.id) : null;
       const lessonStarsBefore = lessonKey ? (progress.lessons[lessonKey]?.stars ?? 0) : 0;
+      const before = lessonKey ? progress.lessons[lessonKey] : undefined;
       if (lessonKey) progress = recordLessonResult(progress, lessonKey, result.stars, result.accuracy);
+      if (practised) progress = recordNotes(progress, run.notes, given, run.settings, action.today);
       const xp = noteRoundXp(run.settings, result);
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
-      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest: false };
+      const met = evaluate(progress, action.today);
+      progress = met.progress;
+      const reward: Reward = {
+        xp,
+        xpBefore,
+        xpAfter: xpBefore + xp,
+        streak: practised ? streak(progress.practiceDays, action.today) : null,
+        dailyBest: false,
+        achievements: met.achievements,
+        best: run.lesson ? lessonBest(run.lesson.track, run.lesson.id, before?.bestAccuracy, result.accuracy) : null,
+      };
       return { ...state, progress, noteLast: { run, answers: given, result, reward, lessonStarsBefore } };
     }
     case 'scaleSettings':
@@ -455,18 +510,51 @@ export function reducer(state: AppState, action: Action): AppState {
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
       const starsBefore = progress.scales.stars;
       progress = { ...progress, scales: { ...progress.scales, stars: updateScaleStars(starsBefore, result) } };
+      if (practised) progress = recordScales(progress, Math.min(action.seconds, SCALE_CAP_S * action.played.length), action.today);
       const xp = scaleRoundXp(run.settings, result);
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
-      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest: false };
+      const met = evaluate(progress, action.today);
+      progress = met.progress;
+      const reward: Reward = {
+        xp,
+        xpBefore,
+        xpAfter: xpBefore + xp,
+        streak: practised ? streak(progress.practiceDays, action.today) : null,
+        dailyBest: false,
+        achievements: met.achievements,
+        best: null,
+      };
       return { ...state, progress, scaleLast: { run, played: action.played, result, reward, starsBefore } };
     }
     case 'learnRead': {
       const add = action.ids.filter((id) => !state.progress.learnRead.includes(id));
-      if (add.length === 0) return state;
-      return { ...state, progress: { ...state.progress, learnRead: [...state.progress.learnRead, ...add].sort() } };
+      // A quick check answered right is theory practised (a section read again too): Theory's review clears.
+      const seen = state.progress.stats.seen.theory;
+      if (add.length === 0 && seen !== undefined && seen >= action.today) return state;
+      let progress = add.length ? { ...state.progress, learnRead: [...state.progress.learnRead, ...add].sort() } : state.progress;
+      progress = evaluate(markSeen(progress, 'theory', action.today), action.today).progress;
+      return { ...state, progress };
     }
   }
+}
+
+/**
+ * Progress with what it now meets marked on `today`: the 7-day streak and `earned` (what a round earned on its own)
+ * as achievements, and every skill level whose checks are met. `achievements` lists those new to it.
+ */
+function evaluate(p: Progress, today: string, earned: AchievementId[] = []): { progress: Progress; achievements: AchievementId[] } {
+  const a = awardAchievements(p, today, earned);
+  return { progress: passSkills(a.progress, today).progress, achievements: a.added };
+}
+
+/**
+ * A lesson played before whose best accuracy this round beat: a new personal best (by its Learning path number). Beaten
+ * as shown, in whole %: 87.45% after 87.4% is no new best.
+ */
+function lessonBest(track: TrackId, ref: string, was: number | undefined, accuracy: number): PersonalBest | null {
+  if (was === undefined || !(Math.round(accuracy) > Math.round(was))) return null;
+  return { kind: 'lesson', lesson: pathLessonOf(track, ref)?.id ?? progressKey(track, ref), accuracy: Math.round(accuracy) };
 }
 
 /**
@@ -655,6 +743,8 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
   }, []);
   useEffect(() => {
     first.current = false;
+    // Progress from before (or from an older app) gets the achievements and skill levels it already meets.
+    dispatch({ type: 'evaluate', today: todayIso() });
   }, []);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);

@@ -13,6 +13,7 @@ const ITEMS: { to: Route; key: string; icon: IconName }[] = [
   { to: '/', key: 'nav.home', icon: 'home' },
   { to: '/path', key: 'nav.path', icon: 'path' },
   { to: '/learn', key: 'nav.learn', icon: 'book' },
+  { to: '/progress', key: 'nav.progress', icon: 'progress' },
   { to: '/settings', key: 'nav.settings', icon: 'sliders' },
 ];
 

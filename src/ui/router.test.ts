@@ -50,6 +50,17 @@ describe('parseHash', () => {
     expect(hashQuery('#/privacy?from=signin').get('from')).toBe('signin');
   });
 
+  it('knows the Progress tab, its Skill levels and each of the six skills, and nothing else under it', () => {
+    expect(parseHash('#/progress')).toBe('/progress');
+    expect(parseHash('#/progress/skills')).toBe('/progress/skills');
+    for (const s of ['rhythm', 'ear', 'treble', 'bass', 'scales', 'theory']) expect(parseHash('#/progress/skills/' + s)).toBe('/progress/skills/' + s);
+    expect(parseHash('#/progress/skills/bass/')).toBe('/progress/skills/bass');
+    expect(parseHash('#/progress/skills/piano')).toBe('/');
+    expect(parseHash('#/progress/skills/Rhythm')).toBe('/');
+    expect(parseHash('#/progress/rhythm')).toBe('/');
+    expect(parseHash('#/progress/skills/rhythm/more')).toBe('/');
+  });
+
   it('still parses the routes from before', () => {
     expect(parseHash('')).toBe('/');
     expect(parseHash('#/learn/8?s=8.2')).toBe('/learn/8');
@@ -65,5 +76,7 @@ describe('routeParam', () => {
     expect(routeParam('/admin/invite', '/admin/account/')).toBeNull();
     expect(routeParam(parseHash('#/admin/feedback/' + ID), '/admin/feedback/')).toBe(ID);
     expect(routeParam('/admin/feedback', '/admin/feedback/')).toBeNull();
+    expect(routeParam(parseHash('#/progress/skills/treble'), '/progress/skills/')).toBe('treble');
+    expect(routeParam('/progress/skills', '/progress/skills/')).toBeNull();
   });
 });

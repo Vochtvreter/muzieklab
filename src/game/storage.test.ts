@@ -15,6 +15,8 @@ import {
   addPracticeDay,
   defaultNoteNames,
   defaultProgress,
+  defaultStats,
+  isEmptyProgress,
   loadPrefs,
   loadProgress,
   localDateIso,
@@ -22,7 +24,11 @@ import {
   saveAccount,
   savePrefs,
   saveProgress,
+  shiftDay,
   streak,
+  daysBetween,
+  mondayOf,
+  weekdayOf,
   type Progress,
 } from './storage';
 
@@ -70,9 +76,69 @@ describe('prefs and progress storage', () => {
       notes: { settings: { ...DEFAULT_NOTE_SETTINGS, keys: ['G', 'Eb'], mixKeys: true }, weak: { 'treble:38': 3, 'bass:21': 1 } },
       scales: { settings: { ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys: ['D', 'Bb'], types: ['major', 'harmonic'] }, stars: { 'D-major': 3, 'E-harmonic': 1 } },
       learnRead: ['8.1', '8.2'],
+      stats: {
+        days: {
+          '2026-10-16': { sec: 754, rounds: 3, acc: 251, off: -412, hits: 31, cells: { quarter: [1690, 1800], rests: [420, 500] } },
+          '2026-10-17': { sec: 60, rounds: 0, acc: 0, off: 0, hits: 0, cells: {} },
+        },
+        clefs: { treble: [41, 48], bass: [7, 10] },
+        noteMs: { 'treble:38': [9400, 4], 'bass:21': [1200, 1] },
+        lastKey: { key: 'G', clef: 'treble' },
+        reading: { 'treble:1': [95, 1450], 'bass:4': [80, 0] },
+        echo: { '1': [3, 4], '5': [0, 2] },
+        seen: { rhythm: '2026-10-17', treble: '2026-10-16' },
+      },
+      achievements: { streak7: '2026-10-12', perfectBar: '2026-10-16' },
+      skills: { 'rhythm:1': '2026-10-12', 'theory:10': '2026-10-17' },
     };
     saveProgress(progress);
     expect(loadProgress()).toEqual(progress);
+  });
+
+  it('reads a save from before the Progress tab with empty figures, achievements and skill levels', () => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ xp: 120, practiceDays: ['2026-10-17'] }));
+    expect(loadProgress()).toMatchObject({ xp: 120, stats: defaultStats(), achievements: {}, skills: {} });
+  });
+
+  it('repairs the Progress tab’s figures field by field, and keeps the newest 42 days', () => {
+    const days: Record<string, unknown> = {};
+    for (let i = 0; i < 50; i++) days[shiftDay('2026-09-01', i)] = { sec: 30, rounds: 1, acc: 80, off: 5, hits: 2, cells: {} };
+    days['2026-10-20'] = { sec: 99999.4, rounds: 2.4, acc: 900, off: -12.6, hits: -3, cells: { ties: [7, 5], half: [3.2, 4], bogus: [1, 2], quarter: [1, 0], rests: 'x' } };
+    days['not a day'] = { sec: 1 };
+    days['2026-10-19'] = 'bad';
+    localStorage.setItem(
+      PROGRESS_KEY,
+      JSON.stringify({
+        stats: {
+          days,
+          clefs: { treble: [12, 10], bass: [3, 0], alto: [1, 1] },
+          noteMs: { 'treble:38': [99999, 2], 'x:1': [1, 1], 'bass:21': [100, 1, 3] },
+          lastKey: { key: 'H', clef: 'treble' },
+          reading: { 'treble:1': [120, -5], 'treble:11': [90, 1], 'bass:3': [88.6, 1499.5] },
+          echo: { '1': [2.6, 9], '9': [1, 1], '2': ['x', 1] },
+          seen: { rhythm: '2026-10-17', theory: 'yesterday', piano: '2026-10-17' },
+        },
+        achievements: { streak7: '2026-10-12', perfectBar: 5, hundredTaps: '2026-10-12' },
+        skills: { 'rhythm:1': '2026-10-12', 'rhythm:11': '2026-10-12', 'piano:1': '2026-10-12', 'ear:0': '2026-10-12', 'bass:10': 'x' },
+      }),
+    );
+    const s = loadProgress().stats;
+    const kept = Object.keys(s.days).sort();
+    expect(kept).toHaveLength(42);
+    expect(kept[kept.length - 1]).toBe('2026-10-20');
+    // 2026-10-19 was not a record: the newest 42 valid days are Sep 8 to Oct 18, and Oct 20.
+    expect(kept[0]).toBe('2026-09-08');
+    expect(kept).not.toContain('2026-10-19');
+    expect(s.days['2026-10-20']).toEqual({ sec: 86400, rounds: 2, acc: 200, off: -13, hits: 0, cells: { ties: [5, 5], half: [3, 4] } });
+    expect(s.clefs).toEqual({ treble: [10, 10] });
+    expect(s.noteMs).toEqual({ 'treble:38': [30000, 2] });
+    expect(s.lastKey).toBeNull();
+    expect(s.reading).toEqual({ 'treble:1': [100, 0], 'bass:3': [89, 1500] });
+    expect(s.echo).toEqual({ '1': [3, 5] });
+    expect(s.seen).toEqual({ rhythm: '2026-10-17' });
+    const p = loadProgress();
+    expect(p.achievements).toEqual({ streak7: '2026-10-12' });
+    expect(p.skills).toEqual({ 'rhythm:1': '2026-10-12' });
   });
 
   it('keeps valid Read notes weak spots and Learn sections only', () => {
@@ -271,6 +337,26 @@ describe('helpers', () => {
     const p: Progress = { ...defaultProgress(), practiceDays: ['2026-10-17'] };
     expect(addPracticeDay(p, '2026-10-17')).toBe(p);
     expect(addPracticeDay(p, '2026-10-16').practiceDays).toEqual(['2026-10-16', '2026-10-17']);
+  });
+  it('counts days and weekdays across months, years and DST changes', () => {
+    expect(shiftDay('2026-10-25', 1)).toBe('2026-10-26'); // EU DST change
+    expect(daysBetween('2026-10-17', '2026-10-17')).toBe(0);
+    expect(daysBetween('2026-10-01', '2026-10-25')).toBe(24);
+    expect(daysBetween('2025-12-31', '2026-03-01')).toBe(60);
+    expect(daysBetween('2026-10-25', '2026-10-01')).toBe(-24);
+    expect(weekdayOf('2026-10-19')).toBe(0); // a Monday
+    expect(weekdayOf('2026-10-25')).toBe(6); // a Sunday
+    expect(mondayOf('2026-10-25')).toBe('2026-10-19');
+    expect(mondayOf('2026-01-01')).toBe('2025-12-29');
+  });
+  it('isEmptyProgress sees progress that only has the Progress tab’s figures, an achievement or a skill level', () => {
+    expect(isEmptyProgress(defaultProgress())).toBe(true);
+    const day = { sec: 20, rounds: 0, acc: 0, off: 0, hits: 0, cells: {} };
+    expect(isEmptyProgress({ ...defaultProgress(), stats: { ...defaultStats(), days: { '2026-10-17': day } } })).toBe(false);
+    expect(isEmptyProgress({ ...defaultProgress(), stats: { ...defaultStats(), seen: { theory: '2026-10-17' } } })).toBe(false);
+    expect(isEmptyProgress({ ...defaultProgress(), stats: { ...defaultStats(), lastKey: { key: 'C', clef: 'bass' } } })).toBe(false);
+    expect(isEmptyProgress({ ...defaultProgress(), achievements: { perfectBar: '2026-10-17' } })).toBe(false);
+    expect(isEmptyProgress({ ...defaultProgress(), skills: { 'scales:1': '2026-10-17' } })).toBe(false);
   });
 });
 

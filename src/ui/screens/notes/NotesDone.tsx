@@ -25,7 +25,7 @@ import { useElementWidth } from '../../../render/theme';
 import { formatDecimal, t, tx } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
-import { LevelUpContent, OutcomeBadge } from '../../components/Reward';
+import { AchievementBadges, LevelUpContent, OutcomeBadge } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
 import { andList, starsLabel } from '../../lib/format';
@@ -92,6 +92,8 @@ export function NotesDone(): JSX.Element | null {
     if (lesson) startLesson(lesson.track, lesson.id, { replace: true });
   };
   const outcomeBadge = outcome && outcome.kind !== 'passed' ? <OutcomeBadge outcome={outcome} /> : null;
+  // Achievements the round earned without a level (a 7-day streak): badges here; with a level, the level-up sheet lists them.
+  const achieved = leveledUp ? [] : reward.achievements;
 
   const score = (
     <>
@@ -112,7 +114,12 @@ export function NotesDone(): JSX.Element | null {
         </div>
       </div>
 
-      {outcomeBadge && <div className="badges">{outcomeBadge}</div>}
+      {(outcomeBadge || achieved.length > 0) && (
+        <div className="badges">
+          {outcomeBadge}
+          <AchievementBadges ids={achieved} />
+        </div>
+      )}
     </>
   );
 
@@ -220,7 +227,8 @@ export function NotesDone(): JSX.Element | null {
       </div>
       {sheet && (
         <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="levelup" labelledBy="leveluptitle" maxWidth={bp === 'desktop' ? 460 : undefined}>
-          <LevelUpContent xpBefore={reward.xpBefore} xpAfter={reward.xpAfter} onDone={() => setLevelUp(null)} />
+          <LevelUpContent xpBefore={reward.xpBefore} xpAfter={reward.xpAfter} achievements={reward.achievements} best={reward.best}
+            onDone={() => setLevelUp(null)} />
         </Sheet>
       )}
     </ExerciseFrame>

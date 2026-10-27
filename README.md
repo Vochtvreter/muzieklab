@@ -19,7 +19,11 @@ invitation only and optional (the app needs none): sign in from Settings → Acc
 password, sign out every device, and download or delete your data; admins invite people with a link they send
 themselves, and manage roles, blocking and premium. A privacy statement is in Settings → About. 0.15.0 keeps your
 progress on your account: signed in, it is saved and merged across your devices, and nothing done before signing in is
-lost. Accounts need the API (`server/`); a site without it shows no Account section. On phone, tablet and desktop, in light and dark. In English
+lost. Accounts need the API (`server/`); a site without it shows no Account section. 0.19.0 adds the Progress tab
+(the tabs are Home · Path · Learn · Progress · Settings): Rhythm, Notes and Scales views with your level, a streak
+calendar, accuracy, timing and minutes, a skill map of rhythm cells with *Practice weak spots*, notes per clef and the
+slowest notes, and stars per scale; skill levels (six skills of ten levels each); five achievements; and a level-up
+sheet that shows what the run unlocked. On phone, tablet and desktop, in light and dark. In English
 and Dutch (Settings → Language); adding a language is one new catalog, see [DESIGN.md §11](docs/DESIGN.md).
 
 ## Run it

@@ -33,7 +33,7 @@ export function levelStart(level: number): number {
 export const RANKS = ['tick', 'count', 'measure', 'groove', 'metronome', 'maestro'] as const;
 export type Rank = (typeof RANKS)[number];
 /** The level each rank starts at. */
-const RANK_FROM: Record<Rank, number> = { tick: 1, count: 3, measure: 5, groove: 8, metronome: 12, maestro: 16 };
+export const RANK_FROM: Record<Rank, number> = { tick: 1, count: 3, measure: 5, groove: 8, metronome: 12, maestro: 16 };
 
 export function rankOf(level: number): Rank {
   let rank: Rank = 'tick';

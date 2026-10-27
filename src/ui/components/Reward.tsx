@@ -1,17 +1,31 @@
 /**
  * v1.1 rewards: the XP bar, the daily challenge's date tile, Copy code, and the level sheet (Home's level details, and
- * the level-up after a result).
+ * the level-up after a result, which since v1.5 also lists the achievements and the personal best the run earned).
  */
 import { useEffect, useState } from 'react';
+import type { AchievementId } from '../../game/storage';
 import { UNLOCK_STARS, type LessonOutcome } from '../../game/track';
 import { levelInfo, rankOf, RANKS, type LevelInfo } from '../../game/xp';
 import { dateParts, t } from '../../i18n';
 import { useReducedMotion } from '../hooks';
+import { rich } from '../lib/format';
+import { Link } from '../router';
+import type { PersonalBest } from '../store';
 import { Icon } from './Icon';
 
 const rankName = (info: LevelInfo): string => t('rank.' + info.rank);
 
 /** The gold XP bar and its one label, "55 XP to level 8" (`next`: false while a level-up still fills the bar). */
+/** "12-day streak" with a gold dot: Home's and the Progress tab's streak chip on phone (and Home on tablet). */
+export function StreakPill({ days }: { days: number }): JSX.Element {
+  return (
+    <div className="streak-pill">
+      <span className="streak-dot" aria-hidden="true" />
+      {t('streak.pill', { count: days })}
+    </div>
+  );
+}
+
 export function XpBar({ info, fill, next = true }: { info: LevelInfo; fill?: number; next?: boolean }): JSX.Element {
   const pct = fill ?? (info.span > 0 ? info.into / info.span : 0);
   return (
@@ -122,12 +136,70 @@ export function CodeCopy({ code, className }: { code: string; className: string 
   );
 }
 
+/** The level-up rows fade in one after another, the first once the sheet is up (App design canvas, Resolve · Level up). */
+const ROW_DELAY_MS = 450;
+const ROW_STEP_MS = 150;
+
+/**
+ * The level-up sheet's list under the XP bar: an "Achievement unlocked" row for each achievement the run earned, then
+ * "New personal best" when the run set one (a lesson played before, or the daily challenge).
+ */
+function RewardRows({ achievements, best }: { achievements: readonly AchievementId[]; best: PersonalBest | null }): JSX.Element {
+  const delay = (i: number): { animationDelay: string } => ({ animationDelay: ROW_DELAY_MS + i * ROW_STEP_MS + 'ms' });
+  return (
+    <ul className="levelup-rows">
+      {achievements.map((id, i) => (
+        <li key={id} className="levelup-row m-in" style={delay(i)}>
+          <span className="levelup-row-icon" aria-hidden="true">
+            <Icon name="medal" size={22} />
+          </span>
+          <span className="levelup-row-text">
+            <span className="levelup-row-eyebrow">{t('levelUp.achievement')}</span>
+            <b className="levelup-row-title">{t(`achievements.${id}.name`)}</b>
+            <span className="levelup-row-line">{t(`achievements.${id}.text`)}</span>
+          </span>
+        </li>
+      ))}
+      {best && (
+        <li className="levelup-row m-in" style={delay(achievements.length)}>
+          <span className="levelup-row-icon" aria-hidden="true">
+            <Icon name="trophy" size={22} />
+          </span>
+          <span className="levelup-row-text">
+            <span className="levelup-row-eyebrow">{t('levelUp.best')}</span>
+            <b className="levelup-row-title">
+              {rich(best.kind === 'lesson' ? 'levelUp.bestLesson' : 'levelUp.bestDaily', best.kind === 'lesson' ? { id: best.lesson } : {}, {
+                pct: <span className="levelup-row-pct">{t('common.percent', { value: best.accuracy })}</span>,
+              })}
+            </b>
+            <span className="levelup-row-line">{t(best.kind === 'lesson' ? 'levelUp.bestLessonLine' : 'levelUp.bestDailyLine')}</span>
+          </span>
+        </li>
+      )}
+    </ul>
+  );
+}
+
 /**
  * Level up (bottom sheet / dialog): the new level's badge, the new rank or the next one, the rank ladder and the XP
  * bar, which fills the old level, then starts the new one with its label (520 ms, 1200 ms; at once with reduced
- * motion).
+ * motion). Under it (App design canvas, Resolve · Level up) a row for each achievement the run earned and one for a
+ * new personal best, then See progress (opens the Progress tab) and Continue (closes the sheet).
  */
-export function LevelUpContent({ xpBefore, xpAfter, onDone }: { xpBefore: number; xpAfter: number; onDone(): void }): JSX.Element {
+export function LevelUpContent({
+  xpBefore,
+  xpAfter,
+  achievements = [],
+  best = null,
+  onDone,
+}: {
+  xpBefore: number;
+  xpAfter: number;
+  /** What the run earned besides the level (Reward.achievements, Reward.best). */
+  achievements?: readonly AchievementId[];
+  best?: PersonalBest | null;
+  onDone(): void;
+}): JSX.Element {
   const before = levelInfo(xpBefore);
   const after = levelInfo(xpAfter);
   const still = useReducedMotion();
@@ -157,9 +229,33 @@ export function LevelUpContent({ xpBefore, xpAfter, onDone }: { xpBefore: number
     <>
       <LevelHead info={after} eyebrow={t('levelUp.eyebrow')} sub={newRank ? t('levelUp.newRank', { rank: rankName(before) }) : nextRankText(after)} />
       <div className="levelup-line">{line}</div>
-      <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onDone}>
-        {t('levelUp.continue')}
-      </button>
+      {(achievements.length > 0 || best) && <RewardRows achievements={achievements} best={best} />}
+      <div className="levelup-actions">
+        <Link to="/progress" className="btn btn--outline sheet-cta">
+          {t('levelUp.seeProgress')}
+        </Link>
+        <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={onDone}>
+          {t('levelUp.continue')}
+        </button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * A run that earned achievements but no level (the level-up sheet lists them otherwise): an "Achievement unlocked ·
+ * Perfect bar" badge for each beside the summary's other badges. No board: the gold badge of a new personal best, with
+ * the medal of the level-up sheet's row.
+ */
+export function AchievementBadges({ ids }: { ids: readonly AchievementId[] }): JSX.Element {
+  return (
+    <>
+      {ids.map((id) => (
+        <span key={id} className="badge badge--gold" title={t(`achievements.${id}.text`)}>
+          <Icon name="medal" size={15} />
+          {t('results.achievement', { name: t(`achievements.${id}.name`) })}
+        </span>
+      ))}
     </>
   );
 }

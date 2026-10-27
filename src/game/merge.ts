@@ -2,18 +2,23 @@
  * Progress on the account (BACKEND-PLAN.md §6): what syncs, and how this device's copy and the account's merge.
  *
  * Merging never loses a result: the best stars and accuracy per lesson and per scale, every practice day and Learn
- * section from both, the higher XP and best daily accuracy, the newer daily challenge. What is not a result (a setup as
+ * section from both, the higher XP and best daily accuracy, the newer daily challenge, every achievement and skill level
+ * (on the earlier day), and the Progress tab's figures (per day the fuller record, per total the one with more answers,
+ * the best skill checks, the later day practised). What is not a result (a setup as
  * last edited, a pref, the Read notes weak spots, which go down as well as up) is merged against `base`, the copy both
  * sides last agreed on: a side that changed it since wins, and this device wins when both did. Without a base (the
- * first sign-in on a device) the account's prefs win, and this device's setups unless it has none.
+ * first sign-in on a device) the account's prefs win, and this device's setups unless it has none. Against the base
+ * too: a day of figures one side dropped stays dropped, and a day practised one side corrected stays corrected (a date
+ * a clock set forward wrote, game/stats.ts). A side that cannot have dropped a day (a tab behind the one that recorded
+ * it, a copy an app from before 0.19.0 saved) never had it, and the day stays.
  *
  * The rules are pure and tested as properties (merge.test.ts): order-independent for every result, never lower than
  * either side, and merging a copy with itself gives it back.
  */
 import type { SyncedData } from '../../shared/api';
 import { DIAMOND } from '../core/types';
-import type { LessonProgress, Prefs, Progress, DailyProgress } from './storage';
-import { sanitizePrefs, sanitizeProgress } from './storage';
+import type { DayStats, LessonProgress, Prefs, Progress, DailyProgress, Stats } from './storage';
+import { HISTORY_DAYS, newestDays, sanitizePrefs, sanitizeProgress } from './storage';
 
 /**
  * The prefs that follow the account (§6.1). Calibration, volumes, the sounds switched on and the How to play and intro
@@ -123,6 +128,122 @@ function mergeDaily(a: DailyProgress | null, b: DailyProgress | null): DailyProg
   };
 }
 
+/** Per key, the pair from the side with the larger count (the second number); on a tie, the larger first number. */
+function moreCounted(a: Record<string, [number, number]>, b: Record<string, [number, number]>): Record<string, [number, number]> {
+  const out: Record<string, [number, number]> = {};
+  for (const k of union(Object.keys(a), Object.keys(b))) {
+    const x = a[k];
+    const y = b[k];
+    const win = !x || !y ? (x ?? y) : x[1] !== y[1] ? (x[1] > y[1] ? x : y) : x[0] >= y[0] ? x : y;
+    out[k] = [win[0], win[1]];
+  }
+  return out;
+}
+
+/** Per key, the higher of each number (Echo's rounds and best stars). */
+function maxPairs(a: Record<string, [number, number]>, b: Record<string, [number, number]>): Record<string, [number, number]> {
+  const out: Record<string, [number, number]> = {};
+  for (const k of union(Object.keys(a), Object.keys(b))) {
+    const x = a[k] ?? [0, 0];
+    const y = b[k] ?? [0, 0];
+    out[k] = [Math.max(x[0], y[0]), Math.max(x[1], y[1])];
+  }
+  return out;
+}
+
+/** Per "clef:level", the best accuracy and the fastest average answer (0 = none yet). */
+function mergeReading(a: Record<string, [number, number]>, b: Record<string, [number, number]>): Record<string, [number, number]> {
+  const out: Record<string, [number, number]> = {};
+  for (const k of union(Object.keys(a), Object.keys(b))) {
+    const x = a[k];
+    const y = b[k];
+    if (!x || !y) {
+      out[k] = [...(x ?? y)] as [number, number];
+      continue;
+    }
+    out[k] = [Math.max(x[0], y[0]), x[1] === 0 ? y[1] : y[1] === 0 ? x[1] : Math.min(x[1], y[1])];
+  }
+  return out;
+}
+
+/** Per key, the earlier day (an achievement or skill level counts from when it was first earned). */
+function earlierPerKey(a: Record<string, string>, b: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of union(Object.keys(a), Object.keys(b))) {
+    const x = a[k];
+    const y = b[k];
+    out[k] = x === undefined ? y : y === undefined ? x : x < y ? x : y;
+  }
+  return out;
+}
+
+/** Orders two records of one day: the more seconds, then rounds, then hits; then by their JSON, so any two compare. */
+function fuller(x: DayStats, y: DayStats): DayStats {
+  if (x.sec !== y.sec) return x.sec > y.sec ? x : y;
+  if (x.rounds !== y.rounds) return x.rounds > y.rounds ? x : y;
+  if (x.hits !== y.hits) return x.hits > y.hits ? x : y;
+  return stableJson(x) >= stableJson(y) ? x : y;
+}
+
+/**
+ * Whether a copy without day `d` can have dropped it: the recorders drop a date only for HISTORY_DAYS others, a later
+ * one among them (game/stats.ts). A copy with fewer, or only earlier ones, never had it: a tab behind the one that
+ * recorded it (ui/sync.ts brings that tab's results in against the base), or a copy an app from before 0.19.0 saved,
+ * which has no figures.
+ */
+function couldDrop(days: Record<string, DayStats>, d: string): boolean {
+  const dates = Object.keys(days);
+  return dates.length >= HISTORY_DAYS && dates.some((k) => k > d);
+}
+
+/**
+ * Per day, the whole record of the side that has more of it (a day played on two devices keeps one device's figures,
+ * as XP keeps the higher total); then the newest HISTORY_DAYS days, as sanitizeProgress keeps them. A day one side
+ * dropped since the base (gone from its window, or written by a clock set forward: game/stats.ts) stays dropped
+ * unless the other side changed it since, so a dropped day does not come back from the base.
+ */
+function mergeDays(a: Record<string, DayStats>, b: Record<string, DayStats>, base: Record<string, DayStats> | null): Record<string, DayStats> {
+  const out: Record<string, DayStats> = {};
+  for (const d of union(Object.keys(a), Object.keys(b))) {
+    const x = a[d];
+    const y = b[d];
+    const was = base?.[d];
+    if ((!x || !y) && was && sameValue(x ?? y, was) && couldDrop(x ? b : a, d)) continue;
+    const win = !x || !y ? (x ?? y) : fuller(x, y);
+    out[d] = { ...win, cells: Object.fromEntries(Object.entries(win.cells).map(([k, v]) => [k, [v[0], v[1]]])) };
+  }
+  return newestDays(out);
+}
+
+/**
+ * Per skill, the later day it was practised; against the base, the side that changed it since, the later when both
+ * did. So a day a clock set forward wrote, once corrected on one device (markSeen), stays corrected.
+ */
+function mergeSeen(a: Stats['seen'], b: Stats['seen'], base: Stats['seen'] | null): Stats['seen'] {
+  const out: Stats['seen'] = {};
+  for (const k of union(Object.keys(a), Object.keys(b)) as (keyof Stats['seen'])[]) {
+    const x = a[k];
+    const y = b[k];
+    const was = base?.[k];
+    out[k] = x === undefined ? y : y === undefined ? x : x === was ? y : y === was ? x : x > y ? x : y;
+  }
+  return out;
+}
+
+function mergeStats(local: Stats, remote: Stats, base: Stats | null, hasBase: boolean): Stats {
+  return {
+    days: mergeDays(local.days, remote.days, base?.days ?? null),
+    clefs: moreCounted(local.clefs, remote.clefs),
+    noteMs: moreCounted(local.noteMs, remote.noteMs),
+    // The Notes view's Key card shows the last round's key: a choice, like a setup. Never back to none: only a copy
+    // without figures (an app from before 0.19.0 saved it) has none after a round.
+    lastKey: pick(local.lastKey, remote.lastKey, base?.lastKey, hasBase, (x, y) => x ?? y) ?? local.lastKey ?? remote.lastKey,
+    reading: mergeReading(local.reading, remote.reading),
+    echo: maxPairs(local.echo, remote.echo),
+    seen: mergeSeen(local.seen, remote.seen, base?.seen ?? null),
+  };
+}
+
 /** This device's progress and the account's, merged; `base` is the copy both last agreed on (null: none yet). */
 export function mergeProgress(local: Progress, remote: Progress, base: Progress | null): Progress {
   const has = base !== null;
@@ -143,6 +264,9 @@ export function mergeProgress(local: Progress, remote: Progress, base: Progress 
       stars: maxPerKey(local.scales.stars, remote.scales.stars),
     },
     learnRead: union(local.learnRead, remote.learnRead),
+    stats: mergeStats(local.stats, remote.stats, base?.stats ?? null, has),
+    achievements: earlierPerKey(local.achievements, remote.achievements),
+    skills: earlierPerKey(local.skills, remote.skills),
   };
 }
 

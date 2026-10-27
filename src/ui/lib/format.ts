@@ -1,6 +1,29 @@
 /** Small, pure formatting helpers for the screens. Text always comes from the i18n catalog. */
-import { t } from '../../i18n';
+import { createElement, Fragment, type ReactNode } from 'react';
+import { t, translateParams, type MessageParams } from '../../i18n';
 import { DIAMOND, MAX_STARS, SHOWN_STARS, type MeterId } from '../../core/api';
+
+/**
+ * A text from the game logic (a Label of game/skills.ts and game/progressView.ts: a message key and its params): string
+ * params that are message keys (a skill, a cell or a section name) are translated too.
+ */
+export function labelText(label: { key: string; params: Record<string, string | number> }): string {
+  return t(label.key, translateParams(label.params));
+}
+
+/** Marks a slot in a message, so the message can be split around it. */
+const SLOT = '\u0001';
+
+/**
+ * A message with elements in place of some of its params ("<b>Bass clef</b> is your lowest skill: …", "Lesson 7.3 ·
+ * <mono>80%</mono>"): the words keep the catalog's order in every language.
+ */
+export function rich(key: string, params: MessageParams, slots: Record<string, ReactNode>): ReactNode[] {
+  const marks = Object.fromEntries(Object.keys(slots).map((k) => [k, SLOT + k + SLOT]));
+  return t(key, { ...params, ...marks })
+    .split(SLOT)
+    .map((part, i) => (i % 2 ? createElement(Fragment, { key: i }, slots[part]) : part));
+}
 
 /** Tempo word for a BPM (the setup slider label, DESIGN.md §4): a message key under `tempo.`. */
 export function tempoWordKey(bpm: number): string {
@@ -55,6 +78,13 @@ export function metersLabel(meters: MeterId[]): string {
   return order.filter((m) => meters.includes(m)).join(' · ');
 }
 
+/** "a, b, c and d" from texts (already translated). */
+export function andList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  const head = items.slice(0, -1).reduce((a, b) => t('common.commaList', { a, b }));
+  return t('common.and', { a: head, b: items[items.length - 1] });
+}
+
 /** Translated list "a, b or c" from message keys. */
 export function orList(keys: string[]): string {
   const items = keys.map((k) => t(k));
@@ -62,13 +92,6 @@ export function orList(keys: string[]): string {
   if (items.length === 1) return items[0];
   const head = items.slice(0, -1).reduce((a, b) => t('common.commaList', { a, b }));
   return t('common.orList', { a: head, b: items[items.length - 1] });
-}
-
-/** "F, C and G", from names already translated. */
-export function andList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? '';
-  const head = items.slice(0, -1).reduce((a, b) => t('common.commaList', { a, b }));
-  return t('common.and', { a: head, b: items[items.length - 1] });
 }
 
 /** A fresh exercise seed (UI only; the engine itself never uses Math.random). */

@@ -44,11 +44,18 @@ export function Sheet({ variant, closing, panelKey, labelledBy, modal = true, ma
     };
   }, []);
 
-  // Focus goes to the panel's main action ([data-autofocus], e.g. Resume), else its first control.
+  // Focus goes to the panel's main action ([data-autofocus], e.g. Resume), else its first control. When that is below
+  // what the panel shows (it scrolls: a level-up with several rows on a phone on its side), the panel itself takes
+  // focus, so nothing out of sight is focused: its title is read, and Tab goes on to the controls, scrolling to them.
   useEffect(() => {
     const panel = panelRef.current;
     const first = panel?.querySelector<HTMLElement>('[data-autofocus]') ?? panel?.querySelector<HTMLElement>(FOCUSABLE);
-    first?.focus({ preventScroll: true });
+    if (!panel || !first) return;
+    // Measured against the panel, so its slide-up (a transform on both) does not count.
+    const box = panel.getBoundingClientRect();
+    const r = first.getBoundingClientRect();
+    const shown = r.top >= box.top - 1 && r.bottom <= box.top + panel.clientHeight + 1;
+    (shown ? first : panel).focus({ preventScroll: true });
   }, [panelKey]);
 
   const trap = (e: KeyboardEvent<HTMLDivElement>): void => {
@@ -58,7 +65,7 @@ export function Sheet({ variant, closing, panelKey, labelledBy, modal = true, ma
     if (items.length === 0) return;
     const firstEl = items[0];
     const lastEl = items[items.length - 1];
-    if (e.shiftKey && document.activeElement === firstEl) {
+    if (e.shiftKey && (document.activeElement === firstEl || document.activeElement === panelRef.current)) {
       e.preventDefault();
       lastEl.focus();
     } else if (!e.shiftKey && document.activeElement === lastEl) {
@@ -71,7 +78,7 @@ export function Sheet({ variant, closing, panelKey, labelledBy, modal = true, ma
   const outCls = variant === 'sheet' ? 'm-sheet-out' : 'm-dialog-out';
   return (
     <div className={'overlay overlay--' + variant + (low ? ' overlay--low' : '') + ' ' + (closing ? 'm-fade-out' : 'm-in')} onKeyDown={trap}>
-      <div key={panelKey} ref={panelRef} role="dialog" aria-modal={modal} aria-labelledby={labelledBy}
+      <div key={panelKey} ref={panelRef} role="dialog" aria-modal={modal} aria-labelledby={labelledBy} tabIndex={-1}
         className={'sheet sheet--' + variant + ' ' + (closing ? outCls : inCls)} style={maxWidth ? { maxWidth } : undefined}>
         {children}
       </div>

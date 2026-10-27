@@ -31,6 +31,16 @@ describe('formatMessage', () => {
     expect(formatMessage('{v}%', { v: 79 })).toBe('79%');
     expect(formatMessage('{v}', { v: 1234.5 })).toBe('1234.5');
   });
+
+  it('shows a set number of decimals with a number skeleton, in the locale’s own way', () => {
+    expect(formatMessage('{s, number, ::.0} s', { s: 2 })).toBe('2.0 s');
+    expect(formatMessage('{s, number, ::.0} s', { s: 1.46 })).toBe('1.5 s');
+    expect(formatMessage('{s, number, ::.0} s', { s: 2 }, 'nl')).toBe('2,0 s');
+    expect(formatMessage('{s, number, ::.0#}', { s: 2.345 })).toBe('2.35');
+    expect(formatMessage('{s, number, ::.0#}', { s: 2 })).toBe('2.0');
+    // Without a skeleton, as a plain variable.
+    expect(formatMessage('{s, number}', { s: 2.5 })).toBe('2.5');
+  });
 });
 
 describe('t()', () => {
