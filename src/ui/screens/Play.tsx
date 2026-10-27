@@ -269,6 +269,9 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const liveHowToKey = howToEyebrow(s.phase, s.intro);
   const [howToKey, setHowToKey] = useState(liveHowToKey);
   if (s.sheet === 'help' && howToKey !== liveHowToKey) setHowToKey(liveHowToKey);
+  // The Pause sheet's bar is kept the same way: Restart puts the run back at bar 1 while the sheet closes.
+  const [pausedBar, setPausedBar] = useState(curBar + 1);
+  if (s.sheet === 'pause' && pausedBar !== curBar + 1) setPausedBar(curBar + 1);
   const sheet = sheetShown && (
     <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey={sheetShown}
       labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'new' ? 'introtitle' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}
@@ -282,7 +285,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
         <ReadyContent context={where} onStart={closeSheet}
           detail={t('ready.detail', { bars: t('common.bars', { count: bars }), meter: metersLabel([ex.meter.id]), bpm: ex.tempo })} />
       ) : (
-        <PauseContent context={t('pause.context', { where, bar: curBar + 1, total: bars })} desktop={keys} lesson={!!lesson} interrupted={s.interrupted}
+        <PauseContent context={t('pause.context', { where, bar: pausedBar, total: bars })} desktop={keys} lesson={!!lesson} interrupted={s.interrupted}
           onResume={closeSheet} onRestart={restart} onHelp={help} onSettings={toSettings} onQuit={quit} />
       )}
     </Sheet>
@@ -401,7 +404,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
           </div>
         </div>
 
-        <div className={'card play-staff' + (echo ? ' play-staff--echo' : '')}>{staffContent}</div>
+        <div className={'card play-staff' + (echo ? ' play-staff--echo' : tuplets ? ' play-staff--tuplets' : '')}>{staffContent}</div>
 
         {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />}
 

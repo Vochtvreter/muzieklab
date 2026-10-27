@@ -307,6 +307,9 @@ export function usePlaySession(
       segStartedAt.current = performance.now();
       setInterrupted(false);
       setPhase('running');
+      // The first render is the lead-in already, before the first tick: the frame from before a pause or Restart showed
+      // its bar, its beat and the timing lane's playhead there.
+      setFrame({ tg: (fromBar - countInBars) * barSec - LEAD_IN_S, beat: { inBar: null, countIn: false }, beats: 0, countIn: true, cursor: null, ring: 0, held: false, fromBar });
       cancelLoop();
       raf.current = requestAnimationFrame(tick);
       },

@@ -213,36 +213,83 @@ test("a phone's timing lane follows the bars being played, two rows at a time; R
   await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toHaveAttribute('viewBox', /^0 0 [\d.]+ 240$/);
 });
 
-test('the count-in after a pause shows the bar it leads into, on the staff, the lane and the Pause sheet, with no playhead', async ({ page }) => {
-  test.setTimeout(40_000);
-  // Twelve bars at 200 BPM, a bar every 1.2 s. Resumed, the exercise clock is still in the bar before during the count-in.
-  await seed(page, { prefs: { seenHowTo: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 12, tempo: 200 } } });
-  await page.setViewportSize(VIEWPORTS.phone);
-  await page.goto('./#/setup');
-  await page.getByRole('button', { name: /^Start · / }).click();
-  await expect(page.locator('.play-info .mono-line')).toContainText('Bar 5 of 12', { timeout: 10_000 });
-  await page.keyboard.press('Escape');
-  const sheet = page.getByRole('dialog', { name: 'Paused' });
-  await expect(sheet).toContainText('Bar 5 of 12');
-  await sheet.getByRole('button', { name: 'Resume' }).click();
-  // All read at one moment: the header line, the staff's first bar, the lane's bars and playhead, the progress.
-  const shown = (): Promise<object> =>
-    page.evaluate(() => {
-      const lane = document.querySelector('svg[aria-label="Note lengths compared with how long each note was held"]');
-      return {
-        line: document.querySelector('.play-info .mono-line')?.textContent?.split(' · ')[0],
-        staff: /Bar (\d+):/.exec(document.querySelector('.play-staff [role=img]')?.getAttribute('aria-label') ?? '')?.[1],
-        lane: document.querySelector('.lane-head span:last-child')?.textContent,
-        playhead: lane?.querySelectorAll('line[stroke-width="2.5"]').length,
-        progress: document.querySelector('.play-top [role=progressbar]')?.getAttribute('aria-valuenow'),
-      };
+/**
+ * Records what Play shows on every change from now to the first beat after a count-in: the header line, the staff's
+ * first bar, the timing lane's bars and playheads, and the progress, on a phone or on desktop.
+ */
+async function watchCountIn(page: Page): Promise<() => Promise<string[]>> {
+  await page.evaluate(() => {
+    const w = window as unknown as { shown: string[]; beat1: boolean };
+    const read = (): string => {
+      const line = document.querySelector('.play-info .mono-line, .dplay-head .mono-line')?.textContent?.split(' · ')[0];
+      const staff = /Bar (\d+):/.exec(document.querySelector('.play-staff [role=img], .dplay-staff [role=img]')?.getAttribute('aria-label') ?? '')?.[1];
+      const lane = document.querySelector('.lane-head span:last-child')?.textContent;
+      const playheads = document.querySelectorAll('svg[aria-label="Note lengths compared with how long each note was held"] line[stroke-width="2.5"]').length;
+      const progress = document.querySelector('.play-top [role=progressbar], .dplay-head [role=progressbar]')?.getAttribute('aria-valuenow');
+      return `${line} · staff ${staff} · ${lane} · playheads ${playheads} · ${progress} %`;
+    };
+    w.shown = [read()];
+    w.beat1 = false;
+    const watch = new MutationObserver(() => {
+      const now = read();
+      if (now === w.shown[w.shown.length - 1]) return;
+      w.shown.push(now);
+      if (!now.startsWith('Count-in') && w.shown.some((v) => v.startsWith('Count-in'))) {
+        w.beat1 = true;
+        watch.disconnect();
+      }
     });
-  // Bar 5 starts both windows (the staff's two bars a row, the lane's two rows of four), as when it was paused.
-  await expect.poll(shown, { intervals: [50], timeout: 5000 }).toEqual({ line: 'Count-in', staff: '5', lane: 'bars 5–12', playhead: 0, progress: '33' });
-  // Paused again in this count-in, the sheet names the bar Resume plays.
-  await page.keyboard.press('Escape');
-  await expect(sheet).toContainText('Bar 5 of 12');
-});
+    watch.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+  });
+  return async () => {
+    await page.waitForFunction(() => (window as unknown as { beat1: boolean }).beat1, null, { timeout: 5000 });
+    return page.evaluate(() => (window as unknown as { shown: string[] }).shown);
+  };
+}
+
+for (const { name, bar, staff, lane, progress } of [
+  // A phone's staff shows two bars a row and its lane two rows of four: bar 5 starts both windows again, not bar 3 and 1.
+  { name: 'phone', bar: 5, staff: 5, lane: 'bars 5–12', progress: 33 },
+  // In bar 6 the bar before is on the phone's lane, where the count-in's clock would put the playhead.
+  { name: 'phone', bar: 6, staff: 5, lane: 'bars 5–12', progress: 42 },
+  // Desktop's lane shows every bar, the one before too.
+  { name: 'desktop', bar: 5, staff: 5, lane: 'bars 1–12', progress: 33 },
+] as const) {
+  test(`the count-in after a pause shows the bar it leads into, with no playhead, and so does the Pause sheet (${name}, bar ${bar})`, async ({ page }) => {
+    test.setTimeout(40_000);
+    // Twelve bars at 200 BPM, a bar every 1.2 s. Resumed, the exercise clock is still in the bar before during the count-in.
+    await seed(page, { prefs: { seenHowTo: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 12, tempo: 200 } } });
+    await page.setViewportSize(VIEWPORTS[name]);
+    await page.goto('./#/setup');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    const line = page.locator('.play-info .mono-line, .dplay-head .mono-line');
+    const at = `Bar ${bar} of 12`;
+    await expect(line).toContainText(at, { timeout: 10_000 });
+    await page.keyboard.press('Escape');
+    const sheet = page.getByRole('dialog', { name: 'Paused' });
+    await expect(sheet).toContainText(at);
+    const shown = await watchCountIn(page);
+    await sheet.getByRole('button', { name: 'Resume' }).click();
+    const seen = await shown();
+    // Every moment from Resume to beat 1: the paused screen, then the count-in, which shows the bar it leads into on the
+    // staff, the lane and the progress, and draws no playhead (none left over from before the pause either).
+    const countIn = seen.findIndex((v) => v.startsWith('Count-in'));
+    const beat1 = seen.length - 1;
+    expect(seen.slice(0, countIn).filter((v) => !v.includes(' playheads 0 ')), 'a playhead before the count-in').toEqual([]);
+    expect([...new Set(seen.slice(countIn, beat1))]).toEqual([`Count-in · staff ${staff} · ${lane} · playheads 0 · ${progress} %`]);
+    expect(seen[beat1]).toMatch(new RegExp(`^${at} · staff ${staff} · ${lane} · playheads 1 · `));
+    // Paused again, and once more in the count-in that follows: the sheet names the same bar both times, the one Resume
+    // plays.
+    await page.keyboard.press('Escape');
+    await expect(sheet).toContainText(/Bar \d+ of 12/);
+    const paused = /Bar \d+ of 12/.exec((await sheet.textContent()) ?? '')![0];
+    await sheet.getByRole('button', { name: 'Resume' }).click();
+    await expect(line).toContainText('Count-in');
+    await page.keyboard.press('Escape');
+    await expect(line, 'paused in the count-in').toContainText('Count-in');
+    await expect(sheet).toContainText(paused);
+  });
+}
 
 test('after quitting, Back does not walk into the exercise again', async ({ page }) => {
   await seed(page, { progress: { lessons: SOL_DONE } });
@@ -344,6 +391,23 @@ test('How to play keeps its eyebrow while it closes: First time here before the 
   await sheet.getByRole('button', { name: 'Got it' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await eyebrows()).toEqual(['Paused']);
+});
+
+test('the Pause sheet keeps its bar while it closes, on Restart too', async ({ page }) => {
+  // Four bars at 200 BPM, a bar every 1.2 s.
+  await seed(page, { prefs: { seenHowTo: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 200 } } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page.locator('.play-info .mono-line')).toContainText('Bar 2 of 4', { timeout: 10_000 });
+  await page.keyboard.press('Escape');
+  const sheet = page.getByRole('dialog', { name: 'Paused' });
+  await expect(sheet).toContainText('Bar 2 of 4');
+  const eyebrows = await watchEyebrows(page);
+  // Restart puts the run back at bar 1 at once, while the sheet is still closing.
+  await sheet.getByRole('button', { name: 'Restart exercise' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await eyebrows(), 'the closing sheet keeps its bar').toEqual(['Free practice · Bar 2 of 4']);
 });
 
 test('the first lesson that judges holds shows How to play again, with holding, once', async ({ page }) => {

@@ -860,8 +860,8 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
      rushing: *You were rushing: on average 110 ms early. Wait for each note.*
   3. Off track (misses + extra taps add up to a quarter or more of the notes): timing advice is beside the point when
      the player lost their place, so it names the misses, with the bar that had the most (*You missed 3 notes, most in
-     bar 2. Read one beat ahead.*; one note is *in bar 2*) or, when bars tie, without a bar (*You missed 8 notes. Read
-     one beat ahead.*); or the extra taps.
+     bar 2. Read one beat ahead.*; one note: *You missed 1 note in bar 2.*) or, when bars tie, without a bar (*You
+     missed 8 notes. Read one beat ahead.*); or the extra taps.
   4. The worst hold problem, e.g. "You let go of the dotted quarter in bar 2 too early".
   5. The tendency (only from 4+ hit notes). When the player drags steadily (every hit at least 20 ms late, SD
      ≤ 45 ms) on a run played before any calibration, it points to calibration instead of "press sooner": *Your taps
@@ -1424,7 +1424,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   two columns, so the pad or the answer buttons stay in view next to the notation (Scales: the staff and the degree row
   on the left, the piano or the sign buttons on the right). Its Read notes staff is the phone's (1.45, or 2.1 with 4
   bars in a round that writes), in the narrow column, not the tablet's. Play's analog beat counter is 44 px tall
-  there, as the digits' row beside the lesson line, so the timing lane's two rows stay in the staff card.
+  there, as the digits' row beside the lesson line, so the timing lane's two rows stay in the staff card. With a
+  triplet, the room for its 3 above the staff comes out of the card's padding there (10 px at the top, not 14 px), for
+  the same reason.
 - The rhythm staff on Play and Results is drawn at its screen's size, or smaller, down to 0.75, when a busy bar's
   notes need more room than its share of the row leaves them (sixteenths on a phone, a busy 4/4 bar on tablet Play or
   desktop Results). VexFlow never sets notes in less room than they need, so they would run over the bar line and off
@@ -1481,9 +1483,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 - **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a
   1280 × 720 laptop, `laptop-720`) the page's padding (20 px at the top, 16 px at the bottom), its gap (16 px) and the
   staff card's padding (20 × 40 px, 16 px at the bottom) tighten, and the stat cards are lower (12 px × 18 px), so two
-  staff rows, a timing lane of four rows (16 bars) and the analog pendulum fit. Under 822 px only the room above the
-  staff and under the pad row is smaller (36 px, not 40 px, and 16 px, not 36 px), which shows only when 16 bars with
-  the pendulum and the room for a triplet's 3 fill a 1280 × 800 window or a 1180 × 820 tablet on its side.
+  staff rows, a timing lane of four rows (16 bars) and the analog pendulum fit. Under 822 px only the room under the
+  pad row is smaller (12 px, not 36 px), which shows only when 16 bars with the pendulum and the room for a triplet's 3
+  fill a 1280 × 800 window or a 1180 × 820 tablet on its side.
   Read notes and Scales keep their spacing; on a laptop their page scrolls.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).

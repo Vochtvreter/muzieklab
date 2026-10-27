@@ -332,8 +332,14 @@ describe('usePlaySession', () => {
     expect(hook.result.current.frame).toMatchObject({ countIn: false, cursor: 0, beat: { inBar: 0, countIn: false } });
     at(o + 2.5 * view.barSeconds);
     act(() => hook.result.current.openSheet('pause'));
+    expect(hook.result.current.frame).toMatchObject({ countIn: false, beat: { countIn: false } });
+    expect(hook.result.current.frame.cursor).not.toBeNull();
     const resumedAt = clock.heard;
     act(() => hook.result.current.closeSheet());
+    // Before the first tick too: the frame from before the pause, with its note and beat, is not shown again.
+    expect(frames.length).toBe(1);
+    expect(hook.result.current.frame).toMatchObject({ countIn: true, cursor: null, beat: { inBar: null }, fromBar: 2 });
+    expect(hook.result.current.frame.tg).toBeLessThan(2 * view.barSeconds);
     o = origin(resumedAt, 2);
     at(o + 2 * view.barSeconds - 0.5);
     // Play shows the bar this count-in leads into, not the one its clock is still in (Play.tsx).

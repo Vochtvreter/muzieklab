@@ -2018,7 +2018,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test("play with the analog metronome: sixteen bars with the room for a triplet's 3 fit too", async ({ page }) => {
       known(name, 'play-analog-triplets');
-      // The staff keeps 4 px more above it for the 3 (178, not 174): at 1280 × 800 and 1180 × 820 the page scrolled 2 px.
+      // The staff keeps 4 px more above it for the 3 (178, not 174): at 1280 × 800 and 1180 × 820 the page scrolled 2 px,
+      // and in a phone's landscape column the timing lane's lower row ran 2 px out of the staff card.
       await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth'], triplets: true, bars: 16, tempo: 60 }, 1, { metronomeLook: 'analog' });
       await page.goto('./#/play');
       await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
@@ -2026,6 +2027,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)')).toHaveAttribute('viewBox', /^0 0 [\d.]+ 178$/);
       if (desktopLayout) await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
       else await expectClickable(pad(page), { scroll: false });
+      await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
       await expectFits(page);
       await expectNoSideScroll(page);
     });
