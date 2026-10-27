@@ -98,11 +98,12 @@ export function SignOut({ account, removeFirst = false, onSignedOut }: { account
   const signOut = async (): Promise<boolean> => {
     setError(null);
     // What is not saved yet goes to the account first, so removing it from this device loses nothing. When it could not
-    // be saved (a server error, no API, a save still on its way), Remove is refused: Keep loses nothing either, as this
-    // account's next sign-in here adds the device's progress again.
+    // be saved (a server error, no API, a save still on its way), Remove is refused. In Settings the line offers Keep,
+    // which loses nothing either, as this account's next sign-in here adds the device's progress again. Not on a link:
+    // there the next sign-in is the link's account, which Keep would hand this one's progress to.
     const saved = (await progressSync()?.flush()) ?? true;
     if (!keep && !saved) {
-      setError(t('settings.signOutNotSaved'));
+      setError(t(removeFirst ? 'settings.signOutNotSavedLink' : 'settings.signOutNotSaved'));
       return false;
     }
     try {

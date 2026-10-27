@@ -746,6 +746,7 @@
     "signOutKeep": "Keep",
     "signOutClear": "Remove",
     "signOutNotSaved": "Your progress isn't on your account yet, so it can't be removed from this device. Choose Keep, or try again in a moment.",
+    "signOutNotSavedLink": "Your progress isn't on your account yet, so it can't be removed from this device. Try again in a moment.",
     "resetDetailAccount": "Streak, stars and XP, on every device with your account. No undo."
   },
   "calibrate": {

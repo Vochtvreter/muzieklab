@@ -228,6 +228,25 @@ describe('Settings → Account', () => {
     expect(JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? 'null')).toMatchObject({ xp: 120 });
   });
 
+  it("on someone else's invite link, a refused Remove does not offer Keep, which would hand the progress to the link's account", async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    savesFail = true;
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ xp: 120 }));
+    const rest = vi.mocked(fetch).getMockImplementation() as (path: string, init?: RequestInit) => Promise<Response>;
+    const link = { email: 'lies@example.com', name: 'Lies Bakker', expiresAt: '2026-11-03T09:00:00.000Z' };
+    vi.mocked(fetch).mockImplementation(((path: string, init?: RequestInit) =>
+      path.endsWith('/auth/invite/check') ? Promise.resolve(json(200, link)) : rest(path, init)) as typeof fetch);
+    window.location.hash = '#/invite/' + 'a'.repeat(32);
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    const confirm = screen.getByRole('alertdialog', { name: 'Sign out on this device?' });
+    // It opens on Remove.
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Sign out' }));
+    await within(confirm).findByText("Your progress isn't on your account yet, so it can't be removed from this device. Try again in a moment.");
+    expect(JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? 'null')).toMatchObject({ xp: 120 });
+    expect(vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/sign-out'))).toHaveLength(0);
+  });
+
   it('signed out, the focus goes to Sign in, which took the place of the confirm that had it', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));

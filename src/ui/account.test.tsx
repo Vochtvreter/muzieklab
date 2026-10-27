@@ -272,6 +272,13 @@ describe('useAccount', () => {
     // The other tab's answers: nothing was asked here again, and nothing saved back.
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null')?.name).toBe('Bram S.');
+    // Signed out there, then signed in and out here: the account is forgotten, as after any sign-out.
+    act(() => storedElsewhere(null));
+    act(() => latest.setMe(ME));
+    expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null')?.id).toBe(ME.id);
+    act(() => latest.setSignedOut());
+    expect(shown()).toBe('reachable nobody');
+    expect(localStorage.getItem(ACCOUNT_KEY)).toBeNull();
   });
 
   it('asks GET /me again when another tab signed in as someone else while it was on its way', async () => {

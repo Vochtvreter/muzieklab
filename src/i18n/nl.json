@@ -746,6 +746,7 @@
     "signOutKeep": "Houden",
     "signOutClear": "Verwijderen",
     "signOutNotSaved": "Je voortgang staat nog niet op je account, dus je kunt hem nog niet van dit apparaat weghalen. Kies Houden, of probeer het zo opnieuw.",
+    "signOutNotSavedLink": "Je voortgang staat nog niet op je account, dus je kunt hem nog niet van dit apparaat weghalen. Probeer het zo opnieuw.",
     "resetDetailAccount": "Reeks, sterren en XP, op elk apparaat met je account. Je kunt dit niet ongedaan maken."
   },
   "calibrate": {

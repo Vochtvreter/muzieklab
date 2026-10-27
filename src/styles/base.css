@@ -55,8 +55,14 @@ a {
     opacity 0.18s ease-out,
     transform 0.12s ease-out;
 }
+/* A pressed button gives a little; one that is disabled or aria-disabled (busy, or with nothing to do) does not. The
+   second is a rule of its own: a third part in the first would outweigh the rules that give a control its own press
+   (.row-btn, .pad…). */
 button:active:not(:disabled) {
   transform: scale(0.97);
+}
+button[aria-disabled='true']:active {
+  transform: none;
 }
 
 .m-ease {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, type Me } from '../../../shared/api';
 import { FEEDBACK_DESCRIPTION_MAX, type FeedbackReport } from '../../../shared/feedback';
@@ -119,8 +119,27 @@ describe('Feedback tool: sending a report', () => {
   it('a failure keeps the form with why, without a way to GitHub, and Send tries again', async () => {
     sendStatus = 500;
     await markStart();
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    // The first report waits for its answer.
+    let answer: (r: Response) => void = () => undefined;
+    let held = false;
+    const rest = fetchMock.getMockImplementation() as (path: string) => Promise<Response>;
+    fetchMock.mockImplementation((path: string) => {
+      if (path !== '/api/v1/feedback' || held) return rest(path);
+      held = true;
+      return new Promise<Response>((resolve) => (answer = resolve));
+    });
+    const send = screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement;
+    send.focus();
+    fireEvent.click(send);
+    // While it sends, Send does nothing and keeps the focus: aria-disabled, not disabled, which drops it to the page.
+    expect(send.getAttribute('aria-disabled')).toBe('true');
+    expect(send.disabled).toBe(false);
+    fireEvent.click(send);
+    expect(sent()).toHaveLength(1);
+    await act(async () => answer(json(500, { error: 'internal', message: '' })));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Something went wrong on our side. Try again later.'));
+    expect(send.getAttribute('aria-disabled')).toBeNull();
+    expect(document.activeElement).toBe(send);
     expect(screen.queryByRole('link', { name: /GitHub/ })).toBeNull();
     expect((screen.getByPlaceholderText('What is wrong here, and what you expect instead') as HTMLTextAreaElement).value).toBe('Start is cut off.');
     sendStatus = 201;

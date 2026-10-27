@@ -9,7 +9,9 @@
  * a site with no API) → `unreachable`, and a cached account is shown as offline. While it is unreachable, GET /me is
  * asked again when such a screen opens (at most once every RECHECK_MS), when the app comes back into view
  * (visibilitychange), when the device is back online, and on Try again. Everything else that changes the account goes
- * through the functions here, so the store and the cache (muzieklab.account.v1) stay right.
+ * through the functions here, so the store and the cache (muzieklab.account.v1) stay right. An account another tab
+ * signs in or out is taken up by the store (the storage event, accountStored); a GET /me answer that was on its way
+ * meanwhile is asked again.
  */
 import { useCallback, useEffect, useMemo } from 'react';
 import type { Me, Permission } from '../../shared/api';

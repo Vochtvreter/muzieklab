@@ -712,9 +712,8 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }): JSX.Element {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const first = useRef(true);
-  // The prefs and progress, and the account, last taken up from another tab: in storage already, so not saved again.
+  // The prefs and progress last taken up from another tab: in storage already, so not saved again.
   const stored = useRef<Pick<AppState, 'prefs' | 'progress'> | null>(null);
-  const storedMe = useRef<Me | null | undefined>(undefined);
 
   useEffect(() => {
     if (first.current || state.prefs === stored.current?.prefs) return;
@@ -740,8 +739,10 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
     if (first.current) return;
     saveScaleRun(state.scaleRun);
   }, [state.scaleRun]);
+  // Saved unless storage holds it already, as it does an account taken up from another tab. Compared with what is
+  // stored, so a sign-out here after one taken up from another tab (nobody both times) still forgets the account.
   useEffect(() => {
-    if (first.current || state.account.me === storedMe.current) return;
+    if (first.current || sameValue(state.account.me, loadAccount())) return;
     saveAccount(state.account.me);
   }, [state.account.me]);
   // The tabs of a browser share its storage, and each saves its whole copy of the prefs and progress: a tab takes up
@@ -751,10 +752,7 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
   // event comes, so a late one does not undo a newer change.
   useEffect(() => {
     const changed = (e: StorageEvent): void => {
-      if (e.key === null || e.key === ACCOUNT_KEY) {
-        storedMe.current = loadAccount();
-        dispatch({ type: 'accountStored', me: storedMe.current });
-      }
+      if (e.key === null || e.key === ACCOUNT_KEY) dispatch({ type: 'accountStored', me: loadAccount() });
       if (e.key !== null && e.key !== PREFS_KEY && e.key !== PROGRESS_KEY) return;
       stored.current = { prefs: loadPrefs(), progress: loadProgress() };
       dispatch({ type: 'storageChanged', ...stored.current });

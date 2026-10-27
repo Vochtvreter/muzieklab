@@ -475,6 +475,22 @@ test('two tabs: the second one takes up the account the first signed out of, and
   await two.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(two.locator('.form-done')).toHaveText('Name saved.');
   expect(api2.callsTo('PATCH /me')[0].body).toEqual({ name: 'Lies B.' });
+
+  // Signed out in tab 1 again, then in and out in tab 2: the account is forgotten, in both, as after any sign-out.
+  await accountSection(one).getByRole('button', { name: 'Sign out' }).click();
+  await accountSection(one).getByRole('alertdialog').getByRole('button', { name: 'Sign out' }).click();
+  await two.evaluate(() => (location.hash = '#/settings'));
+  await expect(accountSection(two).getByRole('link', { name: /^Sign in/ })).toBeVisible();
+  await two.evaluate(() => (location.hash = '#/signin'));
+  await two.getByLabel('Email').fill(LIES.email);
+  await two.getByLabel('Password', { exact: true }).fill('a good long password');
+  await two.getByRole('button', { name: 'Sign in' }).click();
+  await expect(accountSection(one).getByRole('link', { name: /^Lies/ })).toBeVisible();
+  await accountSection(two).getByRole('button', { name: 'Sign out' }).click();
+  await accountSection(two).getByRole('alertdialog').getByRole('button', { name: 'Sign out' }).click();
+  await expect(accountSection(two).getByRole('link', { name: /^Sign in/ })).toBeVisible();
+  await expect(accountSection(one).getByRole('link', { name: /^Sign in/ })).toBeVisible();
+  expect(await two.evaluate(() => localStorage.getItem('muzieklab.account.v1'))).toBeNull();
 });
 
 test('account: sign out everywhere, confirmed', async ({ page }) => {
@@ -1423,10 +1439,12 @@ test('accept invite: a link that stopped working after the check (a new one was 
   await page.goto('./#/invite/' + TOKEN);
   await expect(page.getByRole('heading', { level: 1, name: 'Welcome, Lies Bakker' })).toBeVisible();
   await page.getByLabel('New password').fill('a tune in seven notes');
-  await page.getByRole('button', { name: 'Create account' }).click();
+  // Sent with the keyboard: the field that had the focus goes with the form, and the heading takes it.
+  await page.getByLabel('New password').press('Enter');
   await expect(page.getByRole('alert')).toHaveText("This link doesn't work anymore. Ask the person who invited you for a new one.");
   await expect(page.getByLabel('New password')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
 });
 
 test('new password: a link that stopped working after the check says so, with the way Home', async ({ page }) => {
@@ -1437,10 +1455,11 @@ test('new password: a link that stopped working after the check says so, with th
   });
   await page.goto('./#/reset/' + TOKEN);
   await page.getByLabel('New password').fill('a tune in seven notes');
-  await page.getByRole('button', { name: 'Save password' }).click();
+  await page.getByLabel('New password').press('Enter');
   await expect(page.getByRole('alert')).toHaveText("This link doesn't work anymore. Ask the person who invited you for a new one.");
   await expect(page.getByLabel('New password')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
 });
 
 test('accept invite: too many tries at the link check says how long to wait, and Try again checks again', async ({ page }) => {
