@@ -870,6 +870,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       } else {
         await expect(page.locator('.wide')).toHaveCount(0);
       }
+      // The score line breaks where it has to, but never inside the XP ("+14" / "XP" in the tablet's side panel): even
+      // with no room at all, the XP stays one piece.
+      const xp = page.locator('.score-sub b');
+      await expect(xp).toHaveText(/^\+\d+ XP$/);
+      const xpLines = await xp.evaluate((el) => {
+        const line = el.parentElement!;
+        line.style.width = '0';
+        const n = el.getClientRects().length;
+        line.style.width = '';
+        return n;
+      });
+      expect(xpLines, 'the XP on one line').toBe(1);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -964,6 +976,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'notes-setup');
       await page.goto('./#/notes');
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
+      // The Range chips' "+2 ledger lines" fits a third of a 320 px phone on two lines.
+      await expectNoClippedLabels(page);
       if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
       await page.getByRole('link', { name: /^Key: / }).click();
       // The Key screen takes the setup's place on the hashchange, a moment after the click: wait for it, or the setup
@@ -1141,6 +1155,22 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectTouchHeight(page.getByRole('button', { name: 'Hint' }));
         await expectStavesFit(page);
       }
+      // G♭ major with a timer, seed 1234: the first note is a treble G♭ below the second ledger line, and the natural
+      // key for it says why in three lines on a phone ("That was G♭ (sol♭): the space below the second ledger line is
+      // G, and the flat in the key signature makes it G♭ (sol♭)."), under the timer's bar.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano', range: 'ledger2', keys: ['Gb'], clefs: ['treble', 'bass'], extras: 'both', count: 30, playNotes: false, timer: 5 };
+      const [first] = generateRound(settings, 1234);
+      expect([first.clef, first.step, first.alter, first.sign], 'the first note is a treble G♭ from the key signature').toEqual(['treble', 25, -1, null]);
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 1234, focus: [] });
+      await page.goto('./#/notes/play');
+      await page.reload();
+      await expect(page.getByRole('img', { name: /staff in G♭ major/ })).toBeVisible();
+      await page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button', { name: /^G, sol/ }).dispatchEvent('click');
+      await expect(page.locator('.nfeedback')).toHaveText(/^That was G♭ \(sol♭\): .+ is G, and the flat in the key signature makes it G♭/);
+      if (portraitLayout) await expectFits(page);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      await expectStavesFit(page);
       await expectNoSideScroll(page);
     });
 
@@ -1171,6 +1201,32 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByText('Any octave counts')).toBeAttached();
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
       if (portraitLayout) await expectFits(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: round done by sign, each count on one line beside a long label', async ({ page }) => {
+      known(name, 'notes-done-sign');
+      // C♯ major: every note is in the key signature's group, whose label names all seven sharps, and a note answered
+      // without its sharp brings the By sign card with its tip.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['C#'], count: 10, playNotes: false };
+      const seed = 4242;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      const [first] = generateRound(settings, seed);
+      await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${letterOf(first.step)}(,|$)`) }).click();
+      await expect(page.locator('.nfeedback')).toHaveText(/^Right (line|space), but C♯ major has/);
+      await page.getByRole('button', { name: 'Skip to summary' }).click();
+      await expect(page.getByText('F♯, C♯, G♯, D♯, A♯, E♯ and B♯ from the key signature', { exact: true })).toBeVisible();
+      // "0 / 1" stays whole beside the label, which wraps on a phone.
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const lines = await page.locator('.nsign-head > :last-child').evaluateAll((els) =>
+        els.map((el) => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+        }),
+      );
+      expect(lines, 'the lines of each count').toEqual([1]);
       await expectNoSideScroll(page);
     });
 

@@ -174,12 +174,17 @@ export function hearFeedback(n: RoundNote, given: Given | null, right: boolean, 
   return t(given === null ? 'notes.play.hearTimeout' : 'notes.play.hearWrong', { name, from: fromSol(n.step, system) });
 }
 
-/** The feedback after a note written on the staff: right, or where it went and where it goes. */
+/**
+ * The feedback after a note written on the staff: right, or where it went and where it goes. The right letter an
+ * octave off is still not the place asked for, and the feedback says so (as Scales does), not "You wrote sol (G); sol
+ * (G) goes on …".
+ */
 export function writeFeedback(n: RoundNote, given: Given | null, right: boolean, system: NameSystem): string {
   const name = fullName(letterOf(n.step), n.alter, system);
   const pos = positionText(n.clef, n.step);
   if (given === null) return t('notes.play.timeout', { name, pos });
   if (right) return t('notes.play.writeRight', { name, pos });
   const at = given.kind === 'place' ? given.step : n.step;
+  if (at !== n.step && letterOf(at) === letterOf(n.step)) return t(at > n.step ? 'notes.play.writeOctaveHigh' : 'notes.play.writeOctaveLow', { name, pos });
   return t('notes.play.writeWrong', { name, pos, wrote: fullName(letterOf(at), 0, system), wrotePos: positionText(n.clef, at) });
 }

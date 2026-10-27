@@ -266,6 +266,19 @@ describe('Dutch', () => {
     expect(majorName('G')).toBe('G majeur');
   });
 
+  it('puts the right article before a sign word: het kruis and het herstellingsteken, but de mol', () => {
+    setLocale('nl');
+    const wrong: string[] = [];
+    for (const [key, msg] of flatten(catalogs['./nl.json'])) {
+      if (!msg.includes('{signWord')) continue;
+      for (const sign of ['flat', 'natural', 'sharp', 'doubleFlat', 'doubleSharp']) {
+        const text = t(key, { signWord: t('notes.signWord.' + sign) });
+        if (/\b(de (kruis|herstellingsteken|dubbelkruis)|het (mol|dubbelmol))\b/.test(text)) wrong.push(`${key}: ${text}`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
   it('counts “1 en 2 en” in coaching tips', () => {
     setLocale('nl');
     const tip = tipText({

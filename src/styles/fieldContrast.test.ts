@@ -68,3 +68,63 @@ describe('status pills', () => {
     });
   }
 });
+
+/**
+ * A declaration of a rule in a stylesheet, the last one that sets it for exactly this selector (alone or in a list),
+ * outside @media blocks.
+ */
+function declared(sheet: string, selector: string, prop: string): string | undefined {
+  const flat = sheet.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+  let value: string | undefined;
+  for (const m of flat.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (!m[1].split(',').some((s) => s.trim() === selector)) continue;
+    const d = new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+);`).exec(m[2]);
+    if (d) value = d[1].trim();
+  }
+  return value;
+}
+/** The token a declaration names (`var(--good)`), or a colour written out, which does not follow the theme. */
+const tokenOf = (value: string | undefined): string => /^var\((--[\w-]+)\)$/.exec(value ?? '')?.[1] ?? `not a token: ${value}`;
+/** Text drawn at `alpha` over `fill`, as one colour. */
+function blend(ink: string, fill: string, alpha: number): string {
+  const ch = (hex: string, i: number): number => parseInt(hex.slice(i, i + 2), 16);
+  return '#' + [1, 3, 5].map((i) => Math.round(alpha * ch(ink, i) + (1 - alpha) * ch(fill, i)).toString(16).padStart(2, '0')).join('');
+}
+
+// Read notes' answer marks (notes.css): a black piano key turns green or red, and its label (C♯ D♭, 11 px bold) must
+// still read, 4.5:1 or more. Its fill is --good or --miss, which turn light in dark, so the label is --on-fill, the ink
+// for filled accents. (In light, white on --good is the 4.3:1 tokens.css notes.)
+describe('the marked black piano keys', () => {
+  const notes = css('notes.css');
+  for (const mark of ['right', 'wrong']) {
+    const fill = tokenOf(declared(notes, `.piano-black.is-${mark}`, 'background'));
+    const ink = tokenOf(declared(notes, `.piano-black.is-${mark}`, 'color'));
+    for (const [name, t] of themes.slice(1)) {
+      it(`${name}: the label on the ${mark} key is 4.5:1 or more against its fill`, () => {
+        expect(fill).toMatch(/^--[\w-]+$/);
+        expect(ink, 'the label follows the theme').toMatch(/^--[\w-]+$/);
+        expect(contrast(t[ink], t[fill])).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+  }
+});
+
+// The small letter (or do re mi) under a Read notes name button (.name-sub, 11 px) is drawn faded. On a button marked
+// right or wrong it is in the mark's ink on the mark's soft fill, and must still be 4.5:1 or more, as it is unmarked.
+describe('the small name under a name button', () => {
+  const notes = css('notes.css');
+  const faded = Number(declared(notes, '.name-sub', 'opacity') ?? 1);
+  const marks = [
+    { name: 'unmarked', selector: '.name-sub', ink: '--ink', fill: '--paper' },
+    { name: 'right', selector: '.name-btn.is-right .name-sub', ink: tokenOf(declared(notes, '.name-btn.is-right', 'color')), fill: tokenOf(declared(notes, '.name-btn.is-right', 'background')) },
+    { name: 'wrong', selector: '.name-btn.is-wrong .name-sub', ink: tokenOf(declared(notes, '.name-btn.is-wrong', 'color')), fill: tokenOf(declared(notes, '.name-btn.is-wrong', 'background')) },
+  ];
+  for (const [name, t] of themes) {
+    it(`${name}: 4.5:1 or more on an unmarked, a right and a wrong button`, () => {
+      for (const m of marks) {
+        const alpha = Number(declared(notes, m.selector, 'opacity') ?? faded);
+        expect(contrast(blend(t[m.ink], t[m.fill], alpha), t[m.fill]), m.name).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+});

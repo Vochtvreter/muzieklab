@@ -165,14 +165,22 @@ export interface RoundNote {
 /** The note as it sounds, as a MIDI number (60 = middle C), with the key signature's or its own sign. */
 export const noteMidi = (n: RoundNote): number => midiOf(n.step, n.alter);
 
-/** A key of the one-octave answer piano (pitch class 0–11) in the octave of the note it answers: the right key sounds as the note. */
+/**
+ * A key of the one-octave answer piano (pitch class 0–11) in the octave of the note it answers: the right key sounds as
+ * the note, and the others in the C–B octave of its letter on the staff. Only B♯ and C♭ sound across the C from their
+ * letter: for B♯4 (C5) the B key sounds B4, the letter read, a half step under the note, not B5.
+ */
 export function pianoKeyMidi(n: RoundNote, pc: number): number {
   const m = noteMidi(n);
-  return m - (((m % 12) + 12) % 12) + pc;
+  if (pc === ((m % 12) + 12) % 12) return m;
+  const letter = midiOf(n.step, 0);
+  return letter - (((letter % 12) + 12) % 12) + pc;
 }
 
 /** A note position in one clef: the unit of weak spots ("E on the top space"). */
 export const noteId = (clef: Clef, step: Step): string => `${clef}:${step}`;
+/** A note as it is named, its sign included: F and F♯ on one line are two notes to practise. */
+const spelledId = (n: RoundNote): string => `${noteId(n.clef, n.step)}:${n.alter}`;
 
 export function parseNoteId(id: string): { clef: Clef; step: Step } | null {
   const m = /^(treble|bass):(\d{1,2})$/.exec(id);
@@ -359,6 +367,8 @@ export interface RoundResult {
   avgMs: number;
   stars: 0 | 1 | 2 | 3;
   missed: NoteChip[];
+  /** Right only with a hint, and not missed too. */
+  hintedNotes: NoteChip[];
   slow: NoteChip[];
   bySign: { group: SignGroup; right: number; total: number }[];
   /** Misses that had the right letter but not the key signature's sign. */
@@ -381,12 +391,13 @@ export function scoreRound(notes: RoundNote[], answers: NoteAnswer[]): RoundResu
   const avgMs = total ? done.reduce((s, a) => s + a.ms, 0) / total : 0;
 
   const missed = new Map<string, NoteChip>();
+  const hintedNotes = new Map<string, NoteChip>();
   const slow = new Map<string, NoteChip>();
   let keySignMisses = 0;
   const groups: Record<SignGroup, { right: number; total: number }> = { key: { right: 0, total: 0 }, extra: { right: 0, total: 0 }, plain: { right: 0, total: 0 } };
   done.forEach((a, i) => {
     const n = notes[i];
-    const id = `${noteId(n.clef, n.step)}:${n.alter}`;
+    const id = spelledId(n);
     const chip = (): NoteChip => ({ id, clef: n.clef, step: n.step, alter: n.alter, count: 0, ms: 0 });
     const g = groups[signGroup(n)];
     g.total++;
@@ -396,6 +407,11 @@ export function scoreRound(notes: RoundNote[], answers: NoteAnswer[]): RoundResu
       c.count++;
       missed.set(id, c);
       if (a.given && missKind(n, a.given) === 'keySign') keySignMisses++;
+    } else if (a.outcome === 'hinted') {
+      // Not right either (the score, Practice missed notes): it needs practice as a miss does.
+      const c = hintedNotes.get(id) ?? chip();
+      c.count++;
+      hintedNotes.set(id, c);
     } else if (a.outcome === 'right' && a.ms > SLOW_MS) {
       const c = slow.get(id) ?? chip();
       c.count++;
@@ -413,7 +429,8 @@ export function scoreRound(notes: RoundNote[], answers: NoteAnswer[]): RoundResu
     avgMs,
     stars: total ? noteStars(accuracy, avgMs) : 0,
     missed: [...missed.values()].sort((a, b) => b.count - a.count),
-    slow: [...slow.values()].filter((c) => !missed.has(c.id)).sort((a, b) => b.ms - a.ms),
+    hintedNotes: [...hintedNotes.values()].filter((c) => !missed.has(c.id)).sort((a, b) => b.count - a.count),
+    slow: [...slow.values()].filter((c) => !missed.has(c.id) && !hintedNotes.has(c.id)).sort((a, b) => b.ms - a.ms),
     bySign: order.filter((g) => groups[g].total > 0).map((group) => ({ group, ...groups[group] })),
     keySignMisses,
   };
@@ -430,6 +447,19 @@ export function updateWeak(weak: WeakSpots, notes: RoundNote[], answers: NoteAns
     else out[id] = v;
   });
   return out;
+}
+
+/**
+ * The notes answered so far that need practice (missed, or right only with a hint), each once with its own sign, in
+ * the order they came: the desktop play screen's Needs practice card.
+ */
+export function needsPractice(notes: RoundNote[], answers: NoteAnswer[]): RoundNote[] {
+  const out = new Map<string, RoundNote>();
+  answers.slice(0, notes.length).forEach((a, i) => {
+    const id = spelledId(notes[i]);
+    if (a.outcome !== 'right' && !out.has(id)) out.set(id, notes[i]);
+  });
+  return [...out.values()];
 }
 
 /** Note ids missed in a round, for *Practice missed notes*. */

@@ -167,6 +167,32 @@ test('read notes lesson: three right, then skipped, is not "every note right"', 
   await expect(page.getByText('Nothing to practise: every note right, and quick.')).toHaveCount(0);
 });
 
+test('read notes: a note answered with a hint is on Needs practice, which Practice missed notes drills', async ({ page }) => {
+  const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, count: 10, playNotes: false };
+  const seed = 4242;
+  await seedRun(page, settings, seed);
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./#/notes/play');
+  // Every note right, the third after a hint.
+  const notes = generateRound(settings, seed);
+  for (const [i, n] of notes.entries()) {
+    await expect(page.getByText(`Note ${i + 1} of 10`)).toBeVisible();
+    if (i === 2) await page.getByRole('button', { name: 'Hint' }).click();
+    await page.keyboard.press(letterOf(n.step).toLowerCase());
+    if (i === 2) {
+      await expect(page.locator('.nfeedback')).toHaveText(/^Right: /);
+      await page.keyboard.press('Enter');
+    }
+  }
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  await expect(page.locator('.score-sub')).toHaveText(/^9 of 10 notes right · .+ · 1 with a hint · /);
+  await expect(page.getByText('Nothing to practise: every note right, and quick.')).toHaveCount(0);
+  const hinted = page.getByRole('list', { name: 'With a hint' }).getByRole('listitem');
+  await expect(hinted).toHaveCount(1);
+  await expect(hinted.first()).toHaveAccessibleName(new RegExp(`^${letterOf(notes[2].step)} on the .+ \\(treble clef\\), answered with a hint$`));
+  await expect(page.getByRole('button', { name: 'Practice missed notes' })).toBeVisible();
+});
+
 test('read notes: piano answers, a hint and skipping to the summary', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/notes');

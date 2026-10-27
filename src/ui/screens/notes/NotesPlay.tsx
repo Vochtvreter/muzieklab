@@ -15,7 +15,7 @@ import {
   isRight,
   keySigns,
   letterOf,
-  noteId,
+  needsPractice,
   noteMidi,
   pianoKeyMidi,
   rangeSteps,
@@ -610,12 +610,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   }
 
   if (desktop) {
-    const needs = answers
-      .map((a, j) => ({ a, n: notes[j] }))
-      .filter(({ a }) => a.outcome !== 'right')
-      .map(({ n }) => noteId(n.clef, n.step));
-    const needsText = [...new Set(needs)].slice(0, 3).map((id) => {
-      const n = notes.find((x) => noteId(x.clef, x.step) === id)!;
+    // The notes missed as they were written: F♯ missed on a line where an F was right reads F♯.
+    const needsText = needsPractice(notes, answers).slice(0, 3).map((n) => {
       const name = (state.prefs.noteNames === 'solfege' ? solfegeName : letterName)(letterOf(n.step), n.alter);
       return t('notes.play.needsItem', { note: name, pos: positionText(n.clef, n.step) });
     });
@@ -686,7 +682,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
 
         {info}
 
-        <div className="card nplay-staff">
+        <div className={'card nplay-staff' + (timer > 0 ? ' nplay-staff--timer' : '')}>
           {staff}
           {timerBar}
           {hearButton}

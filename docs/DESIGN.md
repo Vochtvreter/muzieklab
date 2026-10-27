@@ -276,7 +276,9 @@ like the rhythm notation.
   to the key signature still follows (*… Look at the sharp after the clef.*).
 
 **Hearing the notes** (since 0.10.0). The setup has a *Hear the notes* switch, on by default. With it on, a piano key
-sounds as it is pressed, in the octave of the note on the staff, so the right key sounds as the note. After every
+sounds as it is pressed, in the octave of the note on the staff, so the right key sounds as the note. The other keys
+sound in the C–B octave of the note's letter: for B♯4, which sounds as C5, the B key sounds B4, the letter the player
+read, a half step under the note (not B5), and for C♭5 (B4) the C key sounds C5. After every
 answer (names or piano; right, wrong or timed out) the note on the staff sounds as written, with the key signature and
 its own sign applied. After a wrong piano key, the right note follows half a second later. Once a note is answered,
 the piano keys only sound, so the player can compare them. The sound is the Scales piano tone, at the Playback volume.
@@ -294,7 +296,9 @@ Start tap and from every answer tap.
   that writes (4 bars on a phone, on its side too) so a line or space is easy to point at, and does not scroll the page
   while dragging. Screen readers get the staff as a slider whose value is the place (*the 2nd space*). After Check the
   note is drawn where it belongs, green or red as when reading; a wrong one says where it went: *You wrote sol (G), on
-  the 2nd line; la (A) goes on the 2nd space.* The hint is the reading hint (the nearest landmark and the way from it).
+  the 2nd line; la (A) goes on the 2nd space.* The staff has a second D, E, F and G: the right letter an octave off is
+  still wrong (the lesson teaches the place), and the feedback says so, as in Scales: *Right note, wrong octave: write
+  the lower sol (G), on the 2nd line.* The hint is the reading hint (the nearest landmark and the way from it).
 - **Hear it**: sol (G4) sounds, then the note, 0.9 s apart; the slot stays empty until the note is named, and *Hear
   it again* plays both again. The note always sounds, also with *Hear the notes* off. Answers are the name buttons (or
   the piano), and the feedback places the note from sol: *Right: mi (E), 2 steps below sol.* The hint says only that:
@@ -352,8 +356,11 @@ changes at most every 4 notes, with a visible clef change.
 Round done's *Needs practice* shows each missed or slow note as the player reads it (since 0.10.0; before, in
 scientific pitch, *F5 ×3*): a chip with a small staff (the note's clef and the note, with its own sign; no key signature at this
 size), the name in the player's note names (fa♯ or F♯), and ×count or the seconds. Screen readers hear e.g. *fa, F on
-the top line (treble clef), missed 3 times*. The desktop play screen's Needs practice card also uses the player's
-names.
+the top line (treble clef), missed 3 times*. A note right only with a hint is not right (the score), and *Practice
+missed notes* drills it, so it has a row of its own, *With a hint*, between *Missed* and *Slow*; *Nothing to practise:
+every note right, and quick.* shows only when all three are empty. The desktop play screen's Needs practice card also
+uses the player's names, and names each note missed or hinted with its own sign (F♯ missed on a line where an F was
+right reads F♯).
 
 ### 3.7 Scales — *every key*
 
@@ -1478,7 +1485,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     degree rows are 40 px high, 4 px apart.
   - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
     0.8, the Read notes staff at 1.15 (not 1.45; about 0.82 and 1.0 with ledger lines) and the Scales staff at 1.1 (not
-    1.25), or smaller still to fit their notes. The floors are lower (pad 72 px, Read notes piano 64 px with its black
+    1.25), or smaller still to fit their notes. With a time per note, Read notes' staff card has 6 px above and below
+    and its timer bar sits 4 px under the staff, so a why of three lines with two ledger lines leaves Hint and Next note
+    in view at 375 × 553. The floors are lower (pad 72 px, Read notes piano 64 px with its black
     keys kept at 44 px and the white keys' labels below them, Scales piano 110 px), and so are the name buttons
     (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign buttons, the analog
     beat counter (44 px, as the digits' row), Echo's listen card and Calibration's intro. At 320 px wide Read notes

@@ -6,6 +6,7 @@ import {
   isRight,
   missKind,
   missedIds,
+  needsPractice,
   noteDifficulty,
   noteId,
   noteRoundXp,
@@ -193,6 +194,18 @@ describe('the sound of a note', () => {
       }
     }
   });
+
+  it('sounds the other keys where their letter is written: for B♯ and C♭ the letter read is a half step from the note', () => {
+    // B♯4 sounds as C5 and C♭5 as B4, across the C from their letter: the key of the letter read sounds next to the
+    // note, not almost an octave away.
+    const bSharp4: RoundNote = { clef: 'treble', key: 'C#', step: 34, alter: 1, sign: null, input: 'piano', task: 'read' };
+    const cFlat5: RoundNote = { clef: 'treble', key: 'Cb', step: 35, alter: -1, sign: null, input: 'piano', task: 'read' };
+    expect(pianoKeyMidi(bSharp4, 0)).toBe(72);
+    expect(pianoKeyMidi(bSharp4, 11)).toBe(71);
+    expect(pianoKeyMidi(cFlat5, 11)).toBe(71);
+    expect(pianoKeyMidi(cFlat5, 0)).toBe(72);
+    expect(pianoKeyMidi({ ...bSharp4, clef: 'bass', step: 20 }, 11)).toBe(47);
+  });
 });
 
 describe('scoreRound', () => {
@@ -246,6 +259,30 @@ describe('scoreRound', () => {
     expect(weak['treble:34']).toBe(1);
     expect(updateWeak({ 'treble:38': 5 }, notes, answers)['treble:38']).toBe(5);
     expect(missedIds(notes, answers).sort()).toEqual(['treble:34', 'treble:38']);
+  });
+
+  it('lists the notes answered with a hint to practise, as Practice missed notes drills them', () => {
+    const answers = [a('right', 500), a('hinted', 1000), a('right', 500), a('hinted', 4000)];
+    const r = scoreRound(notes, answers);
+    expect(r.missed).toEqual([]);
+    expect(r.slow).toEqual([]);
+    expect(r.hintedNotes).toEqual([expect.objectContaining({ step: 32, alter: 0, count: 1 }), expect.objectContaining({ step: 34, alter: 0, count: 1 })]);
+    // Every note Practice missed notes drills is on the Needs practice card.
+    const listed = (x: typeof r): string[] => [...x.missed, ...x.hintedNotes, ...x.slow].map((c) => noteId(c.clef, c.step));
+    for (const id of missedIds(notes, answers)) expect(listed(r)).toContain(id);
+    // A note missed once and answered with a hint once is listed once, as missed.
+    const both = scoreRound(notes, [a('wrong', 900), a('right', 500), a('hinted', 900)]);
+    expect(both.missed).toEqual([expect.objectContaining({ step: 38, count: 1 })]);
+    expect(both.hintedNotes).toEqual([]);
+  });
+
+  it('names each note to practise with its own sign, as it was answered', () => {
+    // F5, then F♯5 on the same line: the miss is the F♯, and an F missed too is a note of its own.
+    const f: RoundNote = { ...fSharp5, key: 'C', alter: 0 };
+    const fis: RoundNote = { ...fSharp5, key: 'C', alter: 1, sign: 1 };
+    expect(needsPractice([f, fis], [a('right', 500), a('wrong', 900)])).toEqual([fis]);
+    expect(needsPractice([fis, f, fis, f], [a('right', 500), a('hinted', 900), a('timeout', 3000), a('wrong', 900)])).toEqual([f, fis]);
+    expect(needsPractice([f, fis], [])).toEqual([]);
   });
 });
 

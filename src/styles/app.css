@@ -3174,6 +3174,10 @@ button.lesson-stars:hover {
 .score-sub {
   font-size: 14px;
 }
+/* The XP ("+14 XP") is one piece: a long score line breaks before it, not between the number and XP. */
+.score-sub b {
+  white-space: nowrap;
+}
 .counts-card {
   flex: none;
   border-radius: 18px;

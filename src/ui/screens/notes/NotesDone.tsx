@@ -1,8 +1,8 @@
 /**
  * Read notes · round done (DESIGN.md §3.5 Scoring): stars, correct / total, the average time and XP; time per note;
- * the notes that need practice (missed, slow), each on a small staff with its name as the player reads it (do re mi
- * or letters); right answers by sign; and New round / Practice missed notes. After a note lesson of the Learning path
- * (§8.2): the lesson and its unit, what it did for the path, and Next lesson once it has two stars.
+ * the notes that need practice (missed, with a hint, slow), each on a small staff with its name as the player reads it
+ * (do re mi or letters); right answers by sign; and New round / Practice missed notes. After a note lesson of the
+ * Learning path (§8.2): the lesson and its unit, what it did for the path, and Next lesson once it has two stars.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -132,8 +132,8 @@ export function NotesDone(): JSX.Element | null {
   const cards = answered && (
     <>
       <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />
-      {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
-      {(d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} system={state.prefs.noteNames} />}
+      {/* Skipped with nothing to practise among the notes answered: no "every note right" over a lesson score that counts the rest. */}
+      {(d.total === r.total || d.missed.length + d.hintedNotes.length + d.slow.length > 0) && <Needs r={d} system={state.prefs.noteNames} />}
       {(d.bySign.length > 1 || keyTip) && <BySign r={d} keyId={oneKey} />}
     </>
   );
@@ -301,8 +301,10 @@ const CHIP_SCALE = 0.5;
 const chipNote = (c: NoteChip): PitchNote => ({ step: c.step, sign: c.alter === 0 ? null : c.alter });
 
 function Needs({ r, system }: { r: RoundResult; system: NameSystem }): JSX.Element {
+  // A note right only with a hint is not right (the score), and Practice missed notes drills it: it is listed too.
   const groups = [
     { key: 'missed', label: t('notes.done.missed'), chips: r.missed.slice(0, 6) },
+    { key: 'hinted', label: t('notes.done.hintedGroup'), chips: r.hintedNotes.slice(0, 6) },
     { key: 'slow', label: t('notes.done.slow'), chips: r.slow.slice(0, 6) },
   ].filter((g) => g.chips.length > 0);
   // One staff height for every chip: room (in staff spaces) for the note furthest off the staff, and for a clef or sign
@@ -339,7 +341,8 @@ function Chip({ c, kind, system, room }: { c: NoteChip; kind: string; system: Na
   const name = (system === 'solfege' ? solfegeName : letterName)(L, c.alter);
   const spoken = system === 'solfege' ? `${solfegeName(L, 0)}, ${spokenName(L, c.alter)}` : spokenName(L, c.alter);
   const note = t('notes.done.chipNote', { name: spoken, pos: positionText(c.clef, c.step), clef: t('notes.clefLower.' + c.clef) });
-  const aria = kind === 'missed' ? t('notes.done.missedChip', { note, count: c.count }) : t('notes.done.slowChip', { note, value: secs(c.ms) });
+  const aria =
+    kind === 'slow' ? t('notes.done.slowChip', { note, value: secs(c.ms) }) : t(kind === 'hinted' ? 'notes.done.hintedChip' : 'notes.done.missedChip', { note, count: c.count });
   const shown = useMemo(() => [chipNote(c)], [c.step, c.alter]);
   return (
     <span role="listitem" aria-label={aria} className={'nchip nchip--' + kind}>
@@ -347,7 +350,7 @@ function Chip({ c, kind, system, room }: { c: NoteChip; kind: string; system: Na
       <span aria-hidden="true" className="nchip-name">
         {name}
       </span>
-      {kind === 'missed' && c.count > 1 && <span aria-hidden="true" className="nchip-tag">{t('notes.done.times', { count: c.count })}</span>}
+      {kind !== 'slow' && c.count > 1 && <span aria-hidden="true" className="nchip-tag">{t('notes.done.times', { count: c.count })}</span>}
       {kind === 'slow' && <span aria-hidden="true" className="nchip-tag">{t('notes.play.seconds', { value: secs(c.ms) })}</span>}
     </span>
   );

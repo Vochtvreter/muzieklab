@@ -32,6 +32,10 @@
   background: var(--paper);
   color: var(--ink);
   font-size: 13.5px;
+  /* A label too long for a third of a 320 px phone ("+2 ledger lines") wraps inside its chip instead of running out. */
+  white-space: normal;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 .seg--chips .seg-btn.is-on {
   border-color: var(--accent);
@@ -491,6 +495,11 @@
   font-size: 11px;
   opacity: 0.6;
 }
+/* On a marked button the mark's ink on its soft fill has no contrast to spare: the small name is not faded there. */
+.name-btn.is-right .name-sub,
+.name-btn.is-wrong .name-sub {
+  opacity: 1;
+}
 /* A lesson's own notes (fewer than seven): the buttons share the row, centred, and do not grow into bars. */
 .name-grid--few {
   width: 100%;
@@ -605,13 +614,14 @@
   background: var(--miss-soft);
   color: var(--miss-ink);
 }
+/* --good and --miss turn light in dark: the label takes the ink for a filled accent, white in light and dark in dark. */
 .piano-black.is-right {
   background: var(--good);
-  color: #ffffff;
+  color: var(--on-fill);
 }
 .piano-black.is-wrong {
   background: var(--miss);
-  color: #ffffff;
+  color: var(--on-fill);
 }
 .piano--kbd {
   --black-w: 52px;
@@ -1023,6 +1033,10 @@
   border-color: var(--miss);
   color: var(--miss);
 }
+.nchip--hinted {
+  border-color: var(--gold);
+  color: var(--gold-ink);
+}
 /* The note on a small staff in its clef (VexFlow at 0.5: clef and one whole note). */
 .nchip-staff {
   flex: none;
@@ -1042,6 +1056,11 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 13px;
+}
+/* The count stays whole ("0 / 10"); a long label beside it (C♯ major's seven sharps) wraps instead. */
+.nsign-head > .mono-muted {
+  flex: none;
+  white-space: nowrap;
 }
 .nsign-bar {
   height: 8px;
@@ -2055,6 +2074,12 @@
 @media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
   .nplay-staff {
     padding: 8px 12px;
+  }
+  /* The timer's bar sits closer under the staff, so a why of three lines still leaves Hint and Next note in view. */
+  .nplay-staff--timer {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    gap: 4px;
   }
   .nfeedback {
     min-height: 40px;
