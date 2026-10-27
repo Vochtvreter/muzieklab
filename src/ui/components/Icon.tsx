@@ -68,6 +68,13 @@ const PATHS = {
   back: <path d="M15 5l-7 7 7 7" />,
   /** A button that goes on to another screen (App design canvas, Progress and Skill levels: Practice weak spots, a skill's button). */
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  // A speech bubble with a mark in it: the feedback tool (docs/FEEDBACK-LOOP.md).
+  feedback: (
+    <>
+      <path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+      <path d="M9 10h6" />
+    </>
+  ),
   chevron: <path d="M9 5l7 7-7 7" />,
   chevronSmall: <path d="M9 6l6 6-6 6" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,

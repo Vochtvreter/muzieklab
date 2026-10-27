@@ -720,13 +720,18 @@
     "signInSub": "Accounts are by invitation.",
     "accounts": "Accounts",
     "accountsSub": "Invite people and manage roles",
+    "feedbackReports": "Feedback",
+    "feedbackReportsSub": "Review the reports sent from the app",
+    "feedbackButton": "Feedback button",
+    "feedbackButtonSub": "On this device: mark part of a screen and send what should change.",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
     "privacy": "Privacy",
     "privacySub": "What stays on this device, and what an account stores",
     "noticeSignedOut": "Signed out.",
     "noticeSignedOutEverywhere": "Signed out on every device.",
-    "noticeDeleted": "Your account was deleted.",
+    "noticeDeleted": "Your account and its data were deleted.",
+    "noticeDeletedKept": "Your account was deleted. An anonymous copy of your progress is kept.",
     "noticeWelcome": "You're signed in. Welcome to Muzieklab.",
     "noticePasswordReset": "Password saved. Your other devices are signed out.",
     "noticeProgressAdded": "The progress on this device is on your account now too.",
@@ -810,7 +815,9 @@
     "internal": "Something went wrong on our side. Try again later.",
     "unavailable": "Can't reach Muzieklab right now. Check your connection and try again.",
     "waitSeconds": "Too many tries. Try again in {count, plural, one {# second} other {# seconds}}.",
-    "waitMinutes": "Too many tries. Try again in {count, plural, one {# minute} other {# minutes}}."
+    "waitMinutes": "Too many tries. Try again in {count, plural, one {# minute} other {# minutes}}.",
+    "role_exists": "There's already a role with this id.",
+    "built_in_role": "Built-in roles keep their name, and Admin can always do everything."
   },
   "accountRole": {
     "admin": "Admin",
@@ -890,8 +897,16 @@
     "downloading": "Downloading…",
     "downloaded": "Downloaded: {file}.",
     "delete": "Delete account",
+    "deleteSub": "You choose whether an anonymous copy of your progress is kept.",
     "deleteQuestion": "Delete your account?",
-    "deleteDetail": "Your account and everything stored with it, the progress on it too, are deleted. Progress on this device stays. No undo.",
+    "deleteDetail": "Your name, email, password and devices are deleted, and you're signed out. Progress on this device stays. No undo.",
+    "deleteData": "Your progress and settings",
+    "deleteKeep": "Keep anonymously",
+    "deleteRemove": "Delete too",
+    "deleteKeepHint": "They're kept without your name, email or anything else that says they were yours, to see how Muzieklab is used and make it better.",
+    "deleteRemoveHint": "They're deleted with your account. Nothing of your account is kept.",
+    "feedback": "Why are you leaving? (optional)",
+    "feedbackHint": "It helps us make Muzieklab better. It's kept without your name or email, also when you delete everything, so leave out anything that says who you are.",
     "deletePassword": "Password",
     "deleteConfirm": "Delete",
     "deleting": "Deleting…"
@@ -925,7 +940,17 @@
     "ageTitle": "Age",
     "age": "For now, accounts are for people aged 16 and over.",
     "updated": "Last updated: {date}",
-    "accountProgress": "your progress and the settings that go with you, such as the theme and note names"
+    "accountProgress": "your progress and the settings that go with you, such as the theme and note names",
+    "deleteTitle": "When you delete your account",
+    "deleteIntro": "You choose what happens to your progress and settings:",
+    "deleteKeep": "Keep them anonymously: your name, email, password and devices are deleted, and your progress and settings are kept without them, with only the month you joined. Nothing in them says they were yours. We use them to see how Muzieklab is used.",
+    "deleteRemove": "Delete them too: nothing of your account is kept.",
+    "deleteFeedback": "Either way, we note the day an account was deleted, and keep what you wrote about why you're leaving, if you wrote anything, without your name or email.",
+    "deleteBackups": "The nightly backups still hold your account for up to 14 days.",
+    "keepClosures": "Deleted accounts: the anonymous copy, the feedback and the day, 2 years.",
+    "accountReports": "the feedback reports you send from the app, if your account can send them: what you wrote, the screen and the spot you marked, your device and browser, and your settings, never your progress. The people who review them see your name. A report that is picked up becomes a public GitHub issue, without your name",
+    "keepReports": "Feedback reports: until the team deletes them, or you delete your account.",
+    "deleteReports": "The feedback reports you sent from the app are deleted with your account, whichever you choose. If an admin deletes your account, they're kept without your name."
   },
   "admin": {
     "title": "Accounts",
@@ -1031,7 +1056,128 @@
     "newResetLink": "New password link",
     "newInviteLinkSub": "Works for {days} days. The earlier link stops working.",
     "newResetLinkSub": "Works for {hours} hours, once. The earlier one stops working.",
-    "making": "Making a link…"
+    "making": "Making a link…",
+    "history": "History",
+    "historySub": "Accounts that were deleted, and why people left"
+  },
+  "closures": {
+    "title": "Deleted accounts",
+    "lead": "Every account deleted in the last 2 years, with what its owner wrote. Nothing here says whose an account was.",
+    "loading": "Loading deleted accounts…",
+    "empty": "No account has been deleted yet.",
+    "emptyKind": "None of these.",
+    "kindGroup": "How it was deleted",
+    "count": "{count, plural, one {# deleted account} other {# deleted accounts}}",
+    "countFound": "{count, plural, one {# deleted account found} other {# deleted accounts found}}",
+    "rowLabel": "{day}, {kind}",
+    "noFeedback": "No feedback.",
+    "joined": "Joined {month}",
+    "noProgress": "No progress saved",
+    "level": "Level {level}",
+    "xp": "{xp} XP",
+    "lessons": "{count, plural, one {# lesson} other {# lessons}}",
+    "days": "{count, plural, one {# day practiced} other {# days practiced}}",
+    "file": "File",
+    "download": "Download as a file",
+    "downloadSub": "Every entry, with the anonymous progress, as JSON."
+  },
+  "closureKind": {
+    "archived": "Archived",
+    "removed": "Data deleted",
+    "admin": "By an admin"
+  },
+  "feedbackStatus": {
+    "new": "New",
+    "accepted": "Accepted",
+    "declined": "Declined"
+  },
+  "feedbackReview": {
+    "title": "Feedback",
+    "lead": "Reports sent from the app.",
+    "modeTitle": "Feedback mode",
+    "modeOn": "On: everyone who can send feedback sees the Feedback button on every screen.",
+    "modeOff": "Off: nobody sees the Feedback button. Turn it on to collect feedback.",
+    "noAccessSub": "Only admins review feedback reports.",
+    "loading": "Loading reports…",
+    "empty": "No reports yet. They appear here when someone sends feedback from the app.",
+    "emptyStatus": "No reports with this status.",
+    "count": "{count, plural, one {# report} other {# reports}}",
+    "countNew": "{count, plural, one {# new report} other {# new reports}}",
+    "countAccepted": "{count, plural, one {# accepted report} other {# accepted reports}}",
+    "countDeclined": "{count, plural, one {# declined report} other {# declined reports}}",
+    "newest": "Showing the newest {count}.",
+    "untitled": "{kind} on {route}",
+    "deletedAccount": "A deleted account",
+    "backToList": "Back to feedback",
+    "reportTitle": "Report",
+    "loadingReport": "Loading the report…",
+    "gone": "This report isn't there anymore.",
+    "report": "Report",
+    "kind": "Kind",
+    "description": "What should change",
+    "noDescription": "No description.",
+    "where": "Where",
+    "screen": "Screen",
+    "openScreen": "Open this screen",
+    "marked": "Marked",
+    "text": "Text there",
+    "selector": "Selector",
+    "mode": "Marked as",
+    "modeValue": {
+      "element": "An element",
+      "area": "A drawn area"
+    },
+    "box": "Box",
+    "boxValue": "x {x}, y {y}, {width} × {height} px",
+    "boxScrolled": "{box}, scrolled to {x}, {y}",
+    "device": "Device",
+    "viewport": "Viewport",
+    "viewportValue": "{width} × {height} px, pixel ratio {dpr}",
+    "size": "Size",
+    "sizeValue": {
+      "phone": "Phone",
+      "tablet": "Tablet",
+      "desktop": "Desktop"
+    },
+    "orientation": "Orientation",
+    "orientationValue": {
+      "portrait": "Portrait",
+      "landscape": "Landscape"
+    },
+    "pointer": "Input",
+    "pointerValue": {
+      "coarse": "Touch",
+      "fine": "Mouse"
+    },
+    "theme": "Theme",
+    "themeValue": {
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "themeFromSystem": "{theme}, from the system setting",
+    "language": "Language",
+    "version": "App version",
+    "browser": "Browser",
+    "sent": "Sent",
+    "from": "From",
+    "date": "Date",
+    "review": "Review",
+    "status": "Status",
+    "reviewedBy": "Reviewed by {name}, {date}",
+    "reviewedByGone": "Reviewed by a deleted account, {date}",
+    "notReviewed": "Not reviewed yet.",
+    "note": "Note for the team",
+    "noteHint": "Only people who review feedback see it, not the person who sent it. Up to {max} characters.",
+    "noteBadCharacters": "Remove the tabs and other hidden characters.",
+    "saveNote": "Save note",
+    "actions": "Actions",
+    "copy": "Copy as Markdown",
+    "copySub": "The title and text for a GitHub issue, to make by hand for now.",
+    "markdown": "Markdown",
+    "delete": "Delete report",
+    "deleteQuestion": "Delete this report?",
+    "deleteDetail": "It is removed from the app for everyone. No undo.",
+    "deleted": "The report was deleted."
   },
   "noteButton": {
     "whole": "Whole note",
@@ -2796,6 +2942,38 @@
       "text": "Two stars at 160 BPM or faster"
     }
   },
+  "feedback": {
+    "open": "Feedback",
+    "openLabel": "Feedback: mark a part of this screen",
+    "markHint": "Click the part you mean, or drag to draw a box around it. Esc cancels.",
+    "markHintTouch": "Tap the part you mean, or drag to draw a box around it.",
+    "cancel": "Cancel",
+    "title": "Feedback",
+    "marked": "Marked",
+    "markedArea": "Marked area",
+    "markAgain": "Mark again",
+    "kindGroup": "Kind of feedback",
+    "kind": {
+      "bug": "Bug",
+      "change": "Change",
+      "idea": "Idea"
+    },
+    "descLabel": "What should change?",
+    "descPlaceholder": "What is wrong here, and what you expect instead",
+    "titleLabel": "Title",
+    "titlePlaceholder": "A short summary (optional)",
+    "attached": "Saved for the team to review, with this screen, the marked spot, the screen size, the theme, the language and the settings. Not your progress. If it is picked up, it becomes a public GitHub issue, without your name.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "send": "Send",
+    "sending": "Sending…",
+    "saved": "Saved for review",
+    "savedText": "An admin reads it in Settings → Account → Feedback, and picks what goes on to GitHub.",
+    "review": "Review it",
+    "another": "Mark another",
+    "close": "Close",
+    "hide": "Hide the feedback button on this device"
+  },
   "changelog": {
     "title": "What's new",
     "back": "Back to settings",
@@ -2818,7 +2996,7 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
-    "v0_16_0": {
+    "v0_19_0": {
       "title": "Your progress at a glance",
       "try": "Open Progress",
       "tab": "A Progress tab, between Learn and Settings, with your level, your streak and your skill levels. Pick Rhythm, Notes or Scales to see your accuracy and timing over two weeks, the minutes you practised this week and your achievements; your accuracy per clef and your slowest notes; or the stars of every scale.",
@@ -2826,6 +3004,30 @@
       "skills": "Skill levels: rhythm reading, rhythm by ear, treble clef, bass clef, scales and theory have ten levels each. Each level says what passes it, Progress names your lowest skill, and a skill you have not practised for two weeks asks for one review round. Your level stays.",
       "achievements": "Five achievements to earn, such as a 7-day streak, a perfect bar and two stars at 160 BPM. After a round, a badge shows the one you earned.",
       "levelUp": "The level-up sheet lists the achievements and the new personal best the round brought, and See progress opens the Progress tab."
+    },
+    "v0_18_0": {
+      "title": "Feedback mode",
+      "mode": "For admins: Feedback mode, on Settings → Account → Feedback, turns the Feedback button on and off for everyone. It starts off: nobody sees the button until an admin turns it on."
+    },
+    "v0_17_1": {
+      "title": "Still signed in with several tabs open",
+      "tabs": "If you opened or reloaded several tabs of the app at once, some of them could show you as signed out, and now and then you were signed out in all of them. Now every tab stays signed in."
+    },
+    "v0_17_0": {
+      "title": "Feedback on the spot",
+      "feedback": "For the team: an account allowed to give feedback gets a Feedback button. Mark any part of a screen and send what should change, with the screen, the spot and the device attached. Reports are saved for an admin to review in Settings → Account → Feedback.",
+      "roles": "Admins: what each role may do is now stored on the server, so roles can change, and new ones can be made, without a new version of the app."
+    },
+    "v0_16_1": {
+      "title": "Still signed in after a reload",
+      "signedIn": "If you reloaded the app just as your sign-in renewed itself, or the connection dropped for a moment then, you could be signed out. Now you stay signed in."
+    },
+    "v0_16_0": {
+      "title": "Deleting your account, your way",
+      "try": "Read how it works",
+      "choice": "Deleting your account now asks what happens to your progress and settings: keep them as an anonymous copy, without your name or email, or delete them too.",
+      "feedback": "You can say why you leave when you delete your account. It is kept without your name.",
+      "admin": "Admins see every deleted account in Accounts → Deleted accounts, with the feedback and what an anonymous copy holds."
     },
     "v0_15_0": {
       "title": "Progress on every device",

@@ -5,11 +5,22 @@
  * Dates are ISO 8601 strings. Every error is an ApiErrorBody with a stable `error` code the app translates.
  */
 
+import type { FeedbackReport, FeedbackStatus } from './feedback.js';
+
 // --- roles, permissions, entitlements (BACKEND-PLAN.md §4) ------------------------------------------------------
 
-/** Global roles, kept on the account. Class roles (teacher, pupil in one class) come with phase 3. */
-export const ROLES = ['admin', 'editor', 'teacher'] as const;
-export type Role = (typeof ROLES)[number];
+/**
+ * The built-in roles (BACKEND-PLAN.md §4.1), in the order lists show them. They always exist and cannot be deleted;
+ * admin always has every permission. Admins can make more roles (custom roles), and change the permissions of editor,
+ * teacher and the custom ones. Class roles (teacher, pupil in one class) come with phase 3.
+ */
+export const BUILT_IN_ROLES = ['admin', 'editor', 'teacher'] as const;
+export type BuiltInRole = (typeof BUILT_IN_ROLES)[number];
+
+/** A role's id: a built-in one, or a custom one (2 to 32 lower-case letters, digits and dashes, starting with a letter). */
+export type Role = string;
+export const ROLE_ID_PATTERN = '^[a-z][a-z0-9-]{1,31}$';
+export const isBuiltInRole = (id: string): id is BuiltInRole => (BUILT_IN_ROLES as readonly string[]).includes(id);
 
 export const ACCOUNT_STATUSES = ['invited', 'active', 'blocked'] as const;
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
@@ -24,11 +35,14 @@ export const PERMISSIONS = [
   'accounts.block',
   'accounts.delete',
   'roles.grant',
+  'roles.manage',
   'entitlements.grant',
   'audit.read',
   'class.create',
   'content.edit',
   'content.publish',
+  'feedback.give',
+  'feedback.review',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -56,10 +70,17 @@ export interface Me {
   name: string;
   locale: AccountLocale | null;
   roles: Role[];
+  /** The names of the account's custom roles, by id (built-in roles are named by the app, in its language). */
+  roleNames: Record<Role, string>;
   /** Everything this account may do: the app shows only what is allowed (the server checks anyway). */
   permissions: Permission[];
   premium: Premium;
   createdAt: string;
+  /**
+   * Whether feedback mode is on, for everyone (an admin turns it on and off: FeedbackMode in shared/feedback.ts). Only
+   * then does an account with feedback.give see the Feedback button.
+   */
+  feedbackMode: boolean;
 }
 
 // --- sign in, invites, new passwords (BACKEND-PLAN.md §5) -----------------------------------------------------------
@@ -118,15 +139,40 @@ export interface ChangeEmailRequest {
   email: string;
 }
 
-/** DELETE /me with this body → 204. Everything about the account goes; audit entries lose its name and email. */
+/**
+ * DELETE /me with this body → 204 (BACKEND-PLAN.md §3.7). The account, its sessions and links go, and audit entries
+ * lose its name and email. Its saved progress and prefs go too with `removeData`; without it they are archived as an
+ * anonymous copy (ClosureArchive). Either way a Closure says that an account was deleted, with the feedback.
+ */
 export interface DeleteMeRequest {
   password: string;
+  /**
+   * true: nothing of the account is kept. false: an anonymous copy of its progress and prefs is kept. When it is not
+   * sent, true: what apps before 0.16.0 told the person (everything is deleted).
+   */
+  removeData?: boolean;
+  /** Why they leave, if they want to say (at most FEEDBACK_MAX characters): kept with the Closure, without a name. */
+  feedback?: string;
+}
+
+/** The longest feedback DELETE /me takes, in characters (code points). */
+export const FEEDBACK_MAX = 1000;
+
+/** A feedback report in the account's export: what it sent, and where the review stands (not who reviewed it). */
+export interface OwnFeedback {
+  id: string;
+  createdAt: string;
+  status: FeedbackStatus;
+  /** The report as sent. */
+  report: FeedbackReport;
 }
 
 /** GET /me/export: everything stored about the account, as a download (Content-Disposition: attachment). */
 export interface AccountExport {
   exportedAt: string;
-  account: Omit<Me, 'permissions'> & { status: AccountStatus; lastSignInAt: string | null; passwordChangedAt: string | null };
+  account: Omit<Me, 'permissions' | 'roleNames' | 'feedbackMode'> & { status: AccountStatus; lastSignInAt: string | null; passwordChangedAt: string | null };
+  /** The feedback reports the account sent from the app, with what the review made of them (docs/FEEDBACK-LOOP.md). */
+  feedback: OwnFeedback[];
   sessions: { device: string; createdAt: string; lastSeenAt: string }[];
   /** What admins changed about this account, and what it changed itself. */
   audit: AuditEntry[];
@@ -236,9 +282,93 @@ export interface AdminUpdateRequest {
 
 // POST /admin/accounts/:id/invite-link → LinkCreated (an invited account: a new invite link, the old one stops).
 // POST /admin/accounts/:id/reset-link → LinkCreated (an active account: a new-password link valid for 24 hours).
-// DELETE /admin/accounts/:id?expect=<status> → 204 (cancels an invite, or deletes an account; never yourself or the
-// last admin). With `expect` (invited, active or blocked), it is refused with 409 wrong_status when the account's
+// DELETE /admin/accounts/:id?expect=<status> → 204 (cancels an invite, or deletes an account with all of its data, and
+// adds a Closure of kind admin; never yourself or the last admin). With `expect` (invited, active or blocked), it is refused with 409 wrong_status when the account's
 // status is another one, so "Cancel invite" cannot delete an account whose invite was accepted meanwhile.
+
+/**
+ * A deleted account, for the admin screen Deleted accounts (BACKEND-PLAN.md §3.7). Nothing in it says whose it was: no
+ * name, email or account id, and no time of day (an id or a moment would match it to the audit log's entry).
+ * - archived: deleted by its owner, who let an anonymous copy of the progress and prefs be kept (`archive`);
+ * - removed: deleted by its owner with all of its data (`archive` is null);
+ * - admin: deleted by an admin (no feedback, no archive). A cancelled invite is not an account and has no Closure.
+ */
+export const CLOSURE_KINDS = ['archived', 'removed', 'admin'] as const;
+export type ClosureKind = (typeof CLOSURE_KINDS)[number];
+
+export interface Closure {
+  /** A random id, only to tell entries apart. */
+  id: string;
+  /** The day it was deleted (YYYY-MM-DD, UTC). */
+  day: string;
+  kind: ClosureKind;
+  /** What its owner wrote when deleting it, or null. */
+  feedback: string | null;
+  archive: ClosureArchive | null;
+}
+
+/** The anonymous copy an archived account leaves. */
+export interface ClosureArchive {
+  /** The month the account was made (YYYY-MM): how long it was used, without a day to match. */
+  joined: string;
+  /** The saved progress and prefs (SyncedData), as the account last saved them; null when it never saved any. */
+  data: SyncedData | null;
+}
+
+/** GET /admin/closures → { closures }, newest day first, at most 500. */
+export interface ClosureListResponse {
+  closures: Closure[];
+}
+
+// --- roles (accounts.read to list them; roles.manage to change them; BACKEND-PLAN.md §4) ------------------------------
+
+/** A role and what it lets an account do. */
+export interface RoleInfo {
+  id: Role;
+  /** As stored. The app names built-in roles itself, in its language. */
+  name: string;
+  description: string;
+  /** In the order of PERMISSIONS. Admin's are always all of them. */
+  permissions: Permission[];
+  builtIn: boolean;
+  /** How many accounts have it. */
+  accounts: number;
+}
+
+/** GET /admin/roles → { roles }: the built-in roles first, then the custom ones by name. */
+export interface RoleListResponse {
+  roles: RoleInfo[];
+}
+
+/**
+ * POST /admin/roles → RoleInfo. Nobody gives out more than they have: every permission in the role must be one the
+ * admin has.
+ */
+export interface CreateRoleRequest {
+  id: Role;
+  name: string;
+  description?: string;
+  permissions: Permission[];
+}
+
+/**
+ * PATCH /admin/roles/:id → RoleInfo. Only the fields sent change. A built-in role keeps its name and description, and
+ * admin keeps every permission (409 built_in_role). Permissions added or removed must be ones the admin has.
+ */
+export interface UpdateRoleRequest {
+  name?: string;
+  description?: string;
+  permissions?: Permission[];
+}
+
+// DELETE /admin/roles/:id → 204: a custom role only; every account that had it loses it. The admin must have every
+// permission in it.
+
+// --- feedback reports (feedback.give to send, feedback.review to review; docs/FEEDBACK-LOOP.md) ---------------------
+// The bodies are in shared/feedback.ts, with the report itself: POST /feedback → FeedbackSaved; GET /admin/feedback →
+// FeedbackListResponse; GET and PATCH /admin/feedback/:id → FeedbackDetail; DELETE /admin/feedback/:id → 204;
+// PUT /admin/feedback-mode → FeedbackMode.
+// (Not to be mixed up with the feedback someone leaves when deleting their account: Closure.feedback above.)
 
 /** GET /admin/audit?limit=&before= → { entries }, newest first. */
 export interface AuditEntry {
@@ -272,6 +402,13 @@ export const AUDIT_ACTIONS = [
   'role.revoke',
   'premium.grant',
   'premium.revoke',
+  'role.create',
+  'role.update',
+  'role.delete',
+  'feedback.send',
+  'feedback.review',
+  'feedback.delete',
+  'feedback.mode',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -311,6 +448,10 @@ export const ERROR_CODES = [
   'rev_conflict',
   /** 401: the current password given to change something is not right. */
   'wrong_password',
+  /** 409: a role with this id exists already. */
+  'role_exists',
+  /** 409: a built-in role cannot be deleted or renamed, and admin always has every permission. */
+  'built_in_role',
   /** 410: an invite or new-password link that is unknown, used, cancelled or expired. */
   'link_invalid',
   /** 422: the new password is too short (under 10 characters) or too long (over 128). */

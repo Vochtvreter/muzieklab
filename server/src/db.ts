@@ -1,5 +1,17 @@
 import { ObjectId, type ClientSession, type Collection, type Db } from 'mongodb';
-import type { AccountLocale, AccountStatus, AuditAction, AuditEntry, Role } from '../../shared/api.js';
+import {
+  BUILT_IN_ROLES,
+  type AccountLocale,
+  type AccountStatus,
+  type AuditAction,
+  type AuditEntry,
+  type ClosureKind,
+  type Permission,
+  type Role,
+  type SyncedData,
+} from '../../shared/api.js';
+import type { FeedbackContext, FeedbackKind, FeedbackStatus, FeedbackTarget } from '../../shared/feedback.js';
+import { BUILT_IN_DEFAULTS } from './auth/policy.js';
 
 // The documents as stored (docs/BACKEND-PLAN.md §3). Ids are ObjectIds here and hex strings in the API.
 
@@ -25,6 +37,22 @@ export interface AccountDoc {
 }
 
 /**
+ * A role and its permissions (BACKEND-PLAN.md §3.8, §4). The built-in ones are stored when the API starts (ensureIndexes)
+ * and keep what admins give them from then on; admin's stored permissions are not read, as admin has them all.
+ */
+export interface RoleDoc {
+  /** 'admin', 'editor', 'teacher', or a custom role's id (ROLE_ID_PATTERN); accounts.roles holds these. */
+  _id: Role;
+  name: string;
+  description: string;
+  /** In the order of PERMISSIONS. */
+  permissions: Permission[];
+  builtIn: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
  * One per signed-in device (BACKEND-PLAN.md §3.2, §5.4). Only the hashes of the cookies' tokens are stored, so a copy
  * of the database signs no one in.
  */
@@ -42,6 +70,11 @@ export interface SessionDoc {
   retired: string[];
   /** The last refresh, or null before the first. */
   refreshedAt: Date | null;
+  /**
+   * Random, new at each refresh (absent before the first): that refresh's pair was derived from the token it swapped
+   * and this, so the same token gets the same pair again in a race (auth/sessions.ts, REFRESH_RACE_MS).
+   */
+  refreshSalt?: string;
   createdAt: Date;
   /** Sign-in or the last refresh. */
   lastSeenAt: Date;
@@ -91,6 +124,47 @@ export interface ProgressDoc {
 }
 
 /**
+ * A deleted account (BACKEND-PLAN.md §3.7): what the admin screen Deleted accounts shows. It holds nothing that says
+ * whose it was: no name, email or account id, and no ObjectId, whose first bytes are the second it was made and would
+ * match it to the deletion's audit entry. `day` is midnight UTC of the day it was deleted, for the same reason.
+ */
+export interface ClosureDoc {
+  /** 16 random bytes, hex. */
+  _id: string;
+  day: Date;
+  kind: ClosureKind;
+  feedback: string | null;
+  /** archived only: the month the account was made (YYYY-MM), and its saved progress and prefs (null: none saved). */
+  archive: { joined: string; data: SyncedData | null } | null;
+}
+
+/**
+ * A feedback report sent from the app (BACKEND-PLAN.md §3.9, docs/FEEDBACK-LOOP.md step 1): the report's fields as the
+ * app sent them (routes/feedback.ts checks their shape), and where an admin's review of it stands. Not to be mixed up
+ * with the feedback someone leaves when deleting their account (ClosureDoc.feedback).
+ */
+export interface FeedbackDoc {
+  _id: ObjectId;
+  kind: FeedbackKind;
+  title: string;
+  description: string;
+  target: FeedbackTarget;
+  context: FeedbackContext;
+  status: FeedbackStatus;
+  /** Who sent it; null once that account is deleted and the report stays (accounts/remove.ts). */
+  authorId: ObjectId | null;
+  createdAt: Date;
+  /** The reviewing admin's note for the team; '' for none. */
+  note: string;
+  /**
+   * Who last changed the status or the note, and when; null before anyone did. The id becomes null once that account
+   * is deleted, and the time stays.
+   */
+  reviewerId: ObjectId | null;
+  reviewedAt: Date | null;
+}
+
+/**
  * One small document that every transaction which could remove an admin writes first. MongoDB transactions are
  * snapshots, so two of them that each demote a different admin would both still see the other admin and both commit
  * (write skew). Writing the same document makes the second one conflict and retry, and the retry sees the first one.
@@ -100,28 +174,47 @@ export interface LockDoc {
   rev: number;
 }
 
+/**
+ * The app's own settings, for everyone: one document. feedbackMode: whether accounts with feedback.give see the
+ * Feedback button (an admin switches it, PUT /admin/feedback-mode); off until one does.
+ */
+export interface SettingsDoc {
+  _id: 'app';
+  feedbackMode: boolean;
+  updatedAt: Date;
+}
+
 export interface Collections {
   accounts: Collection<AccountDoc>;
+  roles: Collection<RoleDoc>;
   sessions: Collection<SessionDoc>;
   tokens: Collection<TokenDoc>;
   audit: Collection<AuditDoc>;
   locks: Collection<LockDoc>;
   progress: Collection<ProgressDoc>;
+  closures: Collection<ClosureDoc>;
+  feedback: Collection<FeedbackDoc>;
+  settings: Collection<SettingsDoc>;
 }
 
 export function collections(db: Db): Collections {
   return {
     accounts: db.collection<AccountDoc>('accounts'),
+    roles: db.collection<RoleDoc>('roles'),
     sessions: db.collection<SessionDoc>('sessions'),
     tokens: db.collection<TokenDoc>('tokens'),
     audit: db.collection<AuditDoc>('audit'),
     locks: db.collection<LockDoc>('locks'),
     progress: db.collection<ProgressDoc>('progress'),
+    closures: db.collection<ClosureDoc>('closures'),
+    feedback: db.collection<FeedbackDoc>('feedback'),
+    settings: db.collection<SettingsDoc>('settings'),
   };
 }
 
-/** Audit entries are kept for two years (BACKEND-PLAN.md §3.5). */
+/** Audit entries are kept for two years (BACKEND-PLAN.md §3.5), and so are deleted accounts' closures (§3.7). */
 export const AUDIT_KEEP_SECONDS = 2 * 365 * 24 * 60 * 60;
+export const CLOSURE_KEEP_SECONDS = AUDIT_KEEP_SECONDS;
 
 /**
  * Creates the indexes the API relies on: run at startup, before listening. Idempotent: an index that already exists
@@ -129,9 +222,20 @@ export const AUDIT_KEEP_SECONDS = 2 * 365 * 24 * 60 * 60;
  */
 export async function ensureIndexes(db: Db): Promise<void> {
   const c = collections(db);
+  const now = new Date();
   await Promise.all([
     c.accounts.createIndex({ email: 1 }, { unique: true, name: 'email_unique' }),
     c.accounts.createIndex({ createdAt: -1 }, { name: 'createdAt' }),
+    // Who has a role: GET /admin/roles counts them, and deleting a custom role takes it from them.
+    c.accounts.createIndex({ roles: 1 }, { name: 'roles' }),
+    // The built-in roles exist before the first request. One that exists keeps the permissions admins gave it.
+    ...BUILT_IN_ROLES.map((id) =>
+      c.roles.updateOne(
+        { _id: id },
+        { $setOnInsert: { ...BUILT_IN_DEFAULTS[id], builtIn: true, createdAt: now, updatedAt: now } },
+        { upsert: true },
+      ),
+    ),
     c.sessions.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expiresAt_ttl' }),
     c.sessions.createIndex({ accountId: 1 }, { name: 'accountId' }),
     c.sessions.createIndex({ accessHash: 1 }, { name: 'accessHash' }),
@@ -143,8 +247,17 @@ export async function ensureIndexes(db: Db): Promise<void> {
     c.tokens.createIndex({ accountId: 1, kind: 1 }, { name: 'accountId_kind' }),
     c.audit.createIndex({ at: 1 }, { expireAfterSeconds: AUDIT_KEEP_SECONDS, name: 'at_ttl' }),
     c.audit.createIndex({ targetId: 1 }, { name: 'targetId' }),
+    // Also the list's order (newest day first).
+    c.closures.createIndex({ day: 1 }, { expireAfterSeconds: CLOSURE_KEEP_SECONDS, name: 'day_ttl' }),
+    // The review list: one status, newest first. The other two find the reports an account sent or reviewed, when it
+    // is deleted (and the ones it sent, for its export).
+    c.feedback.createIndex({ status: 1, createdAt: -1 }, { name: 'status_createdAt' }),
+    c.feedback.createIndex({ authorId: 1 }, { name: 'authorId' }),
+    c.feedback.createIndex({ reviewerId: 1 }, { name: 'reviewerId' }),
     // The lock document exists before the first transaction needs it, so no transaction has to create a collection.
     c.locks.updateOne({ _id: 'admins' }, { $setOnInsert: { rev: 0 } }, { upsert: true }),
+    // Feedback mode starts off; once an admin switched it, it stays as they left it.
+    c.settings.updateOne({ _id: 'app' }, { $setOnInsert: { feedbackMode: false, updatedAt: now } }, { upsert: true }),
   ]);
 }
 

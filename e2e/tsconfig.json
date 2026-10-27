@@ -1,11 +1,12 @@
 {
-  // Type-checks the e2e specs and the Playwright configs (npm run typecheck): the API mocks in helpers.ts are typed
-  // against shared/api.ts, so a change to the contract that the mocks do not follow fails here, not in a green run.
+  // Type-checks the e2e specs, the smoke specs (smoke/) and the Playwright configs (npm run typecheck): the API mocks in
+  // helpers.ts are typed against shared/api.ts, so a change to the contract that the mocks do not follow fails here, not
+  // in a green run.
   "extends": "../tsconfig.json",
   "compilerOptions": {
     // Node's types for the specs that start servers (real-api.spec.ts); no vitest globals, which e2e does not use.
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["./**/*.ts", "../playwright.config.ts", "../playwright.real.config.ts", "../src/vite-env.d.ts"]
+  "include": ["./**/*.ts", "../playwright.config.ts", "../playwright.real.config.ts", "../playwright.smoke.config.ts", "../src/vite-env.d.ts"]
 }

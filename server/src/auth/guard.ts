@@ -54,7 +54,7 @@ export function installGuard(app: FastifyInstance, ctx: AppContext): void {
     if (permission === undefined) return; // public (onRoute made sure)
     const auth = await authenticate(ctx, request);
     if (!auth) throw new ApiError('unauthenticated', 'Not signed in');
-    if (!can(auth.account, permission)) throw new ApiError('forbidden', 'This account may not do this');
+    if (!(await can(ctx.c, auth.account, permission))) throw new ApiError('forbidden', 'This account may not do this');
     request.auth = auth;
   });
 }

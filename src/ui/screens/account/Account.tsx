@@ -3,19 +3,22 @@
  * - Profile: the name (edit and save), the email (Change email asks for the password), the roles and premium.
  * - Password: the current one and a new one; the other devices are signed out.
  * - Devices: Sign out everywhere (confirmed).
- * - Your data: Download my data (the export) and Delete account (confirmed with the password).
+ * - Your data: Download my data (the export) and Delete account: confirmed with the password, with the choice to keep an
+ *   anonymous copy of the progress and prefs or delete them too, and optional feedback (BACKEND-PLAN.md §3.7).
  * Signed out: Sign in instead. No answer from the API with a cached account: the profile, and a note that it cannot be
  * changed now, with Try again.
  */
 import { useEffect, useRef, useState } from 'react';
-import { PASSWORD_MIN, type Me } from '../../../../shared/api';
+import { FEEDBACK_MAX, PASSWORD_MIN, type Me } from '../../../../shared/api';
 import { api, downloadExport, EXPORT_FILE } from '../../../api/client';
 import { formatDay, t } from '../../../i18n';
 import { useAccount, type UseAccount } from '../../account';
-import { ConfirmAction, ErrorRetry, FormDone, FormError, HiddenUsername, onSubmit, PasswordField, RowButton, SubmitButton, TextField } from '../../components/Form';
+import { Segmented } from '../../components/Controls';
+import { ConfirmAction, ErrorRetry, FormDone, FormError, HiddenUsername, onSubmit, PasswordField, RowButton, SubmitButton, TextAreaField, TextField } from '../../components/Form';
 import { Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
+import { rolesText } from '../../lib/admin';
 import { errorMessage, failureOf, fieldError, formError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { navigate } from '../../router';
 import { OfflineNote, useRefocus } from './AccountSection';
@@ -226,7 +229,8 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
 
 /** The roles ("Admin · Teacher") and premium, as a muted line, when there are any. */
 function Facts({ me }: { me: Me }): JSX.Element | null {
-  const parts = me.roles.map((r) => t('accountRole.' + r));
+  const roles = rolesText(me.roles, me.roleNames);
+  const parts = roles ? [roles] : [];
   if (me.premium.active) parts.push(me.premium.until ? t('account.premiumUntil', { date: formatDay(me.premium.until) }) : t('account.premium'));
   if (!parts.length) return null;
   return <p className="row-note">{parts.reduce((a, b) => t('common.join', { a, b }))}</p>;
@@ -346,17 +350,25 @@ function Download({ account }: Part): JSX.Element {
   );
 }
 
-/** Delete account, confirmed with the password (DELETE /me); then Settings says so. */
+/**
+ * Delete account (DELETE /me), confirmed with the password; then Settings says so. The person chooses what happens to
+ * the progress and prefs on the account: kept as an anonymous copy (the default), or deleted too. The line under the
+ * choice says what the chosen one does. Feedback is optional and kept without a name either way.
+ */
 function DeleteAccount({ account }: Part): JSX.Element {
   const [password, setPassword] = useState('');
+  const [removeData, setRemoveData] = useState(false);
+  const [feedback, setFeedback] = useState('');
   const [fail, setFail] = useState<Failure | null>(null);
   const [empty, setEmpty] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   return (
-    <ConfirmAction label={t('account.delete')} icon="trash" question={t('account.deleteQuestion')} detail={t('account.deleteDetail')}
+    <ConfirmAction label={t('account.delete')} sub={t('account.deleteSub')} icon="trash" question={t('account.deleteQuestion')} detail={t('account.deleteDetail')}
       confirmLabel={t('account.deleteConfirm')} busyLabel={t('account.deleting')} error={formError(fail)}
       onCancel={() => {
         setPassword('');
+        setRemoveData(false);
+        setFeedback('');
         setFail(null);
         setEmpty(false);
       }}
@@ -368,8 +380,8 @@ function DeleteAccount({ account }: Part): JSX.Element {
           return false;
         }
         try {
-          await api.del<void>('/me', { password });
-          account.setSignedOut('deleted');
+          await api.del<void>('/me', { password, removeData, feedback: feedback.trim() || undefined });
+          account.setSignedOut(removeData ? 'deleted' : 'deletedKept');
           navigate('/settings', { replace: true });
           return true;
         } catch (e) {
@@ -379,8 +391,22 @@ function DeleteAccount({ account }: Part): JSX.Element {
           return false;
         }
       }}>
+      <div className="confirm-choice">
+        <b className="tfield-label" aria-hidden="true">
+          {t('account.deleteData')}
+        </b>
+        <Segmented label={t('account.deleteData')} className="confirm-seg" value={removeData ? 'remove' : 'keep'} onChange={(v) => setRemoveData(v === 'remove')} autoFocus
+          options={[
+            { value: 'keep', label: t('account.deleteKeep') },
+            { value: 'remove', label: t('account.deleteRemove') },
+          ]} />
+        <span aria-live="polite" className="tfield-hint">
+          {t(removeData ? 'account.deleteRemoveHint' : 'account.deleteKeepHint')}
+        </span>
+      </div>
+      <TextAreaField label={t('account.feedback')} name="feedback" value={feedback} onChange={setFeedback} maxLength={FEEDBACK_MAX} hint={t('account.feedbackHint')} />
       <PasswordField label={t('account.deletePassword')} autoComplete="current-password" name="password" value={password} onChange={setPassword} inputRef={ref}
-        autoFocus error={empty ? t('form.passwordEmpty') : fieldError(fail, 'currentPassword')} />
+        error={empty ? t('form.passwordEmpty') : fieldError(fail, 'currentPassword')} />
     </ConfirmAction>
   );
 }

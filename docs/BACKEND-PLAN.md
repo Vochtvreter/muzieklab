@@ -4,7 +4,11 @@ Status: **phases 0, 1 and 2 built.** Phase 0 is the API with `/api/v1/health`, M
 test site. Phase 1, in 0.12.0, is accounts: invite and new-password links, signing in and out, the Account screen, the
 admin screens and the privacy statement (§10, [DEPLOY.md](DEPLOY.md) *The API*). Sessions with refresh tokens, which
 keep someone signed in for 90 days after they last used the app, came in 0.14.0 (§5.4). Phase 2, in 0.15.0, is progress
-on the account: sync and merge (§6). Phases 3 to 5 are designed, not built.
+on the account: sync and merge (§6). Deleting an account with the choice to keep an anonymous copy, feedback, and the
+admin screen Deleted accounts came in 0.16.0 (§3.7). Since 0.17.0 roles are data: which permissions a role has is
+stored in the database, admins can make roles of their own, and feedback from the app is the `feedback.give`
+permission (§3.8, §4). The reports it sends are stored for review by accounts with `feedback.review` (§3.9). Phases 3
+to 5 are designed, not built.
 
 This was written on 2026-10-23, after production moved to our own server. It now describes phases 1 and 2 as built.
 Where the build differs from the first plan, the section says so. Decisions taken so far:
@@ -15,7 +19,10 @@ Where the build differs from the first plan, the section says so. Decisions take
   model.
 - **Sign-in is email and password.** The model leaves room for passkeys or Google/Apple later (§5.6).
 - **Permissions cover four areas:** admin tools, teachers and classes, editing content, and premium features. They are
-  built in that order of need, in phases (§10).
+  built in that order of need, in phases (§10). Since 0.17.0 there is a fifth, feedback from the app
+  ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md)).
+- **Roles are data** (0.17.0): permissions are given to roles in the database, and roles to accounts. Admins can change
+  which permissions a role has, and make new roles, without a new version of the API (§3.8, §4).
 - **MongoDB** is the database: a document database, with the features accounts need (§3.1).
 - **Accounts sit in Settings:** an Account section at the top of Settings, on every size, with an Accounts row that only
   admins see. There is no new tab (§10.1).
@@ -86,8 +93,8 @@ server/
       guard.ts          deny by default: each route is public or needs a permission (§4.4)
       origin.ts         the Origin check (§5.4), and the site's address for links
       device.ts         a device name from the User-Agent ("Safari on iPhone")
-    accounts/           views (documents → API bodies), validate, premium (§4.3), audit (§3.5), remove
-    routes/             health, auth, me, progress, admin; schemas.ts holds the JSON schemas
+    accounts/           views (documents → API bodies), validate, premium (§4.3), audit (§3.5), remove, closures (§3.7)
+    routes/             health, auth, me, progress, admin, roles, feedback; schemas.ts holds the JSON schemas
     commands/
       create-admin.ts   the first admin, run on the server (§5.1)
 shared/
@@ -116,8 +123,9 @@ Transactions need a replica set, so MongoDB runs as a single-node replica set (`
 
 Field names are as stored (`server/src/db.ts`). `_id` is an `ObjectId` unless shown otherwise; the API sends ids as
 hex strings and dates as ISO strings. Phase 1 has five collections: `accounts`, `sessions`, `tokens`, `audit` and
-`locks`. `progress` (phase 2), `classes` and `memberships` (phase 3) and `content` (phase 4) come later. The indexes
-are made when the API starts (§9.2).
+`locks`. `progress` came with phase 2, `closures` with 0.16.0, `roles` and `feedback` with 0.17.0, and `settings` with
+0.18.0; `classes` and
+`memberships` (phase 3) and `content` (phase 4) come later. The indexes are made when the API starts (§9.2).
 
 ### 3.1 accounts
 
@@ -151,6 +159,7 @@ hold a Date there, which reads as its UTC calendar day.
   accessHash: "<sha256 of the session cookie's token>", accessExpiresAt,    // the session token: one hour
   refreshHash: "<sha256 of the refresh cookie's token>",                    // swapped on every refresh
   retired: ["<sha256 of a refresh token swapped before>", …],               // the last 50, oldest first
+  refreshSalt: "<random>",                                                   // the last refresh's pair came from it
   refreshedAt, lastSeenAt, expiresAt,                                        // expiresAt: 90 days after lastSeenAt
 }
 
@@ -183,7 +192,7 @@ command.
 on every read, as it does what it reads from its own storage. Lesson ids hold a dot ("7.3"), which MongoDB keeps as a
 key. A full progress document is a few tens of kB; MongoDB's limit is 16 MB. Deleting the account deletes it.
 
-Since 0.16.0 `progress` also holds the Progress tab's figures, achievements and skill levels (§6.1). They add about
+Since 0.19.0 `progress` also holds the Progress tab's figures, achievements and skill levels (§6.1). They add about
 250 bytes a day of practice and at most about 16 kB in all: `stats.days` keeps only the newest 42 days (about 12 kB
 when every one has every figure), and the totals per note, the skill checks, the achievements and the 60 skill levels
 are a few kB more. That fits the 200 kB limit with room, so the server needed no change: it stores the document as the
@@ -220,7 +229,12 @@ collection.
 - The actions (`AUDIT_ACTIONS` in `shared/api.ts`): `account.invite`, `account.invite_link`, `account.reset_link`,
   `account.update`, `account.block`, `account.unblock`, `account.delete`, `account.accept_invite`,
   `account.reset_password`, `account.change_password`, `account.change_email`, `account.delete_self`, `role.grant`,
-  `role.revoke`, `premium.grant` and `premium.revoke`.
+  `role.revoke`, `premium.grant` and `premium.revoke`; since 0.17.0 also `role.create`, `role.update` and
+  `role.delete` (with `targetId` null and the role's id in `details.role`), and three for feedback reports (§3.9),
+  with `targetId` null and the report's id in `details.report`: `feedback.send` (`{ report, kind }`: who sent it),
+  `feedback.review` (`{ report, status, note }`: `status` is the new one, when it changed, and `note: true` says the
+  note changed, never what it says) and `feedback.delete` (`{ report }`); since 0.18.0 `feedback.mode` (`{ on }`:
+  feedback mode switched on or off, §3.10).
 - `details` never hold a password or a token. Personal data goes only under the keys `email`, `name`, `previousEmail`
   and `previousName`.
 - Entries are kept for two years (a TTL index on `at`).
@@ -241,16 +255,139 @@ admin. So every transaction that could remove an admin writes this document firs
 /admin/accounts/:id`, and `DELETE /me`. The second transaction then conflicts, and the driver runs it again; on the new
 run it sees the first one's change. The document is made when the API starts.
 
+### 3.7 closures: deleted accounts (0.16.0)
+
+```js
+{
+  _id: "3f9c1a7e5b2d4c6e8a0b1c2d3e4f5a6b",   // 16 random bytes, hex: not an ObjectId, whose first bytes are the second it was made
+  day: ISODate("2026-10-24T00:00:00Z"),     // midnight UTC of the day it was deleted: no time of day
+  kind: "archived",                         // "archived" | "removed" | "admin"
+  feedback: "Too hard after chapter 7.",    // what its owner wrote, or null; at most 1000 characters
+  archive: {                                // archived only, else null
+    joined: "2026-03",                      // the month the account was made
+    data: { prefs: {…}, progress: {…} },    // the progress document's prefs and progress (§3.3), or null if none was saved
+  },
+}
+```
+
+Every deleted account leaves one closure, written in the deletion's transaction, so the admin screen *Deleted accounts*
+can show the history and why people left. Deleting your own account (`DELETE /me`) asks one more thing: what happens to
+the progress and prefs.
+
+- **archived** (`removeData: false`, the app's default): the account, its sessions, links and progress go, as before,
+  but a copy of its prefs and progress is kept, with the month it was made.
+- **removed** (`removeData: true`): nothing of the account is kept. Apps before 0.16.0 send no `removeData`: that counts
+  as true, which is what they told the person.
+- **admin** (`DELETE /admin/accounts/:id`): an admin deleted it; no feedback and no copy. A cancelled invite was never
+  used, so it leaves no closure.
+
+What makes it anonymous: a closure holds no name, email, password, device, role, premium or account id, and no moment
+that could match it to the audit log's `account.delete_self` entry (the random `_id` and the day only). That entry is
+the same for every kind, so the log does not say which closure an account left. Feedback is stored as written; the app
+asks people to leave out anything that says who they are. Closures are kept two years, as the audit log (a TTL index on
+`day`).
+
+**What it does not do:** with only a handful of accounts, someone who knows who left on a given day (an admin sees
+who is gone from the accounts list, and the audit log keeps the deleted account's id with the times of its entries) can
+still guess whose an archived copy is. The copy is anonymous in what it stores, not against that guess; it becomes hard
+only with many accounts. Dropping the account's id from its audit entries when it is deleted would make the guess
+harder; it is not done, as the log keeps ids on purpose (§3.5).
+
+### 3.8 roles (0.17.0)
+
+```js
+{
+  _id: "testers",                       // the role's id: admin, editor, teacher, or a custom one (^[a-z][a-z0-9-]{1,31}$)
+  name: "Testers",                      // 1 to 80 characters; the app names the built-in roles itself, in its language
+  description: "Send feedback from the app.",  // up to 200 characters
+  permissions: ["feedback.give"],       // in the order of PERMISSIONS
+  builtIn: false,
+  createdAt: ISODate("…"), updatedAt: ISODate("…"),
+}
+```
+
+New in 0.17.0. `accounts.roles` holds these ids, so the accounts made before needed no change. The three built-in roles
+are written when the API starts, with the permissions of §4.2, but only if they are not there yet: from then on the
+stored role is what counts. So a permission added to the code later (as `feedback.give` and `feedback.review` were)
+goes to admin only, until an admin gives it to another role. Admin's stored permissions are not read: admin always has
+every permission. An index on `accounts.roles` serves counting who has a role, and taking a deleted role from everyone.
+
+### 3.9 feedback: reports from the app (0.17.0)
+
+```js
+{
+  _id: ObjectId("…"),
+  kind: "bug",                          // "bug" | "change" | "idea"
+  title: "",                            // as written, at most 200 characters; "" when left empty
+  description: "Start is hidden behind the tab bar.",  // what should change, at most 5000 characters; never empty
+  target: { mode: "element", selector: "…", label: "button “Start”", text: "Start", html: "…", rect: {…}, scroll: {…} },
+  context: { version: "0.17.0", route: "/settings", viewport: {…}, breakpoint: "phone", locale: "nl", prefs: {…}, … },
+  status: "new",                        // "new" | "accepted" | "declined"
+  authorId: ObjectId("…"),              // who sent it; null once that account is deleted and the report stays
+  createdAt: ISODate("…"),
+  note: "",                             // the reviewer's note for the team, at most 2000 characters; "" for none
+  reviewerId: ObjectId("…"),            // who last changed the status or the note; null: nobody yet, or that account is gone
+  reviewedAt: ISODate("…"),             // when they did; null before anyone did
+}
+```
+
+New in 0.17.0 ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) §3). A report is what an account with `feedback.give` sent with the
+feedback tool: the fields of a `FeedbackReport` (`shared/feedback.ts`) as the app sent them, and the review. It is not
+to be mixed up with a closure's `feedback` (§3.7), what someone writes when they delete their account.
+
+- **What is checked.** The route checks the report's shape with a JSON schema: every field, and the length of each
+  text. The description must say something. `context.prefs`, the player's settings, may have any shape, so, as in
+  synced progress (§3.3), no key in it may start with `$`; the body limit (256 KiB, §7) keeps it small.
+- **The review.** Someone with `feedback.review` sets the status and the note. A change sets `reviewerId` and
+  `reviewedAt`; sending what is there already changes nothing. The note is trimmed, at most 2000 characters
+  (`FEEDBACK_NOTE_MAX`, counted as people count them), with no control characters but line breaks.
+- **Indexes:** `{ status: 1, createdAt: -1 }` for the review list, and `authorId` and `reviewerId` for an account's
+  export and its deletion.
+- **How long:** until someone with `feedback.review` deletes it. There is no TTL index yet (FEEDBACK-LOOP.md §10).
+- **When an account is deleted,** in the deletion's transaction (`removeAccount`, `server/src/accounts/remove.ts`):
+  - **by its owner** (`DELETE /me`, **archived** or **removed**, §3.7): the reports it sent are deleted too, whichever
+    it chose. Kept reports would say which closure it left: someone who reviewed them would see them stay (archived)
+    or go (removed), with the log's `feedback.send` entries naming the account, and their `context.prefs` could be
+    matched to the anonymous copy's. So both kinds leave the same trace;
+  - **by an admin**: they stay, with `authorId` null, as they are about the app and the account did not ask for them
+    to go (the review screens then say *A deleted account*);
+  - either way, a report it reviewed keeps its status, note and `reviewedAt`, with `reviewerId` null.
+
+**What it does not do:** the description and the marked text are stored as written, so a report that stays can still
+say who sent it, if they wrote that in it.
+
+Accepted reports are to become GitHub issues, a later step (FEEDBACK-LOOP.md §3, *Sending to GitHub*). That step will
+add the issue's number and link to the report.
+
+### 3.10 settings: the app's own settings (0.18.0)
+
+```js
+{
+  _id: "app",                           // the one document
+  feedbackMode: false,                  // whether accounts with feedback.give see the Feedback button
+  updatedAt: ISODate("…"),
+}
+```
+
+Settings for everyone, not for one account. The API makes the document when it starts, with feedback mode off; once an
+admin switched it, it stays as they left it. `feedbackMode` is sent in every `Me`, so the app learns it with the
+account (GET /me, when the app starts); `PUT /admin/feedback-mode` (`feedback.review`) switches it, and the log keeps
+`feedback.mode` with who did it. While it is off the app shows no Feedback button, nor its switch in Settings → Account.
+`POST /feedback` still takes a report, so one being written when it went off is not lost.
+
 ## 4. Permissions
 
 ### 4.1 Roles
 
 Two kinds of role, and entitlements beside them:
 
-- **Global roles**, in `accounts.roles`: what someone may do anywhere.
-  - `admin`: accounts, roles and entitlements, and everything else.
-  - `editor`: edit and publish learning content.
-  - `teacher`: create classes. Inside a class, the class's own roles apply.
+- **Global roles**, in `accounts.roles`, each a document in `roles` (§3.8): what someone may do anywhere.
+  - Built in, always there and never deleted:
+    - `admin`: accounts, roles and entitlements, and everything else. Always every permission.
+    - `editor`: edit and publish learning content.
+    - `teacher`: create classes. Inside a class, the class's own roles apply.
+  - **Custom roles** (0.17.0): an admin with `roles.manage` makes them, names them and picks their permissions, for
+    example *Testers* with `feedback.give`. They are given to accounts like the built-in ones.
 - **Class roles**, in `memberships` (phase 3): `teacher` (the owner, and co-teachers) and `pupil`. They count only
   inside that class.
 - **Entitlements**: features an account has, for a time. Phase 1 has one, premium (`accounts.premium`, §4.3). They are
@@ -276,12 +413,23 @@ Code checks **permissions**, never role names, so a role can change without hunt
 | `class.assign`: set lessons for the class | ✓ | | | ✓ | | |
 | `class.read`: name, teachers, own assignments | ✓ | | | ✓ | ✓ | |
 | `content.edit`, `content.publish` | ✓ | ✓ | | | | |
+| `roles.manage`: make, change and delete roles (0.17.0) | ✓ | | | | | |
+| `feedback.give`: the feedback tool in the app (0.17.0) | ✓ | | | | | |
+| `feedback.review`: read, accept or decline, and delete the feedback reports (0.17.0) | ✓ | | | | | |
 
-Phase 1 built the global columns: the 13 permissions in `PERMISSIONS` (`shared/api.ts`), given out in
-`server/src/auth/policy.ts`. Admin has all of them; editor has `content.edit` and `content.publish`; teacher has
-`class.create`; every account has `self.manage`, `progress.own` and `class.join`. Only an `active` account has any
-permission at all. The class permissions (`class.manage`, `class.progress.read`, `class.assign`, `class.read`) come
-with phase 3.
+The table holds what the built-in roles **start with**; admins can change editor's and teacher's since 0.17.0, and give
+any permission to a custom role. Phase 1 built the global columns: the permissions in `PERMISSIONS` (`shared/api.ts`;
+16 since 0.17.0), with the starting set in `BUILT_IN_DEFAULTS` (`server/src/auth/policy.ts`). Admin has all of them;
+editor starts with `content.edit` and `content.publish`; teacher with `class.create`; every account has `self.manage`,
+`progress.own` and `class.join`, whatever its roles. Only an `active` account has any permission at all. The class
+permissions (`class.manage`, `class.progress.read`, `class.assign`, `class.read`) come with phase 3.
+
+**Nobody gives out more than they have** (0.17.0). To grant a role to an account or take it away, an admin needs
+`roles.grant` and every permission in that role, so only someone with every permission can make or unmake an admin. To
+put a permission into a role or take it out (`roles.manage`), they need that permission themselves; deleting a custom
+role needs all of its permissions, and `roles.grant` too while accounts have it. So a role with `roles.grant` or
+`roles.manage` cannot be used to climb to more. A built-in role keeps its name and description (409 `built_in_role`),
+admin keeps every permission, and built-in roles cannot be deleted.
 
 Guard rails, enforced in a transaction:
 
@@ -309,10 +457,11 @@ the admin screen says "coming later".
 
 ```ts
 // server/src/auth/policy.ts
-can(account, 'accounts.invite')   // → true or false; class permissions take the class with phase 3
+await can(c, account, 'accounts.invite')   // → true or false; class permissions take the class with phase 3
 ```
 
-- `can()` looks up the account's global roles (and, from phase 3, its membership in the class).
+- `can()` reads the account's roles from `roles` (one small query; none for admin or an account without roles), and
+  from phase 3 its membership in the class. A change to a role counts from the next request on.
 - **Deny by default:** every route declares in its options either `{ public: true }` or `{ permission }`. A route with
   neither, or both, stops the server from starting, and a test checks every registered route and its permission
   against the table in §7.
@@ -320,7 +469,8 @@ can(account, 'accounts.invite')   // → true or false; class permissions take t
   accept, and the new-password check and confirm.
 - A route's `permission` is what it needs at least. A request that does more checks more in the handler: inviting with
   a role also needs `roles.grant`, and each field of an admin change needs its own permission (§7).
-- The table in §4.2 is the policy, written once in `policy.ts` and tested row by row.
+- The table in §4.2 is where the built-in roles start, written once in `policy.ts` and tested; what counts is the stored
+  role (§3.8).
 - `GET /api/v1/me` returns the account's permissions and premium, so the app shows only what someone may use. The
   server checks every request anyway; hiding a button is not security.
 
@@ -477,14 +627,34 @@ request and a long one that only keeps the session going, and the app renews the
 - **A refresh token works once.** A session remembers the last 50 it swapped. One that comes back later was copied:
   whoever has the session now, its owner or whoever copied the token, the session ends for both, and the API logs it
   (the account's id, never the token). The exception is a race: the token swapped less than **a minute** ago, as when
-  two tabs refresh at once. That answers 204 without cookies, as the browser has the new ones from the first answer.
-  A blocked or deleted account's session ends at its next refresh, and the cookies are cleared on every refusal.
+  two tabs refresh at once, or when the first answer never reached the browser (the page was reloaded while the refresh
+  was on the way, or the connection dropped), so the browser still has the old token and no session token. That answers
+  204 with **the same new pair again**: a refresh's pair is derived from the token it swaps and a random salt kept on
+  the session (`refreshSalt`), so it can be made again. The old token alone cannot make it (the salt is only in the
+  database), nor can the database (it has only hashes). Nothing else moves: the session lasts 90 days from the swap, not
+  from the race. The price is that a copied token used within that minute gets the session too, until one of the two
+  swaps it and the other comes back. Until 0.16.1 a race answered 204 without cookies, which signed out a browser whose
+  first answer was lost. A blocked or deleted account's session ends at its next refresh, and the cookies are cleared on
+  every refusal.
 - **The app renews by itself** (`src/api/client.ts`): when a request answers 401 `unauthenticated` on a device where
   someone is signed in, it calls `POST /auth/refresh` once (one call for all the requests waiting) and sends the
   request again; a screen never sees the swap. It also renews when the app starts and when it comes back into view,
   at most every 12 hours (`keepSignedIn`, `src/ui/account.ts`). That is the one request the app sends before an
   account screen opens, and only while someone is signed in on the device. If the renewal gets no answer (offline),
   the account stays as it was cached; if it is refused, the next account screen shows Sign in.
+- **The tabs of one browser renew together** (since 0.17.1). They share the cookies, and a swap ends the session
+  token it replaces, which another tab may have just sent. So a tab renews only while no other tab does (a Web Lock,
+  `muzieklab.renew`); one that finds another tab renewing waits for it and uses its new cookies. The time of the last
+  renewal is kept in `localStorage` (`muzieklab.renewed.v1`, a time and nothing else), so the 12 hours count over
+  every tab and reload, and a request that a renewal in another tab answered with 401 is sent again with the new
+  cookies instead of renewing once more. Another tab may renew while it is on its way again, so a request is sent
+  again at most twice. A tab that waits longer than the request timeout plus 5 seconds for another tab (one that was
+  frozen while renewing) renews itself. Until then every tab renewed by itself when it started: of tabs opened or
+  reloaded at once, one could get a 401 on its one retry and show itself signed out, and with four the session was
+  seen to end, as a token swapped two swaps ago counts as copied. A browser without Web Locks (before Safari 15.4 or
+  Firefox 96) still renews per tab; the shared time keeps that to tabs that start within moments of each other. The
+  server is unchanged: keeping a replaced session token working for a while longer was weighed and left out, as it
+  would lengthen how long a stolen one works and would not stop a token from two swaps ago from ending the session.
 - **For development only,** `COOKIE_SECURE=false` makes them plain `session` and `refresh` cookies without Secure,
   because browsers drop Secure cookies over plain http and refuse the prefixes there. Every other value, or none, keeps
   `__Host-session` and `__Secure-refresh` with Secure. It is never set on a server (DEPLOY.md).
@@ -523,7 +693,7 @@ without changing the rest. Phase 1 has no two-step sign-in; for admins it is an 
 ## 6. Progress on the account
 
 Phase 2, built in 0.15.0. Without an account nothing changes: progress stays in the browser, and no request goes out.
-Signing in adds a copy on the server. Since 0.16.0 the copy also carries the Progress tab's figures, achievements and
+Signing in adds a copy on the server. Since 0.19.0 the copy also carries the Progress tab's figures, achievements and
 skill levels; only the app changed (the fields, their sanitizing and their merge rules), not the server or the API
 (§3.3).
 
@@ -531,7 +701,7 @@ skill levels; only the app changed (the fields, their sanitizing and their merge
 
 | Synced to the account | Stays on the device |
 |---|---|
-| Progress: lessons, stars, XP, streak days, daily challenge, Read notes (setup and weak spots) and Scales results, Learn sections read, the setups last used; since 0.16.0 the Progress tab's figures (`stats`, below), the achievements earned (`achievements`: id → the day) and the skill levels passed (`skills`: "rhythm:3" → the day) | Calibration (`calibrationMs`, `calibratedAt`): each device has its own delay |
+| Progress: lessons, stars, XP, streak days, daily challenge, Read notes (setup and weak spots) and Scales results, Learn sections read, the setups last used; since 0.19.0 the Progress tab's figures (`stats`, below), the achievements earned (`achievements`: id → the day) and the skill levels passed (`skills`: "rhythm:3" → the day) | Calibration (`calibrationMs`, `calibratedAt`): each device has its own delay |
 | Prefs: language, theme, leniency, input mode (with the setup's early hold), metronome look, note names, piano labels (`SYNCED_PREFS`) | Volumes and the sounds switched on (each device has its own speaker), and the How to play and intro flags already seen on this device |
 
 The first plan listed "the path last picked" as a pref; the app keeps no such pref, so there is nothing to sync.
@@ -567,13 +737,13 @@ Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
   down with practice) goes to the side that changed it since the base, to this device when both did. Property tests
   (fast-check, `merge.test.ts`) check that every result is the same in either order, never lower than either side, and
   that merging a copy with itself gives it back.
-- **The Progress tab's fields** (since 0.16.0; §6.1), in `mergeProgress`:
+- **The Progress tab's fields** (since 0.19.0; §6.1), in `mergeProgress`:
   - `stats.days`: every date from both sides. A date on both keeps the whole record of the side with more seconds,
     then more rounds, then more hits, then the larger JSON (so any two records compare), never a sum, for the same
     reason as XP. Then the newest 42 dates, as `sanitizeProgress` keeps them. Against the base: a date one side dropped
     since the base (it fell out of its 42 days, or a clock set forward wrote it) stays dropped while the other side
     still has the base's record of it. A side drops a date only for 42 others, a later one among them; a side with
-    fewer, or only earlier ones, never had it (a tab behind the one that played it, a copy an app from before 0.16.0
+    fewer, or only earlier ones, never had it (a tab behind the one that played it, a copy an app from before 0.19.0
     saved, without these fields), and the date stays.
   - `stats.clefs` and `stats.noteMs`: per key, the whole pair of the side with more answers (the second number); on a
     tie, the larger first number.
@@ -584,7 +754,7 @@ Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
     So a day a clock set forward wrote, once one device corrected it, stays corrected.
   - `stats.lastKey`: a choice, like a setup: the side that changed it since the base, this device when both did;
     without a base this device's, or the account's when this device has none. Never back to none (only a copy from
-    before 0.16.0 has none after a round).
+    before 0.19.0 has none after a round).
   - `achievements` and `skills`: every key from both sides, each with the earlier day.
 
   The never-lower property allows the two base-aware cases (a dropped day, a corrected day practised); a day kept is
@@ -614,7 +784,7 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 |---|---|---|
 | `GET /health` | public | Is the API up, and can it reach the database: 200, or 503 with `db: "unreachable"`. Also the running commit, which the deploy waits for. |
 | `POST /auth/sign-in` | public | Email and password → `Me`, and the session cookies. |
-| `POST /auth/refresh` | public | The refresh cookie → 204 and a new pair of cookies (§5.4); 204 without cookies when the same token was swapped less than a minute ago; else 401 `unauthenticated`, and the cookies are cleared. A swapped token that comes back ends its session. |
+| `POST /auth/refresh` | public | The refresh cookie → 204 and a new pair of cookies (§5.4); 204 with the same new pair again when the same token was swapped less than a minute ago; else 401 `unauthenticated`, and the cookies are cleared. A swapped token that comes back ends its session. |
 | `POST /auth/invite/check`, `POST /auth/reset/check` | public | Is the link still good, and whose is it: email, name and when it stops working. |
 | `POST /auth/invite/accept` | public | The token, a password and optionally a name → `Me`, and the cookies. The account becomes active. |
 | `POST /auth/reset/confirm` | public | The token and a password → `Me`, and the cookies. Every other session ends. |
@@ -624,19 +794,30 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `PATCH /me` | `self.manage` | Name and locale. |
 | `POST /me/password` | `self.manage` | The current and a new password. Other sessions and new-password links end. |
 | `POST /me/email` | `self.manage` | The current password and a new email. New-password links end. |
-| `GET /me/export` | `self.manage` | Everything about the account as a download (`muzieklab-account.json`): the account, its sessions, its saved progress and the audit entries about it. What it did to other accounts is left out, so other people's data stays out. |
-| `DELETE /me` | `self.manage` | With the current password: the account, its sessions, links and progress go, and audit entries about it are scrubbed (§3.5). |
+| `GET /me/export` | `self.manage` | Everything about the account as a download (`muzieklab-account.json`): the account, its sessions, its saved progress, the feedback reports it sent (newest first, as sent, with their status; not the reviewer's note or who reviewed them) and the audit entries about it. What it did to other accounts is left out, so other people's data stays out. |
+| `DELETE /me` | `self.manage` | With the current password, and optionally `removeData` and `feedback`: the account, its sessions, links and progress go, and audit entries about it are scrubbed (§3.5). With `removeData` false, a copy of the progress and prefs is kept, without anything that says whose (§3.7). Either way the feedback reports it sent are deleted too (§3.9), and it leaves a closure, with the feedback. |
 | `GET /progress` | `progress.own` | The account's copy (`SavedProgress`): `rev`, `data` (prefs and progress, null before the first save), `resetAt` and `updatedAt`. Rev 0 before the first save. |
 | `PUT /progress` | `progress.own` | `rev`, `prefs` and `progress` → the saved copy, with the next rev. A `rev` the account has moved on from (or never had) is refused with 409 `rev_conflict` and the account's copy in `current`. Of two first saves at once, one gets the conflict. |
 | `DELETE /progress` | `progress.own` | Reset progress: the progress is emptied, the prefs stay, `resetAt` is now and the rev goes up. Without a saved copy it changes nothing (rev 0). |
 | `GET /admin/accounts?q=&status=` | `accounts.read` | Newest first, at most 500. `q` matches name or email as plain text, without case; `status` is invited, active or blocked. There is no role filter (the first plan had one). |
-| `POST /admin/invites` | `accounts.invite`, plus `roles.grant` when roles are given | Email, name and roles → the invited account and its link. |
+| `POST /admin/invites` | `accounts.invite`, plus `roles.grant` and every permission in the roles when roles are given | Email, name and roles → the invited account and its link. |
 | `GET /admin/accounts/:id` | `accounts.read` | The account, how many devices are signed in, and while invited, when its link stops working (null when none works). |
-| `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite`, roles `roles.grant`, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
+| `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite`, roles `roles.grant` and every permission in each role granted or taken away, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
 | `POST /admin/accounts/:id/invite-link` | `accounts.invite` | An invited account only: a new invite link; the old one stops working. |
 | `POST /admin/accounts/:id/reset-link` | `accounts.invite` | An active account only: a new-password link for 24 hours. It lets its holder into the account, as an invite does, hence the same permission. |
-| `DELETE /admin/accounts/:id?expect=` | `accounts.delete` | Cancels an invite or deletes an account (never yourself, never the last admin). With `expect` (a status), it is refused with 409 `wrong_status` when the account has another status: Cancel invite sends `expect=invited`, so an invite accepted meanwhile is not deleted. |
+| `DELETE /admin/accounts/:id?expect=` | `accounts.delete` | Cancels an invite or deletes an account (never yourself, never the last admin). A deleted account (not a cancelled invite) leaves a closure of kind `admin` (§3.7); the feedback reports it sent stay without its name (§3.9). With `expect` (a status), it is refused with 409 `wrong_status` when the account has another status: Cancel invite sends `expect=invited`, so an invite accepted meanwhile is not deleted. |
+| `GET /admin/closures` | `accounts.read` | Deleted accounts (§3.7), newest day first, at most 500: `id`, `day` (YYYY-MM-DD), `kind`, `feedback` and `archive`. |
 | `GET /admin/audit?limit=&before=` | `audit.read` | Newest first: 100 by default, at most 500. `before` is the last id of the previous page. No screen shows it yet. |
+| `GET /admin/roles` | `accounts.read` | Every role with its permissions and how many accounts have it: the built-in ones first, then the custom ones by name. The account screens show the custom ones by these names. |
+| `POST /admin/roles` | `roles.manage`, plus every permission put in | Id, name, optional description and permissions → the role. 409 `role_exists` for an id in use (a built-in one too). |
+| `PATCH /admin/roles/:id` | `roles.manage`, plus every permission added or taken out | Name, description and permissions; only the fields sent change. 409 `built_in_role` for a built-in role's name or description, or admin's permissions. |
+| `DELETE /admin/roles/:id` | `roles.manage`, plus every permission in it, and `roles.grant` while accounts have it | A custom role only (409 `built_in_role`); every account that had it loses it. |
+| `POST /feedback` | `feedback.give` | A feedback report (`shared/feedback.ts`) → `{ id }`: the report is stored as `new`, for review (§3.9). The description must say something, and no key in `context.prefs` may start with `$` (else 400 `bad_request`). After 30 in an hour from one account: 429 `too_many_attempts`, with `retryAfter`. Nothing goes to GitHub yet ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) §3). |
+| `GET /admin/feedback?status=` | `feedback.review` | The reports, newest first, at most 500: id, kind, title, description, route, the marked spot's label and mode, status, author (`{ id, name }`, or null once the account is gone) and `createdAt`. `status` is new, accepted or declined; without it, every report. `counts` has how many there are of each status, whatever the filter. |
+| `GET /admin/feedback/:id` | `feedback.review` | One report: the list's fields, the report as sent, the note, the reviewer (`{ id, name }` or null) and `reviewedAt`. 404 `not_found` for a report that is not there. |
+| `PATCH /admin/feedback/:id` | `feedback.review` | `status` and `note` → the report, as GET. Only the fields sent change. A change records who made it, as the reviewer, and when; sending what is there already changes nothing. A note of more than 2000 characters, or with a control character other than a line break, is 400 `bad_request`; 404 as GET. |
+| `DELETE /admin/feedback/:id` | `feedback.review` | Deletes the report: 204, or 404 as GET. |
+| `PUT /admin/feedback-mode` | `feedback.review` | `{ on }` → `{ on }`: feedback mode on or off, for everyone (§3.10). Every `Me` says which (`feedbackMode`). Switching it to what it is already changes nothing and is not logged. |
 
 Planned: `POST
 /classes`, `GET /classes`, `GET /classes/:id`, `PATCH /classes/:id`, `POST /classes/join`, `GET /classes/:id/progress`
@@ -645,17 +826,23 @@ and `DELETE /classes/:id/members/:accountId` in phase 3; content in phase 4, des
 Errors are `{ "error": "code", "message": "…" }`, plus `retryAfter` with `too_many_attempts` and `busy`. The `code` is
 stable, and the app shows its own English or Dutch text for it. The codes are in `ERROR_CODES` (`shared/api.ts`):
 `bad_request` (400), `unauthenticated`, `invalid_credentials` and `wrong_password` (401), `forbidden` and `bad_origin`
-(403), `not_found` (404), `email_taken`, `last_admin`, `own_account`, `wrong_status` and `rev_conflict` (409), `link_invalid` (410),
-`password_length`, `password_common`, `password_has_email` and `email_invalid` (422), `too_many_attempts` (a counter's
-wait) and `busy` (the hash queue is full, §5.2) (429), and `internal` (500). Fastify's own refusals (a body that is
-broken, too big, or not JSON) keep their status (400, 413, 415) with the code `bad_request`. With `rev_conflict` the
-body also has `current`, the account's copy of the progress. When the API does not answer at all, the app uses its own code, `unavailable`.
+(403), `not_found` (404), `email_taken`, `last_admin`, `own_account`, `wrong_status`, `rev_conflict`, `role_exists`
+and `built_in_role` (409), `link_invalid` (410), `password_length`, `password_common`, `password_has_email` and
+`email_invalid` (422), `too_many_attempts` (a counter's wait, or too many feedback reports in an hour) and `busy` (the
+hash queue is full, §5.2) (429), and `internal` (500). Fastify's own refusals (a body that is broken, too big, or not
+JSON) keep their status (400, 413, 415) with the code `bad_request`. With `rev_conflict` the body also has `current`,
+the account's copy of the progress. When the API does not answer at all, the app uses its own code, `unavailable`.
 
 ## 8. Privacy and security
 
 **Personal data we keep:** email, name, password hash, roles and premium, sessions (device name, when signed in and
-last used), the audit log, and the progress and synced prefs (§6). No IP addresses are stored: an address is kept only briefly in
-memory for the sign-in limits (§5.2), and the log has none (below).
+last used), the audit log, and the progress and synced prefs (§6). An account with `feedback.give` may send feedback
+reports (§3.9): they are kept with the account that sent them, and hold what it wrote, the screen and the device (its
+size, theme, language and user agent) and the player's settings, never the progress. Only accounts with
+`feedback.review` see them, with the sender's name; the GitHub issue a report may become later does not name anyone. A
+deleted account leaves a closure (§3.7): the day, the feedback if any, and, if its owner chose to keep it, an
+anonymous copy of the progress and prefs with the month the account was made. No IP addresses are stored: an address
+is kept only briefly in memory for the sign-in limits (§5.2), and the log has none (below).
 
 GDPR (in the Netherlands: AVG) needs, before the first invite goes out:
 
@@ -666,7 +853,13 @@ GDPR (in the Netherlands: AVG) needs, before the first invite goes out:
 - A **data processing agreement** with Hetzner (they offer one in the console).
 - **Export** (`GET /me/export`, everything about the account as JSON) and **delete** (the account, its sessions and
   links and progress go, and audit entries about it lose the name and email) from the Account screen, without asking
-  an admin: built. Memberships join the export and the delete in phase 3.
+  an admin: built. Since 0.16.0 the person chooses whether an anonymous copy of the progress and prefs is kept, and
+  may leave feedback; the privacy statement says how it works and how long it is kept (§3.7). Since 0.17.0 the export
+  holds the feedback reports the account sent, with their status (not the reviewer's note, or who reviewed them).
+  Deleting your own account deletes your reports too, whether or not you keep an anonymous copy, so they cannot say
+  which you chose. An account an admin deletes keeps its reports without the account, as they are about the app; and a
+  report someone reviewed loses its reviewer when their account goes (§3.9). The privacy statement says this too.
+  Memberships join the export and the delete in phase 3.
 - **Children:** in the Netherlands, under-16s need a parent's consent for an account. While accounts are invite only,
   admins invite only people of 16 and over, as the privacy statement says. Teachers and pupils (phase 3) need a
   decision first (§11).
@@ -782,7 +975,10 @@ Per CLAUDE.md, every screen is designed on the canvases first (phone, tablet and
 these has a board yet. Phase 1's screens were built in 0.12.0 without boards, from Settings' design language; DESIGN.md
 §9 (*Account and admin screens*) describes them as built. Phase 2's parts were built the same way in 0.15.0, inside
 Settings → Account: the sync line under the account, the sign-out confirm with Keep or Remove, the first sign-in notice,
-and Reset progress's line for an account. Their boards are still to be drawn on both canvases.
+and Reset progress's line for an account. Their boards are still to be drawn on both canvases. So are 0.16.0's: the
+Delete account confirm with its choice and feedback, and the admin screen Deleted accounts (§3.7, DESIGN.md §9.2). And
+0.17.0's: the feedback tool, and the screens Feedback and one report, where reports are reviewed (§3.9, DESIGN.md
+§9.2).
 
 | Phase | Screens |
 |---|---|

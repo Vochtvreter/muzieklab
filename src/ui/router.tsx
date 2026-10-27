@@ -3,7 +3,8 @@
  * #/notes/play, #/notes/done), Scales (#/scales, #/scales/setup, #/scales/key, #/scales/play, #/scales/done), Learn (#/learn and a chapter, #/learn/8), and #/dev/render. A `?s=10.2` query names a Learn section.
  * Progress (#/progress, and its skill levels #/progress/skills and one skill, #/progress/skills/rhythm).
  * Accounts (BACKEND-PLAN.md §5, §10.1): #/signin, #/invite/<token> and #/reset/<token> (the links an admin sends),
- * #/account, #/privacy, and the admin screens #/admin, #/admin/invite and #/admin/account/<id>.
+ * #/account, #/privacy, and the admin screens #/admin, #/admin/invite, #/admin/account/<id> and #/admin/deleted.
+ * Feedback reports (docs/FEEDBACK-LOOP.md): #/admin/feedback and one report, #/admin/feedback/<id>.
  */
 import { useSyncExternalStore, type AnchorHTMLAttributes } from 'react';
 import type { SkillId } from '../game/storage';
@@ -38,7 +39,10 @@ export type Route =
   | '/privacy'
   | '/admin'
   | '/admin/invite'
+  | '/admin/deleted'
   | `/admin/account/${string}`
+  | '/admin/feedback'
+  | `/admin/feedback/${string}`
   | '/dev/render';
 
 const ROUTES: Route[] = [
@@ -67,14 +71,22 @@ const ROUTES: Route[] = [
   '/privacy',
   '/admin',
   '/admin/invite',
+  '/admin/deleted',
+  '/admin/feedback',
   '/dev/render',
 ];
 
-/** Routes with a parameter. Invite and new-password tokens are base64url (the server makes 32 random bytes: 43 chars). */
+/**
+ * Routes with a parameter. Invite and new-password tokens are base64url (the server makes 32 random bytes: 43 chars);
+ * an account's or a feedback report's id is a database id (24 hex characters).
+ */
 const PATTERNS: RegExp[] = [
   /^\/learn\/\d+$/,
   /^\/progress\/skills\/(rhythm|ear|treble|bass|scales|theory)$/,
-  /^\/(invite|reset)\/[A-Za-z0-9_-]{20,128}$/, /^\/admin\/account\/[0-9a-fA-F]{24}$/];
+  /^\/(invite|reset)\/[A-Za-z0-9_-]{20,128}$/,
+  /^\/admin\/account\/[0-9a-fA-F]{24}$/,
+  /^\/admin\/feedback\/[0-9a-fA-F]{24}$/,
+];
 
 /** '#/play?x' -> '/play'; anything unknown (a token or id that cannot be one) -> '/'. */
 export function parseHash(hash: string): Route {
@@ -87,7 +99,7 @@ export function parseHash(hash: string): Route {
 /** The parameter after `prefix` ('/invite/abc…' with '/invite/' -> 'abc…'), or null when the route is another one. */
 export function routeParam(
   route: Route,
-  prefix: '/invite/' | '/reset/' | '/admin/account/' | '/learn/' | '/progress/skills/',
+  prefix: '/invite/' | '/reset/' | '/admin/account/' | '/admin/feedback/' | '/learn/' | '/progress/skills/',
 ): string | null {
   return route.startsWith(prefix) ? route.slice(prefix.length) : null;
 }

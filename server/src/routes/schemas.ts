@@ -7,6 +7,8 @@ export const password = { type: 'string', maxLength: 4096 } as const;
 /** Longer than any address, so a long one gets email_invalid (422) from the code rather than a 400. */
 export const email = { type: 'string', maxLength: 1000 } as const;
 export const name = { type: 'string', maxLength: 1000 } as const;
+/** Longer than FEEDBACK_MAX characters can be, so the limit (counted as code points) is checked in code. */
+export const feedback = { type: 'string', maxLength: 8000 } as const;
 export const token = { type: 'string', minLength: 1, maxLength: 200 } as const;
 
 export function body<P extends Record<string, object>>(properties: P, required: (keyof P & string)[] = []) {

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expect, test as base, type BrowserContext, type Page } from '@playwright/test';
-import type { InviteCreated, Me } from '../shared/api';
+import type { AccountExport, InviteCreated, Me, RoleInfo } from '../shared/api';
 
 /**
  * Accounts against the real API (BACKEND-PLAN.md §5): the app's production build in a real browser, the API bundle and
@@ -225,6 +225,74 @@ test('a session token that ran out is renewed by the app: still signed in, on st
   await expect(page).toHaveURL(/#\/account$/);
 });
 
+test('a renewal whose answer never came back (a reload on the way) is made again on start: still signed in', async ({ person, request }) => {
+  const admin = await anAdmin(person);
+  const member = await aMember(person, admin);
+  const { ctx, page } = member;
+  const cookie = async (name: string) => (await ctx.cookies()).find((c) => c.name === name)?.value;
+  await page.goto('./#/account');
+  await expect(page.getByLabel('Name')).toHaveValue(member.name);
+
+  // The session token ran out, and a renewal reached the server, but its answer never reached the browser (the page
+  // was reloaded meanwhile, or the connection dropped): the server swapped the refresh token the browser still has.
+  const refresh = await cookie('refresh');
+  await ctx.clearCookies({ name: 'session' });
+  const lost = await request.post(API + '/auth/refresh', { headers: { Origin: ORIGIN, Cookie: `refresh=${refresh}` } });
+  expect(lost.status()).toBe(204);
+
+  // On start the app renews with that token again, moments later, and gets the pair the lost answer had.
+  await page.reload();
+  await expect(page.getByLabel('Name')).toHaveValue(member.name);
+  expect(await cookie('session')).toBeDefined();
+  expect(await cookie('refresh')).not.toBe(refresh);
+});
+
+test('tabs opened at once, and reloaded at once, all stay signed in, and the session goes on', async ({ person }) => {
+  const admin = await anAdmin(person);
+  const member = await aMember(person, admin);
+  const { ctx, page } = member;
+  await page.goto('./#/account');
+  await expect(page.getByLabel('Name')).toHaveValue(member.name);
+  await page.waitForLoadState('networkidle');
+  // As if the session was last renewed over 12 hours ago, so every tab that starts wants to renew it.
+  const twelveHoursOn = () => page.evaluate(() => localStorage.removeItem('muzieklab.renewed.v1'));
+  let renewals = 0;
+  ctx.on('request', (r) => {
+    if (r.url().endsWith('/api/v1/auth/refresh')) renewals++;
+  });
+  // A tab shows the cached account at once, so each is checked once nothing is on its way: still on Account, and
+  // still signed in in Settings.
+  const stayed = async (tabs: Page[], when: string) => {
+    await Promise.all(tabs.map((tab) => tab.waitForLoadState('networkidle')));
+    for (const [i, tab] of tabs.entries()) {
+      await expect(tab, `tab ${i + 1} of ${tabs.length}, ${when}`).toHaveURL(/#\/account$/);
+      await expect(tab.getByLabel('Name')).toHaveValue(member.name);
+      await tab.evaluate(() => void (location.hash = '#/settings'));
+      await expect(accountRow(tab, member.name), `tab ${i + 1} of ${tabs.length}, ${when}`).toContainText(member.email);
+      await tab.evaluate(() => void (location.hash = '#/account'));
+    }
+  };
+
+  // One of them renews; the others wait for it and use its renewal, and what they sent with the session token it
+  // replaced is sent again.
+  await twelveHoursOn();
+  const tabs = [page, ...(await Promise.all([1, 2, 3].map(() => ctx.newPage())))];
+  await Promise.all(tabs.slice(1).map((tab) => tab.goto('./#/account')));
+  await stayed(tabs, 'opened at once');
+  expect(renewals, 'renewals by the 3 tabs opened at once').toBe(1);
+
+  await twelveHoursOn();
+  renewals = 0;
+  await Promise.all(tabs.map((tab) => tab.reload()));
+  await stayed(tabs, 'reloaded at once');
+  expect(renewals, 'renewals by the 4 tabs reloaded at once').toBe(1);
+
+  // The session goes on: its session token works, and so does its refresh token.
+  expect((await ctx.request.get(API + '/me')).status()).toBe(200);
+  expect((await ctx.request.post(API + '/auth/refresh', { headers: { Origin: ORIGIN } })).status()).toBe(204);
+  expect((await ctx.request.get(API + '/me')).status()).toBe(200);
+});
+
 test('blocking signs a member out at their next request and refuses sign-in until unblocked', async ({ person }) => {
   const admin = await anAdmin(person);
   const member = await aMember(person, admin);
@@ -356,11 +424,14 @@ test('a member deletes their account: a wrong password first, then signed out fo
   await password.fill('not my password at all');
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(confirm.getByText("That's not your current password.")).toBeVisible();
+  // Keep anonymously (the default), and why: the feedback is unique to this test, as tests share the database.
+  const why = `Leaving, test ${Math.random().toString(36).slice(2)}`;
+  await confirm.getByLabel('Why are you leaving? (optional)').fill(why);
   await password.fill(member.password);
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
 
   await expect(m).toHaveURL(/#\/settings$/);
-  await expect(accountSection(m).locator('.row-status')).toHaveText('Your account was deleted.');
+  await expect(accountSection(m).locator('.row-status')).toHaveText('Your account was deleted. An anonymous copy of your progress is kept.');
   await expect(accountSection(m).getByRole('link', { name: /^Sign in/ })).toBeVisible();
   await expect.poll(() => m.evaluate(() => localStorage.getItem('muzieklab.account.v1'))).toBeNull();
   await signIn(m, member.email, member.password);
@@ -376,6 +447,16 @@ test('a member deletes their account: a wrong password first, then signed out fo
   await expect(a.locator('#announcer')).toHaveText('No accounts match.');
   await a.goto(`./#/admin/account/${member.me.id}`);
   await expect(a.getByText("This account isn't there anymore. Another admin may have deleted it.")).toBeVisible();
+
+  // Deleted accounts has it: archived, with the feedback, and nothing that says whose it was.
+  await a.goto('./#/admin');
+  await a.getByRole('link', { name: /^Deleted accounts/ }).click();
+  const entry = a.locator('.closure-row').filter({ hasText: why });
+  await expect(entry).toHaveCount(1);
+  await expect(entry).toContainText('Archived');
+  await expect(entry).toContainText('Joined');
+  await expect(a.locator('main')).not.toContainText(member.email);
+  await expect(a.locator('main')).not.toContainText(member.name);
 });
 
 test('progress on the account: two devices merge, and a reset on one resets the other', async ({ person }) => {
@@ -422,4 +503,121 @@ test('progress on the account: two devices merge, and a reset on one resets the 
   await phone.reload();
   await expect.poll(async () => (await progressOf(phone))?.xp ?? 0).toBe(0);
   await expect(syncLine(phone)).toHaveText('Progress saved to your account');
+});
+
+test('a role an admin makes gives its permission: in feedback mode, with feedback.give the member sends a report, and an admin reviews it', async ({ person }) => {
+  const admin = await anAdmin(person);
+  const member = await aMember(person, admin);
+  const id = `testers-${Date.now().toString(36)}${(made++).toString(36)}`;
+  const role = await post<RoleInfo>(admin, '/admin/roles', { id, name: `Testers ${id}`, description: 'Send feedback from the app.', permissions: ['feedback.give'] });
+  expect(role).toMatchObject({ id, permissions: ['feedback.give'], builtIn: false, accounts: 0 });
+
+  const fab = member.page.getByRole('button', { name: 'Feedback: mark a part of this screen' });
+  await member.page.goto('./#/settings');
+  await expect(accountRow(member.page, member.name)).toBeVisible();
+  await expect(fab).toHaveCount(0);
+
+  // The admin gives the role on the member's account screen, where it shows by the name it was given.
+  await admin.page.goto(`./#/admin/account/${member.me.id}`);
+  const toggle = admin.page.getByRole('switch', { name: role.name });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+  // The member's app picks it up on its next look at the account, but shows no button while feedback mode is off. The API
+  // starts with it off; a run before this one may have left it on (the database outlives a test), so it is turned off
+  // first. This is the only test that changes it.
+  const off = await admin.ctx.request.put(API + '/admin/feedback-mode', { data: { on: false }, headers: { Origin: ORIGIN } });
+  expect(off.ok(), `PUT /admin/feedback-mode: ${off.status()}`).toBe(true);
+  await member.page.reload();
+  await expect(accountRow(member.page, member.name)).toBeVisible();
+  await expect(accountSection(member.page).getByRole('switch', { name: 'Feedback button' })).toHaveCount(0);
+  await expect(fab).toHaveCount(0);
+
+  // The admin turns feedback mode on, above the reports on Settings → Account → Feedback.
+  await admin.page.goto('./#/admin/feedback');
+  await admin.page.reload();
+  const mode = admin.page.getByRole('switch', { name: 'Feedback mode' });
+  await expect(mode).toHaveAttribute('aria-checked', 'false');
+  await mode.click();
+  await expect(mode).toHaveAttribute('aria-checked', 'true');
+  await member.page.reload();
+  await expect(fab).toBeVisible();
+  await expect(accountSection(member.page).getByRole('switch', { name: 'Feedback button' })).toHaveAttribute('aria-checked', 'true');
+  // Reviewing is not part of the role: no Feedback row to the reports.
+  await expect(accountRow(member.page, 'Feedback')).toHaveCount(0);
+
+  // The member marks their account row and sends a report: the API saves it for review (nothing goes to GitHub).
+  const title = `Roles on the account ${id}`;
+  await fab.click();
+  const row = (await accountRow(member.page, member.name).boundingBox())!;
+  await member.page.mouse.click(row.x + row.width / 2, row.y + row.height / 2);
+  const form = member.page.getByRole('dialog', { name: 'Feedback' });
+  await form.getByLabel('What should change?').fill('Show my roles here.\nThen I know what I may do.');
+  await form.getByLabel('Title').fill(title);
+  await form.getByRole('button', { name: 'Send', exact: true }).click();
+  const done = member.page.getByRole('dialog', { name: 'Saved for review' });
+  await expect(done).toContainText('An admin reads it in Settings → Account → Feedback, and picks what goes on to GitHub.');
+  await expect(done.getByRole('link')).toHaveCount(0);
+  await done.getByRole('button', { name: 'Close' }).click();
+
+  // The member's export holds it, as sent and where it stands; never the review's note or who reviewed it.
+  const exported = async (): Promise<AccountExport> => {
+    const res = await member.ctx.request.get(API + '/me/export');
+    expect(res.ok(), `GET /me/export: ${res.status()}`).toBe(true);
+    return (await res.json()) as AccountExport;
+  };
+  const before = await exported();
+  expect(before.feedback).toHaveLength(1);
+  const [own] = before.feedback;
+  expect(own).toMatchObject({ status: 'new', report: { kind: 'change', title, description: 'Show my roles here.\nThen I know what I may do.', context: { route: '/settings' } } });
+  // The spot as marked: on Settings, in the account row (the label is whatever was under the click).
+  expect(own.report.target.label).not.toBe('');
+
+  // The admin finds it under Settings → Account → Feedback, with the new ones.
+  const a = admin.page;
+  await a.goto('./#/settings');
+  await accountRow(a, 'Feedback').click();
+  await expect(a.getByRole('heading', { level: 1, name: 'Feedback' })).toBeVisible();
+  const filter = a.getByRole('group', { name: 'Status' });
+  await expect(filter.getByRole('button', { name: /^New \d+$/ })).toHaveAttribute('aria-pressed', 'true');
+  // The database outlives a test (a retry, an earlier run), so the counts are read, not assumed. This is the only test
+  // that sends reports, so nothing else changes them meanwhile (copies of it side by side, --repeat-each, would).
+  const count = async (status: string): Promise<number> => Number(/\d+$/.exec((await filter.getByRole('button', { name: new RegExp(`^${status} \\d+$`) }).textContent()) ?? '')?.[0]);
+  const [isNew, accepted] = [await count('New'), await count('Accepted')];
+  expect(isNew).toBeGreaterThanOrEqual(1);
+  const report = a.getByRole('link', { name: new RegExp('^' + escapeRegExp(title)) });
+  await expect(report).toContainText(`Change · ${own.report.target.label} · ${member.name}`);
+  await report.click();
+
+  // The report as sent, from the member; the admin accepts it and leaves a note for the team.
+  await expect(a).toHaveURL(new RegExp(`#/admin/feedback/${own.id}$`));
+  await expect(a.getByRole('heading', { level: 1, name: title })).toBeVisible();
+  await expect(a.getByRole('region', { name: 'Report', exact: true })).toContainText('Then I know what I may do.');
+  await expect(a.getByRole('region', { name: 'Where', exact: true })).toContainText('#/settings');
+  await expect(a.getByRole('region', { name: 'Sent', exact: true })).toContainText(member.name);
+  const review = a.getByRole('region', { name: 'Review', exact: true });
+  await expect(review).toContainText('Not reviewed yet.');
+  await review.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'Accepted' }).click();
+  await expect(review).toContainText(`Reviewed by ${admin.name}, `);
+  await review.getByLabel('Note for the team').fill(`Picked up ${id}.`);
+  await review.getByRole('button', { name: 'Save note' }).click();
+  await expect(review.getByText('Saved.')).toBeVisible();
+
+  // Back on the list (still on New): it has moved from New to Accepted.
+  await a.getByRole('link', { name: 'Back to feedback' }).click();
+  await expect(filter.getByRole('button', { name: `New ${isNew - 1}`, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(filter.getByRole('button', { name: `Accepted ${accepted + 1}`, exact: true })).toBeVisible();
+  await expect(report).toHaveCount(0);
+  await filter.getByRole('button', { name: /^Accepted / }).click();
+  await expect(report).toBeVisible();
+  // Opened again, it is as the admin left it.
+  await report.click();
+  await expect(review.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'Accepted' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(review.getByLabel('Note for the team')).toHaveValue(`Picked up ${id}.`);
+
+  // The member's export says it was accepted, and still has no note or reviewer.
+  const after = await exported();
+  expect(after.feedback.map((f) => [f.id, f.status])).toEqual([[own.id, 'accepted']]);
+  expect(Object.keys(after.feedback[0]).sort()).toEqual(['createdAt', 'id', 'report', 'status']);
+  expect(JSON.stringify(after)).not.toContain(`Picked up ${id}.`);
 });

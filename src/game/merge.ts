@@ -10,7 +10,7 @@
  * first sign-in on a device) the account's prefs win, and this device's setups unless it has none. Against the base
  * too: a day of figures one side dropped stays dropped, and a day practised one side corrected stays corrected (a date
  * a clock set forward wrote, game/stats.ts). A side that cannot have dropped a day (a tab behind the one that recorded
- * it, a copy an app from before 0.16.0 saved) never had it, and the day stays.
+ * it, a copy an app from before 0.19.0 saved) never had it, and the day stays.
  *
  * The rules are pure and tested as properties (merge.test.ts): order-independent for every result, never lower than
  * either side, and merging a copy with itself gives it back.
@@ -188,7 +188,7 @@ function fuller(x: DayStats, y: DayStats): DayStats {
 /**
  * Whether a copy without day `d` can have dropped it: the recorders drop a date only for HISTORY_DAYS others, a later
  * one among them (game/stats.ts). A copy with fewer, or only earlier ones, never had it: a tab behind the one that
- * recorded it (ui/sync.ts brings that tab's results in against the base), or a copy an app from before 0.16.0 saved,
+ * recorded it (ui/sync.ts brings that tab's results in against the base), or a copy an app from before 0.19.0 saved,
  * which has no figures.
  */
 function couldDrop(days: Record<string, DayStats>, d: string): boolean {
@@ -236,7 +236,7 @@ function mergeStats(local: Stats, remote: Stats, base: Stats | null, hasBase: bo
     clefs: moreCounted(local.clefs, remote.clefs),
     noteMs: moreCounted(local.noteMs, remote.noteMs),
     // The Notes view's Key card shows the last round's key: a choice, like a setup. Never back to none: only a copy
-    // without figures (an app from before 0.16.0 saved it) has none after a round.
+    // without figures (an app from before 0.19.0 saved it) has none after a round.
     lastKey: pick(local.lastKey, remote.lastKey, base?.lastKey, hasBase, (x, y) => x ?? y) ?? local.lastKey ?? remote.lastKey,
     reading: mergeReading(local.reading, remote.reading),
     echo: maxPairs(local.echo, remote.echo),

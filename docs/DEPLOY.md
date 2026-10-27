@@ -180,6 +180,15 @@ Its icon is gold with a dark note, where production's is teal with a white note,
 home screen tells the two apart. The deploy copies the icons in `public-test/` over those in `public/` before it
 builds; when the icon changes, change both.
 
+### Smoke tests
+
+After every deploy to the test site, the *Smoke test* workflow checks it with `npm run smoke` (once that workflow is on
+the default branch): the files and headers, every screen at phone, tablet and desktop size, offline, the main things to
+do, and accounts, roles and the admin screens with the real API. It signs in with an admin account of the test site,
+from the repository secrets `MUZIEKLAB_TEST_EMAIL` and `MUZIEKLAB_TEST_PASSWORD` (without them it is skipped), and only
+ever changes accounts it makes itself (`smoke-…@example.invalid`), which it removes again. How to run it, and what it
+leaves behind (an entry in *Deleted accounts* for each account it deletes): [SMOKE.md](SMOKE.md).
+
 ### Set up the test site (once)
 
 1. **DNS:** an `A` record with name `test` and the server's IP address (in Hetzner DNS: *Records → Add record*).
@@ -297,6 +306,11 @@ All of this runs on the server, as your own user. The files named come from this
 
    The settings file holds `PORT` and `MONGODB_URI`, and may hold `LOG_LEVEL` (*What the API logs*, below). It is
    readable by root only; systemd reads it before it starts the service as `muzieklab-api`.
+
+   **Feedback from the app** (0.17.0, [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md)) needs no setting: the API stores the
+   reports in its database, and admins review them in the app. Nothing goes to GitHub yet; the GitHub token comes with
+   the step that sends accepted reports there, and so do its instructions. Test builds before the 0.17.0 release read
+   a `GITHUB_TOKEN` from this file: if you added one, take that line out and revoke the token on GitHub.
 
    **Never put `COOKIE_SECURE` in it.** That setting is for development over plain http only (README). Set to
    `false`, it drops `Secure` and the `__Host-` and `__Secure-` prefixes from the session cookies, so the browser would

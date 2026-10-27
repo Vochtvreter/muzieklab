@@ -720,13 +720,18 @@
     "signInSub": "Alleen met een uitnodiging.",
     "accounts": "Accounts",
     "accountsSub": "Mensen uitnodigen en rollen beheren",
+    "feedbackReports": "Feedback",
+    "feedbackReportsSub": "De meldingen uit de app beoordelen",
+    "feedbackButton": "Feedbackknop",
+    "feedbackButtonSub": "Op dit apparaat: markeer een deel van een scherm en stuur wat er anders moet.",
     "signOut": "Uitloggen",
     "signingOut": "Uitloggen…",
     "privacy": "Privacy",
     "privacySub": "Wat op dit apparaat blijft, en wat een account bewaart",
     "noticeSignedOut": "Uitgelogd.",
     "noticeSignedOutEverywhere": "Op elk apparaat uitgelogd.",
-    "noticeDeleted": "Je account is verwijderd.",
+    "noticeDeleted": "Je account en je gegevens zijn verwijderd.",
+    "noticeDeletedKept": "Je account is verwijderd. Een anonieme kopie van je voortgang blijft bewaard.",
     "noticeWelcome": "Je bent ingelogd. Welkom bij Muzieklab.",
     "noticePasswordReset": "Wachtwoord bewaard. Je andere apparaten zijn uitgelogd.",
     "noticeProgressAdded": "De voortgang op dit apparaat staat nu ook op je account.",
@@ -810,7 +815,9 @@
     "internal": "Er ging bij ons iets mis. Probeer het later opnieuw.",
     "unavailable": "Muzieklab is nu niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
     "waitSeconds": "Te veel pogingen. Probeer het over {count, plural, one {# seconde} other {# seconden}} opnieuw.",
-    "waitMinutes": "Te veel pogingen. Probeer het over {count, plural, one {# minuut} other {# minuten}} opnieuw."
+    "waitMinutes": "Te veel pogingen. Probeer het over {count, plural, one {# minuut} other {# minuten}} opnieuw.",
+    "role_exists": "Er is al een rol met deze id.",
+    "built_in_role": "Ingebouwde rollen houden hun naam, en Beheerder mag altijd alles."
   },
   "accountRole": {
     "admin": "Beheerder",
@@ -890,8 +897,16 @@
     "downloading": "Downloaden…",
     "downloaded": "Gedownload: {file}.",
     "delete": "Account verwijderen",
+    "deleteSub": "Je kiest zelf of er een anonieme kopie van je voortgang bewaard blijft.",
     "deleteQuestion": "Je account verwijderen?",
-    "deleteDetail": "Je account en alles wat erbij bewaard is, ook de voortgang erop, worden verwijderd. De voortgang op dit apparaat blijft staan. Je kunt dit niet ongedaan maken.",
+    "deleteDetail": "Je naam, e-mailadres, wachtwoord en apparaten worden verwijderd, en je wordt uitgelogd. De voortgang op dit apparaat blijft staan. Je kunt dit niet ongedaan maken.",
+    "deleteData": "Je voortgang en instellingen",
+    "deleteKeep": "Anoniem bewaren",
+    "deleteRemove": "Ook verwijderen",
+    "deleteKeepHint": "Ze blijven bewaard zonder je naam, e-mailadres of iets anders waaraan te zien is dat ze van jou waren, om te zien hoe Muzieklab wordt gebruikt en het beter te maken.",
+    "deleteRemoveHint": "Ze worden met je account verwijderd. Er blijft niets van je account bewaard.",
+    "feedback": "Waarom stop je? (niet verplicht)",
+    "feedbackHint": "Zo kunnen we Muzieklab beter maken. Het wordt bewaard zonder je naam of e-mailadres, ook als je alles verwijdert. Laat dus weg wat zegt wie je bent.",
     "deletePassword": "Wachtwoord",
     "deleteConfirm": "Verwijderen",
     "deleting": "Verwijderen…"
@@ -925,7 +940,17 @@
     "ageTitle": "Leeftijd",
     "age": "Accounts zijn voorlopig voor mensen van 16 jaar en ouder.",
     "updated": "Laatst bijgewerkt: {date}",
-    "accountProgress": "je voortgang en de instellingen die met je meegaan, zoals het thema en de notennamen"
+    "accountProgress": "je voortgang en de instellingen die met je meegaan, zoals het thema en de notennamen",
+    "deleteTitle": "Als je je account verwijdert",
+    "deleteIntro": "Je kiest zelf wat er met je voortgang en instellingen gebeurt:",
+    "deleteKeep": "Anoniem bewaren: je naam, e-mailadres, wachtwoord en apparaten worden verwijderd, en je voortgang en instellingen blijven zonder die gegevens bewaard, met alleen de maand waarin je begon. Er staat niets in waaraan te zien is dat ze van jou waren. We gebruiken ze om te zien hoe Muzieklab wordt gebruikt.",
+    "deleteRemove": "Ook verwijderen: er blijft niets van je account bewaard.",
+    "deleteFeedback": "In beide gevallen noteren we op welke dag een account is verwijderd, en bewaren we wat je schreef over waarom je stopt, als je iets schreef, zonder je naam of e-mailadres.",
+    "deleteBackups": "De nachtelijke back-ups bevatten je account nog tot 14 dagen.",
+    "keepClosures": "Verwijderde accounts: de anonieme kopie, de feedback en de dag, 2 jaar.",
+    "accountReports": "de feedbackmeldingen die je vanuit de app stuurt, als je account dat kan: wat je schreef, het scherm en de plek die je aanwees, je apparaat en browser, en je instellingen, nooit je voortgang. Wie ze beoordeelt, ziet je naam. Een melding die wordt opgepakt, wordt een openbaar GitHub-issue, zonder je naam",
+    "keepReports": "Feedbackmeldingen: tot het team ze verwijdert, of tot je je account verwijdert.",
+    "deleteReports": "De feedbackmeldingen die je vanuit de app stuurde, worden met je account verwijderd, wat je ook kiest. Verwijdert een beheerder je account, dan blijven ze bewaard zonder je naam."
   },
   "admin": {
     "title": "Accounts",
@@ -1031,7 +1056,128 @@
     "newResetLink": "Link voor een nieuw wachtwoord",
     "newInviteLinkSub": "Werkt {days} dagen. De vorige link werkt dan niet meer.",
     "newResetLinkSub": "Werkt {hours} uur, één keer. De vorige werkt dan niet meer.",
-    "making": "Link maken…"
+    "making": "Link maken…",
+    "history": "Geschiedenis",
+    "historySub": "Accounts die zijn verwijderd, en waarom mensen stopten"
+  },
+  "closures": {
+    "title": "Verwijderde accounts",
+    "lead": "Elk account dat de afgelopen 2 jaar is verwijderd, met wat de eigenaar schreef. Niets hier zegt van wie een account was.",
+    "loading": "Verwijderde accounts worden geladen…",
+    "empty": "Er is nog geen account verwijderd.",
+    "emptyKind": "Geen van deze.",
+    "kindGroup": "Hoe het is verwijderd",
+    "count": "{count, plural, one {# verwijderd account} other {# verwijderde accounts}}",
+    "countFound": "{count, plural, one {# verwijderd account gevonden} other {# verwijderde accounts gevonden}}",
+    "rowLabel": "{day}, {kind}",
+    "noFeedback": "Geen feedback.",
+    "joined": "Begonnen in {month}",
+    "noProgress": "Geen voortgang bewaard",
+    "level": "Level {level}",
+    "xp": "{xp} XP",
+    "lessons": "{count, plural, one {# les} other {# lessen}}",
+    "days": "{count, plural, one {# dag geoefend} other {# dagen geoefend}}",
+    "file": "Bestand",
+    "download": "Downloaden als bestand",
+    "downloadSub": "Alles hierboven, met de anonieme voortgang, als JSON."
+  },
+  "closureKind": {
+    "archived": "Gearchiveerd",
+    "removed": "Gegevens gewist",
+    "admin": "Door beheerder"
+  },
+  "feedbackStatus": {
+    "new": "Nieuw",
+    "accepted": "Opgepakt",
+    "declined": "Afgewezen"
+  },
+  "feedbackReview": {
+    "title": "Feedback",
+    "lead": "Meldingen die vanuit de app zijn verstuurd.",
+    "modeTitle": "Feedbackmodus",
+    "modeOn": "Aan: iedereen die feedback kan sturen ziet de feedbackknop op elk scherm.",
+    "modeOff": "Uit: niemand ziet de feedbackknop. Zet hem aan om feedback te verzamelen.",
+    "noAccessSub": "Alleen beheerders beoordelen feedbackmeldingen.",
+    "loading": "Meldingen worden geladen…",
+    "empty": "Nog geen meldingen. Ze verschijnen hier zodra iemand feedback stuurt vanuit de app.",
+    "emptyStatus": "Geen meldingen met deze status.",
+    "count": "{count, plural, one {# melding} other {# meldingen}}",
+    "countNew": "{count, plural, one {# nieuwe melding} other {# nieuwe meldingen}}",
+    "countAccepted": "{count, plural, one {# opgepakte melding} other {# opgepakte meldingen}}",
+    "countDeclined": "{count, plural, one {# afgewezen melding} other {# afgewezen meldingen}}",
+    "newest": "De nieuwste {count} staan hier.",
+    "untitled": "{kind} op {route}",
+    "deletedAccount": "Een verwijderd account",
+    "backToList": "Terug naar feedback",
+    "reportTitle": "Melding",
+    "loadingReport": "De melding wordt geladen…",
+    "gone": "Deze melding bestaat niet meer.",
+    "report": "Melding",
+    "kind": "Soort",
+    "description": "Wat er anders moet",
+    "noDescription": "Geen beschrijving.",
+    "where": "Waar",
+    "screen": "Scherm",
+    "openScreen": "Open dit scherm",
+    "marked": "Gemarkeerd",
+    "text": "Tekst daar",
+    "selector": "Selector",
+    "mode": "Soort markering",
+    "modeValue": {
+      "element": "Een element",
+      "area": "Een getekend gebied"
+    },
+    "box": "Kader",
+    "boxValue": "x {x}, y {y}, {width} × {height} px",
+    "boxScrolled": "{box}, gescrold naar {x}, {y}",
+    "device": "Apparaat",
+    "viewport": "Venster",
+    "viewportValue": "{width} × {height} px, pixelverhouding {dpr}",
+    "size": "Formaat",
+    "sizeValue": {
+      "phone": "Telefoon",
+      "tablet": "Tablet",
+      "desktop": "Computer"
+    },
+    "orientation": "Stand",
+    "orientationValue": {
+      "portrait": "Staand",
+      "landscape": "Liggend"
+    },
+    "pointer": "Invoer",
+    "pointerValue": {
+      "coarse": "Aanraken",
+      "fine": "Muis"
+    },
+    "theme": "Thema",
+    "themeValue": {
+      "light": "Licht",
+      "dark": "Donker"
+    },
+    "themeFromSystem": "{theme}, volgens de systeeminstelling",
+    "language": "Taal",
+    "version": "App-versie",
+    "browser": "Browser",
+    "sent": "Verstuurd",
+    "from": "Van",
+    "date": "Datum",
+    "review": "Beoordeling",
+    "status": "Status",
+    "reviewedBy": "Beoordeeld door {name}, {date}",
+    "reviewedByGone": "Beoordeeld door een verwijderd account, {date}",
+    "notReviewed": "Nog niet beoordeeld.",
+    "note": "Notitie voor het team",
+    "noteHint": "Alleen wie feedback beoordeelt ziet dit, niet degene die het stuurde. Maximaal {max} tekens.",
+    "noteBadCharacters": "Haal de tabs en andere onzichtbare tekens weg.",
+    "saveNote": "Notitie bewaren",
+    "actions": "Acties",
+    "copy": "Kopiëren als Markdown",
+    "copySub": "De titel en tekst voor een GitHub-issue, om het voorlopig met de hand te maken.",
+    "markdown": "Markdown",
+    "delete": "Melding verwijderen",
+    "deleteQuestion": "Deze melding verwijderen?",
+    "deleteDetail": "Ze verdwijnt voor iedereen uit de app. Je kunt dit niet ongedaan maken.",
+    "deleted": "De melding is verwijderd."
   },
   "noteButton": {
     "whole": "Hele noot",
@@ -2796,6 +2942,38 @@
       "text": "Twee sterren op 160 BPM of sneller"
     }
   },
+  "feedback": {
+    "open": "Feedback",
+    "openLabel": "Feedback: markeer een deel van dit scherm",
+    "markHint": "Klik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen. Esc annuleert.",
+    "markHintTouch": "Tik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen.",
+    "cancel": "Annuleren",
+    "title": "Feedback",
+    "marked": "Gemarkeerd",
+    "markedArea": "Gemarkeerd gebied",
+    "markAgain": "Opnieuw markeren",
+    "kindGroup": "Soort feedback",
+    "kind": {
+      "bug": "Fout",
+      "change": "Wijziging",
+      "idea": "Idee"
+    },
+    "descLabel": "Wat moet er anders?",
+    "descPlaceholder": "Wat is hier mis, en wat verwacht je in plaats daarvan",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Een korte samenvatting (niet verplicht)",
+    "attached": "Bewaard zodat het team het kan beoordelen, met dit scherm, de gemarkeerde plek, de schermgrootte, het thema, de taal en de instellingen. Niet je voortgang. Als het wordt opgepakt, wordt het een openbaar GitHub-issue, zonder je naam.",
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd",
+    "send": "Versturen",
+    "sending": "Versturen…",
+    "saved": "Bewaard om te beoordelen",
+    "savedText": "Een beheerder leest het in Instellingen → Account → Feedback, en kiest wat er doorgaat naar GitHub.",
+    "review": "Beoordeel het",
+    "another": "Nog iets markeren",
+    "close": "Sluiten",
+    "hide": "Verberg de feedbackknop op dit apparaat"
+  },
   "changelog": {
     "title": "Wat is er nieuw",
     "back": "Terug naar instellingen",
@@ -2818,7 +2996,7 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
-    "v0_16_0": {
+    "v0_19_0": {
       "title": "Je voortgang in één oogopslag",
       "try": "Open Voortgang",
       "tab": "Een tabblad Voortgang, tussen Leren en Instellingen, met je level, je reeks en je vaardigheden. Kies Ritme, Noten of Toonladders voor je score en timing over twee weken, de minuten die je deze week oefende en je prestaties; je score per sleutel en je traagste noten; of de sterren van elke toonladder.",
@@ -2826,6 +3004,30 @@
       "skills": "Vaardigheden: ritme lezen, ritme op gehoor, de vioolsleutel, de bassleutel, toonladders en theorie hebben elk tien niveaus. Elk niveau zegt wat je ervoor moet doen, Voortgang noemt je laagste vaardigheid, en een vaardigheid die je twee weken niet oefende vraagt om één herhaalronde. Je niveau blijft.",
       "achievements": "Vijf prestaties om te behalen, zoals 7 dagen op rij, een perfecte maat en twee sterren op 160 BPM. Na een ronde laat een label zien welke je behaalde.",
       "levelUp": "Het scherm voor een nieuw level toont de prestaties en het nieuwe persoonlijk record van de ronde, en Bekijk voortgang opent het tabblad Voortgang."
+    },
+    "v0_18_0": {
+      "title": "Feedbackmodus",
+      "mode": "Voor beheerders: de feedbackmodus, in Instellingen → Account → Feedback, zet de feedbackknop voor iedereen aan en uit. Hij staat eerst uit: niemand ziet de knop tot een beheerder hem aanzet."
+    },
+    "v0_17_1": {
+      "title": "Ingelogd blijven met meerdere tabbladen",
+      "tabs": "Als je meerdere tabbladen met de app tegelijk opende of herlaadde, kon een deel ervan je als uitgelogd tonen, en soms werd je in allemaal uitgelogd. Nu blijft elk tabblad ingelogd."
+    },
+    "v0_17_0": {
+      "title": "Feedback op de plek zelf",
+      "feedback": "Voor het team: een account dat feedback mag geven krijgt een feedbackknop. Markeer een deel van een scherm en stuur wat er anders moet, met het scherm, de plek en het apparaat erbij. Meldingen worden bewaard, zodat een beheerder ze kan beoordelen in Instellingen → Account → Feedback.",
+      "roles": "Voor beheerders: wat elke rol mag, staat nu op de server, zodat rollen kunnen veranderen en er nieuwe kunnen komen zonder nieuwe versie van de app."
+    },
+    "v0_16_1": {
+      "title": "Ingelogd blijven na herladen",
+      "signedIn": "Als je de app herlaadde net toen je inlog zich vernieuwde, of de verbinding toen even wegviel, kon je worden uitgelogd. Nu blijf je ingelogd."
+    },
+    "v0_16_0": {
+      "title": "Je account verwijderen, zoals jij wilt",
+      "try": "Lees hoe het werkt",
+      "choice": "Als je je account verwijdert, kies je nu wat er met je voortgang en instellingen gebeurt: anoniem bewaren, zonder je naam of e-mailadres, of ook verwijderen.",
+      "feedback": "Als je je account verwijdert, kun je zeggen waarom je stopt. Dat wordt bewaard zonder je naam.",
+      "admin": "Beheerders zien elk verwijderd account in Accounts → Verwijderde accounts, met de feedback en wat een anonieme kopie bevat."
     },
     "v0_15_0": {
       "title": "Voortgang op elk apparaat",

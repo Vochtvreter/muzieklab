@@ -31,6 +31,7 @@ import './styles/app.css';
 import './styles/notes.css';
 import './styles/scales.css';
 import './styles/account.css';
+import './styles/feedback.css';
 import './styles/progress.css';
 import './styles/skills.css';
 

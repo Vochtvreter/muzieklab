@@ -17,7 +17,7 @@ interface SheetProps {
   children: ReactNode;
 }
 
-const FOCUSABLE = 'button:not([disabled]), a[href], input, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'button:not([disabled]), a[href], input, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 export function Sheet({ variant, closing, panelKey, labelledBy, modal = true, maxWidth, low = false, children }: SheetProps): JSX.Element {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -38,7 +38,8 @@ export function Sheet({ variant, closing, panelKey, labelledBy, modal = true, ma
 
   const trap = (e: KeyboardEvent<HTMLDivElement>): void => {
     if (e.key !== 'Tab' || !panelRef.current) return;
-    const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+    // Only what is shown: a control inside a closed <details> cannot take focus.
+    const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.getClientRects().length > 0);
     if (items.length === 0) return;
     const firstEl = items[0];
     const lastEl = items[items.length - 1];

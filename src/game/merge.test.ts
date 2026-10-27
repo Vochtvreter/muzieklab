@@ -278,7 +278,7 @@ describe('mergeProgress: the Progress tab', () => {
     expect(mergeProgress(dropped, base, null).stats.days['2027-03-01']).toEqual(day(60));
   });
 
-  it('keeps a day a copy without it never had: a tab behind the one that played it, a copy from before 0.16.0', () => {
+  it('keeps a day a copy without it never had: a tab behind the one that played it, a copy from before 0.19.0', () => {
     // Another tab played on the 24th and saved; this tab, behind it, brings that in with the base as the account's copy.
     const played = recordScales(defaultProgress(), 40, '2026-10-24');
     expect(mergeProgress(defaultProgress(), played, played).stats.days).toEqual(played.stats.days);
@@ -286,7 +286,7 @@ describe('mergeProgress: the Progress tab', () => {
     const full = stats({ days: Object.fromEntries(STAT_DAYS.slice(0, 42).map((d) => [d, day(60)])) });
     const later = recordScales(full, 40, '2026-10-24');
     expect(mergeProgress(full, later, later).stats.days).toEqual(later.stats.days);
-    // An app from before 0.16.0 saved the account's copy without the Progress tab's figures.
+    // An app from before 0.19.0 saved the account's copy without the Progress tab's figures.
     const agreed = stats({ days: Object.fromEntries(STAT_DAYS.slice(0, 14).map((d) => [d, day(60)])), lastKey: { key: 'G', clef: 'treble' }, seen: { treble: '2026-09-14' } });
     const old = readSynced({ prefs: {}, progress: { lessons: { '1.1': { stars: 3, bestAccuracy: 90 } }, practiceDays: ['2026-10-24'], xp: 900 } })!.progress;
     const m = mergeProgress(agreed, old, agreed);

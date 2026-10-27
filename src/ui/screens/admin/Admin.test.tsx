@@ -27,11 +27,13 @@ const ADMIN: Me = {
   name: 'Ann de Vries',
   locale: 'en',
   roles: ['admin'],
+  roleNames: {},
   permissions: [...PERMISSIONS],
   premium: { active: false, until: null },
   createdAt: '2026-10-01T09:00:00.000Z',
+  feedbackMode: false,
 };
-const MEMBER: Me = { ...ADMIN, id: '6718f0c2a1b2c3d4e5f60001', name: 'Sam Jansen', email: 'sam@example.com', roles: [], permissions: ['self.manage', 'progress.own', 'class.join'] };
+const MEMBER: Me = { ...ADMIN, id: '6718f0c2a1b2c3d4e5f60001', name: 'Sam Jansen', email: 'sam@example.com', roles: [], roleNames: {}, permissions: ['self.manage', 'progress.own', 'class.join'] };
 const LIES: AccountSummary = {
   id: '6718f0c2a1b2c3d4e5f60003',
   email: 'lies@example.com',

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { AccountDetail, AdminUpdateRequest, InviteRequest, Me } from '../shared/api';
 import {
-  ACCOUNTS, accountDetail, adminApi, announcer, apiError, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, recordAnnouncements,
+  ACCOUNTS, accountDetail, adminApi, announcer, apiError, CLOSURES, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, recordAnnouncements,
   RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
 } from './helpers';
 
@@ -344,28 +344,62 @@ test('account: delete, confirmed with the password', async ({ page }) => {
     },
   });
   await page.goto('./#/account');
-  await page.getByRole('button', { name: 'Delete account' }).click();
+  await expect(page.getByRole('button', { name: /^Delete account/ })).toContainText('You choose whether an anonymous copy of your progress is kept.');
+  await page.getByRole('button', { name: /^Delete account/ }).click();
   const confirm = page.getByRole('alertdialog', { name: 'Delete your account?' });
+  // The choice comes first, on Keep anonymously, and says what that does.
+  const choice = confirm.getByRole('group', { name: 'Your progress and settings' });
+  await expect(choice.getByRole('button', { name: 'Keep anonymously' })).toBeFocused();
+  await expect(choice.getByRole('button', { name: 'Keep anonymously' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(confirm.getByText(/^They're kept without your name, email/)).toBeVisible();
   const password = confirm.getByLabel('Password', { exact: true });
-  await expect(password).toBeFocused();
   // No password: nothing is sent.
-  await confirm.getByRole('button', { name: 'Delete' }).click();
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(confirm.getByText('Type your password.')).toBeVisible();
+  await expect(password).toBeFocused();
   expect(api.callsTo('DELETE /me')).toHaveLength(0);
   await password.fill('wrong');
   await password.press('Enter');
   await expect(confirm.getByText("That's not your current password.")).toBeVisible();
   await password.fill('last');
-  await confirm.getByRole('button', { name: 'Delete' }).click();
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(confirm.getByRole('alert')).toHaveText("You're the last admin. Make someone else admin first.");
+  // Everything goes, with a word on why.
+  await choice.getByRole('button', { name: 'Delete too' }).click();
+  await expect(confirm.getByText("They're deleted with your account. Nothing of your account is kept.")).toBeVisible();
+  await confirm.getByLabel('Why are you leaving? (optional)').fill('  Too few lessons for me  ');
   await password.fill('right');
-  await confirm.getByRole('button', { name: 'Delete' }).click();
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(page).toHaveURL(/#\/settings$/);
-  await expect(notice(page)).toHaveText('Your account was deleted.');
-  await expect(announcer(page)).toHaveText('Your account was deleted.');
+  await expect(notice(page)).toHaveText('Your account and its data were deleted.');
+  await expect(announcer(page)).toHaveText('Your account and its data were deleted.');
   await expect(accountSection(page).getByRole('link', { name: /^Sign in/ })).toBeVisible();
-  expect(api.callsTo('DELETE /me').map((c) => c.body)).toEqual([{ password: 'wrong' }, { password: 'last' }, { password: 'right' }]);
+  expect(api.callsTo('DELETE /me').map((c) => c.body)).toEqual([
+    { password: 'wrong', removeData: false },
+    { password: 'last', removeData: false },
+    { password: 'right', removeData: true, feedback: 'Too few lessons for me' },
+  ]);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('muzieklab.account.v1'))).toBeNull();
+});
+
+test('account: delete, keeping an anonymous copy; Cancel puts the choice back', async ({ page }) => {
+  const api = await mockApi(page, { ...MEMBER, 'DELETE /me': { status: 204 } });
+  await page.goto('./#/account');
+  await page.getByRole('button', { name: /^Delete account/ }).click();
+  let confirm = page.getByRole('alertdialog', { name: 'Delete your account?' });
+  await confirm.getByRole('button', { name: 'Delete too' }).click();
+  await confirm.getByLabel('Why are you leaving? (optional)').fill('Not now');
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('button', { name: /^Delete account/ })).toBeFocused();
+  // Opened again: Keep anonymously, and no feedback.
+  await page.getByRole('button', { name: /^Delete account/ }).click();
+  confirm = page.getByRole('alertdialog', { name: 'Delete your account?' });
+  await expect(confirm.getByRole('button', { name: 'Keep anonymously' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(confirm.getByLabel('Why are you leaving? (optional)')).toHaveValue('');
+  await confirm.getByLabel('Password', { exact: true }).fill('right');
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(notice(page)).toHaveText('Your account was deleted. An anonymous copy of your progress is kept.');
+  expect(api.callsTo('DELETE /me').map((c) => c.body)).toEqual([{ password: 'right', removeData: false }]);
 });
 
 test('a session that ended signs the account out (a 401 on any request)', async ({ page }) => {
@@ -1003,6 +1037,69 @@ test('admin one account: a password link pressed at the bottom of the screen com
   expect(await page.locator('.page').evaluate((el) => el.scrollTop)).toBe(0);
 });
 
+test('admin: Deleted accounts, from Accounts: each with its day, kind and feedback, filtered and downloaded', async ({ page }) => {
+  await mockApi(page, adminApi());
+  await page.goto('./#/admin');
+  await page.getByRole('link', { name: /^Deleted accounts/ }).click();
+  await expect(page).toHaveURL(/#\/admin\/deleted$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Deleted accounts' })).toBeVisible();
+  await expect(page).toHaveTitle('Deleted accounts · Muzieklab');
+  const list = page.locator('section[aria-labelledby="h-closures"]');
+  await expect(list.getByRole('heading', { name: '4 deleted accounts' })).toBeVisible();
+  const rows = list.getByRole('article');
+  await expect(rows).toHaveCount(4);
+  // The newest: archived, with what they wrote (its line break kept) and what the copy holds.
+  const first = page.getByRole('article', { name: 'October 24, 2026, Archived' });
+  await expect(first.locator('blockquote')).toHaveText(CLOSURES[0].feedback!);
+  await expect(first).toContainText('Joined March 2026 · Level 8 · 1840 XP · 2 lessons · 3 days practiced');
+  await expect(page.getByRole('article', { name: 'October 20, 2026, Data deleted' })).toContainText('Moving to another app.');
+  // An admin's deletion has no feedback to show; an owner who wrote none says so.
+  await expect(page.getByRole('article', { name: 'October 2, 2026, By an admin' })).not.toContainText('No feedback.');
+  const last = page.getByRole('article', { name: 'September 15, 2026, Archived' });
+  await expect(last).toContainText('No feedback.');
+  await expect(last).toContainText('Joined September 2026 · No progress saved');
+
+  const filter = page.getByRole('group', { name: 'How it was deleted' });
+  await filter.getByRole('button', { name: 'Archived' }).click();
+  await expect(filter.getByRole('button', { name: 'Archived' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(list.getByRole('heading', { name: '2 deleted accounts found' })).toBeVisible();
+  await expect(announcer(page)).toHaveText('2 deleted accounts found');
+  await expect(rows).toHaveCount(2);
+  await filter.getByRole('button', { name: 'All' }).click();
+  await expect(rows).toHaveCount(4);
+
+  // The file holds every entry, whatever the filter.
+  await filter.getByRole('button', { name: 'By an admin' }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: /^Download as a file/ }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('muzieklab-deleted-accounts.json');
+  const { readFile } = await import('node:fs/promises');
+  expect(JSON.parse(await readFile((await file.path())!, 'utf8'))).toEqual({ closures: CLOSURES });
+
+  await page.getByRole('link', { name: 'Back to accounts' }).click();
+  await expect(page).toHaveURL(/#\/admin$/);
+});
+
+test('admin: Deleted accounts with none yet, after an error and Try again', async ({ page }) => {
+  let fail = true;
+  const api = await mockApi(page, { ...adminApi(), 'GET /admin/closures': () => (fail ? { status: 502 } : { json: { closures: [] } }) });
+  await page.goto('./#/admin/deleted');
+  await expect(page.getByRole('alert')).toHaveText("Can't reach Muzieklab right now. Check your connection and try again.");
+  fail = false;
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('.acct-empty')).toHaveText('No account has been deleted yet.');
+  await expect(page.getByRole('button', { name: /^Download as a file/ })).toHaveCount(0);
+  expect(api.callsTo('GET /admin/closures')).toHaveLength(2);
+});
+
+test('admin: Deleted accounts without access: the message, and nothing asked', async ({ page }) => {
+  const api = await mockApi(page, { ...MEMBER, 'GET /admin/closures': { json: { closures: CLOSURES } } });
+  await page.goto('./#/admin/deleted');
+  await expect(page.getByText("You don't have access to this page.")).toBeVisible();
+  expect(api.callsTo('GET /admin/closures')).toHaveLength(0);
+});
+
 test('admin one account: Delete account, confirmed; the list says so', async ({ page }) => {
   const api = await mockApi(page, { ...adminApi(), 'DELETE /admin/accounts/:id': { status: 204 } });
   await page.goto('./#/admin/account/' + PIET_BLOCKED.id);
@@ -1144,7 +1241,7 @@ test('admin screens with no answer from the API: Try again, then the screen', as
   await expect(page.locator('section[aria-labelledby="h-accounts"]').getByRole('heading', { name: '4 accounts' })).toBeVisible();
 });
 
-for (const hash of ['#/admin', '#/admin/invite', '#/admin/account/' + ACCOUNTS[0].id]) {
+for (const hash of ['#/admin', '#/admin/invite', '#/admin/account/' + ACCOUNTS[0].id, '#/admin/deleted', '#/admin/feedback', '#/admin/feedback/6718f0c2a1b2c3d4e5f6b001']) {
   test(`admin screens signed out (${hash}): Sign in instead`, async ({ page }) => {
     const api = await mockApi(page, SIGNED_OUT);
     await page.goto('./' + hash);

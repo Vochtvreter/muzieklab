@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { formatDay, setLocale } from '../../i18n';
-import { clearListNotice, dayOfUntil, linkMessage, peekListNotice, rolesText, setListNotice, today } from './admin';
+import { clearListNotice, dayOfUntil, linkMessage, peekListNotice, roleName, rolesText, setListNotice, sortRoles, today } from './admin';
 
 afterEach(() => {
   setLocale('en');
@@ -66,6 +66,21 @@ describe('rolesText', () => {
     expect(rolesText([])).toBe('');
     setLocale('nl');
     expect(rolesText(['editor', 'admin'])).toBe('Beheerder · Redacteur');
+  });
+
+  it('names custom roles as admins named them, after the built-in ones, by name', () => {
+    const names = { testers: 'Testers', 'a-guests': 'Guests' };
+    expect(rolesText(['testers', 'teacher', 'a-guests'], names)).toBe('Teacher · Guests · Testers');
+    // A custom role whose name is not known (yet) shows by its id.
+    expect(roleName('testers')).toBe('testers');
+    expect(roleName('testers', names)).toBe('Testers');
+    expect(roleName('admin', names)).toBe('Admin');
+  });
+});
+
+describe('sortRoles', () => {
+  it('puts the built-in roles first, then the custom ones by id, each once, as the API stores them', () => {
+    expect(sortRoles(['testers', 'teacher', 'admin', 'a-guests', 'teacher'])).toEqual(['admin', 'teacher', 'a-guests', 'testers']);
   });
 });
 

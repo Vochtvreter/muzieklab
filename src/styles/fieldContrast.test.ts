@@ -7,11 +7,14 @@ import { describe, expect, it } from 'vitest';
 const css = (name: string): string => readFileSync(new URL('./' + name, import.meta.url), 'utf8');
 const tokens = css('tokens.css');
 
-/** The declarations of the first block that starts with `selector {` (the token blocks have no nested braces). */
+/**
+ * The declarations of the first block that starts with `selector {` (the token blocks have no nested braces), without
+ * its comments, which name tokens too ("Green text uses --good-ink: …").
+ */
 function block(selector: string): Record<string, string> {
   const start = tokens.indexOf(selector + ' {');
   expect(start, selector).toBeGreaterThanOrEqual(0);
-  const body = tokens.slice(start, tokens.indexOf('}', start));
+  const body = tokens.slice(start, tokens.indexOf('}', start)).replace(/\/\*[\s\S]*?\*\//g, '');
   return Object.fromEntries([...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }
 
@@ -44,4 +47,24 @@ describe('text field borders', () => {
     const rule = /\.tfield-input\s*\{([^}]*)\}/.exec(css('account.css'))?.[1] ?? '';
     expect(rule).toMatch(/border:\s*1\.5px solid var\(--field-line\)/);
   });
+});
+
+// The status pills (account.css: an account's status, how a deleted account went, where a feedback report stands) are
+// small bold text on a soft fill: 4.5:1 or more (WCAG 1.4.3), in light and in dark.
+describe('status pills', () => {
+  const pills = [...css('account.css').matchAll(/\.status-pill\.is-([\w-]+)\s*\{\s*background:\s*var\((--[\w-]+)\);\s*color:\s*var\((--[\w-]+)\);/g)].map((m) => ({
+    name: m[1],
+    fill: m[2],
+    ink: m[3],
+  }));
+
+  it('finds every pill, the feedback statuses too', () => {
+    expect(pills.map((p) => p.name)).toEqual(expect.arrayContaining(['invited', 'active', 'blocked', 'new', 'accepted', 'declined']));
+  });
+
+  for (const [name, t] of themes) {
+    it(`${name}: each pill's words are 4.5:1 or more against its fill`, () => {
+      for (const p of pills) expect(contrast(t[p.ink], t[p.fill]), p.name).toBeGreaterThanOrEqual(4.5);
+    });
+  }
 });

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import type { CookieSerializeOptions } from '@fastify/cookie';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ClientSession, ObjectId } from 'mongodb';
@@ -8,7 +8,8 @@ import { deviceName } from './device.js';
 // Sessions (BACKEND-PLAN.md §5.4): two random tokens in two cookies, and only their hashes in the database. The
 // session token goes with every request and works for an hour. The refresh token goes only to /api/v1/auth and keeps
 // the session going: POST /auth/refresh swaps it for a new pair (rotation), so a refresh token works once, and one that
-// comes back after it was swapped was copied, which ends the session.
+// comes back after it was swapped was copied, which ends the session. One that comes back within REFRESH_RACE_MS gets
+// the same new pair again: the answer with it may never have reached the browser.
 
 /** A session lasts this long after its last refresh, so someone back from the summer holidays is still signed in. */
 export const SESSION_DAYS = 90;
@@ -17,8 +18,9 @@ const SESSION_MS = SESSION_DAYS * 24 * 60 * 60_000;
 export const ACCESS_MINUTES = 60;
 const ACCESS_MS = ACCESS_MINUTES * 60_000;
 /**
- * A refresh token swapped less than this ago is a race, not a copy: two tabs refreshing at once with the same cookie.
- * The second gets no new cookies, as the browser already has them from the first.
+ * A refresh token swapped less than this ago is a race, not a copy: two tabs refreshing at once with the same cookie,
+ * or a refresh whose answer never arrived (the page was reloaded meanwhile, or the connection dropped), so the browser
+ * still has the old token and no session token. Either way it gets the same new pair again (pairFrom).
  */
 export const REFRESH_RACE_MS = 60_000;
 /** Refresh tokens used before that a session remembers, to know one that comes back. */
@@ -90,9 +92,8 @@ export function refreshToken(request: FastifyRequest, settings: CookieSettings):
   return asToken(request.cookies[refreshCookieName(settings)]);
 }
 
-/** A new pair of tokens, and what the session stores for them. */
-function newPair(now: Date) {
-  const tokens: SessionTokens = { access: newToken(), refresh: newToken() };
+/** A new pair of tokens (random unless given), and what the session stores for them. */
+function newPair(now: Date, tokens: SessionTokens = { access: newToken(), refresh: newToken() }) {
   const fields = {
     accessHash: hashToken(tokens.access),
     accessExpiresAt: new Date(now.getTime() + ACCESS_MS),
@@ -101,6 +102,16 @@ function newPair(now: Date) {
     expiresAt: new Date(now.getTime() + SESSION_MS),
   };
   return { tokens, fields };
+}
+
+/**
+ * The pair a refresh swaps `refresh` for: derived from it and a random salt the session keeps (refreshSalt), so the
+ * same token can get the same pair again during a race (REFRESH_RACE_MS). The old token alone does not give the new
+ * pair, as the salt is only in the database; nor does the database, which has only the old token's hash.
+ */
+function pairFrom(refresh: string, salt: string): SessionTokens {
+  const derive = (use: string) => createHmac('sha256', refresh).update(`${use}:${salt}`).digest('base64url');
+  return { access: derive('access'), refresh: derive('refresh') };
 }
 
 /**
@@ -174,8 +185,8 @@ export async function findSession(c: Collections, token: string, now: Date): Pro
 export type Refresh =
   /** Swapped: the new pair goes in the cookies. The session lasts SESSION_DAYS from now. */
   | { outcome: 'rotated'; session: SessionDoc; tokens: SessionTokens }
-  /** Swapped moments ago by another request from this browser (REFRESH_RACE_MS), which has the new cookies already. */
-  | { outcome: 'raced'; session: SessionDoc }
+  /** Swapped moments ago (REFRESH_RACE_MS): the same pair as then goes in the cookies, as that answer may be lost. */
+  | { outcome: 'raced'; session: SessionDoc; tokens: SessionTokens }
   /** A refresh token swapped longer ago came back: it was copied. The session is ended, for whoever holds it. */
   | { outcome: 'reused'; session: SessionDoc }
   /** No live session has this token, now or before. */
@@ -188,19 +199,23 @@ export type Refresh =
  */
 export async function refreshSession(c: Collections, token: string, now: Date): Promise<Refresh> {
   const hash = hashToken(token);
-  const { tokens, fields } = newPair(now);
+  const refreshSalt = newToken();
+  const { tokens, fields } = newPair(now, pairFrom(token, refreshSalt));
   const rotated = await c.sessions.findOneAndUpdate(
     { refreshHash: hash, expiresAt: { $gt: now } },
-    { $set: { ...fields, refreshedAt: now }, $push: { retired: { $each: [hash], $slice: -RETIRED_KEPT } } },
+    { $set: { ...fields, refreshedAt: now, refreshSalt }, $push: { retired: { $each: [hash], $slice: -RETIRED_KEPT } } },
     { returnDocument: 'after' },
   );
   if (rotated) return { outcome: 'rotated', session: rotated, tokens };
 
   const old = await c.sessions.findOne({ retired: hash, expiresAt: { $gt: now } });
   if (!old) return { outcome: 'none' };
+  // The token the last swap took, moments ago: that swap's pair is still the session's, and made again from its salt.
   const justSwapped = old.retired.at(-1) === hash && old.refreshedAt !== null
     && now.getTime() - old.refreshedAt.getTime() < REFRESH_RACE_MS;
-  if (justSwapped) return { outcome: 'raced', session: old };
+  if (justSwapped && old.refreshSalt) {
+    return { outcome: 'raced', session: old, tokens: pairFrom(token, old.refreshSalt) };
+  }
   await c.sessions.deleteOne({ _id: old._id });
   return { outcome: 'reused', session: old };
 }

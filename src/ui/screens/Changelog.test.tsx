@@ -31,7 +31,7 @@ describe("What's new", () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Your progress at a glance' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 25 · 4 new · 1 better')).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 27 · 4 new · 1 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Open Progress' }).getAttribute('href')).toBe('#/progress');
     // Accounts (0.12.0) are by invitation: the release promises no sign-up.
     fireEvent.click(release('0.12.0'));
@@ -69,7 +69,7 @@ describe("What's new", () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Je voortgang in één oogopslag' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('25 okt · 4 nieuw · 1 beter')).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('27 okt · 4 nieuw · 1 beter')).toBeTruthy();
     fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
@@ -91,7 +91,7 @@ describe("What's new", () => {
     expect(within(list).getAllByRole('button')).toHaveLength(RELEASES.length);
     expect(release(RELEASES[0].version).getAttribute('aria-current')).toBe('true');
     expect(screen.getByRole('heading', { level: 2, name: 'Your progress at a glance' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('October 25, 2026 · 4 new · 1 better')).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('October 27, 2026 · 4 new · 1 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
     expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
 

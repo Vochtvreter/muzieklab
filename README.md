@@ -19,7 +19,7 @@ invitation only and optional (the app needs none): sign in from Settings → Acc
 password, sign out every device, and download or delete your data; admins invite people with a link they send
 themselves, and manage roles, blocking and premium. A privacy statement is in Settings → About. 0.15.0 keeps your
 progress on your account: signed in, it is saved and merged across your devices, and nothing done before signing in is
-lost. Accounts need the API (`server/`); a site without it shows no Account section. 0.16.0 adds the Progress tab
+lost. Accounts need the API (`server/`); a site without it shows no Account section. 0.19.0 adds the Progress tab
 (the tabs are Home · Path · Learn · Progress · Settings): Rhythm, Notes and Scales views with your level, a streak
 calendar, accuracy, timing and minutes, a skill map of rhythm cells with *Practice weak spots*, notes per clef and the
 slowest notes, and stars per scale; skill levels (six skills of ten levels each); five achievements; and a level-up
@@ -35,6 +35,7 @@ npm test           # Vitest, including property tests of the rhythm engine
 npm run build      # type check + production build in dist/
 npm run e2e        # Playwright: layout at every screen size and a full lesson (builds first), the API mocked
 npm run e2e:real   # Playwright against the real API: the app, the API bundle and a throwaway MongoDB
+npm run smoke      # Playwright against the deployed test site (docs/SMOKE.md); signs in with MUZIEKLAB_TEST_*
 ```
 
 `npm run e2e:real` needs `npm install` in `server/` first; its first run downloads MongoDB 9.0.4.
@@ -100,6 +101,10 @@ The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
 - [Accounts and permissions](docs/BACKEND-PLAN.md): the back-end design; phases 0 (the API, MongoDB, backups), 1
   (accounts) and 2 (progress on the account) are built.
+- [Feedback loop](docs/FEEDBACK-LOOP.md): while an admin has feedback mode on, with the `feedback.give` permission, mark
+  a spot in the app and send what should change, for admins (`feedback.review`) to accept or decline in Settings →
+  Account → Feedback; and the plan for
+  sending the accepted reports to GitHub as issues, and for the agents that take them from there to a deployed change.
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,

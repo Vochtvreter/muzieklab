@@ -25,17 +25,55 @@ export const KINDS: ChangeKind[] = ['new', 'better', 'fix'];
 
 export const RELEASES: Release[] = [
   {
+    version: '0.19.0',
+    date: '2026-10-27',
+    title: 'changelog.v0_19_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_19_0.tab' },
+      { kind: 'new', text: 'changelog.v0_19_0.weakSpots' },
+      { kind: 'new', text: 'changelog.v0_19_0.skills' },
+      { kind: 'new', text: 'changelog.v0_19_0.achievements' },
+      { kind: 'better', text: 'changelog.v0_19_0.levelUp' },
+    ],
+    action: { to: '/progress', label: 'changelog.v0_19_0.try' },
+  },
+  {
+    version: '0.18.0',
+    date: '2026-10-26',
+    title: 'changelog.v0_18_0.title',
+    changes: [{ kind: 'new', text: 'changelog.v0_18_0.mode' }],
+  },
+  {
+    version: '0.17.1',
+    date: '2026-10-26',
+    title: 'changelog.v0_17_1.title',
+    changes: [{ kind: 'fix', text: 'changelog.v0_17_1.tabs' }],
+  },
+  {
+    version: '0.17.0',
+    date: '2026-10-25',
+    title: 'changelog.v0_17_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_17_0.feedback' },
+      { kind: 'better', text: 'changelog.v0_17_0.roles' },
+    ],
+  },
+  {
+    version: '0.16.1',
+    date: '2026-10-25',
+    title: 'changelog.v0_16_1.title',
+    changes: [{ kind: 'fix', text: 'changelog.v0_16_1.signedIn' }],
+  },
+  {
     version: '0.16.0',
     date: '2026-10-25',
     title: 'changelog.v0_16_0.title',
     changes: [
-      { kind: 'new', text: 'changelog.v0_16_0.tab' },
-      { kind: 'new', text: 'changelog.v0_16_0.weakSpots' },
-      { kind: 'new', text: 'changelog.v0_16_0.skills' },
-      { kind: 'new', text: 'changelog.v0_16_0.achievements' },
-      { kind: 'better', text: 'changelog.v0_16_0.levelUp' },
+      { kind: 'new', text: 'changelog.v0_16_0.choice' },
+      { kind: 'new', text: 'changelog.v0_16_0.feedback' },
+      { kind: 'new', text: 'changelog.v0_16_0.admin' },
     ],
-    action: { to: '/progress', label: 'changelog.v0_16_0.try' },
+    action: { to: '/privacy', label: 'changelog.v0_16_0.try' },
   },
   {
     version: '0.15.0',

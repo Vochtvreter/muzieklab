@@ -1,13 +1,16 @@
 /**
- * What the three admin screens share (no board yet; built from Settings' design language):
+ * What the admin screens share (no board yet; built from Settings' design language):
  * - useAdminGate: whether the signed-in account may open the screen, and GateMessage for when it may not (still
  *   checking, no answer from the API, or no access, with the way back to Settings). Signed out goes to Sign in.
  * - LinkResult: a link shown once (an invite or a new password), with Copy, when it stops working, and a ready-made
  *   message to paste into an email or chat.
- * - RoleSwitches: Admin, Editor and Teacher as switch rows, each with what it lets someone do.
+ * - useRoleList: the roles from GET /admin/roles, with their names.
+ * - RoleSwitches: a switch row per role, each with what it lets someone do: the built-in ones (Admin, Editor, Teacher),
+ *   then the custom roles admins made.
  */
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { ROLES, type Permission, type Role } from '../../../../shared/api';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { BUILT_IN_ROLES, isBuiltInRole, type Permission, type Role, type RoleInfo, type RoleListResponse } from '../../../../shared/api';
+import { api } from '../../../api/client';
 import { formatDateTime, t } from '../../../i18n';
 import { useAccount, type UseAccount } from '../../account';
 import { CopyField, ErrorRetry, FormDone, SwitchRow } from '../../components/Form';
@@ -31,23 +34,29 @@ export function useAdminGate(account: UseAccount, permission: Permission): Gate 
   return me.permissions.includes(permission) ? 'ok' : 'denied';
 }
 
-/** Why the screen shows nothing else: still checking, no answer (Try again), or no access (back to Settings). */
-export function GateMessage({ gate }: { gate: Exclude<Gate, 'ok'> }): JSX.Element {
+/**
+ * Why the screen shows nothing else: still checking, no answer (Try again), or no access (back to Settings). `sub`: who
+ * may open it (NoAccess).
+ */
+export function GateMessage({ gate, sub }: { gate: Exclude<Gate, 'ok'>; sub?: string }): JSX.Element {
   const account = useAccount();
   if (gate === 'wait') return <p className="acct-wait">{t('admin.checking')}</p>;
   if (gate === 'offline') return <ErrorRetry error={t('apiError.unavailable')} onRetry={() => void account.refresh()} />;
-  return <NoAccess />;
+  return <NoAccess sub={sub} />;
 }
 
-/** "You don't have access to this page", and the way back to Settings. */
-export function NoAccess(): JSX.Element {
+/**
+ * "You don't have access to this page", and the way back to Settings. `sub`: the line under it, who may open the page
+ * ("Only admins manage accounts." by default).
+ */
+export function NoAccess({ sub }: { sub?: string }): JSX.Element {
   return (
     <div className="acct-message">
       <div className="acct-note" role="status">
         <Icon name="lock" size={22} />
         <p>
           <b>{t('admin.noAccess')}</b>
-          <span>{t('admin.noAccessSub')}</span>
+          <span>{sub ?? t('admin.noAccessSub')}</span>
         </p>
       </div>
       <Link to="/settings" className="btn btn--accent">
@@ -105,6 +114,35 @@ export function LinkResult({ kind, name, link, expiresAt, announce, stale = fals
   );
 }
 
+/** The last list GET /admin/roles answered with: a screen opened again shows it at once, and asks again. */
+let knownRoles: RoleInfo[] | null = null;
+
+/**
+ * The roles admins can give (GET /admin/roles), or null until it answered. When it does not answer, the screens keep
+ * the built-in roles, which the app knows itself; custom roles then show by id.
+ */
+export function useRoleList(): RoleInfo[] | null {
+  const [roles, setRoles] = useState(knownRoles);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    api.get<RoleListResponse>('/admin/roles', { signal: ctrl.signal }).then(
+      (res) => {
+        if (ctrl.signal.aborted || !Array.isArray(res?.roles)) return;
+        knownRoles = res.roles;
+        setRoles(res.roles);
+      },
+      () => undefined,
+    );
+    return () => ctrl.abort();
+  }, []);
+  return roles;
+}
+
+/** The names of the custom roles, by id (rolesText, roleName). */
+export function roleNames(roles: readonly RoleInfo[] | null): Record<Role, string> {
+  return Object.fromEntries((roles ?? []).map((r) => [r.id, r.name]));
+}
+
 export interface RoleSwitchesProps {
   /** The roles switched on. */
   roles: readonly Role[];
@@ -112,13 +150,27 @@ export interface RoleSwitchesProps {
   disabled?: boolean;
 }
 
-/** One switch row per role, with what it lets someone do ("(coming later)" for what is not built yet). */
+/**
+ * One switch row per role, with what it lets someone do ("(coming later)" for what is not built yet): the built-in
+ * roles in the app's words, then the custom ones as admins named and described them. A custom role the account has
+ * that the list does not (yet) hold shows by its id, so it can still be switched off.
+ */
 export function RoleSwitches({ roles, onChange, disabled }: RoleSwitchesProps): JSX.Element {
+  const list = useRoleList();
+  const custom = (list ?? []).filter((r) => !isBuiltInRole(r.id));
+  const unlisted = roles.filter((r) => !isBuiltInRole(r) && !custom.some((c) => c.id === r));
   return (
     <>
-      {ROLES.map((role) => (
+      {BUILT_IN_ROLES.map((role) => (
         <SwitchRow key={role} label={t('accountRole.' + role)} description={t('admin.role.' + role)} on={roles.includes(role)}
           onChange={(on) => onChange(role, on)} disabled={disabled} />
+      ))}
+      {custom.map((role) => (
+        <SwitchRow key={role.id} label={role.name} description={role.description || undefined} on={roles.includes(role.id)}
+          onChange={(on) => onChange(role.id, on)} disabled={disabled} />
+      ))}
+      {unlisted.map((role) => (
+        <SwitchRow key={role} label={role} on onChange={(on) => onChange(role, on)} disabled={disabled} />
       ))}
     </>
   );

@@ -190,7 +190,7 @@ engine as 3.1 and 3.2, so it's cheap to add.
 | **Free Practice** | Full custom settings (§4). Always available. |
 | **Learning Path** | Curated units that unlock step by step (§8.2). Each lesson is just a preset of settings + a pass requirement. |
 | **Daily Challenge** | One exercise per day at the player's place among the rhythm units of the Learning path, seeded by the date and the highest open unit, so everyone at the same unit gets the same one (below). Keeps the streak alive. |
-| **Weak Spots** | Adaptive (later): the generator boosts the cells the player scores worst on. Since 0.16.0 *Practice weak spots* on the Progress tab's skill map is a practice-setup preset instead (§8.4). |
+| **Weak Spots** | Adaptive (later): the generator boosts the cells the player scores worst on. Since 0.19.0 *Practice weak spots* on the Progress tab's skill map is a practice-setup preset instead (§8.4). |
 | **Learn** | Theory library: one topic per thing you can practise (§9.1), each with notation examples, counting and a quick check, linking straight to a matching practice preset. |
 
 **Daily challenge at the player's level** (since 0.10.0; before, everyone got one of eight mid-path presets, so day
@@ -875,7 +875,7 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   lesson under 2 stars*. Read notes' Round done does the same after a Read notes or Keys lesson (since 0.9.0, §8.2;
   MVP canvas, Read notes: *Round done · after a path lesson*).
 - A run that earns an achievement without a new level shows a gold *Achievement unlocked · Perfect bar* badge with the
-  other badges (since 0.16.0, §8.3; no board). With a new level, the level-up sheet lists it instead.
+  other badges (since 0.19.0, §8.3; no board). With a new level, the level-up sheet lists it instead.
 - On a short screen (an 8-bar exercise, a 1280 × 800 laptop) Results scrolls and Listen, Retry and Next stay at the
   bottom, as Start does on Setup; the round summaries of Read notes and Scales do the same. A control that is scrolled
   or tabbed to (Calibrate in the tip) stays above those sticky actions (`scroll-padding-bottom`, since 0.10.0).
@@ -989,7 +989,7 @@ How write and hear work is in §3.5, *Write it, hear it*.
 - Home's Continue card follows the Learning path (since 0.11.0): a rhythm lesson shows a bar of its rhythm, a First
   notes lesson the notes learned so far with their names (the new one highlighted), and a later note lesson a few
   notes of its round. The daily challenge follows the highest open rhythm unit (§3.4).
-- Not yet: free practice cannot write or hear notes. The Progress tab (since 0.16.0, §8.5) counts every kind of
+- Not yet: free practice cannot write or hear notes. The Progress tab (since 0.19.0, §8.5) counts every kind of
   practice: its accuracy, timing and skill map count rhythm rounds (free practice, lessons, the daily, Echo), its Notes
   view every Read notes round (free practice and note lessons), and its minutes every mode. The skill levels (§8.6)
   follow the path: Rhythm reading's levels are the rhythm units.
@@ -1008,7 +1008,7 @@ How write and hear work is in §3.5, *Write it, hear it*.
 - The **level-up sheet** after a result uses the same layout with the *Level up* eyebrow. Its line names the new rank
   (*New rank: up from Tick*), or else the next rank (*Count at level 3*), instead of *Up from level N*. Its bar fills
   the old level, then the new one, and only then shows its one label.
-  - Since 0.16.0 (App design canvas, Mobile · Results · level up) a bordered list follows the bar: an *Achievement
+  - Since 0.19.0 (App design canvas, Mobile · Results · level up) a bordered list follows the bar: an *Achievement
     unlocked* row for each achievement the run earned (medal icon on the gold tint, the name, what it asks for) and a
     *New personal best* row when the run set one (trophy icon, *Lesson 7.3 · 80%* and *Your best accuracy on this lesson
     so far*, or *Daily challenge · 80%*). The rows fade in one after another (450 ms, then every 150 ms; at once with
@@ -1020,12 +1020,12 @@ How write and hear work is in §3.5, *Write it, hear it*.
 - **Streak** of practice days. MVP: one finished exercise with at least one note hit keeps it
   (as the Home card says); later a daily challenge or any 3 exercises.
 - **Daily Challenge** (date-seeded, the same for everyone at the same unit of the rhythm path; §3.4).
-- **Achievements** (since 0.16.0, `game/achievements.ts`): five, in this order. Each is earned once and keeps the day
+- **Achievements** (since 0.19.0, `game/achievements.ts`): five, in this order. Each is earned once and keeps the day
   it was earned (`progress.achievements`).
 
   | Achievement | What it asks for (the line under its name) | Earned when |
   |---|---|---|
-  | *7-day streak* | Practice on seven days in a row | the practice days hold seven days in a row; dated the 7th day of the first such run, so a streak from before 0.16.0 counts as it happened |
+  | *7-day streak* | Practice on seven days in a row | the practice days hold seven days in a row; dated the 7th day of the first such run, so a streak from before 0.19.0 counts as it happened |
   | *Perfect bar* | A whole bar with every note Perfect | a rhythm round (tap or Echo) has a bar whose notes, at least one, are all Perfect |
   | *No replays needed* | Tap back an Echo without hearing it again | an Echo round at ★★★ or more heard once: a replay on the listen card or *Hear again* both count as hearing it again |
   | *First sixteenths* | Two stars on a rhythm with sixteenths | a rhythm round with a written sixteenth note at ★★ or more |
@@ -1037,7 +1037,7 @@ How write and hear work is in §3.5, *Write it, hear it*.
   Perfect bar* badge (medal icon) beside the other badges on Results, Read notes' Round done or Scales' round done (no
   board; Scales' round done gained a badge row under the score for it). *50 perfect taps in a row* and the rest wait for
   the full achievements list (Later, §9).
-- **Personal bests** (since 0.16.0): a lesson played before whose best accuracy goes up, in whole percent (87.45% after
+- **Personal bests** (since 0.19.0): a lesson played before whose best accuracy goes up, in whole percent (87.45% after
   87.4% is not a new best), or the daily challenge's best (as Results' *New personal best* badge, §3.4), is a *New
   personal best* row on the level-up sheet. Rhythm and note lessons count; Scales rounds do not. Bests per settings
   combination and a history of them are still Later.
@@ -1046,7 +1046,7 @@ How write and hear work is in §3.5, *Write it, hear it*.
 
 The first plan: every judged note is attributed to the cell and meter it came from, per cell a rolling accuracy (an
 exponential moving average), and a Weak Spots mode that boosts the generator weights of the weakest cells. What is
-built (since 0.16.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
+built (since 0.19.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
 
 - **Cells.** Every judged note of a rhythm round (tap and Echo; free practice, lessons and the daily) counts for one of
   eight cells by its written value (the speller, as Results' tip names a note): a tied note for *Ties*; else a dotted
@@ -1080,7 +1080,7 @@ built (since 0.16.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
 ### 8.5 Progress screen
 
 The first plan: accuracy over time, minutes practised, streak calendar, skill map per cell/meter, tendency trend
-(rushing/dragging over time). Built in 0.16.0 as the **Progress tab** (`#/progress`, `ui/screens/progress/`; App design
+(rushing/dragging over time). Built in 0.19.0 as the **Progress tab** (`#/progress`, `ui/screens/progress/`; App design
 canvas, Mobile · Progress, Tablet · Progress and Desktop · Progress), the 4th of five tabs (§9). Everything it shows is
 worked out by `game/progressView.ts` from the progress and today's date; the screens add no logic.
 
@@ -1149,7 +1149,7 @@ answered, a scale played), as for the streak.
 
 ### 8.6 Skill levels
 
-Since 0.16.0 (`game/skills.ts`; App design canvas, Mobile · Progress · skill levels and its one-skill board). Six
+Since 0.19.0 (`game/skills.ts`; App design canvas, Mobile · Progress · skill levels and its one-skill board). Six
 skills of ten levels each, 60 in all: **Rhythm reading**, **Rhythm by ear**, **Treble clef**, **Bass clef**,
 **Scales** and **Theory**, always in that order. The Progress tab's Skill levels card opens the list
 (`#/progress/skills`); each skill has its own screen (`#/progress/skills/rhythm`).
@@ -1157,8 +1157,8 @@ skills of ten levels each, 60 in all: **Rhythm reading**, **Rhythm by ear**, **T
 **Passing a level.** A level is passed when all its checks are met, and it stays passed, with the day it was passed
 (`progress.skills`). A skill's level is the number of levels passed in order from level 1. Levels are checked after
 every finished exercise, after a Learn section is marked read, and once when the app starts, so progress from before
-0.16.0 counts at once where a level reads only what was kept before: Scales (the scale stars) and Theory (the Learn
-sections read). The other levels also read figures recorded from 0.16.0 on (`game/stats.ts`), so they count rounds
+0.19.0 counts at once where a level reads only what was kept before: Scales (the scale stars) and Theory (the Learn
+sections read). The other levels also read figures recorded from 0.19.0 on (`game/stats.ts`), so they count rounds
 played since: Rhythm reading needs each unit's skill-map cell from rhythm rounds as well as its lessons (a player with
 every rhythm lesson from before starts at level 0 until those rounds), and Rhythm by ear and the clefs count Echo and
 Read notes rounds. A level met only by putting two devices' progress together is passed on the next round (it is not
@@ -1331,13 +1331,13 @@ desktop), round done (`/scales/done`), the third Home tile and Learn chapter 11.
 Rhythm / Notes / Scales views. Weak spots are a practice-setup preset launched from the skill map, and achievements
 appear on Progress and on the level-up sheet.
 
-Built in 0.16.0 (MVP canvas, Progress & rewards page; App design canvas, the Progress boards, the skill levels boards
+Built in 0.19.0 (MVP canvas, Progress & rewards page; App design canvas, the Progress boards, the skill levels boards
 and Mobile · Results · level up):
 - **The Progress tab** (§8.5) with its three views on phone, tablet and desktop, from the App design canvas, which the
-  MVP canvas's own notes say to follow. Its figures are recorded per day from 0.16.0 on (`game/stats.ts`), so the
+  MVP canvas's own notes say to follow. Its figures are recorded per day from 0.19.0 on (`game/stats.ts`), so the
   charts start empty; the streak calendar, the scale stars, the 7-day streak and the Scales and Theory levels use what
   was kept before. Rhythm reading also needs each unit's skill-map cell, and Rhythm by ear and the clefs count rounds,
-  all from 0.16.0 on (§8.6).
+  all from 0.19.0 on (§8.6).
 - **The skill map and Practice weak spots** (§8.4): cells only, a weak spot under 80%, the preset on the rhythm setup.
 - **Skill levels** (§8.6): the list and one skill per skill, and a Skill levels card on Progress.
 - **Achievements and personal bests** (§8.3): five achievements on Progress, on the level-up sheet and as a badge on
@@ -1377,11 +1377,11 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 
 | MVP (designed) | Later (nice to have, not designed yet) |
 |---|---|
-| Progress (rhythm / notes / scales; streak calendar, accuracy, skill map with *Practice weak spots*, tendency, achievements strip; built in 0.16.0 with the skill levels, §8.5–8.6) | A dedicated Weak Spots mode screen (for now it is a practice-setup preset) |
+| Progress (rhythm / notes / scales; streak calendar, accuracy, skill map with *Practice weak spots*, tendency, achievements strip; built in 0.19.0 with the skill levels, §8.5–8.6) | A dedicated Weak Spots mode screen (for now it is a practice-setup preset) |
 | Settings (sound, timing leniency, tap & hold, counting syllables, notation style, theme) and Calibration (tap along with 16 clicks) | Echo mode play screen (reuses Play without notation) |
 | Pause menu (sheet on phone and tablet, dialog on desktop) | Daily challenge intro and result variant (uses the normal Play and Results) |
 | Results with Listen, Settings and the exercise code (copy) | A full achievements list and personal-best history |
-| Level-up / achievement / personal-best moment after a result (built in 0.16.0, §8.3) | Onboarding and day-one empty states (the Progress tab's empty cards are built without a board, §8.5) |
+| Level-up / achievement / personal-best moment after a result (built in 0.19.0, §8.3) | Onboarding and day-one empty states (the Progress tab's empty cards are built without a board, §8.5) |
 | Round summaries for Read notes, Scales and Flash cards | Entering an exercise code to play a shared exercise |
 | Working dictation (Listen & write) with check and feedback | Tablet and desktop versions of the screens still to build (listen, flip cards); the built ones have theirs since 0.13.0 |
 | Setup validation (unplayable time signatures, disabled Start) and the first-time How to play | |
@@ -1415,7 +1415,7 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   with each word and puts the items on the right; desktop puts them right after the brand, as words
   only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile, a
   Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow.
-  Since 0.16.0 there are five items, **Home · Path · Learn · Progress · Settings**: Progress is the 4th, with a
+  Since 0.19.0 there are five items, **Home · Path · Learn · Progress · Settings**: Progress is the 4th, with a
   three-bar icon (MVP canvas, Home & shell page, the *Home · 5-item tab bar* boards), *Voortgang* in Dutch. The phone's
   tab bar has five equal columns (the pill still fits at 320 px, in Dutch too). On a narrow tablet (700–820 px) the
   header tightens (14 × 20 px padding, at least 16 px between brand and items, 2 px between items, 10 px inside each
@@ -1507,8 +1507,8 @@ reserved for feedback; gold only for rewards (stars, streak, XP).
 | Good (early/late) | `#b7791f` | `#f0b429` |
 | Miss | `#d64545` | `#ff6b6b` |
 | Field border (`--field-line`, since 0.12.0) | `#7a8687` | `#738080` |
-| Gold text (`--reward-text`, since 0.16.0) | `#7a540c` | `#f0c35a` |
-| Ink on gold (`--on-reward`, since 0.16.0) | `#161b1c` | `#101415` |
+| Gold text (`--reward-text`, since 0.19.0) | `#7a540c` | `#f0c35a` |
+| Ink on gold (`--on-reward`, since 0.19.0) | `#161b1c` | `#101415` |
 
 `--reward-text` is the boards' gold text on the gold tint or on paper (Progress: a practised day, *Earned*, the stars
 on a scale tile, the level-up rows' eyebrows). `--on-reward` is the text on a gold fill (a streak day on the
@@ -1574,7 +1574,7 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 | **Dictation** | Play/replay button with plays left; staff showing what you've entered; bar fill meter; note palette; *Check*. |
 | **Results** | Stars, accuracy, timing strip, tips (with Calibrate when it may be the device), Retry / Next, or Try again under 2 stars (§6.4). |
 | **Path** | One Learning path (since 0.11.0; before, three paths behind a switcher): note units and rhythm units taking turns, as a vertical path whose units open to show their lessons by name, with stars and locks (§8.2). |
-| **Progress** | Since 0.16.0 (§8.5): a Rhythm · Notes · Scales switch; the level, the streak calendar, accuracy and timing over 14 days, minutes this week, the skill map with *Practice weak spots*, achievements; accuracy per clef, the slowest notes and the last key; the scale stars; Skill levels (§8.6). |
+| **Progress** | Since 0.19.0 (§8.5): a Rhythm · Notes · Scales switch; the level, the streak calendar, accuracy and timing over 14 days, minutes this week, the skill map with *Practice weak spots*, achievements; accuracy per clef, the slowest notes and the last key; the scale stars; Skill levels (§8.6). |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
 | **Settings** | Account first, once the API answers (since 0.12.0; §9.2), language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
 
@@ -1687,12 +1687,15 @@ on tablet the sidebar becomes a row of section chips under the title. The canvas
 Both use the full width (up to 1160 px of content) instead of the 640 px column, and the Learn tab's chapter list
 (up to 960 px) shows a chapter's sections in two columns, read down.
 
-The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings (Progress since 0.16.0). The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
+The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings (Progress since 0.19.0). The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
 
 ### 9.2 Accounts: the account and admin screens
 
-Since 0.12.0, and progress on the account since 0.15.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §6). **No board exists yet**
-for any of these screens, on either canvas.
+Since 0.12.0, progress on the account since 0.15.0 ([BACKEND-PLAN.md](BACKEND-PLAN.md) §6), and deleting an account
+with the choice to keep an anonymous copy, and the admin screen *Deleted accounts*, since 0.16.0 (BACKEND-PLAN.md §3.7).
+The feedback tool, and the screens *Feedback* and one report where its reports are reviewed, since 0.17.0
+([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) §3, BACKEND-PLAN.md §3.9).
+**No board exists yet** for any of these screens, on either canvas.
 They were built from the built Settings screen (§9) and the foundations, and this section describes them as built.
 Their boards are still to be drawn (phone, tablet and desktop, in light and dark), and so are the components below,
 on Foundations. The Settings boards they would extend disagree with each other: the App design canvas draws tablet
@@ -1711,7 +1714,10 @@ server.
     clock and *Saving your progress…*; a clock and *Not saved yet. Your progress is saved when you're back online.*;
     or an alert icon, *Your progress couldn't be saved.* and **Try again** beside it (under it when the words need the
     room). It is not read out: it changes after every exercise. Then *Accounts* (*Invite people and manage roles*) →
-    the admin screens, only with `accounts.read`; and *Sign out*.
+    the admin screens, only with `accounts.read`; since 0.17.0 *Feedback* (*Review the reports sent from the app*) →
+    the feedback reports, only with `feedback.review`, and a *Feedback button* switch (*On this device: mark part of a
+    screen and send what should change.*), only with `feedback.give` and only while feedback mode is on (0.18.0); and
+    *Sign out*.
   - *Sign out* opens a confirm in place (as *Sign out everywhere*: the question in ink, a tonal button): *Sign out on
     this device?*, *Your progress stays on your account. On a shared device, remove it from this one.*, then a
     two-choice segmented control, *Progress on this device*: **Keep** (chosen when it opens) · **Remove**, then Cancel
@@ -1724,21 +1730,41 @@ server.
     again when Settings or an account screen opens (at most once every 10 s), when it comes back into view, and when
     the device is back online.
   - After an action that ends on Settings, one line with a green check says what happened: *Signed out.*, *Signed out
-    on every device.*, *Your account was deleted.*, *You're signed in. Welcome to Muzieklab.*, *Password saved. Your
+    on every device.*, *Your account and its data were deleted.* or *Your account was deleted. An anonymous copy of
+    your progress is kept.* (after Delete account, by the choice made), *You're signed in. Welcome to Muzieklab.*, *Password saved. Your
     other devices are signed out.*, or, after a first sign-in on a device that had progress, *The progress on this
     device is on your account now too.* It is read out once, when it happens (not again when the language is switched),
     and it goes when Settings is left.
 - Settings → About has a **Privacy** row (*What stays on this device, and what an account stores*), with or without an
   API. Its *Reset progress* confirm says, while signed in, *Streak, stars and XP, on every device with your account.
   No undo.*, and resets the account's progress too.
+- **The feedback tool** (0.17.0, [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md); no board yet): while feedback mode is on (0.18.0,
+  switched by an admin on *Feedback*, below), for an account with `feedback.give`, a button floats over every screen (phone: a 48 px round icon above the tab bar; tablet and desktop: a
+  pill with the word, bottom right). It marks an element or a drawn box, then a sheet (desktop: a dialog beside the
+  spot) takes the kind, what should change and a title. A muted note under the fields says what happens to it: *Saved
+  for the team to review, with this screen, the marked spot, the screen size, the theme, the language and the
+  settings. Not your progress. If it is picked up, it becomes a public GitHub issue, without your name.* Then *Copy*
+  (the report in Markdown) and **Send**.
+  - Sent, the sheet says *Saved for review* over *An admin reads it in Settings → Account → Feedback, and picks what
+    goes on to GitHub.*, with **Review it** (outlined) for an account that also has `feedback.review`: it opens the
+    report (`#/admin/feedback/<id>`) and closes the tool. Then *Mark another* and *Close*.
+  - When sending fails, why shows above the buttons as an alert (*Can't reach Muzieklab right now…*, or *Too many
+    tries. Try again in 12 minutes.* after 30 reports in an hour), and the form stays as it was, so Send tries again.
+  - Built from the sheet, button and field styles of the existing screens.
+- **Feedback reports** (0.17.0; no board yet): the screens *Feedback* and one report, for an account with
+  `feedback.review`, are in the table below. They are built from *Deleted accounts* and *One account*. A report is not
+  the feedback on *Deleted accounts*, which is what people wrote when they deleted their account.
+- **Roles on the admin screens** (0.17.0): the role switches list the built-in roles (Admin, Editor, Teacher, in the
+  app's words), then the custom roles admins made, by their names and descriptions.
 
 **Two frames.**
-- **A Settings sub-page** (Account, Privacy and the three admin screens) keeps the shell, with Settings current. That
-  is the bottom tab bar on phone, and the top header on tablet (icons, on the right) and desktop (words, after the
-  brand). The page starts with a back arrow (*Back to settings*; *Back to accounts* from Invite someone and from one
-  account), the title (`.screen-title`, Unbounded 500) and, on some screens, a muted line under it. Then come
-  Settings' sections, 12 px apart: an uppercase label above a paper card, with hairlines between rows. On tablet and
-  desktop the page is Settings' centred 640 px column, 40 px from the top. It scrolls as one page.
+- **A Settings sub-page** (Account, Privacy and the admin screens) keeps the shell, with Settings current. That is the
+  bottom tab bar on phone, and the top header on tablet (icons, on the right) and desktop (words, after the brand). The
+  page starts with a back arrow (*Back to settings*; *Back to accounts* from Invite someone, one account and Deleted
+  accounts; *Back to feedback* from one report), the title (`.screen-title`, Unbounded 500) and, on some screens, a
+  muted line under it. Then come Settings' sections, 12 px apart: an uppercase label above a paper card, with hairlines
+  between rows. On tablet and desktop the page is Settings' centred 640 px column, 40 px from the top. It scrolls as
+  one page.
 - **A form on its own** (Sign in, Accept invite, New password) has no tab bar or header at any size, like Calibrate. It
   shows a back arrow and the title, then the form on one paper card (radius 20). On a phone it takes the width, with
   Calibrate's top space (52 px on a board, status bar included); from 700 px it is a centred 480 px column, 64 px from
@@ -1754,11 +1780,14 @@ server.
 | **Sign in** `#/signin` | form on its own | Email, Password (with Show), **Sign in**. Under the card: *Forgot your password? Ask the person who invited you.* and a Privacy link. | An empty field says what is missing. A wrong email or password: *Email or password is not right.*, with the password selected. Too many tries: *Too many tries. Try again in 2 seconds.* The server busy (its line for password checks is full, so it counted no try): *Muzieklab is busy. Try again in a moment.*, never "too many tries". Both are form errors. No answer. Already signed in: Account. Success: Settings. |
 | **Accept invite** `#/invite/<token>` | form on its own | *Checking the link…*, then *Welcome, {name}* over *Choose a password for {email}.* Name (filled in; it may be changed), New password with the rules (*At least 10 characters. Not a common password, and not your email.*), **Create account**. | A link that no longer works: the message and **Home**. No answer, or too many tries at checking the link: the message and **Try again**. Too many tries or the server busy when the form is sent: as Sign in, the form error. Success: Settings, with the welcome line. |
 | **New password** `#/reset/<token>` | form on its own | The same with one field, *Saving it signs out your other devices.*, and **Save password**. | As Accept invite. Success: Settings, with *Password saved…* |
-| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account. | Loading. Signed out: Sign in. No answer from the API with a cached account: the note (*Muzieklab can't be reached right now…*) with Try again at the top, the profile read only, the other sections hidden. No answer with nothing cached: the message and Try again. Too many tries and the server busy, where the current password is asked (Change email, Change password, Delete account): as Sign in, the form error. A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*). |
-| **Privacy** `#/privacy` | sub-page | A lead line, then *Without an account*, *With an account*, *Why*, *Where*, *How long*, *Your rights*, *Age*, and the day it was last updated. | None. Opened from Sign in (`?from=signin`), its back arrow goes to Sign in. |
-| **Accounts** `#/admin` | sub-page | **Invite someone**, the screen's one filled button: in the title row from 700 px, full width under the title on a phone. A search field (*Search*, *Name or email*; it searches once typing pauses for 250 ms, or on Enter), the status filter (All · Invited · Active · Blocked), then one section whose label counts (*4 accounts*, *1 account found*). Each row: the name (*(you)* after your own), the email, a status pill and the roles, and a chevron. | Checking; loading; *No accounts match.*; an error with Try again (outlined, as Invite someone is the filled button); no access (a lock, *You don't have access to this page.*, *Only admins manage accounts.*, Back to settings); no answer; signed out: Sign in. After Cancel invite or Delete account, a line saying so, once (*The invite for {name} was canceled.*). |
+| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account (*You choose whether an anonymous copy of your progress is kept.*). Its confirm: *Delete your account?*, *Your name, email, password and devices are deleted, and you're signed out. Progress on this device stays. No undo.*; then *Your progress and settings*, a two-choice segmented control, **Keep anonymously** (chosen, and focused, when it opens) · **Delete too**, with a muted line under it saying what the chosen one does (*They're kept without your name, email or anything else that says they were yours…* / *They're deleted with your account. Nothing of your account is kept.*); *Why are you leaving? (optional)*, a text area (at most 1000 characters) with *It helps us make Muzieklab better. It's kept without your name or email, also when you delete everything, so leave out anything that says who you are.*; Password; Cancel and Delete. Cancel puts the choice back to Keep anonymously and empties the feedback. | Loading. Signed out: Sign in. No answer from the API with a cached account: the note (*Muzieklab can't be reached right now…*) with Try again at the top, the profile read only, the other sections hidden. No answer with nothing cached: the message and Try again. Too many tries and the server busy, where the current password is asked (Change email, Change password, Delete account): as Sign in, the form error. A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*). |
+| **Privacy** `#/privacy` | sub-page | A lead line, then *Without an account*, *With an account* (the last item: the feedback reports someone sends from the app, if their account can, and what they hold), *Why*, *Where*, *How long* (with *Deleted accounts: the anonymous copy, the feedback and the day, 2 years.* and *Feedback reports: until the team deletes them, or you delete your account.*), *When you delete your account* (the two choices; that the feedback reports go with the account whichever is chosen, and stay without the name when an admin deletes it; the feedback; and that backups hold the account for up to 14 days), *Your rights*, *Age*, and the day it was last updated. | None. Opened from Sign in (`?from=signin`), its back arrow goes to Sign in. |
+| **Accounts** `#/admin` | sub-page | **Invite someone**, the screen's one filled button: in the title row from 700 px, full width under the title on a phone. A search field (*Search*, *Name or email*; it searches once typing pauses for 250 ms, or on Enter), the status filter (All · Invited · Active · Blocked), then one section whose label counts (*4 accounts*, *1 account found*). Each row: the name (*(you)* after your own), the email, a status pill and the roles, and a chevron. | Checking; loading; *No accounts match.*; an error with Try again (outlined, as Invite someone is the filled button); no access (a lock, *You don't have access to this page.*, *Only admins manage accounts.*, Back to settings); no answer; signed out: Sign in. After Cancel invite or Delete account, a line saying so, once (*The invite for {name} was canceled.*). Under the list, a *History* section with one row: *Deleted accounts* (*Accounts that were deleted, and why people left*). |
+| **Deleted accounts** `#/admin/deleted` | sub-page | *Back to accounts*. A lead line: *Every account deleted in the last 2 years, with what its owner wrote. Nothing here says whose an account was.* A filter (*How it was deleted*: All · Archived · Data deleted · By an admin, chips in two pairs as on Accounts), then one section whose label counts (*4 deleted accounts*, *2 deleted accounts found*). Each entry (an `article`, not a link): the day (bold) and a pill on the right (*Archived*, *Data deleted*, *By an admin*); the feedback as written, line breaks kept, on a Ground panel (radius 12), or *No feedback.* (muted; not for an admin's deletion); for an archived one a muted line, *Joined March 2026 · Level 8 · 1840 XP · 2 lessons · 3 days practiced*, or *… · No progress saved*. Then *File*: *Download as a file* (*Every entry, with the anonymous progress, as JSON.*, `muzieklab-deleted-accounts.json`; every entry, whatever the filter). Needs `accounts.read`. | Checking; loading; *No account has been deleted yet.* (no filter or file then); *None of these.* for a filter with none; an error with Try again; no access; no answer; signed out: Sign in. A filter's count is read out. |
 | **Invite someone** `#/admin/invite` | sub-page | *Person*: Email, Name. *Roles* (only with `roles.grant`): a switch per role with what it does (*Makes classes and follows pupils (coming later).*), and *Without a role, they can practice and keep their own progress.* **Create invite**. Then a card: *Invite for {name} is ready* (it gets focus), *Send the link yourself, for example with the message below.*, the link with **Copy link**, *Works until {date and time}.* **This link is shown only now. Make a new one if it gets lost.**, and the message with **Copy message**. Under it *Invite someone else* (outlined) and **Done**. | An empty field. *There's already an account with this email.* under Email. No access; no answer. |
 | **One account** `#/admin/account/<id>` | sub-page | The name as the title, with the status pill and email under it. *Details*: Added, Last signed in, Devices signed in, and for an invite when its link stops working (*No working link. Make a new one below.*). *Name and email* (Save). *Roles*: switches, saved at once. *Premium*: a switch, and *Last day (optional)*, a date field with **Save date**. Then by status: invited, *New invite link* and *Cancel invite*; active, *New password link*, *Block* and *Delete account*; blocked, *Unblock* and *Delete account*. A new link shows as in Invite someone. | Each part shows only with its permission. On your own account the role switches are disabled, with *You can't change your own roles.*, and one row to Account (*This is your account*) replaces the links, Block and Delete. Loading; an error with Try again; *This account isn't there anymore…* with Back to accounts; no access. An invite accepted meanwhile: *{name} accepted the invite meanwhile, so the account was not removed.*, and the account reloads. *New invite link* or *New password link* pressed again: each answer keeps its place until the next one replaces it, so the page keeps its height and does not move under the admin's finger. While the press runs (the button says *Making a link…*), the earlier link, or why the last press failed, stays dimmed (45%) and cannot be used (inert). A new link takes the earlier one's place, and its *New link ready. Send it yourself.* is read out again. If the press fails, why takes the place of *New link ready…* (an alert, read out each time, ending *The link below may not work anymore.*), and the earlier link and its message stay under it, dimmed and not usable, until a new link replaces them. A first press that fails shows only why. When the answer lands below the screen's edge (the button was at the bottom of the screen), the page scrolls just enough to show it, all of it where it fits; not when the admin has scrolled away from the button meanwhile. |
+| **Feedback** `#/admin/feedback` | sub-page | Opened from Settings → Account. A lead line: *Reports sent from the app.* Then a *Feedback mode* section (0.18.0): one switch row, *Feedback mode*, with *On: everyone who can send feedback sees the Feedback button on every screen.* or *Off: nobody sees the Feedback button. Turn it on to collect feedback.* under it. It is for everyone, saved at once, and starts off. A filter (New · Accepted, Declined · All, chips in two pairs as on Accounts), each chip with its count after the word in a lighter weight (*New 3*): New is chosen first, and the filter stays as it was when coming back from a report. Then one section whose label counts (*3 new reports*, *4 reports*). Each row links to the report: its title as written, or one made up in the app's language from the kind and the screen (*Bug on #/settings*), and a muted line, *Bug · button “Start” · Ann · October 25, 2026* (the kind, the marked spot, who sent it or *A deleted account*, the day). Under All, each row also has a status pill on the right. More than the newest 500: *Showing the newest 500.* under the list. Needs `feedback.review`. | Checking; *Loading reports…*; *No reports yet. They appear here when someone sends feedback from the app.* (no filter then); *No reports with this status.* for a filter with none; an error with Try again (under the filter, which stays with the counts it had, so another filter can be chosen; without counts when the first list did not come); no access (*Only admins review feedback reports.*); no answer; signed out: Sign in. Feedback mode that could not be switched: the switch goes back, with the form error under it. After Delete report, *The report was deleted.*, once. A filter's count is read out; another filter keeps the rows it has, dimmed, until the answer comes. |
+| **One report** `#/admin/feedback/<id>` | sub-page | *Back to feedback*. The title as in the list. *Report*: Kind, then *What should change*, the description as written, line breaks kept, on a Ground panel (as on Deleted accounts), or *No description.* *Where*: Screen (`#/settings`, mono), Marked (its name), Text there, Selector (mono), Marked as (*An element* or *A drawn area*), Box (*x 12, y 340, 366 × 48 px*, and where the page was scrolled to), then *Open this screen*, a row link, only for a screen the app has. *Device*: Viewport (*390 × 844 px, pixel ratio 3*), Size (Phone, Tablet or Desktop), Orientation, Input (Touch or Mouse), Theme (*Dark, from the system setting*), Language, App version (mono) and Browser (the user agent, mono). *Sent*: From (the name, or *A deleted account*) and Date (the day and time). *Review*: *Status*, a segmented control New · Accepted · Declined, saved at once, with *Reviewed by Ann, October 25, 2026* under it (or *Not reviewed yet.*), which is read out when it changes; *Note for the team*, a text area (at most 2000 characters) with *Only people who review feedback see it, not the person who sent it. Up to 2000 characters.*, and **Save note** (tonal; *Saved.*). *Actions*: *Copy as Markdown* (*The title and text for a GitHub issue, to make by hand for now.*), whose row turns into a check and *Copied* for 2 s, and *Delete report*, a confirm: *Delete this report?*, *It is removed from the app for everyone. No undo.*, Cancel and Delete. A long value (the marked text, the selector, the browser) sits under its label, read from the left. Needs `feedback.review`. | Checking; *Loading the report…*; an error with Try again; *This report isn't there anymore.* with Back to feedback, also when another reviewer deleted it meanwhile; no access; no answer. A status or note that could not be saved: the form error under it. A status picked while the note saves (or the other way round) is sent after it, so the screen ends on the newest. Typing that goes on while the note saves stays in the field, still to be saved, without *Saved.* A note with a tab or another hidden character: *Remove the tabs and other hidden characters.* under the field. Where copying is not allowed, the Markdown shows in a copy field, to copy by hand. After Delete: the list, with *The report was deleted.* |
 
 **Components** (`src/ui/components/Form.tsx`, `src/styles/account.css`). They use tokens only, so light and dark
 both work.
@@ -1773,6 +1802,8 @@ both work.
   - Read only: a Ground fill. Disabled: Track, with `--disabled` text.
   - A password field has *Show* / *Hide* inside it, on the right (accent ink, 700; *Show password* for screen readers).
   - Types: text, email, search and date.
+  - A text area (`TextAreaField`: a deleted account's feedback, a report's note): the same field, three lines tall to
+    start (96 px), and taller by hand.
 - **Which error goes where:** a field error is only about what was typed in that field: it is empty, not an address,
   taken, a new password that cannot be used, or a current password that is not right. Everything else is the **form
   error**: a wrong email or password on Sign in (which of the two is not told), and every request that failed (no
@@ -1780,15 +1811,19 @@ both work.
   the alert icon, and it is read out. A done message is a green check and one line, 14 px / 600, read out once by the
   live region (below).
 - **Buttons:** one filled button per screen, as elsewhere: Sign in, Create account, Save password, Invite someone,
-  Create invite, Done, Try again. A card's own small form (Save, Save email, Change password, Save date) has a
-  **tonal** button: `--accent-soft` with `--accent-ink` text. A busy button says so (*Signing in…*) and cannot be
+  Create invite, Done, Try again. A card's own small form (Save, Save email, Change password, Save date, Save note) has
+  a **tonal** button: `--accent-soft` with `--accent-ink` text. A busy button says so (*Signing in…*) and cannot be
   pressed twice.
 - **Rows** in Settings' cards, with hairlines between them:
   - a row button: 54 px, an icon, the words in Ink, or red for Delete account;
   - a switch row, for roles and premium: 56 px, with Settings' switch (`role="switch"`);
-  - label and value rows (Email, Details).
+  - label and value rows (Email, Details, a report's facts). On one report a long value goes under its label, read
+    from the left, and code (a route, a selector, a version, the browser) is in JetBrains Mono, 13 px.
 - **Status pill:** 11.5 px / 700, fully rounded. Invited is `--reward-soft` / `--reward-ink`, Active `--good-soft` /
-  `--good-ink`, and Blocked `--miss-soft` / `--miss-ink`.
+  `--good-ink`, and Blocked `--miss-soft` / `--miss-ink`. On Deleted accounts the same pill says how an account went:
+  Archived in the reward colours, Data deleted in the miss colours, By an admin in `--accent-soft` / `--accent-ink`. On
+  Feedback it says where a report stands: New in the reward colours (waiting for a look), Accepted in the good colours,
+  Declined in `--track` / `--muted`.
 - **Copy field:** the value, read only, with a 48 px Copy button that turns into a check and *Copied* for 2 s, as
   Results' Copy code does. A link is in JetBrains Mono; a message is in Figtree, as tall as its text. Where copying is
   not allowed, it selects the text instead: *Selected. Copy it with your device's copy command.*
@@ -1797,12 +1832,14 @@ both work.
   otherwise an even 2 × 2 grid, in every language and at every width (in Dutch, *Uitgenodigd* and *Geblokkeerd*, two
   and two up to about 373 px). Never three and a lone one, which reads as a separate wide button. On a phone they
   fill the row. It is not a segmented control: four statuses do not fit one track at 320 px, or at phone width in
-  Dutch.
+  Dutch. Feedback's filter (New · Accepted, Declined · All) has the same pairs, with each choice's count after its
+  word, at 500 and in tabular figures.
 - **Announcements:** one polite live region for the whole app (`#announcer`) reads out results whose button is gone,
-  busy or far away: Settings' one-line notices, the accounts list's line after Cancel invite or Delete account, Block
-  and Unblock, the count after a search, a filter or Try again, the outcome of Try again on the note for no answer,
-  every form's done line (*Name saved.*, *Saved.*, *New link ready. Send it yourself.*) and Settings' *Progress was
-  reset.* Those lines are plain text, not a `role="status"` of their own, so nothing is read twice.
+  busy or far away: Settings' one-line notices, the accounts list's line after Cancel invite or Delete account, the
+  feedback list's after Delete report, Block and Unblock, the count after a search, a filter or Try again, the outcome
+  of Try again on the note for no answer, every form's done line (*Name saved.*, *Saved.*, *New link ready. Send it
+  yourself.*) and Settings' *Progress was reset.* Those lines are plain text, not a `role="status"` of their own, so
+  nothing is read twice.
 
 **Destructive confirm** (`ConfirmAction`) is Settings' Reset progress pattern.
 - The row button (red words and icon) turns, in place, into the question in bold, one line on what happens, any field
@@ -1810,8 +1847,12 @@ both work.
 - Only the confirm step has the red fill: `--miss`, with `--on-fill` text.
 - It is a form (`role="alertdialog"`): Enter confirms from its field, and Escape or Cancel closes it, putting focus
   back on the row button.
-- Used for Delete account (your own, with your password), Block, Cancel invite and an admin's Delete account. Cancel
-  invite's other button says *Keep invite*, as its verb is Cancel.
+- Used for Delete account (your own, with the choice of what happens to your progress, feedback and your password),
+  Block, Cancel invite, an admin's Delete account, and Delete report.
+- A choice inside a confirm (Sign out's Keep · Remove, Delete account's Keep anonymously · Delete too) is a segmented
+  control with 44 px buttons, and so is a report's status (New · Accepted · Declined), outside a confirm. Words that do
+  not fit half the confirm (*Keep anonymously* at 320 px) take a second line instead of being cut. Cancel invite's
+  other button says *Keep invite*, as its verb is Cancel.
 - Sign out everywhere uses the same confirm without red: the question in Ink and a tonal button, because it loses
   nothing. Unblock and a new link need no confirm.
 
@@ -1821,14 +1862,17 @@ what to do. For accounts:
   flow: *Forgot your password? Ask the person who invited you.* Signed out, the Account section says *Accounts are by
   invitation.* (nl *Alleen met een uitnodiging.*).
 - A confirm asks a question and says in one line what happens. Where nothing brings it back, that line ends with *No
-  undo.* (*Delete your account?* / *Your account and everything stored with it are deleted. Progress on this device
-  stays. No undo.*). A done line says what happened (*Blocked. They're signed out.*).
+  undo.* (*Delete your account?* / *Your name, email, password and devices are deleted, and you're signed out.
+  Progress on this device stays. No undo.*).
+- What is kept after Delete account is said where the choice is made, in plain words, and again in Privacy: no
+  promise the copy cannot be traced back further than BACKEND-PLAN.md §3.7 says. A done line says what happened (*Blocked. They're signed out.*).
 - A link says *Works until {date and time}.*: a new-password link lasts 24 hours, so the time counts. It adds *This
   link is shown only now.* The message to send is in the admin's app language and uses the person's full name (*Hi
   {name}, I've made you an account for Muzieklab. Open this link to choose your password: …*).
 - Premium's last day is a calendar day, shown as that day in every time zone (*Premium until December 31, 2026*).
 - Dutch uses *inloggen*, *uitloggen*, *account* and *wachtwoord*. For one person it says *deze persoon* or the name,
-  never *ze* or *hun*, and *Je kunt dit niet ongedaan maken.* for "No undo."
+  never *ze* or *hun*, and *Je kunt dit niet ongedaan maken.* for "No undo." Deleted accounts' kinds are short enough
+  for the two-and-two filter at 320 px: *Gearchiveerd*, *Gegevens gewist*, *Door beheerder*.
 
 ### UX principles
 
@@ -1898,12 +1942,13 @@ src/
     screens/ Home, Setup, Play, Dictation, Results, Path, Settings, Learn
     screens/progress/   # the Progress tab, its cards and charts, Skill levels and one skill (§8.5–8.6)
     screens/account/    # Settings → Account section, Sign in, Accept invite, New password, Account, Privacy (§9.2)
-    screens/admin/      # Accounts, Invite someone, one account (§9.2)
+    screens/admin/      # Accounts, Invite someone, one account, Deleted accounts, Feedback, one report (§9.2)
     account.ts          # useAccount(): who is signed in, GET /me, the account cache
     sync.ts             # progress on the account: when it syncs, saves and merges (game/merge.ts, BACKEND-PLAN §6)
     learn/ chapters.ts  # the Learn chapters as data (docs/ADDING-CONTENT.md); Blocks.tsx draws them
     components/ ...     # Form.tsx: text fields, confirm, copy field (§9.2)
   i18n/ en.json nl.json # every user-facing string, one catalog per locale (found automatically)
+  feedback/             # reading the page for a feedback report (docs/FEEDBACK-LOOP.md); ui/feedback/ draws the tool
 shared/
   api.ts                # the API's contract: request and response types, error codes, permissions (types only)
 server/                 # the API (Fastify + MongoDB), its own package and tests (BACKEND-PLAN.md §1.2)

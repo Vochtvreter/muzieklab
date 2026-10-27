@@ -14,6 +14,8 @@ const STATUS: Record<ErrorCode, number> = {
   own_account: 409,
   wrong_status: 409,
   rev_conflict: 409,
+  role_exists: 409,
+  built_in_role: 409,
   link_invalid: 410,
   password_length: 422,
   password_common: 422,

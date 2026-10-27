@@ -3,9 +3,9 @@
  *
  * The app stays offline first: no request goes out until a screen that needs the account is opened, with one
  * exception: on a device where someone is signed in, keepSignedIn() renews the session when the app starts and when it
- * comes back into view (at most every RENEW_MS), so the session lasts 90 days after the app was last used, not after
- * an account screen was last opened (BACKEND-PLAN.md §5.4). The first screen of an app session that needs the
- * account asks GET /me: 200 → signed in; 401 → signed out; no answer (offline, the API restarting, or
+ * comes back into view (at most every RENEW_MS, over all tabs), so the session lasts 90 days after the app was last
+ * used, not after an account screen was last opened (BACKEND-PLAN.md §5.4). The first screen of an app session that
+ * needs the account asks GET /me: 200 → signed in; 401 → signed out; no answer (offline, the API restarting, or
  * a site with no API) → `unreachable`, and a cached account is shown as offline. While it is unreachable, GET /me is
  * asked again when such a screen opens (at most once every RECHECK_MS), when the app comes back into view
  * (visibilitychange), when the device is back online, and on Try again. Everything else that changes the account goes
@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo } from 'react';
 import type { Me, Permission } from '../../shared/api';
-import { api, asApiError, renewSession, type ApiError } from '../api/client';
+import { api, asApiError, forgetRenewals, renewSession, type ApiError } from '../api/client';
 import { loadAccount } from '../game/storage';
 import { t } from '../i18n';
 import { announce } from './lib/announce';
@@ -24,6 +24,7 @@ export const NOTICE_TEXT: Record<AccountNotice, string> = {
   signedOut: 'settings.noticeSignedOut',
   signedOutEverywhere: 'settings.noticeSignedOutEverywhere',
   deleted: 'settings.noticeDeleted',
+  deletedKept: 'settings.noticeDeletedKept',
   welcome: 'settings.noticeWelcome',
   passwordReset: 'settings.noticePasswordReset',
   progressAdded: 'settings.noticeProgressAdded',
@@ -55,9 +56,10 @@ let reach: AccountState['api'] = 'unknown';
 let dispatchTo: ((a: Action) => void) | null = null;
 let listening = false;
 
-/** Tests only: forget this session's GET /me and renewal, as a reload would. */
+/** Tests only: forget this session's GET /me and renewals, as a reload would. */
 export function resetAccountCheck(): void {
-  renewedAt = -Infinity;
+  forgetRenewals();
+  refusedAt = -Infinity;
   stopKeeping?.();
   stopKeeping = null;
   check = null;
@@ -121,29 +123,27 @@ function listen(): void {
   });
 }
 
-/** keepSignedIn() renews the session at most this often while the app stays open. */
+/** keepSignedIn() renews the session at most this often, counting every tab's renewals (client.ts, lastRenewal). */
 export const RENEW_MS = 12 * 60 * 60_000;
-let renewedAt = -Infinity;
+/** When this tab's renewal was last refused, or got an error: not tried again for RENEW_MS. */
+let refusedAt = -Infinity;
 /** Removes keepSignedIn's listener (tests only, through resetAccountCheck). */
 let stopKeeping: (() => void) | null = null;
 
 /**
  * Called once at startup (main.tsx): renews the session now and whenever the app comes back into view, while someone
- * is signed in on this device and the last renewal that got an answer is over RENEW_MS ago. What the answer says is
+ * is signed in on this device and its last renewal, in this tab or another one, is over RENEW_MS ago. So of several
+ * tabs started together, one renews and the others use its renewal (client.ts, renewSession). What the answer says is
  * left to GET /me: a session that ended shows as signed out once a screen that needs the account opens.
  */
 export function keepSignedIn(): void {
   const renew = (): void => {
-    if (!loadAccount() || Date.now() - renewedAt < RENEW_MS) return;
-    renewSession().then(
-      () => {
-        renewedAt = Date.now();
-      },
-      (e: unknown) => {
-        // No answer (offline): try again when the app next comes into view.
-        if (asApiError(e).code !== 'unavailable') renewedAt = Date.now();
-      },
-    );
+    const now = Date.now();
+    if (!loadAccount() || now - refusedAt < RENEW_MS) return;
+    renewSession(now - RENEW_MS).catch((e: unknown) => {
+      // No answer (offline): try again when the app next comes into view.
+      if (asApiError(e).code !== 'unavailable') refusedAt = Date.now();
+    });
   };
   renew();
   if (stopKeeping) return;

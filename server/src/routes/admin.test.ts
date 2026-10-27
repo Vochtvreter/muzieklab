@@ -4,13 +4,14 @@ import type {
   AccountExport,
   AccountListResponse,
   AuditListResponse,
+  ClosureListResponse,
   InviteCreated,
   LinkCreated,
   Me,
   Permission,
   Role,
 } from '../../../shared/api.js';
-import { ROLE_PERMISSIONS } from '../auth/policy.js';
+import { PERMISSIONS } from '../../../shared/api.js';
 import { collections } from '../db.js';
 import {
   PASSWORD,
@@ -42,16 +43,23 @@ const DAY = 24 * 60 * 60_000;
 const Y = new Date().getUTCFullYear() + 1;
 const LEAP = [Y + 1, Y + 2, Y + 3, Y + 4].find((y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0)!;
 
-/** Gives editors some admin permissions for one test, to check each permission on its own. */
-async function withEditorPermissions(extra: Permission[], fn: () => Promise<void>) {
-  const table = ROLE_PERMISSIONS as Record<Role, readonly Permission[]>;
-  const before = table.editor;
-  table.editor = [...before, ...extra];
+/** Gives editors more permissions for one test (in their stored role), to check each permission on its own. */
+async function withEditorPermissions(t: TestApp, extra: Permission[], fn: () => Promise<void>) {
+  const roles = collections(t.db).roles;
+  const before = (await roles.findOne({ _id: 'editor' }))!.permissions;
+  await roles.updateOne({ _id: 'editor' }, { $set: { permissions: [...before, ...extra] } });
   try {
     await fn();
   } finally {
-    table.editor = before;
+    await roles.updateOne({ _id: 'editor' }, { $set: { permissions: before } });
   }
+}
+
+/** A custom role with every permission, as only such a role (or admin) may give out or take away admin. */
+async function seedEverythingRole(t: TestApp, id = 'everything'): Promise<Role> {
+  const now = new Date();
+  await collections(t.db).roles.insertOne({ _id: id, name: 'Everything', description: '', permissions: [...PERMISSIONS], builtIn: false, createdAt: now, updatedAt: now });
+  return id;
 }
 
 function patch(t: TestApp, cookie: string, id: string, payload: object) {
@@ -306,11 +314,12 @@ describe('PATCH /admin/accounts/:id', () => {
     // Without accounts.read, the route itself is closed.
     expect((await patch(t, cookie, target, { name: 'Ann' })).statusCode).toBe(403);
     for (const [payload, permission] of fields) {
-      await withEditorPermissions(['accounts.read'], async () => {
+      await withEditorPermissions(t, ['accounts.read'], async () => {
         const res = await patch(t, cookie, target, payload);
         expect(res.statusCode, `${JSON.stringify(payload)} without ${permission}`).toBe(403);
       });
-      await withEditorPermissions(['accounts.read', permission], async () => {
+      // Granting teacher also needs what teacher lets someone do (class.create): nobody gives out more than they have.
+      await withEditorPermissions(t, ['accounts.read', permission, ...(permission === 'roles.grant' ? (['class.create'] as const) : [])], async () => {
         const res = await patch(t, cookie, target, payload);
         expect(res.statusCode, `${JSON.stringify(payload)} with ${permission}`).toBe(200);
         // Two fields need both permissions.
@@ -340,10 +349,11 @@ describe('PATCH /admin/accounts/:id', () => {
   it('never leaves no active admin: role, block and delete', async () => {
     const t = await makeApp(mongo);
     const only = await seedAccount(t.db, { email: 'admin@example.com', roles: ['admin'] });
-    await seedAccount(t.db, { email: 'ed@example.com', roles: ['editor'] });
+    // Not an admin, but with every permission: may take admin away, so the guard rail is what stops it.
+    await seedAccount(t.db, { email: 'ed@example.com', roles: [await seedEverythingRole(t)] });
     const cookie = await signIn(t, 'ed@example.com');
     const id = only._id.toHexString();
-    await withEditorPermissions(['accounts.read', 'roles.grant', 'accounts.block', 'accounts.delete'], async () => {
+    {
       for (const payload of [{ roles: [] }, { roles: ['teacher'] }, { status: 'blocked' }]) {
         const res = await patch(t, cookie, id, payload);
         expect(res.statusCode, JSON.stringify(payload)).toBe(409);
@@ -358,7 +368,7 @@ describe('PATCH /admin/accounts/:id', () => {
       expect((await patch(t, cookie, id, { roles: [] })).statusCode).toBe(409);
       // Adding roles is always fine.
       expect((await patch(t, cookie, id, { roles: ['admin', 'teacher'] })).statusCode).toBe(200);
-    });
+    }
     expect((await collections(t.db).accounts.findOne({ _id: only._id }))?.roles).toEqual(['admin', 'teacher']);
   });
 
@@ -404,6 +414,8 @@ describe('DELETE /admin/accounts/:id', () => {
       ['account.invite', { deleted: true }],
       ['account.delete', { status: 'invited' }],
     ]);
+    // An invite that was never used is not a deleted account.
+    expect(await c.closures.countDocuments()).toBe(0);
   });
 
   it('with ?expect, deletes only an account in that status: an invite accepted meanwhile is not cancelled', async () => {
@@ -447,11 +459,49 @@ describe('DELETE /admin/accounts/:id', () => {
     expect((await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${ann._id}`, cookie: admin.cookie })).statusCode).toBe(204);
     expect((await t.call({ method: 'GET', url: '/api/v1/me', cookie })).statusCode).toBe(401);
     expect(await collections(t.db).sessions.countDocuments({ accountId: ann._id })).toBe(0);
+    // Nothing of it is kept but that an admin deleted an account.
+    expect(await collections(t.db).closures.find().project({ _id: 0, day: 0 }).toArray()).toEqual([{ kind: 'admin', feedback: null, archive: null }]);
     expect((await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${ann._id}`, cookie: admin.cookie })).statusCode).toBe(404);
     // A teacher may not.
     await seedAccount(t.db, { email: 'teacher@example.com', roles: ['teacher'] });
     const teacher = await signIn(t, 'teacher@example.com');
     expect((await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${admin.account._id}`, cookie: teacher })).statusCode).toBe(403);
+  });
+});
+
+describe('GET /admin/closures', () => {
+  it('lists deleted accounts, newest day first, to those who may read accounts', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const deleteSelf = async (email: string, payload: object) => {
+      await seedAccount(t.db, { email, createdAt: new Date(Date.UTC(2026, 0, 15)) });
+      const cookie = await signIn(t, email);
+      expect((await t.call({ method: 'DELETE', url: '/api/v1/me', cookie, payload: { password: PASSWORD, ...payload } })).statusCode).toBe(204);
+    };
+    await deleteSelf('ann@example.com', { removeData: false, feedback: 'Not for me' });
+    t.clock.advance(DAY);
+    await deleteSelf('bob@example.com', { removeData: true });
+    t.clock.advance(DAY);
+    // A day later: the admin's session token (an hour) has ended.
+    const cookie = await signIn(t, admin.account.email);
+    const cy = await seedAccount(t.db, { email: 'cy@example.com' });
+    expect((await t.call({ method: 'DELETE', url: `/api/v1/admin/accounts/${cy._id}`, cookie })).statusCode).toBe(204);
+
+    const res = await t.call({ method: 'GET', url: '/api/v1/admin/closures', cookie });
+    expect(res.statusCode).toBe(200);
+    const { closures } = res.json<ClosureListResponse>();
+    const day = (n: number) => new Date(t.clock.ms - n * DAY).toISOString().slice(0, 10);
+    expect(closures).toEqual([
+      { id: expect.stringMatching(/^[0-9a-f]{32}$/), day: day(0), kind: 'admin', feedback: null, archive: null },
+      { id: expect.any(String), day: day(1), kind: 'removed', feedback: null, archive: null },
+      { id: expect.any(String), day: day(2), kind: 'archived', feedback: 'Not for me', archive: { joined: '2026-01', data: null } },
+    ]);
+    expect(res.body).not.toMatch(/ann|bob|cy@/);
+
+    await seedAccount(t.db, { email: 'teacher@example.com', roles: ['teacher'] });
+    const teacher = await signIn(t, 'teacher@example.com');
+    expect((await t.call({ method: 'GET', url: '/api/v1/admin/closures', cookie: teacher })).statusCode).toBe(403);
+    expect((await t.call({ method: 'GET', url: '/api/v1/admin/closures' })).statusCode).toBe(401);
   });
 });
 

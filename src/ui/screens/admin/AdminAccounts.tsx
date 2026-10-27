@@ -1,6 +1,7 @@
 /**
  * Admin: Accounts (#/admin; BACKEND-PLAN.md §5.1, §7; no board yet): every account, newest first, to search by name or
- * email and filter by status, with Invite someone as the screen's one filled button. A row opens the account.
+ * email and filter by status, with Invite someone as the screen's one filled button. A row opens the account. Under
+ * the list, a History card leads to Deleted accounts (AdminClosures).
  * Needs `accounts.read`; without it the screen says so, with the way back to Settings. A search or filter's result, and
  * the message from the one-account screen ("The invite for … was canceled."), are announced (ui/lib/announce.ts).
  */
@@ -19,7 +20,7 @@ import { clearListNotice, peekListNotice, rolesText } from '../../lib/admin';
 import { announce } from '../../lib/announce';
 import { errorMessage } from '../../lib/apiErrors';
 import { Link } from '../../router';
-import { GateMessage, NoAccess, useAdminGate } from './AdminParts';
+import { GateMessage, NoAccess, roleNames, useAdminGate, useRoleList } from './AdminParts';
 
 /** How long typing has to pause before the list is asked again. */
 export const SEARCH_DELAY_MS = 250;
@@ -51,7 +52,16 @@ export function AdminAccounts(): JSX.Element {
   const inHead = bp !== 'phone';
   return (
     <SubPage title={t('admin.title')} back="/settings" backLabel={t('account.back')} action={gate === 'ok' && inHead ? invite : undefined}>
-      {gate === 'ok' ? <AccountList invite={inHead ? null : invite} quiet={!!invite} /> : <GateMessage gate={gate} />}
+      {gate === 'ok' ? (
+        <>
+          <AccountList invite={inHead ? null : invite} quiet={!!invite} />
+          <Section id="history" title={t('admin.history')}>
+            <RowLink to="/admin/deleted" title={t('closures.title')} sub={t('admin.historySub')} />
+          </Section>
+        </>
+      ) : (
+        <GateMessage gate={gate} />
+      )}
     </SubPage>
   );
 }
@@ -64,6 +74,8 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
   const [status, setStatus] = useState<Filter>('all');
   const [attempt, setAttempt] = useState(0);
   const [list, setList] = useState<List>({ state: 'loading' });
+  // Custom roles show by the names admins gave them.
+  const names = roleNames(useRoleList());
   // Set once the first answer came (the list, or an error): from then on, each answer (a search, a filter, Try again)
   // is read out. The first list is not, as the screen's own heading covers it.
   const loaded = useRef(false);
@@ -152,7 +164,7 @@ function AccountList({ invite, quiet }: { invite: JSX.Element | null; quiet: boo
                 meta={
                   <>
                     <StatusPill status={a.status} />
-                    {a.roles.length > 0 && <span className="row-sub">{rolesText(a.roles)}</span>}
+                    {a.roles.length > 0 && <span className="row-sub">{rolesText(a.roles, names)}</span>}
                   </>
                 } />
             ))}
