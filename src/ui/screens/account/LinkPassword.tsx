@@ -16,6 +16,7 @@ import { useAccount } from '../../account';
 import { ErrorRetry, FormError, HiddenUsername, onSubmit, PasswordField, SubmitButton, TextField } from '../../components/Form';
 import { FocusedPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
+import { screenHeading } from '../../lib/screenFocus';
 import { errorMessage, failureOf, fieldError, formError, nameCharactersError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
 import { SignOut, useRefocus } from './AccountSection';
@@ -50,6 +51,8 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
   const mounted = useMounted();
   // Signed out (someone else was): the form's first field, which replaced the Sign out button.
   const refocus = useRefocus(() => (kind === 'invite' ? nameRef : passwordRef).current);
+  // The link stopped working after the check: the message takes the place of the form, which had the focus.
+  const refocusHeading = useRefocus(screenHeading);
 
   useEffect(() => {
     let live = true;
@@ -142,6 +145,7 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
       const f = failureOf(e);
       if (f.code === 'link_invalid') {
         setCheck({ state: 'bad' });
+        refocusHeading();
         return;
       }
       setFail(f);

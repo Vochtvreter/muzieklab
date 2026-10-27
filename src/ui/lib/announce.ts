@@ -1,9 +1,10 @@
 /**
  * Polite announcements for screen readers (WCAG 4.1.3): what happened after an action that leaves no focus on its
  * result (Delete account and Sign out everywhere end on Settings, Cancel invite on the accounts list, a search or
- * filter changes the list, a busy Save lost its focus: every FormDone line, Try again on the note for no answer). The
- * Announcer (components/Announcer.tsx) is one live region that is in the page from the start, so its text changing is
- * read; a role="status" that is inserted already holding its text is not read by every screen reader.
+ * filter changes the list, a Save's line away from its button: every FormDone line, Try again on the note for no answer
+ * and on the sync line). The Announcer (components/Announcer.tsx) is one live region that is in the page from the
+ * start, so its text changing is read; a role="status" that is inserted already holding its text is not read by every
+ * screen reader.
  */
 type Listener = (text: string) => void;
 

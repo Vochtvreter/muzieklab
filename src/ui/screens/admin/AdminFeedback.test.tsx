@@ -393,8 +393,8 @@ describe('Admin: one feedback report', () => {
     // The status it already has sends nothing.
     fireEvent.click(within(status).getByRole('button', { name: 'Accepted' }));
 
-    const save = screen.getByRole('button', { name: 'Save note' }) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
+    const save = screen.getByRole('button', { name: 'Save note' });
+    expect(save.getAttribute('aria-disabled')).toBe('true');
     fireEvent.change(screen.getByLabelText('Note for the team'), { target: { value: '  Picked up for 0.17.1.\nAfter the tab bar fix.  ' } });
     fireEvent.click(save);
     await screen.findByText('Saved.');
@@ -410,7 +410,7 @@ describe('Admin: one feedback report', () => {
     inStore(<AdminFeedbackReport id={ID_A} />);
     await screen.findByRole('heading', { level: 1, name: 'Start is cut off' });
     const field = screen.getByLabelText('Note for the team') as HTMLTextAreaElement;
-    const save = screen.getByRole('button', { name: 'Save note' }) as HTMLButtonElement;
+    const save = screen.getByRole('button', { name: 'Save note' });
     fireEvent.change(field, { target: { value: 'Looks good' } });
     fireEvent.click(save);
     await waitFor(() => expect(held.waiting).toHaveLength(1));
@@ -419,7 +419,7 @@ describe('Admin: one feedback report', () => {
     await screen.findByText('Reviewed by Ann de Vries, October 25, 2026');
     expect(field.value).toBe('Looks good - ship in 0.18');
     expect(screen.queryByText('Saved.')).toBeNull();
-    expect(save.disabled).toBe(false);
+    expect(save.getAttribute('aria-disabled')).toBeNull();
 
     fireEvent.click(save);
     await waitFor(() => expect(held.waiting).toHaveLength(1));

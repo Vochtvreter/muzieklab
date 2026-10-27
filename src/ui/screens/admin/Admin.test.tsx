@@ -178,6 +178,36 @@ describe('Admin: one account', () => {
     expect(screen.queryByRole('button', { name: 'Delete account' })).toBeNull();
   });
 
+  it('Block, then Unblock: each time the other one takes the focus from the pressed button, which is gone', async () => {
+    let account = detail({ ...LIES, status: 'active', roles: [] });
+    answer = (path, init) => {
+      if (path === '/api/v1/me') return json(200, ADMIN);
+      if (init?.method === 'PATCH') account = { ...account, ...(JSON.parse(String(init.body)) as Pick<AccountDetail, 'status'>) };
+      return json(200, account);
+    };
+    inStore(<AdminAccount id={LIES.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Block/ }));
+    const block = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Block' });
+    block.focus();
+    fireEvent.click(block);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Unblock/ })));
+    fireEvent.click(document.activeElement!);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Block/ })));
+    expect(account.status).toBe('active');
+  });
+
+  it('Try again after a failed load: the account takes its place, and the heading the focus', async () => {
+    let fail = true;
+    answer = (path) => (path === '/api/v1/me' ? json(200, ADMIN) : fail ? json(500, { error: 'internal', message: '' }) : json(200, detail(LIES)));
+    inStore(<AdminAccount id={LIES.id} />);
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    fail = false;
+    retry.focus();
+    fireEvent.click(retry);
+    await screen.findByRole('heading', { level: 1, name: 'Lies Bakker' });
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+  });
+
   it('an invite: its link end, New invite link and Cancel invite (with Keep invite)', async () => {
     answer = (path) => (path === '/api/v1/me' ? json(200, ADMIN) : json(200, { ...detail(LIES), inviteExpiresAt: '2026-10-29T12:00:00.000Z' }));
     inStore(<AdminAccount id={LIES.id} />);

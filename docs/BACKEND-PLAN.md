@@ -776,9 +776,11 @@ Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
   API answers. The account's `resetAt` changes; another device that last saw an older `resetAt` takes the account's
   progress instead of merging its own back in. Its prefs still merge.
 - **Signing out** saves the last change first, then asks whether this device keeps its progress (the default, except on
-  such a link) or removes it (for a shared device). Either way the device forgets the base: a save sends the whole
-  copy, so it may only ever be made on top of the account's own. A session that ended (a 401) signs out and keeps the
-  progress here.
+  such a link) or removes it (for a shared device). Remove is refused while the device's progress is not on the
+  account (that save failed, found no API, or is still on its way after 5 s): it would be gone for good; Keep loses
+  nothing, as the account's next sign-in on the device adds it. Either way the device forgets the base: a save sends
+  the whole copy, so it may only ever be made on top of the account's own. A session that ended (a 401) signs out and
+  keeps the progress here.
 - **Settings → Account** shows whether it is saved: saved, saving, not saved yet (no connection; it goes when the
   device is back online), or could not be saved, with Try again.
 

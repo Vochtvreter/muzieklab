@@ -81,4 +81,36 @@ describe('Settings → Language', () => {
     // A new screen's own focus, on its heading (App.tsx), not the language control.
     expect(document.activeElement).toBe(await screen.findByRole('heading', { level: 1, name: 'Settings' }));
   });
+
+  it('a language from elsewhere (another tab, the account) remounts the screen too: its heading takes the focus that went', async () => {
+    render(<App />);
+    const light = within(await screen.findByRole('group', { name: 'Color theme' })).getByRole('button', { name: 'Light' });
+    light.focus();
+    act(() => {
+      localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ ...JSON.parse(localStorage.getItem('muzieklab.prefs.v1') ?? '{}'), language: 'nl' }));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'muzieklab.prefs.v1' }));
+    });
+    expect(document.activeElement).toBe(await screen.findByRole('heading', { level: 1, name: 'Instellingen' }));
+  });
+});
+
+describe('Settings → Language, picked in another tab while an exercise is played', () => {
+  it('waits until its screen is left, so the exercise does not start over; then the next screen is in that language', async () => {
+    window.location.hash = '#/calibrate';
+    render(<App />);
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Calibrate timing' });
+    act(() => {
+      localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ ...JSON.parse(localStorage.getItem('muzieklab.prefs.v1') ?? '{}'), language: 'nl' }));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'muzieklab.prefs.v1' }));
+    });
+    // The same screen, not a new one in Dutch.
+    expect(screen.getByRole('heading', { level: 1 })).toBe(heading);
+    expect(document.documentElement.lang).toBe('en');
+    act(() => {
+      window.location.hash = '#/settings';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(document.activeElement).toBe(await screen.findByRole('heading', { level: 1, name: 'Instellingen' }));
+    expect(document.documentElement.lang).toBe('nl');
+  });
 });

@@ -149,6 +149,8 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState<Failure | null>(null);
   const [empty, setEmpty] = useState<{ email?: boolean; password?: boolean }>({});
+  // The address the account has already: nothing would change, so nothing is sent.
+  const [same, setSame] = useState(false);
   const [saved, setSaved] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -163,6 +165,7 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
     setPassword('');
     setFail(null);
     setEmpty({});
+    setSame(false);
     requestAnimationFrame(() => opener.current?.focus());
   };
   const submit = async (): Promise<void> => {
@@ -171,7 +174,15 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
     setEmpty(missing);
     setFail(null);
     if (missing.email || missing.password) {
+      setSame(false);
       (missing.email ? emailRef : passwordRef).current?.focus();
+      return;
+    }
+    // Compared as the server keeps an email (trimmed, in lower case), which answers such a change without changing it.
+    const unchanged = email.trim().toLowerCase() === me.email.toLowerCase();
+    setSame(unchanged);
+    if (unchanged) {
+      emailRef.current?.focus();
       return;
     }
     setBusy(true);
@@ -217,7 +228,7 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
           if (e.key === 'Escape' && !busy) close();
         }}>
           <TextField label={t('account.newEmail')} type="email" autoComplete="email" inputMode="email" name="email" value={email} onChange={setEmail}
-            inputRef={emailRef} autoFocus error={empty.email ? t('form.emailEmpty') : fieldError(fail, 'email')} />
+            inputRef={emailRef} autoFocus error={empty.email ? t('form.emailEmpty') : same ? t('account.emailSame') : fieldError(fail, 'email')} />
           <PasswordField label={t('account.currentPassword')} autoComplete="current-password" name="password" value={password} onChange={setPassword}
             inputRef={passwordRef} error={empty.password ? t('form.passwordEmpty') : fieldError(fail, 'currentPassword')} />
           <FormError error={formError(fail)} />

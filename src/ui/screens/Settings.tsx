@@ -376,7 +376,7 @@ let shownLocale: string | undefined;
 
 /**
  * Set when this row switched the language. The remount takes the focused button away, so the new control gets the
- * focus back; a language that changes elsewhere (another tab, the account) leaves the focus where it is.
+ * focus back; after a language that changes elsewhere (another tab, the account), the heading takes it (App.tsx).
  */
 let refocusLanguage = false;
 

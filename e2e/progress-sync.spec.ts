@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { SaveProgressRequest } from '../shared/api';
-import { announcer, ME_MEMBER, mockApi, progressServer, seed, seedAccount, SIGNED_OUT, signedInAs, VIEWPORTS } from './helpers';
+import { announcer, apiError, ME_MEMBER, mockApi, progressServer, recordAnnouncements, seed, seedAccount, SIGNED_OUT, signedInAs, VIEWPORTS } from './helpers';
 
 /**
  * Progress on the account (BACKEND-PLAN.md §6): a first sign-in adds this device's progress to the account, the
@@ -84,9 +84,39 @@ test('a save the API fails says so, and Try again saves', async ({ page }) => {
   const api = await mockApi(page, { ...signedInAs(ME_MEMBER), ...server.routes, 'PUT /progress': { status: 500, json: { error: 'internal', message: 'boom' } } });
   await page.goto('./#/settings');
   await expect(syncLine(page)).toHaveText(/^Your progress couldn't be saved\./);
+  const said = await recordAnnouncements(page);
+  // With the keyboard, and it fails again: the button keeps its focus, and the line is read out, as it looks the same.
+  const retry = syncLine(page).getByRole('button', { name: 'Try again' });
+  await retry.focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(said).toEqual(["Your progress couldn't be saved."]);
+  await expect(retry).toBeFocused();
+  // Saved: the button goes, and the focus goes to the account row instead of the page.
   api.set({ 'PUT /progress': server.routes['PUT /progress'] });
-  await syncLine(page).getByRole('button', { name: 'Try again' }).click();
+  await page.keyboard.press('Enter');
   await expect(syncLine(page)).toHaveText('Progress saved to your account');
+  await expect(accountSection(page).getByRole('link', { name: /^Sam Jansen/ })).toBeFocused();
+  await expect.poll(said).toEqual(["Your progress couldn't be saved.", 'Progress saved to your account']);
+});
+
+test('sign out with Remove is refused while the progress is not on the account; Keep still signs out', async ({ page }) => {
+  await seed(page, { progress: { xp: 340, practiceDays: ['2026-10-24'] } });
+  await seedAccount(page, ME_MEMBER);
+  const api = await mockApi(page, { ...signedInAs(ME_MEMBER), ...progressServer().routes, 'PUT /progress': apiError('internal', 500) });
+  await page.goto('./#/settings');
+  await expect(syncLine(page)).toHaveText(/^Your progress couldn't be saved\./);
+  const section = accountSection(page);
+  await section.getByRole('button', { name: 'Sign out' }).click();
+  const confirm = section.getByRole('alertdialog', { name: 'Sign out on this device?' });
+  await confirm.getByRole('button', { name: 'Remove' }).click();
+  await confirm.getByRole('button', { name: 'Sign out' }).click();
+  await expect(confirm.getByRole('alert')).toHaveText("Your progress isn't on your account yet, so it can't be removed from this device. Choose Keep, or try again in a moment.");
+  expect((await storedProgress(page)).xp).toBe(340);
+  expect(api.callsTo('POST /auth/sign-out')).toHaveLength(0);
+  await confirm.getByRole('button', { name: 'Keep' }).click();
+  await confirm.getByRole('button', { name: 'Sign out' }).click();
+  await expect(section.locator('.row-status')).toHaveText('Signed out.');
+  expect((await storedProgress(page)).xp).toBe(340);
 });
 
 test('sign out keeps this device’s progress, or removes it for a shared device', async ({ page }) => {
@@ -107,6 +137,17 @@ test('sign out keeps this device’s progress, or removes it for a shared device
   await page.keyboard.press('Escape');
   await expect(confirm).toBeHidden();
   await expect(section.getByRole('button', { name: 'Sign out' })).toBeFocused();
+  // Signing out fails (no answer): the focus stays on the pressed button, in the confirm, so Escape still closes it.
+  await page.route('**/api/v1/auth/sign-out', (r) => r.abort());
+  await page.keyboard.press('Enter');
+  await confirm.getByRole('button', { name: 'Sign out' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(confirm.getByRole('alert')).toHaveText("Can't reach Muzieklab right now. Check your connection and try again.");
+  await expect(confirm.getByRole('button', { name: 'Sign out' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(confirm).toBeHidden();
+  await expect(section.getByRole('button', { name: 'Sign out' })).toBeFocused();
+  await page.unroute('**/api/v1/auth/sign-out');
   await section.getByRole('button', { name: 'Sign out' }).click();
   // Cancel goes back to the row, and the choice starts at Keep again.
   await confirm.getByRole('button', { name: 'Remove' }).click();
@@ -116,8 +157,11 @@ test('sign out keeps this device’s progress, or removes it for a shared device
   await expect(confirm.getByRole('button', { name: 'Keep' })).toHaveAttribute('aria-pressed', 'true');
 
   await confirm.getByRole('button', { name: 'Remove' }).click();
-  await confirm.getByRole('button', { name: 'Sign out' }).click();
+  await confirm.getByRole('button', { name: 'Sign out' }).focus();
+  await page.keyboard.press('Enter');
   await expect(section.locator('.row-status')).toHaveText('Signed out.');
+  // Sign in took the place of the confirm that had the focus, and the focus with it.
+  await expect(section.getByRole('link', { name: /^Sign in/ })).toBeFocused();
   await expect.poll(() => stored(page, 'muzieklab.progress.v1')).toBeNull();
   expect(await stored(page, 'muzieklab.sync.v1')).toBeNull();
   // It was on the account before it went.

@@ -126,6 +126,34 @@ test('two tabs open: neither saves its older copy over what the other saved, pro
   await expect(a.getByRole('button', { name: 'Strict' })).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('two tabs open: a language picked in one waits while the other plays a round, so the round does not start over', async ({ context }) => {
+  const a = await context.newPage();
+  await a.goto('./');
+  const b = await context.newPage();
+  await b.goto('./#/settings');
+  await a.getByRole('button', { name: 'Start lesson' }).click();
+  const names = a.getByRole('group', { name: 'Note names' }).getByRole('button');
+  for (let i = 0; i < 3; i++) {
+    await names.first().click();
+    await a.getByRole('button', { name: /^Next note/ }).click();
+  }
+  const count = a.getByText('Note 4 of 10');
+  await expect(count).toBeVisible();
+  await b.getByRole('button', { name: 'Nederlands' }).click();
+  await expect(b.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
+  // Tab A gets the language at once (the storage event), but the round goes on as it was, in English.
+  await a.waitForTimeout(300);
+  await expect(count).toBeVisible();
+  await expect(a.locator('html')).toHaveAttribute('lang', 'en');
+  for (let i = 3; i < 10; i++) {
+    await names.first().click();
+    await a.getByRole('button', { name: /^(Next note|See summary)/ }).click();
+  }
+  // The next screen is in the new language.
+  await expect(a.getByRole('heading', { name: 'Les 1.1 klaar' })).toBeVisible();
+  await expect(a.locator('html')).toHaveAttribute('lang', 'nl');
+});
+
 /** The browser bar's colour in each theme (index.html's theme-color metas). */
 const BAR = { light: '#eef1f0', dark: '#101415' } as const;
 

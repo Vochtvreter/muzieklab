@@ -69,16 +69,24 @@ export function resetAccountCheck(): void {
   reach = 'unknown';
 }
 
+/** Whose account the tabs of this browser keep (muzieklab.account.v1), or null. */
+const storedId = (): string | null => loadAccount()?.id ?? null;
+
 function askMe(dispatch: (a: Action) => void): Promise<void> {
   const asked = generation;
+  // Another tab may sign in or out while this is on its way (the store takes that up): then the answer is about the
+  // session before, and saving it would hand that one back to every tab, so it is asked again.
+  const stored = storedId();
   return api.get<Me>('/me').then(
     (me) => {
       if (asked !== generation) return;
+      if (storedId() !== stored) return askMe(dispatch);
       reach = 'reachable';
       dispatch({ type: 'signedIn', me });
     },
     (e: unknown) => {
       if (asked !== generation) return;
+      if (storedId() !== stored) return askMe(dispatch);
       const err = asApiError(e);
       // 401: nobody is signed in (or the session ended). Anything else: no usable answer, keep what is cached.
       if (err.code === 'unauthenticated') {

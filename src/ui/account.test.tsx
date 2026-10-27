@@ -20,6 +20,16 @@ const ME: Me = {
   feedbackMode: false,
 };
 
+/** Someone else, signed in on this browser in another tab. */
+const BRAM: Me = { ...ME, id: '6718f0c2a1b2c3d4e5f60009', email: 'bram@example.com', name: 'Bram Smit', roles: [], permissions: ['self.manage'] };
+
+/** Another tab of the app saved (or forgot) the account: the tabs of a browser share its storage. */
+const storedElsewhere = (me: Me | null): void => {
+  if (me) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(me));
+  else localStorage.removeItem(ACCOUNT_KEY);
+  window.dispatchEvent(new StorageEvent('storage', { key: ACCOUNT_KEY }));
+};
+
 const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -240,6 +250,47 @@ describe('useAccount', () => {
       answer(json(401, { error: 'unauthenticated', message: '' }));
     });
     expect(shown()).toBe('reachable Ann de Vries');
+  });
+
+  it('takes up the account another tab signed in or out, so this one never shows or changes the one before', async () => {
+    fetchMock.mockResolvedValue(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    act(() => storedElsewhere(null));
+    expect(shown()).toBe('reachable nobody');
+    expect(latest.notice).toBeNull();
+    act(() => storedElsewhere(BRAM));
+    expect(shown()).toBe('reachable Bram Smit');
+    expect(latest.can('accounts.read')).toBe(false);
+    // A new name there: the same account, as it is now.
+    act(() => storedElsewhere({ ...BRAM, name: 'Bram S.' }));
+    expect(shown()).toBe('reachable Bram S.');
+    // The other tab's answers: nothing was asked here again, and nothing saved back.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null')?.name).toBe('Bram S.');
+  });
+
+  it('asks GET /me again when another tab signed in as someone else while it was on its way', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    let answer: (r: Response) => void = () => undefined;
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((resolve) => (answer = resolve)));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    act(() => storedElsewhere(BRAM));
+    expect(shown()).toBe('unknown Bram Smit');
+    // The answer is about the session before (Ann's): it is not taken, and the next one is.
+    fetchMock.mockResolvedValueOnce(json(200, BRAM));
+    await act(async () => answer(json(200, ME)));
+    await waitFor(() => expect(shown()).toBe('reachable Bram Smit'));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null')?.id).toBe(BRAM.id);
   });
 
   describe('after no answer, asks again', () => {

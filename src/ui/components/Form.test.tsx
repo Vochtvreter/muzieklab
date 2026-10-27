@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '../../i18n';
 import { listenToAnnouncements } from '../lib/announce';
-import { ConfirmAction, CopyField, FormDone, FormError, PasswordField, StatusPill, SubmitButton, SwitchRow, TextField } from './Form';
+import { ConfirmAction, CopyField, ErrorRetry, FormDone, FormError, PasswordField, RowButton, StatusPill, SubmitButton, SwitchRow, TextField } from './Form';
 
 afterEach(() => {
   cleanup();
@@ -62,14 +62,70 @@ describe('FormError and SubmitButton', () => {
     expect(screen.getByRole('alert').textContent).toBe('Email or password is not right.');
   });
 
-  it('SubmitButton shows its busy label and is disabled while busy', () => {
-    const { rerender } = render(<SubmitButton label="Sign in" busyLabel="Signing in…" busy={false} />);
+  it('SubmitButton shows its busy label; busy or disabled, it sends nothing but keeps the focus (aria-disabled, not disabled)', () => {
+    const sent = vi.fn();
+    const Box = ({ busy, disabled }: { busy: boolean; disabled?: boolean }): JSX.Element => (
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        sent();
+      }}>
+        <SubmitButton label="Sign in" busyLabel="Signing in…" busy={busy} disabled={disabled} />
+      </form>
+    );
+    const { rerender } = render(<Box busy={false} />);
     const button = screen.getByRole('button', { name: 'Sign in' }) as HTMLButtonElement;
     expect(button.type).toBe('submit');
     expect(button.className).toContain('btn--accent');
-    rerender(<SubmitButton label="Sign in" busyLabel="Signing in…" busy />);
-    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-disabled')).toBeNull();
+    button.focus();
+    fireEvent.click(button);
+    expect(sent).toHaveBeenCalledTimes(1);
+    rerender(<Box busy />);
     expect(button.textContent).toBe('Signing in…');
+    // A disabled button that has the focus drops it to the page (Chromium): this one stays focusable.
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(button);
+    expect(sent).toHaveBeenCalledTimes(1);
+    // Nothing to save (a Save after saving): the same.
+    rerender(<Box busy={false} disabled />);
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(button);
+    expect(sent).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('RowButton, busy, does nothing when pressed again, and keeps the focus', () => {
+    const onClick = vi.fn();
+    const { rerender } = render(<RowButton label="Download my data" busyLabel="Downloading…" onClick={onClick} />);
+    const row = screen.getByRole('button', { name: 'Download my data' }) as HTMLButtonElement;
+    fireEvent.click(row);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    rerender(<RowButton label="Download my data" busyLabel="Downloading…" onClick={onClick} busy />);
+    expect(row.textContent).toBe('Downloading…');
+    expect(row.disabled).toBe(false);
+    expect(row.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(row);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('ErrorRetry: what Try again brings takes its place, and the screen\'s heading takes the focus, not the page', () => {
+    function Screen(): JSX.Element {
+      const [failed, setFailed] = useState(true);
+      return (
+        <main>
+          <h1>Accounts</h1>
+          {failed ? <ErrorRetry error="Can't reach Muzieklab right now." onRetry={() => setFailed(false)} /> : <p>Loading…</p>}
+        </main>
+      );
+    }
+    render(<Screen />);
+    const retry = screen.getByRole('button', { name: 'Try again' });
+    retry.focus();
+    fireEvent.click(retry);
+    expect(screen.getByText('Loading…')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Accounts' }));
   });
 });
 
@@ -170,6 +226,36 @@ describe('ConfirmAction', () => {
     expect(confirm.className).not.toContain('danger');
     expect(confirm.className).toContain('small-btn--tonal');
     expect(screen.getByText('Sign out everywhere?').closest('p')?.className).toBe('reset-text is-plain');
+  });
+
+  it('keeps the focus on the pressed button while it runs and after it failed, so Escape still closes it (DESIGN.md, Destructive confirm)', async () => {
+    let settle: (keep: boolean) => void = () => undefined;
+    const onConfirm = vi.fn(() => new Promise<boolean>((done) => (settle = done)));
+    render(<ConfirmAction {...props} onConfirm={onConfirm} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete account' }));
+    const confirm = screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement;
+    const cancel = screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement;
+    confirm.focus();
+    fireEvent.click(confirm);
+    expect(confirm.textContent).toBe('Deleting…');
+    // Not disabled, which drops the focus to the page (Chromium), where Escape never reaches the confirm.
+    for (const b of [confirm, cancel]) {
+      expect(b.disabled).toBe(false);
+      expect(b.getAttribute('aria-disabled')).toBe('true');
+    }
+    // While it runs, a second press, Cancel and Escape do nothing.
+    fireEvent.click(confirm);
+    fireEvent.click(cancel);
+    fireEvent.keyDown(confirm, { key: 'Escape' });
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+    await act(async () => settle(false));
+    expect(confirm.getAttribute('aria-disabled')).toBeNull();
+    expect(document.activeElement).toBe(confirm);
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete account' }));
   });
 
   it('closes when it is done', async () => {

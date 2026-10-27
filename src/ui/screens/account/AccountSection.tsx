@@ -37,7 +37,8 @@ export function AccountSection(): JSX.Element | null {
   const account = useAccount();
   const { me, api: reach, notice, setNotice } = account;
   const { state, dispatch } = useStore();
-  // After Try again found the API: the section's first row (the account, or Sign in).
+  // After the button that had the focus went (Try again found the API or saved the progress, signed out): the section's
+  // first row (the account, or Sign in).
   const refocus = useRefocus(() => document.querySelector<HTMLElement>(ACCOUNT_ROWS));
 
   // The notice is for this visit of Settings: it goes once Settings is left (not on the language switch's remount, or
@@ -59,14 +60,14 @@ export function AccountSection(): JSX.Element | null {
       {me ? (
         <>
           <RowLink to="/account" title={me.name} sub={me.email} />
-          {!offline && <SyncLine status={state.account.sync} />}
+          {!offline && <SyncLine status={state.account.sync} onDone={refocus} />}
           {account.can('accounts.read') && <RowLink to="/admin" title={t('settings.accounts')} sub={t('settings.accountsSub')} />}
           {account.can('feedback.review') && <RowLink to="/admin/feedback" title={t('settings.feedbackReports')} sub={t('settings.feedbackReportsSub')} />}
           {me.feedbackMode && account.can('feedback.give') && (
             <SwitchRow label={t('settings.feedbackButton')} description={t('settings.feedbackButtonSub')} on={state.prefs.feedbackButton}
               onChange={(on) => dispatch({ type: 'prefs', patch: { feedbackButton: on } })} />
           )}
-          {reach === 'reachable' && <SignOut account={account} />}
+          {reach === 'reachable' && <SignOut account={account} onSignedOut={refocus} />}
           {offline && <OfflineNote account={account} className="row-note" onBack={refocus} />}
         </>
       ) : (
@@ -96,8 +97,14 @@ export function SignOut({ account, removeFirst = false, onSignedOut }: { account
   // Keeps the confirm open with the error when signing out failed; false closes it.
   const signOut = async (): Promise<boolean> => {
     setError(null);
-    // What is not saved yet goes to the account first, so removing it from this device loses nothing.
-    await progressSync()?.flush();
+    // What is not saved yet goes to the account first, so removing it from this device loses nothing. When it could not
+    // be saved (a server error, no API, a save still on its way), Remove is refused: Keep loses nothing either, as this
+    // account's next sign-in here adds the device's progress again.
+    const saved = (await progressSync()?.flush()) ?? true;
+    if (!keep && !saved) {
+      setError(t('settings.signOutNotSaved'));
+      return false;
+    }
     try {
       await account.signOut();
     } catch (e) {
@@ -137,18 +144,37 @@ const SYNC_TEXT: Record<Exclude<SyncStatus, 'idle'>, string> = {
 
 /**
  * Whether the progress is on the account: saved, saving, waiting for the connection, or failed with Try again. Not a
- * live region: it changes after every exercise, and a screen reader would hear it each time.
+ * live region: it changes after every exercise, and a screen reader would hear it each time. Try again's outcome is read
+ * out, though, as OfflineNote's is: the button keeps its focus while it saves (aria-disabled, also while the line says
+ * Saving…), and is ready again if that failed too; else it goes, and `onDone` puts the focus on the account row.
  */
-function SyncLine({ status }: { status: SyncStatus }): JSX.Element | null {
+function SyncLine({ status, onDone }: { status: SyncStatus; onDone(): void }): JSX.Element | null {
+  const [busy, setBusy] = useState(false);
+  // Counts the tries that ended: the effect below then reads the status they ended on, which is in that same render.
+  const [ended, setEnded] = useState(0);
+  const mounted = useMounted();
+  useEffect(() => {
+    if (!ended) return;
+    setBusy(false);
+    if (status === 'idle') return;
+    announce(t(SYNC_TEXT[status]));
+    if (status !== 'failed') onDone();
+  }, [ended]);
   if (status === 'idle') return null;
   const failed = status === 'failed';
+  const retry = async (): Promise<void> => {
+    if (busy) return;
+    setBusy(true);
+    await progressSync()?.request('retry');
+    if (mounted.current) setEnded((n) => n + 1);
+  };
   return (
     <div className={'sync-line is-' + status}>
       <Icon name={status === 'saved' ? 'check' : failed ? 'alert' : 'clock'} size={18} strokeWidth={status === 'saved' ? 2.6 : 2}
         className={status === 'saved' ? 'tone-good' : failed ? 'tone-miss' : 'tone-muted'} />
       <span className="sync-line-text">{t(SYNC_TEXT[status])}</span>
-      {failed && (
-        <button type="button" className="small-btn" onClick={() => void progressSync()?.request('retry')}>
+      {(failed || busy) && (
+        <button type="button" className="small-btn" aria-disabled={busy || undefined} aria-busy={busy || undefined} onClick={() => void retry()}>
           {t('common.tryAgain')}
         </button>
       )}

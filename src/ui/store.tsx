@@ -48,6 +48,7 @@ import { progressKey, type TrackId } from '../game/track';
 import { xpForResult } from '../game/xp';
 import type { Me } from '../../shared/api';
 import {
+  ACCOUNT_KEY,
   addPracticeDay,
   defaultProgress,
   isEmptyProgress,
@@ -343,7 +344,12 @@ export type Action =
    * Another tab of the app saved its prefs or progress (the tabs of a browser share its storage): this tab takes up
    * what is stored now, so it does not save its older copy over it.
    */
-  | { type: 'storageChanged'; prefs: Prefs; progress: Progress };
+  | { type: 'storageChanged'; prefs: Prefs; progress: Progress }
+  /**
+   * Another tab signed in or out, or saved the account's new name (muzieklab.account.v1): the session cookie is the
+   * browser's, so this tab's requests are that account's now, and it shows and syncs that one.
+   */
+  | { type: 'accountStored'; me: Me | null };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -430,6 +436,14 @@ export function reducer(state: AppState, action: Action): AppState {
       const progress = sameValue(state.progress, action.progress) ? state.progress : action.progress;
       if (prefs === state.prefs && progress === state.progress) return state;
       return followSetups(state, { ...state, prefs, progress });
+    }
+    case 'accountStored': {
+      const was = state.account.me;
+      if (sameValue(was, action.me)) return state;
+      // The same account: as it is now. Another one, or nobody: as after a sign-in or out, without the line Settings
+      // shows for that (it was said in the tab where it happened).
+      if (action.me && was?.id === action.me.id) return { ...state, account: { ...state.account, me: action.me } };
+      return { ...state, account: { ...state.account, me: action.me, notice: null, sync: 'idle' } };
     }
     case 'apiUnreachable':
       return state.account.api === 'unreachable' ? state : { ...state, account: { ...state.account, api: 'unreachable' } };
@@ -698,8 +712,9 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }): JSX.Element {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const first = useRef(true);
-  // The prefs and progress last taken up from another tab: in storage already, so not saved again.
+  // The prefs and progress, and the account, last taken up from another tab: in storage already, so not saved again.
   const stored = useRef<Pick<AppState, 'prefs' | 'progress'> | null>(null);
+  const storedMe = useRef<Me | null | undefined>(undefined);
 
   useEffect(() => {
     if (first.current || state.prefs === stored.current?.prefs) return;
@@ -726,14 +741,20 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
     saveScaleRun(state.scaleRun);
   }, [state.scaleRun]);
   useEffect(() => {
-    if (first.current) return;
+    if (first.current || state.account.me === storedMe.current) return;
     saveAccount(state.account.me);
   }, [state.account.me]);
   // The tabs of a browser share its storage, and each saves its whole copy of the prefs and progress: a tab takes up
   // what another saved, or its next change would put its older copy back over it (the XP and stars earned there gone,
-  // a pref picked there undone).
+  // a pref picked there undone). The same for the account: a tab that kept the one signed out elsewhere would show it,
+  // and rename or sync the account signed in since, whose session its requests carry. What is stored is read when the
+  // event comes, so a late one does not undo a newer change.
   useEffect(() => {
     const changed = (e: StorageEvent): void => {
+      if (e.key === null || e.key === ACCOUNT_KEY) {
+        storedMe.current = loadAccount();
+        dispatch({ type: 'accountStored', me: storedMe.current });
+      }
       if (e.key !== null && e.key !== PREFS_KEY && e.key !== PROGRESS_KEY) return;
       stored.current = { prefs: loadPrefs(), progress: loadProgress() };
       dispatch({ type: 'storageChanged', ...stored.current });

@@ -75,15 +75,31 @@ function useTheme(theme: 'system' | 'light' | 'dark'): void {
   }, [theme]);
 }
 
+/** Screens that keep an exercise (or a calibration) being played in their own state: a remount starts it over. */
+const RUN_ROUTES: ReadonlySet<string> = new Set(['/play', '/notes/play', '/scales/play', '/calibrate']);
+
 function Screens(): JSX.Element {
   const { state } = useStore();
+  const route = useRoute();
   useTheme(state.prefs.theme);
   // Progress on the account, while someone is signed in (BACKEND-PLAN.md §6).
   useProgressSync();
   // t() reads module state: switch the catalog before the screens render, and remount them on a change so text kept
-  // in state or memos is redone in the new language.
-  const locale = resolveLocale(state.prefs.language);
+  // in state or memos is redone in the new language. A language from elsewhere (another tab, the account) that comes
+  // while an exercise is played waits until its screen is left, as the remount would start the exercise over.
+  const wanted = resolveLocale(state.prefs.language);
+  const held = useRef(wanted);
+  if (!RUN_ROUTES.has(route)) held.current = wanted;
+  const locale = held.current;
   setLocale(locale);
+  // The remount takes the focused element with it: the new screen's heading takes the focus, as after a change of
+  // screen, unless the screen took it itself (the Language row, when the language was picked there).
+  const shownLocale = useRef(locale);
+  useEffect(() => {
+    if (shownLocale.current === locale) return;
+    shownLocale.current = locale;
+    if (focusLost()) focusHeading();
+  }, [locale]);
   // The feedback tool sits over every screen, in feedback mode only (docs/FEEDBACK-LOOP.md).
   return (
     <>

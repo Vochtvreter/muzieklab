@@ -5,16 +5,20 @@
  * --field-line (tokens.css), not the foundations' --line: --line is 1.2–1.4:1, under WCAG 1.4.11's 3:1. Text is 16 px so
  * iOS does not zoom in on focus; the gold focus ring is base.css's `:focus-visible` rule.
  *
- * Forms are real <form onSubmit> elements, so Enter submits. The submit button (SubmitButton) shows a busy label and is
- * disabled while the request runs. A field error goes in the field's `error` (only what is wrong with what was typed
+ * Forms are real <form onSubmit> elements, so Enter submits. The submit button (SubmitButton) shows a busy label and
+ * does nothing while the request runs. A field error goes in the field's `error` (only what is wrong with what was typed
  * there); anything else, a network or server failure too, in a FormError. Both are announced (role="alert"), and a
  * field's error is also its description (aria-describedby, with aria-invalid), read again when the field gets focus.
+ *
+ * A button here that is busy, or has nothing to do, is aria-disabled, not disabled: a disabled button that has the focus
+ * drops it to the page (Chromium), where a screen reader loses its place and Escape reaches no confirm.
  */
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from 'react';
 import type { AccountStatus } from '../../../shared/api';
 import { t } from '../../i18n';
 import { useMounted } from '../hooks';
 import { announce } from '../lib/announce';
+import { focusHeading, focusLost } from '../lib/screenFocus';
 import { SwitchTrack } from './Controls';
 import { Icon, type IconName } from './Icon';
 
@@ -182,13 +186,25 @@ export function FormError({ error, id }: { error: string | null | undefined; id?
 
 /**
  * A request that found nothing to show (no answer, a server error): the message and Try again. Try again is the screen's
- * filled button, unless `quiet` (another filled button is on the screen).
+ * filled button, unless `quiet` (another filled button is on the screen). What Try again brings (a loading line, then
+ * the screen) takes this one's place, and its button the focus with it: the screen's heading takes the focus then, as on
+ * a new screen, unless what came took it (a field).
  */
 export function ErrorRetry({ error, onRetry, quiet }: { error: string; onRetry(): void; quiet?: boolean }): JSX.Element {
+  const pressed = useRef(false);
+  useEffect(
+    () => () => {
+      if (pressed.current && focusLost()) focusHeading();
+    },
+    [],
+  );
   return (
     <div className="acct-message">
       <FormError error={error} />
-      <button type="button" className={'btn ' + (quiet ? 'btn--outline' : 'btn--accent')} onClick={onRetry}>
+      <button type="button" className={'btn ' + (quiet ? 'btn--outline' : 'btn--accent')} onClick={() => {
+        pressed.current = true;
+        onRetry();
+      }}>
         {t('common.tryAgain')}
       </button>
     </div>
@@ -198,8 +214,8 @@ export function ErrorRetry({ error, onRetry, quiet }: { error: string; onRetry()
 /**
  * A done message (a green check): "Password changed. …". Renders nothing without a text. It is read out once, when it
  * appears, by the app's one live region (ui/lib/announce.ts), not as a role="status" of its own: one inserted already
- * holding its text is not read by every screen reader, and the button that was pressed was busy (focus left it) or is
- * gone. `live={false}` where the screen announces it itself (the accounts list's line after Cancel invite).
+ * holding its text is not read by every screen reader, and the button that was pressed is somewhere else or gone.
+ * `live={false}` where the screen announces it itself (the accounts list's line after Cancel invite).
  */
 export function FormDone({ children, live = true }: { children: string | null | undefined; live?: boolean }): JSX.Element | null {
   useEffect(() => {
@@ -227,11 +243,18 @@ export interface SubmitButtonProps {
   className?: string;
 }
 
-/** The submit button of a form: disabled and labelled busy while the request runs. */
+/**
+ * The submit button of a form: labelled busy while the request runs. Busy or disabled (a Save once saved), it sends
+ * nothing, also for Enter in a field, which presses it.
+ */
 export function SubmitButton({ label, busyLabel, busy, variant = 'accent', disabled, className }: SubmitButtonProps): JSX.Element {
   const look = variant === 'accent' ? 'btn btn--accent' : variant === 'outline' ? 'btn btn--outline' : 'small-btn small-btn--tonal';
+  const off = busy || !!disabled;
   return (
-    <button type="submit" className={look + (className ? ' ' + className : '')} disabled={busy || disabled} aria-busy={busy || undefined}>
+    <button type="submit" className={look + (className ? ' ' + className : '')} aria-disabled={off || undefined} aria-busy={busy || undefined}
+      onClick={(e) => {
+        if (off) e.preventDefault();
+      }}>
       {busy ? busyLabel : label}
     </button>
   );
@@ -406,10 +429,14 @@ export interface RowButtonProps {
   disabled?: boolean;
 }
 
-/** A card row that is a button (Settings' Reset progress row; plain or red). */
+/** A card row that is a button (Settings' Reset progress row; plain or red). Busy or disabled, it does nothing (aria-disabled). */
 export function RowButton({ label, sub, icon, tone = 'plain', onClick, busy, busyLabel, disabled }: RowButtonProps): JSX.Element {
+  const off = !!(disabled || busy);
   return (
-    <button type="button" className={'row-btn' + (tone === 'danger' ? ' is-danger' : '')} onClick={onClick} disabled={disabled || busy} aria-busy={busy || undefined}>
+    <button type="button" className={'row-btn' + (tone === 'danger' ? ' is-danger' : '')} aria-disabled={off || undefined} aria-busy={busy || undefined}
+      onClick={() => {
+        if (!off) onClick();
+      }}>
       {icon && <Icon name={icon} size={20} />}
       <span className="row-btn-text">
         <b>{busy && busyLabel ? busyLabel : label}</b>
@@ -483,6 +510,7 @@ export function ConfirmAction(props: ConfirmActionProps): JSX.Element {
     }
   };
   const cancel = (): void => {
+    if (busy) return;
     setOpen(false);
     onCancel?.();
     // Back to the row button that opened it.
@@ -495,7 +523,7 @@ export function ConfirmAction(props: ConfirmActionProps): JSX.Element {
       {open && (
         <form className="confirm m-in" role="alertdialog" aria-labelledby={id + '-q'} aria-describedby={id + '-d'} onSubmit={onSubmit(() => void confirm(), busy)}
           onKeyDown={(e) => {
-            if (e.key === 'Escape' && !busy) cancel();
+            if (e.key === 'Escape') cancel();
           }}>
           <p className={'reset-text' + (tone === 'plain' ? ' is-plain' : '')}>
             <b id={id + '-q'}>{question}</b>
@@ -503,11 +531,13 @@ export function ConfirmAction(props: ConfirmActionProps): JSX.Element {
           </p>
           {children}
           <FormError error={error} />
+          {/* While it runs, the buttons do nothing, and the pressed one keeps the focus, also after a failure. */}
           <div className="confirm-actions">
-            <button type="button" className="small-btn" autoFocus={!children} onClick={cancel} disabled={busy}>
+            <button type="button" className="small-btn" autoFocus={!children} onClick={cancel} aria-disabled={busy || undefined}>
               {cancelLabel ?? t('common.cancel')}
             </button>
-            <button type="submit" className={'small-btn ' + (tone === 'plain' ? 'small-btn--tonal' : 'small-btn--danger')} disabled={busy} aria-busy={busy || undefined}>
+            <button type="submit" className={'small-btn ' + (tone === 'plain' ? 'small-btn--tonal' : 'small-btn--danger')} aria-disabled={busy || undefined}
+              aria-busy={busy || undefined}>
               {busy ? busyLabel : confirmLabel}
             </button>
           </div>

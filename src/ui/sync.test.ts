@@ -5,6 +5,7 @@ import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, genera
 import { syncedOf } from '../game/merge';
 import { defaultProgress, DEFAULT_PREFS, type Progress } from '../game/storage';
 import { loadSync, SYNC_KEY } from '../game/syncState';
+import { listenToAnnouncements } from './lib/announce';
 import { reducer, type Action, type AppState } from './store';
 import { ProgressSync, RETRY_MS } from './sync';
 
@@ -90,6 +91,7 @@ class Device {
     this.state = appState(progress);
     this.sync = new ProgressSync({
       me: () => this.state.account.me,
+      notice: () => this.state.account.notice,
       local: () => syncedOf(this.state.prefs, this.state.progress),
       dispatch: (a: Action) => {
         this.state = reducer(this.state, a);
@@ -177,6 +179,19 @@ describe('ProgressSync: a first sign-in', () => {
     const phone = new Device();
     await phone.run((d) => d.sync.request('start'));
     expect(phone.state.account.notice).toBeNull();
+  });
+
+  it('after a new password, leaves its line in Settings: it says the other devices were signed out', async () => {
+    const said: string[] = [];
+    const stop = listenToAnnouncements((text) => said.push(text));
+    const phone = new Device();
+    phone.pass('1.1', 3, 40);
+    phone.do({ type: 'signedIn', me: ME, notice: 'passwordReset' });
+    await phone.run((d) => d.sync.request('start'));
+    expect(server.progress().xp).toBe(40);
+    expect(phone.state.account.notice).toBe('passwordReset');
+    expect(said).toEqual([]);
+    stop();
   });
 });
 
@@ -392,12 +407,54 @@ describe('ProgressSync: no answer, a session that ended, signing out', () => {
     expect(loadSync(ME.id)).toBeNull();
   });
 
-  it('saves the last change before signing out', async () => {
+  it('saves the last change before signing out, and says whether the progress is on the account', async () => {
     const phone = new Device();
     await phone.run((d) => d.sync.request('start'));
     phone.pass('1.1', 3, 40);
-    await phone.run((d) => d.sync.flush());
+    let onAccount: boolean | undefined;
+    await phone.run(async (d) => {
+      onAccount = await d.sync.flush();
+    });
     expect(server.progress().xp).toBe(40);
+    expect(onAccount).toBe(true);
+  });
+
+  it('says the progress is not on the account when the last save before signing out failed, found no API or took too long', async () => {
+    const phone = new Device();
+    await phone.run((d) => d.sync.request('start'));
+    let onAccount: boolean | undefined;
+    const flush = (ms?: number) =>
+      phone.run(async (d) => {
+        onAccount = await d.sync.flush(ms);
+      });
+    vi.stubGlobal('fetch', async () => json(500, { error: 'internal', message: 'boom' }));
+    phone.pass('1.1', 3, 40);
+    await flush();
+    expect(onAccount).toBe(false);
+    vi.stubGlobal('fetch', server.fetch);
+    server.offline = true;
+    await flush();
+    expect(onAccount).toBe(false);
+    server.offline = false;
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      await new Promise((done) => setTimeout(done, 50));
+      return server.fetch(url, init);
+    });
+    await flush(10);
+    expect(onAccount).toBe(false);
+    // It is saved in the end.
+    await phone.run((d) => d.sync.request('change'));
+    expect(server.progress().xp).toBe(40);
+  });
+
+  it('says there is nothing to lose when the device has no progress, saved or not', async () => {
+    const phone = new Device();
+    server.offline = true;
+    let onAccount: boolean | undefined;
+    await phone.run(async (d) => {
+      onAccount = await d.sync.flush();
+    });
+    expect(onAccount).toBe(true);
   });
 
   it('marks a refusal of the API as failed', async () => {

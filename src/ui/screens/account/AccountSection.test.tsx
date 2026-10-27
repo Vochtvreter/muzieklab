@@ -50,6 +50,8 @@ let reachable: boolean;
 let me: Me;
 /** The account's progress (GET and PUT /progress). */
 let saved: { rev: number; data: unknown; resetAt: string | null; updatedAt: string | null };
+/** PUT /progress answers with a server error. */
+let savesFail: boolean;
 const said = (): string[] => vi.mocked(announce).mock.calls.map((c) => c[0]);
 
 beforeEach(() => {
@@ -59,6 +61,7 @@ beforeEach(() => {
   reachable = true;
   me = ME;
   saved = { rev: 0, data: null, resetAt: null, updatedAt: null };
+  savesFail = false;
   window.location.hash = '#/settings';
   vi.stubGlobal(
     'fetch',
@@ -66,6 +69,7 @@ beforeEach(() => {
       if (!reachable) return Promise.reject(new TypeError('Failed to fetch'));
       if (path.endsWith('/me')) return Promise.resolve(json(200, me));
       if (path.endsWith('/progress')) {
+        if (init?.method === 'PUT' && savesFail) return Promise.resolve(json(500, { error: 'internal', message: 'boom' }));
         if (init?.method === 'PUT') {
           const body = JSON.parse(String(init.body)) as { rev: number; prefs: unknown; progress: unknown };
           saved = { rev: body.rev + 1, data: { prefs: body.prefs, progress: body.progress }, resetAt: null, updatedAt: '2026-10-25T10:00:00.000Z' };
@@ -201,6 +205,59 @@ describe('Settings → Account', () => {
     expect(saved.data).toMatchObject({ progress: { xp: 120 } });
     await waitFor(() => expect(localStorage.getItem(PROGRESS_KEY)).toBeNull());
     expect(localStorage.getItem(SYNC_KEY)).toBeNull();
+  });
+
+  it('Sign out with Remove is refused while the progress is not on the account (a save failed); Keep still signs out', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    savesFail = true;
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ xp: 120 }));
+    render(<App />);
+    await screen.findByText("Your progress couldn't be saved.");
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    const confirm = screen.getByRole('alertdialog', { name: 'Sign out on this device?' });
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Sign out' }));
+    await within(confirm).findByText("Your progress isn't on your account yet, so it can't be removed from this device. Choose Keep, or try again in a moment.");
+    expect(within(confirm).getByRole('button', { name: 'Sign out' })).toBeTruthy();
+    expect(JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? 'null')).toMatchObject({ xp: 120 });
+    expect(vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/sign-out'))).toHaveLength(0);
+    // Keep loses nothing: the device keeps it, and this account's next sign-in here adds it.
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Keep' }));
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Sign out' }));
+    await screen.findByText('Signed out.');
+    expect(JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? 'null')).toMatchObject({ xp: 120 });
+  });
+
+  it('signed out, the focus goes to Sign in, which took the place of the confirm that had it', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    const signOut = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Sign out' });
+    signOut.focus();
+    fireEvent.click(signOut);
+    await screen.findByText('Signed out.');
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('link', { name: /^Sign in/ })));
+  });
+
+  it('the sync line\'s Try again: the outcome is read out, and focus goes to the account once the button is gone', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    savesFail = true;
+    render(<App />);
+    await screen.findByText("Your progress couldn't be saved.");
+    const retry = within(screen.getByRole('region', { name: 'Account' })).getByRole('button', { name: 'Try again' });
+    // Failed again: the button keeps its focus, and the line is read out, as it looks the same as before.
+    retry.focus();
+    fireEvent.click(retry);
+    expect(retry.getAttribute('aria-disabled')).toBe('true');
+    await waitFor(() => expect(said()).toEqual(["Your progress couldn't be saved."]));
+    expect(retry.getAttribute('aria-disabled')).toBeNull();
+    expect(document.activeElement).toBe(retry);
+    // Saved: the button goes, and the focus goes to the account row, not to the page.
+    savesFail = false;
+    fireEvent.click(retry);
+    await screen.findByText('Progress saved to your account');
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('link', { name: /^Ann de Vries/ })));
+    expect(said()).toEqual(["Your progress couldn't be saved.", 'Progress saved to your account']);
+    expect(saved.rev).toBe(1);
   });
 
   it('opens Sign out with the focus on its choice, so Escape closes it, with the focus back on Sign out', async () => {

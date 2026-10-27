@@ -313,6 +313,7 @@ function FeedbackForm({ target, draft, onDraft, onClose, onLeave, onRemark, onAn
   useEffect(() => setCopied(false), [kind, title, description]);
 
   const send = async (): Promise<void> => {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -419,7 +420,8 @@ function FeedbackForm({ target, draft, onDraft, onClose, onLeave, onRemark, onAn
             {t('feedback.send')}
           </button>
         ) : (
-          <button type="button" className="btn btn--accent" disabled={busy} onClick={() => void send()}>
+          // aria-disabled while it sends, not disabled: that would drop the focus out of the sheet, also after a failure.
+          <button type="button" className="btn btn--accent" aria-disabled={busy || undefined} aria-busy={busy || undefined} onClick={() => void send()}>
             {t(busy ? 'feedback.sending' : 'feedback.send')}
           </button>
         )}

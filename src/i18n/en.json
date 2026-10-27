@@ -745,6 +745,7 @@
     "signOutChoice": "Progress on this device",
     "signOutKeep": "Keep",
     "signOutClear": "Remove",
+    "signOutNotSaved": "Your progress isn't on your account yet, so it can't be removed from this device. Choose Keep, or try again in a moment.",
     "resetDetailAccount": "Streak, stars and XP, on every device with your account. No undo."
   },
   "calibrate": {
@@ -880,6 +881,7 @@
     "currentPassword": "Current password",
     "saveEmail": "Save email",
     "emailSaved": "Email changed. Sign in with it from now on.",
+    "emailSame": "That's already your email.",
     "premium": "Premium",
     "premiumUntil": "Premium until {date}",
     "password": "Password",

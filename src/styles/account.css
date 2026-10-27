@@ -139,7 +139,8 @@
 .row-btn.is-danger > svg {
   color: var(--miss);
 }
-.row-btn:disabled {
+.row-btn:disabled,
+.row-btn[aria-disabled='true'] {
   opacity: 0.6;
 }
 .row-btn-text {

@@ -745,6 +745,7 @@
     "signOutChoice": "Voortgang op dit apparaat",
     "signOutKeep": "Houden",
     "signOutClear": "Verwijderen",
+    "signOutNotSaved": "Je voortgang staat nog niet op je account, dus je kunt hem nog niet van dit apparaat weghalen. Kies Houden, of probeer het zo opnieuw.",
     "resetDetailAccount": "Reeks, sterren en XP, op elk apparaat met je account. Je kunt dit niet ongedaan maken."
   },
   "calibrate": {
@@ -880,6 +881,7 @@
     "currentPassword": "Huidig wachtwoord",
     "saveEmail": "E-mailadres bewaren",
     "emailSaved": "E-mailadres gewijzigd. Log er voortaan mee in.",
+    "emailSame": "Dat is al je e-mailadres.",
     "premium": "Premium",
     "premiumUntil": "Premium tot {date}",
     "password": "Wachtwoord",

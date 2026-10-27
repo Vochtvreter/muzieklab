@@ -25,6 +25,7 @@ import { dayOfUntil, holdsMore, setListNotice, sortRoles, today, type LinkKind }
 import { announce } from '../../lib/announce';
 import { errorMessage, failureOf, fieldError, formError, nameCharactersError, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
+import { useRefocus } from '../account/AccountSection';
 import { GateMessage, LinkResult, NoAccess, RoleSwitches, useAdminGate, useRoleList } from './AdminParts';
 
 const NAME_MAX = 80;
@@ -343,7 +344,7 @@ function PremiumCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
     setBusy(false);
   };
   const saveDay = async (): Promise<void> => {
-    if (busy) return;
+    if (busy || day === savedDay) return;
     // A day already over is refused here, before anything is sent; the field says so and gets focus.
     const tooEarly = !!day && day < today();
     setPast(tooEarly);
@@ -403,6 +404,12 @@ function AccessCard({ detail, self, outranked, account, onChange, fail, reload }
   useEffect(() => {
     if (changedMeanwhile) changedRef.current?.focus();
   }, [changedMeanwhile]);
+  // Blocked or unblocked: the other one of Block and Unblock takes the place of the button that had the focus, and the
+  // focus with it.
+  const swapped = useRef('');
+  const refocusSwapped = useRefocus(() =>
+    [...document.querySelectorAll<HTMLElement>('[aria-labelledby="h-access"] .row-btn')].find((b) => b.querySelector('b')?.textContent === swapped.current),
+  );
   const mounted = useMounted();
   const { can } = account;
   const { status, name } = detail;
@@ -423,7 +430,11 @@ function AccessCard({ detail, self, outranked, account, onChange, fail, reload }
       onChange(await api.patch<AccountDetail>(path, { status: next }));
       const message = t(next === 'blocked' ? 'admin.blockedDone' : 'admin.unblockedDone');
       announce(message);
-      if (mounted.current) setDone(message);
+      if (mounted.current) {
+        setDone(message);
+        swapped.current = t(next === 'blocked' ? 'admin.unblock' : 'admin.block');
+        refocusSwapped();
+      }
       return true;
     } catch (e) {
       if (mounted.current) onError(fail(e).message);

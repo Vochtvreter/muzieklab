@@ -16,14 +16,17 @@ export function focusLost(): boolean {
 }
 
 /**
- * Focus to the screen's heading (h1): a screen reader reads it, and Tab goes on from the top of the screen. It takes
- * focus from a script only (tabIndex -1, which shows no focus ring: base.css).
+ * The screen's heading (h1), made able to take focus from a script (tabIndex -1, which shows no focus ring: base.css).
  */
-export function focusHeading(): void {
+export function screenHeading(): HTMLElement | null {
   const h1 = document.querySelector<HTMLElement>('h1');
-  if (!h1) return;
-  if (!h1.hasAttribute('tabindex')) h1.tabIndex = -1;
-  h1.focus({ preventScroll: true });
+  if (h1 && !h1.hasAttribute('tabindex')) h1.tabIndex = -1;
+  return h1;
+}
+
+/** Focus to the screen's heading: a screen reader reads it, and Tab goes on from the top of the screen. */
+export function focusHeading(): void {
+  screenHeading()?.focus({ preventScroll: true });
 }
 
 /**
