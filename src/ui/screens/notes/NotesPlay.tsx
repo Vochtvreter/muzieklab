@@ -30,7 +30,7 @@ import {
 } from '../../../core/api';
 import { pathLessonOf } from '../../../game/tracks';
 import { PitchStaff, type PitchMark, type PitchNote } from '../../../render/PitchStaff';
-import { stepAtY } from '../../../render/pitchDraw';
+import { staffRoom, stepAtY } from '../../../render/pitchDraw';
 import { formatDecimal, t } from '../../../i18n';
 import { engine, unlockAudio } from '../../audio';
 import { ExerciseFrame } from '../../components/AppShell';
@@ -337,10 +337,13 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     [notes, page.from, page.to, answers, i, ghost, done],
   );
   const room = run.settings.range === 'staff' ? 1.5 : run.settings.range === 'ledger1' ? 2.5 : 3.5;
-  // The staff is 4 + 2 × room staff spaces high. On a phone browser's short screen a range with ledger lines is drawn
-  // smaller, at most one space higher than the staff alone (8 spaces, not 9 or 11): the answer controls under it have no
-  // more height to give, and Hint and Next note would go off the screen (DESIGN.md §9).
-  const ledgerFit = short ? Math.min(1, 8 / (4 + 2 * room)) : 1;
+  // The staff is 4 staff spaces high with its room above and below: `room`, or more where the clef, a sign or the
+  // cursor on one of its notes reaches further, as PitchStaff draws it.
+  const space = useMemo(() => staffRoom({ clef: note.clef, key: note.key, notes: fitNotes, cursor: 0, room }), [note.clef, note.key, fitNotes, room]);
+  // On a phone browser's short screen a taller staff (a range with ledger lines, signs far over or under the staff) is
+  // drawn smaller, at most one space higher than the staff alone (8 spaces, not 9 or 11): the answer controls under it
+  // have no more height to give, and Hint and Next note would go off the screen (DESIGN.md §9).
+  const ledgerFit = short ? Math.min(1, 8 / (4 + space.above + space.below)) : 1;
 
   const right = answers.filter((a) => a.outcome === 'right').length;
   const answeredCount = answers.length;
@@ -422,7 +425,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     const r = svg.getBoundingClientRect();
     const h = svg.viewBox.baseVal.height;
     if (r.height <= 0 || h <= 0) return;
-    place(stepAtY(note.clef, room, ((e.clientY - r.top) / r.height) * h));
+    place(stepAtY(note.clef, space.above, ((e.clientY - r.top) / r.height) * h));
   };
   const staffSvg = (
     <PitchStaff clef={note.clef} keyId={note.key} notes={shown} fitNotes={fitNotes} slots={size} marks={marks} cursor={i - page.from}

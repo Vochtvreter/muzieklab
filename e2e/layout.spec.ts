@@ -1081,6 +1081,20 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
     });
 
+    test('read notes: a flat over the staff is drawn whole, and the screen fits', async ({ page }) => {
+      known(name, 'notes-sign-above');
+      // B♭ major with extra signs, seed 59: the first note is G♭5, whose flat reaches more than two spaces over the staff.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['Bb'], extras: 'both' };
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 59, focus: [] });
+      await page.goto('./#/notes/play');
+      await expect(page.getByRole('img', { name: /staff in B♭ major/ })).toBeVisible();
+      await expectStavesFit(page);
+      for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      if (portraitLayout) await expectFits(page);
+      await expectNoSideScroll(page);
+    });
+
     test('read notes: ledger lines with a key signature and a timer fit, on the piano and with the name buttons', async ({ page }) => {
       known(name, 'notes-ledger');
       // The ranges with ledger lines draw a taller staff, a key with a signature makes the idle line two lines long,
@@ -1290,15 +1304,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('scales: C♯ major with its signs and A♯ melodic minor with the key signature fit on the staff, the cursor too', async ({ page }) => {
+    test('scales: C♯ major and B♭ major with their signs and A♯ melodic minor with the key signature fit on the staff, the cursor too', async ({ page }) => {
       known(name, 'scales-staff-fit');
       // The computer keys of the Scales piano: A S D … on the white keys, W E R … on the black keys between them.
       const keysFor = (s: Scale): string[] => {
         const w = pianoWindow(s);
         return scaleNotes(s).map((n) => (w.whites.includes(n.midi) ? 'ASDFGHJKL'[w.whites.indexOf(n.midi)] : 'WERTYUIO'[w.blacks.find((b) => b.midi === n.midi)!.after - 1]));
       };
+      // B♭ major's last flat (B♭5) reaches highest over the staff, C♯ major's first sharp (C♯4) lowest under it.
       const scales = [
         { scale: { key: 'C#', type: 'major' } as Scale, write: 'signs', done: /^C♯ major: done/ },
+        { scale: { key: 'Bb', type: 'major' } as Scale, write: 'signs', done: /^B♭ major: done/ },
         { scale: { key: 'C#', type: 'melodic' } as Scale, write: 'keySig', done: /^A♯ melodic minor: done/ },
       ];
       for (const { scale, write, done } of scales) {
@@ -1325,6 +1341,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.splay-staff-svg .vf-stavenote')).toHaveCount(8);
         await expectStavesFit(page);
         expect(await size(), 'the staff when done').toEqual(first);
+        // The staff taller by the room for its signs, the screen still fits.
+        if (portraitLayout) await expectFits(page);
       }
     });
 
@@ -3181,9 +3199,15 @@ test.describe('feedback: marking a staff drawing', () => {
     await expect(staff).toBeVisible();
     // A path longer than the report's markup keeps of a value.
     expect(await staff.evaluate((svg) => Math.max(...[...svg.querySelectorAll('path')].map((p) => p.getAttribute('d')?.length ?? 0)))).toBeGreaterThan(120);
+    // A spot on the drawing clear of its lines and notes, so the click marks the drawing, not one of its paths.
+    const spot = await staff.evaluate((svg) => {
+      const r = svg.getBoundingClientRect();
+      const x = r.x + r.width / 2;
+      for (let y = r.y + r.height / 2; y > r.y; y--) if (document.elementFromPoint(x, y) === svg) return { x, y };
+      return null;
+    });
     await page.getByRole('button', { name: FAB }).click();
-    const r = (await staff.boundingBox())!;
-    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+    await page.mouse.click(spot!.x, spot!.y);
     await expect(page.getByRole('dialog', { name: 'Feedback' }).locator('.fb-marked')).toContainText('drawing');
     expect(errors).toEqual([]);
   });

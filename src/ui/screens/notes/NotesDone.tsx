@@ -20,7 +20,8 @@ import {
 } from '../../../core/api';
 import { findPathLesson, pathLessonOf, pathOutcome } from '../../../game/tracks';
 import { levelInfo } from '../../../game/xp';
-import { PitchStaff } from '../../../render/PitchStaff';
+import { PitchStaff, type PitchNote } from '../../../render/PitchStaff';
+import { staffRoom } from '../../../render/pitchDraw';
 import { useElementWidth } from '../../../render/theme';
 import { formatDecimal, t, tx } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
@@ -296,15 +297,23 @@ function TimeChart({ answers, avgMs, missed }: { answers: NoteAnswer[]; avgMs: n
 
 /** The small staff in a chip: VexFlow's size × this (5 px per staff space). */
 const CHIP_SCALE = 0.5;
+/** A chip's note. No key signature in a chip this small: the note carries its sign, as its name does. */
+const chipNote = (c: NoteChip): PitchNote => ({ step: c.step, sign: c.alter === 0 ? null : c.alter });
 
 function Needs({ r, system }: { r: RoundResult; system: NameSystem }): JSX.Element {
   const groups = [
     { key: 'missed', label: t('notes.done.missed'), chips: r.missed.slice(0, 6) },
     { key: 'slow', label: t('notes.done.slow'), chips: r.slow.slice(0, 6) },
   ].filter((g) => g.chips.length > 0);
-  // One staff height for every chip: room (in staff spaces) for the note furthest off the staff.
+  // One staff height for every chip: room (in staff spaces) for the note furthest off the staff, and for a clef or sign
+  // that reaches further.
   const beyond = (c: NoteChip): number => Math.max(0, -staffOffset(c.clef, c.step), staffOffset(c.clef, c.step) - 8) / 2;
-  const room = Math.max(1.5, ...groups.flatMap((g) => g.chips.map((c) => beyond(c) + 1)));
+  const room = Math.max(
+    1.5,
+    ...groups.flatMap((g) =>
+      g.chips.flatMap((c) => Object.values(staffRoom({ clef: c.clef, key: 'C', notes: [chipNote(c)], room: beyond(c) + 1 }))),
+    ),
+  );
   return (
     <div className="card ncard">
       <b>{t('notes.done.needs')}</b>
@@ -331,8 +340,7 @@ function Chip({ c, kind, system, room }: { c: NoteChip; kind: string; system: Na
   const spoken = system === 'solfege' ? `${solfegeName(L, 0)}, ${spokenName(L, c.alter)}` : spokenName(L, c.alter);
   const note = t('notes.done.chipNote', { name: spoken, pos: positionText(c.clef, c.step), clef: t('notes.clefLower.' + c.clef) });
   const aria = kind === 'missed' ? t('notes.done.missedChip', { note, count: c.count }) : t('notes.done.slowChip', { note, value: secs(c.ms) });
-  // No key signature in a chip this small: the note carries its sign, as its name does.
-  const shown = useMemo(() => [{ step: c.step, sign: c.alter === 0 ? null : c.alter }], [c.step, c.alter]);
+  const shown = useMemo(() => [chipNote(c)], [c.step, c.alter]);
   return (
     <span role="listitem" aria-label={aria} className={'nchip nchip--' + kind}>
       <PitchStaff clef={c.clef} keyId="C" notes={shown} slots={1} barlines={false} scale={CHIP_SCALE} room={room} className="nchip-staff" />

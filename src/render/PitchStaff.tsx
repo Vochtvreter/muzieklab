@@ -18,7 +18,7 @@ export interface PitchStaffProps {
   scale?: number;
   /** The notes to keep room for (default: `notes`), so the staff keeps one size while its notes come in or stay hidden. */
   fitNotes?: (PitchNote | null)[];
-  /** Staff spaces of room above and below for ledger lines (default 3). */
+  /** Staff spaces of room above and below for ledger lines (default 3), or more where a clef, sign or cursor reaches. */
   room?: number;
   /** false: all notes in one bar without bar lines (a scale), and the cursor may sit on an empty slot. */
   barlines?: boolean;

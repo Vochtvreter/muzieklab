@@ -1,5 +1,5 @@
 import { Accidental, Barline, Formatter, GhostNote, Renderer, Stave, StaveNote, Voice } from 'vexflow/bravura';
-import { BOTTOM_LINE, letterOf, octaveOf, type Clef, type KeyId, type Step } from '../core/pitch';
+import { BOTTOM_LINE, KEY_IDS, keySigns, LETTERS, letterOf, octaveOf, type Clef, type KeyId, type Step } from '../core/pitch';
 import type { ScaleAlter } from '../core/scale';
 import { paintSvg, type StaffPalette } from './staffDraw';
 
@@ -38,7 +38,10 @@ export interface DrawPitchOptions {
    * on the next one's place.
    */
   fitNotes?: (PitchNote | null)[];
-  /** Staff spaces kept free above and below (room for ledger lines; stable height across notes). */
+  /**
+   * Staff spaces kept free above and below (room for ledger lines; stable height across notes), or more where the
+   * drawing reaches further (`staffRoom`).
+   */
   room: number;
   /** Clef and key only, scaled to fit `width` (the Key screen's small staves). */
   fit?: boolean;
@@ -68,16 +71,67 @@ const NOTE_CLEAR = 1;
 /** VexFlow's room left of a sign, where nothing draws (its accidental.leftPadding; VexFlow units). */
 const SIGN_PAD = 2;
 const SIGN: Record<ScaleAlter, string> = { [-2]: 'bb', [-1]: 'b', 0: 'n', 1: '#', 2: '##' };
+/**
+ * How far each sign reaches above and below the line or space of its note, in staff spaces (Bravura's glyphs as VexFlow
+ * draws them): a flat's stem almost two spaces up.
+ */
+const SIGN_REACH: Record<ScaleAlter, [number, number]> = { [-2]: [1.77, 0.71], [-1]: [1.78, 0.71], 0: [1.38, 1.36], 1: [1.42, 1.41], 2: [0.52, 0.51] };
+/** A whole note's head, above and below its line or space (staff spaces). */
+const HEAD_REACH = 0.51;
+/**
+ * How far the clef reaches above the top line and below the bottom line, in staff spaces: the treble clef's curl and
+ * its tail.
+ */
+const CLEF_REACH: Record<Clef, [number, number]> = { treble: [1.44, 1.67], bass: [0.06, 0] };
 
 const vfKey = (step: Step): string => `${letterOf(step).toLowerCase()}/${octaveOf(step)}`;
 
 /**
  * The staff position at height `y` of a drawing (in its viewBox units, from the top), for writing a note by pointing at
- * the staff: the nearest line or space, counted from the bottom line `room` spaces + 4 below the top.
+ * the staff: the nearest line or space, counted from the bottom line `above` spaces + 4 below the top (`staffRoom`).
  */
-export function stepAtY(clef: Clef, room: number, y: number): Step {
-  const bottom = (room + 4) * SPACE;
+export function stepAtY(clef: Clef, above: number, y: number): Step {
+  const bottom = (above + 4) * SPACE;
   return BOTTOM_LINE[clef] + Math.round((bottom - y) / (SPACE / 2));
+}
+
+/**
+ * The signs of a key signature where VexFlow draws them: in the treble clef each sharp from A4 up to G5 and each flat
+ * from F4 up to E5, in the bass clef two octaves lower.
+ */
+function signatureSigns(clef: Clef, key: KeyId): { step: Step; sign: ScaleAlter }[] {
+  return keySigns(key).map(({ letter, alter }) => {
+    // A4 or F4 (C4 = 28), two octaves lower in the bass clef.
+    const from = (alter > 0 ? 33 : 31) - (clef === 'bass' ? 14 : 0);
+    return { step: from + ((LETTERS.indexOf(letter) - LETTERS.indexOf(letterOf(from)) + 7) % 7), sign: alter };
+  });
+}
+
+/**
+ * Staff spaces kept free above the top line and below the bottom line: `room`, or more where something drawn reaches
+ * further, as the svg cuts off what is drawn past its edges. That is the clef, the key signature (on a fitted staff
+ * every key's, so all keys draw one height), the notes the staff keeps room for with their signs, and the cursor box
+ * around them: with bar lines it can mark any of them, without them only the next note's place.
+ */
+export function staffRoom(
+  o: Pick<DrawPitchOptions, 'clef' | 'key' | 'notes' | 'fitNotes' | 'cursor' | 'room' | 'fit' | 'barlines'>,
+): { above: number; below: number } {
+  const bottom = BOTTOM_LINE[o.clef];
+  let [above, below] = CLEF_REACH[o.clef];
+  const reach = (step: Step, up: number, down: number): void => {
+    above = Math.max(above, (step - bottom - 8) / 2 + up);
+    below = Math.max(below, (bottom - step) / 2 + down);
+  };
+  for (const key of o.fit ? KEY_IDS : [o.key]) for (const s of signatureSigns(o.clef, key)) reach(s.step, ...SIGN_REACH[s.sign]);
+  // The cursor's box reaches CURSOR_PAD past the staff lines, or past the head of the note it marks.
+  const pad = o.cursor != null ? CURSOR_PAD / SPACE : 0;
+  const head = HEAD_REACH + (o.barlines !== false ? pad : 0);
+  for (const n of o.fitNotes ?? o.notes) {
+    if (!n) continue;
+    reach(n.step, head, head);
+    if (n.sign !== null) reach(n.step, ...SIGN_REACH[n.sign]);
+  }
+  return { above: Math.max(o.room, above, pad), below: Math.max(o.room, below, pad) };
 }
 
 /** Width of the clef and key signature at the start of the staff (VexFlow units). */
@@ -129,7 +183,8 @@ function emptySlot(): GhostNote {
 
 /** The stave of a staff without bar lines, or with the clef and key only: `w` units wide with the drawing's last unit. */
 function openStave(o: DrawPitchOptions, w: number): Stave {
-  const stave = new Stave(0, 0, w - 1, { space_above_staff_ln: o.room, space_below_staff_ln: o.room });
+  const { above, below } = staffRoom(o);
+  const stave = new Stave(0, 0, w - 1, { space_above_staff_ln: above, space_below_staff_ln: below });
   stave.addClef(o.clef);
   if (o.key !== 'C') stave.addKeySignature(o.key);
   stave.setEndBarType(Barline.type.NONE);
@@ -248,7 +303,8 @@ export function drawPitchStaff(host: HTMLElement, o: DrawPitchOptions): { width:
   if (o.width <= 0) return { width: o.width, height: 0 };
   const head = headWidth(o.clef, o.key);
   const labels = o.notes.some((n) => n?.label);
-  const staffH = (o.room * 2 + 4) * SPACE + (labels ? LABEL_GAP : 0);
+  const { above, below } = staffRoom(o);
+  const staffH = (above + below + 4) * SPACE + (labels ? LABEL_GAP : 0);
   // Fitted staves share one scale: as wide as the widest signature (7 signs), so every key lines up at the same size.
   // The others keep their scale, or are drawn smaller when their notes need more room than it leaves them.
   const logicalW = o.fit ? Math.max(head, headWidth(o.clef, 'C#')) + 8 : staffWidth(o, head);
@@ -260,8 +316,8 @@ export function drawPitchStaff(host: HTMLElement, o: DrawPitchOptions): { width:
   renderer.resize(width, height);
   const ctx = renderer.getContext();
 
-  // The top line sits `room` spaces down; the whole drawing is in VexFlow units, scaled by the viewBox at the end.
-  const opts = { space_above_staff_ln: o.room, space_below_staff_ln: o.room };
+  // The top line sits `above` spaces down; the whole drawing is in VexFlow units, scaled by the viewBox at the end.
+  const opts = { space_above_staff_ln: above, space_below_staff_ln: below };
   const y = 0;
   const colourById = new Map<string, string>();
   /** The notes drawn, each with its bar on a staff with bar lines: where its cursor may reach, left to right. */
@@ -330,7 +386,7 @@ export function drawPitchStaff(host: HTMLElement, o: DrawPitchOptions): { width:
   if (!svg) return { width, height };
   paintSvg(svg, o.palette, colourById);
   const ns = 'http://www.w3.org/2000/svg';
-  const topLine = o.room * SPACE;
+  const topLine = above * SPACE;
   const bottomLine = topLine + 4 * SPACE;
   /** The cursor's soft slate box, kept inside its bar on a staff with bar lines. */
   const cursorRect = (x: number, top: number, w: number, h: number, bar?: [number, number]): void => {

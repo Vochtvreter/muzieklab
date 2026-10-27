@@ -155,8 +155,9 @@ export async function expectNoSideScroll(page: Page): Promise<void> {
  * Every pitch staff on the page has room for its notes: each whole note inside its own bar, after the clef and key
  * signature and clear of the note before it (DESIGN.md §3.5), and the notes, the cursor and the labels inside the
  * drawing. With bar lines, the cursor stays in the bar of the note it marks: clear of the bar lines on either side, of
- * the clef and key signature and of the notes next to it. The svg cuts off what runs past its edge, so the page never
- * scrolls sideways and expectNoSideScroll misses it.
+ * the clef and key signature and of the notes next to it. Nothing is drawn above or below the drawing either: not the
+ * treble clef's tail, a sign over or under the staff, or the cursor. The svg cuts off what runs past its edge, so the
+ * page never scrolls sideways and expectNoSideScroll misses it.
  */
 export async function expectStavesFit(page: Page): Promise<void> {
   const wrong = await page.evaluate(() =>
@@ -193,6 +194,14 @@ export async function expectStavesFit(page: Page): Promise<void> {
       for (const el of svg.querySelectorAll('text')) {
         const [l, r] = span(el);
         if (l < -0.5 || r > width + 0.5) out.push(`staff ${k + 1}: the label ${el.textContent} is cut off`);
+      }
+      const height = svg.viewBox.baseVal.height;
+      for (const el of svg.querySelectorAll('path, rect')) {
+        const b = (el as SVGGraphicsElement).getBBox();
+        const parts = [['.vf-clef', 'the clef'], ['.vf-keysignature', 'the key signature'], ['.vf-stavenote', 'a note or its sign']];
+        const what = parts.find(([sel]) => el.closest(sel))?.[1] ?? (el.parentNode === svg ? 'the cursor' : 'the staff');
+        if (b.y < -0.5) out.push(`staff ${k + 1}: ${what} is drawn ${(-b.y).toFixed(1)} units above the drawing`);
+        if (b.y + b.height > height + 0.5) out.push(`staff ${k + 1}: ${what} is drawn ${(b.y + b.height - height).toFixed(1)} units below the drawing`);
       }
       return out;
     }),

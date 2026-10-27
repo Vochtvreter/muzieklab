@@ -1443,9 +1443,12 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   three sharps or flats keep the full size), and a staff without bar lines keeps its size as long as its notes, the
   cursor and the labels fit on it with the notes apart (on a phone, C, G and D major with their signs; Learn's scales
   at 375 px and wider). Every whole note keeps its own bar, and the notes, the cursor and the labels stay inside the
-  staff; with bar lines, the cursor stays in the bar of the note it marks. It keeps one size while its notes come in
-  or stay hidden: on every page of a Read notes key and clef, and through a scale's page (`fitNotes` in
-  `render/pitchDraw.ts`).
+  staff; with bar lines, the cursor stays in the bar of the note it marks. So do the clef, the key signature and the
+  signs: above and below its lines the staff keeps the room its screen gives it for ledger lines, or more where
+  something reaches further, as the drawing cuts off what is past its edge (the treble clef's tail 1.67 spaces under
+  the bottom line, a flat on B5 3.3 spaces over the top line; `staffRoom`). A key staff keeps the room every key's
+  signature needs, so all keys have one height. It keeps one size while its notes come in or stay hidden: on every
+  page of a Read notes key and clef, and through a scale's page (`fitNotes` in `render/pitchDraw.ts`).
 - A screen's title is never narrower than its longest word, so it does not draw over what is beside it. A text link
   beside it (the Scales hub's *Learn scales* on a phone, Key's *What is a key?*) takes two lines, right aligned, when
   the two do not fit on one, and under 375 px wide such a title is 18 px (20 px on the board): in Dutch both fit on one
@@ -1468,12 +1471,13 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only *Tap* in the ring,
     without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
     The analog beat counter is 52 px tall, on a phone up to 800 px tall too (84 px on the board, which taller phones
-    keep). Read notes draws a range with ledger lines smaller, at most one staff space taller than *On the staff*
-    (8 spaces high: 1.05 for +2 ledger lines, 1.29 for +1), and from 360 px wide its key labels sit beside *Any octave
-    counts*. The scale's name is 18 px (22 px on the board), so a long one (*A♯ harmonisch mineur*) stays on one line
-    at 375 px, and Up & down's two degree rows are 40 px high, 4 px apart.
+    keep). Read notes draws a staff more than 8 staff spaces high smaller, at 8 spaces (one more than *On the staff*):
+    a range with ledger lines (about 1.05 for +2 ledger lines, 1.29 for +1), and signs or the cursor that reach far
+    over or under the staff. From 360 px wide its key labels sit beside *Any octave counts*. The scale's name is 18 px
+    (22 px on the board), so a long one (*A♯ harmonisch mineur*) stays on one line at 375 px, and Up & down's two
+    degree rows are 40 px high, 4 px apart.
   - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
-    0.8, the Read notes staff at 1.15 (not 1.45; 0.84 and 1.02 with ledger lines) and the Scales staff at 1.1 (not
+    0.8, the Read notes staff at 1.15 (not 1.45; about 0.84 and 1.02 with ledger lines) and the Scales staff at 1.1 (not
     1.25), or smaller still to fit their notes. The floors are lower (pad 72 px, Read notes piano 64 px with its black
     keys kept at 44 px and the white keys' labels below them, Scales piano 110 px), and so are the name buttons
     (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign buttons, the analog
