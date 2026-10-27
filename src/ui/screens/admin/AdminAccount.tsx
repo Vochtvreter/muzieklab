@@ -7,8 +7,9 @@
  * - Premium: a switch, and an optional last day.
  * - Invite or Access, by status: a new invite link and Cancel invite (invited); a new password link and Block (active);
  *   Unblock (blocked); Delete account. A link is shown once, with Copy and a ready-made message.
- * Each part shows only with its permission (the server checks anyway). last_admin, own_account and wrong_status come
- * back as messages; wrong_status also reloads the account, which another admin changed meanwhile.
+ * Each part shows only with its permission (the server checks anyway). An account that may do more than the admin
+ * gets no link from them, and its name and email are read only (BACKEND-PLAN.md §4.2). last_admin, own_account and
+ * wrong_status come back as messages; wrong_status also reloads the account, which another admin changed meanwhile.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { INVITE_DAYS, RESET_HOURS, type AccountDetail, type AdminUpdateRequest, type LinkCreated, type Role } from '../../../../shared/api';
@@ -20,11 +21,11 @@ import { Icon } from '../../components/Icon';
 import { RowLink, Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
-import { dayOfUntil, setListNotice, sortRoles, today, type LinkKind } from '../../lib/admin';
+import { dayOfUntil, holdsMore, setListNotice, sortRoles, today, type LinkKind } from '../../lib/admin';
 import { announce } from '../../lib/announce';
 import { errorMessage, failureOf, fieldError, formError, nameCharactersError, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
-import { GateMessage, LinkResult, NoAccess, RoleSwitches, useAdminGate } from './AdminParts';
+import { GateMessage, LinkResult, NoAccess, RoleSwitches, useAdminGate, useRoleList } from './AdminParts';
 
 const NAME_MAX = 80;
 const EMAIL_MAX = 254;
@@ -137,6 +138,11 @@ interface CardProps {
   detail: AccountDetail;
   /** The signed-in admin's own account. */
   self: boolean;
+  /**
+   * The account may do something the signed-in admin may not: only someone who holds all of it makes it a link or
+   * changes its name or email.
+   */
+  outranked: boolean;
   account: UseAccount;
   /** The account as a change answered with. */
   onChange(detail: AccountDetail): void;
@@ -144,20 +150,22 @@ interface CardProps {
   reload(): void;
 }
 
-function Cards(props: CardProps): JSX.Element {
+function Cards(props: Omit<CardProps, 'outranked'>): JSX.Element {
+  const { detail, account } = props;
+  const all = { ...props, outranked: holdsMore(detail.roles, useRoleList(), account.me?.permissions ?? []) };
   return (
     <>
-      <Facts detail={props.detail} account={props.account} />
-      <ProfileCard {...props} />
-      <RolesCard {...props} />
-      <PremiumCard {...props} />
-      <AccessCard {...props} />
+      <Facts {...all} />
+      <ProfileCard {...all} />
+      <RolesCard {...all} />
+      <PremiumCard {...all} />
+      <AccessCard {...all} />
     </>
   );
 }
 
 /** Added, last signed in, devices signed in, and for an invite how long its link works. */
-function Facts({ detail, account }: { detail: AccountDetail; account: UseAccount }): JSX.Element {
+function Facts({ detail, account, outranked }: Pick<CardProps, 'detail' | 'account' | 'outranked'>): JSX.Element {
   const rows: [string, string][] = [
     [t('admin.added'), formatLongDate(detail.createdAt)],
     [t('admin.lastSignIn'), detail.lastSignInAt ? formatLongDate(detail.lastSignInAt) : t('admin.never')],
@@ -165,7 +173,7 @@ function Facts({ detail, account }: { detail: AccountDetail; account: UseAccount
   ];
   if (detail.status === 'invited') {
     // No link that works (it expired, or the email was changed): an admin who may invite makes a new one under Invite.
-    const none = t(account.can('accounts.invite') ? 'admin.noLinkMake' : 'admin.noLink');
+    const none = t(account.can('accounts.invite') && !outranked ? 'admin.noLinkMake' : 'admin.noLink');
     rows.push([t('admin.inviteLink'), detail.inviteExpiresAt ? t('admin.until', { date: formatDateTime(detail.inviteExpiresAt) }) : none]);
   }
   return (
@@ -182,9 +190,13 @@ function Facts({ detail, account }: { detail: AccountDetail; account: UseAccount
   );
 }
 
-/** Name and email, saved together (PATCH, accounts.invite); read only without that permission. */
-function ProfileCard({ detail, account, onChange, fail }: CardProps): JSX.Element {
-  const canEdit = account.can('accounts.invite');
+/**
+ * Name and email, saved together (PATCH, accounts.invite); read only without that permission, and for an account that
+ * may do more than the admin, which a note under them says.
+ */
+function ProfileCard({ detail, account, outranked, onChange, fail }: CardProps): JSX.Element {
+  const may = account.can('accounts.invite');
+  const canEdit = may && !outranked;
   const [name, setName] = useState(detail.name);
   const [email, setEmail] = useState(detail.email);
   const [busy, setBusy] = useState(false);
@@ -240,6 +252,7 @@ function ProfileCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
         <TextField label={t('admin.email')} type="email" autoComplete="off" inputMode="email" name="account-email" value={email} onChange={edit(setEmail)}
           maxLength={EMAIL_MAX} readOnly={!canEdit} inputRef={emailRef} error={empty.email ? t('admin.emailEmpty') : fieldError(failure, 'email')} />
         <FormError error={formError(failure)} />
+        {may && outranked && <p className="tfield-hint">{t('admin.outranked')}</p>}
         {canEdit && (
           <div className="form-actions">
             {saved && <FormDone>{t('admin.saved')}</FormDone>}
@@ -376,7 +389,7 @@ function PremiumCard({ detail, account, onChange, fail }: CardProps): JSX.Elemen
 }
 
 /** The actions an account's status allows, and Delete account. Your own account: a way to Account instead. */
-function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps): JSX.Element | null {
+function AccessCard({ detail, self, outranked, account, onChange, fail, reload }: CardProps): JSX.Element | null {
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [blockError, setBlockError] = useState<string | null>(null);
@@ -451,11 +464,11 @@ function AccessCard({ detail, self, account, onChange, fail, reload }: CardProps
   const rows: JSX.Element[] = [];
   // A new email cancels the links made for the old one (BACKEND-PLAN.md §5.3), so a link shown here goes with it: the
   // row starts over (keyed by the email), with only its button.
-  if (status === 'invited' && can('accounts.invite')) {
+  if (status === 'invited' && can('accounts.invite') && !outranked) {
     rows.push(<LinkMaker key={'invite:' + detail.email} kind="invite" detail={detail} fail={fail} onMade={reload} onPress={() => setChangedMeanwhile(null)}
       onChangedMeanwhile={() => setChangedMeanwhile(t('admin.inviteAcceptedNoLink', { name }))} />);
   }
-  if (status === 'active' && can('accounts.invite')) {
+  if (status === 'active' && can('accounts.invite') && !outranked) {
     rows.push(<LinkMaker key={'reset:' + detail.email} kind="reset" detail={detail} fail={fail} onPress={() => setChangedMeanwhile(null)}
       onChangedMeanwhile={() => setChangedMeanwhile(t('admin.notActiveNoLink', { name }))} />);
   }

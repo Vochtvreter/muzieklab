@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { AccountDetail, AdminUpdateRequest, Closure, InviteRequest, Me, SaveProgressRequest } from '../shared/api';
+import { PERMISSIONS, type AccountDetail, type AdminUpdateRequest, type Closure, type InviteRequest, type Me, type RoleInfo, type SaveProgressRequest } from '../shared/api';
 import {
   ACCOUNTS, accountDetail, adminApi, announcer, apiError, CLOSURES, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, recordAnnouncements,
   RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
@@ -888,6 +888,47 @@ test('admin one account: name and email are saved together; a taken email is sai
   await expect(announcer(page)).toHaveText('Saved.');
   await expect(card.getByLabel('Email')).toHaveValue('sam.dejong@example.com');
   expect(api.callsTo('PATCH /admin/accounts/:id').at(-1)!.body).toEqual({ name: 'Sam de Jong', email: 'Sam.deJong@example.com' });
+});
+
+test('admin one account: an account that can do more than yours gets no link from you, and its name and email are read only', async ({ page }) => {
+  // Support may see accounts and invite people, and nothing else.
+  const SUPPORT: Me = { ...ME_ADMIN, id: '6718f0c2a1b2c3d4e5f60007', email: 'sue@example.com', name: 'Sue Smit', roles: ['support'], roleNames: { support: 'Support' },
+    permissions: ['self.manage', 'progress.own', 'class.join', 'accounts.read', 'accounts.invite'] };
+  const role = (id: string, name: string, permissions: RoleInfo['permissions'], builtIn = false): RoleInfo => ({ id, name, description: '', permissions, builtIn, accounts: 1 });
+  const ROLES: RoleInfo[] = [role('admin', 'Admin', [...PERMISSIONS], true), role('editor', 'Editor', ['content.edit', 'content.publish'], true),
+    role('teacher', 'Teacher', ['class.create'], true), role('support', 'Support', ['accounts.read', 'accounts.invite'])];
+  const ANN = ACCOUNTS.find((a) => a.id === ME_ADMIN.id)!;
+  const TOM = { ...ANN, id: '6718f0c2a1b2c3d4e5f60008', name: 'Tom Smit', email: 'tom@example.com', roles: ['support'] };
+  await mockApi(page, { ...adminApi([...ACCOUNTS, TOM], SUPPORT), 'GET /admin/roles': { json: { roles: ROLES } } });
+  await seedAccount(page, SUPPORT);
+  const OUTRANKED = "This account can do things yours can't, so you can't change its name or email, or make a new link for it.";
+  const card = page.getByRole('region', { name: 'Name and email' });
+
+  // Ann is an admin: every permission.
+  await page.goto('./#/admin/account/' + ANN.id);
+  await expect(page.getByRole('heading', { level: 1, name: 'Ann de Vries' })).toBeVisible();
+  await expect(card.getByText(OUTRANKED)).toBeVisible();
+  await expect(card.getByLabel('Name')).toHaveAttribute('readonly', '');
+  await expect(card.getByLabel('Email')).toHaveAttribute('readonly', '');
+  await expect(card.getByRole('button', { name: 'Save' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^New password link/ })).toHaveCount(0);
+
+  // Lies is invited as a teacher, who makes classes, which Sue cannot: no invite link from her.
+  await page.goto('./#/admin/account/' + LIES_INVITED.id);
+  await expect(page.getByRole('heading', { level: 1, name: 'Lies Bakker' })).toBeVisible();
+  await expect(card.getByText(OUTRANKED)).toBeVisible();
+  await expect(page.getByRole('button', { name: /^New invite link/ })).toHaveCount(0);
+
+  // Sam, a member, and Tom, who has Support too: as ever.
+  for (const id of [SAM_ACTIVE.id, TOM.id]) {
+    await page.goto('./#/admin/account/' + id);
+    await expect(card.getByLabel('Name')).toBeVisible();
+    await expect(card.getByText(OUTRANKED)).toHaveCount(0);
+    await expect(card.getByLabel('Name')).not.toHaveAttribute('readonly', /.*/);
+    await expect(card.getByRole('button', { name: 'Save' })).toBeVisible();
+  }
+  await page.goto('./#/admin/account/' + SAM_ACTIVE.id);
+  await expect(page.getByRole('button', { name: /^New password link/ })).toBeVisible();
 });
 
 test('admin one account: a new invite link with its message; Cancel invite, kept, then done', async ({ page }) => {

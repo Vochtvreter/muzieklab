@@ -3417,14 +3417,23 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('on an exercise screen the button sits at the right edge, on none of the answer controls', async ({ page }) => {
-      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    test('without the tab bar or header the button is a tab at the edge, on none of the controls that stay put', async ({ page }) => {
+      const vp = VIEWPORTS[name];
+      await mockApi(page, {
+        ...ADMIN,
+        ...feedbackServer().routes,
+        'POST /auth/reset/check': { json: { email: ME_ADMIN.email, name: ME_ADMIN.name, expiresAt: '2026-10-29T10:00:00.000Z' } },
+      });
       await seedAccount(page, ME_ADMIN);
       const fab = page.getByRole('button', { name: FAB });
-      /** The button is on screen, and no part of these controls lies under it. */
+      // A phone in landscape has its answers and Start in the right-hand column: there the tab is on the left edge.
+      const left = vp.width > vp.height && vp.height <= 560;
+      /** The tab is on screen, at its edge and as large as a touch target, and no part of these controls lies under it. */
       const clearOf = async (controls: Locator): Promise<void> => {
         await expectClickable(fab, { scroll: false });
         const f = (await fab.boundingBox())!;
+        expect(Math.round(left ? f.x : vp.width - f.x - f.width), 'at the edge').toBe(0);
+        expect(Math.min(f.width, f.height), 'a touch target').toBeGreaterThanOrEqual(44);
         const boxes = await controls.evaluateAll((els) =>
           els.map((el) => ({ ...el.getBoundingClientRect().toJSON(), name: el.getAttribute('aria-label') ?? el.textContent ?? '' }) as DOMRect & { name: string }),
         );
@@ -3434,31 +3443,70 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           expect(over, `the Feedback button is on “${r.name}”`).toBe(false);
         }
       };
+      const piano = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+      const skip = page.getByRole('button', { name: /^Skip to (summary|results)/ });
+      // Setup's Start, which stays in place while the rest scrolls.
       await page.goto('./#/notes');
+      await clearOf(page.getByRole('button', { name: /^Start · / }));
       await page.getByRole('button', { name: /^Start · / }).click();
       await clearOf(page.getByRole('group', { name: 'Note names' }).getByRole('button'));
+      await clearOf(page.getByRole('group', { name: 'Answer with' }).getByRole('button'));
       await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
-      await clearOf(page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button'));
+      await clearOf(piano);
       await clearOf(page.getByRole('button', { name: /^(Hint|Next note)/ }));
+      await clearOf(skip);
+      // Scales: Hear it so far and Start over come in the middle of the screen with the first note.
       await page.goto('./#/scales/setup');
+      await clearOf(page.getByRole('button', { name: /^Start · / }));
       await page.getByRole('button', { name: /^Start · / }).click();
-      await clearOf(page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button'));
+      await clearOf(piano);
+      // Hidden in their place until then, so out of the accessibility tree.
+      const tools = page.getByRole('button', { name: /^(Hear it so far|Start over)/ });
+      for (let i = 0; (await tools.count()) === 0; i++) await piano.nth(i).click();
+      await clearOf(tools);
+      await clearOf(piano);
+      await clearOf(skip);
+      // Its results.
+      await skip.first().click();
+      await clearOf(page.getByRole('button', { name: /^(New round|Change setup)/ }));
+      // The rhythm exercise: How to play, the pad, Pause and Skip.
       await page.goto('./#/setup');
+      await clearOf(page.getByRole('button', { name: /^Start · / }));
       await page.getByRole('button', { name: /^Start · / }).click();
       await clearOf(page.getByRole('button', { name: 'Got it' }));
       await page.getByRole('button', { name: 'Got it' }).click();
-      await clearOf(page.getByRole('button', { name: 'Tap pad' }));
+      await clearOf(page.getByRole('button', { name: /^(Tap pad|Pause)$/ }));
+      // A form on its own: the account's own new-password link.
+      await page.goto('./#/reset/' + TOKEN);
+      await expect(page.getByLabel('New password')).toBeVisible();
+      await clearOf(page.locator('form').getByRole('button').or(page.getByLabel('New password')));
       // A screen with the tab bar or the header keeps it in the bottom-right corner (on a phone, above the tab bar).
       await page.goto('./#/settings');
       await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
       const corner = async (): Promise<number[]> => {
         const f = (await fab.boundingBox())!;
-        return [VIEWPORTS[name].width - (f.x + f.width), VIEWPORTS[name].height - (f.y + f.height)];
+        return [vp.width - (f.x + f.width), vp.height - (f.y + f.height)];
       };
       await expect.poll(async () => (await corner()).every((gap) => gap >= 0 && gap <= 80), 'in the bottom-right corner').toBe(true);
     });
 
-    test('a tap marks the spot and nothing else: the form opening under the finger is not pressed', async ({ page }) => {
+    test('the tab at the screen edge shows its whole focus ring', async ({ page }) => {
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/setup');
+      const fab = page.getByRole('button', { name: FAB });
+      await expectFocusRing(fab);
+      // Drawn inside the tab, which touches the screen's edge: none of it falls off the screen.
+      const off = await fab.evaluate((el) => {
+        const style = getComputedStyle(el);
+        const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+        const r = el.getBoundingClientRect();
+        return r.left - ring < 0 || r.right + ring > window.innerWidth;
+      });
+      expect(off, 'the focus ring falls off the screen').toBe(false);
+    });
+
+    test('a tap or a short drag marks the spot and nothing else: the form opening under the finger is not pressed', async ({ page }) => {
       const vp = VIEWPORTS[name];
       test.skip(vp.width >= 1100, 'a mouse, or a tablet in landscape, where the form is a dialog beside the spot');
       await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
@@ -3483,23 +3531,36 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       expect(spots.length).toBeGreaterThan(2);
       await page.keyboard.press('Escape');
       await expect(form).toHaveCount(0);
+      // A drag of 10 px, which marks a box: shorter than a touch screen's tap slop, so it still sends a click after it.
+      const cdp = await page.context().newCDPSession(page);
+      const shortDrag = async (x: number, y: number): Promise<void> => {
+        const to = x + 10 < vp.width ? x + 10 : x - 10;
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: to, y }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      };
       for (const spot of spots) {
-        await fab.click();
-        const bar = (await page.locator('.fb-bar').boundingBox())!;
-        if (spot.y >= bar.y - 4 && spot.y <= bar.y + bar.height + 4) {
+        for (const [how, mark] of [['a tap', (x: number, y: number) => page.touchscreen.tap(x, y)], ['a short drag', shortDrag]] as const) {
+          await fab.click();
+          const bar = (await page.locator('.fb-bar').boundingBox())!;
+          if (spot.y >= bar.y - 4 && spot.y <= bar.y + bar.height + 4) {
+            await page.keyboard.press('Escape');
+            continue;
+          }
+          const where = `${how} where “${spot.name}” opens`;
+          await mark(spot.x, spot.y);
+          await expect(form, where).toBeVisible();
+          await page.waitForTimeout(300);
+          await expect(form, where).toBeVisible();
+          if (how === 'a tap') await expect(form.locator('.fb-marked'), where).not.toContainText('Marked area');
+          else await expect(form.locator('.fb-marked'), where).toContainText('Marked area');
+          await expect(page.getByRole('dialog', { name: /part you mean/ })).toHaveCount(0);
+          await expect(form.getByLabel('What should change?'), where).toBeFocused();
+          await expect(form.getByRole('button', { name: 'Change' }), where).toHaveAttribute('aria-pressed', 'true');
           await page.keyboard.press('Escape');
-          continue;
+          await expect(form, where).toHaveCount(0);
+          await expect(fab).toBeFocused();
         }
-        await page.touchscreen.tap(spot.x, spot.y);
-        await expect(form, `a tap where “${spot.name}” opens`).toBeVisible();
-        await page.waitForTimeout(300);
-        await expect(form, `a tap where “${spot.name}” opens`).toBeVisible();
-        await expect(page.getByRole('dialog', { name: /part you mean/ })).toHaveCount(0);
-        await expect(form.getByLabel('What should change?'), spot.name).toBeFocused();
-        await expect(form.getByRole('button', { name: 'Change' }), spot.name).toHaveAttribute('aria-pressed', 'true');
-        await page.keyboard.press('Escape');
-        await expect(form, spot.name).toHaveCount(0);
-        await expect(fab).toBeFocused();
       }
     });
 

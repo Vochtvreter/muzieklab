@@ -1016,6 +1016,7 @@
     "profile": "Naam en e-mailadres",
     "saved": "Bewaard.",
     "ownRoles": "Je kunt je eigen rollen niet wijzigen.",
+    "outranked": "Dit account kan dingen die het jouwe niet kan. Daarom kun je de naam en het e-mailadres niet wijzigen en er geen nieuwe link voor maken.",
     "premium": "Premium",
     "premiumOff": "Geeft premiumfuncties (komt later).",
     "premiumUntil": "Tot {date}",
@@ -1084,7 +1085,7 @@
     "download": "Downloaden als bestand",
     "downloadSub": "Alles hierboven, met de anonieme voortgang, als JSON.",
     "downloading": "Downloaden…",
-    "newest": "De nieuwste {count} van {total} staan hier. Het bestand heeft ze allemaal."
+    "newest": "De nieuwste {count} van {total} staan hier. Het bestand bevat ze allemaal."
   },
   "closureKind": {
     "archived": "Gearchiveerd",

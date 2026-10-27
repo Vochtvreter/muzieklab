@@ -19,13 +19,24 @@ import { Sheet } from '../components/Sheet';
 import { useBreakpoint, useLingering, useMediaQuery, useMounted } from '../hooks';
 import { announce } from '../lib/announce';
 import { errorMessage } from '../lib/apiErrors';
-import { Link, useRoute } from '../router';
+import { Link, useRoute, type Route } from '../router';
 import { useStore } from '../store';
 
 const tool = { [TOOL_ATTR]: '' };
 
 /** A drag shorter than this is a tap or click on one element. */
 const DRAG_PX = 8;
+
+/**
+ * Where the button's tab sits on a screen without the tab bar or header (feedback.css): higher up the edge while an
+ * exercise is played, whose answers take the lower half of the screen and, on Scales, its middle; lower on a form on
+ * its own, which sits at the top; else halfway down.
+ */
+function tabPlace(route: Route): string {
+  if (route === '/play' || route === '/notes/play' || route === '/scales/play' || route === '/calibrate') return ' fb-fab--high';
+  if (route === '/signin' || route.startsWith('/invite/') || route.startsWith('/reset/')) return ' fb-fab--low';
+  return '';
+}
 
 type Step = 'idle' | 'marking' | 'form';
 
@@ -48,6 +59,7 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
   // Marking again for the form being filled in: Cancel and Esc go back to it, with the spot it had.
   const [again, setAgain] = useState(false);
   const bp = useBreakpoint();
+  const place = tabPlace(useRoute());
   const { shown, closing } = useLingering(step === 'form' ? target : null, 240);
   // Closing the tool takes away the control that had the focus (Cancel, the form), and the Feedback button comes back
   // as a new element: the focus goes to it, so the keyboard and a screen reader keep their place. Only closing an open
@@ -93,7 +105,7 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
       if (e.key === 'Escape') close();
     }}>
       {step === 'idle' && (
-        <button ref={fabRef} type="button" className={'fb-fab fb-fab--' + bp} aria-label={t('feedback.openLabel')} onClick={() => startMarking('new')}>
+        <button ref={fabRef} type="button" className={'fb-fab fb-fab--' + bp + place} aria-label={t('feedback.openLabel')} onClick={() => startMarking('new')}>
           <Icon name="feedback" size={20} />
           {/* Phone: the icon alone, so it hides less of the screen under it. */}
           {bp !== 'phone' && <span>{t('feedback.open')}</span>}
@@ -124,6 +136,9 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
 
 const boxStyle = (r: Rect): CSSProperties => ({ left: r.x, top: r.y, width: r.width, height: r.height });
 
+/** How long after a drag its click may still come: a touch screen sends one for a drag shorter than its tap slop. */
+const CLICK_AFTER_MS = 350;
+
 /** Arrow keys and the way they step through the parts of the screen. */
 const ARROWS: Record<string, 1 | -1> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
 
@@ -140,6 +155,8 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
   const start = useRef<{ x: number; y: number } | null>(null);
   // A tap or click that went down and up on the layer itself: its click marks the spot.
   const tapped = useRef(false);
+  // A drag's box, waiting for the end of its gesture.
+  const dragged = useRef<{ target: FeedbackTarget; timer: number } | null>(null);
   const coarse = useMediaQuery('(pointer: coarse)');
   const layerRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -147,9 +164,23 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
 
   useEffect(() => {
     cancelRef.current?.focus({ preventScroll: true });
+    return () => window.clearTimeout(dragged.current?.timer);
   }, []);
 
+  // A tap, a click or a drag marks once its gesture is over, on its click: marked as the pointer goes up, the form
+  // would open under the finger, and the click that comes after it would press what lies there (its X, Bug, Hide the
+  // feedback button) or take the focus from the description. A mouse sends that click after a drag too, and a touch
+  // screen after one shorter than its tap slop; after a longer one, which has none, the box is marked a moment later.
+  const markDragged = (): void => {
+    const d = dragged.current;
+    if (!d) return;
+    dragged.current = null;
+    window.clearTimeout(d.timer);
+    onMark(d.target);
+  };
   const down = (e: ReactPointerEvent<HTMLDivElement>): void => {
+    // Another press while a box waits: its click marks the box.
+    if (dragged.current) return;
     start.current = { x: e.clientX, y: e.clientY };
     tapped.current = false;
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -173,15 +204,17 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
     const box = boxFrom(a, { x: e.clientX, y: e.clientY });
     if (box.width >= DRAG_PX || box.height >= DRAG_PX) {
       const el = elementAt(box.x + box.width / 2, box.y + box.height / 2) ?? document.querySelector('main') ?? document.body;
-      onMark(targetFor(el, box));
+      setDrag(box);
+      dragged.current = { target: targetFor(el, box), timer: window.setTimeout(markDragged, CLICK_AFTER_MS) };
       return;
     }
     tapped.current = true;
   };
-  // A tap or click marks on its click, its last event. Marked as the pointer goes up, the form would already be open
-  // under the finger, and the click a touch screen sends after the tap would press what lies there (its X, Bug, Hide
-  // the feedback button) or take the focus from the description.
   const click = (e: ReactMouseEvent<HTMLDivElement>): void => {
+    if (dragged.current) {
+      markDragged();
+      return;
+    }
     if (!tapped.current) return;
     tapped.current = false;
     const el = elementAt(e.clientX, e.clientY);

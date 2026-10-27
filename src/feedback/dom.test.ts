@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildIssue, type FeedbackReport } from '../../shared/feedback';
-import { boxFrom, captureContext, describeElement, selectorFor, targetFor, TOOL_ATTR } from './dom';
+import { boxFrom, captureContext, describeElement, markableParts, selectorFor, targetFor, TOOL_ATTR } from './dom';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -145,6 +145,51 @@ describe('captureContext', () => {
     }
     window.history.replaceState(null, '', '/#/settings');
     expect(captureContext({ version: '0.19.1', route: '/settings', themeSetting: 'system', locale: 'en', prefs: {} })).toMatchObject({ route: '/settings', url: `${window.location.origin}/#/settings` });
+  });
+});
+
+describe('markableParts', () => {
+  const page = `
+    <main>
+      <h1>C major</h1>
+      <div class="splay-tools">
+        <button style="visibility: hidden">Hear it so far</button>
+        <button>Start over</button>
+      </div>
+      <div style="opacity: 0"><button>Next scale</button></div>
+      <button><svg></svg>Skip to summary</button>
+    </main>
+    <div ${TOOL_ATTR}><button>Cancel</button></div>`;
+  const names = (): (string | null)[] => markableParts().map((el) => el.textContent);
+
+  it('leaves out a part waiting hidden in its place (visibility: hidden), the tool’s own, and what is inside a control', () => {
+    document.body.innerHTML = page;
+    // jsdom lays nothing out and has no checkVisibility: every element gets a box.
+    const rects = vi.spyOn(Element.prototype, 'getClientRects').mockReturnValue([new DOMRect(0, 0, 10, 10)] as unknown as DOMRectList);
+    try {
+      expect(names()).toEqual(['C major', 'Start over', 'Next scale', 'Skip to summary']);
+    } finally {
+      rects.mockRestore();
+    }
+  });
+
+  it('asks a browser’s checkVisibility to look at visibility and opacity too, not only at display', () => {
+    document.body.innerHTML = page;
+    const proto = Element.prototype as Element & { checkVisibility?: (o?: CheckVisibilityOptions) => boolean };
+    const had = proto.checkVisibility;
+    // As a browser answers: a box with visibility: hidden or opacity 0, or one inside it, only when asked to look.
+    proto.checkVisibility = function (this: Element, o?: CheckVisibilityOptions): boolean {
+      for (let n: Element | null = this; n; n = n.parentElement) {
+        if (o?.visibilityProperty && (n as HTMLElement).style.visibility === 'hidden') return false;
+        if (o?.opacityProperty && (n as HTMLElement).style.opacity === '0') return false;
+      }
+      return true;
+    };
+    try {
+      expect(names()).toEqual(['C major', 'Start over', 'Skip to summary']);
+    } finally {
+      proto.checkVisibility = had;
+    }
   });
 });
 

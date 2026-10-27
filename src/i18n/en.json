@@ -1016,6 +1016,7 @@
     "profile": "Name and email",
     "saved": "Saved.",
     "ownRoles": "You can't change your own roles.",
+    "outranked": "This account can do things yours can't, so you can't change its name or email, or make a new link for it.",
     "premium": "Premium",
     "premiumOff": "Gives premium features (coming later).",
     "premiumUntil": "Until {date}",

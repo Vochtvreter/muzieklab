@@ -218,7 +218,7 @@ describe('Feedback tool: marking', () => {
     expect(document.activeElement).toBe(screen.getByPlaceholderText(DESC));
   });
 
-  it('a drag still marks its box when the pointer goes up; a click on the hint bar marks nothing', async () => {
+  it('a click on the hint bar marks nothing; a drag marks its box', async () => {
     let layer = openTool();
     fireEvent.click(within(layer).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -232,6 +232,35 @@ describe('Feedback tool: marking', () => {
     pointer('pointermove', 120, 90);
     pointer('pointerup', 120, 90);
     expect(within(await screen.findByRole('dialog', { name: 'Feedback' })).getByText('Marked area')).toBeTruthy();
+  });
+
+  it('a short touch drag marks its box on the click the screen still sends for it, so that click presses nothing', async () => {
+    const layer = openTool();
+    // 10 px: a drag to the tool, a tap to a touch screen, which sends a click after it.
+    const pointer = (type: string, x: number) => fireEvent(layer, new MouseEvent(type, { bubbles: true, clientX: x, clientY: 40 }));
+    pointer('pointerdown', 40);
+    pointer('pointermove', 50);
+    pointer('pointerup', 50);
+    // The box is drawn, and the layer stays for the click.
+    expect(screen.queryByRole('dialog', { name: 'Feedback' })).toBeNull();
+    expect(layer.querySelector('.fb-box--drag')).toBeTruthy();
+    fireEvent.click(layer, { clientX: 50, clientY: 40 });
+    const form = await screen.findByRole('dialog', { name: 'Feedback' });
+    expect(within(form).getByText('Marked area')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByPlaceholderText(DESC));
+  });
+
+  it('a longer drag, which a touch screen sends no click for, marks its box a moment after the pointer went up', async () => {
+    const layer = openTool();
+    fireEvent(layer, new MouseEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
+    fireEvent(layer, new MouseEvent('pointerup', { bubbles: true, clientX: 120, clientY: 90 }));
+    expect(screen.queryByRole('dialog', { name: 'Feedback' })).toBeNull();
+    // Another press meanwhile starts nothing new.
+    fireEvent(layer, new MouseEvent('pointerdown', { bubbles: true, clientX: 200, clientY: 200 }));
+    fireEvent(layer, new MouseEvent('pointerup', { bubbles: true, clientX: 200, clientY: 200 }));
+    const form = await screen.findByRole('dialog', { name: 'Feedback' });
+    expect(within(form).getByText('Marked area')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByPlaceholderText(DESC));
   });
 
   it('the hint bar goes to the other edge when tapped, so what it covers can be marked, and comes back', () => {

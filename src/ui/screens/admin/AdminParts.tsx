@@ -116,6 +116,8 @@ export function LinkResult({ kind, name, link, expiresAt, announce, stale = fals
 
 /** The last list GET /admin/roles answered with: a screen opened again shows it at once, and asks again. */
 let knownRoles: RoleInfo[] | null = null;
+/** The request on its way: the parts of a screen that ask for the list at once (One account's) share it. */
+let asking: Promise<RoleInfo[] | null> | null = null;
 
 /**
  * The roles admins can give (GET /admin/roles), or null until it answered. When it does not answer, the screens keep
@@ -124,16 +126,22 @@ let knownRoles: RoleInfo[] | null = null;
 export function useRoleList(): RoleInfo[] | null {
   const [roles, setRoles] = useState(knownRoles);
   useEffect(() => {
-    const ctrl = new AbortController();
-    api.get<RoleListResponse>('/admin/roles', { signal: ctrl.signal }).then(
-      (res) => {
-        if (ctrl.signal.aborted || !Array.isArray(res?.roles)) return;
-        knownRoles = res.roles;
-        setRoles(res.roles);
-      },
-      () => undefined,
-    );
-    return () => ctrl.abort();
+    let live = true;
+    asking ??= api
+      .get<RoleListResponse>('/admin/roles')
+      .then(
+        (res) => (Array.isArray(res?.roles) ? (knownRoles = res.roles) : null),
+        () => null,
+      )
+      .finally(() => {
+        asking = null;
+      });
+    void asking.then((list) => {
+      if (live && list) setRoles(list);
+    });
+    return () => {
+      live = false;
+    };
   }, []);
   return roles;
 }

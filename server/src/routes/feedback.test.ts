@@ -151,6 +151,34 @@ describe('POST /feedback', () => {
     expect((await list(t, admin.cookie)).body).not.toContain(token);
   });
 
+  it('shows none either from a report kept with its token, before the API left it out', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const token = 'Zq9-_x'.repeat(7) + 'A';
+    const _id = new ObjectId();
+    await collections(t.db).feedback.insertOne({
+      _id,
+      ...report,
+      context: { ...report.context, url: `https://test.vivanova.app/#/reset/${token}`, route: `/reset/${token}` },
+      status: 'new',
+      authorId: admin.account._id,
+      createdAt: t.clock.now(),
+      note: '',
+      reviewerId: null,
+      reviewedAt: null,
+    });
+    const listed = await list(t, admin.cookie);
+    expect(listed.body).not.toContain(token);
+    expect(listed.json<FeedbackListResponse>().reports[0].route).toBe('/reset/:token');
+    const detail = await t.call({ method: 'GET', url: DETAIL(_id.toHexString()), cookie: admin.cookie });
+    expect(detail.body).not.toContain(token);
+    expect(detail.json<FeedbackDetail>()).toMatchObject({ route: '/reset/:token', report: { context: { url: 'https://test.vivanova.app/#/reset/:token', route: '/reset/:token' } } });
+    // Nor its author's download of their data.
+    const own = await t.call({ method: 'GET', url: '/api/v1/me/export', cookie: admin.cookie });
+    expect(own.statusCode).toBe(200);
+    expect(own.body).not.toContain(token);
+  });
+
   it('needs feedback.give: admins have it, and other roles once an admin gives it', async () => {
     const t = await makeApp(mongo);
     await seedAccount(t.db, { email: 'ted@example.com', roles: ['teacher'] });

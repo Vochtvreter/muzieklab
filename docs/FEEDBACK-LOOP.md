@@ -85,7 +85,9 @@ there too, which opens the reports.
 
 1. A **Feedback** button floats over every screen. On phone it is a round icon above the tab bar; on tablet and desktop
    it sits in the bottom-right corner. Screens without the tab bar or header (an exercise, its setup and results, a
-   form on its own) have their answer controls at the bottom, so there it is a tab on the right edge, halfway down.
+   form on its own) have their controls low on the screen, so there it is a tab on the right edge: halfway down, 30%
+   of the way down while an exercise is played (above its answers), and three quarters down on a form on its own. A
+   phone in landscape has it on the left edge, as its answers are on the right.
 2. Press it, then tap or click the part you mean, or drag to draw a box. With a mouse, the element a click would mark is
    outlined. With the keyboard, the arrow keys pick the screen's parts in turn, the hint bar names the one picked, and
    Enter marks it. The hint bar sits at the top; tap it to move it to the bottom (and back) when it is over what you
@@ -155,11 +157,12 @@ Each report holds (`shared/feedback.ts`; stored as it was sent, BACKEND-PLAN.md 
 - **Where:** the route (`#/settings`) and the marked element: its CSS selector, a readable name (`button “Start”`), its
   text (its parts apart, as it reads) and its markup (shortened). An invite or new-password screen's route and address
   keep `:token` in place of the link's token (`#/reset/:token`): whoever has a token can claim the account, and a
-  report is read by its reviewers and may become a public issue. The app leaves it out, and the API again. It also
-  holds the marked box in CSS pixels and the page's scroll offset: how far the boxes around the element are scrolled
-  (a screen scrolls inside the page, not the window), leaving out scroll that does not move it (a sticky part, such as
-  Settings' side column, counts only how far it went along before it stuck; a fixed one stays put whatever scrolls),
-  so the box plus the offset is where the spot is on the page scrolled to its top.
+  report is read by its reviewers and may become a public issue. The app leaves it out, and the API again, both when it
+  stores a report and when it hands one out (for a report kept before it did). It also holds the marked box in CSS
+  pixels and the page's scroll offset: how far the boxes around the element are scrolled (a screen scrolls inside the
+  page, not the window), leaving out scroll that does not move it (a sticky part, such as Settings' side column, counts
+  only how far it went along before it stuck; a fixed one stays put whatever scrolls), so the box plus the offset is
+  where the spot is on the page scrolled to its top.
 - **Device:** the viewport and pixel ratio, the breakpoint (phone, tablet or desktop), the orientation, touch or mouse,
   the theme (setting and shown), the language, the app version and the user agent.
 - **State:** the player's preferences (`muzieklab.prefs.v1`), so the agent can seed them and see the same screen.

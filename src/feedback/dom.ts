@@ -105,11 +105,22 @@ export function elementAt(x: number, y: number, doc: Document = document): Eleme
 const PARTS = 'a[href], button, input, select, textarea, summary, [role="button"], [role="switch"], [role="slider"], [tabindex]:not([tabindex="-1"]), h1, h2, h3, h4, p, img, svg, [role="img"]';
 
 /**
+ * Whether the element can be seen: laid out, not visibility: hidden (Scales' Hear it so far and Start over wait so in
+ * their place before the first note) and not see-through (opacity 0), nor a box around it. Both spellings of the
+ * options, as browsers before 2024 know only the first. Without checkVisibility, opacity is not looked at.
+ */
+function shows(el: Element): boolean {
+  if (typeof el.checkVisibility === 'function') {
+    return el.checkVisibility({ checkVisibilityCSS: true, checkOpacity: true, visibilityProperty: true, opacityProperty: true });
+  }
+  return el.getClientRects().length > 0 && el.ownerDocument.defaultView?.getComputedStyle(el).visibility === 'visible';
+}
+
+/**
  * The parts of the screen the keyboard can mark, in page order: not the tool's own, nor one hidden from sight or from a
  * screen reader, nor what is inside a control or a picture (a button's icon, a staff's notes).
  */
 export function markableParts(doc: Document = document): Element[] {
-  const shows = (el: Element): boolean => (typeof el.checkVisibility === 'function' ? el.checkVisibility() : el.getClientRects().length > 0);
   return [...doc.body.querySelectorAll(PARTS)].filter(
     (el) =>
       !el.closest(`[${TOOL_ATTR}], [aria-hidden="true"], .sr-only`) &&
