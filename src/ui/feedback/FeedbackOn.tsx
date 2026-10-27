@@ -5,17 +5,19 @@
  * to review in Settings → Account → Feedback (feedback.review). Nothing goes to GitHub from here: an admin picks what
  * does. FeedbackTool.tsx loads it.
  */
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import pkg from '../../../package.json';
 import { buildIssue, FEEDBACK_DESCRIPTION_MAX, FEEDBACK_KINDS, type FeedbackKind, type FeedbackReport, type FeedbackSaved, type FeedbackTarget, type Rect } from '../../../shared/feedback';
 import { api, type ApiError } from '../../api/client';
-import { boxFrom, captureContext, elementAt, targetFor, TOOL_ATTR } from '../../feedback/dom';
+import { boxFrom, captureContext, describeElement, elementAt, markableParts, targetFor, TOOL_ATTR } from '../../feedback/dom';
 import { getLocale, t } from '../../i18n';
 import { useAccount } from '../account';
 import { Segmented } from '../components/Controls';
+import { CopyField } from '../components/Form';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { useBreakpoint, useLingering, useMediaQuery, useMounted } from '../hooks';
+import { announce } from '../lib/announce';
 import { errorMessage } from '../lib/apiErrors';
 import { Link, useRoute } from '../router';
 import { useStore } from '../store';
@@ -27,12 +29,24 @@ const DRAG_PX = 8;
 
 type Step = 'idle' | 'marking' | 'form';
 
+/** What the form holds as it is filled in. */
+interface Draft {
+  kind: FeedbackKind;
+  title: string;
+  description: string;
+}
+const EMPTY: Draft = { kind: 'change', title: '', description: '' };
+
 /** `onHide`: the account turns the button off on this device (Settings → Account turns it on again). */
 export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
   const [step, setStep] = useState<Step>('idle');
   const [target, setTarget] = useState<FeedbackTarget | null>(null);
-  // Each mark gets a fresh form.
+  // Each mark gets a fresh form (the screen captured again, nothing sent yet); what was typed stays through Mark again,
+  // and only a new report (the Feedback button, Mark another) starts empty.
   const [marks, setMarks] = useState(0);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  // Marking again for the form being filled in: Cancel and Esc go back to it, with the spot it had.
+  const [again, setAgain] = useState(false);
   const bp = useBreakpoint();
   const { shown, closing } = useLingering(step === 'form' ? target : null, 240);
   // Closing the tool takes away the control that had the focus (Cancel, the form), and the Feedback button comes back
@@ -42,8 +56,17 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
   const fabRef = useRef<HTMLButtonElement>(null);
   const refocus = useRef(false);
   const close = (): void => {
+    if (step === 'marking' && again) {
+      setStep('form');
+      return;
+    }
     if (step !== 'idle') refocus.current = true;
     setStep('idle');
+  };
+  const startMarking = (report: 'new' | 'same'): void => {
+    if (report === 'new') setDraft(EMPTY);
+    setAgain(report === 'same');
+    setStep('marking');
   };
   useEffect(() => {
     if (step !== 'idle' || !refocus.current) return;
@@ -59,7 +82,7 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
     };
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
-  }, [step]);
+  }, [step, again]);
   const side = shown && bp === 'desktop' ? (shown.rect.x + shown.rect.width / 2 > window.innerWidth / 2 ? ' fb-root--left' : ' fb-root--right') : '';
 
   return (
@@ -70,7 +93,7 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
       if (e.key === 'Escape') close();
     }}>
       {step === 'idle' && (
-        <button ref={fabRef} type="button" className={'fb-fab fb-fab--' + bp} aria-label={t('feedback.openLabel')} onClick={() => setStep('marking')}>
+        <button ref={fabRef} type="button" className={'fb-fab fb-fab--' + bp} aria-label={t('feedback.openLabel')} onClick={() => startMarking('new')}>
           <Icon name="feedback" size={20} />
           {/* Phone: the icon alone, so it hides less of the screen under it. */}
           {bp !== 'phone' && <span>{t('feedback.open')}</span>}
@@ -90,7 +113,8 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
         <>
           <div className={'fb-spot' + (closing ? ' m-fade-out' : '')} style={boxStyle(shown.rect)} aria-hidden="true" />
           <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="feedback" labelledBy="fb-title" maxWidth={bp === 'desktop' ? 480 : undefined}>
-            <FeedbackForm key={marks} target={shown} onClose={close} onLeave={() => setStep('idle')} onRemark={() => setStep('marking')} onHide={onHide} />
+            <FeedbackForm key={marks} target={shown} draft={draft} onDraft={(patch) => setDraft((d) => ({ ...d, ...patch }))} onClose={close}
+              onLeave={() => setStep('idle')} onRemark={() => startMarking('same')} onAnother={() => startMarking('new')} onHide={onHide} />
           </Sheet>
         </>
       )}
@@ -100,12 +124,25 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
 
 const boxStyle = (r: Rect): CSSProperties => ({ left: r.x, top: r.y, width: r.width, height: r.height });
 
-/** The marking layer over the whole screen: a mouse shows what a click would mark; a drag draws a box. */
+/** Arrow keys and the way they step through the parts of the screen. */
+const ARROWS: Record<string, 1 | -1> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
+
+/**
+ * The marking layer over the whole screen: a mouse shows what a click would mark; a drag draws a box. The arrow keys
+ * pick a part instead, which the hint bar names, and Enter marks it. The layer is modal: Tab keeps to Cancel and the
+ * picked part. A tap on the hint bar moves it to the other edge, off what it was over.
+ */
 function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCancel(): void }): JSX.Element {
   const [hover, setHover] = useState<Rect | null>(null);
   const [drag, setDrag] = useState<Rect | null>(null);
+  const [picked, setPicked] = useState<Element | null>(null);
+  const [low, setLow] = useState(false);
   const start = useRef<{ x: number; y: number } | null>(null);
+  // A tap or click that went down and up on the layer itself: its click marks the spot.
+  const tapped = useRef(false);
   const coarse = useMediaQuery('(pointer: coarse)');
+  const layerRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -114,6 +151,7 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
 
   const down = (e: ReactPointerEvent<HTMLDivElement>): void => {
     start.current = { x: e.clientX, y: e.clientY };
+    tapped.current = false;
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const move = (e: ReactPointerEvent<HTMLDivElement>): void => {
@@ -125,6 +163,7 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
     } else if (!a && e.pointerType === 'mouse') {
       const el = elementAt(p.x, p.y);
       setHover(el ? el.getBoundingClientRect() : null);
+      setPicked(null);
     }
   };
   const up = (e: ReactPointerEvent<HTMLDivElement>): void => {
@@ -137,17 +176,59 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
       onMark(targetFor(el, box));
       return;
     }
+    tapped.current = true;
+  };
+  // A tap or click marks on its click, its last event. Marked as the pointer goes up, the form would already be open
+  // under the finger, and the click a touch screen sends after the tap would press what lies there (its X, Bug, Hide
+  // the feedback button) or take the focus from the description.
+  const click = (e: ReactMouseEvent<HTMLDivElement>): void => {
+    if (!tapped.current) return;
+    tapped.current = false;
     const el = elementAt(e.clientX, e.clientY);
     if (el) onMark(targetFor(el));
     else setDrag(null);
   };
 
+  const pick = (by: 1 | -1): void => {
+    const parts = markableParts();
+    if (parts.length === 0) return;
+    const i = picked ? parts.indexOf(picked) : -1;
+    const next = parts[i < 0 ? (by > 0 ? 0 : parts.length - 1) : (i + by + parts.length) % parts.length];
+    next.scrollIntoView?.({ block: 'nearest' });
+    const r = next.getBoundingClientRect();
+    // The bar goes to the other edge when it is over the part.
+    const bar = barRef.current?.getBoundingClientRect();
+    if (bar && r.bottom > bar.top && r.top < bar.bottom) setLow((v) => !v);
+    setPicked(next);
+    setHover(r);
+    layerRef.current?.focus({ preventScroll: true });
+  };
+  const keys = (e: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const toLayer = picked && document.activeElement === cancelRef.current;
+      (toLayer ? layerRef.current : cancelRef.current)?.focus({ preventScroll: true });
+    } else if (ARROWS[e.key]) {
+      e.preventDefault();
+      pick(ARROWS[e.key]);
+    } else if ((e.key === 'Enter' || e.key === ' ') && e.target === layerRef.current && picked) {
+      e.preventDefault();
+      onMark(targetFor(picked));
+    }
+  };
+
   const box = drag ?? hover;
   return (
-    <div className="fb-layer" role="dialog" aria-modal="true" aria-labelledby="fb-hint" onPointerDown={down} onPointerMove={move} onPointerUp={up}
-      onPointerLeave={() => !start.current && setHover(null)}>
-      <div className="fb-bar m-in" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
-        <span id="fb-hint" className="fb-bar-text">{t(coarse ? 'feedback.markHintTouch' : 'feedback.markHint')}</span>
+    <div ref={layerRef} className="fb-layer" role="dialog" aria-modal="true" aria-labelledby="fb-hint" tabIndex={-1} onPointerDown={down}
+      onPointerMove={move} onPointerUp={up} onClick={click} onKeyDown={keys} onPointerLeave={() => !start.current && setHover(null)}>
+      <div ref={barRef} className={'fb-bar m-in' + (low ? ' fb-bar--low' : '')} onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()} onClick={(e) => !(e.target as Element).closest('button') && setLow((v) => !v)}>
+        <span className="fb-bar-text">
+          <span id="fb-hint">{t(coarse ? 'feedback.markHintTouch' : 'feedback.markHint')}</span>
+          <span className="fb-bar-pick" aria-live="polite">
+            {picked ? describeElement(picked) : ''}
+          </span>
+        </span>
         <button ref={cancelRef} type="button" className="small-btn" onClick={onCancel}>
           {t('feedback.cancel')}
         </button>
@@ -157,24 +238,30 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
   );
 }
 
-function FeedbackForm({ target, onClose, onLeave, onRemark, onHide }: {
+function FeedbackForm({ target, draft, onDraft, onClose, onLeave, onRemark, onAnother, onHide }: {
   target: FeedbackTarget;
+  /** What is typed, kept by the tool so that Mark again keeps it. */
+  draft: Draft;
+  onDraft(patch: Partial<Draft>): void;
   onClose(): void;
   /** Closes the tool for another screen (Review it), which takes the focus itself. */
   onLeave(): void;
+  /** Mark again: another spot for this report. */
   onRemark(): void;
+  /** Mark another: a new report, once this one is sent. */
+  onAnother(): void;
   onHide(): void;
 }): JSX.Element {
   const account = useAccount();
   const { state } = useStore();
   const route = useRoute();
-  const [kind, setKind] = useState<FeedbackKind>('change');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const { kind, title, description } = draft;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState<FeedbackSaved | null>(null);
   const [copied, setCopied] = useState(false);
+  // No clipboard (an old browser, or not allowed): the Markdown is shown to copy by hand.
+  const [byHand, setByHand] = useState(false);
   // The screen as it was when the spot was marked, not as it is once the sheet is open.
   const [context] = useState(() =>
     captureContext({ version: pkg.version, route, themeSetting: state.prefs.theme, locale: getLocale(), prefs: state.prefs }),
@@ -182,6 +269,15 @@ function FeedbackForm({ target, onClose, onLeave, onRemark, onHide }: {
   const report: FeedbackReport = { kind, title, description, target, context };
   const ready = description.trim().length > 0;
   const mounted = useMounted();
+  const issue = buildIssue(report);
+  const markdown = `# ${issue.title}\n\n${issue.body}`;
+  // Copied for 2 s, as every Copy in the app; and Copy again as soon as the report changes, which the clipboard does not.
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+  useEffect(() => setCopied(false), [kind, title, description]);
 
   const send = async (): Promise<void> => {
     setBusy(true);
@@ -197,11 +293,21 @@ function FeedbackForm({ target, onClose, onLeave, onRemark, onHide }: {
   };
 
   const copy = (): void => {
-    const d = buildIssue(report);
-    navigator.clipboard
-      ?.writeText(`# ${d.title}\n\n${d.body}`)
-      .then(() => setCopied(true))
-      .catch(() => undefined);
+    const clip = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+    if (!clip?.writeText) {
+      setByHand(true);
+      return;
+    }
+    clip.writeText(markdown).then(
+      () => {
+        if (!mounted.current) return;
+        setCopied(true);
+        announce(t('feedback.copied'));
+      },
+      () => {
+        if (mounted.current) setByHand(true);
+      },
+    );
   };
 
   if (saved) {
@@ -220,7 +326,7 @@ function FeedbackForm({ target, onClose, onLeave, onRemark, onHide }: {
           </Link>
         )}
         <div className="fb-actions">
-          <button type="button" className="btn btn--outline" onClick={onRemark}>
+          <button type="button" className="btn btn--outline" onClick={onAnother}>
             {t('feedback.another')}
           </button>
           {/* The sheet stays open, so its first focus does not run again: Close takes the focus from the gone Send. */}
@@ -251,17 +357,19 @@ function FeedbackForm({ target, onClose, onLeave, onRemark, onHide }: {
           {t('feedback.markAgain')}
         </button>
       </div>
-      <Segmented<FeedbackKind> label={t('feedback.kindGroup')} value={kind} onChange={setKind} options={FEEDBACK_KINDS.map((k) => ({ value: k, label: t('feedback.kind.' + k) }))} />
+      <Segmented<FeedbackKind> label={t('feedback.kindGroup')} value={kind} onChange={(k) => onDraft({ kind: k })}
+        options={FEEDBACK_KINDS.map((k) => ({ value: k, label: t('feedback.kind.' + k) }))} />
       <label className="field">
         <span className="fb-label">{t('feedback.descLabel')}</span>
         <textarea className="fb-input fb-input--area" rows={4} value={description} maxLength={FEEDBACK_DESCRIPTION_MAX} data-autofocus
-          placeholder={t('feedback.descPlaceholder')} onChange={(e) => setDescription(e.target.value)} />
+          placeholder={t('feedback.descPlaceholder')} onChange={(e) => onDraft({ description: e.target.value })} />
       </label>
       <label className="field">
         <span className="fb-label">{t('feedback.titleLabel')}</span>
-        <input className="fb-input" type="text" value={title} maxLength={120} placeholder={t('feedback.titlePlaceholder')} onChange={(e) => setTitle(e.target.value)} />
+        <input className="fb-input" type="text" value={title} maxLength={120} placeholder={t('feedback.titlePlaceholder')} onChange={(e) => onDraft({ title: e.target.value })} />
       </label>
       <p className="sheet-note">{t('feedback.attached')}</p>
+      {byHand && <CopyField label={t('feedback.markdown')} value={markdown} multiline />}
       {/* The form stays as it is: Send tries again. */}
       {error && (
         <div className="fb-error" role="alert">

@@ -1082,7 +1082,9 @@
     "days": "{count, plural, one {# day practiced} other {# days practiced}}",
     "file": "File",
     "download": "Download as a file",
-    "downloadSub": "Every entry, with the anonymous progress, as JSON."
+    "downloadSub": "Every entry, with the anonymous progress, as JSON.",
+    "downloading": "Downloading…",
+    "newest": "Showing the newest {count} of {total}. The file has them all."
   },
   "closureKind": {
     "archived": "Archived",
@@ -2961,7 +2963,7 @@
   "feedback": {
     "open": "Feedback",
     "openLabel": "Feedback: mark a part of this screen",
-    "markHint": "Click the part you mean, or drag to draw a box around it. Esc cancels.",
+    "markHint": "Click the part you mean, or drag to draw a box around it. The arrow keys and Enter pick one too. Esc cancels.",
     "markHintTouch": "Tap the part you mean, or drag to draw a box around it.",
     "cancel": "Cancel",
     "title": "Feedback",
@@ -2981,6 +2983,7 @@
     "attached": "Saved for the team to review, with this screen, the marked spot, the screen size, the theme, the language and the settings. Not your progress. If it is picked up, it becomes a public GitHub issue, without your name.",
     "copy": "Copy",
     "copied": "Copied",
+    "markdown": "Markdown",
     "send": "Send",
     "sending": "Sending…",
     "saved": "Saved for review",

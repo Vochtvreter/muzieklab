@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { boxFrom, describeElement, selectorFor, targetFor, TOOL_ATTR } from './dom';
+import { buildIssue, type FeedbackReport } from '../../shared/feedback';
+import { boxFrom, captureContext, describeElement, selectorFor, targetFor, TOOL_ATTR } from './dom';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -39,6 +40,18 @@ describe('describeElement', () => {
     expect(describeElement(h1)).toBe('heading “Settings”');
     expect(describeElement(div)).toBe('div.card');
     expect(describeElement(img)).toBe('img “Counting beat 1”');
+  });
+
+  it('keeps the parts of its text apart, as it reads: a chapter row is not “1Pulse and meterBeat”', () => {
+    // The row is a flex box, so each of its parts is laid out as a block; a hidden part reads as nothing.
+    document.body.innerHTML = `<button class="chapter-row"><span style="display: block">1</span><span style="display: block"><b style="display: block">Pulse and
+      meter</b><span style="display: block">Beat, <i>tempo</i></span></span><span style="display: none">Hidden</span><span style="display: inline-block">New</span></button>`;
+    const row = document.querySelector('button')!;
+    expect(describeElement(row)).toBe('button “1 Pulse and meter Beat, tempo New”');
+    expect(targetFor(row).text).toBe('1 Pulse and meter Beat, tempo New');
+    // As written: a heading shown in capitals keeps its own case.
+    document.body.innerHTML = '<h2 style="text-transform: uppercase">Account</h2>';
+    expect(describeElement(document.querySelector('h2')!)).toBe('heading “Account”');
   });
 });
 
@@ -88,6 +101,20 @@ describe('targetFor', () => {
     expect(targetFor(document.querySelector('i')!).scroll).toEqual({ x: 0, y: 30 });
   });
 
+  it('counts how far a sticky part moved with the page before it stuck: Setup’s side panel, under the screen header', () => {
+    document.body.innerHTML = PAGE + '<aside style="position: sticky; top: 0"><button class="start-btn">Start</button></aside></div></div>';
+    const page = document.querySelector<HTMLElement>('.page')!;
+    // The panel starts 264 px down and sticks at 204 px: it moves with the first 60 px the page scrolls, then stays.
+    const aside = document.querySelector('aside')!;
+    aside.getBoundingClientRect = () => ({ x: 0, y: Math.max(264 - page.scrollTop, 204), width: 300, height: 80 }) as DOMRect;
+    const start = document.querySelector('button')!;
+    page.scrollTop = 354;
+    expect(targetFor(start).scroll).toEqual({ x: 0, y: 60 });
+    expect(page.scrollTop).toBe(354);
+    page.scrollTop = 10;
+    expect(targetFor(start).scroll).toEqual({ x: 0, y: 10 });
+  });
+
   it('cuts long values in a copy outside the page, so a cut SVG path is never parsed (and logged) there', () => {
     document.body.innerHTML = `<svg><path d="${'M 1.5,2.5 L 3.5,4.5 '.repeat(20)}"/></svg>`;
     const set = vi.spyOn(Element.prototype, 'setAttribute');
@@ -99,6 +126,25 @@ describe('targetFor', () => {
     } finally {
       set.mockRestore();
     }
+  });
+});
+
+describe('captureContext', () => {
+  const token = 'Ab3_x-'.repeat(7) + 'Z';
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('leaves out an invite or new-password token: whoever has it can claim the account', () => {
+    for (const kind of ['invite', 'reset']) {
+      window.history.replaceState(null, '', `/#/${kind}/${token}`);
+      const context = captureContext({ version: '0.19.1', route: `/${kind}/${token}`, themeSetting: 'system', locale: 'en', prefs: {} });
+      expect(context.route).toBe(`/${kind}/:token`);
+      expect(context.url).toBe(`${window.location.origin}/#/${kind}/:token`);
+      const report: FeedbackReport = { kind: 'bug', title: '', description: 'x', context, target: targetFor(document.body) };
+      const issue = buildIssue(report);
+      expect(issue.title + issue.body).not.toContain(token);
+    }
+    window.history.replaceState(null, '', '/#/settings');
+    expect(captureContext({ version: '0.19.1', route: '/settings', themeSetting: 'system', locale: 'en', prefs: {} })).toMatchObject({ route: '/settings', url: `${window.location.origin}/#/settings` });
   });
 });
 

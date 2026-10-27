@@ -1082,7 +1082,9 @@
     "days": "{count, plural, one {# dag geoefend} other {# dagen geoefend}}",
     "file": "Bestand",
     "download": "Downloaden als bestand",
-    "downloadSub": "Alles hierboven, met de anonieme voortgang, als JSON."
+    "downloadSub": "Alles hierboven, met de anonieme voortgang, als JSON.",
+    "downloading": "Downloaden…",
+    "newest": "De nieuwste {count} van {total} staan hier. Het bestand heeft ze allemaal."
   },
   "closureKind": {
     "archived": "Gearchiveerd",
@@ -2961,7 +2963,7 @@
   "feedback": {
     "open": "Feedback",
     "openLabel": "Feedback: markeer een deel van dit scherm",
-    "markHint": "Klik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen. Esc annuleert.",
+    "markHint": "Klik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen. Met de pijltjestoetsen en Enter kies je er ook een. Esc annuleert.",
     "markHintTouch": "Tik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen.",
     "cancel": "Annuleren",
     "title": "Feedback",
@@ -2981,6 +2983,7 @@
     "attached": "Bewaard zodat het team het kan beoordelen, met dit scherm, de gemarkeerde plek, de schermgrootte, het thema, de taal en de instellingen. Niet je voortgang. Als het wordt opgepakt, wordt het een openbaar GitHub-issue, zonder je naam.",
     "copy": "Kopiëren",
     "copied": "Gekopieerd",
+    "markdown": "Markdown",
     "send": "Versturen",
     "sending": "Versturen…",
     "saved": "Bewaard om te beoordelen",

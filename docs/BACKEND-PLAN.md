@@ -427,9 +427,12 @@ permissions (`class.manage`, `class.progress.read`, `class.assign`, `class.read`
 **Nobody gives out more than they have** (0.17.0). To grant a role to an account or take it away, an admin needs
 `roles.grant` and every permission in that role, so only someone with every permission can make or unmake an admin. To
 put a permission into a role or take it out (`roles.manage`), they need that permission themselves; deleting a custom
-role needs all of its permissions, and `roles.grant` too while accounts have it. So a role with `roles.grant` or
-`roles.manage` cannot be used to climb to more. A built-in role keeps its name and description (409 `built_in_role`),
-admin keeps every permission, and built-in roles cannot be deleted.
+role needs all of its permissions, and `roles.grant` too while accounts have it. A new-password or invite link lets its
+holder into the account with all it may do, and a new email locks its owner out, so making a link for an account or
+changing its name or email (`accounts.invite`) also needs every permission that account has (an invited one: those its
+roles give once it accepts). So a role with `roles.grant`, `roles.manage` or `accounts.invite` cannot be used to climb
+to more. A built-in role keeps its name and description (409 `built_in_role`), admin keeps every permission, and
+built-in roles cannot be deleted.
 
 Guard rails, enforced in a transaction:
 
@@ -808,17 +811,17 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `GET /admin/accounts?q=&status=` | `accounts.read` | Newest first, at most 500. `q` matches name or email as plain text, without case; `status` is invited, active or blocked. There is no role filter (the first plan had one). |
 | `POST /admin/invites` | `accounts.invite`, plus `roles.grant` and every permission in the roles when roles are given | Email, name and roles → the invited account and its link. |
 | `GET /admin/accounts/:id` | `accounts.read` | The account, how many devices are signed in, and while invited, when its link stops working (null when none works). |
-| `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite`, roles (`roles`, `addRoles`, `removeRoles`) `roles.grant` and every permission in each role granted or taken away, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. `roles` is the whole new set; `addRoles` and `removeRoles` give and take away roles in the ones the account has when the change arrives, so what another admin changed meanwhile stays (the role switches send one of these; never with `roles`, and no role in both). Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
-| `POST /admin/accounts/:id/invite-link` | `accounts.invite` | An invited account only: a new invite link; the old one stops working. |
-| `POST /admin/accounts/:id/reset-link` | `accounts.invite` | An active account only: a new-password link for 24 hours. It lets its holder into the account, as an invite does, hence the same permission. |
+| `PATCH /admin/accounts/:id` | `accounts.read`, plus per field: name and email `accounts.invite` and every permission the account has (§4.2), roles (`roles`, `addRoles`, `removeRoles`) `roles.grant` and every permission in each role granted or taken away, status `accounts.block`, premium `entitlements.grant` | Only the fields sent change. `roles` is the whole new set; `addRoles` and `removeRoles` give and take away roles in the ones the account has when the change arrives, so what another admin changed meanwhile stays (the role switches send one of these; never with `roles`, and no role in both). Status is block or unblock; premium is `{ active: true, until: "YYYY-MM-DD" \| null }` (until must be sent) or `{ active: false }`. |
+| `POST /admin/accounts/:id/invite-link` | `accounts.invite`, and every permission the account will have | An invited account only: a new invite link; the old one stops working. |
+| `POST /admin/accounts/:id/reset-link` | `accounts.invite`, and every permission the account has | An active account only: a new-password link for 24 hours. It lets its holder into the account, as an invite does, hence the same permission, and, as granting a role, only for an account with no more than the admin has (§4.2). |
 | `DELETE /admin/accounts/:id?expect=` | `accounts.delete` | Cancels an invite or deletes an account (never yourself, never the last admin). A deleted account (not a cancelled invite) leaves a closure of kind `admin` (§3.7); the feedback reports it sent stay without its name (§3.9). With `expect` (a status), it is refused with 409 `wrong_status` when the account has another status: Cancel invite sends `expect=invited`, so an invite accepted meanwhile is not deleted. |
-| `GET /admin/closures` | `accounts.read` | Deleted accounts (§3.7), newest day first, at most 500: `id`, `day` (YYYY-MM-DD), `kind`, `feedback` and `archive`. |
+| `GET /admin/closures?all=` | `accounts.read` | Deleted accounts (§3.7), newest day first, at most 500: `id`, `day` (YYYY-MM-DD), `kind`, `feedback` and `archive`; `total` says how many there are. With `all=true`, every one (the screen's file). |
 | `GET /admin/audit?limit=&before=` | `audit.read` | Newest first: 100 by default, at most 500. `before` is the last id of the previous page. No screen shows it yet. |
 | `GET /admin/roles` | `accounts.read` | Every role with its permissions and how many accounts have it: the built-in ones first, then the custom ones by name. The account screens show the custom ones by these names. |
 | `POST /admin/roles` | `roles.manage`, plus every permission put in | Id, name, optional description and permissions → the role. 409 `role_exists` for an id in use (a built-in one too). |
 | `PATCH /admin/roles/:id` | `roles.manage`, plus every permission added or taken out | Name, description and permissions; only the fields sent change. 409 `built_in_role` for a built-in role's name or description, or admin's permissions. |
 | `DELETE /admin/roles/:id` | `roles.manage`, plus every permission in it, and `roles.grant` while accounts have it | A custom role only (409 `built_in_role`); every account that had it loses it. |
-| `POST /feedback` | `feedback.give` | A feedback report (`shared/feedback.ts`) → `{ id }`: the report is stored as `new`, for review (§3.9). The description must say something, and no key in `context.prefs` may start with `$` (else 400 `bad_request`). After 30 in an hour from one account: 429 `too_many_attempts`, with `retryAfter`. Nothing goes to GitHub yet ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) §3). |
+| `POST /feedback` | `feedback.give` | A feedback report (`shared/feedback.ts`) → `{ id }`: the report is stored as `new`, for review (§3.9). The description must say something, and no key in `context.prefs` may start with `$` (else 400 `bad_request`). After 30 in an hour from one account: 429 `too_many_attempts`, with `retryAfter`. An invite or new-password token in the route or URL is stored as `:token` (`/reset/:token`), as the app sends it. Nothing goes to GitHub yet ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) §3). |
 | `GET /admin/feedback?status=` | `feedback.review` | The reports, newest first, at most 500: id, kind, title, description, route, the marked spot's label and mode, status, author (`{ id, name }`, or null once the account is gone) and `createdAt`. `status` is new, accepted or declined; without it, every report. `counts` has how many there are of each status, whatever the filter. |
 | `GET /admin/feedback/:id` | `feedback.review` | One report: the list's fields, the report as sent, the note, the reviewer (`{ id, name }` or null) and `reviewedAt`. 404 `not_found` for a report that is not there. |
 | `PATCH /admin/feedback/:id` | `feedback.review` | `status` and `note` → the report, as GET. Only the fields sent change. A change records who made it, as the reviewer, and when; sending what is there already changes nothing. A note of more than 2000 characters, or with a control character other than a line break, is 400 `bad_request`; 404 as GET. |
@@ -832,12 +835,14 @@ and `DELETE /classes/:id/members/:accountId` in phase 3; content in phase 4, des
 Errors are `{ "error": "code", "message": "…" }`, plus `retryAfter` with `too_many_attempts` and `busy`. The `code` is
 stable, and the app shows its own English or Dutch text for it. The codes are in `ERROR_CODES` (`shared/api.ts`):
 `bad_request` (400), `unauthenticated`, `invalid_credentials` and `wrong_password` (401), `forbidden` and `bad_origin`
-(403), `not_found` (404), `email_taken`, `last_admin`, `own_account`, `wrong_status`, `rev_conflict`, `role_exists`
-and `built_in_role` (409), `link_invalid` (410), `password_length`, `password_common`, `password_has_email` and
+(403), `not_found` (404), `email_taken`, `last_admin`, `own_account`, `wrong_status`, `rev_conflict`, `role_exists` and
+`built_in_role` (409), `link_invalid` (410), `password_length`, `password_common`, `password_has_email` and
 `email_invalid` (422), `too_many_attempts` (a counter's wait, or too many feedback reports in an hour) and `busy` (the
 hash queue is full, §5.2) (429), and `internal` (500). Fastify's own refusals (a body that is broken, too big, or not
-JSON) keep their status (400, 413, 415) with the code `bad_request`. With `rev_conflict` the body also has `current`,
-the account's copy of the progress. When the API does not answer at all, the app uses its own code, `unavailable`.
+JSON, a URL its router cannot read: percent-encoding that is not UTF-8, a parameter over 100 characters) keep their
+status (400, 413, 414, 415) with the code `bad_request`, and the URL is not echoed. With `rev_conflict` the body also
+has `current`, the account's copy of the progress. When the API does not answer at all, the app uses its own code,
+`unavailable`.
 
 ## 8. Privacy and security
 

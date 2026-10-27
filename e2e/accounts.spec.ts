@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { AccountDetail, AdminUpdateRequest, InviteRequest, Me, SaveProgressRequest } from '../shared/api';
+import type { AccountDetail, AdminUpdateRequest, Closure, InviteRequest, Me, SaveProgressRequest } from '../shared/api';
 import {
   ACCOUNTS, accountDetail, adminApi, announcer, apiError, CLOSURES, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, recordAnnouncements,
   RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
@@ -1183,9 +1183,28 @@ test('admin: Deleted accounts, from Accounts: each with its day, kind and feedba
   await expect(page).toHaveURL(/#\/admin$/);
 });
 
+test('admin: Deleted accounts beyond the newest the list brings: says so, and the file has every one', async ({ page }) => {
+  // As the API caps the list at 500: here the newest four of five.
+  const older: Closure = { id: '1a3c5e7a9b1d3f5a7c9e1b3d5f7a9c1e', day: '2025-11-02', kind: 'removed', feedback: null, archive: null };
+  const api = await mockApi(page, {
+    ...adminApi(),
+    'GET /admin/closures': ({ query }) => ({ json: query.get('all') === 'true' ? { closures: [...CLOSURES, older], total: 5 } : { closures: CLOSURES, total: 5 } }),
+  });
+  await page.goto('./#/admin/deleted');
+  const list = page.locator('section[aria-labelledby="h-closures"]');
+  await expect(list.getByRole('article')).toHaveCount(4);
+  await expect(list.locator('.row-note')).toHaveText('Showing the newest 4 of 5. The file has them all.');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: /^Download as a file/ }).click();
+  const file = await download;
+  const { readFile } = await import('node:fs/promises');
+  expect(JSON.parse(await readFile((await file.path())!, 'utf8'))).toEqual({ closures: [...CLOSURES, older] });
+  expect(api.callsTo('GET /admin/closures').map((c) => c.query.get('all'))).toEqual([null, 'true']);
+});
+
 test('admin: Deleted accounts with none yet, after an error and Try again', async ({ page }) => {
   let fail = true;
-  const api = await mockApi(page, { ...adminApi(), 'GET /admin/closures': () => (fail ? { status: 502 } : { json: { closures: [] } }) });
+  const api = await mockApi(page, { ...adminApi(), 'GET /admin/closures': () => (fail ? { status: 502 } : { json: { closures: [], total: 0 } }) });
   await page.goto('./#/admin/deleted');
   await expect(page.getByRole('alert')).toHaveText("Can't reach Muzieklab right now. Check your connection and try again.");
   fail = false;
@@ -1196,7 +1215,7 @@ test('admin: Deleted accounts with none yet, after an error and Try again', asyn
 });
 
 test('admin: Deleted accounts without access: the message, and nothing asked', async ({ page }) => {
-  const api = await mockApi(page, { ...MEMBER, 'GET /admin/closures': { json: { closures: CLOSURES } } });
+  const api = await mockApi(page, { ...MEMBER, 'GET /admin/closures': { json: { closures: CLOSURES, total: CLOSURES.length } } });
   await page.goto('./#/admin/deleted');
   await expect(page.getByText("You don't have access to this page.")).toBeVisible();
   expect(api.callsTo('GET /admin/closures')).toHaveLength(0);

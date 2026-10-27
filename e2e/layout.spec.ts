@@ -3416,8 +3416,206 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(fab).toBeFocused();
       await expectNoSideScroll(page);
     });
+
+    test('on an exercise screen the button sits at the right edge, on none of the answer controls', async ({ page }) => {
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      const fab = page.getByRole('button', { name: FAB });
+      /** The button is on screen, and no part of these controls lies under it. */
+      const clearOf = async (controls: Locator): Promise<void> => {
+        await expectClickable(fab, { scroll: false });
+        const f = (await fab.boundingBox())!;
+        const boxes = await controls.evaluateAll((els) =>
+          els.map((el) => ({ ...el.getBoundingClientRect().toJSON(), name: el.getAttribute('aria-label') ?? el.textContent ?? '' }) as DOMRect & { name: string }),
+        );
+        expect(boxes.length).toBeGreaterThan(0);
+        for (const r of boxes) {
+          const over = r.x < f.x + f.width && f.x < r.x + r.width && r.y < f.y + f.height && f.y < r.y + r.height;
+          expect(over, `the Feedback button is on “${r.name}”`).toBe(false);
+        }
+      };
+      await page.goto('./#/notes');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await clearOf(page.getByRole('group', { name: 'Note names' }).getByRole('button'));
+      await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
+      await clearOf(page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button'));
+      await clearOf(page.getByRole('button', { name: /^(Hint|Next note)/ }));
+      await page.goto('./#/scales/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await clearOf(page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button'));
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await clearOf(page.getByRole('button', { name: 'Got it' }));
+      await page.getByRole('button', { name: 'Got it' }).click();
+      await clearOf(page.getByRole('button', { name: 'Tap pad' }));
+      // A screen with the tab bar or the header keeps it in the bottom-right corner (on a phone, above the tab bar).
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      const corner = async (): Promise<number[]> => {
+        const f = (await fab.boundingBox())!;
+        return [VIEWPORTS[name].width - (f.x + f.width), VIEWPORTS[name].height - (f.y + f.height)];
+      };
+      await expect.poll(async () => (await corner()).every((gap) => gap >= 0 && gap <= 80), 'in the bottom-right corner').toBe(true);
+    });
+
+    test('a tap marks the spot and nothing else: the form opening under the finger is not pressed', async ({ page }) => {
+      const vp = VIEWPORTS[name];
+      test.skip(vp.width >= 1100, 'a mouse, or a tablet in landscape, where the form is a dialog beside the spot');
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/');
+      const fab = page.getByRole('button', { name: FAB });
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      // Where the form's controls are, opened with a mouse, which sends no click of its own after the press.
+      await fab.click();
+      await page.mouse.click(vp.width / 2, vp.height / 2);
+      await expect(form).toBeVisible();
+      // Once it has slid in; the controls in view.
+      await page.waitForTimeout(400);
+      const spots = await form.locator('button, input').evaluateAll((els) =>
+        els
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            return { name: el.getAttribute('aria-label') ?? el.textContent ?? el.tagName, x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          })
+          .filter((p) => p.y > 0 && p.y < window.innerHeight),
+      );
+      expect(spots.length).toBeGreaterThan(2);
+      await page.keyboard.press('Escape');
+      await expect(form).toHaveCount(0);
+      for (const spot of spots) {
+        await fab.click();
+        const bar = (await page.locator('.fb-bar').boundingBox())!;
+        if (spot.y >= bar.y - 4 && spot.y <= bar.y + bar.height + 4) {
+          await page.keyboard.press('Escape');
+          continue;
+        }
+        await page.touchscreen.tap(spot.x, spot.y);
+        await expect(form, `a tap where “${spot.name}” opens`).toBeVisible();
+        await page.waitForTimeout(300);
+        await expect(form, `a tap where “${spot.name}” opens`).toBeVisible();
+        await expect(page.getByRole('dialog', { name: /part you mean/ })).toHaveCount(0);
+        await expect(form.getByLabel('What should change?'), spot.name).toBeFocused();
+        await expect(form.getByRole('button', { name: 'Change' }), spot.name).toHaveAttribute('aria-pressed', 'true');
+        await page.keyboard.press('Escape');
+        await expect(form, spot.name).toHaveCount(0);
+        await expect(fab).toBeFocused();
+      }
+    });
+
+    test('the hint bar moves off what it covers when tapped, and that part can then be marked', async ({ page }) => {
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await page.getByRole('button', { name: FAB }).click();
+      const bar = page.locator('.fb-bar');
+      await expect(bar).toBeVisible();
+      // The screen's title on a phone, the header's tabs on a wider screen: something the bar lies over, once it has
+      // slid in.
+      const under = (): Promise<{ name: string; x: number; y: number } | null> =>
+        page.evaluate(() => {
+          const b = document.querySelector('.fb-bar')!.getBoundingClientRect();
+          for (const el of document.querySelectorAll('main h1, nav a')) {
+            const r = el.getBoundingClientRect();
+            if (r.width && r.x < b.right && b.x < r.right && r.y < b.bottom && b.y < r.bottom) return { name: el.textContent ?? '', x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          }
+          return null;
+        });
+      await expect.poll(under, 'a title or tab under the hint bar').not.toBeNull();
+      const hidden = await under();
+      await bar.locator('#fb-hint').click();
+      await expect(bar).toHaveClass(/fb-bar--low/);
+      const off = async (): Promise<boolean> => {
+        const b = (await bar.boundingBox())!;
+        return hidden!.y < b.y || hidden!.y > b.y + b.height;
+      };
+      await expect.poll(off, 'the bar is off it').toBe(true);
+      await page.mouse.click(hidden!.x, hidden!.y);
+      await expect(page.getByRole('dialog', { name: 'Feedback' }).locator('.fb-marked')).toContainText(`“${hidden!.name}”`);
+    });
+
+    test('the box with its scroll offset finds Start again, sticky as it is, on the page scrolled to its top', async ({ page }) => {
+      const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/setup');
+      const start = page.getByRole('button', { name: /^Start · / });
+      await expect(start).toBeVisible();
+      // Scrolled to its end: the side panel (from 700 px) or the Start bar (phone) moved up as far as it goes.
+      await page.locator('.page').evaluate((n) => {
+        n.scrollTop = n.scrollHeight;
+      });
+      await page.getByRole('button', { name: FAB }).click();
+      const r = (await start.boundingBox())!;
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      await expect(form.locator('.fb-marked')).toContainText('Start');
+      await form.getByLabel('What should change?').fill('Start could say how long it takes.');
+      await form.getByRole('button', { name: 'Send', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Saved for review' })).toBeVisible();
+      const sent = api.callsTo('POST /feedback')[0].body as FeedbackReport;
+      const top = await page.evaluate((selector) => {
+        const el = document.querySelector(selector)!;
+        for (let n = el.parentElement; n; n = n.parentElement) n.scrollTop = 0;
+        return el.getBoundingClientRect().y;
+      }, sent.target.selector);
+      expect(Math.abs(sent.target.rect.y + sent.target.scroll.y - top), `box y ${sent.target.rect.y} + scroll ${sent.target.scroll.y}`).toBeLessThan(2);
+    });
   });
 }
+
+test.describe('feedback: the keyboard, and the marked part’s name', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('Tab stays in the marking layer; the arrow keys pick a part, the bar names it, and Enter marks it', async ({ page }) => {
+    await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    const fab = page.getByRole('button', { name: FAB });
+    await fab.focus();
+    await page.keyboard.press('Enter');
+    const layer = page.getByRole('dialog', { name: /part you mean/ });
+    await expect(layer).toBeVisible();
+    for (const key of ['Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab']) {
+      await page.keyboard.press(key);
+      expect(await layer.evaluate((l) => l.contains(document.activeElement)), `focus in the layer after ${key}`).toBe(true);
+    }
+    // Down to the screen's title, named in the bar, and marked with Enter.
+    const pick = layer.locator('.fb-bar-pick');
+    for (let i = 0; i < 40 && (await pick.textContent()) !== 'heading “Settings”'; i++) await page.keyboard.press('ArrowDown');
+    await expect(pick).toHaveText('heading “Settings”');
+    await expect(layer.locator('.fb-box')).toBeVisible();
+    await page.keyboard.press('Enter');
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    await expect(form.locator('.fb-marked')).toContainText('heading “Settings”');
+    await expect(form.getByLabel('What should change?')).toBeFocused();
+  });
+
+  test('a part with lines of its own is named with them apart: “1 Pulse and meter Beat, …”', async ({ page }) => {
+    const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/learn');
+    const row = page.locator('.chapter-row').first();
+    await expect(row).toBeVisible();
+    await page.getByRole('button', { name: FAB }).click();
+    // A spot on the row itself, between its parts.
+    const spot = await row.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      for (let x = r.right - 2; x > r.left; x -= 4) for (let y = r.top + 4; y < r.bottom; y += 4) if (document.elementsFromPoint(x, y).find((e) => !e.closest('[data-feedback-ui]')) === el) return { x, y };
+      return null;
+    });
+    expect(spot).not.toBeNull();
+    await page.mouse.click(spot!.x, spot!.y);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    await expect(form.locator('.fb-marked')).toContainText('button “1 Pulse and meter Beat, tempo');
+    await form.getByLabel('What should change?').fill('The chapter row reads well.');
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Saved for review' })).toBeVisible();
+    const sent = api.callsTo('POST /feedback')[0].body as FeedbackReport;
+    expect(sent.target.label + sent.target.text).not.toMatch(/\dPulse|meterBeat/);
+  });
+});
 
 test.describe('feedback: marking a staff drawing', () => {
   test.use({ serviceWorkers: 'block' });

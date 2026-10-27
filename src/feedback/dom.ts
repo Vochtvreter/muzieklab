@@ -1,6 +1,6 @@
 /** Reading the page for a feedback report: which element was marked, how to find it again, and the screen it was on. */
 import type { FeedbackContext, FeedbackTarget, Rect } from '../../shared/feedback';
-import { clip } from '../../shared/feedback';
+import { clip, withoutToken } from '../../shared/feedback';
 
 /** The feedback tool's own elements carry this attribute; marking never picks them. */
 export const TOOL_ATTR = 'data-feedback-ui';
@@ -52,10 +52,37 @@ const ROLE_OF: Record<string, string> = {
   TEXTAREA: 'field',
 };
 
+/**
+ * The element's text as it reads, its parts apart: textContent runs a chapter row's "1", "Pulse and meter" and "Beat,
+ * tempo…" together. A part laid out on its own (a block, a flex item, a chip) gets a space either side, and a hidden
+ * one adds nothing. As written, not as shown: innerText would give a heading its style puts in capitals as ACCOUNT.
+ * Read up to `max` characters, the most a report keeps.
+ */
+function readableText(el: Element, max = 300): string {
+  const view = el.ownerDocument.defaultView;
+  let text = '';
+  const walk = (node: Node): void => {
+    for (const child of node.childNodes) {
+      if (text.length > max) return;
+      if (child.nodeType === Node.TEXT_NODE) text += child.textContent;
+      else if (child instanceof Element) {
+        const display = view?.getComputedStyle(child).display ?? 'inline';
+        if (display === 'none') continue;
+        const apart = child.tagName === 'BR' || (display !== 'inline' && display !== 'contents');
+        if (apart) text += ' ';
+        walk(child);
+        if (apart) text += ' ';
+      }
+    }
+  };
+  walk(el);
+  return text;
+}
+
 /** How a person would name the element: its role and accessible name or text, else its tag and first class. */
 export function describeElement(el: Element): string {
   const role = el.getAttribute('role') ?? ROLE_OF[el.tagName.toUpperCase()];
-  const name = el.getAttribute('aria-label') ?? el.getAttribute('title') ?? el.getAttribute('alt') ?? el.textContent ?? '';
+  const name = el.getAttribute('aria-label') ?? el.getAttribute('title') ?? el.getAttribute('alt') ?? readableText(el);
   const named = clip(name, 50);
   const cls = [...el.classList].find((c) => !PASSING.test(c));
   const tag = el.tagName.toLowerCase() + (cls ? '.' + cls : '');
@@ -72,6 +99,23 @@ export function elementAt(x: number, y: number, doc: Document = document): Eleme
     return el;
   }
   return null;
+}
+
+/** What the arrow keys step through while marking: controls, headings, text and pictures. */
+const PARTS = 'a[href], button, input, select, textarea, summary, [role="button"], [role="switch"], [role="slider"], [tabindex]:not([tabindex="-1"]), h1, h2, h3, h4, p, img, svg, [role="img"]';
+
+/**
+ * The parts of the screen the keyboard can mark, in page order: not the tool's own, nor one hidden from sight or from a
+ * screen reader, nor what is inside a control or a picture (a button's icon, a staff's notes).
+ */
+export function markableParts(doc: Document = document): Element[] {
+  const shows = (el: Element): boolean => (typeof el.checkVisibility === 'function' ? el.checkVisibility() : el.getClientRects().length > 0);
+  return [...doc.body.querySelectorAll(PARTS)].filter(
+    (el) =>
+      !el.closest(`[${TOOL_ATTR}], [aria-hidden="true"], .sr-only`) &&
+      !el.parentElement?.closest('a[href], button, summary, label, svg, [role="img"]') &&
+      shows(el),
+  );
 }
 
 /** Markup with the tool's own elements and long attribute values left out, cut to `max` characters. */
@@ -96,32 +140,51 @@ const scrollsIn = (s: CSSStyleDeclaration): boolean => [s.overflowX, s.overflowY
  * How far the page under the element is scrolled: the window's offset plus that of every box around the element that
  * scrolls. The app's screens scroll inside .page (or .shell-main), never the window, so the window alone always says
  * 0, 0. Scroll that does not move the element is left out, so the box plus the offset stays the spot on the page
- * scrolled to its top: a sticky part (Settings' side column, Setup's Start) stays put while the box it sticks in
- * scrolls, and a fixed one while anything around it does.
+ * scrolled to its top: a fixed part stays put while anything around it scrolls, and a sticky one (Settings' side
+ * column, Setup's Start) moves only as far as it went before it stuck.
  */
 function scrollOf(el: Element, win: Window): { x: number; y: number } {
   const { body, documentElement } = win.document;
   let x = 0;
   let y = 0;
   // Set by a sticky box: the next box around it that scrolls is the one it sticks in.
-  let stuck = false;
+  let stuck: Element | null = null;
   for (let n: Element | null = el; n && n !== body && n !== documentElement; n = n.parentElement) {
     const style = win.getComputedStyle(n);
     if (n !== el && scrollsIn(style)) {
-      if (!stuck) {
-        x += n.scrollLeft;
-        y += n.scrollTop;
-      }
-      stuck = false;
+      const moved = stuck ? movedWith(stuck, n) : { x: n.scrollLeft, y: n.scrollTop };
+      x += moved.x;
+      y += moved.y;
+      stuck = null;
     }
     if (style.position === 'fixed') return { x: Math.round(x), y: Math.round(y) };
-    if (style.position === 'sticky') stuck = true;
+    if (style.position === 'sticky') stuck = n;
   }
+  // A sticky part with no box around it that scrolls sticks in the window, whose scroll is left out (the app's window
+  // never scrolls).
   if (!stuck) {
     x += win.scrollX;
     y += win.scrollY;
   }
   return { x: Math.round(x), y: Math.round(y) };
+}
+
+/**
+ * How far a sticky part went along as the box it sticks in scrolled: all the way until it reached its inset (Setup's
+ * side panel starts under the screen's header and sticks at the top), none when it was there from the start, the whole
+ * scroll when its box is too short for it to stick. Measured with the box scrolled to its top and back again at once,
+ * in the same task, so nothing is drawn in between.
+ */
+function movedWith(part: Element, box: Element): { x: number; y: number } {
+  const { scrollLeft, scrollTop } = box;
+  if (!scrollLeft && !scrollTop) return { x: 0, y: 0 };
+  const now = part.getBoundingClientRect();
+  box.scrollLeft = 0;
+  box.scrollTop = 0;
+  const top = part.getBoundingClientRect();
+  box.scrollLeft = scrollLeft;
+  box.scrollTop = scrollTop;
+  return { x: top.x - now.x, y: top.y - now.y };
 }
 
 /** The target for a marked element, or for a drawn box with the element under its centre. */
@@ -130,14 +193,14 @@ export function targetFor(el: Element, area?: Rect, win: Window = window): Feedb
     mode: area ? 'area' : 'element',
     selector: selectorFor(el),
     label: describeElement(el),
-    text: clip(el.textContent ?? '', 300),
+    text: clip(readableText(el), 300),
     html: markup(el),
     rect: toRect(area ?? el.getBoundingClientRect()),
     scroll: scrollOf(el, win),
   };
 }
 
-/** The screen the report was made on. */
+/** The screen the report was made on; an invite or new-password screen without its link's token. */
 export function captureContext(o: { version: string; route: string; themeSetting: string; locale: string; prefs: unknown }, win: Window = window): FeedbackContext {
   const mq = (q: string): boolean => win.matchMedia?.(q).matches ?? false;
   const width = win.innerWidth;
@@ -146,8 +209,8 @@ export function captureContext(o: { version: string; route: string; themeSetting
   const dark = forced ? forced === 'dark' : mq('(prefers-color-scheme: dark)');
   return {
     version: o.version,
-    url: win.location.href,
-    route: o.route,
+    url: withoutToken(win.location.href),
+    route: withoutToken(o.route),
     viewport: { width, height, dpr: win.devicePixelRatio || 1 },
     breakpoint: width >= 1100 ? 'desktop' : width >= 700 ? 'tablet' : 'phone',
     orientation: width > height ? 'landscape' : 'portrait',

@@ -107,9 +107,11 @@ export function useDocTitle(title: string): void {
 export function useLingering<T>(value: T | null, ms: number): { shown: T | null; closing: boolean } {
   const [shown, setShown] = useState<T | null>(value);
   const [closing, setClosing] = useState(false);
+  // Kept as it renders, not in the effect: React runs an effect's update a task later, so a value closed before then
+  // (a tap whose click closes what it opened) would come back after closing, and stay.
+  if (value !== null && value !== shown) setShown(value);
   useEffect(() => {
     if (value !== null) {
-      setShown(value);
       setClosing(false);
       return;
     }

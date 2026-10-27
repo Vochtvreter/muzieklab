@@ -138,6 +138,19 @@ describe('POST /feedback', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('keeps no invite or new-password token from the address: whoever has one can claim the account', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const token = 'Ab3_x-'.repeat(7) + 'Z';
+    for (const kind of ['invite', 'reset']) {
+      const id = await sent(t, admin.cookie, { ...report, context: { ...report.context, url: `https://test.vivanova.app/#/${kind}/${token}`, route: `/${kind}/${token}` } });
+      const res = await t.call({ method: 'GET', url: DETAIL(id), cookie: admin.cookie });
+      expect(res.body).not.toContain(token);
+      expect(res.json<FeedbackDetail>().report.context).toMatchObject({ url: `https://test.vivanova.app/#/${kind}/:token`, route: `/${kind}/:token` });
+    }
+    expect((await list(t, admin.cookie)).body).not.toContain(token);
+  });
+
   it('needs feedback.give: admins have it, and other roles once an admin gives it', async () => {
     const t = await makeApp(mongo);
     await seedAccount(t.db, { email: 'ted@example.com', roles: ['teacher'] });

@@ -84,19 +84,24 @@ there too, which opens the reports.
 ### Marking and sending
 
 1. A **Feedback** button floats over every screen. On phone it is a round icon above the tab bar; on tablet and desktop
-   it sits in the bottom-right corner.
+   it sits in the bottom-right corner. Screens without the tab bar or header (an exercise, its setup and results, a
+   form on its own) have their answer controls at the bottom, so there it is a tab on the right edge, halfway down.
 2. Press it, then tap or click the part you mean, or drag to draw a box. With a mouse, the element a click would mark is
-   outlined. Press Esc or Cancel to stop. To mark something further down the page, scroll first, then press Feedback.
+   outlined. With the keyboard, the arrow keys pick the screen's parts in turn, the hint bar names the one picked, and
+   Enter marks it. The hint bar sits at the top; tap it to move it to the bottom (and back) when it is over what you
+   mean. Press Esc or Cancel to stop. To mark something further down the page, scroll first, then press Feedback.
    However the tool closes (Esc, Cancel, or the sheet's X or Close), the focus goes back to the Feedback button.
 3. A sheet opens (a dialog on desktop, beside the marked spot). The spot stays lit and the rest of the screen dims.
    Choose **Bug**, **Change** or **Idea**, then say what should change (at most 5000 characters). A title is
    optional; without one, the review screens name the report by its kind and screen (*Bug on #/settings*), and its
-   issue by the kind, the spot and the screen.
+   issue by the kind, the spot and the screen. **Mark again** marks another spot for the same report and keeps what is
+   typed; Esc or Cancel then goes back to the form as it was.
 4. Send the report:
    - **Send**: the app sends the report to the API (`POST /api/v1/feedback`), which stores it as New. The sheet then
      says *Saved for review*: an admin reads it in Settings → Account → Feedback, and picks what goes on to GitHub.
      For someone who also has `feedback.review`, **Review it** opens the report there.
-   - **Copy** puts the report on the clipboard in Markdown: the GitHub issue it would become.
+   - **Copy** puts the report on the clipboard in Markdown: the GitHub issue it would become. It says *Copied* for 2 s,
+     or until the report changes. Where the clipboard is not allowed, the Markdown shows in a field to copy by hand.
    - When sending fails (no connection, the server busy, too many reports in an hour), the sheet says why and keeps
      the form as it is, so Send tries again.
 
@@ -148,10 +153,13 @@ Each report holds (`shared/feedback.ts`; stored as it was sent, BACKEND-PLAN.md 
 
 - **What should change:** the kind, the title and the description.
 - **Where:** the route (`#/settings`) and the marked element: its CSS selector, a readable name (`button “Start”`), its
-  text and its markup (shortened). It also holds the marked box in CSS pixels and the page's scroll offset: how far
-  the boxes around the element are scrolled (a screen scrolls inside the page, not the window), leaving out scroll that
-  does not move it (a sticky part, such as Settings' side column, stays put while the page scrolls; a fixed one stays
-  put whatever scrolls), so the box plus the offset is where the spot is on the page scrolled to its top.
+  text (its parts apart, as it reads) and its markup (shortened). An invite or new-password screen's route and address
+  keep `:token` in place of the link's token (`#/reset/:token`): whoever has a token can claim the account, and a
+  report is read by its reviewers and may become a public issue. The app leaves it out, and the API again. It also
+  holds the marked box in CSS pixels and the page's scroll offset: how far the boxes around the element are scrolled
+  (a screen scrolls inside the page, not the window), leaving out scroll that does not move it (a sticky part, such as
+  Settings' side column, counts only how far it went along before it stuck; a fixed one stays put whatever scrolls),
+  so the box plus the offset is where the spot is on the page scrolled to its top.
 - **Device:** the viewport and pixel ratio, the breakpoint (phone, tablet or desktop), the orientation, touch or mouse,
   the theme (setting and shown), the language, the app version and the user agent.
 - **State:** the player's preferences (`muzieklab.prefs.v1`), so the agent can seed them and see the same screen.

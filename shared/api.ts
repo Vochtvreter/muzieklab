@@ -322,9 +322,11 @@ export interface ClosureArchive {
   data: SyncedData | null;
 }
 
-/** GET /admin/closures → { closures }, newest day first, at most 500. */
+/** GET /admin/closures → { closures, total }, newest day first, at most 500 (with all=true, every one). */
 export interface ClosureListResponse {
   closures: Closure[];
+  /** How many there are, also beyond the 500. */
+  total: number;
 }
 
 // --- roles (accounts.read to list them; roles.manage to change them; BACKEND-PLAN.md §4) ------------------------------

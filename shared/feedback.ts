@@ -42,8 +42,9 @@ export interface FeedbackTarget {
   rect: Rect;
   /**
    * The page's scroll offset when it was marked, so the box can be found again on a long page: the window's plus that
-   * of the boxes around the element (a screen scrolls inside .page), leaving out scroll that does not move it (the box
-   * a sticky part sticks in; all of it for a fixed part). The box plus it is the spot on the unscrolled page.
+   * of the boxes around the element (a screen scrolls inside .page), leaving out scroll that does not move it (of the
+   * box a sticky part sticks in, all but how far the part went along before it stuck; all of it for a fixed part). The
+   * box plus it is the spot on the unscrolled page.
    */
   scroll: { x: number; y: number };
 }
@@ -88,6 +89,18 @@ export interface IssueDraft {
 const KIND_WORD: Record<FeedbackKind, string> = { bug: 'Bug', change: 'Change request', idea: 'Idea' };
 
 const round = (r: Rect): Rect => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) });
+
+/** An invite or new-password screen's route, with its token: '/reset/<token>', or '#/reset/<token>' in an address. */
+const TOKEN_ROUTE = /(^|#)\/(invite|reset)\/[^/?#\s]+/g;
+
+/**
+ * The route or address with an invite or new-password link's token left out ('/reset/:token'). Whoever has the token
+ * can claim the account (BACKEND-PLAN.md §5.1), and a report is read by its reviewers and may become a public issue,
+ * so the app leaves it out of what it sends, and the API again of what it stores.
+ */
+export function withoutToken(routeOrUrl: string): string {
+  return routeOrUrl.replace(TOKEN_ROUTE, '$1/$2/:token');
+}
 
 /** One line with no line breaks or runs of spaces, cut to `max` characters. */
 export function clip(s: string, max: number): string {

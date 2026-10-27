@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, type Me } from '../../../shared/api';
 import { FEEDBACK_DESCRIPTION_MAX, type FeedbackReport } from '../../../shared/feedback';
@@ -79,12 +79,21 @@ async function markStart(): Promise<void> {
   const start = screen.getByRole('button', { name: 'Start' });
   document.elementsFromPoint = () => [start];
   fireEvent.click(screen.getByRole('button', { name: 'Feedback: mark a part of this screen' }));
-  const layer = screen.getByRole('dialog', { name: /^Click the part you mean/ });
-  fireEvent.pointerDown(layer, { clientX: 40, clientY: 40 });
-  fireEvent.pointerUp(layer, { clientX: 40, clientY: 40 });
+  tap(screen.getByRole('dialog', { name: /^Click the part you mean/ }));
   await screen.findByRole('dialog', { name: 'Feedback' });
-  fireEvent.change(screen.getByPlaceholderText('What is wrong here, and what you expect instead'), { target: { value: 'Start is cut off.' } });
+  fireEvent.change(screen.getByPlaceholderText(DESC), { target: { value: 'Start is cut off.' } });
 }
+
+/** A tap or click on the marking layer: the pointer goes down and up, then the click that ends it. */
+function tap(layer: HTMLElement, pointerType = 'mouse'): void {
+  fireEvent.pointerDown(layer, { clientX: 40, clientY: 40, pointerType });
+  fireEvent.pointerUp(layer, { clientX: 40, clientY: 40, pointerType });
+  fireEvent.click(layer, { clientX: 40, clientY: 40 });
+}
+
+const DESC = 'What is wrong here, and what you expect instead';
+const FAB = 'Feedback: mark a part of this screen';
+const LAYER = /^Click the part you mean/;
 
 describe('Feedback tool: sending a report', () => {
   it('saves it for review: says where an admin reads it, and links a reviewer to it', async () => {
@@ -129,11 +138,7 @@ describe('Feedback tool: sending a report', () => {
 
 describe('Feedback tool: closing it', () => {
   const fab = (): HTMLElement => screen.getByRole('button', { name: 'Feedback: mark a part of this screen' });
-  const mark = (): void => {
-    const layer = screen.getByRole('dialog', { name: /^Click the part you mean/ });
-    fireEvent.pointerDown(layer, { clientX: 40, clientY: 40 });
-    fireEvent.pointerUp(layer, { clientX: 40, clientY: 40 });
-  };
+  const mark = (): void => tap(screen.getByRole('dialog', { name: LAYER }));
 
   it('puts the focus back on the Feedback button: the X, Cancel or Esc while marking', async () => {
     await markStart();
@@ -178,5 +183,189 @@ describe('Feedback tool: closing it', () => {
     await waitFor(() => expect(fab()).toBeTruthy());
     await new Promise((r) => setTimeout(r, 50));
     expect(document.activeElement).not.toBe(fab());
+  });
+});
+
+/** The tool over a screen with a heading and a Start button; nothing marked yet. */
+function openTool(): HTMLElement {
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(me));
+  render(
+    <StoreProvider>
+      <main className="frame">
+        <h1>Free practice</h1>
+        <button type="button" className="start-btn">
+          Start
+        </button>
+      </main>
+      <FeedbackOn onHide={() => undefined} />
+    </StoreProvider>,
+  );
+  const start = screen.getByRole('button', { name: 'Start' });
+  document.elementsFromPoint = () => [start];
+  fireEvent.click(screen.getByRole('button', { name: FAB }));
+  return screen.getByRole('dialog', { name: LAYER });
+}
+
+describe('Feedback tool: marking', () => {
+  it('a tap marks the spot on its click, its last event, so the click cannot press what opens under the finger', async () => {
+    const layer = openTool();
+    fireEvent.pointerDown(layer, { clientX: 40, clientY: 40, pointerType: 'touch' });
+    fireEvent.pointerUp(layer, { clientX: 40, clientY: 40, pointerType: 'touch' });
+    expect(screen.queryByRole('dialog', { name: 'Feedback' })).toBeNull();
+    fireEvent.click(layer, { clientX: 40, clientY: 40 });
+    const form = await screen.findByRole('dialog', { name: 'Feedback' });
+    expect(within(form).getByText('button “Start”')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByPlaceholderText(DESC));
+  });
+
+  it('a drag still marks its box when the pointer goes up; a click on the hint bar marks nothing', async () => {
+    let layer = openTool();
+    fireEvent.click(within(layer).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: FAB }));
+    layer = screen.getByRole('dialog', { name: LAYER });
+    fireEvent.click(within(layer).getByText(LAYER));
+    expect(screen.queryByRole('dialog', { name: 'Feedback' })).toBeNull();
+    // jsdom has no PointerEvent: these carry where the pointer is.
+    const pointer = (type: string, x: number, y: number) => fireEvent(layer, new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }));
+    pointer('pointerdown', 10, 10);
+    pointer('pointermove', 120, 90);
+    pointer('pointerup', 120, 90);
+    expect(within(await screen.findByRole('dialog', { name: 'Feedback' })).getByText('Marked area')).toBeTruthy();
+  });
+
+  it('the hint bar goes to the other edge when tapped, so what it covers can be marked, and comes back', () => {
+    const layer = openTool();
+    const bar = layer.querySelector('.fb-bar')!;
+    const text = within(layer).getByText(LAYER);
+    expect(bar.classList.contains('fb-bar--low')).toBe(false);
+    tap(text, 'touch');
+    expect(bar.classList.contains('fb-bar--low')).toBe(true);
+    expect(screen.queryByRole('dialog', { name: 'Feedback' })).toBeNull();
+    tap(text, 'touch');
+    expect(bar.classList.contains('fb-bar--low')).toBe(false);
+    // Its Cancel only cancels.
+    fireEvent.click(within(layer).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('the keyboard: Tab stays in the marking layer, the arrow keys pick a part, which the bar names, and Enter marks it', async () => {
+    // jsdom has no layout: every part shows.
+    const proto = Element.prototype as Element & { checkVisibility?: () => boolean };
+    const had = proto.checkVisibility;
+    proto.checkVisibility = () => true;
+    try {
+      const layer = openTool();
+      const cancel = within(layer).getByRole('button', { name: 'Cancel' });
+      expect(document.activeElement).toBe(cancel);
+      for (const shiftKey of [false, true]) {
+        const from = document.activeElement!;
+        const ev = createEvent.keyDown(from, { key: 'Tab', shiftKey });
+        fireEvent(from, ev);
+        expect(ev.defaultPrevented).toBe(true);
+        expect(layer.contains(document.activeElement)).toBe(true);
+      }
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+      expect(within(layer).getByText('heading “Free practice”')).toBeTruthy();
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+      expect(within(layer).getByText('button “Start”')).toBeTruthy();
+      expect(within(layer).queryByText('heading “Free practice”')).toBeNull();
+      // From the last part, on to the first again; and back.
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+      expect(within(layer).getByText('heading “Free practice”')).toBeTruthy();
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowUp' });
+      expect(within(layer).getByText('button “Start”')).toBeTruthy();
+      // Tab goes between the picked part and Cancel, both in the layer.
+      fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
+      expect(document.activeElement).toBe(cancel);
+      fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
+      expect(document.activeElement).toBe(layer);
+      fireEvent.keyDown(layer, { key: 'Enter' });
+      const form = await screen.findByRole('dialog', { name: 'Feedback' });
+      expect(within(form).getByText('button “Start”')).toBeTruthy();
+    } finally {
+      proto.checkVisibility = had;
+    }
+  });
+});
+
+describe('Feedback tool: Mark again', () => {
+  const field = (placeholder: string): HTMLInputElement => screen.getByPlaceholderText(placeholder) as HTMLInputElement;
+  const layer = (): HTMLElement => screen.getByRole('dialog', { name: LAYER });
+  const kept = async (): Promise<void> => {
+    await screen.findByRole('dialog', { name: 'Feedback' });
+    expect(field(DESC).value).toBe('Start is cut off.');
+    expect(field('A short summary (optional)').value).toBe('Cut off');
+    expect(screen.getByRole('button', { name: 'Bug' }).getAttribute('aria-pressed')).toBe('true');
+  };
+
+  it('keeps the kind, title and description typed; Cancel and Esc while marking again go back to the form', async () => {
+    await markStart();
+    fireEvent.click(screen.getByRole('button', { name: 'Bug' }));
+    fireEvent.change(field('A short summary (optional)'), { target: { value: 'Cut off' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark again' }));
+    tap(layer());
+    await kept();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark again' }));
+    fireEvent.click(within(layer()).getByRole('button', { name: 'Cancel' }));
+    await kept();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark again' }));
+    fireEvent.keyDown(layer(), { key: 'Escape' });
+    await kept();
+    expect(screen.queryByRole('dialog', { name: LAYER })).toBeNull();
+
+    // Once it is sent, Mark another starts a new report, empty; so does the Feedback button.
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark another' }));
+    tap(layer());
+    await screen.findByRole('dialog', { name: 'Feedback' });
+    expect(field(DESC).value).toBe('');
+    expect(screen.getByRole('button', { name: 'Change' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.change(field(DESC), { target: { value: 'Not sent.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: FAB })).toBeTruthy());
+    // Cancel while marking a new report closes the tool, as ever.
+    fireEvent.click(screen.getByRole('button', { name: FAB }));
+    fireEvent.click(within(layer()).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: FAB }));
+    tap(layer());
+    await screen.findByRole('dialog', { name: 'Feedback' });
+    expect(field(DESC).value).toBe('');
+    expect(sent()).toHaveLength(1);
+  });
+});
+
+describe('Feedback tool: Copy', () => {
+  let writeText: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(window.navigator, 'clipboard', { value: { writeText }, configurable: true });
+  });
+  afterEach(() => {
+    delete (window.navigator as { clipboard?: unknown }).clipboard;
+  });
+
+  it('says Copied for 2 s, and Copy again as soon as the report changes', async () => {
+    await markStart();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    await screen.findByRole('button', { name: 'Copied' });
+    expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^# Change request: button “Start” on /));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy(), { timeout: 3000 });
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    await screen.findByRole('button', { name: 'Copied' });
+    fireEvent.change(screen.getByPlaceholderText(DESC), { target: { value: 'Start is cut off on a phone.' } });
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy();
+  }, 10_000);
+
+  it('where copying is refused, the Markdown shows to copy by hand', async () => {
+    writeText.mockImplementation(() => Promise.reject(new Error('NotAllowedError')));
+    await markStart();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    const markdown = (await screen.findByLabelText('Markdown')) as HTMLTextAreaElement;
+    expect(markdown.value).toMatch(/^# Change request: button “Start” on [\s\S]*Start is cut off\./);
+    // With its own Copy, which selects it where the clipboard is refused.
+    expect(screen.getAllByRole('button', { name: 'Copy' })).toHaveLength(2);
   });
 });

@@ -49,6 +49,18 @@ describe('errors', () => {
     await app.close();
   });
 
+  it('answers a URL the router cannot read with bad_request and no-store, without echoing it', async () => {
+    const app = buildApp({ db: client.db(), commit: 'dev' });
+    // Percent-encoding that is not UTF-8, and an id longer than a route parameter may be.
+    for (const url of ['/api/v1/me%C0', '/api/v1/admin/accounts/%C0%80', '/api/v1/admin/accounts/' + 'a'.repeat(101)]) {
+      const res = await app.inject({ method: 'GET', url });
+      expect([400, 414], url).toContain(res.statusCode);
+      expect(res.json(), url).toEqual({ error: 'bad_request', message: 'Not a URL the API can read' });
+      expect(res.headers['cache-control'], url).toBe('no-store');
+    }
+    await app.close();
+  });
+
   it('answers a failure inside a route with 500 internal, and no details', async () => {
     // Port 9 again: every query fails, so signing in throws from deep inside the driver.
     const down = new MongoClient('mongodb://127.0.0.1:9/x', { serverSelectionTimeoutMS: 200 });
@@ -76,15 +88,17 @@ describe('the log', () => {
     await app.inject({ method: 'GET', url: '/api/v1/admin/accounts?q=lies%40school.nl&status=active', headers });
     await app.inject({ method: 'GET', url: '/api/v1/admin/accounts/65f0c0ffee0123456789abcd?x=1', headers: { ...headers, cookie: '__Host-session=secret' } });
     await app.inject({ method: 'GET', url: '/api/v1/nope?email=lies%40school.nl', headers });
+    await app.inject({ method: 'GET', url: '/api/v1/me%C0?email=lies%40school.nl', headers });
     await app.close();
 
     const logged = lines.map((line) => JSON.parse(line) as Record<string, unknown>);
     // Only these lines: Fastify's own (incoming request, request completed) are off.
-    expect(logged.map((l) => l.msg)).toEqual(['request', 'request', 'request']);
+    expect(logged.map((l) => l.msg)).toEqual(['request', 'request', 'request', 'request']);
     expect(logged.filter((l) => l.msg === 'request').map(({ method, url, statusCode, responseTime }) => ({ method, url, statusCode, responseTime }))).toEqual([
       { method: 'GET', url: '/api/v1/admin/accounts', statusCode: 401, responseTime: expect.any(Number) },
       { method: 'GET', url: '/api/v1/admin/accounts/:id', statusCode: 401, responseTime: expect.any(Number) },
       { method: 'GET', url: '/api/v1/nope', statusCode: 404, responseTime: expect.any(Number) },
+      { method: 'GET', url: '/api/v1/me%C0', statusCode: 400, responseTime: expect.any(Number) },
     ]);
     const text = lines.join('');
     for (const secret of ['203.0.113.7', 'remoteAddress', 'test.vivanova.app', 'lies', 'school', '?', 'q=', '65f0c0ffee', 'secret', 'iPhone']) {

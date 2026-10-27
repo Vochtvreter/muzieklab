@@ -3,8 +3,9 @@
  * day first, so the history can be used to improve the app. Opened from Accounts. Each entry: the day, how it went
  * (Archived: its owner kept an anonymous copy; Data deleted: its owner deleted everything; By an admin), the owner's
  * feedback, and for an archived one what its copy holds in one line (joined, level, XP, lessons, days practised).
- * A filter by kind, and Download as a file (every entry, the archived progress too, as JSON). Nothing on the screen
- * says whose an account was: the API keeps no name, email, id or time of day for them.
+ * A filter by kind, and Download as a file (every entry, the archived progress too, as JSON). The list brings the
+ * newest 500 and says so when there are more; the file has them all. Nothing on the screen says whose an account was:
+ * the API keeps no name, email, id or time of day for them.
  * Needs `accounts.read`, as Accounts does.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -15,9 +16,10 @@ import { levelInfo } from '../../../game/xp';
 import { formatDay, formatMonth, t } from '../../../i18n';
 import { useAccount } from '../../account';
 import { Chip } from '../../components/Controls';
-import { ErrorRetry, RowButton } from '../../components/Form';
+import { ErrorRetry, FormError, RowButton } from '../../components/Form';
 import { Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
+import { useMounted } from '../../hooks';
 import { announce } from '../../lib/announce';
 import { errorMessage } from '../../lib/apiErrors';
 import { GateMessage, NoAccess, useAdminGate } from './AdminParts';
@@ -32,7 +34,7 @@ const FILTER_PAIRS: [Filter, Filter][] = [
   ['removed', 'admin'],
 ];
 
-type List = { state: 'loading' } | { state: 'ready'; closures: Closure[] } | { state: 'failed'; message: string } | { state: 'denied' };
+type List = { state: 'loading' } | { state: 'ready'; closures: Closure[]; total: number } | { state: 'failed'; message: string } | { state: 'denied' };
 
 export function AdminClosures(): JSX.Element {
   const account = useAccount();
@@ -58,7 +60,7 @@ function ClosureList(): JSX.Element {
     api.get<ClosureListResponse>('/admin/closures', { signal: ctrl.signal }).then(
       (res) => {
         if (ctrl.signal.aborted) return;
-        setList({ state: 'ready', closures: res.closures });
+        setList({ state: 'ready', closures: res.closures, total: res.total });
         if (loaded.current) announce(t('closures.count', { count: res.closures.length }));
         loaded.current = true;
       },
@@ -108,17 +110,52 @@ function ClosureList(): JSX.Element {
                 {shown.map((c) => (
                   <ClosureRow key={c.id} closure={c} />
                 ))}
+                {list.total > all.length && <p className="row-note">{t('closures.newest', { count: all.length, total: list.total })}</p>}
               </Section>
             ) : (
               <p className="acct-empty">{t('closures.emptyKind')}</p>
             )}
-            <Section id="closures-file" title={t('closures.file')}>
-              <RowButton icon="download" label={t('closures.download')} sub={t('closures.downloadSub')}
-                onClick={() => saveBlob(new Blob([JSON.stringify({ closures: all }, null, 2)], { type: 'application/json' }), CLOSURES_FILE)} />
-            </Section>
+            <ClosuresFile closures={all} total={list.total} />
           </>
         ))}
     </>
+  );
+}
+
+/** Download as a file: every entry, whatever the filter; beyond the newest 500 the list has, all of them are asked for. */
+function ClosuresFile({ closures, total }: { closures: Closure[]; total: number }): JSX.Element {
+  const { handleError } = useAccount();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const mounted = useMounted();
+  const save = (entries: Closure[]): void =>
+    saveBlob(new Blob([JSON.stringify({ closures: entries }, null, 2)], { type: 'application/json' }), CLOSURES_FILE);
+  const download = async (): Promise<void> => {
+    setError(null);
+    if (total <= closures.length) {
+      save(closures);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await api.get<ClosureListResponse>('/admin/closures?all=true');
+      if (mounted.current) save(res.closures);
+    } catch (e) {
+      if (mounted.current) setError(errorMessage(handleError(e)));
+    } finally {
+      if (mounted.current) setBusy(false);
+    }
+  };
+  return (
+    <Section id="closures-file" title={t('closures.file')}>
+      <RowButton icon="download" label={t('closures.download')} sub={t('closures.downloadSub')} busy={busy} busyLabel={t('closures.downloading')}
+        onClick={() => void download()} />
+      {error && (
+        <div className="row-pad">
+          <FormError error={error} />
+        </div>
+      )}
+    </Section>
   );
 }
 

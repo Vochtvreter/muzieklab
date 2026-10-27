@@ -553,7 +553,7 @@ export const CLOSURES: Closure[] = [
 export function adminApi(accounts: AccountSummary[] = ACCOUNTS, me: Me = ME_ADMIN): MockRoutes {
   return {
     ...signedInAs(me),
-    'GET /admin/closures': { json: { closures: CLOSURES } },
+    'GET /admin/closures': { json: { closures: CLOSURES, total: CLOSURES.length } },
     'GET /admin/accounts': ({ query }) => {
       const q = (query.get('q') ?? '').toLowerCase();
       const status = query.get('status');
