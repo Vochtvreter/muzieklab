@@ -186,6 +186,12 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const perRow = wide ? 4 : 2;
   const from = windowStart(curBar, perRow, 2, bars);
   const shownBars = useMemo(() => view.bars.slice(from, from + perRow * 2), [view.bars, from, perRow]);
+  // Every window the staff shows in turn: a busy bar whose notes would run over its bar line draws the staff smaller,
+  // at the size the busiest window needs, so it keeps one height as it moves on (DESIGN.md §9).
+  const windows = useMemo(
+    () => [...new Set(view.bars.map((_, i) => windowStart(i, perRow, 2, bars)))].map((f) => view.bars.slice(f, f + perRow * 2)),
+    [view.bars, perRow, bars],
+  );
   // Room for a triplet's 3 on every window when the exercise has one: the staff keeps its height as the window moves.
   const tuplets = useMemo(() => view.bars.some((b) => b.symbols.some((sym) => sym.tuplet)), [view.bars]);
   const rhythm = useMemo(() => describeBars(shownBars, ex.meter.id, from + 1), [shownBars, ex.meter.id, from]);
@@ -204,7 +210,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   );
   const staff = (
     <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={shorter ? STAFF_SHORTER : 1}
-      end={from + shownBars.length >= view.bars.length} tupletSpace={tuplets} />
+      shrinkToFit fitWindows={windows} end={from + shownBars.length >= view.bars.length} tupletSpace={tuplets} />
   );
   const lane = (
     <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={LANE_PER_ROW} fromBar={laneFrom} rowsShown={laneRows} taps={s.taps}

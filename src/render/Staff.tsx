@@ -23,8 +23,10 @@ export interface StaffProps {
   timeSig?: string;
   /** Size of the notation, 1 by default; Play draws it smaller on a short phone (the bars still fill the width). */
   scale?: number;
-  /** Drawn smaller when the notes or counts do not fit the width (Learn on a narrow phone). */
+  /** Drawn smaller when the notes or counts do not fit the width (Learn on a narrow phone, busy bars on Play). */
   shrinkToFit?: boolean;
+  /** With shrinkToFit, the windows Play shows in turn: drawn at the size the busiest needs, it keeps one height. */
+  fitWindows?: NotatedBar[][];
   /** The bars end the piece, with the final barline (default); false for Play's window of a longer exercise. */
   end?: boolean;
   /** Room for a triplet's 3 when the first row has none: Play's moving window and the Setup preview keep one height. */
@@ -33,7 +35,7 @@ export interface StaffProps {
 
 /** VexFlow staff (one-line percussion staff), coloured from the theme tokens (§3.1, §9 notation colour rule). */
 export function Staff(props: StaffProps): JSX.Element {
-  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig, scale, shrinkToFit, end, tupletSpace } = props;
+  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig, scale, shrinkToFit, fitWindows, end, tupletSpace } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(hostRef);
   const themeVersion = useThemeVersion();
@@ -59,6 +61,7 @@ export function Staff(props: StaffProps): JSX.Element {
       width,
       scale,
       shrinkToFit,
+      fitWindows,
       timeSig,
       counts: countText && { text: countText, held: readToken(el, 'muted') },
       palette: {
@@ -72,7 +75,7 @@ export function Staff(props: StaffProps): JSX.Element {
     });
     drawn.current = { onsets, colour };
     // cursor is left out on purpose (the effect below moves it); `cursor !== undefined` only sets the room above.
-  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, scale, shrinkToFit, end, tupletSpace, themeVersion, countText, timeSig]);
+  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, scale, shrinkToFit, fitWindows, end, tupletSpace, themeVersion, countText, timeSig]);
 
   // Play moves the cursor once per note: swap the highlight box instead of drawing VexFlow again.
   useLayoutEffect(() => {

@@ -243,7 +243,7 @@ export function Results(): JSX.Element | null {
   const review = (
     <>
       <div className="card results-staff">
-        <StaffBox bars={view.bars} meter={ex.meter} barsPerRow={perRow} marks={marks}
+        <StaffBox bars={view.bars} meter={ex.meter} barsPerRow={perRow} marks={marks} shrinkToFit
           label={t(echo ? 'results.echoStaffLabel' : 'results.staffLabel', { rhythm: describeBars(view.bars, ex.meter.id) })} />
       </div>
 

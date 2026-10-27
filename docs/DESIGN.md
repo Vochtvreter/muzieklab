@@ -652,7 +652,8 @@ note/rest). A separate **speller** turns it into **notation** following engravin
 - **Rests** are never tied; they are written to show the beat. In 4/4 a two-beat (half)
   rest only on beat 1 or 3; a two-beat silence starting on beat 2 is two quarter rests.
   In simple meters, dotted rests are used only when shorter than one beat. A fully empty
-  bar gets a single whole rest centred in the bar, in every time signature.
+  bar gets a single whole rest centred in the bar, in every time signature: midway between its bar lines (after the
+  time signature in the first bar).
 - **Beaming** per beat (simple meters) or per dotted-quarter (compound); never across
   beats 2–3 in 4/4. Four eighths may be beamed as a half-bar group (beats 1–2 or 3–4) in
   4/4, an accepted alternative; the default beams per beat. Sixteenths beamed per beat.
@@ -1420,6 +1421,12 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   two columns, so the pad or the answer buttons stay in view next to the notation (Scales: the staff and the degree row
   on the left, the piano or the sign buttons on the right). Its Read notes staff is the phone's (1.45, or 2.1 with 4
   bars in a round that writes), in the narrow column, not the tablet's.
+- The rhythm staff on Play and Results is drawn at its screen's size, or smaller, down to 0.75, when a busy bar's
+  notes need more room than its share of the row leaves them (sixteenths on a phone, a busy 4/4 bar on tablet Play or
+  desktop Results). VexFlow never sets notes in less room than they need, so they would run over the bar line and off
+  the staff's end, where the drawing cuts them off. Play draws every window of the exercise at the size the busiest
+  one needs, after the time signature each window starts with, so the staff keeps one height as the window moves
+  (`fitWindows` in `render/staffDraw.ts`). Learn's examples are drawn smaller the same way (§9.1, Narrow phones).
 - A pitch staff (Read notes, Scales, Learn, Home's Continue card) is drawn at its screen's size, or smaller when its
   notes need more room than its width leaves at that size: a key signature with many signs, sharps and flats before
   the notes, a 320 px phone. A bar first gives up the room VexFlow leaves before its note (on a phone, keys with up to

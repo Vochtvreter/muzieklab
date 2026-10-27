@@ -3,6 +3,7 @@ import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteSettings } from '../src/
 import { letterOf } from '../src/core/pitch';
 import { pianoWindow, scaleNotes, type Scale } from '../src/core/scale';
 import { noteLessonSettings } from '../src/game/notesPath';
+import { lessonSettings } from '../src/game/path';
 import { CHAPTERS } from '../src/ui/learn/chapters';
 import type { Me } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
@@ -173,6 +174,34 @@ async function expectStaffNotCut(svg: Locator): Promise<void> {
   const top = (): Promise<number> =>
     svg.evaluate((el) => Math.min(...[...el.querySelectorAll('path, rect')].map((p) => (p as SVGGraphicsElement).getBBox().y)));
   await expect.poll(top, { message: 'the top of the notation, in the svg' }).toBeGreaterThanOrEqual(0);
+}
+
+/**
+ * Every bar of a rhythm staff has room for its notes (DESIGN.md §9): each note, with its dot and flag, ends before the
+ * bar line that closes its bar, and nothing runs past the drawing's edge, where the svg cuts it off.
+ */
+async function expectBarsFit(svg: Locator): Promise<void> {
+  const wrong = (): Promise<string[]> =>
+    svg.evaluate((el) => {
+      const right = (g: Element): number => {
+        const b = (g as SVGGraphicsElement).getBBox();
+        return b.x + b.width;
+      };
+      const width = (el as SVGSVGElement).viewBox.baseVal.width;
+      const out = new Set<string>();
+      let bar = 0;
+      let lines = 0;
+      let line = width;
+      for (const g of el.children) {
+        if (g.matches('.vf-stave')) [bar, lines] = [bar + 1, 0];
+        // Each stave draws the bar line that opens its bar, then the one closing it (the final barline: its thin line).
+        else if (g.matches('.vf-stavebarline') && ++lines === 2) line = Number(g.querySelector('rect')?.getAttribute('x'));
+        else if (g.matches('.vf-stavenote') && right(g) >= line) out.add(`bar ${bar}: a note runs into its bar line`);
+        if (g.matches('.vf-stavenote, .vf-beam, .vf-tuplet') && right(g) > width) out.add(`bar ${bar}: cut off at the staff's edge`);
+      }
+      return [...out];
+    });
+  await expect.poll(wrong, { message: 'notes outside their bars' }).toEqual([]);
 }
 
 /** A free-practice run that Play restores (sessionStorage): the same exercise every time for one seed. */
@@ -653,6 +682,28 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(staff).toBeVisible();
       await expectStaffNotCut(staff);
       await expect(staff.locator('rect[width="3"]')).toHaveCount(1);
+      // On a 320 px phone bar 1's last quarter note ran into its bar line.
+      await expectBarsFit(staff);
+      await expectNoSideScroll(page);
+    });
+
+    test("play and results: a busy bar's notes stay inside it, clear of its bar line and the staff's edge", async ({ page }) => {
+      known(name, 'busy-bars');
+      // Lesson 8.5 (Unit 8 review) with seed 150: bar 3 has thirteen notes, more than its share of the row has room for
+      // at full size on a phone, on tablet Play and on desktop Results. The staff is drawn smaller instead.
+      await seedRun(page, lessonSettings('8.5'), 150);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      const play = page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)');
+      await expect(play).toBeVisible();
+      await expectBarsFit(play);
+      // Desktop Play has no Skip link: skip on a phone.
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      const results = page.locator('.results-staff svg:has(.vf-stave)');
+      await expect(results).toBeVisible();
+      await expectBarsFit(results);
       await expectNoSideScroll(page);
     });
 

@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEMO_44, DEMO_BARS_44, DEMO_LESSON } from './demoFixtures';
 import { getMeter } from '../core/api';
+import type { MeterId } from '../core/types';
 import { plainSyllable, type CountMark } from './counting';
 import { parseBars } from './notationText';
 import { drawStaff, missMarkPath, type StaffPalette } from './staffDraw';
@@ -27,6 +28,33 @@ const topOf = (svg: SVGSVGElement): number =>
 
 /** The final barline's thick bar (3 wide; a plain bar line is one thin bar). */
 const finalBarlines = (svg: SVGSVGElement): number => [...svg.querySelectorAll('rect')].filter((r) => r.getAttribute('width') === '3').length;
+
+/**
+ * Each bar in drawing order (a stave, its two bar lines, then its notes): the room between its bar lines, after the
+ * time signature in the first bar and up to the final barline's thin line, and its notes.
+ */
+function barsOf(svg: SVGSVGElement): { left: number; right: number; notes: Element[] }[] {
+  const bars: { left: number; right: number; notes: Element[]; lines: number }[] = [];
+  const xs = (el: Element): number[] => [...el.querySelectorAll('path')].flatMap((p) => points(p).map(([x]) => x));
+  for (const el of svg.children) {
+    const bar = bars[bars.length - 1];
+    if (el.matches('.vf-stave')) bars.push({ left: NaN, right: NaN, notes: [], lines: 0 });
+    else if (el.matches('.vf-stavebarline')) {
+      const x = Number(el.querySelector('rect')!.getAttribute('x'));
+      if (bar.lines++ === 0) bar.left = x + 1;
+      else bar.right = x;
+    } else if (el.matches('.vf-timesignature')) bar.left = Math.max(...xs(el));
+    else if (el.matches('.vf-stavenote')) bar.notes.push(el);
+  }
+  return bars;
+}
+
+/** The bars (from 1) with a note that reaches the bar line closing them. */
+const intoBarLine = (svg: SVGSVGElement): number[] =>
+  barsOf(svg).flatMap((b, i) => (b.notes.some((n) => Math.max(...[...n.querySelectorAll('path')].flatMap((p) => points(p).map(([x]) => x))) >= b.right) ? [i + 1] : []));
+
+/** Lesson 8.5 (Unit 8 review) with seed 150: bar 3 has thirteen notes, bar 7 twelve. */
+const BUSY = ['h q [16 8 16]', 'h [8 16 16] [16 8 16]', '[16 8 16] 8 8r [16 16 16 16] [16 8 16]', 'h q [16 8 16]', 'h q [16 8 16]', 'h [8 16 16] [16 8 16]', '[16 16 16 16] qr [16 16 16 16] [16 8 16]', 'h h'];
 
 /** Counts side by side whose words (13 px mono, 7.8 per letter) overlap, as "a/b". */
 function touching(svg: SVGSVGElement): string[] {
@@ -169,6 +197,58 @@ describe('drawStaff', () => {
       const right = Math.max(...[...notes[notes.length - 1].querySelectorAll('path')].flatMap((p) => points(p).map(([x]) => x)));
       const bar = Math.max(...[...svg.querySelectorAll('rect[width="1"]')].map((r) => Number(r.getAttribute('x'))));
       expect(right, src.slice(0, 3)).toBeLessThan(bar);
+    }
+  });
+
+  it("draws Play's and Results' staff smaller when a busy bar's notes do not fit, so they stay inside their bar", () => {
+    const meter = getMeter('4/4');
+    const bars = parseBars(meter, BUSY);
+    // At full size bar 3 runs into its bar line on a 390 px phone (342 px) and on desktop Results (720 px), bar 7 too.
+    expect(intoBarLine(draw({ bars, meter }).svg)).toEqual([3]);
+    expect(intoBarLine(draw({ bars, meter, barsPerRow: 4, width: 720 }).svg)).toEqual([3, 7]);
+    // Results on a 320, 375 and 390 px phone and on a tablet, tablet Play, desktop Results.
+    for (const [width, barsPerRow] of [[272, 2], [327, 2], [342, 2], [414, 2], [706, 4], [720, 4]]) {
+      expect(intoBarLine(draw({ bars, meter, barsPerRow, width, shrinkToFit: true }).svg), `${width}`).toEqual([]);
+    }
+  });
+
+  it("keeps Play's staff at one size through the exercise, the size its busiest window needs (fitWindows)", () => {
+    const meter = getMeter('4/4');
+    const all = parseBars(meter, BUSY);
+    // Two rows on a phone: bars 1–4, 3–6 and 5–8. Bar 3 needs a smaller staff, most of all where it starts a window,
+    // after the time signature; bars 5–8 would fit at full size and are drawn as small, so the staff and the pad under
+    // it keep their place as the window moves on. Also from Play's 0.8 on a short phone (375 × 553).
+    const windows = [0, 2, 4].map((from) => all.slice(from, from + 4));
+    for (const [width, scale] of [[342, 1], [327, 0.8]]) {
+      const play = { meter, width, scale, cursorSpace: true, shrinkToFit: true, fitWindows: windows };
+      const drawn = windows.map((bars, k) => draw({ ...play, bars, end: k === 2 }));
+      for (const [k, { svg, size }] of drawn.entries()) {
+        expect(intoBarLine(svg), `${width}, window ${k + 1}`).toEqual([]);
+        expect(svg.getAttribute('viewBox'), `${width}, window ${k + 1}`).toBe(drawn[0].svg.getAttribute('viewBox'));
+        expect(size.height, `${width}, window ${k + 1}`).toBe(drawn[0].size.height);
+      }
+      expect(drawn[0].size.height, `${width}`).toBeLessThan(Math.round(174 * scale));
+    }
+  });
+
+  it('centres a whole-bar rest between its bar lines, after the time signature in the first bar (Learn 3.1, 3.2)', () => {
+    const counts = { text: plainSyllable, held: DARK.staff };
+    const examples: [MeterId, string[], number[]][] = [
+      ['3/4', ['h q', 'W'], [2]], // before the final barline
+      ['4/4', ['W', 'hr h'], [1]], // after the time signature
+      ['4/4', ['q q q q', 'W', 'W', 'q q h'], [2, 3]], // before a plain bar line, and first in the second row
+    ];
+    for (const [id, src, rests] of examples) {
+      const meter = getMeter(id);
+      for (const opts of [{}, { counts }, { end: false }]) {
+        const bars = barsOf(draw({ bars: parseBars(meter, src), meter, ...opts }).svg);
+        for (const k of rests) {
+          const { left, right, notes } = bars[k - 1];
+          const xs = [...notes[0].querySelectorAll('path')].flatMap((p) => points(p).map(([x]) => x));
+          const off = (Math.min(...xs) + Math.max(...xs)) / 2 - (left + right) / 2;
+          expect(Math.abs(off), `${src.join(' | ')}, bar ${k}${'counts' in opts ? ', counted' : ''}: ${off.toFixed(1)} off the middle`).toBeLessThan(1);
+        }
+      }
     }
   });
 

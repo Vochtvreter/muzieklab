@@ -77,6 +77,8 @@ interface StaffBoxProps {
   marks?: Record<number, NoteMark>;
   cursor?: number | null;
   scale?: number;
+  shrinkToFit?: boolean;
+  fitWindows?: NotatedBar[][];
   end?: boolean;
   tupletSpace?: boolean;
 }

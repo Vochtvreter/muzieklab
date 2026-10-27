@@ -39,8 +39,16 @@ export interface DrawStaffOptions {
    * notes are smaller and the rows lower while the bars still fill the width (Play on a short phone).
    */
   scale?: number;
-  /** Draw smaller (down to MIN_SCALE) when the notes or counts do not fit the width: Learn on a narrow phone. */
+  /**
+   * Draw smaller (down to MIN_SCALE) when the notes or counts do not fit the width: Learn on a narrow phone, a busy bar
+   * on Play and Results.
+   */
   shrinkToFit?: boolean;
+  /**
+   * With shrinkToFit, every window of bars the staff shows in turn (Play's two rows of a longer exercise, each starting
+   * with the time signature): drawn at the size the busiest needs, the staff keeps one height as it moves on.
+   */
+  fitWindows?: NotatedBar[][];
 }
 
 // Layout constants from the design's notation images (vf/render2.js).
@@ -56,6 +64,7 @@ const COUNT_GAP = 24; // least room between a held count and the counts beside i
 const COUNT_CHAR_W = 7.8; // width of one letter of the counts (13 px JetBrains Mono, notes.css .staff-counts)
 const COUNT_PAD = 1; // least space between the words of two counts
 const MIN_SCALE = 0.75; // the smallest a staff is drawn to make its notes and counts fit
+const END_LINE = 5; // the final barline's thin line, this far before the end of its stave
 const MISS_DY = 17; // a missed note's × sits this far below its head: clear of ties and the cursor, inside the row
 
 const DURATION: Record<NoteValue, string> = { whole: 'w', half: 'h', quarter: 'q', eighth: '8', sixteenth: '16' };
@@ -120,6 +129,12 @@ export interface DrawnStaff {
 }
 
 export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
+  if (o.shrinkToFit && o.fitWindows) return drawAt(host, o, fitScale(o, o.fitWindows)).staff;
+  return shrink(host, o).drawn.staff;
+}
+
+/** Draws the staff at its scale, or with shrinkToFit smaller when its notes or counts do not fit. */
+function shrink(host: HTMLElement, o: DrawStaffOptions): { drawn: ReturnType<typeof drawAt>; scale: number } {
   let scale = o.scale ?? 1;
   let drawn = drawAt(host, o, scale);
   // Notes or counts that do not fit run into each other or the bar line: lay the bars out wider and draw them smaller,
@@ -128,7 +143,21 @@ export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
     scale = Math.max(MIN_SCALE, scale / drawn.crowd);
     drawn = drawAt(host, o, scale);
   }
-  return drawn.staff;
+  return { drawn, scale };
+}
+
+/** Scales worked out for fitWindows, per exercise and layout: Play draws its staff again on every tap. */
+const fitted = new WeakMap<NotatedBar[][], Map<string, number>>();
+
+/** The size at which the notes of every window fit (the smallest of their sizes with shrinkToFit). */
+function fitScale(o: DrawStaffOptions, windows: NotatedBar[][]): number {
+  const key = JSON.stringify([o.width, o.barsPerRow, o.scale ?? 1, o.timeSig, !!o.counts]);
+  const known = fitted.get(windows)?.get(key);
+  if (known !== undefined) return known;
+  const host = document.createElement('div');
+  const scale = Math.min(o.scale ?? 1, ...windows.map((bars) => shrink(host, { ...o, bars, marks: undefined, cursor: null }).scale));
+  fitted.set(windows, (fitted.get(windows) ?? new Map<string, number>()).set(key, scale));
+  return scale;
 }
 
 /** Draws the staff at one scale. `crowd` is how much more room its notes or counts need than they got (above 1). */
@@ -172,7 +201,8 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
     stave.setConfigForLines([0, 1, 2, 3, 4].map((l) => ({ visible: l === 2 })));
     if (i === 0) stave.addTimeSignature(o.timeSig ?? meter.id);
     // A window of a longer exercise (Play) ends with a plain bar line: the final barline ends the piece (Learn 1.2).
-    if (i === bars.length - 1 && o.end !== false) stave.setEndBarType(Barline.type.END);
+    const ends = i === bars.length - 1 && o.end !== false;
+    if (ends) stave.setEndBarType(Barline.type.END);
     stave.setContext(ctx).draw();
 
     const notes = bar.symbols.map((sym) => {
@@ -231,6 +261,17 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
     const formatter = new Formatter().joinVoices([voice]).format([voice], room);
     // Notes need at least their own width: more than the bar has pushes the last ones into the bar line.
     crowd = Math.max(crowd, formatter.getMinTotalWidth() / room);
+    // VexFlow puts a whole-bar rest's left edge, not its middle, in the middle of the note area after the stave's
+    // padding: up to 17 units right of the bar's middle (Learn 3.2). Centre it between the bar lines instead (after the
+    // time signature in the first bar).
+    bar.symbols.forEach((sym, j) => {
+      if (!sym.wholeBarRest) return;
+      const rest = notes[j];
+      const left = i === 0 ? stave.getNoteStartX() : stave.getX();
+      const right = stave.getX() + stave.getWidth() - (ends ? END_LINE : 0);
+      rest.setStave(stave);
+      rest.setCenterXShift((left + right) / 2 - rest.getGlyphWidth() / 2 - (rest.getAbsoluteX() - rest.getCenterXShift()));
+    });
     voice.draw(ctx, stave);
     beams.forEach((b) => b.setContext(ctx).draw());
     tuplets.forEach((t) => t.setContext(ctx).draw());
