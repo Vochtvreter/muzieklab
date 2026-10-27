@@ -205,8 +205,8 @@ async function expectBarsFit(svg: Locator): Promise<void> {
 }
 
 /** A free-practice run that Play restores (sessionStorage): the same exercise every time for one seed. */
-async function seedRun(page: Page, settings: object, runSeed: number): Promise<void> {
-  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' } });
+async function seedRun(page: Page, settings: object, runSeed: number, prefs: object = {}): Promise<void> {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap', ...prefs } });
   await page.addInitScript((run) => sessionStorage.setItem('muzieklab.run.v1', JSON.stringify(run)), { settings, seed: runSeed, lessonId: null, daily: null });
 }
 
@@ -356,6 +356,34 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(preview).toHaveAttribute('viewBox', /^0 0 [\d.]+ 92$/);
         await expectStaffNotCut(preview);
         await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: next }).click();
+      }
+      await expectNoSideScroll(page);
+    });
+
+    test('setup: the tempo value stays whole, and the Bars and Tempo labels level', async ({ page }) => {
+      known(name, 'setup-tempo');
+      await page.goto('./#/setup');
+      const tempo = page.locator('#tempo');
+      for (const bpm of ['40', '112', '200']) {
+        await tempo.fill(bpm);
+        await expect(page.locator('.label-value')).toContainText(`${bpm} BPM`);
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const m = await page.evaluate(() => {
+          const value = document.querySelector('.label-value')!;
+          const text = document.createRange();
+          text.selectNodeContents(value);
+          const box = (sel: string): DOMRect => document.querySelector(sel)!.getBoundingClientRect();
+          return {
+            lines: new Set([...text.getClientRects()].map((r) => Math.round(r.top))).size,
+            labels: Math.abs(box('#bars-label').top - box('label[for=tempo]').top),
+            over: value.getBoundingClientRect().right - box('.bars-tempo .field--grow').right,
+          };
+        });
+        // At 320 px "112 BPM · Moderato" does not fit beside Tempo: it takes a line of its own, whole, not "112 BPM ·" and
+        // "Moderato" with the Bars label pushed down beside it.
+        expect(m.lines, `${bpm} BPM on one line`).toBe(1);
+        expect(m.labels, 'Bars and Tempo level').toBeLessThanOrEqual(1);
+        expect(m.over, 'the value inside its column').toBeLessThanOrEqual(1);
       }
       await expectNoSideScroll(page);
     });
@@ -1981,6 +2009,23 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(pad(page), { scroll: false });
         await expectTouchHeight(pad(page));
       }
+      // Every row of the timing lane in view: in a phone's landscape column the staff card scrolls inside itself, and the
+      // pendulum's row pushed the lane's lower row, the one played last, out of it.
+      await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
+      await expectFits(page);
+      await expectNoSideScroll(page);
+    });
+
+    test("play with the analog metronome: sixteen bars with the room for a triplet's 3 fit too", async ({ page }) => {
+      known(name, 'play-analog-triplets');
+      // The staff keeps 4 px more above it for the 3 (178, not 174): at 1280 × 800 and 1180 × 820 the page scrolled 2 px.
+      await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth'], triplets: true, bars: 16, tempo: 60 }, 1, { metronomeLook: 'analog' });
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      await expect(page.locator('.beats--analog')).toBeVisible();
+      await expect(page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)')).toHaveAttribute('viewBox', /^0 0 [\d.]+ 178$/);
+      if (desktopLayout) await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
+      else await expectClickable(pad(page), { scroll: false });
       await expectFits(page);
       await expectNoSideScroll(page);
     });

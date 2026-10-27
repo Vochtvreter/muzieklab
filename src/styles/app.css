@@ -1790,7 +1790,10 @@ button.lesson-stars:hover {
 .bars-tempo {
   display: flex;
   gap: 18px;
-  align-items: flex-end;
+}
+/* The labels at the top, level when one takes two lines (the tempo value at 320 px), the stepper and slider below. */
+.bars-tempo .field {
+  justify-content: space-between;
 }
 .stepper {
   display: flex;
@@ -1821,13 +1824,17 @@ button.lesson-stars:hover {
 }
 .label--split {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px;
+  gap: 2px 8px;
 }
+/* Whole: when it does not fit beside its label (the tempo at 320 px), it takes a line of its own, right aligned. */
 .label-value {
+  margin-left: auto;
   font-family: var(--font-mono);
   color: var(--ink);
   letter-spacing: 0;
+  white-space: nowrap;
 }
 .tempo-range {
   width: 100%;
@@ -2271,6 +2278,11 @@ button.lesson-stars:hover {
     height: auto;
     max-height: 70%;
   }
+  /* The pendulum as high as the digits' row: it shares the row with the lesson line, and its 20 px more pushed the
+     timing lane's lower row, the one played last, out of the staff card. */
+  .play .beats--analog {
+    height: 44px;
+  }
 }
 
 /*
@@ -2612,13 +2624,15 @@ button.lesson-stars:hover {
   color: var(--ink);
 }
 /*
- * A shorter desktop window: Play does not scroll there either (DESIGN.md §9 Scrolling). Under 820 px tall the room
- * under the pad row is smaller, which shows only when 16 bars with the pendulum fill a 1280 × 800 window (the boards'
- * size). Under 800 px (a 1280 × 720 laptop) the spacing tightens and the stat cards are lower, so two staff rows, a
- * timing lane of four rows (16 bars) and the pendulum fit. Read notes and Scales keep theirs and scroll (.nplay-main).
+ * A shorter desktop window: Play does not scroll there either (DESIGN.md §9 Scrolling). Under 822 px tall the room
+ * above the staff and under the pad row is smaller, which shows only when 16 bars with the pendulum and the room for a
+ * triplet's 3 fill a 1280 × 800 window (the boards' size) or a 1180 × 820 tablet on its side. Under 800 px (a 1280 × 720
+ * laptop) the spacing tightens and the stat cards are lower, so two staff rows, a timing lane of four rows (16 bars) and
+ * the pendulum fit. Read notes and Scales keep theirs and scroll (.nplay-main).
  */
-@media (min-width: 1100px) and (max-height: 819.98px) {
+@media (min-width: 1100px) and (max-height: 821.98px) {
   .dplay-main:not(.nplay-main) {
+    padding-top: 36px;
     padding-bottom: 16px;
   }
 }

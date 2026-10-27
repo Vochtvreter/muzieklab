@@ -77,7 +77,9 @@ describe('t()', () => {
     expect(tip).toBe('You let go of the dotted quarter note in bar 2 too early. Hold it through “2” until just before the “&”.');
     const onBeat = tipText({ key: 'tip.heldLong', params: { value: 'value.half', bar: 1, beat: 1, liftBeat: 3, liftPart: 'count.beat', count: 1 } });
     expect(onBeat).toBe('You held the half note in bar 1 too long. Lift on “3”.');
-    expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 3 } })).toBe('You missed 1 note, most in bar 3. Read one beat ahead.');
+    // One missed note is in its bar, not "most in" it.
+    expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 3 } })).toBe('You missed 1 note, in bar 3. Read one beat ahead.');
+    expect(tipText({ key: 'tip.missed', params: { count: 2, bar: 3 } })).toBe('You missed 2 notes, most in bar 3. Read one beat ahead.');
     expect(tipText({ key: 'tip.missedSpread', params: { count: 8 } })).toBe('You missed 8 notes. Read one beat ahead.');
     expect(tipText({ key: 'tip.latency', params: { ms: 125, dir: 'late' } })).toMatch(/^Your taps came about 125 ms late every time\. /);
     // Early is a calibration that no longer fits, never the speaker: a device delay only makes taps late.
@@ -237,6 +239,12 @@ describe('Dutch', () => {
     expect(t('notes.done.chartLabel', { count: 12, avg: formatDecimal(2.2), missed: 0 })).toBe(
       'Antwoordtijd voor elk van de 12 noten. Gemiddeld 2,2 seconden. Geen noten gemist.',
     );
+  });
+
+  it('names the bar of one missed note without "de meeste"', () => {
+    setLocale('nl');
+    expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 1 } })).toBe('Je miste 1 noot, in maat 1. Lees één tel vooruit.');
+    expect(tipText({ key: 'tip.missed', params: { count: 3, bar: 2 } })).toBe('Je miste 3 noten, de meeste in maat 2. Lees één tel vooruit.');
   });
 
   it('counts the scales of Round done for one scale too, and has a plural verb for the new ones', () => {

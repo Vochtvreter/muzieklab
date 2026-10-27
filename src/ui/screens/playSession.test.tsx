@@ -336,7 +336,9 @@ describe('usePlaySession', () => {
     act(() => hook.result.current.closeSheet());
     o = origin(resumedAt, 2);
     at(o + 2 * view.barSeconds - 0.5);
-    expect(hook.result.current.frame).toMatchObject({ countIn: true, cursor: null });
+    // Play shows the bar this count-in leads into, not the one its clock is still in (Play.tsx).
+    expect(hook.result.current.frame).toMatchObject({ countIn: true, cursor: null, fromBar: 2 });
+    expect(hook.result.current.frame.tg).toBeLessThan(2 * view.barSeconds);
     at(o + 2 * view.barSeconds + 0.01);
     expect(hook.result.current.frame.countIn).toBe(false);
     expect(view.timeline.notes[hook.result.current.frame.cursor!].bar).toBe(2);

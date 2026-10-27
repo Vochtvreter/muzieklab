@@ -24,7 +24,7 @@ import { PLAY_LEAD_IN_S as LEAD_IN_S } from '../../game/stats';
 import type { Prefs } from '../../game/storage';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import type { ExerciseView } from '../exerciseView';
-import { beatAt, cursorAt, holdProgress, partialResult, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
+import { barAt, beatAt, cursorAt, holdProgress, partialResult, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
 import type { Run } from '../store';
 
 export type Phase = 'intro' | 'running' | 'paused' | 'done';
@@ -59,6 +59,8 @@ export interface Frame {
   cursor: number | null;
   ring: number;
   held: boolean;
+  /** The bar this segment starts at: after a pause the count-in leads into it, and Play shows it then (barAt). */
+  fromBar: number;
 }
 
 interface Segment {
@@ -173,7 +175,7 @@ export function usePlaySession(
   const introsDone = useRef(false);
   const [interrupted, setInterrupted] = useState(false);
   const segStartedAt = useRef(0);
-  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, countIn: false, cursor: null, ring: 0, held: false });
+  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, countIn: false, cursor: null, ring: 0, held: false, fromBar: 0 });
   const [marks, setMarks] = useState<Record<number, NoteMark>>({});
   const [feedback, setFeedback] = useState<PlaySession['feedback']>(null);
   const [combo, setCombo] = useState(0);
@@ -267,7 +269,8 @@ export function usePlaySession(
     const countIn = ts < 0;
     const cursor = countIn ? null : cursorAt(view.timeline.notes, tg, view.timeline.totalSeconds);
     const cur = current.current;
-    setFrame({ tg, beat, beats: view.timeline.beatSeconds > 0 ? ts / view.timeline.beatSeconds : 0, countIn, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current });
+    const beats = view.timeline.beatSeconds > 0 ? ts / view.timeline.beatSeconds : 0;
+    setFrame({ tg, beat, beats, countIn, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current, fromBar: s.fromBar });
     const over = ts - s.timeline.totalSeconds;
     if ((over > END_GRACE_S && !cur) || over > END_HARD_S) {
       finish();
@@ -346,7 +349,7 @@ export function usePlaySession(
     // not earlier (bar 0 would wipe the whole run).
     const fromBar = seg.current?.fromBar ?? 0;
     pausedAt.current = Math.max(tg, fromBar * barSec);
-    pausedBar.current = Math.max(fromBar, Math.floor(tg / barSec));
+    pausedBar.current = barAt(tg, barSec, fromBar);
     setPhase('paused');
     setSheet(kind);
     setFrame((f) => ({ ...f, ring: 0, held: false }));

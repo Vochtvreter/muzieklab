@@ -213,6 +213,37 @@ test("a phone's timing lane follows the bars being played, two rows at a time; R
   await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toHaveAttribute('viewBox', /^0 0 [\d.]+ 240$/);
 });
 
+test('the count-in after a pause shows the bar it leads into, on the staff, the lane and the Pause sheet, with no playhead', async ({ page }) => {
+  test.setTimeout(40_000);
+  // Twelve bars at 200 BPM, a bar every 1.2 s. Resumed, the exercise clock is still in the bar before during the count-in.
+  await seed(page, { prefs: { seenHowTo: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 12, tempo: 200 } } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page.locator('.play-info .mono-line')).toContainText('Bar 5 of 12', { timeout: 10_000 });
+  await page.keyboard.press('Escape');
+  const sheet = page.getByRole('dialog', { name: 'Paused' });
+  await expect(sheet).toContainText('Bar 5 of 12');
+  await sheet.getByRole('button', { name: 'Resume' }).click();
+  // All read at one moment: the header line, the staff's first bar, the lane's bars and playhead, the progress.
+  const shown = (): Promise<object> =>
+    page.evaluate(() => {
+      const lane = document.querySelector('svg[aria-label="Note lengths compared with how long each note was held"]');
+      return {
+        line: document.querySelector('.play-info .mono-line')?.textContent?.split(' · ')[0],
+        staff: /Bar (\d+):/.exec(document.querySelector('.play-staff [role=img]')?.getAttribute('aria-label') ?? '')?.[1],
+        lane: document.querySelector('.lane-head span:last-child')?.textContent,
+        playhead: lane?.querySelectorAll('line[stroke-width="2.5"]').length,
+        progress: document.querySelector('.play-top [role=progressbar]')?.getAttribute('aria-valuenow'),
+      };
+    });
+  // Bar 5 starts both windows (the staff's two bars a row, the lane's two rows of four), as when it was paused.
+  await expect.poll(shown, { intervals: [50], timeout: 5000 }).toEqual({ line: 'Count-in', staff: '5', lane: 'bars 5–12', playhead: 0, progress: '33' });
+  // Paused again in this count-in, the sheet names the bar Resume plays.
+  await page.keyboard.press('Escape');
+  await expect(sheet).toContainText('Bar 5 of 12');
+});
+
 test('after quitting, Back does not walk into the exercise again', async ({ page }) => {
   await seed(page, { progress: { lessons: SOL_DONE } });
   await page.setViewportSize(VIEWPORTS.phone);
@@ -278,6 +309,43 @@ test('desktop Home: the learning-path card opens the Path at the unit it shows',
   await expect(page.getByRole('heading', { level: 2, name: '1 · Sol: the G line' })).toBeVisible();
 });
 
+/**
+ * Records every eyebrow the open sheet shows from now until it is gone, its closing animation (240 ms) included: the
+ * sheet keeps rendering while it closes.
+ */
+async function watchEyebrows(page: Page): Promise<() => Promise<string[]>> {
+  await page.evaluate(() => {
+    const w = window as unknown as { eyebrows: string[] };
+    const read = (): string | null | undefined => document.querySelector('[role=dialog] .eyebrow')?.textContent;
+    w.eyebrows = [read() ?? ''];
+    new MutationObserver(() => {
+      const text = read();
+      if (text && !w.eyebrows.includes(text)) w.eyebrows.push(text);
+    }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+  });
+  return () => page.evaluate(() => (window as unknown as { eyebrows: string[] }).eyebrows);
+}
+
+test('How to play keeps its eyebrow while it closes: First time here before the start, Paused once it has started', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  const sheet = page.getByRole('dialog', { name: 'How to play' });
+  await expect(sheet.getByText('First time here')).toBeVisible();
+  let eyebrows = await watchEyebrows(page);
+  // Got it counts in at once, so the run has started while the sheet is still closing.
+  await sheet.getByRole('button', { name: 'Got it' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await eyebrows(), 'the closing sheet keeps its eyebrow').toEqual(['First time here']);
+  // Opened during the run, it says Paused, and keeps saying it while it closes on Got it.
+  await page.getByRole('button', { name: 'How to play' }).click();
+  await expect(sheet.getByText('Paused')).toBeVisible();
+  eyebrows = await watchEyebrows(page);
+  await sheet.getByRole('button', { name: 'Got it' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await eyebrows()).toEqual(['Paused']);
+});
+
 test('the first lesson that judges holds shows How to play again, with holding, once', async ({ page }) => {
   // Rhythm unit 1 (tap only, the path's unit 2) and mi done, its How to play seen: lesson 4.1 (rhythm 2.1) is the
   // first where holding counts.
@@ -290,8 +358,10 @@ test('the first lesson that judges holds shows How to play again, with holding, 
   await expect(sheet).toBeVisible();
   await expect(sheet.getByText('New: hold each note')).toBeVisible();
   await expect(sheet.getByText('Hold it for the length of the note. Lift when the note ends.')).toBeVisible();
+  const eyebrows = await watchEyebrows(page);
   await page.getByRole('button', { name: 'Got it' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await eyebrows(), 'the closing sheet keeps its eyebrow').toEqual(['New: hold each note']);
   await expect(page.getByRole('img', { name: /Count-in, beat|Counting beat/ })).toBeAttached({ timeout: 3000 });
   // Only once: the next hold lesson starts straight away.
   await page.getByRole('link', { name: 'Quit exercise' }).click();

@@ -5,7 +5,7 @@ import { PATH_UNITS } from '../../game/tracks';
 import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
 import { continueLesson, lessonOutcome, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
-import { beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
+import { barAt, beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
 import { setupHints, startBlockedKey } from './setupHints';
 import { describeBars } from './notation';
 
@@ -193,6 +193,15 @@ describe('play maths', () => {
     expect(windowStart(2, 2, 2, 8)).toBe(2);
     expect(windowStart(7, 2, 2, 8)).toBe(4);
     expect(windowStart(5, 4, 2, 16)).toBe(4);
+  });
+
+  it('names the bar a count-in leads into, also after a pause, where the clock is still in the bar before', () => {
+    expect(barAt(-1.5, 2, 0)).toBe(0);
+    expect(barAt(3.9, 2, 0)).toBe(1);
+    // Resumed at bar 2 (from 4 s): the count-in still runs at 2.4 s, then bar 2 is played.
+    expect(barAt(2.4, 2, 2)).toBe(2);
+    expect(barAt(4, 2, 2)).toBe(2);
+    expect(barAt(6.1, 2, 2)).toBe(3);
   });
 
   it('scores the starts so far and words the judgement', () => {

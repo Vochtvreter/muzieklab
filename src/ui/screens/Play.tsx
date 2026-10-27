@@ -20,7 +20,7 @@ import { Sheet } from '../components/Sheet';
 import { exerciseView, type ExerciseView } from '../exerciseView';
 import { SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering, useMediaQuery, useReducedMotion } from '../hooks';
 import { useLearnReturn } from '../lib/learnReturn';
-import { liveAccuracy, windowStart } from '../lib/playMath';
+import { barAt, liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
 import { focusHeading, focusLost } from '../lib/screenFocus';
@@ -175,8 +175,10 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
 
   const bars = ex.bars.length;
   const total = view.timeline.totalSeconds;
-  const tg = Math.max(0, s.frame.tg);
-  const curBar = Math.min(bars - 1, Math.floor(tg / view.barSeconds));
+  // In the count-in after a pause the clock is still in the bar before: the windows, the progress and the Pause sheet
+  // show the bar it leads into, which Resume plays again (barAt).
+  const curBar = Math.min(bars - 1, barAt(s.frame.tg, view.barSeconds, s.frame.fromBar));
+  const tg = Math.max(s.frame.tg, curBar * view.barSeconds);
   const progress = total > 0 ? Math.min(1, tg / total) : 0;
   const where = echo ? echoWhere(runWhere(run)) : runWhere(run);
   // The count-in does not look like bar 1 (§3.1): the line says Count-in until the music's first beat.
@@ -212,9 +214,10 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
     <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={shorter ? STAFF_SHORTER : 1}
       shrinkToFit fitWindows={windows} end={from + shownBars.length >= view.bars.length} tupletSpace={tuplets} />
   );
+  // No playhead before the music's first beat: in the count-in after a pause the clock would put it in the bar before.
   const lane = (
-    <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={LANE_PER_ROW} fromBar={laneFrom} rowsShown={laneRows} taps={s.taps}
-      result={s.liveResult} now={s.phase === 'running' && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} hold={ex.settings.hold} live />
+    <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={LANE_PER_ROW} fromBar={laneFrom} rowsShown={laneRows} taps={s.taps} live
+      result={s.liveResult} now={s.phase === 'running' && !countIn && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} hold={ex.settings.hold} />
   );
   const laneHead = (
     <div className="lane-head">
@@ -261,8 +264,11 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   // A sheet that opened by itself (How to play, the intro, Ready) hands focus to Pause when it closes: Tab then goes on
   // through Play's controls instead of leaving the page, which would pause the run.
   const pauseRef = useRef<HTMLButtonElement>(null);
-  // How to play says why it opened; opened with ? before the start when it was not due, it names the run.
-  const howToKey = howToEyebrow(s.phase, s.intro);
+  // How to play says why it opened; opened with ? before the start when it was not due, it names the run. Kept while
+  // it closes: Got it before the start counts in at once, and the closing sheet read Paused.
+  const liveHowToKey = howToEyebrow(s.phase, s.intro);
+  const [howToKey, setHowToKey] = useState(liveHowToKey);
+  if (s.sheet === 'help' && howToKey !== liveHowToKey) setHowToKey(liveHowToKey);
   const sheet = sheetShown && (
     <Sheet variant={desktop ? 'dialog' : 'sheet'} closing={closing} panelKey={sheetShown}
       labelledBy={sheetShown === 'help' ? 'howto' : sheetShown === 'new' ? 'introtitle' : sheetShown === 'ready' ? 'readytitle' : 'pausetitle'}

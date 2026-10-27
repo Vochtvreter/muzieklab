@@ -74,6 +74,15 @@ export function tapsBeforeBar(
     });
 }
 
+/**
+ * The bar being played at `tg` (exercise seconds) in a segment that starts at bar `fromBar`. After a pause the clock
+ * is still in the bar before during the lead-in and the count-in, which lead into `fromBar`: Resume plays it again from
+ * there, and Play shows it.
+ */
+export function barAt(tg: number, barSeconds: number, fromBar: number): number {
+  return Math.max(fromBar, Math.floor(tg / barSeconds));
+}
+
 /** First bar of the staff window: the current row, so the row being played sits on top with the next one below. */
 export function windowStart(currentBar: number, barsPerRow: number, rowsShown: number, totalBars: number): number {
   const perRow = Math.max(1, barsPerRow);

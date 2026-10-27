@@ -1203,7 +1203,7 @@
     "rushing": "Je jaagde: gemiddeld {ms} ms te vroeg. Wacht op elke noot.",
     "dragging": "Je sleepte: gemiddeld {ms} ms te laat. Druk iets eerder.",
     "draggingCalibrate": "Je tikken kwamen gemiddeld {ms} ms te laat, bij elke noot ongeveer even veel. Dat komt vaak door de speaker of koptelefoon: kalibreer één keer en het gaat van elke score af.",
-    "missed": "{count, plural, one {Je miste # noot} other {Je miste # noten}}, de meeste in maat {bar}. Lees één tel vooruit.",
+    "missed": "{count, plural, one {Je miste # noot, in maat {bar}} other {Je miste # noten, de meeste in maat {bar}}}. Lees één tel vooruit.",
     "missedSpread": "{count, plural, one {Je miste # noot} other {Je miste # noten}}. Lees één tel vooruit.",
     "extraTaps": "{count, plural, one {# extra tik kostte} other {# extra tikken kostten}} punten. Blijf bij rusten van het pad af.",
     "unsteady": "Je timing zwierf zo’n {ms} ms heen en weer. Tel zachtjes mee om gelijk te blijven.",

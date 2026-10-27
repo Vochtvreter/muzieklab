@@ -73,7 +73,10 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    *Voortellen*) instead of *Bar 1 of N*, and no note is highlighted (none before the start either). The beat counter
    draws the current beat as an outlined slate ring, with the digit in slate, instead of the filled circle. On desktop
    the stat card's label reads COUNT-IN and the active digit is hollow. From beat 1 everything looks as before. The
-   analog metronome is unchanged, and the aria labels stay *Count-in, beat x of y*.
+   analog metronome is unchanged, and the aria labels stay *Count-in, beat x of y*. The timing lane draws no playhead
+   until beat 1. The count-in after a pause already shows the bar it leads into, the one Resume plays again, in the
+   staff and lane windows, the progress and the Pause sheet's *Bar x of y*, although its clock is still in the bar
+   before.
 3. **Play** — a cursor sweeps across the notation in time. The player presses on every
    note and holds it for its length. Rests = nothing pressed. Tied notes = press once and
    keep holding through the tied note (the tie continues the sound, no new onset — an
@@ -857,8 +860,8 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
      rushing: *You were rushing: on average 110 ms early. Wait for each note.*
   3. Off track (misses + extra taps add up to a quarter or more of the notes): timing advice is beside the point when
      the player lost their place, so it names the misses, with the bar that had the most (*You missed 3 notes, most in
-     bar 2. Read one beat ahead.*) or, when bars tie, without a bar (*You missed 8 notes. Read one beat ahead.*); or
-     the extra taps.
+     bar 2. Read one beat ahead.*; one note is *in bar 2*) or, when bars tie, without a bar (*You missed 8 notes. Read
+     one beat ahead.*); or the extra taps.
   4. The worst hold problem, e.g. "You let go of the dotted quarter in bar 2 too early".
   5. The tendency (only from 4+ hit notes). When the player drags steadily (every hit at least 20 ms late, SD
      ≤ 45 ms) on a run played before any calibration, it points to calibration instead of "press sooner": *Your taps
@@ -1420,7 +1423,8 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 - A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Scales, Calibration) out in
   two columns, so the pad or the answer buttons stay in view next to the notation (Scales: the staff and the degree row
   on the left, the piano or the sign buttons on the right). Its Read notes staff is the phone's (1.45, or 2.1 with 4
-  bars in a round that writes), in the narrow column, not the tablet's.
+  bars in a round that writes), in the narrow column, not the tablet's. Play's analog beat counter is 44 px tall
+  there, as the digits' row beside the lesson line, so the timing lane's two rows stay in the staff card.
 - The rhythm staff on Play and Results is drawn at its screen's size, or smaller, down to 0.75, when a busy bar's
   notes need more room than its share of the row leaves them (sixteenths on a phone, a busy 4/4 bar on tablet Play or
   desktop Results). VexFlow never sets notes in less room than they need, so they would run over the bar line and off
@@ -1444,6 +1448,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   beside it (the Scales hub's *Learn scales* on a phone, Key's *What is a key?*) takes two lines, right aligned, when
   the two do not fit on one, and under 375 px wide such a title is 18 px (20 px on the board): in Dutch both fit on one
   line at 360 px, and at 320 px the link takes two (*Toonladders* beside *Over toonladders*).
+- Setup's tempo value (*112 BPM · Moderato*) is never broken in two. Under about 345 px wide it does not fit beside
+  *Tempo*, so it takes a line of its own under it, right aligned. The *Bars* and *Tempo* labels stay level at the top,
+  with the stepper and the slider level below them.
 - **Phone browsers** (since 0.10.0). In Safari or Chrome the toolbars take about 180 px of a phone's screen, so the
   sizes to check include the visible area: 390 × 664 (an iPhone 14 in Safari) and 375 × 553 (an iPhone SE in Safari),
   `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens
@@ -1474,8 +1481,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 - **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a
   1280 × 720 laptop, `laptop-720`) the page's padding (20 px at the top, 16 px at the bottom), its gap (16 px) and the
   staff card's padding (20 × 40 px, 16 px at the bottom) tighten, and the stat cards are lower (12 px × 18 px), so two
-  staff rows, a timing lane of four rows (16 bars) and the analog pendulum fit. Under 820 px only the room under the
-  pad row is smaller (16 px, not 36 px), which shows only when 16 bars with the pendulum fill a 1280 × 800 window.
+  staff rows, a timing lane of four rows (16 bars) and the analog pendulum fit. Under 822 px only the room above the
+  staff and under the pad row is smaller (36 px, not 40 px, and 16 px, not 36 px), which shows only when 16 bars with
+  the pendulum and the room for a triplet's 3 fill a 1280 × 800 window or a 1180 × 820 tablet on its side.
   Read notes and Scales keep their spacing; on a laptop their page scrolls.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
