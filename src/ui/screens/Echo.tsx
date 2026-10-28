@@ -18,7 +18,7 @@ import { useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLin
 import { metersLabel } from '../lib/format';
 import { beatAt, type BeatState } from '../lib/playMath';
 import { focusLost } from '../lib/screenFocus';
-import { Link, navigate } from '../router';
+import { leave, Link } from '../router';
 import { useStore, type Run } from '../store';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
 import { HowToContent } from './PlaySheets';
@@ -137,7 +137,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     e.preventDefault();
     stopLoop();
     engine().stop();
-    navigate('/', { replace: true });
+    leave('/');
   };
   const closeHelp = (): void => {
     setHelp(null);

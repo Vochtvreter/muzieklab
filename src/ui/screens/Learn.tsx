@@ -1,23 +1,24 @@
 /**
  * Learn (DESIGN.md §9.1): the chapter list with read status, and each chapter on its own page. The chapters are data
  * (`ui/learn/chapters.ts`); this file only lays them out. Each section ends with a quick check, and is marked read once
- * that is answered right; it may also end with a practice link that starts practice set up for it. A chapter ends
- * with a quick check of its own and previous / next. Examples can be heard (learn/Listen.tsx); leaving the chapter stops
- * the sound.
+ * that is answered right; it may also end with a practice link that starts practice set up for it (also opened in a new
+ * tab: LearnPractice). A chapter ends with a quick check of its own and previous / next. Examples can be heard
+ * (learn/Listen.tsx); leaving the chapter stops the sound.
  *
  * Tablet and desktop use the full width: the chapter list puts its sections in two columns, and a chapter page gets the
  * big chapter number and wider sections. Tablet jumps to a section with a row of chips; desktop has a chapter sidebar.
  */
-import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import type { Letter } from '../../core/api';
 import { t } from '../../i18n';
 import { AppShell } from '../components/AppShell';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
 import { Blocks } from '../learn/Blocks';
-import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
+import { CHAPTERS, findChapter, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
 import { stopLearnSound } from '../learn/Listen';
-import { letterName } from '../lib/noteText';
+import { announce } from '../lib/announce';
+import { letterName, spokenName } from '../lib/noteText';
 import { hashQuery, Link, navigate, useHash, type Route } from '../router';
 import { todayIso, useStore } from '../store';
 import { useStartNotes } from './notes/start';
@@ -140,43 +141,76 @@ function SectionCheck({ section, read, onRight }: { section: Section; read: bool
 }
 
 /**
- * "Practice the treble clef →": a Read notes round or a rhythm exercise straight away, or the Scales setup, set up for
- * the section on top of the player's own setup. Play and the summary carry ?from=8.2, so Quit and their back arrow
- * return to the section, and the setup they open keeps the preset. The browser's Back returns there too: the chapter's
- * own entry in the history is set to the section first, as the chapter is built afresh on the way back.
+ * A section's practice: a Read notes round or a rhythm exercise straight away, or the Scales setup, set up for the
+ * section on top of the player's own setup. Play and the summary carry ?from=8.2, so Quit and their back arrow return
+ * to the section, and the setup they open keeps the preset. `replace` swaps the current screen for it.
  */
-function PracticeLink({ section }: { section: Section }): JSX.Element {
+function useStartSection(): (section: Section, opts?: { replace?: boolean }) => void {
   const { state, dispatch } = useStore();
   const startPractice = useStartPractice();
   const startNotes = useStartNotes();
-  const p = section.practice!;
-  const from = 'from=' + section.id;
-  const start = (e: MouseEvent): void => {
+  return (section, { replace } = {}) => {
+    const p = section.practice!;
+    const query = 'from=' + section.id;
+    if ('scales' in p) {
+      const settings = { ...state.scaleSettings, ...p.scales };
+      dispatch({ type: 'scaleSettings', settings });
+      if (settings.keyMode === 'one') dispatch({ type: 'scaleHub', hub: { ...state.scaleHub, key: settings.keys[0] } });
+      navigate('/scales/setup', { replace, query });
+    } else if ('notes' in p) {
+      const settings = { ...state.noteSettings, ...p.notes };
+      dispatch({ type: 'noteSettings', settings });
+      startNotes(settings, [], { replace, query });
+    } else {
+      const settings = { ...state.settings, ...p.rhythm };
+      dispatch({ type: 'settings', settings });
+      startPractice(settings, { replace, query });
+    }
+  };
+}
+
+/**
+ * "Practice the treble clef →" starts the section's practice (useStartSection). The browser's Back returns to the
+ * section: the chapter's own entry in the history is set to it first, as the chapter is built afresh on the way back.
+ * Opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift), its own address starts the same practice
+ * there.
+ */
+function PracticeLink({ section }: { section: Section }): JSX.Element {
+  const start = useStartSection();
+  const click = (e: MouseEvent): void => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     const here = '#' + chapterRoute(Number(section.id.split('.')[0])) + '?s=' + section.id;
     // Only the address changes (no hashchange): the practice screen opens next, in this same click, so the chapter
     // never renders with ?s= in the address and jumps to the section on its way out.
     if (window.location.hash !== here) window.history.replaceState(window.history.state, '', here);
-    if ('scales' in p) {
-      const settings = { ...state.scaleSettings, ...p.scales };
-      dispatch({ type: 'scaleSettings', settings });
-      if (settings.keyMode === 'one') dispatch({ type: 'scaleHub', hub: { ...state.scaleHub, key: settings.keys[0] } });
-      navigate('/scales/setup', { query: from });
-    } else if ('notes' in p) {
-      const settings = { ...state.noteSettings, ...p.notes };
-      dispatch({ type: 'noteSettings', settings });
-      startNotes(settings, [], { query: from });
-    } else {
-      const settings = { ...state.settings, ...p.rhythm };
-      dispatch({ type: 'settings', settings });
-      startPractice(settings, { query: from });
-    }
+    start(section);
   };
   return (
-    <Link to={'notes' in p ? '/notes/play' : 'scales' in p ? '/scales/setup' : '/play'} query={from} className="text-btn text-btn--link learn-practice" onClick={start}>
+    <Link to="/learn/practice" query={'s=' + section.id} className="text-btn text-btn--link learn-practice" onClick={click}>
       {t(sectionKey(section.id, 'practice'))} →
     </Link>
   );
+}
+
+/**
+ * #/learn/practice?s=8.2, a practice link's own address (opened in a new tab): starts that section's practice in its
+ * place, or opens the Learn tab for a section without practice.
+ */
+export function LearnPractice(): null {
+  const start = useStartSection();
+  const id = hashQuery(useHash()).get('s');
+  // A layout effect, so the run it stores is there when the screen it opens first renders (Play without a run goes to
+  // the setup), as after a click. Once: in development React runs a new screen's effects twice.
+  const started = useRef(false);
+  useLayoutEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    const section = findChapter(Number(id?.split('.')[0]))?.sections.find((s) => s.id === id);
+    if (section?.practice) start(section, { replace: true });
+    else navigate('/learn', { replace: true });
+  }, [id, start]);
+  return null;
 }
 
 /** "1, 4 and 5". */
@@ -199,6 +233,13 @@ function answerText(base: string, a: Answer): string {
   return letterName(name.letter as Letter, name.alter);
 }
 
+/** A note answer's name for screen readers, "F sharp" and not the sign, as the piano's keys and Read notes' names. */
+function answerSpoken(a: Answer): string | undefined {
+  if ('text' in a) return undefined;
+  const name = parseNoteName(a.note)!;
+  return spokenName(name.letter as Letter, name.alter);
+}
+
 /**
  * The question, its answers and the feedback. With `reveal` a wrong pick also marks the right answer (the chapter's
  * check); without it, you try again (a section's).
@@ -210,6 +251,8 @@ function QuickCheck({ base, quiz, labelId, reveal, hint, onRight }: { base: stri
   const long = texts.some((x) => x.length > 4);
   const choose = (i: number): void => {
     setPick(i);
+    // Read out by the app's live region: the feedback below appears with its text, which not every screen reader reads.
+    announce(t(i === quiz.right ? `${base}.right` : `${base}.wrong`));
     if (i === quiz.right) onRight?.();
   };
   const mark = (i: number): string =>
@@ -219,13 +262,14 @@ function QuickCheck({ base, quiz, labelId, reveal, hint, onRight }: { base: stri
       <b id={labelId}>{t(`${base}.question`)}</b>
       <div className={'learn-answers' + (long ? ' learn-answers--long' : '')}>
         {texts.map((text, i) => (
-          <button key={i} type="button" aria-pressed={pick === i} className={'name-btn learn-answer' + mark(i)} onClick={() => choose(i)}>
+          <button key={i} type="button" aria-label={answerSpoken(quiz.answers[i])} aria-pressed={pick === i} className={'name-btn learn-answer' + mark(i)}
+            onClick={() => choose(i)}>
             {text}
           </button>
         ))}
       </div>
       {pick !== null ? (
-        <div key={pick} className={'nfeedback m-in ' + (pick === quiz.right ? 'is-right' : 'is-wrong')} role="status">
+        <div key={pick} className={'nfeedback m-in ' + (pick === quiz.right ? 'is-right' : 'is-wrong')}>
           {t(pick === quiz.right ? `${base}.right` : `${base}.wrong`)}
         </div>
       ) : (

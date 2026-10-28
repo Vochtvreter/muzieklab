@@ -56,7 +56,7 @@ import {
   type NameSystem,
 } from '../../lib/noteText';
 import { useFocusHandOff } from '../../lib/screenFocus';
-import { Link, navigate } from '../../router';
+import { leave, Link, navigate } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
 
 /** A right answer without a hint moves on after this long. */
@@ -256,7 +256,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   // Quit goes back where the round started: the Path for a lesson, the Learn section, the Read notes setup otherwise.
   const home = run.lesson ? '/path' : (back?.to ?? '/notes');
   const homeQuery = run.lesson ? undefined : back?.query;
-  const quit = (): void => navigate(home, { replace: true, query: homeQuery });
+  const quit = (): void => leave(home, homeQuery);
   const skip = (): void => finish(answers.slice(0, done ? i + 1 : i));
 
   // Keys: letters (names) or A S D F G H J / W E T Y U (piano; after the answer they only sound), − 0 = for the sign,

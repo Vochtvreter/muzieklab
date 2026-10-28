@@ -25,7 +25,7 @@ import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
 import { focusHeading, focusLost } from '../lib/screenFocus';
 import { guardFollowUpTap } from '../lib/tapGuard';
-import { Link, navigate } from '../router';
+import { leave, Link, navigate } from '../router';
 import { todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
@@ -245,10 +245,11 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const fbClass = 'judgement' + (s.feedback ? ' tone-' + s.feedback.tone : '');
   const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : echo && s.phase === 'running' ? t('play.echo.yourTurnCue') : ' ';
 
-  // Quit swaps Play for Home (or the Learn section) in the history, so Back does not walk into the exercise again.
+  // Quit returns to Home (or the Learn section), so that Back neither walks into the exercise again nor lands on that
+  // screen a second time (router.leave).
   const quit = (): void => {
     s.stop();
-    navigate(exit, { replace: true, query: back?.query });
+    leave(exit, back?.query);
   };
   const quitLink = (e: MouseEvent): void => {
     e.preventDefault();

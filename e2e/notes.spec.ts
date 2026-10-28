@@ -590,13 +590,13 @@ test('learn: the Key screen links to key signatures; the quick check answers', a
   await expect(page).toHaveURL(/#\/learn\/10\?s=10\.1$/);
   await expect(page.getByRole('heading', { name: /10\.1\s*The key signature/ })).toBeInViewport();
   await page.getByRole('button', { name: 'D', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText(/^Right\. One key up from the last sharp/);
+  await expect(page.locator('#scheck .nfeedback')).toHaveText(/^Right\. One key up from the last sharp/);
 
   // Scrolling to the end marks nothing; a section's quick check answered right marks it read, and the Learn tab shows it.
   await page.locator('.learn-chapter').evaluate((el) => el.scrollTo(0, el.scrollHeight));
   const check = page.getByRole('group', { name: 'How long does a key signature hold?' });
   await check.getByRole('button', { name: 'For the whole piece' }).click();
-  await expect(check.getByRole('status')).toHaveText(/^Right\. A key signature holds/);
+  await expect(check.locator('.nfeedback')).toHaveText(/^Right\. A key signature holds/);
   await page.getByRole('link', { name: 'Back to all chapters' }).click();
   await expect(page.getByRole('heading', { name: 'Learn' })).toBeVisible();
   await page.getByRole('button', { name: /^10\s*Key signatures/ }).click();
@@ -700,6 +700,71 @@ test("learn: the browser's Back from a practice link returns to its section, as 
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`#/learn/${n}\\?s=${id.replace('.', '\\.')}$`));
     await expect(page.getByRole('heading', { name: new RegExp(`^${id.replace('.', '\\.')}\\s*\\D`) })).toBeInViewport();
+  }
+});
+
+test('after Quit, one Back leaves the screen Quit returned to', async ({ page }) => {
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  // From the Learn tab to a section, its practice link and Quit: the first Back returns to the Learn tab, not to the
+  // section a second time (it once took two).
+  const links: [number, string, string, string][] = [
+    [8, '8.4', 'Practice with ledger lines →', 'Quit'],
+    [3, '3.2', 'Practice reading rests →', 'Quit exercise'],
+  ];
+  for (const [n, id, name, quit] of links) {
+    const section = id.replace('.', '\\.');
+    await page.goto('./#/learn');
+    const row = page.getByRole('button', { name: new RegExp(`^${n}\\s*\\D`) });
+    if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click();
+    await page.getByRole('link', { name: new RegExp(`^${section}\\s*\\D`) }).click();
+    await page.getByRole('link', { name }).click();
+    await page.getByRole('link', { name: quit, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`#/learn/${n}\\?s=${section}$`));
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/learn$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Learn' })).toBeVisible();
+  }
+
+  // The same for a Read notes round started from its setup, and a Scales round from the Scales tab: Back goes Home.
+  for (const [tile, start, setup] of [[/^Read notes/, /^Start · /, /#\/notes$/], [/^Scales/, /^Practice C major/, /#\/scales$/]]) {
+    await page.goto('./#/');
+    await page.getByRole('link', { name: tile }).click();
+    await page.getByRole('button', { name: start }).click();
+    await page.getByRole('link', { name: 'Quit', exact: true }).click();
+    await expect(page).toHaveURL(setup);
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeAttached();
+  }
+});
+
+test('learn: a practice link opened in a new tab starts the same practice there', async ({ page, context }) => {
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.desktop);
+  // A middle click and a Ctrl or Cmd click open a new tab (the click once started practice in this tab instead), and
+  // the new tab gets the section's practice, not the plain setup.
+  await page.goto('./#/learn/4');
+  const link = page.getByRole('link', { name: 'Practice eighths →' });
+  const clicks: Parameters<Locator['click']>[0][] = [{ button: 'middle' }, { modifiers: ['ControlOrMeta'] }];
+  for (const click of clicks) {
+    const [tab] = await Promise.all([context.waitForEvent('page'), link.click(click)]);
+    await expect(tab).toHaveURL(/#\/play\?from=4\.1$/);
+    await expect(tab.getByRole('link', { name: /^Quit/ })).toHaveAttribute('href', '#/learn/4?s=4.1');
+    await tab.close();
+    await expect(page).toHaveURL(/#\/learn\/4$/);
+  }
+  // Read notes starts its round; Scales opens the setup with the section's keys.
+  const tabs: [number, string, RegExp][] = [
+    [8, 'Practice the treble clef →', /#\/notes\/play\?from=8\.2$/],
+    [11, 'Practice D major and B♭ major →', /#\/scales\/setup\?from=11\.2$/],
+  ];
+  for (const [n, name, url] of tabs) {
+    await page.goto(`./#/learn/${n}`);
+    const [tab] = await Promise.all([context.waitForEvent('page'), page.getByRole('link', { name }).click({ button: 'middle' })]);
+    await expect(tab).toHaveURL(url);
+    if (n === 11) await expect(tab.getByRole('button', { name: 'Start · 2 scales' })).toBeVisible();
+    await tab.close();
   }
 });
 

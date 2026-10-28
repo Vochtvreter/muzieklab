@@ -1,6 +1,7 @@
 /**
  * A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/settings, #/calibrate, #/changelog, Read notes (#/notes, #/notes/key,
  * #/notes/play, #/notes/done), Scales (#/scales, #/scales/setup, #/scales/key, #/scales/play, #/scales/done), Learn (#/learn and a chapter, #/learn/8), and #/dev/render. A `?s=10.2` query names a Learn section.
+ * #/learn/practice?s=8.2 starts a section's practice (its practice link, opened in a new tab).
  * Progress (#/progress, and its skill levels #/progress/skills and one skill, #/progress/skills/rhythm).
  * Accounts (BACKEND-PLAN.md §5, §10.1): #/signin, #/invite/<token> and #/reset/<token> (the links an admin sends),
  * #/account, #/privacy, and the admin screens #/admin, #/admin/invite, #/admin/account/<id> and #/admin/deleted.
@@ -28,6 +29,7 @@ export type Route =
   | '/scales/play'
   | '/scales/done'
   | '/learn'
+  | '/learn/practice'
   | `/learn/${number}`
   | '/progress'
   | '/progress/skills'
@@ -64,6 +66,7 @@ const ROUTES: Route[] = [
   '/scales/play',
   '/scales/done',
   '/learn',
+  '/learn/practice',
   '/progress',
   '/progress/skills',
   '/signin',
@@ -128,15 +131,38 @@ export function useRoute(): Route {
   );
 }
 
+/**
+ * A screen opened with navigate() keeps, in its place in the history, the address it was opened from; a screen swapped
+ * in for it keeps it too (Results for Play at the end, Play for Results on Retry). leave() goes back there.
+ */
+interface Entry {
+  from?: string;
+}
+
 export function navigate(to: Route, opts: { replace?: boolean; query?: string } = {}): void {
   const hash = '#' + to + (opts.query ? '?' + opts.query : '');
   if (window.location.hash === hash) return;
   if (opts.replace) {
-    window.history.replaceState(null, '', hash);
+    window.history.replaceState(window.history.state, '', hash);
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   } else {
+    const from = window.location.hash;
     window.location.hash = hash.slice(1);
+    window.history.replaceState({ from } satisfies Entry, '');
   }
+}
+
+/**
+ * Quit: leaves an exercise for `to`. When the exercise was opened from there (Learn's section, the Read notes setup),
+ * it goes back to it; swapping the exercise for it would leave the same address twice in a row in the history, and the
+ * browser's Back would then seem to do nothing. Otherwise the exercise is swapped for `to`, so Back does not walk into
+ * it again. An address without a hash is Home.
+ */
+export function leave(to: Route, query?: string): void {
+  const hash = '#' + to + (query ? '?' + query : '');
+  const from = (window.history.state as Entry | null)?.from;
+  if (from !== undefined && (from || '#/') === hash) window.history.back();
+  else navigate(to, { replace: true, query });
 }
 
 type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { to: Route; query?: string };

@@ -1888,10 +1888,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
       // Answers in words get a row each and stay clickable.
       await page.goto('./#/learn/5?s=check');
-      const right = page.getByRole('button', { name: 'A quarter tied to an eighth' });
+      const right = page.getByRole('button', { name: 'A quarter tied to an eighth', exact: true });
       await expectClickable(right);
       await right.click();
-      await expect(page.getByRole('status')).toContainText('Right.');
+      await expect(page.locator('.learn-check .nfeedback')).toContainText('Right.');
       await expectClickable(page.getByRole('link', { name: /Next\s*6 · Off the beat/ }));
       await expectNoSideScroll(page);
     });
@@ -1904,11 +1904,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // A wrong answer gives a hint, not the answer, and the section stays unread.
       await expectClickable(check.getByRole('button', { name: 'An eighth (½ beat)' }));
       await check.getByRole('button', { name: 'An eighth (½ beat)' }).click();
-      await expect(check.getByRole('status')).toHaveText(/^Not quite\. Start from the quarter note/);
+      // Shown under the answers, and read out by the app's live region.
+      await expect(check.locator('.nfeedback')).toHaveText(/^Not quite\. Start from the quarter note/);
+      await expect(page.locator('#announcer')).toHaveText(/^Not quite\. Start from the quarter note/);
       await expect(check.locator('.learn-answer.is-right')).toHaveCount(0);
       await expect(check.getByText('✓ read')).toHaveCount(0);
       await check.getByRole('button', { name: 'A sixteenth (¼ beat)' }).click();
-      await expect(check.getByRole('status')).toHaveText(/^Right\. Each flag halves the note/);
+      await expect(check.locator('.nfeedback')).toHaveText(/^Right\. Each flag halves the note/);
+      await expect(page.locator('#announcer')).toHaveText(/^Right\. Each flag halves the note/);
       await expect(check.getByText('✓ read')).toBeVisible();
       await expectClickable(page.getByRole('link', { name: 'Practice whole, half and quarter notes →' }));
       await expectNoSideScroll(page);
@@ -1941,24 +1944,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'learn-sound');
       await page.goto('./#/learn/1');
       const pulse = page.getByRole('group', { name: /^Four seconds of beats/ });
-      await expectClickable(pulse.getByRole('button', { name: 'Play 60 BPM' }));
-      await pulse.getByRole('button', { name: 'Play 60 BPM' }).click();
-      await expect(pulse.getByRole('button', { name: 'Stop' })).toBeVisible();
-      // Starting another example stops the first.
-      const bars = page.locator('#s1-2').getByRole('button', { name: 'Play', exact: true }).first();
+      await expectClickable(pulse.getByRole('button', { name: 'Play: 60 BPM' }));
+      await pulse.getByRole('button', { name: 'Play: 60 BPM' }).click();
+      await expect(pulse.getByRole('button', { name: 'Stop: 60 BPM' })).toBeVisible();
+      // Starting another example stops the first. Each button names its example.
+      const bars = page.locator('#s1-2').getByRole('button', { name: /^Play: Two bars of 4\/4/ });
       await expectClickable(bars);
       await bars.click();
-      await expect(pulse.getByRole('button', { name: 'Play 60 BPM' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(1);
+      await expect(pulse.getByRole('button', { name: 'Play: 60 BPM' })).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Stop: / })).toHaveCount(1);
+      await expect(page.locator('#s1-2').getByRole('button', { name: /^Stop: Two bars of 4\/4/ })).toBeVisible();
       await expectNoSideScroll(page);
 
       // Opening another chapter stops it. A scale plays, and so do the piano's marked keys and each key.
       await page.goto('./#/learn/11?s=11.1');
       await expect(page.getByRole('heading', { level: 1, name: /Scales/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /^Stop: / })).toHaveCount(0);
       const scale = page.locator('#s11-1');
-      await expect(scale.getByRole('button', { name: 'Play', exact: true })).toHaveCount(2);
-      await expectClickable(scale.getByRole('button', { name: 'Play', exact: true }).first());
+      await expect(scale.getByRole('button', { name: /^Play: / })).toHaveCount(2);
+      await expectClickable(scale.getByRole('button', { name: 'Play: C major' }));
       const piano = scale.getByRole('group', { name: /^One piano octave/ });
       await expectClickable(piano.getByRole('button', { name: 'E', exact: true }));
       await expectClickable(piano.getByRole('button', { name: 'F sharp or G flat' }));

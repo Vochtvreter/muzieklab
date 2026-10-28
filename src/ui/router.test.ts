@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { hashQuery, parseHash, routeParam } from './router';
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hashQuery, leave, navigate, parseHash, routeParam } from './router';
 
 const TOKEN = 'q3Vb9JzR1kLx7Pm2Ws5Tn8Yc4Hd6Fg0Ae-Ui_Oj3Ks';
 const ID = '6718f0c2a1b2c3d4e5f60001';
@@ -78,5 +79,48 @@ describe('routeParam', () => {
     expect(routeParam('/admin/feedback', '/admin/feedback/')).toBeNull();
     expect(routeParam(parseHash('#/progress/skills/treble'), '/progress/skills/')).toBe('treble');
     expect(routeParam('/progress/skills', '/progress/skills/')).toBeNull();
+  });
+});
+
+describe('leave', () => {
+  beforeEach(() => window.history.replaceState(null, '', '#/'));
+  afterEach(() => vi.restoreAllMocks());
+  const goingBack = () => vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+
+  it('goes back to the screen the exercise was opened from: swapped in, it would be in the history twice', () => {
+    window.history.replaceState(null, '', '#/learn/8?s=8.4');
+    navigate('/notes/play', { query: 'from=8.4' });
+    const back = goingBack();
+    leave('/learn/8', 's=8.4');
+    expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('knows where the exercise came from after Results and Retry swapped it', () => {
+    window.history.replaceState(null, '', '#/learn/3?s=3.2');
+    navigate('/play', { query: 'from=3.2' });
+    navigate('/results', { replace: true, query: 'from=3.2' });
+    navigate('/play', { replace: true, query: 'from=3.2' });
+    const back = goingBack();
+    leave('/learn/3', 's=3.2');
+    expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('counts an address without a hash as Home', () => {
+    window.history.replaceState(null, '', window.location.pathname);
+    navigate('/play');
+    const back = goingBack();
+    leave('/');
+    expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('swaps the exercise for where it goes when it was opened from elsewhere', () => {
+    window.history.replaceState(null, '', '#/path');
+    navigate('/play');
+    const back = goingBack();
+    const length = window.history.length;
+    leave('/');
+    expect(back).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('#/');
+    expect(window.history.length).toBe(length);
   });
 });

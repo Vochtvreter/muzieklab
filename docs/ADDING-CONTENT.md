@@ -46,13 +46,15 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
 | `{ kind: 'noteNames' }` | C–B with do re mi |
 | `{ kind: 'pair', variant?, columns }` | columns side by side on tablet and desktop, stacked on phones (`'staves'` or `'text'`) |
 
-Every `alt` is the description a screen reader gets for the picture; for a staff it may use `{names}`.
+Every `alt` is the description a screen reader gets for the picture; for a staff it may use `{names}`, the notes as
+they are said (*F sharp*).
 
 ### Sound
 
 Examples that show music can be heard (DESIGN.md §9.1). A round play button sits in front of the notation on tablet and
-desktop, and at the start of the example's first line on phones; it turns into Stop while the example plays. One example
-plays at a time, and leaving the chapter stops it. The sound follows the Sound volumes in Settings.
+desktop, and at the start of the example's first line on phones; it turns into Stop while the example plays. Its name
+for screen readers is the example's `title`, or its `alt` when it has none (*Play: Whole note*). One example plays at a
+time, and leaving the chapter stops it. The sound follows the Sound volumes in Settings.
 
 | Block | Play button | What it plays |
 |---|---|---|

@@ -1795,8 +1795,8 @@
     "next": "Next",
     "check": "Quick check",
     "checkHint": "Answer it right to mark this section read.",
-    "play": "Play",
-    "stop": "Stop",
+    "play": "Play: {name}",
+    "stop": "Stop: {name}",
     "ch1": {
       "intro": "Music moves on a steady pulse. This chapter shows how fast that pulse goes, how it is grouped into bars, and why some beats feel stronger than others. Every later chapter counts in these beats.",
       "s1": {
@@ -2219,7 +2219,6 @@
     },
     "pulse": {
       "bpm": "{bpm} BPM",
-      "play": "Play {bpm} BPM",
       "time": "time",
       "sec": "{s} s"
     },

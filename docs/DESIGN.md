@@ -1720,8 +1720,10 @@ notation (with the counting under the notes in the rhythm chapters; held or sile
 an *In the game* tip where one helps, a quick check of one question on what the section explained, and a *Practice*
 link (below). A section is marked read when its quick check is
 answered right (since 0.6.0; before, scrolling past it was enough). A wrong answer says what to look at again, without
-giving the answer away, and the player tries again. Chapter headers show which Learning Path units use them. The contents follow the research in
-`LEARN-CHAPTERS.md`, which compares them with Flemish and Dutch courses (*Allemaal nootjes*, AMV, HaFaBra) and with
+giving the answer away, and the player tries again. What the answer means is read out by the app's live region
+(*Announcements* in §9.2, Components), and a note answer shows its sign (*F♯*) but is named as it is said (*F sharp*,
+Dutch *fis*), as the piano's keys are. Chapter headers show which Learning Path units use them. The contents follow the
+research in `LEARN-CHAPTERS.md`, which compares them with Flemish and Dutch courses (*Allemaal nootjes*, AMV, HaFaBra) and with
 ABRSM, Trinity, RCM and Kodály.
 
 **Narrow phones.** A rhythm example keeps two bars a row on every phone. When its counts would touch (two busy bars on
@@ -1745,14 +1747,20 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
   to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip
   (§6.1). The browser's Back from the screen the link opened returns to the section too: the link first sets the
-  chapter's own place in the history to it (`#/learn/8?s=8.3`).
+  chapter's own place in the history to it (`#/learn/8?s=8.3`). Quit then goes back to that place instead of adding
+  the section again, so one Back after Quit leaves the chapter. Every exercise's Quit does this when it returns to the
+  screen it was opened from: Read notes to its setup, Scales to the Scales tab, Play to Home.
+- A practice link opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift) starts the same practice
+  there: its address, `#/learn/practice?s=8.3`, sets up the section's practice in its own place. A plain click starts
+  it in the same tab.
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
 - Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.
 
 **Hearing the examples** (since 0.10.0). Examples that show music can be heard. A small round slate play button sits
 with the example: a 36 px accent circle in a 44 px touch target, with an on-fill icon and the label *Play* / *Stop*.
-While it plays, the icon becomes a stop square and the circle gets an accent-halo ring.
+While it plays, the icon becomes a stop square and the circle gets an accent-halo ring. A section has several, so the
+label says which example it plays: its title, or what its notation shows (*Play: Whole note*, *Stop: 60 BPM*).
 - Rhythm examples: a one-bar count-in, then the rhythm on the woodblock with every beat clicking, at 80 BPM or the
   block's `tempo`. Ties are merged and rests are silent.
 - The note tree (2.2): each row plays its bar the same way; the Rests row plays only the clicks.
@@ -2000,8 +2008,8 @@ both work.
   busy or far away: Settings' one-line notices, the accounts list's line after Cancel invite or Delete account, the
   feedback list's after Delete report, Block and Unblock, the count after a search, a filter or Try again, the outcome
   of Try again on the note for no answer and on the sync line, every form's done line (*Name saved.*, *Saved.*, *New
-  link ready. Send it yourself.*) and Settings' *Progress was reset.* Those lines are plain text, not a `role="status"`
-  of their own, so nothing is read twice.
+  link ready. Send it yourself.*) and Settings' *Progress was reset.*, and what a Learn quick check's answer means.
+  Those lines are plain text, not a `role="status"` of their own, so nothing is read twice.
 
 **Destructive confirm** (`ConfirmAction`) is Settings' Reset progress pattern.
 - The row button (red words and icon) turns, in place, into the question in bold, one line on what happens, any field

@@ -80,7 +80,9 @@ for (const mode of ['frozen', 'interrupted'] as const) {
     await page.getByRole('button', { name: 'Continue lesson' }).click();
     await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
     await page.getByRole('link', { name: 'Quit exercise' }).click();
-    await expect(page).toHaveURL(/#\/$/);
+    // Back to Home's own place in the history, here an address without a hash.
+    await expect(page).toHaveURL(/\/(#\/)?$/);
+    await expect(page.getByRole('button', { name: 'Continue lesson' })).toBeVisible();
 
     await background(page, mode);
     await page.getByRole('button', { name: 'Continue lesson' }).click();

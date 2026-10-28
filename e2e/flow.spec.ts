@@ -330,7 +330,9 @@ test('after quitting, Back does not walk into the exercise again', async ({ page
   await page.getByRole('button', { name: 'Continue lesson' }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.getByRole('link', { name: 'Quit exercise' }).click();
-  await expect(page).toHaveURL(/#\/$/);
+  // Play was opened from Home, so Quit goes back to Home's own place in the history (here an address without a hash).
+  await expect(page).toHaveURL(/\/(#\/)?$/);
+  await expect(page.getByRole('button', { name: 'Continue lesson' })).toBeVisible();
   await page.goBack();
   // Back from Home now leaves Home, or lands on Play waiting for a tap; never a running exercise.
   if (page.url().includes('#/play')) await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();

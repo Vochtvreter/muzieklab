@@ -22,6 +22,8 @@ type BlockOf<K extends Block['kind']> = Extract<Block, { kind: K }>;
 
 interface HeardProps {
   sound: Sound;
+  /** Which example its button plays ("Play: Whole note"): its title, or what its notation shows. */
+  name: string;
   /** The example's first line (its verdict or title); `more` the lines under it, above the notation. */
   first?: ReactNode;
   more?: ReactNode;
@@ -34,11 +36,11 @@ interface HeardProps {
  * phone needs the full width for the notation, so there the button starts the example's first line, or has a line of
  * its own.
  */
-function Heard({ sound, first, more, className, children }: HeardProps): JSX.Element {
+function Heard({ sound, name, first, more, className, children }: HeardProps): JSX.Element {
   const bp = useBreakpoint();
   const { playing, toggle } = useLearnSound();
   const id = useId();
-  const button = <PlayButton on={playing === id} onClick={() => toggle(id, sound)} />;
+  const button = <PlayButton on={playing === id} name={name} onClick={() => toggle(id, sound)} />;
   const box = 'learn-example' + (className ? ' ' + className : '');
   if (bp === 'phone') {
     return (
@@ -197,7 +199,8 @@ function StaffBlock({ id, block: b }: { id: string; block: BlockOf<'staff'> }): 
         }),
     [b.notes, b.labels],
   );
-  const names = notes.map((n) => nameOf(n.step, false, n.sign ?? 0)).join(', ');
+  // The alt text says the notes as a screen reader should: "F sharp", not the sign.
+  const names = notes.map((n) => spokenName(letterOf(n.step), n.sign ?? 0)).join(', ');
   const alt = t(sectionKey(id, b.alt), { names });
   const keyId = b.keyId ?? 'C';
   // A value is shown as written ('F C G D A E B'), or from the catalog when it names a text of the section (a step
@@ -220,7 +223,8 @@ function StaffBlock({ id, block: b }: { id: string; block: BlockOf<'staff'> }): 
   );
   if (b.play) {
     return (
-      <Heard sound={notesSound(staffMidis(notes, keyId, b.barlines === false))} first={head}>
+      <Heard sound={notesSound(staffMidis(notes, keyId, b.barlines === false))} name={b.title ? t(sectionKey(id, b.title)) : alt}
+        first={head}>
         {staff}
       </Heard>
     );
@@ -261,7 +265,8 @@ function RhythmBlock({ id, block: b }: { id: string; block: BlockOf<'rhythm'> })
     </div>
   );
   return (
-    <Heard sound={rhythmSound(meter, bars, b.tempo ?? LEARN_TEMPO)} first={verdict || head} more={verdict && head}>
+    <Heard sound={rhythmSound(meter, bars, b.tempo ?? LEARN_TEMPO)} name={t(sectionKey(id, b.title ?? b.alt))} first={verdict || head}
+      more={verdict && head}>
       <div className="learn-rhythm" style={{ maxWidth: fit }}>
         <Staff bars={bars} meter={meter} barsPerRow={Math.min(bars.length, bp === 'phone' ? 2 : 4)} label={t(sectionKey(id, b.alt))}
           countText={syllable} timeSig={b.common ? 'C' : undefined} shrinkToFit />
@@ -330,7 +335,7 @@ function Pulse({ tempos, alt }: { tempos: number[]; alt: string }): JSX.Element 
         const count = beatsIn(bpm, PULSE_SECONDS);
         return (
           <div key={bpm} className="learn-pulse-row">
-            <PlayButton on={on === bpm} label={t('learn.pulse.play', { bpm })} onClick={() => toggle(base + bpm, clickSound(count, bpm))} />
+            <PlayButton on={on === bpm} name={t('learn.pulse.bpm', { bpm })} onClick={() => toggle(base + bpm, clickSound(count, bpm))} />
             <span className="mono-muted" aria-hidden="true">
               {t('learn.pulse.bpm', { bpm })}
             </span>
@@ -427,7 +432,7 @@ function NoteTree(): JSX.Element {
       {rows.map((r) => {
         const name = t((kind === 'notes' ? 'value.' : 'rest.') + r.value);
         return (
-          <Heard key={r.value} className="learn-tree-row" sound={rhythmSound(meter, r.bars, LEARN_TEMPO)}
+          <Heard key={r.value} className="learn-tree-row" sound={rhythmSound(meter, r.bars, LEARN_TEMPO)} name={name}
             first={
               <div className="learn-example-head">
                 <b className="learn-tree-name">{name}</b>
@@ -465,5 +470,5 @@ function PianoDiagram({ alt, marked }: { alt: string; marked: string[] }): JSX.E
       ))}
     </div>
   );
-  return marked.length ? <Heard sound={notesSound(markedMidis(marked))}>{piano}</Heard> : piano;
+  return marked.length ? <Heard sound={notesSound(markedMidis(marked))} name={alt}>{piano}</Heard> : piano;
 }

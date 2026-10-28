@@ -36,7 +36,7 @@ import { keyForTabbedControl } from '../../lib/focusModality';
 import { letterName } from '../../lib/noteText';
 import { noteName, scaleName, scaleSpoken, stepHow, stepLabel, stepsOf } from '../../lib/scaleText';
 import { useFocusHandOff } from '../../lib/screenFocus';
-import { Link, navigate } from '../../router';
+import { leave, Link, navigate } from '../../router';
 import { todayIso, useStore, type ScaleRun } from '../../store';
 
 /** Notes per staff: a scale going up (8), then the way down on a staff of its own, from the top note. */
@@ -162,7 +162,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     setWrong(null);
     setHinted(false);
   };
-  const quit = (): void => navigate('/scales', { replace: true });
+  const quit = (): void => leave('/scales');
   const skip = (): void => finish(done ? [...played, { scale: sc, mistakes }] : played);
   const choices = useMemo(() => signChoices(sc, dir), [sc, dir]);
 
