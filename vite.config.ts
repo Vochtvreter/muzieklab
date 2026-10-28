@@ -31,6 +31,8 @@ export default defineConfig({
         // the server's (a 404, an API address: BACKEND-PLAN.md §1). The app routes with # hashes, so it has no other
         // address, and with base './' its ./assets addresses would point under the path asked for (/learn/assets/…).
         navigateFallback: null,
+        // With any query (a link's ?gclid=…, not only utm_* and fbclid) it is still the app's own address, offline too.
+        ignoreURLParametersMatching: [/.*/],
       },
     }),
   ],

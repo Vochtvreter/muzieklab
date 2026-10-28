@@ -56,8 +56,8 @@ The test site has the same setup: its API listens on 127.0.0.1:3001 and uses the
   trusts that header only from 127.0.0.1.
 - **Nothing is exposed but Caddy.** The API and MongoDB listen on `127.0.0.1` only; the firewall stays at 22, 80, 443.
 - **The service worker leaves the API alone.** API calls are `fetch`es, never precached; the PWA config has
-  `navigateFallback: null`, so it answers only the app's own address with the app, and a link to an API address (or
-  any other path) goes to the server.
+  `navigateFallback: null`, so it answers only the app's own address with the app (with any query:
+  `ignoreURLParametersMatching: [/.*/]`), and a link to an API address (or any other path) goes to the server.
 
 ### 1.1 Stack
 

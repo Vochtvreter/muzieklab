@@ -781,12 +781,14 @@ test.describe('a double tap on Start', () => {
 });
 
 /**
- * A mouse double click on a Start button (two clicks 110 ms apart, the second with detail 2, as a mouse sends them):
- * as with a double tap, the second click must not press what the new screen has under the pointer.
+ * A mouse double click on a Start button (two clicks, the second with detail 2, as a mouse sends them): as with a double
+ * tap, the second click must not press what the new screen has under the pointer, nor its press take the focus there.
+ * 110 ms apart, and 600 ms: the system counts a double click up to its double-click time (500 ms on Windows, longer if
+ * set so), past a double tap's 450 ms.
  */
 test.describe('a double click on Start', () => {
   // Each click carries the time it came down, as with the double tap above.
-  const doubleClick = async (page: Page, button: Locator): Promise<void> => {
+  const doubleClick = async (page: Page, button: Locator, gap = 110): Promise<void> => {
     await button.scrollIntoViewIfNeeded();
     const box = (await button.boundingBox())!;
     const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -797,34 +799,45 @@ test.describe('a double click on Start', () => {
     };
     const t0 = Date.now() / 1000;
     await click(1, t0);
-    await page.waitForTimeout(140);
-    await click(2, t0 + 0.11);
+    await page.waitForTimeout(gap + 30);
+    await click(2, t0 + gap / 1000);
     await page.waitForTimeout(500);
   };
 
-  test('scales on desktop: the round is not skipped by Skip to summary under the pointer', async ({ page }) => {
-    await page.setViewportSize(VIEWPORTS.desktop);
-    await page.goto('./#/scales');
-    await doubleClick(page, page.getByRole('button', { name: 'Practice C major' }));
-    await expect(page).toHaveURL(/#\/scales\/play$/);
-    await expect(page.getByRole('listitem', { name: 'Degree 1: now' })).toBeVisible();
-  });
+  for (const gap of [110, 600]) {
+    test(`scales on desktop, ${gap} ms apart: the round is not skipped by Skip to summary under the pointer`, async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await page.goto('./#/scales');
+      await doubleClick(page, page.getByRole('button', { name: 'Practice C major' }), gap);
+      await expect(page).toHaveURL(/#\/scales\/play$/);
+      await expect(page.getByRole('listitem', { name: 'Degree 1: now' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Skip to summary' })).not.toBeFocused();
+      await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+    });
 
-  test('a Learn practice on desktop: the first note is not answered', async ({ page }) => {
+    test(`rhythm on a phone, ${gap} ms apart: Skip to results under the pointer is not pressed`, async ({ page }) => {
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./#/setup');
+      await doubleClick(page, page.getByRole('button', { name: /^Start · / }), gap);
+      await expect(page).toHaveURL(/#\/play$/);
+      await expect(page.getByRole('button', { name: 'Skip to results' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Skip to results' })).not.toBeFocused();
+      await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+    });
+  }
+
+  test('a Learn practice on desktop: the first note is not answered, and Enter does not answer it', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop);
     await page.goto('./#/learn/8');
     await doubleClick(page, page.getByRole('link', { name: 'Practice the treble clef →' }));
     await expect(page).toHaveURL(/#\/notes\/play\?from=8\.2$/);
     await expect(page.getByRole('button', { name: /^Next note/ })).toBeDisabled();
-  });
-
-  test('rhythm on a phone: Skip to results under the pointer is not pressed', async ({ page }) => {
-    await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
-    await page.setViewportSize(VIEWPORTS.phone);
-    await page.goto('./#/setup');
-    await doubleClick(page, page.getByRole('button', { name: /^Start · / }));
-    await expect(page).toHaveURL(/#\/play$/);
-    await expect(page.getByRole('button', { name: 'Skip to results' })).toBeVisible();
+    // The name button under the pointer did not take the focus, so Enter does not press it.
+    await expect(page.getByRole('group', { name: 'Note names' }).locator(':focus')).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: /^Next note/ })).toBeDisabled();
   });
 });
 
@@ -894,15 +907,18 @@ test("the service worker answers only the app's own address: a deeper one is the
   await page.goto('./');
   await page.evaluate(async () => void (await navigator.serviceWorker.ready));
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { message: 'the service worker controls the page', timeout: 30_000 }).toBe(true);
-  for (const path of ['./learn/1', './learn/', './notes/play']) {
+  for (const path of ['./learn/1', './learn/', './notes/play', './learn/1?gclid=1']) {
     const res = await page.goto(path);
     expect(res?.fromServiceWorker(), path).toBe(false);
   }
   await context.setOffline(true);
   try {
-    const res = await page.goto('./#/settings');
-    expect(res?.fromServiceWorker()).toBe(true);
-    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    // The app's own address with any query (a link's tracking parameters) is still the app: it routes by # alone.
+    for (const path of ['./#/settings', './?gclid=1#/settings', './index.html?utm_source=x#/settings']) {
+      const res = await page.goto(path);
+      expect(res?.fromServiceWorker(), path).toBe(true);
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' }), path).toBeVisible();
+    }
   } finally {
     await context.setOffline(false);
   }

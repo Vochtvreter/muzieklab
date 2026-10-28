@@ -2052,11 +2052,12 @@ what to do. For accounts:
 - No accidental zoom/scroll during play (`touch-action: none` on the pad, Wake Lock on). A double tap on a Start button
   starts once: a touch tap that comes down within 450 ms of the tap that started is dropped, so it does not press what
   the exercise screen has there (Skip to results, an answer, a piano key; `ui/lib/tapGuard.ts`). So is the second click
-  of a mouse double click (a click of its own is meant). The same goes for the buttons on Play's sheets that start or
-  resume the run (How to play's Got it, the intro's and Ready's Start, Resume, Restart exercise), whose sheet is gone in
-  240 ms, for Echo's Tap it back (Hear again is under it), and for every tap that opens another screen (`App.tsx`): See
-  summary and See the round open Round done, with New round or Change setup under the finger, and Change setup, Options
-  or a Key screen's Use open a setup, with its Start or a switch there.
+  of a mouse double click, for as long as the system counts it as one (its double-click time, which can be longer), and
+  its press does not take the focus there either; a click of its own is meant. The same goes for the buttons on Play's
+  sheets that start or resume the run (How to play's Got it, the intro's and Ready's Start, Resume, Restart exercise),
+  whose sheet is gone in 240 ms, for Echo's Tap it back (Hear again is under it), and for every tap that opens another
+  screen (`App.tsx`): See summary and See the round open Round done, with New round or Change setup under the finger,
+  and Change setup, Options or a Key screen's Use open a setup, with its Start or a switch there.
 - Feedback by **colour + shape/icon** (colour-blind safe), sound optional. A missed note gets a × on the staff as
   well as the red (since 0.10.0; §9).
 - Full keyboard support; `prefers-reduced-motion` respected; light & dark theme.

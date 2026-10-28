@@ -76,6 +76,40 @@ describe('guardFollowUpTap', () => {
     expect(skipped).toHaveBeenCalledTimes(1);
   });
 
+  it('drops the second click of a slow double click too: the system counts it up to its double-click time', () => {
+    const { start, skip, skipped } = screen();
+    // 480 ms apart: within Windows' 500 ms (longer if set so), past a double tap's 450 ms.
+    now = 70_000;
+    press(start, 'mouse', 70_000, 1);
+    now = 70_480;
+    press(skip, 'mouse', 70_480, 2);
+    expect(skipped).not.toHaveBeenCalled();
+    // The third click of the same triple click is dropped as well; the next click of its own is not.
+    press(skip, 'mouse', 70_700, 3);
+    expect(skipped).not.toHaveBeenCalled();
+    press(skip, 'mouse', 71_400, 1);
+    expect(skipped).toHaveBeenCalledTimes(1);
+    // That click ended it: a double click on Skip to results after it is the player's, both clicks of it.
+    press(skip, 'mouse', 71_500, 2);
+    expect(skipped).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses the press of a click it drops, so the focus stays where it was, and only that press', () => {
+    const { start, skip } = screen();
+    const mousedown = (detail: number): boolean => skip.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, detail }));
+    now = 80_000;
+    press(start, 'mouse', 80_000, 1);
+    fire(skip, 'pointerdown', 80_600, 'mouse');
+    expect(mousedown(2)).toBe(false);
+    fire(skip, 'click', 80_630, undefined, 2);
+    // A press of its own, and the second press of a double click the player makes after it.
+    fire(skip, 'pointerdown', 81_400, 'mouse');
+    expect(mousedown(1)).toBe(true);
+    fire(skip, 'click', 81_430, undefined, 1);
+    fire(skip, 'pointerdown', 81_500, 'mouse');
+    expect(mousedown(2)).toBe(true);
+  });
+
   it('a touch that gave no click does not hold back a later key: a scroll, a long press', () => {
     const { start, skip, skipped } = screen();
     now = 40_000;
