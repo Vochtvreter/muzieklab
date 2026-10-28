@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
 
 /**
  * Theme tokens used by the notation and the length lane, as [CSS variable, light fallback].
@@ -38,19 +38,32 @@ export function readToken(el: Element, name: TokenName): string {
 /** Width of an element, kept up to date with a ResizeObserver. */
 export function useElementWidth(ref: RefObject<HTMLElement | SVGElement | null>): number {
   const [width, setWidth] = useState(0);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    setWidth(Math.floor(el.getBoundingClientRect().width));
-    if (typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver((entries) => {
-      const w = Math.floor(entries[0]?.contentRect.width ?? 0);
-      setWidth((prev) => (prev === w ? prev : w));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref]);
+  useLayoutEffect(() => watchWidth(ref.current, setWidth), [ref]);
   return width;
+}
+
+/**
+ * The same for an element kept in state by a callback ref (`ref={setEl}`), measured again when another one takes its
+ * place. A ref object does not tell: where a screen swaps its layout at a breakpoint (Play), it would go on measuring
+ * the element that is gone.
+ */
+export function useWidthOf(el: HTMLElement | SVGElement | null): number {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => watchWidth(el, setWidth), [el]);
+  return width;
+}
+
+/** Measures the element now and on every resize; returns the cleanup. */
+function watchWidth(el: HTMLElement | SVGElement | null, setWidth: Dispatch<SetStateAction<number>>): (() => void) | undefined {
+  if (!el) return;
+  setWidth(Math.floor(el.getBoundingClientRect().width));
+  if (typeof ResizeObserver === 'undefined') return;
+  const ro = new ResizeObserver((entries) => {
+    const w = Math.floor(entries[0]?.contentRect.width ?? 0);
+    setWidth((prev) => (prev === w ? prev : w));
+  });
+  ro.observe(el);
+  return () => ro.disconnect();
 }
 
 /**

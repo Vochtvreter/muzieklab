@@ -1455,7 +1455,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   desktop Results three. That is mostly Setup's Busy sixteenths, and now and then a Unit 8 lesson on a 320 px phone (8.5
   in about 1 exercise in 20); notes that still fit at 0.75, close to the bar line, keep their rows. Play works the rows
   and the size out once for the exercise, over every window it shows in turn and after the time signature each window
-  starts with, so the staff keeps one layout and one height as the window moves (`fitWindows` in `render/staffDraw.ts`).
+  starts with, so the staff keeps one layout and one height as the window moves (`fitWindows` in `render/staffDraw.ts`),
+  and again when the staff's width changes: a window made narrower or wider during the exercise can swap the phone's
+  layout for the tablet's, with a staff of its own, which Play measures anew (`useWidthOf` in `render/theme.ts`).
   Results does the same for the whole exercise, and scrolls when it gets longer. The canvases draw two bars a row on a
   phone and four on tablet Play and desktop Results, at full size. Learn's examples are drawn smaller the same way
   (§9.1, Narrow phones); none of them needs fewer bars a row.
@@ -1563,9 +1565,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   1160 px in all) that holds the summary and the screen's main button and stays in view while the main content
   scrolls. Setups: the options on the left; the preview (Rhythm) or the summary, and Start, on the right. Key: the keys
   on the left; the one key's signature drawn large, what it means, and Use on the right. Results: the judged staff (4
-  bars a row on desktop, 2 on tablet), the timing lane and the tip on the left; the stars, the score line, the badges,
-  the counts and every button on the right. Round done (Read notes, Scales): the cards (time per note, needs practice,
-  by sign; the scales played and the circle of fifths) on the left; the score, its line and the buttons on the right.
+  bars a row on desktop, 2 on tablet; fewer where a busy bar's notes do not fit, see the rhythm staff above), the
+  timing lane and the tip on the left; the stars, the score line, the badges, the counts and every button on the
+  right. Round done (Read notes, Scales): the cards (time per note, needs practice, by sign; the scales played and the
+  circle of fifths) on the left; the score, its line and the buttons on the right.
   A Read notes round with nothing answered has no cards, so it keeps the one column. A phone keeps the one column, in
   the same order. On a phone in landscape the side panel scrolls with the page until its end is in view (Results'
   is taller than the screen), and the buttons stay at the bottom as on a phone. Calibration on tablet uses the whole width with the pad filling the height under the plot (as Play
@@ -1578,9 +1581,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   also a phone on its side (landscape, ≤ 560 px tall) keeps the phone layout and its two columns (`useExerciseLayout`
   in `ui/hooks.ts`).
   - Play (App design canvas, PlayTablet): the exercise header with help, Pause and Quit; the staff and lane across the
-    width (four bars a row); the Count and Combo cards (the pendulum in the Count card with the analog look); the
-    judgement; a big pad that fills the rest of the height (its ring grows with it, up to 230 px); Skip to results.
-    Echo's tap-back phase is the same.
+    width (four bars a row; three where a busy bar's notes do not fit, see the rhythm staff above); the Count and Combo
+    cards (the pendulum in the Count card with the analog look); the judgement; a big pad that fills the rest of the
+    height (its ring grows with it, up to 230 px); Skip to results. Echo's tap-back phase is the same.
   - Echo's listen phase, on tablet like Play with the listen card where the staff goes, the Count and Combo cards, *Listen
     first* and the pad off; on desktop Play's desktop layout with the listen card in the staff card and a key cap that is
     off. Its header has help and Quit, no Pause.

@@ -982,14 +982,36 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectBarsFit(play);
       await expect(play.locator('.vf-stave')).toHaveCount(portraitLayout && !tabletLayout ? 2 : 4);
       await expectFits(page);
-      // Desktop Play has no Skip link: skip on a phone.
+      // Made a phone during the exercise (Split View, a desktop window made narrow): the phone's layout draws a new staff,
+      // which is measured again, so it shows one bar a row there too. Desktop Play has no Skip link: skip on the phone.
       await page.setViewportSize(VIEWPORTS.phone);
+      await expectBarsFit(play);
+      await expect(play.locator('.vf-stave')).toHaveCount(2);
       await page.getByRole('button', { name: 'Skip to results' }).click();
       await page.setViewportSize(VIEWPORTS[name]);
       const results = page.locator('.results-staff svg:has(.vf-stave)');
       await expect(results).toBeVisible();
       await expectBarsFit(results);
       await expectNoSideScroll(page);
+    });
+
+    test('play: a busy bar keeps its notes inside it when a phone becomes this size during the exercise', async ({ page }) => {
+      known(name, 'busy-sixteenths-resize');
+      // Busy sixteenths with seed 7: bar 3 has sixteen sixteenths. Opened on a phone (two bars a row, drawn smaller), then
+      // made this size (a foldable unfolded, Split View made wider): tablet and desktop draw a new staff, which is measured
+      // again. All four bars show there, three a row on tablet and four on desktop. Measured on the phone's staff, which
+      // was gone, tablet Play kept one bar a row, or drew four and ran bar 3 into bar 4.
+      await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth', 'sixteenth'], rests: ['quarter'], density: 'busy', bars: 4, tempo: 80 }, 7);
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      const play = page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)');
+      await expect(play).toBeVisible();
+      await expectBarsFit(play);
+      await page.setViewportSize(VIEWPORTS[name]);
+      if (VIEWPORTS[name].width >= 700) await expect(play.locator('.vf-stave')).toHaveCount(4);
+      await expectBarsFit(play);
+      await expectFits(page);
     });
 
     test('results: a steady late tapper is told about latency, with Calibrate', async ({ page }) => {

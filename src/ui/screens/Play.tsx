@@ -12,7 +12,7 @@ import { pathLessonOf } from '../../game/tracks';
 import type { Prefs } from '../../game/storage';
 import { LengthLane } from '../../render/LengthLane';
 import { fitWindows } from '../../render/staffDraw';
-import { useElementWidth } from '../../render/theme';
+import { useWidthOf } from '../../render/theme';
 import { t, tx } from '../../i18n';
 import { ExerciseFrame } from '../components/AppShell';
 import { AnalogMetronome, BeatRow, StaffBox, TapPad } from '../components/Bits';
@@ -190,9 +190,10 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   // Four bars a row on tablet and desktop, two on a phone. A busy bar whose notes would run over its bar line draws the
   // staff smaller, down to 0.75, and where even that is not enough the rows get fewer bars (one on a phone). Worked out
   // once, over every window the staff shows in turn, so it keeps one layout and one height as it moves on (DESIGN.md
-  // §9). The window depends on it, so Play measures the staff's width itself.
-  const staffRef = useRef<HTMLDivElement>(null);
-  const staffWidth = useElementWidth(staffRef);
+  // §9). The window depends on it, so Play measures the staff's width itself, on the staff now shown: phone, tablet and
+  // desktop each draw their own, and a window made narrower or wider during the exercise swaps them.
+  const [staffEl, setStaffEl] = useState<HTMLDivElement | null>(null);
+  const staffWidth = useWidthOf(staffEl);
   const fit = useMemo(
     () =>
       fitWindows({ meter: ex.meter, width: staffWidth, scale: shorter ? STAFF_SHORTER : 1 }, wide ? 4 : 2, (per) =>
@@ -220,7 +221,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       }} />
   );
   const staff = (
-    <div ref={staffRef}>
+    <div ref={setStaffEl}>
       <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={fit.scale}
         end={from + shownBars.length >= view.bars.length} tupletSpace={tuplets} />
     </div>
