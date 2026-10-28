@@ -3021,17 +3021,17 @@
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
     "v0_19_1": {
       "title": "Fixes from a full test of the app",
-      "tabs": "With the app open in two tabs, one tab no longer overwrites the progress and settings the other one saved. Your theme shows from the first moment, without a flash of the other one.",
-      "pause": "Pause and Resume play the paused bar again and judge it once: a tap from just before the pause no longer counts as an extra tap, and a note tied into that bar is no longer cut short.",
-      "staves": "Staves fit their screen: on a narrow phone every note stays in its own bar and on the staff, a triplet's 3 shows in full, the final barline only ends the exercise, and the counts under an example no longer run into each other.",
-      "fit": "Play, Read notes and Scales fit a short phone and a 1280 × 720 laptop again, also with the analog metronome, ledger lines, Up & down and sixteen bars.",
-      "readNotes": "Read notes: after a mistake the green button shows the right name (F♯, not F), times have a decimal comma in Dutch, C♯ and C♭ major get their key signature tip, and Enter or Space on a button you tabbed to presses that button.",
-      "scales": "Scales: Enter after a click no longer plays the same key again, Hint works after a mistake, the right note in the wrong octave says so, and Go round the circle no longer says the scales are shuffled.",
-      "learn": "Learn: a practice link keeps your own metronome, Back from a practice screen returns to the section you came from, every chapter's subtitle shows in full, and a section link takes the keyboard focus with it.",
-      "accounts": "Opening an invite or new-password link while someone else is signed in on this device asks to sign them out first, so their progress is not added to the new account.",
-      "admin": "For admins: a role switch changes only that role, so it never undoes another admin's change; a link that an email change cancelled no longer stays on screen; and turning Feedback mode on reaches every device.",
-      "keyboard": "Keyboard and screen readers: focus moves to each new screen and comes back after a sheet or a confirm, Escape closes every confirm, every focus ring shows in full, and a quick double tap on Start no longer presses a button on the next screen.",
-      "misc": "Smaller fixes: Dutch plurals, long emails that wrap, narrow rows in Settings that fit, 44 px targets for Theory: Learn and More options, and clear messages for a name with a tab in it or a feedback text that is too long."
+      "tabs": "With the app open in two tabs, one tab no longer overwrites the progress, settings or sign-in the other one saved. Your theme shows from the first moment, without a flash of the other one.",
+      "pause": "Pause and Resume play the paused bar again and judge it once: a tap from just before the pause no longer counts as an extra tap, a note tied into that bar is no longer cut short, and the count-in shows the bar it leads into.",
+      "staves": "Staves fit their screen: every note stays in its own bar and on the staff, with busy bars drawn smaller or fewer to a row, a whole-bar rest sits in the middle, a triplet's 3, the clef, the key signature and every sign show in full, and the final barline only ends the exercise.",
+      "fit": "Play, Read notes and Scales fit a short phone, a phone on its side and a 1280 × 720 laptop, also with the analog metronome, ledger lines, Up & down and sixteen bars.",
+      "readNotes": "Read notes: after a mistake the green button shows the right name (F♯, not F), a hinted note is one to practise, a note written an octave off says so, B♯ and C♭ sound where they are written, times have a decimal comma in Dutch, and C♯ and C♭ major get their key signature tip.",
+      "scales": "Scales: Enter after a click no longer plays the same key again, Hint works after a mistake, the right note in the wrong octave says so, the circle shows each key signature whole, and Go round the circle no longer says the scales are shuffled.",
+      "learn": "Learn: a practice link keeps your own metronome and works in a new tab, Back returns to the section you came from in one step, tables and diagrams fit a narrow phone, and every chapter's subtitle shows in full.",
+      "accounts": "Accounts: an invite or new-password link opened while someone else is signed in asks to sign them out first, and Sign out with Remove waits until your progress is saved to the account, so nothing is lost or added to the wrong account.",
+      "admin": "For admins: an account that may only invite can no longer make a new-password link for an account with more rights; a role switch changes only that role; feedback sent from a link's screen no longer holds the link; and Feedback mode reaches every device.",
+      "keyboard": "Keyboard and screen readers: focus moves to each new screen and stays on a button that is busy or that a step replaces, every button and example has a name, Escape closes every confirm and sheet, every focus ring shows in full, and a double tap or double click on Start no longer presses a button on the next screen.",
+      "misc": "Smaller fixes: text and marks with enough contrast in light and dark, Dutch plurals and wording, long emails and narrow rows that fit, 44 px targets, the site's Not found page for an address the app does not have instead of a blank one, and clear messages for a name with a tab in it or a feedback text that is too long."
     },
     "v0_19_0": {
       "title": "Your progress at a glance",
