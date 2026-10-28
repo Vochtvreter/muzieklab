@@ -91,5 +91,7 @@ test('learn: a chapter and one of its sections open from the list, and its quick
   await page.locator('.learn-chapter').evaluate((el) => el.scrollTo(0, el.scrollHeight));
   const check = page.getByRole('group', { name: 'How long does a key signature hold?' });
   await check.getByRole('button', { name: 'For the whole piece' }).click();
-  await expect(check.getByRole('status')).toHaveText(/^Right\. A key signature holds/);
+  // The verdict shows under the answers and is read out by the app's live region (#announcer).
+  await expect(check.getByText(/^Right\. A key signature holds/)).toBeVisible();
+  await expect(page.locator('#announcer')).toHaveText(/^Right\. A key signature holds/);
 });

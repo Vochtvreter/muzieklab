@@ -3031,7 +3031,7 @@
       "accounts": "Accounts: an invite or new-password link opened while someone else is signed in asks to sign them out first, and Sign out with Remove waits until your progress is saved to the account, so nothing is lost or added to the wrong account.",
       "admin": "For admins: an account that may only invite can no longer make a new-password link for an account with more rights; a role switch changes only that role; feedback sent from a link's screen no longer holds the link; and Feedback mode reaches every device.",
       "keyboard": "Keyboard and screen readers: focus moves to each new screen and stays on a button that is busy or that a step replaces, every button and example has a name, Escape closes every confirm and sheet, every focus ring shows in full, and a double tap or double click on Start no longer presses a button on the next screen.",
-      "misc": "Smaller fixes: text and marks with enough contrast in light and dark, Dutch plurals and wording, long emails and narrow rows that fit, 44 px targets, the site's Not found page for an address the app does not have instead of a blank one, and clear messages for a name with a tab in it or a feedback text that is too long."
+      "misc": "Smaller fixes: text and marks with enough contrast in light and dark, Dutch plurals and wording, long emails and narrow rows that fit, 44 px targets, an address the app does not have now says it is not found instead of showing a blank page, and clear messages for a name with a tab in it or a feedback text that is too long."
     },
     "v0_19_0": {
       "title": "Your progress at a glance",

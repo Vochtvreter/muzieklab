@@ -40,8 +40,14 @@ test('offline: after the service worker is installed, the app reloads and opens 
   }
   // Online again: any other address is still the server's 404, not the app from the service worker, whose ./assets
   // would then point under that path (/learn/assets/…) and leave the page blank.
+  // The server's 404 has no body, which Chromium shows as its own error page and reports as a failed navigation.
   watchOf(page).allow({ method: 'GET', path: /\/learn\/1$/, status: 404 });
-  const deep = await page.goto('./learn/1');
-  expect(deep?.fromServiceWorker(), 'the service worker leaves ./learn/1 to the server').toBe(false);
-  expect(deep?.status()).toBe(404);
+  watchOf(page).allowFailure(/ERR_HTTP_RESPONSE_CODE_FAILURE/);
+  const answer = page.waitForResponse((r) => new URL(r.url()).pathname.endsWith('/learn/1'));
+  await page.goto('./learn/1').catch((e: Error) => {
+    if (!/ERR_HTTP_RESPONSE_CODE_FAILURE/.test(e.message)) throw e;
+  });
+  const deep = await answer;
+  expect(deep.fromServiceWorker(), 'the service worker leaves ./learn/1 to the server').toBe(false);
+  expect(deep.status()).toBe(404);
 });
