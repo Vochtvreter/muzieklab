@@ -7,7 +7,7 @@
  * the degrees and the tools under them, the feedback and the answer card. Desktop: the exercise header, a wide staff, the answer card with
  * computer keys and the side panel.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import {
   afterScale,
   isRightNote,
@@ -250,7 +250,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   let feedback: string;
   let tone = '';
   if (done) {
-    feedback = t(mistakes ? 'scales.play.doneMistakes' : 'scales.play.doneClean', { scale: scaleName(sc), count: mistakes, notes: notes.map(noteName).join(' ') });
+    feedback = t(mistakes ? 'scales.play.doneMistakes' : 'scales.play.doneClean', { scale: scaleName(sc), count: mistakes });
     tone = 'right';
   } else if (wrong) {
     const given = wrong.kind === 'piano' ? keyNames(wrong.midi) : letterName(curLetter, wrong.alter);
@@ -276,9 +276,19 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   ) : (
     <SignButtons letter={curLetter} choices={choices} wrong={wrong?.kind === 'sign' ? wrong.alter : null} onPick={(alter) => answer({ kind: 'sign', alter })} disabled={done} kbd={kbd} />
   );
+  // The done line ends with the scale's notes. Up and down on the shortest phones leaves them to the degree rows, which
+  // show all 15, and to screen readers (scales.css).
   const feedbackBox = (
     <div className={'nfeedback m-ease' + (tone ? ' is-' + tone : '')} aria-live="polite">
-      {feedback}
+      <span>
+        {feedback}
+        {done && (
+          <>
+            {' '}
+            <span className="nfeedback-notes">{notes.map(noteName).join(' ')}</span>
+          </>
+        )}
+      </span>
     </div>
   );
   const nextLabel = t(idx + 1 >= afterScale(queue, idx, mistakes).length ? 'scales.play.finish' : 'scales.play.next');
@@ -420,7 +430,15 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
               <div className="card stat">
                 <span className="label">{t('scales.play.mistakesTitle')}</span>
                 <span className={'stat-mono nstat-big ' + (mistakes ? 'tone-miss' : 'tone-good')}>{mistakes}</span>
-                <span className="nstat-text">{t('scales.play.starsRule')}</span>
+                {/* It breaks only after a "·": each part keeps its count with its stars ("2–3 ★"). */}
+                <span className="nstat-text sstats-rule">
+                  {(['three', 'two', 'one'] as const).map((n, i) => (
+                    <Fragment key={n}>
+                      {i > 0 && '\u00a0· '}
+                      <span>{t('scales.play.starsRule.' + n)}</span>
+                    </Fragment>
+                  ))}
+                </span>
               </div>
               {hearBtn}
               {second}

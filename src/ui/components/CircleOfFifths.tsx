@@ -75,8 +75,10 @@ export function CircleOfFifths({ tab, selected, stars, onPick, className }: Prop
         <span className="circle-sig">{sigText}</span>
       </div>
       <div aria-hidden="true" className="circle-halo m-ease" style={haloStyle} />
-      {ring(tab === 'major' ? 'minor' : 'major')}
-      {ring(tab)}
+      {/* One order whatever the tab (the rings do not overlap): swapping them would remount all 24 keys, and a faint
+          key that switches the ring would lose the focus. */}
+      {ring('major')}
+      {ring('minor')}
     </div>
   );
 }

@@ -1649,7 +1649,11 @@
       "mistakes": "{count, plural, one {fout} other {fouten}}",
       "mistakesAria": "{count, plural, =0 {Geen fouten} one {1 fout} other {# fouten}}",
       "mistakesTitle": "Fouten",
-      "starsRule": "0 fouten ★★★ · 1 ★★ · 2–3 ★",
+      "starsRule": {
+        "three": "0 fouten ★★★",
+        "two": "1 ★★",
+        "one": "2–3 ★"
+      },
       "staffLabel": "Notenbalk met vioolsleutel, {scale}: {notes}",
       "none": "nog geen noten",
       "degreesUp": "Trappen omhoog",
@@ -1676,8 +1680,8 @@
       "hintStart": "Tip: de eerste noot staat in de naam: {scale}.",
       "hintUp": "Tip: vanaf {prev} is de stap omhoog {step}, {how}.",
       "hintDown": "Tip: vanaf {prev} is de stap omlaag {step}, {how}.",
-      "doneClean": "{scale}: klaar, geen fouten. {notes}",
-      "doneMistakes": "{scale}: klaar met {count, plural, one {1 fout} other {# fouten}}. {notes}",
+      "doneClean": "{scale}: klaar, geen fouten.",
+      "doneMistakes": "{scale}: klaar met {count, plural, one {1 fout} other {# fouten}}.",
       "hear": "Hoor tot nu toe",
       "hearAll": "Hoor de ladder",
       "space": "Spatie",

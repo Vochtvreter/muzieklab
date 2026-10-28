@@ -122,12 +122,18 @@
 .circle-centre .pitch-staff {
   width: 94%;
 }
+/*
+ * Six or seven signs are wider than the gap between the inner ring's keys beside them: the row wraps between its signs,
+ * in balanced lines ("F♯ C♯ G♯" over "D♯ A♯ E♯ B♯"), instead of running under the f and c♯.
+ */
 .circle-sig {
+  max-width: 100%;
   font-family: var(--font-mono);
   font-size: max(10px, 3.35cqw);
   font-weight: 600;
   color: var(--muted);
-  white-space: nowrap;
+  text-align: center;
+  text-wrap: balance;
 }
 .circle-halo {
   position: absolute;
@@ -674,30 +680,35 @@
   color: var(--accent-ink);
   box-shadow: inset 0 0 0 1.5px var(--accent);
 }
+/* The degree number takes the box's ink, not faded (4.5:1): its small size sets it apart from the note. */
 .degree-n {
   font-size: 9.5px;
   font-weight: 700;
-  opacity: 0.75;
 }
 .degree-name {
   font-weight: 700;
   font-size: 14px;
   white-space: nowrap;
 }
+/*
+ * The steps (Show the steps) are text to read, 4.5:1 or more on the phone's page and on a card: the ones still to come
+ * in --muted, the ones passed in the accent, a half step and a step and a half in gold (--reward-ink: --gold-ink is
+ * 4.2:1 on --ground).
+ */
 .degree-step {
   flex: none;
   width: 15px;
   text-align: center;
   font-size: 11px;
   font-weight: 700;
-  color: var(--faint);
+  color: var(--muted);
 }
 .degree-step.is-known {
   color: var(--accent);
 }
 .degree-step.is-H,
 .degree-step.is-WH {
-  color: var(--gold-ink);
+  color: var(--reward-ink);
 }
 .degree-step.is-WH {
   font-size: 9.5px;
@@ -847,6 +858,9 @@
 .sstats .stat {
   gap: 4px;
 }
+.sstats-rule > span {
+  white-space: nowrap;
+}
 
 /*
  * Tablet: Read notes' tablet layout (.ntab in notes.css; App design canvas, NoteTablet), as Scales has no tablet board.
@@ -968,12 +982,30 @@
   .splay .ssign {
     height: 64px;
   }
-  /* Up and down: the gaps and its two degree rows are lower still, so the piano and the sign buttons keep theirs. */
+  /*
+   * Up and down: the gaps and its two degree rows are lower still, and the sign buttons give up 8 px, so a why of two
+   * lines leaves Hint and Next scale in view beside G♯ harmonic minor's tall staff. The done line leaves out its 15
+   * notes, which the degree rows right above it show; screen readers still read them (the .sr-only pattern, base.css).
+   */
   .splay--updown {
     gap: 6px;
   }
   .splay--updown .degree {
     height: 32px;
+  }
+  .splay--updown .ssign {
+    height: 56px;
+  }
+  .splay--updown .nfeedback-notes {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 /* Phone in landscape: the staff and the degrees on the left; the piano or the signs on the right. */
@@ -1025,6 +1057,20 @@
   }
   .splay .ssign {
     height: 64px;
+  }
+  /* Up and down: its two degree rows and the gaps as on the shortest phones, so the feedback stays in view under them. */
+  .splay--updown {
+    row-gap: 6px;
+  }
+  .splay--updown .splay-staff {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .splay--updown .splay-degrees {
+    gap: 4px;
+  }
+  .splay--updown .degree {
+    height: 32px;
   }
 }
 

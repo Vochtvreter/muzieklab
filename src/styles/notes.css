@@ -245,11 +245,17 @@
   font-size: 12px;
   color: var(--muted);
 }
-/* The smallest phones: key names in longer languages ("D♭ majeur") still fit next to the key signature. */
+/*
+ * The smallest phones: key names in longer languages ("C♭ majeur") still fit next to the key signature, which is drawn
+ * a little narrower (fitted to its width, so seven signs stay whole).
+ */
 @media (max-width: 359.98px) {
   .key-btn {
     gap: 4px;
     padding-right: 4px;
+  }
+  .key-btn .key-thumb {
+    width: 66px;
   }
   .key-btn-text b {
     font-size: 13px;

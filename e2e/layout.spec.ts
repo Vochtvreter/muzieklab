@@ -238,6 +238,98 @@ async function calibrateAlong(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Each key's names on the Key screen fit beside its key signature (DESIGN.md §11): the bold major name and the minor
+ * name under it end inside their box, before the button's padding ("C♭ majeur" once ran into the border at 320 px).
+ */
+async function expectKeyNamesFit(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const over = await page.locator('.key-btn-text > *').evaluateAll((els) =>
+    els.filter((el) => el.scrollWidth > el.clientWidth).map((el) => `${el.textContent}: ${el.scrollWidth} px in ${el.clientWidth}`),
+  );
+  expect(over, 'key names wider than their box').toEqual([]);
+}
+
+/**
+ * The Scales hub's key signature, under the small staff in the circle's centre, reads whole: no sign of it sits under a
+ * key of the inner ring or the selected key's halo (seven signs once ran under the minor ring's f and c♯).
+ */
+async function expectSigUncovered(page: Page): Promise<void> {
+  // Once the halo has moved to the new key (it slides across the centre) and the keys have their new size.
+  await page.evaluate(() => Promise.all([document.fonts.ready, ...document.getAnimations().map((a) => a.finished)]).then(() => undefined));
+  const covered = await page.locator('.circle-sig').evaluate((sig) => {
+    sig.scrollIntoView({ block: 'center' });
+    const text = sig.firstChild as Text;
+    const out: string[] = [];
+    for (let i = 0; i < text.length; i++) {
+      if (text.data[i] === ' ') continue;
+      const range = document.createRange();
+      range.setStart(text, i);
+      range.setEnd(text, i + 1);
+      const r = range.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (top?.closest('.circle-key, .circle-halo')) out.push(`${text.data[i]} (${i})`);
+    }
+    return out;
+  });
+  expect(covered, 'signs under a key of the circle').toEqual([]);
+}
+
+/**
+ * The computer keys that answer a scale up and down: the piano's (A S D … on the white keys, W E R … on the black) or
+ * the signs' (− 0 = X).
+ */
+function upDownKeys(s: Scale, input: string): string[] {
+  const w = pianoWindow(s);
+  return scaleNotes(s, 'upDown').map((n) =>
+    input !== 'piano' ? ['-', '0', '=', 'x'][n.alter + 1] : w.whites.includes(n.midi) ? 'ASDFGHJKL'[w.whites.indexOf(n.midi)] : 'WERTYUIO'[w.blacks.find((b) => b.midi === n.midi)!.after - 1],
+  );
+}
+
+/**
+ * A Scales round of one scale up and down, just started, answered to the end: the first note wrong, a Hint, the second
+ * note wrong (a why of two lines on a phone), then the rest, and the done line with all 15 notes. Each time the
+ * feedback changes, a portrait phone or tablet fits with the answer buttons in view (DESIGN.md §9), and a phone in
+ * landscape shows the feedback whole in its left column, from the top (only Skip to summary may need a scroll there).
+ */
+async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, input: string, words: { hint: string; next: RegExp }): Promise<void> {
+  const { width, height } = VIEWPORTS[name];
+  const portrait = width < 1100 && height > width;
+  const landscape = width < 1100 && height < width;
+  const inPlace = { scroll: !portrait };
+  const feedback = page.locator('.nfeedback');
+  const hint = page.getByRole('button', { name: words.hint, exact: true });
+  const check = async (): Promise<void> => {
+    if (portrait) await expectFits(page);
+    if (landscape) {
+      await page.locator('.splay').evaluate((el) => el.scrollTo(0, 0));
+      await expect(feedback, 'the feedback is in view').toBeInViewport({ ratio: 1 });
+    }
+    if (input !== 'piano') await expectClickable(hint, inPlace);
+  };
+  const keys = upDownKeys(scale, input);
+  const wrong = (k: string): string => (input === 'piano' ? (k === 'A' ? 'S' : 'A') : k === '-' ? '0' : '-');
+  await page.keyboard.press(wrong(keys[0]));
+  await expect(feedback).toHaveClass(/is-wrong/);
+  await check();
+  if (input !== 'piano') {
+    await hint.click();
+    await expect(feedback).toHaveClass(/is-hint/);
+    await check();
+  }
+  await page.keyboard.press(keys[0]);
+  await page.keyboard.press(wrong(keys[1]));
+  await expect(feedback).toHaveClass(/is-wrong/);
+  await check();
+  for (const k of keys.slice(1)) await page.keyboard.press(k);
+  await expect(feedback).toHaveClass(/is-right/);
+  // The done line names the 15 notes, for screen readers too where the degree rows show them instead.
+  await expect(feedback.locator('.nfeedback-notes')).toHaveText(/^(\S+ ){14}\S+$/);
+  await check();
+  // With its mistakes the scale comes back at the end of the round: the main button is Next scale.
+  await expectClickable(page.getByRole('button', { name: words.next }), inPlace);
+}
+
 /** Every screen's main action can be reached and tapped, at every supported size, with no sideways scroll. */
 for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
   test.describe(name, () => {
@@ -1296,6 +1388,22 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await minor.getByRole('button', { name: /^B♭ minor/ }).click();
       await minor.getByRole('button', { name: /^B♭ minor/ }).click();
       await expect(page.getByRole('button', { name: 'Practice A♯ minor' })).toBeVisible();
+      // Seven sharps, seven flats and six sharps read whole between the inner ring's keys, and so do C♯ major's seven
+      // sharps between the faint minor keys.
+      await expectSigUncovered(page);
+      await minor.getByRole('button', { name: /^G♯ minor/ }).click();
+      await minor.getByRole('button', { name: /^G♯ minor/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice A♭ minor' })).toBeVisible();
+      await expectSigUncovered(page);
+      await minor.getByRole('button', { name: /^D♯ minor/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice D♯ minor' })).toBeVisible();
+      await expectSigUncovered(page);
+      await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Major' }).click();
+      const major = page.getByRole('group', { name: 'Circle of fifths, major keys' });
+      await major.getByRole('button', { name: /^D♭ major/ }).click();
+      await major.getByRole('button', { name: /^D♭ major/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice C♯ major' })).toBeVisible();
+      await expectSigUncovered(page);
       await expectNoSideScroll(page);
     });
 
@@ -1339,6 +1447,29 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.stab-staff').getByRole('list', { name: 'Scale degrees going up' })).toBeVisible();
         expect((await keys.first().boundingBox())!.height, 'a tall piano').toBeGreaterThanOrEqual(200);
       }
+      // Desktop: the Mistakes card's stars rule breaks only after a "·", never inside a part ("2–3" over "★"), even
+      // with no room at all.
+      if (desktopLayout) {
+        const rule = page.locator('.sstats .nstat-text');
+        await expect(rule).toHaveText(/^0 mistakes ★★★\s· 1 ★★\s· 2–3 ★$/);
+        const lines = await rule.evaluate((el) => {
+          el.style.width = '0';
+          const byTop = new Map<number, string>();
+          const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          for (let node = walk.nextNode() as Text | null; node; node = walk.nextNode() as Text | null) {
+            for (let i = 0; i < node.length; i++) {
+              const range = document.createRange();
+              range.setStart(node, i);
+              range.setEnd(node, i + 1);
+              const r = range.getClientRects()[0];
+              if (r) byTop.set(Math.round(r.top), (byTop.get(Math.round(r.top)) ?? '') + node.data[i]);
+            }
+          }
+          el.style.width = '';
+          return [...byTop.values()].map((line) => line.replace(/\s+/g, ' ').trim());
+        });
+        expect(lines, 'the lines of the stars rule').toEqual(['0 mistakes ★★★ ·', '1 ★★ ·', '2–3 ★']);
+      }
       // Nothing to hear or start over before the first note.
       await expect(page.getByRole('button', { name: /^Hear it so far/ })).toBeHidden();
       await expect(page.getByRole('button', { name: /^Start over/ })).toBeHidden();
@@ -1375,6 +1506,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       } else {
         await expect(page.locator('.wide')).toHaveCount(0);
       }
+      // The score line never breaks inside the XP ("+56" / "XP" in the tablet's side panel), as on Read notes.
+      const xp = page.locator('.score-sub b');
+      await expect(xp).toHaveText(/^\+\d+ XP$/);
+      const xpLines = await xp.evaluate((el) => {
+        const line = el.parentElement!;
+        line.style.width = '0';
+        const n = el.getClientRects().length;
+        line.style.width = '';
+        return n;
+      });
+      expect(xpLines, 'the XP on one line').toBe(1);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -1423,11 +1565,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('scales: up and down fits with its second degree row, on the piano and with the signs', async ({ page }) => {
       known(name, 'scales-up-down');
-      // Up and down adds the way back as a second degree row (DESIGN.md §3.7): G major on the piano, and A♯ harmonic
-      // minor with the signs, whose long name and four sign buttons take the most room on a 320 px phone.
+      // Up and down adds the way back as a second degree row (DESIGN.md §3.7): G major on the piano, A♯ harmonic minor
+      // with the signs, whose long name and four sign buttons take the most room on a 320 px phone, and G♯ harmonic
+      // minor, whose staff is the tallest of the long ones and whose done line names all 15 notes.
       const rounds = [
         { keys: ['G'], types: ['major'], input: 'piano', title: 'G major' },
         { keys: ['C#'], types: ['harmonic'], input: 'names', title: 'A♯ harmonic minor' },
+        { keys: ['B'], types: ['harmonic'], input: 'names', title: 'G♯ harmonic minor' },
       ];
       for (const { title, ...round } of rounds) {
         await seed(page, { progress: { scales: { settings: { keyMode: 'one', direction: 'upDown', write: 'signs', showSteps: true, playNotes: false, ...round }, stars: {} } } });
@@ -1442,7 +1586,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i), inPlace);
           if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
         } else {
-          const signs = page.getByRole('group', { name: 'Sign for A' }).getByRole('button');
+          const signs = page.getByRole('group', { name: /^Sign for / }).getByRole('button');
           await expect(signs).toHaveCount(4);
           for (let i = 0; i < 4; i++) await expectClickable(signs.nth(i), inPlace);
           await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
@@ -1450,11 +1594,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         }
         await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
         if (portraitLayout) await expectFits(page);
-        // A wrong first note: the feedback says why, on two lines on a narrow phone, and the page still fits.
-        if (round.input === 'piano') await page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button', { name: /^A(,|$)/ }).first().dispatchEvent('click');
-        else await page.getByRole('group', { name: 'Sign for A' }).getByRole('button').first().dispatchEvent('click');
-        await expect(page.locator('.nfeedback')).toHaveClass(/is-wrong/);
-        if (portraitLayout) await expectFits(page);
+        // Each line the feedback says on the way, from why the first note is wrong to the done line, stays in view.
+        await answerUpAndDown(page, name, { key: round.keys[0], type: round.types[0] } as Scale, round.input, { hint: 'Hint', next: /^Next scale/ });
         await expectNoSideScroll(page);
       }
     });
@@ -2903,11 +3044,29 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           expect(width, 'the start prompt fits on screen').toBeLessThanOrEqual(VIEWPORTS[name].width - 32);
         }
         if (hash.startsWith('#/learn/')) await expectCountsApart(page);
+        if (hash.endsWith('/key')) await expectKeyNamesFit(page);
         await expectHeadFits(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });
     }
+
+    test('scales: G♯ harmonic minor up and down, answered to the end, fits', async ({ page }) => {
+      known(name, 'nl-scales-up-down');
+      // The longest Dutch lines: why a note is wrong, the Tip and the done line with all 15 notes, beside the tallest
+      // staff of the long scales (G♯ harmonisch mineur), with the signs and on the piano.
+      for (const input of ['names', 'piano']) {
+        await seed(page, { progress: { scales: { settings: { keyMode: 'one', keys: ['B'], types: ['harmonic'], input, direction: 'upDown', write: 'signs', showSteps: true, playNotes: false }, stars: {} } } });
+        await page.goto('./#/scales/setup');
+        // A fresh load, so the app reads the settings just seeded.
+        await page.reload();
+        await page.getByRole('button', { name: 'Start · 1 ladder' }).click();
+        await expect(page.getByText('G♯ harmonisch mineur', { exact: true })).toBeVisible();
+        await answerUpAndDown(page, name, { key: 'B', type: 'harmonic' }, input, { hint: 'Tip', next: /^Volgende ladder/ });
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
+    });
 
     test('#/progress with the sample player: every view, Skill levels and one skill', async ({ page }) => {
       known(name, 'nl#/progress-rich');

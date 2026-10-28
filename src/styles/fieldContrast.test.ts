@@ -128,3 +128,29 @@ describe('the small name under a name button', () => {
     });
   }
 });
+
+// Scales' degree row (scales.css): the W and H between the boxes (11–12 px bold), still to come, passed (W) and passed
+// in gold (H, and the step and a half), are the step pattern the setup's Show the steps promises, and the degree
+// number in each box (9.5–10.5 px bold) is drawn in the box's ink. Both must read, 4.5:1 or more: the steps on the
+// phone's page (--ground) and in the tablet and desktop cards (--paper), each number on its box's fill.
+describe('the scale degree row', () => {
+  const scales = css('scales.css');
+  const steps = ['.degree-step', '.degree-step.is-known', '.degree-step.is-H', '.degree-step.is-WH'].map((selector) => ({ selector, ink: tokenOf(declared(scales, selector, 'color')) }));
+  const faded = Number(declared(scales, '.degree-n', 'opacity') ?? 1);
+  const boxes = ['.degree', '.degree.is-done', '.degree.is-current'].map((selector) => ({
+    selector,
+    ink: tokenOf(declared(scales, selector, 'color')),
+    fill: tokenOf(declared(scales, selector, 'background')),
+  }));
+  for (const [name, t] of themes) {
+    it(`${name}: the steps are 4.5:1 or more on the page and on a card`, () => {
+      for (const s of steps) {
+        expect(contrast(t[s.ink], t['--ground']), s.selector + ' on the page').toBeGreaterThanOrEqual(4.5);
+        expect(contrast(t[s.ink], t['--paper']), s.selector + ' on a card').toBeGreaterThanOrEqual(4.5);
+      }
+    });
+    it(`${name}: the degree numbers are 4.5:1 or more on each box`, () => {
+      for (const b of boxes) expect(contrast(blend(t[b.ink], t[b.fill], faded), t[b.fill]), b.selector).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});

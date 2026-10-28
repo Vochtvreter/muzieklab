@@ -1649,7 +1649,11 @@
       "mistakes": "{count, plural, one {mistake} other {mistakes}}",
       "mistakesAria": "{count, plural, =0 {No mistakes} one {1 mistake} other {# mistakes}}",
       "mistakesTitle": "Mistakes",
-      "starsRule": "0 mistakes ★★★ · 1 ★★ · 2–3 ★",
+      "starsRule": {
+        "three": "0 mistakes ★★★",
+        "two": "1 ★★",
+        "one": "2–3 ★"
+      },
       "staffLabel": "Treble staff, {scale}: {notes}",
       "none": "no notes yet",
       "degreesUp": "Scale degrees going up",
@@ -1676,8 +1680,8 @@
       "hintStart": "Hint: the first note is in the name: {scale}.",
       "hintUp": "Hint: from {prev} the step up is {step}, {how}.",
       "hintDown": "Hint: from {prev} the step down is {step}, {how}.",
-      "doneClean": "{scale}: done, no mistakes. {notes}",
-      "doneMistakes": "{scale}: done with {count, plural, one {1 mistake} other {# mistakes}}. {notes}",
+      "doneClean": "{scale}: done, no mistakes.",
+      "doneMistakes": "{scale}: done with {count, plural, one {1 mistake} other {# mistakes}}.",
       "hear": "Hear it so far",
       "hearAll": "Hear the scale",
       "space": "Space",

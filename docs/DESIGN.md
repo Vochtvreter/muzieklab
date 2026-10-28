@@ -372,7 +372,10 @@ Learn and practice major and minor scales in all 15 keys.
   The three positions at the bottom carry both spellings (B/C♭, F♯/G♭, D♭/C♯); tapping
   the selected key again switches spelling. Each key is filled by progress (★ light,
   ★★ mid, ★★★ dark slate); for minor, by how many of the three forms have ★★ or more.
-  The centre shows the selected key signature. Under the circle: the scale's notes (each
+  A key on the faint ring switches the ring and keeps the focus: the keys come in one order on both tabs, the major
+  ring first, so a keyboard or screen-reader user stays on the key just chosen.
+  The centre shows the selected key signature; six or seven signs take two balanced lines (*F♯ C♯ G♯* over
+  *D♯ A♯ E♯ B♯*), so none runs under the inner ring's keys beside it. Under the circle: the scale's notes (each
   letter once, sharps and flats tinted), stars, *Options* and *Practice*, plus *Go round
   the circle* (all 15 in circle order).
 - **Where the hub sits:** it is a Home page, opened from Home's Scales tile, so it keeps the
@@ -1460,6 +1463,8 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   beside it (the Scales hub's *Learn scales* on a phone, Key's *What is a key?*) takes two lines, right aligned, when
   the two do not fit on one, and under 375 px wide such a title is 18 px (20 px on the board): in Dutch both fit on one
   line at 360 px, and at 320 px the link takes two (*Toonladders* beside *Over toonladders*).
+- The Key screen (Read notes and Scales) under 360 px wide draws each key's signature 66 px wide (72 px on the board),
+  fitted to that width, so the longest Dutch names (*C♭ majeur*, 13 px) end inside their buttons.
 - Setup's tempo value (*112 BPM · Moderato*) is never broken in two. Under about 345 px wide it does not fit beside
   *Tempo*, so it takes a line of its own under it, right aligned. The *Bars* and *Tempo* labels stay level at the top,
   with the stepper and the slider level below them.
@@ -1470,8 +1475,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   and the answer buttons in view and at least 44 px tall. A phone in portrait has two short-screen steps (CSS
   `max-height: 699.98px` and `599.98px`; `SHORT_PHONE` and `SHORTER_PHONE` in `ui/hooks.ts`). 390 × 844, tablets and
   phone landscape do not change. The analog beat counter, Read notes' ranges with ledger lines and Scales' Up & down,
-  which take more height, have steps of their own. Play's timing lane takes at most two rows on a phone (§3.1), so
-  the 16 bars Setup allows fit as 8 do.
+  which take more height, have steps of their own. Up & down has one in phone landscape too: its degree rows are
+  32 px high and 4 px apart, the gaps 6 px and the staff card 6 px above and below, so the feedback stays in view in
+  the left column. Play's timing lane takes at most two rows on a phone (§3.1), so the 16 bars Setup allows fit as 8
+  do.
   - Under 700 px tall (390 × 664, 375 × 667): the gaps tighten to 10 px, and so do the page padding (10 px at the top,
     12 px at the bottom) and the staff card's. Then the pad and the pianos give up height, down to 112 px for the pad
     (214 px on the board), 120 px for the Read notes piano (200 px) and 140 px for the Scales piano (210 px). The pad
@@ -1489,10 +1496,13 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     and its timer bar sits 4 px under the staff, so a why of three lines with two ledger lines leaves Hint and Next note
     in view at 375 × 553. The floors are lower (pad 72 px, Read notes piano 64 px with its black
     keys kept at 44 px and the white keys' labels below them, Scales piano 110 px), and so are the name buttons
-    (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign buttons, the analog
-    beat counter (44 px, as the digits' row), Echo's listen card and Calibration's intro. At 320 px wide Read notes
-    leaves out *Any octave counts* above the key labels (screen readers still read it), so the why of a wrong key in a
-    lesson in a key fits on its three lines.
+    (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign buttons (64 px, 56 px
+    with Up & down), the analog beat counter (44 px, as the digits' row), Echo's listen card and Calibration's intro.
+    At 320 px wide Read notes leaves out *Any octave counts* above the key labels (screen readers still read it), so
+    the why of a wrong key in a lesson in a key fits on its three lines. Up & down's done line leaves out the scale's
+    15 notes, which its degree rows show right above it (screen readers still read them): it takes two lines at most,
+    in Dutch at 320 px too, and like a why of two lines leaves Hint and Next scale in view beside G♯ harmonic minor's
+    staff, the tallest.
 - **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a
   1280 × 720 laptop, `laptop-720`) the page's padding (20 px at the top, 16 px at the bottom), its gap (16 px) and the
   staff card's padding (20 × 40 px, 16 px at the bottom) tighten, and the stat cards are lower (12 px × 18 px), so two
