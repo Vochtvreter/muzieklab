@@ -2049,14 +2049,14 @@ what to do. For accounts:
 ### UX principles
 
 - **One-thumb mobile**: primary actions at the bottom; tap pad is huge; no scroll during play.
-- No accidental zoom/scroll during play (`touch-action: none` on the pad, Wake Lock on). A double tap on a Start
-  button starts once: a touch tap that comes down within 450 ms of the tap that started is dropped, so it does not
-  press what the exercise screen has there (Skip to results, an answer, a piano key; `ui/lib/tapGuard.ts`). The same
-  goes for the buttons on Play's sheets that start or resume the run (How to play's Got it, the intro's and Ready's
-  Start, Resume, Restart exercise), whose sheet is gone in 240 ms, for Echo's Tap it back (Hear again is under it), and
-  for every tap that opens another screen (`App.tsx`): See summary and See the round open Round done, with New round
-  or Change setup under the finger, and Change setup, Options or a Key screen's Use open a setup, with its Start or a
-  switch there.
+- No accidental zoom/scroll during play (`touch-action: none` on the pad, Wake Lock on). A double tap on a Start button
+  starts once: a touch tap that comes down within 450 ms of the tap that started is dropped, so it does not press what
+  the exercise screen has there (Skip to results, an answer, a piano key; `ui/lib/tapGuard.ts`). So is the second click
+  of a mouse double click (a click of its own is meant). The same goes for the buttons on Play's sheets that start or
+  resume the run (How to play's Got it, the intro's and Ready's Start, Resume, Restart exercise), whose sheet is gone in
+  240 ms, for Echo's Tap it back (Hear again is under it), and for every tap that opens another screen (`App.tsx`): See
+  summary and See the round open Round done, with New round or Change setup under the finger, and Change setup, Options
+  or a Key screen's Use open a setup, with its Start or a switch there.
 - Feedback by **colour + shape/icon** (colour-blind safe), sound optional. A missed note gets a × on the staff as
   well as the red (since 0.10.0; §9).
 - Full keyboard support; `prefers-reduced-motion` respected; light & dark theme.
@@ -2197,23 +2197,23 @@ without code changes:
   language (*Nederlands*); right-to-left support is not planned.
 - Screen-reader labels for controls; notation itself gets a text alternative
   ("quarter, quarter, half").
-- Focus is never left on the page when the control that had it goes away (`ui/lib/screenFocus.ts`). A new screen puts
-  it on its heading, so a screen reader hears it (*Exercise done* when a run ends), unless the screen took it itself
-  (a field, a sheet); the first screen is left to the page load. So does a screen redrawn in a language picked
-  elsewhere, and what Try again brings in place of its message. A button that is busy, or has nothing to do (a Save once
-  saved), keeps the focus: it is `aria-disabled`, not disabled, which drops it to the page. A button that gives way to
-  another hands it on (Block and Unblock; Sign out to Sign in; Calibrate's Try again to the Tap pad, and the Tap pad,
-  when the run ends, to Save or else Try again). Reset progress leaves only its line (*Progress was reset.*, read out),
-  so it hands it to the About heading. A sheet that closes gives it back to the control that opened it, else to Pause on
-  Play (How to play, the intro and Ready open by themselves) or the screen's heading (the level-up sheet). Echo's Tap it
-  back and Hear again swap the screen inside Play, so the new phase's heading takes it. On What's new (desktop), Newer
-  or Older that goes away at the end hands it to the one left. In Read notes and Scales a control that a step disables
-  or removes hands it on: an answer that ends the note or the scale (the last sign or key, the staff written on and
-  checked) to Next note or Next scale; Hint, Next note, Next scale and Start over to the answers (the first name button,
-  sign or piano key, or the next note's staff to write on). There Space and Enter stay the exercise's keys, as after a
-  click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5, §3.7), so the Enter after one on Next note does
-  not answer with the name button the focus went to. Echo's play button keeps it while the rhythm plays
-  (`aria-disabled`), then Tap it back takes it.
+- Focus is never left on the page when the control that had it goes away (`ui/lib/screenFocus.ts`). A new screen puts it
+  on its heading, so a screen reader hears it (*Exercise done* when a run ends), unless the screen took it itself (a
+  field, a sheet); the first screen is left to the page load. So does a screen redrawn in a language picked elsewhere,
+  and what Try again brings in place of its message. A button that is busy, or has nothing to do (a Save once saved, a
+  setup stepper's − or + at its end), keeps the focus: it is `aria-disabled`, not disabled, which drops it to the page.
+  A button that gives way to another hands it on (Block and Unblock; Sign out to Sign in; Calibrate's Try again to the
+  Tap pad, and the Tap pad, when the run ends, to Save or else Try again). Reset progress leaves only its line
+  (*Progress was reset.*, read out), so it hands it to the About heading. A sheet that closes gives it back to the
+  control that opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or the screen's
+  heading (the level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new phase's
+  heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it to the one left. In Read
+  notes and Scales a control that a step disables or removes hands it on: an answer that ends the note or the scale (the
+  last sign or key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and Start
+  over to the answers (the first name button, sign or piano key, or the next note's staff to write on). There Space and
+  Enter stay the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5,
+  §3.7), so the Enter after one on Next note does not answer with the name button the focus went to. Echo's play button
+  keeps it while the rhythm plays (`aria-disabled`), then Tap it back takes it.
 - High-contrast theme; big touch targets (≥ 48 px).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,

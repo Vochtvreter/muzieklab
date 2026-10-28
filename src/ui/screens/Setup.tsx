@@ -161,12 +161,19 @@ export function Setup(): JSX.Element {
                 <div className="label" id="bars-label">
                   {t('setup.bars')}
                 </div>
+                {/* A step at its end has nothing to do: aria-disabled, as disabled drops the focus to the page. */}
                 <div className="stepper" role="group" aria-labelledby="bars-label">
-                  <button type="button" aria-label={t('setup.fewerBars')} disabled={s.bars <= 1} onClick={() => update({ bars: Math.max(1, s.bars - 1) })}>
+                  <button type="button" aria-label={t('setup.fewerBars')} aria-disabled={s.bars <= 1 || undefined}
+                    onClick={() => {
+                      if (s.bars > 1) update({ bars: Math.max(1, s.bars - 1) });
+                    }}>
                     −
                   </button>
                   <span aria-live="polite">{s.bars}</span>
-                  <button type="button" aria-label={t('setup.moreBars')} disabled={s.bars >= 16} onClick={() => update({ bars: Math.min(16, s.bars + 1) })}>
+                  <button type="button" aria-label={t('setup.moreBars')} aria-disabled={s.bars >= 16 || undefined}
+                    onClick={() => {
+                      if (s.bars < 16) update({ bars: Math.min(16, s.bars + 1) });
+                    }}>
                     +
                   </button>
                 </div>

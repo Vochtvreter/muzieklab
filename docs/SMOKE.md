@@ -19,7 +19,7 @@ sessions run it to check the test site.
   instead of its text, and nothing fails on the page (an error thrown, an error in the console, or a failed request).
   Then the main screens in Dutch.
 - **Offline** (`offline.spec.ts`): once the service worker is installed, the app reloads with no network and opens
-  Home, Learn, Read notes, Scales and Settings.
+  Home, Learn, Read notes, Scales and Settings; online, an address deeper than the app is still the server's 404.
 - **The main things to do** (`flows.spec.ts`): rhythm tapped on the keyboard to Results, the daily challenge, a path
   lesson, a Read notes round, a Scales round, a Learn chapter.
 - **Accounts** with the real API (`accounts.spec.ts`): the admin's own screens, looked at; an invite made on the admin

@@ -1819,7 +1819,7 @@ button.lesson-stars:hover {
   font-weight: 700;
   border-radius: 10px;
 }
-.stepper button:disabled {
+.stepper button[aria-disabled='true'] {
   color: var(--rule);
 }
 .stepper span {

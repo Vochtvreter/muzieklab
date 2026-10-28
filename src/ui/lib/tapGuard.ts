@@ -2,9 +2,10 @@
  * A double tap on a Start button, or on anything else that changes the screen: the first tap starts the exercise (or
  * opens Round done, a setup) and the screen changes at once, so the second one lands on what the new screen has at
  * that spot (Skip to results, an answer, a piano key, New round, the setup's Start) and presses it. A touch tap that
- * comes down within FOLLOW_UP_MS of the tap that started is dropped before it reaches the app. The mouse and the
- * keyboard are left alone (a mouse click right after Start is meant, as in the e2e tests), and so is the tap pad, which
- * plays on pointerdown: a tap there is only a tap.
+ * comes down within FOLLOW_UP_MS of the tap that started is dropped before it reaches the app, and so is the second
+ * click of a mouse double click (the browser counts it in the click's `detail`: 2). A click of its own right after
+ * Start (detail 1) is meant, as in the e2e tests, and the keyboard is left alone; so is the tap pad, which plays on
+ * pointerdown: a tap there is only a tap.
  */
 const FOLLOW_UP_MS = 450;
 
@@ -15,17 +16,19 @@ const FOLLOW_UP_MS = 450;
 const CLICK_MS = 1000;
 
 /**
- * When the tap that started came down, and when the touch behind the next click and behind the click being handled
- * did (-Infinity: a mouse, a pen or a key). Event time stamps, so a page still busy drawing the new screen, which
- * handles both taps late, measures the time between them and not when it got to them.
+ * When the tap or click that started came down, and when the pointer behind the next click and behind the click being
+ * handled did (-Infinity: a key). Event time stamps, so a page still busy drawing the new screen, which handles both
+ * taps late, measures the time between them and not when it got to them. `downTouch`: that pointer was a finger.
  */
 let startedAt = -Infinity;
 let downAt = -Infinity;
+let downTouch = false;
 let clickAt = -Infinity;
 
 if (typeof window !== 'undefined') {
   window.addEventListener('pointerdown', (e) => {
-    downAt = e.pointerType === 'touch' ? e.timeStamp : -Infinity;
+    downAt = e.timeStamp;
+    downTouch = e.pointerType === 'touch';
   }, true);
   // A touch that turned into a scroll: no click comes of it.
   window.addEventListener('pointercancel', () => {
@@ -34,8 +37,11 @@ if (typeof window !== 'undefined') {
   // On the window and in the capture phase, so the click is stopped before React's listener on the root sees it.
   window.addEventListener('click', (e) => {
     clickAt = e.timeStamp - downAt < CLICK_MS ? downAt : -Infinity;
+    // A tap, or a later click of one double click; a key's click has no pointer behind it (clickAt -Infinity).
+    const followUp = downTouch || e.detail >= 2;
     downAt = -Infinity;
-    if (clickAt > startedAt && clickAt - startedAt < FOLLOW_UP_MS) {
+    downTouch = false;
+    if (followUp && clickAt > startedAt && clickAt - startedAt < FOLLOW_UP_MS) {
       e.preventDefault();
       e.stopImmediatePropagation();
     }

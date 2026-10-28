@@ -5,7 +5,7 @@
  * the sheet is gone it goes back to the control that opened it, else to `returnFocus`, else to the screen's heading.
  * `low`: the dialog sits low, under the exercise's staff, so the rhythm can be read while it is open.
  */
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { focusHeading, focusLost } from '../lib/screenFocus';
 
 interface SheetProps {
@@ -74,10 +74,17 @@ export function Sheet({ variant, closing, panelKey, labelledBy, modal = true, ma
     }
   };
 
+  // A press on the backdrop (which does not close the sheet) would move the focus to the page, as the backdrop takes
+  // none: out of the panel, where the trap above no longer sees Tab, and Shift+Tab reached the screen behind. It stays
+  // where it was. A tap sends a mousedown too.
+  const keepFocus = (e: MouseEvent<HTMLDivElement>): void => {
+    if (!panelRef.current?.contains(e.target as Node)) e.preventDefault();
+  };
+
   const inCls = variant === 'sheet' ? 'm-sheet' : 'm-dialog';
   const outCls = variant === 'sheet' ? 'm-sheet-out' : 'm-dialog-out';
   return (
-    <div className={'overlay overlay--' + variant + (low ? ' overlay--low' : '') + ' ' + (closing ? 'm-fade-out' : 'm-in')} onKeyDown={trap}>
+    <div className={'overlay overlay--' + variant + (low ? ' overlay--low' : '') + ' ' + (closing ? 'm-fade-out' : 'm-in')} onKeyDown={trap} onMouseDown={keepFocus}>
       <div key={panelKey} ref={panelRef} role="dialog" aria-modal={modal} aria-labelledby={labelledBy} tabIndex={-1}
         className={'sheet sheet--' + variant + ' ' + (closing ? outCls : inCls)} style={maxWidth ? { maxWidth } : undefined}>
         {children}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Sheet } from './Sheet';
@@ -60,5 +60,18 @@ describe('Sheet', () => {
     const h1 = screen.getByRole('heading', { level: 1 });
     expect(document.activeElement).toBe(h1);
     expect(h1.tabIndex).toBe(-1);
+  });
+
+  it('a press on the backdrop leaves the focus in the panel, where Tab stays', () => {
+    const { rerender } = render(<Screen open={false} />);
+    screen.getByRole('button', { name: 'How to play' }).focus();
+    rerender(<Screen open />);
+    const gotIt = screen.getByRole('button', { name: 'Got it' });
+    expect(document.activeElement).toBe(gotIt);
+    // The browser would move the focus to the page (the backdrop takes none), out of the trap: not if it is refused.
+    expect(fireEvent.mouseDown(document.querySelector('.overlay')!)).toBe(false);
+    expect(document.activeElement).toBe(gotIt);
+    // A press on the panel itself is the browser's to handle: its text, its controls.
+    expect(fireEvent.mouseDown(gotIt)).toBe(true);
   });
 });

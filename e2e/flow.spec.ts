@@ -780,6 +780,134 @@ test.describe('a double tap on Start', () => {
   });
 });
 
+/**
+ * A mouse double click on a Start button (two clicks 110 ms apart, the second with detail 2, as a mouse sends them):
+ * as with a double tap, the second click must not press what the new screen has under the pointer.
+ */
+test.describe('a double click on Start', () => {
+  // Each click carries the time it came down, as with the double tap above.
+  const doubleClick = async (page: Page, button: Locator): Promise<void> => {
+    await button.scrollIntoViewIfNeeded();
+    const box = (await button.boundingBox())!;
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const cdp = await page.context().newCDPSession(page);
+    const click = async (clickCount: number, timestamp: number): Promise<void> => {
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...at, button: 'left', buttons: 1, clickCount, timestamp });
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...at, button: 'left', buttons: 0, clickCount, timestamp: timestamp + 0.03 });
+    };
+    const t0 = Date.now() / 1000;
+    await click(1, t0);
+    await page.waitForTimeout(140);
+    await click(2, t0 + 0.11);
+    await page.waitForTimeout(500);
+  };
+
+  test('scales on desktop: the round is not skipped by Skip to summary under the pointer', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop);
+    await page.goto('./#/scales');
+    await doubleClick(page, page.getByRole('button', { name: 'Practice C major' }));
+    await expect(page).toHaveURL(/#\/scales\/play$/);
+    await expect(page.getByRole('listitem', { name: 'Degree 1: now' })).toBeVisible();
+  });
+
+  test('a Learn practice on desktop: the first note is not answered', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop);
+    await page.goto('./#/learn/8');
+    await doubleClick(page, page.getByRole('link', { name: 'Practice the treble clef →' }));
+    await expect(page).toHaveURL(/#\/notes\/play\?from=8\.2$/);
+    await expect(page.getByRole('button', { name: /^Next note/ })).toBeDisabled();
+  });
+
+  test('rhythm on a phone: Skip to results under the pointer is not pressed', async ({ page }) => {
+    await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/setup');
+    await doubleClick(page, page.getByRole('button', { name: /^Start · / }));
+    await expect(page).toHaveURL(/#\/play$/);
+    await expect(page.getByRole('button', { name: 'Skip to results' })).toBeVisible();
+  });
+});
+
+/**
+ * A click on a sheet's backdrop (it does not close it) leaves the focus in the sheet: it used to fall to the page, out
+ * of the trap, and Shift+Tab then reached the control behind the sheet (Skip to results on a phone, the metronome
+ * switch on desktop), which Enter pressed.
+ */
+test('a click on the backdrop of the Pause sheet leaves the focus in it, so Tab keeps to the sheet', async ({ page }) => {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
+  for (const [size, x, y] of [['phone', 30, 130], ['desktop', 40, 200]] as const) {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await page.goto('./#/setup');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    await expect(page.getByRole('img', { name: /Count-in, beat|Counting beat/ })).toBeAttached();
+    await page.keyboard.press('Escape');
+    const paused = page.getByRole('dialog', { name: 'Paused' });
+    const resume = paused.getByRole('button', { name: /Resume/ });
+    await expect(resume, size).toBeFocused();
+    await page.mouse.click(x, y);
+    await expect(paused, size).toBeVisible();
+    await expect(resume, size).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(paused.getByRole('button', { name: 'Quit practice' }), size).toBeFocused();
+  }
+});
+
+/**
+ * A setup stepper at its end (Bars 1 or 16, Notes 10 or 50) has nothing to do, and keeps the focus: disabled, the
+ * button that was just pressed dropped it to the page.
+ */
+test('a setup stepper pressed to its end keeps the focus, and does nothing more', async ({ page }) => {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 2 } } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  const steppers = [
+    ['./#/setup', 'Bars', 'Fewer bars', 'More bars', '1', '16', 15],
+    ['./#/notes', 'Notes', 'Fewer notes', 'More notes', '10', '50', 4],
+  ] as const;
+  for (const [screen, group, fewerName, moreName, min, max, presses] of steppers) {
+    await page.goto(screen);
+    const value = page.getByRole('group', { name: group, exact: true }).locator('[aria-live]');
+    const fewer = page.getByRole('button', { name: fewerName });
+    const more = page.getByRole('button', { name: moreName });
+    await fewer.focus();
+    await page.keyboard.press('Enter');
+    await expect(value).toHaveText(min);
+    await expect(fewer).toBeFocused();
+    await expect(fewer).toHaveAttribute('aria-disabled', 'true');
+    await page.keyboard.press('Enter');
+    await expect(value).toHaveText(min);
+    await more.focus();
+    for (let i = 0; i < presses; i++) await page.keyboard.press('Enter');
+    await expect(value).toHaveText(max);
+    await expect(more).toBeFocused();
+    await expect(more).toHaveAttribute('aria-disabled', 'true');
+    await expect(fewer).not.toHaveAttribute('aria-disabled', 'true');
+  }
+});
+
+/**
+ * The service worker answers the app's own address from what it keeps, offline too, and leaves every other address to
+ * the server. It used to answer them all with the app, whose ./assets addresses then pointed under the path that was
+ * asked for (/learn/assets/…): a blank page with errors, where the server says 404.
+ */
+test("the service worker answers only the app's own address: a deeper one is the server's", async ({ page, context }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./');
+  await page.evaluate(async () => void (await navigator.serviceWorker.ready));
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { message: 'the service worker controls the page', timeout: 30_000 }).toBe(true);
+  for (const path of ['./learn/1', './learn/', './notes/play']) {
+    const res = await page.goto(path);
+    expect(res?.fromServiceWorker(), path).toBe(false);
+  }
+  await context.setOffline(true);
+  try {
+    const res = await page.goto('./#/settings');
+    expect(res?.fromServiceWorker()).toBe(true);
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
 test('a new screen puts focus on its heading, so a screen reader hears it: Setup, Play, then Results', async ({ page }) => {
   await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: QUARTERS } });
   await page.setViewportSize(VIEWPORTS.phone);

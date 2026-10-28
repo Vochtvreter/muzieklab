@@ -131,12 +131,19 @@ export function NotesSetup(): JSX.Element {
                 <div className="label" id="count-label">
                   {t('notes.setup.count')}
                 </div>
+                {/* A step at its end has nothing to do: aria-disabled, as disabled drops the focus to the page. */}
                 <div className="stepper" role="group" aria-labelledby="count-label">
-                  <button type="button" aria-label={t('notes.setup.fewer')} disabled={s.count <= MIN_NOTES} onClick={() => update({ count: Math.max(MIN_NOTES, s.count - STEP) })}>
+                  <button type="button" aria-label={t('notes.setup.fewer')} aria-disabled={s.count <= MIN_NOTES || undefined}
+                    onClick={() => {
+                      if (s.count > MIN_NOTES) update({ count: Math.max(MIN_NOTES, s.count - STEP) });
+                    }}>
                     −
                   </button>
                   <span aria-live="polite">{s.count}</span>
-                  <button type="button" aria-label={t('notes.setup.more')} disabled={s.count >= MAX_NOTES} onClick={() => update({ count: Math.min(MAX_NOTES, s.count + STEP) })}>
+                  <button type="button" aria-label={t('notes.setup.more')} aria-disabled={s.count >= MAX_NOTES || undefined}
+                    onClick={() => {
+                      if (s.count < MAX_NOTES) update({ count: Math.min(MAX_NOTES, s.count + STEP) });
+                    }}>
                     +
                   </button>
                 </div>

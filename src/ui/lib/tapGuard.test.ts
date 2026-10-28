@@ -6,17 +6,20 @@ import { guardFollowUpTap } from './tapGuard';
 let now = 0;
 vi.spyOn(performance, 'now').mockImplementation(() => now);
 
-/** An event on `el` stamped `at` ms (its event time stamp). jsdom has no PointerEvent, so it is a MouseEvent. */
-function fire(el: HTMLElement, type: string, at: number, pointerType?: 'touch' | 'mouse'): void {
-  const ev = Object.assign(new MouseEvent(type, { bubbles: true, cancelable: true }), pointerType ? { pointerType } : {});
+/**
+ * An event on `el` stamped `at` ms (its event time stamp). jsdom has no PointerEvent, so it is a MouseEvent. `detail`:
+ * a click's count within a double click (1, then 2), as a browser sets it for the mouse; 0 for a key.
+ */
+function fire(el: HTMLElement, type: string, at: number, pointerType?: 'touch' | 'mouse', detail = 0): void {
+  const ev = Object.assign(new MouseEvent(type, { bubbles: true, cancelable: true, detail }), pointerType ? { pointerType } : {});
   Object.defineProperty(ev, 'timeStamp', { value: at });
   el.dispatchEvent(ev);
 }
 
 /** A tap or a click on `el` that came down at `at` ms: pointerdown, then click as the finger lifts. */
-function press(el: HTMLElement, pointerType: 'touch' | 'mouse', at: number): void {
+function press(el: HTMLElement, pointerType: 'touch' | 'mouse', at: number, detail = 0): void {
   fire(el, 'pointerdown', at, pointerType);
-  fire(el, 'click', at + 30);
+  fire(el, 'click', at + 30, undefined, detail);
 }
 
 /** Start, which starts an exercise, and Skip to results, which the new screen has where Start was. */
@@ -58,6 +61,19 @@ describe('guardFollowUpTap', () => {
     press(start, 'touch', 31_000);
     fire(skip, 'click', 31_100);
     expect(skipped).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops the second click of a mouse double click on Start, and not a click after it', () => {
+    const { start, skip, skipped } = screen();
+    // The second click of the double click lands on Skip to results, which replaced Start; the page gets to it late.
+    now = 60_400;
+    press(start, 'mouse', 60_000, 1);
+    now = 61_000;
+    press(skip, 'mouse', 60_110, 2);
+    expect(skipped).not.toHaveBeenCalled();
+    // A click the player means, right after: a click of its own (detail 1), as the e2e tests make them.
+    press(skip, 'mouse', 60_150, 1);
+    expect(skipped).toHaveBeenCalledTimes(1);
   });
 
   it('a touch that gave no click does not hold back a later key: a scroll, a long press', () => {
