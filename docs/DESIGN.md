@@ -262,7 +262,9 @@ like the rhythm notation.
 - Enter or Space goes to the next note once one is answered, and checks a note to write, except on a control the
   player reached with Tab, as in Scales: a button takes Space and Enter itself (Skip to summary, another answer mode,
   a piano key, ▲ ▼), and the Quit link Enter. A name button, or the answer mode or key labels already chosen, has
-  nothing to do once its note is answered, so there they still go on.
+  nothing to do once its note is answered, so there they still go on. After a click, or when Hint or Next note hands
+  the focus on (§11), Enter and Space do nothing on a name button or piano key until the note is answered, so the
+  answer that has the focus is not pressed by them; it takes them once the player tabs to it.
 - **Do re mi or letters** on the name buttons is a saved preference, switched on the play screen. A new player gets
   do re mi when the device language is French, Italian, Spanish, Portuguese, Romanian or Dutch in Belgium (`nl-BE`),
   and letters otherwise (since 0.10.0; before, do re mi for everyone). A new player is one with nothing saved at all,
@@ -412,9 +414,9 @@ Learn and practice major and minor scales in all 15 keys.
   play and spell, on phone and tablet (the row under the feedback) and on desktop (the side panel). Computer keys
   on desktop, as in Read notes: A S D F G H J K L for the white keys, and for a black key
   the letter above the gap between its two white keys (W E R T Y U I O). Space is *Hear it so far* and Enter goes on,
-  except on a button the player reached with Tab: that button takes Space and Enter itself (since 0.9.0). After a click
-  Space stays *Hear it so far*, and Enter does nothing until the scale is done, so a piano key or a sign that kept the
-  focus is not pressed again.
+  except on a button the player reached with Tab: that button takes Space and Enter itself (since 0.9.0). After a click,
+  or when Hint, Next scale or Start over hands the focus on (§11), Space stays *Hear it so far*, and Enter does nothing
+  until the scale is done, so a piano key or a sign that has the focus is not pressed by them.
 - **Names (spelling):** the letters are given, one per degree, because a scale uses each
   letter once; the player chooses ♭, ♮ or ♯ for each (keys − 0 =, as in Read notes). This
   drills exactly what changes between keys and between the minor forms (D♯ in E harmonic
@@ -2156,8 +2158,10 @@ without code changes:
   On What's new (desktop), Newer or Older that goes away at the end hands it to the one left. In Read notes and Scales
   a control that a step disables or removes hands it on: an answer that ends the note or the scale (the last sign or
   key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and Start over to the
-  answers (the first name button, sign or piano key, or the next note's staff to write on). Echo's play button keeps
-  it while the rhythm plays (`aria-disabled`), then Tap it back takes it.
+  answers (the first name button, sign or piano key, or the next note's staff to write on). There Space and Enter stay
+  the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5, §3.7), so the
+  Enter after one on Next note does not answer with the name button the focus went to. Echo's play button keeps it
+  while the rhythm plays (`aria-disabled`), then Tap it back takes it.
 - High-contrast theme; big touch targets (≥ 48 px).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,

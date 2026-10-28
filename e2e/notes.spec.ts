@@ -426,16 +426,25 @@ for (const size of ['phone', 'desktop'] as const) {
     await page.setViewportSize(VIEWPORTS[size]);
     await page.goto('./#/notes/play');
     const firstName = page.getByRole('group', { name: 'Note names' }).getByRole('button').first();
+    const progress = page.getByRole('progressbar', { name: 'Round progress' }).first();
     await tabTo(page, page.getByRole('button', { name: 'Hint' }));
     await page.keyboard.press('Enter');
     await expect(page.locator('.nfeedback')).toHaveClass(/is-hint/);
     await expect(firstName).toBeFocused();
+    // The Tab was to Hint, not to the answer it handed the focus to: Space does not answer with that one.
+    await page.keyboard.press(' ');
+    await page.waitForTimeout(200);
+    await expect(progress).toHaveAttribute('aria-valuenow', '0');
     // A wrong answer waits for Next note, which waits, blocked, for the next note's answer.
     await page.keyboard.press(wrong(0).toLowerCase());
     await tabTo(page, page.getByRole('button', { name: /^Next note/ }));
     await page.keyboard.press('Enter');
     await expect(page.getByRole('img', { name: /Note 2 of 10 is highlighted/ })).toBeVisible();
     await expect(firstName).toBeFocused();
+    // Nor does a second Enter, right after the one on Next note.
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    await expect(progress).toHaveAttribute('aria-valuenow', '1');
     // Next note clicked: the focus goes on to the answers too, but Enter does not answer with the one it is on (only
     // an answer reached with Tab takes Enter).
     await page.keyboard.press(wrong(1).toLowerCase());
@@ -445,7 +454,7 @@ for (const size of ['phone', 'desktop'] as const) {
     await page.keyboard.press('Enter');
     await page.keyboard.press(' ');
     await page.waitForTimeout(200);
-    await expect(page.getByRole('progressbar', { name: 'Round progress' }).first()).toHaveAttribute('aria-valuenow', '2');
+    await expect(progress).toHaveAttribute('aria-valuenow', '2');
   });
 
   test(`read notes: in a mixed round, Next note into the piano notes hands the focus to the piano (${size})`, async ({ page }) => {
@@ -807,10 +816,16 @@ for (const size of ['phone', 'desktop'] as const) {
     await page.setViewportSize(VIEWPORTS[size]);
     await startScale(page, { keyMode: 'pick', keys: ['C', 'G'], input: 'names' }, 2);
     const signs = page.getByRole('group', { name: /^Sign for/ }).getByRole('button');
+    // The mistakes so far: over the staff on a phone, in the side panel on desktop.
+    const mistakes = page.locator(size === 'phone' ? '.splay-mistakes-n' : '.sstats .nstat-big');
     await tabTo(page, page.getByRole('button', { name: 'Hint' }));
     await page.keyboard.press('Enter');
     await expect(page.locator('.nfeedback')).toHaveClass(/is-hint/);
     await expect(signs.first()).toBeFocused();
+    // The Tab was to Hint, not to the sign it handed the focus to: Enter does not answer with that one (♭).
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    await expect(mistakes).toHaveText('0');
     // Each scale spelled to its last note with the keys (G major has F♯), and the last one (its tonic, natural) with
     // Enter on the sign.
     for (const n of [1, 2]) {
@@ -825,6 +840,10 @@ for (const size of ['phone', 'desktop'] as const) {
         await page.keyboard.press('Enter');
         await expect(page.locator('.splay-degrees .degree.is-done')).toHaveCount(0);
         await expect(signs.first()).toBeFocused();
+        // Nor does a second Enter, right after the one on Next scale.
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(200);
+        await expect(mistakes).toHaveText('0');
       }
     }
   });
@@ -833,12 +852,18 @@ for (const size of ['phone', 'desktop'] as const) {
     await page.setViewportSize(VIEWPORTS[size]);
     await startScale(page, { keyMode: 'pick', keys: ['C', 'G'], input: 'piano' }, 2);
     const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+    const mistakes = page.locator(size === 'phone' ? '.splay-mistakes-n' : '.sstats .nstat-big');
     // The tonic, then Start over: the piano takes the focus.
     await page.keyboard.press('a');
     await tabTo(page, page.getByRole('button', { name: 'Start over' }));
     await page.keyboard.press('Enter');
     await expect(page.locator('.splay-degrees .degree.is-done')).toHaveCount(0);
     await expect(keys.first()).toBeFocused();
+    // The Tab was to Start over, not to the key it handed the focus to: a second Enter does not play that key.
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    await expect(page.locator('.splay-degrees .degree.is-done')).toHaveCount(0);
+    await expect(mistakes).toHaveText('0');
     for (const n of [1, 2]) {
       const title = (await page.locator('.splay-title').first().textContent())!;
       // A S D F G H J (C major) or A S D F G H I (G major, F♯), then the top note with Enter on its key.

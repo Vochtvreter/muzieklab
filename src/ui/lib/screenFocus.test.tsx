@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { keyForTabbedControl } from './focusModality';
 import { useFocusHandOff } from './screenFocus';
 
 afterEach(cleanup);
@@ -43,5 +44,26 @@ describe('useFocusHandOff', () => {
     render(<Exercise />);
     fireEvent.click(screen.getByRole('button', { name: 'Hint' }));
     expect(document.activeElement).toBe(document.body);
+  });
+
+  it('leaves Space and Enter to the exercise on the control it hands the focus to, until the player presses Tab', () => {
+    render(<Exercise />);
+    const hint = screen.getByRole('button', { name: 'Hint' });
+    const enterOn = (el: Element): KeyboardEvent => {
+      const e = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+      el.dispatchEvent(e);
+      return e;
+    };
+    // Hint reached with Tab: Enter is its own.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    hint.focus();
+    expect(keyForTabbedControl(enterOn(hint))).toBe(true);
+    // The Tab was to Hint, not to C: the next Enter does not press C.
+    fireEvent.click(hint);
+    const c = screen.getByRole('button', { name: 'C' });
+    expect(document.activeElement).toBe(c);
+    expect(keyForTabbedControl(enterOn(c))).toBe(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(keyForTabbedControl(enterOn(c))).toBe(true);
   });
 });

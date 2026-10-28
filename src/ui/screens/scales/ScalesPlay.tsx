@@ -174,8 +174,8 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
       // A button reached with Tab (a sign, Start over, Skip) takes Space and Enter itself.
       if (keyForTabbedControl(e)) return;
       const k = e.key.toUpperCase();
-      // After a click the key or sign keeps the focus: Enter is Next scale, once the scale is done, and never presses
-      // that key or sign again (focusModality.ts).
+      // After a click the key or sign keeps the focus (or Hint, Next scale or Start over handed it on to one): Enter is
+      // Next scale, once the scale is done, and never presses that key or sign (focusModality.ts).
       if (e.key === 'Enter') {
         e.preventDefault();
         if (done) next();

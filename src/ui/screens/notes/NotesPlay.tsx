@@ -279,8 +279,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
           e.preventDefault();
           answer({ kind: 'place', step: ghost });
         } else if (target?.closest('.name-btn, .piano button')) {
-          // An answer that has the focus after a click, or since Next note handed it on, is not pressed by these: only
-          // one reached with Tab is (above).
+          // An answer that has the focus after a click, or since Hint or Next note handed it on, is not pressed by
+          // these: only one reached with Tab of its own is (above).
           e.preventDefault();
         }
         return;

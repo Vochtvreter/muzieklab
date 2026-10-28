@@ -4,6 +4,7 @@
  * past the screen's end and out of the page (on Play that pauses the exercise).
  */
 import { useCallback, useEffect, useRef } from 'react';
+import { forgetTab } from './focusModality';
 
 /**
  * Focus was lost with its element: it is on the page itself, or nowhere, or on a control that was just disabled
@@ -30,7 +31,9 @@ export function focusHeading(): void {
  * next answer, the staff written on once it is checked): call what this returns in the step, and once the step is
  * drawn the focus goes on to the first control that `to` names (selectors, in order) that is there and enabled. Only
  * when the focus was on a control as the step came and is lost now: a step taken with it elsewhere moves nothing (it
- * stays on the page after a click in Safari, which does not focus the button clicked).
+ * stays on the page after a click in Safari, which does not focus the button clicked). The control it goes to takes
+ * Space and Enter only after a Tab of its own (focusModality.ts): a second Enter on Next note does not answer with the
+ * name button it went to.
  */
 export function useFocusHandOff(to: () => string[]): () => void {
   const held = useRef(false);
@@ -44,6 +47,7 @@ export function useFocusHandOff(to: () => string[]): () => void {
       const el = [...document.querySelectorAll<HTMLElement>(selector)].find((x) => !x.matches(':disabled'));
       if (!el) continue;
       el.focus({ preventScroll: true });
+      forgetTab();
       return;
     }
   });
