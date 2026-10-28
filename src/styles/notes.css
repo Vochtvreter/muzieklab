@@ -1573,12 +1573,15 @@
   color: var(--miss-ink);
   background: var(--miss-soft);
 }
-/* Rows of name, text and value: tempo words, the rests, dotted values. */
+/* Rows of name, text and value: tempo words, the rests, dotted values. The strong and weak beats (a grid, below) sit on
+   the same ground. */
 .learn-table,
 .learn-accents {
   background: var(--ground);
   border-radius: 14px;
   padding: 4px 14px;
+}
+.learn-table {
   display: flex;
   flex-direction: column;
 }

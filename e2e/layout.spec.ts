@@ -199,7 +199,7 @@ async function expectLearnWordsApart(page: Page, where = ''): Promise<void> {
  * to the last with Tab and back with Shift+Tab. Tab scrolls the menu just far enough to show the item's box, and the
  * ring lies outside it (Learn's 11.5 lost its bottom edge on a 1280 × 800 screen).
  */
-async function expectRingsInSideMenu(menu: Locator, where = ''): Promise<void> {
+async function expectRingsInSideMenu(menu: Locator): Promise<void> {
   const items = menu.locator('a, button');
   const n = await items.count();
   await items.first().focus();
@@ -214,7 +214,7 @@ async function expectRingsInSideMenu(menu: Locator, where = ''): Promise<void> {
       const top = box.getBoundingClientRect().top + box.clientTop;
       return r.top - ring < top - 0.5 || r.bottom + ring > top + box.clientHeight + 0.5 ? `${el.textContent}: its ring is cut off` : null;
     });
-    expect(cut, `${where} ${key}`.trim()).toBeNull();
+    expect(cut, key).toBeNull();
   }
 }
 
@@ -536,8 +536,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         }),
       );
       expect(out, 'stars past their unit').toEqual([]);
-      // A tap on a lesson's stars opens that lesson, and so does one halfway down to a second line: the 44 px hit areas
-      // of two lines meet without one lying over the other's stars.
+      // A tap on a lesson's stars opens that lesson, and so does one halfway down to a second line: the lines are 30 px
+      // apart, so one line's 44 px area (4 px above its stars, 25 px below) never lies over the other's.
       const last = page.getByRole('button', { name: /^Play lesson 2\.5 · / });
       await last.scrollIntoViewIfNeeded();
       const missed = await last.locator('xpath=..').evaluate((row) => {
@@ -1837,14 +1837,17 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('learn: Tab through the chapter sidebar shows each link\'s whole focus ring', async ({ page }) => {
-      known(name, 'learn-side-ring');
-      test.skip(!desktopLayout, 'phone and tablet have no chapter sidebar');
+    // Phone and tablet have no chapter sidebar. One test per chapter, as each tabs through some 20 links and back.
+    if (desktopLayout) {
       for (const c of CHAPTERS) {
-        await page.goto(`./#/learn/${c.n}`);
-        await expectRingsInSideMenu(page.locator('.learn-side'), `chapter ${c.n}:`);
+        test(`learn: Tab through chapter ${c.n}'s sidebar shows each link's whole focus ring`, async ({ page }) => {
+          known(name, `learn-side-ring-${c.n}`);
+          await page.goto(`./#/learn/${c.n}`);
+          await expect(page.getByRole('heading', { level: 1 })).toContainText(String(c.n));
+          await expectRingsInSideMenu(page.locator('.learn-side'));
+        });
       }
-    });
+    }
 
     test('learn: rhythm chapters count under the notes, the note tree switches, words answer the quick check', async ({ page }) => {
       known(name, 'learn-rhythm');
@@ -3451,21 +3454,21 @@ test.describe('the status filter at every phone width', () => {
 });
 
 test.describe("Learn's tables and diagrams at every phone width", () => {
-  test.use({ hasTouch: true });
   // The fixed sizes miss widths in between: Dutch "halfzwaar" ran into "licht" up to 360 px, a common Android width.
+  // One test per chapter, so they run side by side.
   for (const language of ['en', 'nl']) {
-    test(`${language}: their words stay apart from 320 to 699 px`, async ({ page }) => {
-      await seed(page, { prefs: { language, seenHowTo: true, seenHold: true } });
-      for (const c of CHAPTERS) {
+    for (const c of CHAPTERS) {
+      test(`${language}: chapter ${c.n}'s words stay apart from 320 to 699 px`, async ({ page }) => {
+        await seed(page, { prefs: { language, seenHowTo: true, seenHold: true } });
         await page.setViewportSize({ width: 320, height: 800 });
         await page.goto(`./#/learn/${c.n}`);
         await expect(page.locator('.learn-section')).toHaveCount(c.sections.length);
         for (let width = 320; width < 700; width += 10) {
           await page.setViewportSize({ width, height: 800 });
-          await expectLearnWordsApart(page, `chapter ${c.n} at ${width} px:`);
+          await expectLearnWordsApart(page, `${width} px:`);
         }
-      }
-    });
+      });
+    }
   }
 });
 
