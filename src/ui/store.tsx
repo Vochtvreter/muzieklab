@@ -76,7 +76,10 @@ export interface Run {
   lessonId: string | null;
   /** The daily challenge's date (yyyy-mm-dd) when this run is one, else null. */
   daily: string | null;
-  /** Restored after a reload: Play waits for a tap (Ready · Start) before it makes sound. */
+  /**
+   * No tap led here (restored after a reload, or started from a Learn practice link's own address in a new tab): Play
+   * waits for a tap (Ready · Start) before it makes sound.
+   */
   needsGesture?: boolean;
 }
 

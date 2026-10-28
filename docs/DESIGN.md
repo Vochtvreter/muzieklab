@@ -129,10 +129,10 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
       rest. Start marks the symbols as shown and starts the count-in. **?** on the sheet opens How to play and leads
       back to it; when How to play was not due, its eyebrow names the run (*Lesson 3.1*) instead of *First time here*
       (also from Ready). When How to play is due as well, it comes first and *Got it* brings the intro sheet.
-   3. **Ready**, when no tap led here (a reload, Back / Forward into Play), or when the run is a lesson other than the
-      last finished run's (Results → *Next lesson*, another lesson from the Path or Home), so the new rhythm can be
-      read first. Retry and Next exercise of the same lesson, free practice, and the first run of a session count in
-      straight away.
+   3. **Ready**, when no tap led here (a reload, Back / Forward into Play, a Learn practice link opened in a new tab:
+      §9.1), or when the run is a lesson other than the last finished run's (Results → *Next lesson*, another lesson
+      from the Path or Home), so the new rhythm can be read first. Retry and Next exercise of the same lesson, free
+      practice, and the first run of a session count in straight away.
 
    The intro sheet uses the same Sheet as the others: a bottom sheet on phone and tablet (landscape too), a 440 px
    dialog on desktop. On desktop the intro and Ready dialogs sit low (aligned to the bottom, 48 px padding), so the
@@ -1752,7 +1752,8 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
   screen it was opened from: Read notes to its setup, Scales to the Scales tab, Play to Home.
 - A practice link opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift) starts the same practice
   there: its address, `#/learn/practice?s=8.3`, sets up the section's practice in its own place. A plain click starts
-  it in the same tab.
+  it in the same tab. No tap led to the new tab, so the browser does not let it make sound yet: a rhythm practice
+  opened this way waits on the Ready sheet and its *Start*, as after a reload (§3.1).
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
 - Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.

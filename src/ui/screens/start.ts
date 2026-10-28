@@ -51,16 +51,17 @@ export function useStartPathLesson(): (id: string, opts?: { replace?: boolean })
 /**
  * Free practice with the given settings (hold follows the path: practiceSettings). `query` goes along to Play: from a
  * Learn practice link, `from=1.1`, so Quit and Results return to that section. `replace` swaps the current screen for
- * Play (the practice link's own address, opened in a new tab).
+ * Play (the practice link's own address, opened in a new tab). `needsGesture`: no tap led here (that address), so the
+ * audio cannot start yet and Play waits on Ready · Start, as after a reload.
  */
-export function useStartPractice(): (settings: Settings, opts?: { replace?: boolean; query?: string }) => void {
+export function useStartPractice(): (settings: Settings, opts?: { replace?: boolean; query?: string; needsGesture?: boolean }) => void {
   const { state, dispatch } = useStore();
   return useCallback(
-    (settings: Settings, opts: { replace?: boolean; query?: string } = {}) => {
+    (settings: Settings, { needsGesture, ...opts }: { replace?: boolean; query?: string; needsGesture?: boolean } = {}) => {
       unlockAudio();
       const run = makeRun(practiceSettings(state, settings), newSeed(), null);
       if (!run) return;
-      dispatch({ type: 'start', run });
+      dispatch({ type: 'start', run: needsGesture ? { ...run, needsGesture } : run });
       guardFollowUpTap();
       navigate('/play', opts);
     },

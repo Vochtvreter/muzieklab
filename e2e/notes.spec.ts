@@ -751,6 +751,13 @@ test('learn: a practice link opened in a new tab starts the same practice there'
     const [tab] = await Promise.all([context.waitForEvent('page'), link.click(click)]);
     await expect(tab).toHaveURL(/#\/play\?from=4\.1$/);
     await expect(tab.getByRole('link', { name: /^Quit/ })).toHaveAttribute('href', '#/learn/4?s=4.1');
+    // No tap led to this tab, so the sound cannot start yet: Play waits on Ready · Start, as after a reload. It once
+    // counted in at once on silent audio and paused (The sound was interrupted).
+    const ready = tab.getByRole('dialog', { name: 'Ready?' });
+    await expect(ready.getByRole('button', { name: /^Start/ })).toBeVisible();
+    await expect(tab.getByRole('dialog', { name: 'Paused' })).toHaveCount(0);
+    await ready.getByRole('button', { name: /^Start/ }).click();
+    await expect(tab.getByRole('dialog')).toHaveCount(0);
     await tab.close();
     await expect(page).toHaveURL(/#\/learn\/4$/);
   }

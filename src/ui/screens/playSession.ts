@@ -160,7 +160,8 @@ export function usePlaySession(
   const barSec = view.barSeconds;
   const opts: JudgeOptions = { hold: ex.settings.hold, leniency: prefs.leniency };
 
-  // No tap led here (a reload, Back / Forward into Play): wait for one, so the audio may start.
+  // No tap led here (a reload, Back / Forward into Play, a Learn practice link opened in a new tab): wait for one, so
+  // the audio may start.
   const [gated] = useState(() => !!run.needsGesture || played.has(run));
   // How to play opens first the very first time, and again the first time holding counts (unit 1 is tap only).
   const [intro] = useState(() => howToIntro(prefs, ex.settings.hold));

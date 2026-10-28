@@ -101,12 +101,16 @@ describe('Learn: a practice link opened in a new tab', () => {
   });
 
   it("starts the section's practice there, as a click does: an exercise with its preset, Quit returning to it", async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ seenHowTo: true, seenHold: true }));
     open('#/learn/practice?s=4.1');
     await waitFor(() => expect(window.location.hash).toBe('#/play?from=4.1'));
     expect(screen.getByRole('link', { name: 'Quit exercise' }).getAttribute('href')).toBe('#/learn/4?s=4.1');
     const played = JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? '{}').lastSettings;
     expect(played.notes).toEqual(['half', 'quarter', 'eighth']);
     expect(played.rests).toEqual(['quarter', 'eighth']);
+    // No tap led here, so the sound may not start: Play waits on Ready · Start, as after a reload.
+    const ready = screen.getByRole('dialog', { name: 'Ready?' });
+    expect(within(ready).getByRole('button', { name: /^Start/ })).toBeTruthy();
   });
 
   it('a Read notes round, or the Scales setup with its preset', async () => {

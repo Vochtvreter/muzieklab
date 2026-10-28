@@ -143,13 +143,15 @@ function SectionCheck({ section, read, onRight }: { section: Section; read: bool
 /**
  * A section's practice: a Read notes round or a rhythm exercise straight away, or the Scales setup, set up for the
  * section on top of the player's own setup. Play and the summary carry ?from=8.2, so Quit and their back arrow return
- * to the section, and the setup they open keeps the preset. `replace` swaps the current screen for it.
+ * to the section, and the setup they open keeps the preset. `replace` swaps the current screen for it. `needsGesture`:
+ * no tap started it, so a rhythm exercise waits on Ready · Start (Read notes and the Scales setup make no sound before
+ * a tap anyway).
  */
-function useStartSection(): (section: Section, opts?: { replace?: boolean }) => void {
+function useStartSection(): (section: Section, opts?: { replace?: boolean; needsGesture?: boolean }) => void {
   const { state, dispatch } = useStore();
   const startPractice = useStartPractice();
   const startNotes = useStartNotes();
-  return (section, { replace } = {}) => {
+  return (section, { replace, needsGesture } = {}) => {
     const p = section.practice!;
     const query = 'from=' + section.id;
     if ('scales' in p) {
@@ -164,7 +166,7 @@ function useStartSection(): (section: Section, opts?: { replace?: boolean }) => 
     } else {
       const settings = { ...state.settings, ...p.rhythm };
       dispatch({ type: 'settings', settings });
-      startPractice(settings, { replace, query });
+      startPractice(settings, { replace, query, needsGesture });
     }
   };
 }
@@ -195,7 +197,8 @@ function PracticeLink({ section }: { section: Section }): JSX.Element {
 
 /**
  * #/learn/practice?s=8.2, a practice link's own address (opened in a new tab): starts that section's practice in its
- * place, or opens the Learn tab for a section without practice.
+ * place, or opens the Learn tab for a section without practice. No tap led here, so the browser has not let the audio
+ * start: a rhythm exercise waits on Ready · Start, as after a reload (counting in at once, it heard nothing and paused).
  */
 export function LearnPractice(): null {
   const start = useStartSection();
@@ -207,7 +210,7 @@ export function LearnPractice(): null {
     if (started.current) return;
     started.current = true;
     const section = findChapter(Number(id?.split('.')[0]))?.sections.find((s) => s.id === id);
-    if (section?.practice) start(section, { replace: true });
+    if (section?.practice) start(section, { replace: true, needsGesture: true });
     else navigate('/learn', { replace: true });
   }, [id, start]);
   return null;
