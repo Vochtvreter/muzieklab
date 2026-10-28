@@ -3,11 +3,15 @@
  * it over: left there, it falls to the page, a screen reader is not told where the player is, and the next Tab can run
  * past the screen's end and out of the page (on Play that pauses the exercise).
  */
+import { useCallback, useEffect, useRef } from 'react';
 
-/** Focus was lost with its element: it is on the page itself, or nowhere. */
+/**
+ * Focus was lost with its element: it is on the page itself, or nowhere, or on a control that was just disabled
+ * (Chromium moves it from there to the page a moment later, in a task of its own).
+ */
 export function focusLost(): boolean {
   const el = document.activeElement;
-  return !el || el === document.body;
+  return !el || el === document.body || el.matches(':disabled');
 }
 
 /**
@@ -19,4 +23,31 @@ export function focusHeading(): void {
   if (!h1) return;
   if (!h1.hasAttribute('tabindex')) h1.tabIndex = -1;
   h1.focus({ preventScroll: true });
+}
+
+/**
+ * A step of an exercise that disables or removes the control it was taken with (Hint once used, Next note until the
+ * next answer, the staff written on once it is checked): call what this returns in the step, and once the step is
+ * drawn the focus goes on to the first control that `to` names (selectors, in order) that is there and enabled. Only
+ * when the focus was on a control as the step came and is lost now: a step taken with it elsewhere moves nothing (it
+ * stays on the page after a click in Safari, which does not focus the button clicked).
+ */
+export function useFocusHandOff(to: () => string[]): () => void {
+  const held = useRef(false);
+  const where = useRef(to);
+  where.current = to;
+  useEffect(() => {
+    if (!held.current) return;
+    held.current = false;
+    if (!focusLost()) return;
+    for (const selector of where.current()) {
+      const el = [...document.querySelectorAll<HTMLElement>(selector)].find((x) => !x.matches(':disabled'));
+      if (!el) continue;
+      el.focus({ preventScroll: true });
+      return;
+    }
+  });
+  return useCallback(() => {
+    held.current = !focusLost();
+  }, []);
 }

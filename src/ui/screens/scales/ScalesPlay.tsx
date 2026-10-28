@@ -35,6 +35,7 @@ import { PHONE_LANDSCAPE, SHORTER_PHONE, useBreakpoint, useDocTitle, useExercise
 import { keyForTabbedControl } from '../../lib/focusModality';
 import { letterName } from '../../lib/noteText';
 import { noteName, scaleName, scaleSpoken, stepHow, stepLabel, stepsOf } from '../../lib/scaleText';
+import { useFocusHandOff } from '../../lib/screenFocus';
 import { Link, navigate } from '../../router';
 import { todayIso, useStore, type ScaleRun } from '../../store';
 
@@ -91,6 +92,10 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const cur = notes[Math.min(pos, notes.length - 1)];
   const curLetter = letterOf(cur.step);
 
+  // Hint once used, the signs or the keys once the scale is done, Next scale until the next one is done and Start over
+  // before a note go away under the focus: it goes on to Next scale once the scale is done, else to the answers.
+  const holdFocus = useFocusHandOff(() => (done ? ['.splay-next'] : ['.ssign', '.spiano button']));
+
   const sound = useCallback(
     (midis: number[]) => {
       if (!s.playNotes || midis.length === 0) return;
@@ -116,6 +121,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     const list = [...played, { scale: sc, mistakes }];
     const q = afterScale(queue, idx, mistakes);
     if (idx + 1 >= q.length) return finish(list);
+    holdFocus();
     lap();
     setPlayed(list);
     setQueue(q);
@@ -124,11 +130,12 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     setMistakes(0);
     setWrong(null);
     setHinted(false);
-  }, [done, played, sc, mistakes, queue, idx, finish]);
+  }, [done, played, sc, mistakes, queue, idx, finish, holdFocus]);
 
   const answer = useCallback(
     (g: ScaleGiven) => {
       if (done) return;
+      holdFocus();
       if (g.kind === 'piano') sound([g.midi]);
       if (isRightNote(cur, g)) {
         if (g.kind === 'sign') sound([cur.midi]);
@@ -142,7 +149,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
         setHinted(false);
       }
     },
-    [done, cur, pos, mistakes, sound],
+    [done, cur, pos, mistakes, sound, holdFocus],
   );
 
   const hear = (): void => {
@@ -150,6 +157,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     engine().pitches(notes.slice(0, pos).map((n) => n.midi));
   };
   const startOver = (): void => {
+    holdFocus();
     setPos(0);
     setWrong(null);
     setHinted(false);
@@ -296,7 +304,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   );
   const nextLabel = t(idx + 1 >= afterScale(queue, idx, mistakes).length ? 'scales.play.finish' : 'scales.play.next');
   const nextBtn = (
-    <button type="button" className={'btn ' + (done ? 'btn--accent' : 'btn--blocked')} disabled={!done} onClick={next}>
+    <button type="button" className={'btn splay-next ' + (done ? 'btn--accent' : 'btn--blocked')} disabled={!done} onClick={next}>
       {nextLabel}
       {kbd && <kbd className="kbd kbd--bare kbd--on-fill">↵</kbd>}
     </button>
@@ -319,6 +327,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const second = piano && done ? nextBtn : overBtn;
   // The hint takes the place of a wrong answer, and of its red mark, as on the boards (ScaleSpell).
   const hint = (): void => {
+    holdFocus();
     setWrong(null);
     setHinted(true);
   };

@@ -226,7 +226,7 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
         <div className="cprog-n" aria-hidden="true">
           {n0 !== n1 && (
             <>
-              <span className="tone-faint">{n0}</span> <span className="tone-faint cprog-arrow">→</span>{' '}
+              <span className="tone-muted">{n0}</span> <span className="tone-muted cprog-arrow">→</span>{' '}
             </>
           )}
           {n1}

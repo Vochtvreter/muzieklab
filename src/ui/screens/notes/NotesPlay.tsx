@@ -55,6 +55,7 @@ import {
   writeFeedback,
   type NameSystem,
 } from '../../lib/noteText';
+import { useFocusHandOff } from '../../lib/screenFocus';
 import { Link, navigate } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
 
@@ -138,11 +139,10 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     [steps, note.clef],
   );
 
-  // Mixed rounds: names and piano take turns every 5 notes (the player can still switch any time).
-  useEffect(() => {
-    if (i === 0 || notes[i].input === notes[i - 1].input) return;
-    setMode(notes[i].input === 'piano' ? 'piano' : state.prefs.noteNames);
-  }, [i]);
+  // Hint once used, Next note until the next answer, the signs and ▲ ▼ once the note is answered and the staff written
+  // on once it is checked go away under the focus: it goes on to Next note once the note is answered, else to the
+  // answers (the next note's staff to write on).
+  const holdFocus = useFocusHandOff(() => (done ? ['.nactions .btn--accent'] : writing ? ['.nwrite-staff'] : ['.name-btn', '.piano button']));
 
   const sound = useCallback(
     (midis: number[], gap?: number) => {
@@ -180,6 +180,10 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const next = useCallback(() => {
     if (!done) return;
     if (i + 1 >= total) return finish(answers);
+    holdFocus();
+    // Mixed rounds: names and piano take turns every 5 notes (the player can still switch any time). With the note, so
+    // the focus handed on goes to the answers it is shown with.
+    if (notes[i + 1].input !== notes[i].input) setMode(notes[i + 1].input === 'piano' ? 'piano' : state.prefs.noteNames);
     setI(i + 1);
     setGiven(null);
     setDone(false);
@@ -188,11 +192,12 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     setGhost(null);
     setLeft(timer * 1000);
     shownAt.current = performance.now();
-  }, [done, i, total, answers, finish, timer]);
+  }, [done, i, total, answers, finish, timer, holdFocus, notes, state.prefs.noteNames]);
 
   const answer = useCallback(
     (g: Given | null) => {
       if (done || !note) return;
+      holdFocus();
       const ms = g === null ? timer * 1000 : Math.round(performance.now() - shownAt.current);
       const right = g !== null && isRight(note, g);
       const outcome: NoteAnswer['outcome'] = g === null ? 'timeout' : right ? (hinted ? 'hinted' : 'right') : 'wrong';
@@ -204,7 +209,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       if (g?.kind === 'piano') sound(right ? [midi] : [pianoKeyMidi(note, g.pc), midi], CORRECTION_GAP);
       else sound([midi]);
     },
-    [done, note, hinted, i, timer, sound],
+    [done, note, hinted, i, timer, sound, holdFocus],
   );
   // A piano key: the answer, or after it just its sound, to compare with the right note.
   const pressKey = useCallback(
@@ -273,6 +278,10 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         } else if (writing && ghost !== null) {
           e.preventDefault();
           answer({ kind: 'place', step: ghost });
+        } else if (target?.closest('.name-btn, .piano button')) {
+          // An answer that has the focus after a click, or since Next note handed it on, is not pressed by these: only
+          // one reached with Tab is (above).
+          e.preventDefault();
         }
         return;
       }
@@ -520,7 +529,11 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   );
   const actions = (
     <div className="nactions">
-      <button type="button" className="btn btn--outline" disabled={done || hinted} onClick={() => setHinted(true)}>
+      <button type="button" className="btn btn--outline" disabled={done || hinted}
+        onClick={() => {
+          holdFocus();
+          setHinted(true);
+        }}>
         {t('notes.play.hint')}
       </button>
       {writing ? (
@@ -569,7 +582,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       <div className="nplay-score" role="img" aria-label={t('notes.play.correctLabel', { right, done: answeredCount })}>
         <div className="nplay-score-n" aria-hidden="true">
           <span className="tone-good">{right}</span>
-          <span className="tone-faint"> / {answeredCount}</span>
+          <span className="tone-muted"> / {answeredCount}</span>
         </div>
         <div className="muted-small" aria-hidden="true">
           {t('notes.play.correct')}

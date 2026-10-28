@@ -1089,7 +1089,7 @@
   font-size: 46px;
 }
 .sdone-of {
-  color: var(--faint);
+  color: var(--muted);
 }
 .sdone-list {
   border-radius: 18px;

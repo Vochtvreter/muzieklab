@@ -17,6 +17,7 @@ import type { ExerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering } from '../hooks';
 import { metersLabel } from '../lib/format';
 import { beatAt, type BeatState } from '../lib/playMath';
+import { focusLost } from '../lib/screenFocus';
 import { Link, navigate } from '../router';
 import { useStore, type Run } from '../store';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
@@ -78,8 +79,20 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     timer.current = raf.current = null;
   };
 
+  // The play button keeps the focus while it plays (aria-disabled, not disabled, which would drop it to the page). Once
+  // it has played, Tap it back, which comes in under it, takes the focus from it: the player's turn.
+  const playButton = useRef<HTMLButtonElement>(null);
+  const tapButton = useRef<HTMLButtonElement>(null);
+  const pressed = useRef(false);
+  useEffect(() => {
+    if (playing || !pressed.current) return;
+    pressed.current = false;
+    if (document.activeElement === playButton.current || focusLost()) tapButton.current?.focus({ preventScroll: true });
+  }, [playing]);
+
   const listen = useCallback(() => {
-    if (playsLeft <= 0) return;
+    if (playing || playsLeft <= 0) return;
+    pressed.current = document.activeElement === playButton.current;
     unlockAudio();
     const eng = engine();
     applyAudioPrefs(state.prefs, eng);
@@ -102,7 +115,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
       setPlaying(false);
       setHeard(true);
     }, Math.max(0, started.end - eng.now() + 0.25) * 1000);
-  }, [playsLeft, state.prefs, view, ex, onPlayed]);
+  }, [playing, playsLeft, state.prefs, view, ex, onPlayed]);
 
   // Hear again from the tap phase: play straight away (the tap there was the gesture).
   const autoPlayed = useRef(false);
@@ -157,8 +170,8 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
 
   const listenBody = (
     <>
-      <button type="button" className={'echo-play' + (playing ? ' is-playing' : '')} disabled={playing || playsLeft <= 0}
-        aria-label={t(heard ? 'play.echo.replay' : 'play.echo.play')} onClick={listen}>
+      <button ref={playButton} type="button" className={'echo-play' + (playing ? ' is-playing' : '')} disabled={!playing && playsLeft <= 0}
+        aria-disabled={playing || undefined} aria-label={t(heard ? 'play.echo.replay' : 'play.echo.play')} onClick={listen}>
         <Icon name="play" size={34} />
       </button>
       <h2 id="echo-listen-title" className="echo-title" aria-live="polite">
@@ -167,7 +180,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
       <span className="muted-text">{t('play.echo.meta', { bars, meter: metersLabel([ex.meter.id]), bpm: ex.tempo })}</span>
       <PlaysLeft left={playsLeft} />
       {heard && !playing && (
-        <button type="button" className="btn btn--accent echo-start m-in" onClick={onTapBack}>
+        <button ref={tapButton} type="button" className="btn btn--accent echo-start m-in" onClick={onTapBack}>
           {t('play.echo.start')}
         </button>
       )}

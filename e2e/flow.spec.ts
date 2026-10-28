@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
+import { LETTERS, letterOf } from '../src/core/pitch';
 import { announcer, pad, pathUpTo, QUARTERS, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
@@ -596,7 +598,7 @@ test('hearing a note: sol, then the note, named from the notes learned so far', 
 /**
  * A double tap on a Start button (two taps 120 ms apart, a touch screen): the first starts the exercise and the screen
  * changes at once; the second must not press what the new screen has at that spot (Skip to results, an answer, a piano
- * key).
+ * key). The same goes for any tap that changes the screen.
  */
 test.describe('a double tap on Start', () => {
   test.use({ hasTouch: true, isMobile: true });
@@ -687,6 +689,63 @@ test.describe('a double tap on Start', () => {
     await expect(page).toHaveURL(/#\/scales\/play$/);
     await expect(page.getByRole('img', { name: 'No mistakes' })).toBeVisible();
   });
+
+  /**
+   * The taps that end a round or open a setup change the screen at once too: Round done has New round or Change setup
+   * where See the round or See summary was, and a setup its sticky Start or a switch where Change setup or Options was.
+   */
+  test('scales on a phone: See the round shows Round done, and Change setup the setup, with nothing under the finger pressed', async ({ page }) => {
+    await seed(page, { progress: { scales: { settings: { keyMode: 'one', keys: ['C'], types: ['major'], input: 'names', direction: 'up', write: 'signs', showSteps: true, playNotes: false }, stars: {} } } });
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/scales/setup');
+    await page.getByRole('button', { name: 'Start · 1 scale' }).tap();
+    await page.waitForTimeout(500);
+    for (let i = 0; i < 8; i++) await page.keyboard.press('0');
+    await doubleTap(page, page.getByRole('button', { name: /^See the round/ }));
+    await expect(page).toHaveURL(/#\/scales\/done$/);
+    await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+    const change = page.getByRole('link', { name: 'Change setup' });
+    await change.scrollIntoViewIfNeeded();
+    await doubleTap(page, change);
+    await expect(page).toHaveURL(/#\/scales\/setup$/);
+  });
+
+  test('read notes on a phone: See summary shows Round done, and Change setup the setup, with nothing under the finger pressed', async ({ page }) => {
+    await seed(page, { prefs: { noteNames: 'letters' } });
+    // A round the test knows (Play restores it from the session): every note answered wrong, each waits for Next note.
+    const settings = { ...DEFAULT_NOTE_SETTINGS, count: 10, playNotes: false };
+    const notes = generateRound(settings, 4242);
+    await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 4242, focus: [] });
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/notes/play');
+    for (const [i, note] of notes.entries()) {
+      await expect(page.locator('.nplay-count')).toHaveText(`${i + 1} / 10`);
+      await page.keyboard.press(LETTERS.find((L) => L !== letterOf(note.step))!.toLowerCase());
+      if (i < 9) await page.keyboard.press('Enter');
+    }
+    await doubleTap(page, page.getByRole('button', { name: /^See summary/ }));
+    await expect(page).toHaveURL(/#\/notes\/done$/);
+    await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+    const change = page.getByRole('link', { name: 'Change setup' });
+    await change.scrollIntoViewIfNeeded();
+    await doubleTap(page, change);
+    await expect(page).toHaveURL(/#\/notes$/);
+  });
+
+  test('the Key screen on a phone: Use C major opens the setup, and Start under the finger is not pressed', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/notes/key');
+    await doubleTap(page, page.getByRole('button', { name: 'Use C major' }));
+    await expect(page).toHaveURL(/#\/notes$/);
+  });
+
+  test('the scales hub on a phone: Options opens the setup, and the switch under the finger is not changed', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/scales');
+    await doubleTap(page, page.getByRole('link', { name: 'Options' }));
+    await expect(page).toHaveURL(/#\/scales\/setup$/);
+    await expect(page.getByRole('switch', { name: /^Play each note/ })).toHaveAttribute('aria-checked', 'true');
+  });
 });
 
 test('a new screen puts focus on its heading, so a screen reader hears it: Setup, Play, then Results', async ({ page }) => {
@@ -725,5 +784,29 @@ test('echo: Tap it back and Hear again swap the screen inside Play, and its head
     // Clicked: while the run is on, Enter and Space are taps, also on a button.
     await page.getByRole('button', { name: /^Hear again/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Listen to the rhythm' }), size).toBeFocused();
+  }
+});
+
+test('echo: the play button keeps the focus while the rhythm plays, and Tap it back takes it once it has played', async ({ page }) => {
+  test.setTimeout(90_000);
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, mode: 'echo' } } });
+  for (const size of ['phone', 'desktop'] as const) {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await page.goto('./#/setup');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    const tapBack = page.getByRole('button', { name: 'Tap it back' });
+    // The first play, and the replay, after which no play is left.
+    for (const name of ['Play the rhythm', 'Replay the rhythm']) {
+      const play = page.getByRole('button', { name });
+      await play.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('heading', { name: 'Playing…' }), size).toBeVisible();
+      await expect(play, size).toBeFocused();
+      // A second press while it plays does nothing.
+      await page.keyboard.press('Enter');
+      await expect(tapBack, size).toBeVisible({ timeout: 15_000 });
+      await expect(tapBack, size).toBeFocused();
+    }
+    await expect(page.getByText('No plays left'), size).toBeVisible();
   }
 });

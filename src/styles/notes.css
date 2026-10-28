@@ -7,9 +7,6 @@
   width: 100%;
   min-width: 0;
 }
-.tone-faint {
-  color: var(--faint);
-}
 
 /* ---------- Pick-one chips (Range, Extra signs, Time per note): a tinted highlight slides over the chips ---------- */
 .seg--chips {

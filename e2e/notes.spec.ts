@@ -410,6 +410,93 @@ test('read notes lesson: Enter and Space on Higher reached with Tab move the not
   await expect(page.locator('.nfeedback')).not.toHaveText(/^You wrote/);
 });
 
+/**
+ * Hint once used, Next note until the next answer and the staff written on once it is checked go away under the
+ * focus. It must go on to what comes next, not fall to the page, where a screen reader hears nothing and Tab starts
+ * over at Quit.
+ */
+for (const size of ['phone', 'desktop'] as const) {
+  test(`read notes: Hint and Next note pressed with the keyboard hand the focus to the answers (${size})`, async ({ page }) => {
+    const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, count: 10, playNotes: false };
+    const seed = 4242;
+    const notes = generateRound(settings, seed);
+    const wrong = (i: number): string => LETTERS.find((L) => L !== letterOf(notes[i].step))!;
+    await seedStorage(page, { prefs: { noteNames: 'letters' } });
+    await seedRun(page, settings, seed);
+    await page.setViewportSize(VIEWPORTS[size]);
+    await page.goto('./#/notes/play');
+    const firstName = page.getByRole('group', { name: 'Note names' }).getByRole('button').first();
+    await tabTo(page, page.getByRole('button', { name: 'Hint' }));
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.nfeedback')).toHaveClass(/is-hint/);
+    await expect(firstName).toBeFocused();
+    // A wrong answer waits for Next note, which waits, blocked, for the next note's answer.
+    await page.keyboard.press(wrong(0).toLowerCase());
+    await tabTo(page, page.getByRole('button', { name: /^Next note/ }));
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('img', { name: /Note 2 of 10 is highlighted/ })).toBeVisible();
+    await expect(firstName).toBeFocused();
+    // Next note clicked: the focus goes on to the answers too, but Enter does not answer with the one it is on (only
+    // an answer reached with Tab takes Enter).
+    await page.keyboard.press(wrong(1).toLowerCase());
+    await page.getByRole('button', { name: /^Next note/ }).click();
+    await expect(page.getByRole('img', { name: /Note 3 of 10 is highlighted/ })).toBeVisible();
+    await expect(firstName).toBeFocused();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press(' ');
+    await page.waitForTimeout(200);
+    await expect(page.getByRole('progressbar', { name: 'Round progress' }).first()).toHaveAttribute('aria-valuenow', '2');
+  });
+
+  test(`read notes: in a mixed round, Next note into the piano notes hands the focus to the piano (${size})`, async ({ page }) => {
+    // Names for the first 5 notes, then the piano.
+    const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'mixed', count: 10, playNotes: false };
+    const seed = 4242;
+    const notes = generateRound(settings, seed);
+    const wrong = (i: number): string => LETTERS.find((L) => L !== letterOf(notes[i].step))!;
+    await seedStorage(page, { prefs: { noteNames: 'letters' } });
+    await seedRun(page, settings, seed);
+    await page.setViewportSize(VIEWPORTS[size]);
+    await page.goto('./#/notes/play');
+    for (let i = 0; i < 4; i++) {
+      await page.keyboard.press(wrong(i).toLowerCase());
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('img', { name: new RegExp(`Note ${i + 2} of 10 is highlighted`) })).toBeVisible();
+    }
+    await page.keyboard.press(wrong(4).toLowerCase());
+    await tabTo(page, page.getByRole('button', { name: /^Next note/ }));
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('group', { name: /^Piano/ }).getByRole('button').first()).toBeFocused();
+  });
+
+  test(`read notes lesson: a note written and checked with the keyboard hands the focus on (${size})`, async ({ page }) => {
+    // Lesson 1.2 writes sol (the 2nd line); the first arrow key puts the note on the middle line.
+    await seedStorage(page, { progress: { lessons: pathUpTo('1.1', 3, 100) }, prefs: { seenHowTo: true, seenHold: true } });
+    await page.setViewportSize(VIEWPORTS[size]);
+    await page.goto('./#/path');
+    await page.getByRole('button', { name: 'Start lesson 1.2' }).click();
+    const slider = page.getByRole('slider');
+    const next = page.getByRole('button', { name: /^Next note/ });
+    const feedback = page.locator('.nfeedback');
+    // Right: the staff is drawn without its slider once checked, so Next note takes the focus; the next note's staff
+    // takes it once the note is shown.
+    await tabTo(page, slider);
+    for (const key of ['ArrowUp', 'ArrowDown', 'ArrowDown', 'Enter']) await page.keyboard.press(key);
+    await expect(feedback).toHaveText(/^Right/);
+    await expect(next).toBeFocused();
+    await expect(slider).toHaveAttribute('aria-valuetext', 'Not on the staff yet');
+    await expect(slider).toBeFocused();
+    // Wrong (the middle line): Next note, then Enter there, then the next note's staff.
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('Enter');
+    await expect(feedback).toHaveText(/^You wrote/);
+    await expect(next).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(slider).toHaveAttribute('aria-valuetext', 'Not on the staff yet');
+    await expect(slider).toBeFocused();
+  });
+}
+
 test('read notes: a tap on a staff line writes the note on that line, under the room for a flat over the staff', async ({ page }) => {
   // B♭ major with extra signs, seed 59: the first note is G♭5, whose flat puts the top line lower in the drawing.
   const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['Bb'], extras: 'both', tasks: ['write'], playNotes: false };
@@ -643,8 +730,8 @@ test('scales: from Home to the circle, a G major round played with the keyboard,
   expect(missing).toEqual([]);
 });
 
-/** Starts a one-scale round (major, up, silent) from the setup, with these settings on top. */
-async function startScale(page: Page, settings: object): Promise<void> {
+/** Starts a round of one scale (or `count`: major, up, silent) from the setup, with these settings on top. */
+async function startScale(page: Page, settings: object, count = 1): Promise<void> {
   await seedStorage(page, {
     prefs: { seenHowTo: true, seenHold: true },
     progress: { scales: { settings: { keyMode: 'one', types: ['major'], direction: 'up', write: 'signs', showSteps: true, playNotes: false, ...settings }, stars: {} } },
@@ -652,7 +739,7 @@ async function startScale(page: Page, settings: object): Promise<void> {
   await page.goto('./#/scales/setup');
   // A fresh load, so the app reads the settings just seeded (a new hash alone keeps the app and its settings).
   await page.reload();
-  await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+  await page.getByRole('button', { name: count === 1 ? 'Start · 1 scale' : `Start · ${count} scales` }).click();
 }
 
 test('scales: after a click, Enter does not press the piano key or the sign again; once the scale is done it goes on', async ({ page }) => {
@@ -710,6 +797,65 @@ test('scales: Hint right after a wrong sign shows the hint, and a new mistake sa
   await page.keyboard.press('=');
   await expect(feedback).toHaveText('Which sign does D get?');
 });
+
+/**
+ * Hint once used, the signs or the piano keys once the scale is done, Next scale until the next one is done and Start
+ * over before a note is played go away under the focus. It goes on to what comes next, not to the page.
+ */
+for (const size of ['phone', 'desktop'] as const) {
+  test(`scales: Hint, the last sign and Next scale pressed with the keyboard hand the focus on (${size})`, async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await startScale(page, { keyMode: 'pick', keys: ['C', 'G'], input: 'names' }, 2);
+    const signs = page.getByRole('group', { name: /^Sign for/ }).getByRole('button');
+    await tabTo(page, page.getByRole('button', { name: 'Hint' }));
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.nfeedback')).toHaveClass(/is-hint/);
+    await expect(signs.first()).toBeFocused();
+    // Each scale spelled to its last note with the keys (G major has F♯), and the last one (its tonic, natural) with
+    // Enter on the sign.
+    for (const n of [1, 2]) {
+      const g = (await page.locator('.splay-title').first().textContent())!.startsWith('G');
+      for (const k of g ? ['0', '0', '0', '0', '0', '0', '='] : ['0', '0', '0', '0', '0', '0', '0']) await page.keyboard.press(k);
+      await tabTo(page, signs.filter({ hasText: '♮' }));
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.nfeedback')).toHaveText(/: done, no mistakes/);
+      const next = page.getByRole('button', { name: n === 1 ? /^Next scale/ : /^See the round/ });
+      await expect(next).toBeFocused();
+      if (n === 1) {
+        await page.keyboard.press('Enter');
+        await expect(page.locator('.splay-degrees .degree.is-done')).toHaveCount(0);
+        await expect(signs.first()).toBeFocused();
+      }
+    }
+  });
+
+  test(`scales on the piano: Start over, the last key and Next scale pressed with the keyboard hand the focus on (${size})`, async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await startScale(page, { keyMode: 'pick', keys: ['C', 'G'], input: 'piano' }, 2);
+    const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+    // The tonic, then Start over: the piano takes the focus.
+    await page.keyboard.press('a');
+    await tabTo(page, page.getByRole('button', { name: 'Start over' }));
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.splay-degrees .degree.is-done')).toHaveCount(0);
+    await expect(keys.first()).toBeFocused();
+    for (const n of [1, 2]) {
+      const title = (await page.locator('.splay-title').first().textContent())!;
+      // A S D F G H J (C major) or A S D F G H I (G major, F♯), then the top note with Enter on its key.
+      for (const k of title.startsWith('G') ? 'asdfghi' : 'asdfghj') await page.keyboard.press(k);
+      await tabTo(page, page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button', { name: new RegExp('^' + title[0] + ', high') }));
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.nfeedback')).toHaveText(/: done, no mistakes/);
+      const next = page.getByRole('button', { name: n === 1 ? /^Next scale/ : /^See the round/ });
+      await expect(next).toBeFocused();
+      if (n === 1) {
+        await page.keyboard.press('Enter');
+        await expect(page.locator('.splay-degrees .degree.is-done')).toHaveCount(0);
+        await expect(keys.first()).toBeFocused();
+      }
+    }
+  });
+}
 
 test('scales: the right note in the wrong octave says so, and the two keys of a note are told apart', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);

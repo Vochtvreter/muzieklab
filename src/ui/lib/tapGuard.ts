@@ -1,7 +1,8 @@
 /**
- * A double tap on a Start button: the first tap starts the exercise and the screen changes at once, so the second one
- * lands on what the new screen has at that spot (Skip to results, an answer, a piano key) and presses it. A touch tap
- * that comes down within FOLLOW_UP_MS of the tap that started is dropped before it reaches the app. The mouse and the
+ * A double tap on a Start button, or on anything else that changes the screen: the first tap starts the exercise (or
+ * opens Round done, a setup) and the screen changes at once, so the second one lands on what the new screen has at
+ * that spot (Skip to results, an answer, a piano key, New round, the setup's Start) and presses it. A touch tap that
+ * comes down within FOLLOW_UP_MS of the tap that started is dropped before it reaches the app. The mouse and the
  * keyboard are left alone (a mouse click right after Start is meant, as in the e2e tests), and so is the tap pad, which
  * plays on pointerdown: a tap there is only a tap.
  */
@@ -42,8 +43,9 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * An exercise starts or resumes, or a sheet over it closes (inside the tap that does it): a second tap of the same
- * double tap does nothing.
+ * An exercise starts or resumes, a sheet over it closes (inside the tap that does it), or a new screen opens (App.tsx,
+ * on every screen change): a second tap of the same double tap does nothing. A screen change that no tap made (a run
+ * that ends, Back) counts from the last tap.
  */
 export function guardFollowUpTap(): void {
   startedAt = Number.isFinite(clickAt) ? clickAt : performance.now();

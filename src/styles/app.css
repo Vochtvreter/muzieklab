@@ -5135,8 +5135,7 @@ button.lesson-stars:hover {
 .echo-play:disabled {
   opacity: 0.55;
 }
-.echo-play.is-playing:disabled {
-  opacity: 1;
+.echo-play.is-playing {
   box-shadow: 0 0 0 8px var(--accent-halo);
 }
 .echo-title {

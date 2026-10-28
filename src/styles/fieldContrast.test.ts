@@ -158,3 +158,22 @@ describe('the scale degree row', () => {
     });
   }
 });
+
+// The total beside a score ("2 / 3" over Read notes' staff on a phone and a tablet, as on the desktop's Correct card;
+// "1 / 1" on Scales' Round done; the "0 →" before a new count on its circle card) is text the player reads, 20–46 px:
+// 4.5:1 or more on the page and on a card, in light and dark. --faint (2.7:1 on the page in light) is too pale.
+describe('the total beside a score', () => {
+  const totals = [
+    { selector: '.tone-muted', ink: tokenOf(declared(css('app.css'), '.tone-muted', 'color')) },
+    { selector: '.sdone-of', ink: tokenOf(declared(css('scales.css'), '.sdone-of', 'color')) },
+  ];
+  for (const [name, t] of themes) {
+    it(`${name}: 4.5:1 or more on the page and on a card`, () => {
+      for (const x of totals) {
+        expect(x.ink, x.selector).toMatch(/^--[\w-]+$/);
+        expect(contrast(t[x.ink], t['--ground']), x.selector + ' on the page').toBeGreaterThanOrEqual(4.5);
+        expect(contrast(t[x.ink], t['--paper']), x.selector + ' on a card').toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+});

@@ -2005,7 +2005,10 @@ what to do. For accounts:
   button starts once: a touch tap that comes down within 450 ms of the tap that started is dropped, so it does not
   press what the exercise screen has there (Skip to results, an answer, a piano key; `ui/lib/tapGuard.ts`). The same
   goes for the buttons on Play's sheets that start or resume the run (How to play's Got it, the intro's and Ready's
-  Start, Resume, Restart exercise), whose sheet is gone in 240 ms, and for Echo's Tap it back (Hear again is under it).
+  Start, Resume, Restart exercise), whose sheet is gone in 240 ms, for Echo's Tap it back (Hear again is under it), and
+  for every tap that opens another screen (`App.tsx`): See summary and See the round open Round done, with New round
+  or Change setup under the finger, and Change setup, Options or a Key screen's Use open a setup, with its Start or a
+  switch there.
 - Feedback by **colour + shape/icon** (colour-blind safe), sound optional. A missed note gets a × on the staff as
   well as the red (since 0.10.0; §9).
 - Full keyboard support; `prefers-reduced-motion` respected; light & dark theme.
@@ -2150,11 +2153,16 @@ without code changes:
   (a field, a sheet); the first screen is left to the page load. A sheet that closes gives it back to the control that
   opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or the screen's heading (the
   level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new phase's heading takes it.
-  On What's new (desktop), Newer or Older that goes away at the end hands it to the one left.
+  On What's new (desktop), Newer or Older that goes away at the end hands it to the one left. In Read notes and Scales
+  a control that a step disables or removes hands it on: an answer that ends the note or the scale (the last sign or
+  key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and Start over to the
+  answers (the first name button, sign or piano key, or the next note's staff to write on). Echo's play button keeps
+  it while the rhythm plays (`aria-disabled`), then Tap it back takes it.
 - High-contrast theme; big touch targets (≥ 48 px).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,
-  borders and bars.
+  borders and bars. The total after a score (Read notes' "2 / 3", Scales' "1 / 1" on Round done) is `--muted`:
+  `--faint` is 2.7:1 on the page in light.
 
 ---
 
