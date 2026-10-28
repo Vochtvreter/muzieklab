@@ -278,12 +278,12 @@ like the rhythm notation.
 **Hearing the notes** (since 0.10.0). The setup has a *Hear the notes* switch, on by default. With it on, a piano key
 sounds as it is pressed, in the octave of the note on the staff, so the right key sounds as the note. The other keys
 sound in the C–B octave of the note's letter: for B♯4, which sounds as C5, the B key sounds B4, the letter the player
-read, a half step under the note (not B5), and for C♭5 (B4) the C key sounds C5. After every
-answer (names or piano; right, wrong or timed out) the note on the staff sounds as written, with the key signature and
-its own sign applied. After a wrong piano key, the right note follows half a second later. Once a note is answered,
-the piano keys only sound, so the player can compare them. The sound is the Scales piano tone, at the Playback volume.
-Read notes and Keys path lessons keep the player's choice (the lesson presets do not set it). Audio is unlocked from the
-Start tap and from every answer tap.
+read, a half step under the note (not B5), and for C♭5 (B4) the C key sounds C5 (so the C♯ key for B♯4 sounds C♯4,
+and the B♭ key for C♭5 sounds B♭5). After every answer (names or piano; right, wrong or timed out) the note on the
+staff sounds as written, with the key signature and its own sign applied. After a wrong piano key, the right note
+follows half a second later. Once a note is answered, the piano keys only sound, so the player can compare them. The
+sound is the Scales piano tone, at the Playback volume. Read notes and Keys path lessons keep the player's choice (the
+lesson presets do not set it). Audio is unlocked from the Start tap and from every answer tap.
 
 **Write it, hear it** (path lessons, since 0.11.0; §8.2). A round's notes can ask three things, set by the lesson
 (`tasks`; with more than one they take turns every 5 notes, in order):
@@ -353,14 +353,14 @@ changes at most every 4 notes, with a visible clef change.
 
 **Scoring:** correct / total, average response time, and a per-note weak-spot list. Stars: ★ ≥ 70% · ★★ ≥ 85% ·
 ★★★ ≥ 95% with an average under 2 s (starting values, to tune). XP and streaks work as in the rhythm modes.
-Round done's *Needs practice* shows each missed or slow note as the player reads it (since 0.10.0; before, in
+Round done's *Needs practice* shows each missed, hinted or slow note as the player reads it (since 0.10.0; before, in
 scientific pitch, *F5 ×3*): a chip with a small staff (the note's clef and the note, with its own sign; no key signature at this
 size), the name in the player's note names (fa♯ or F♯), and ×count or the seconds. Screen readers hear e.g. *fa, F on
-the top line (treble clef), missed 3 times*. A note right only with a hint is not right (the score), and *Practice
-missed notes* drills it, so it has a row of its own, *With a hint*, between *Missed* and *Slow*; *Nothing to practise:
-every note right, and quick.* shows only when all three are empty. The desktop play screen's Needs practice card also
-uses the player's names, and names each note missed or hinted with its own sign (F♯ missed on a line where an F was
-right reads F♯).
+the top line (treble clef), missed 3 times* or *…, answered with a hint*. A note right only with a hint is not right
+(the score), and *Practice missed notes* drills it, so it has a row of its own, *With a hint*, between *Missed* and
+*Slow*; *Nothing to practise: every note right, and quick.* shows only when all three are empty. The desktop play
+screen's Needs practice card also uses the player's names, and names each note missed or hinted with its own sign (F♯
+missed on a line where an F was right reads F♯).
 
 ### 3.7 Scales — *every key*
 

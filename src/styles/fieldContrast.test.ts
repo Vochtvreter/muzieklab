@@ -115,7 +115,7 @@ describe('the small name under a name button', () => {
   const notes = css('notes.css');
   const faded = Number(declared(notes, '.name-sub', 'opacity') ?? 1);
   const marks = [
-    { name: 'unmarked', selector: '.name-sub', ink: '--ink', fill: '--paper' },
+    { name: 'unmarked', selector: '.name-sub', ink: tokenOf(declared(notes, '.name-btn', 'color')), fill: tokenOf(declared(notes, '.name-btn', 'background')) },
     { name: 'right', selector: '.name-btn.is-right .name-sub', ink: tokenOf(declared(notes, '.name-btn.is-right', 'color')), fill: tokenOf(declared(notes, '.name-btn.is-right', 'background')) },
     { name: 'wrong', selector: '.name-btn.is-wrong .name-sub', ink: tokenOf(declared(notes, '.name-btn.is-wrong', 'color')), fill: tokenOf(declared(notes, '.name-btn.is-wrong', 'background')) },
   ];

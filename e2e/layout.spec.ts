@@ -1232,17 +1232,23 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('read notes: round done with the missed notes on small staves, named as the player reads them', async ({ page }) => {
       known(name, 'notes-done-chips');
-      // A known round (treble, C major, on the staff): the first three notes answered with a wrong letter.
+      // A known round (treble, C major, on the staff): the first three notes answered with a wrong letter, then one
+      // right after a Hint. A note missed before that comes back is missed again: answered with a hint, it would be
+      // left out of With a hint, as it is under Missed already.
       const settings = { ...DEFAULT_NOTE_SETTINGS, count: 10 };
       const seed = 4242;
       await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
       await page.goto('./#/notes/play');
-      const notes = generateRound(settings, seed).slice(0, 3);
-      for (const n of notes) {
-        const wrong = letterOf(n.step) === 'C' ? 'D' : 'C';
+      const missed = new Set<number>();
+      for (const [i, n] of generateRound(settings, seed).entries()) {
+        const hinted = i >= 3 && !missed.has(n.step);
+        const letter = hinted ? letterOf(n.step) : letterOf(n.step) === 'C' ? 'D' : 'C';
+        if (hinted) await page.getByRole('button', { name: 'Hint' }).click();
+        else missed.add(n.step);
         // "C", or "C, key C" with the computer keys shown.
-        await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${wrong}(,|$)`) }).click();
+        await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${letter}(,|$)`) }).click();
         await page.getByRole('button', { name: /^Next note/ }).click();
+        if (hinted) break;
       }
       await page.getByRole('button', { name: 'Skip to summary' }).click();
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
@@ -1250,6 +1256,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(chips.first()).toHaveAccessibleName(/^[A-G] on the .+ \(treble clef\), missed (once|\d times)$/);
       await expect(chips.first()).toHaveText(/^[A-G]/);
       await expect(chips.first().locator('.pitch-staff svg')).toBeVisible();
+      // The With a hint row, between Missed and Slow: its label takes two lines in the label column.
+      const hintedChip = page.getByRole('list', { name: 'With a hint' }).getByRole('listitem').first();
+      await expect(hintedChip).toHaveAccessibleName(/^[A-G] on the .+ \(treble clef\), answered with a hint$/);
+      await expect(hintedChip.locator('.pitch-staff svg')).toBeVisible();
       await expectNotSqueezed(page.locator('.ncard').nth(1));
       await expectClickable(page.getByRole('button', { name: 'Practice missed notes' }));
       // Tablet and desktop: the chips in the main column, Practice missed notes in the side panel.
