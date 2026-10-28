@@ -11,6 +11,8 @@ import { findLesson } from '../../game/path';
 import { pathLessonOf } from '../../game/tracks';
 import type { Prefs } from '../../game/storage';
 import { LengthLane } from '../../render/LengthLane';
+import { fitWindows } from '../../render/staffDraw';
+import { useElementWidth } from '../../render/theme';
 import { t, tx } from '../../i18n';
 import { ExerciseFrame } from '../components/AppShell';
 import { AnalogMetronome, BeatRow, StaffBox, TapPad } from '../components/Bits';
@@ -185,15 +187,22 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const countIn = s.frame.countIn;
   const barText = echo ? t('play.echo.tapBack') : countIn ? t('play.countingIn') : t('play.barOf', { bar: curBar + 1, total: bars });
 
-  const perRow = wide ? 4 : 2;
+  // Four bars a row on tablet and desktop, two on a phone. A busy bar whose notes would run over its bar line draws the
+  // staff smaller, down to 0.75, and where even that is not enough the rows get fewer bars (one on a phone). Worked out
+  // once, over every window the staff shows in turn, so it keeps one layout and one height as it moves on (DESIGN.md
+  // §9). The window depends on it, so Play measures the staff's width itself.
+  const staffRef = useRef<HTMLDivElement>(null);
+  const staffWidth = useElementWidth(staffRef);
+  const fit = useMemo(
+    () =>
+      fitWindows({ meter: ex.meter, width: staffWidth, scale: shorter ? STAFF_SHORTER : 1 }, wide ? 4 : 2, (per) =>
+        [...new Set(view.bars.map((_, i) => windowStart(i, per, 2, bars)))].map((f) => view.bars.slice(f, f + per * 2)),
+      ),
+    [ex.meter, staffWidth, shorter, wide, view.bars, bars],
+  );
+  const perRow = fit.barsPerRow;
   const from = windowStart(curBar, perRow, 2, bars);
   const shownBars = useMemo(() => view.bars.slice(from, from + perRow * 2), [view.bars, from, perRow]);
-  // Every window the staff shows in turn: a busy bar whose notes would run over its bar line draws the staff smaller,
-  // at the size the busiest window needs, so it keeps one height as it moves on (DESIGN.md §9).
-  const windows = useMemo(
-    () => [...new Set(view.bars.map((_, i) => windowStart(i, perRow, 2, bars)))].map((f) => view.bars.slice(f, f + perRow * 2)),
-    [view.bars, perRow, bars],
-  );
   // Room for a triplet's 3 on every window when the exercise has one: the staff keeps its height as the window moves.
   const tuplets = useMemo(() => view.bars.some((b) => b.symbols.some((sym) => sym.tuplet)), [view.bars]);
   const rhythm = useMemo(() => describeBars(shownBars, ex.meter.id, from + 1), [shownBars, ex.meter.id, from]);
@@ -211,8 +220,10 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       }} />
   );
   const staff = (
-    <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={shorter ? STAFF_SHORTER : 1}
-      shrinkToFit fitWindows={windows} end={from + shownBars.length >= view.bars.length} tupletSpace={tuplets} />
+    <div ref={staffRef}>
+      <StaffBox bars={shownBars} meter={ex.meter} barsPerRow={perRow} marks={s.marks} cursor={s.frame.cursor} label={rhythm} scale={fit.scale}
+        end={from + shownBars.length >= view.bars.length} tupletSpace={tuplets} />
+    </div>
   );
   // No playhead before the music's first beat: in the count-in after a pause the clock would put it in the bar before.
   const lane = (

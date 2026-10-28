@@ -968,6 +968,30 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('play and results: a bar whose notes do not fit even drawn smaller gets a row with fewer bars', async ({ page }) => {
+      known(name, 'busy-sixteenths');
+      // Setup's Busy sixteenths with seed 6: the last bar has fourteen notes, which ran over the final barline on a phone
+      // even at 0.75, the smallest the staff is drawn. A phone in portrait draws one bar a row instead (Play: two rows,
+      // bars 1–2), as large as it then fits; in landscape, on tablet and on desktop the notes fit and the rows keep their
+      // bars. Play still fits without scrolling.
+      await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth', 'sixteenth'], rests: ['quarter'], density: 'busy', bars: 4, tempo: 80 }, 6);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      const play = page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)');
+      await expect(play).toBeVisible();
+      await expectBarsFit(play);
+      await expect(play.locator('.vf-stave')).toHaveCount(portraitLayout && !tabletLayout ? 2 : 4);
+      await expectFits(page);
+      // Desktop Play has no Skip link: skip on a phone.
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      const results = page.locator('.results-staff svg:has(.vf-stave)');
+      await expect(results).toBeVisible();
+      await expectBarsFit(results);
+      await expectNoSideScroll(page);
+    });
+
     test('results: a steady late tapper is told about latency, with Calibrate', async ({ page }) => {
       known(name, 'results-latency');
       test.setTimeout(60_000);

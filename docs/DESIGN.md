@@ -1446,16 +1446,19 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   there, as the digits' row beside the lesson line, so the timing lane's two rows stay in the staff card. With a
   triplet, the room for its 3 above the staff comes out of the card's padding there (10 px at the top, not 14 px), for
   the same reason.
-- The rhythm staff on Play and Results is drawn at its screen's size, or smaller, down to 0.75, when a busy bar's
-  notes need more room than its share of the row leaves them (sixteenths on a phone, a busy 4/4 bar on tablet Play or
-  desktop Results). VexFlow never sets notes in less room than they need, so they would run over the bar line and off
-  the staff's end, where the drawing cuts them off. Play draws every window of the exercise at the size the busiest
-  one needs, after the time signature each window starts with, so the staff keeps one height as the window moves
-  (`fitWindows` in `render/staffDraw.ts`). Learn's examples are drawn smaller the same way (§9.1, Narrow phones).
-  At 0.75 the busiest bars can still run over the bar line, and on a phone past the staff's end, where their last
-  notes are cut off: sixteenths at Setup's Busy density on a phone, on tablet Play and on desktop Results, and lesson
-  8.5 on a 320 px phone (about 1 exercise in 20). A lower floor for the rhythm staff (about 0.65) or a bar per row on a
-  phone is waiting on a design decision.
+- The rhythm staff on Play and Results is drawn at its screen's size, or smaller, down to 0.75, when a busy bar's notes
+  need more room than its share of the row leaves them (sixteenths on a phone, a busy 4/4 bar on tablet Play or desktop
+  Results). VexFlow never sets notes in less room than they need, so they would run over the bar line and off the
+  staff's end, where the drawing cuts them off. Smaller than 0.75 the notes are too small to read, so where a bar's
+  notes would still reach its bar line at 0.75, the rows get fewer bars instead (since 0.19.1), each drawn as large as
+  it then fits: on a phone one bar a row (Play shows two rows: the bar being played and the next), on tablet Play and on
+  desktop Results three. That is mostly Setup's Busy sixteenths, and now and then a Unit 8 lesson on a 320 px phone (8.5
+  in about 1 exercise in 20); notes that still fit at 0.75, close to the bar line, keep their rows. Play works the rows
+  and the size out once for the exercise, over every window it shows in turn and after the time signature each window
+  starts with, so the staff keeps one layout and one height as the window moves (`fitWindows` in `render/staffDraw.ts`).
+  Results does the same for the whole exercise, and scrolls when it gets longer. The canvases draw two bars a row on a
+  phone and four on tablet Play and desktop Results, at full size. Learn's examples are drawn smaller the same way
+  (§9.1, Narrow phones); none of them needs fewer bars a row.
 - A pitch staff (Read notes, Scales, Learn, Home's Continue card) is drawn at its screen's size, or smaller when its
   notes need more room than its width leaves at that size: a key signature with many signs, sharps and flats before
   the notes, a 320 px phone. A bar first gives up the room VexFlow leaves before its note (on a phone, keys with up to
@@ -1686,7 +1689,7 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 |---|---|
 | **Home** | Level and streak chips; big *Continue* card; *Daily challenge*; *Free practice*; *Listen (dictation)*; *Progress* (below). |
 | **Practice setup** | Mode switch; chips for meters; icon toggles for note values and rests; extras; bars stepper; tempo slider; live preview + difficulty meter; *Start*. |
-| **Play (Tap)** | Top bar: bar x/y (*Count-in* until the music's first beat), tempo, combo, pause. Notation (wraps 2 bars/line on phone, 4 on desktop, auto-scrolls). Beat dots. Big tap pad (mobile) / "press any key" hint (desktop). |
+| **Play (Tap)** | Top bar: bar x/y (*Count-in* until the music's first beat), tempo, combo, pause. Notation (wraps 2 bars/line on phone, 4 on desktop, fewer for a bar whose notes do not fit, §9; auto-scrolls). Beat dots. Big tap pad (mobile) / "press any key" hint (desktop). |
 | **Dictation** | Play/replay button with plays left; staff showing what you've entered; bar fill meter; note palette; *Check*. |
 | **Results** | Stars, accuracy, timing strip, tips (with Calibrate when it may be the device), Retry / Next, or Try again under 2 stars (§6.4). |
 | **Path** | One Learning path (since 0.11.0; before, three paths behind a switcher): note units and rhythm units taking turns, as a vertical path whose units open to show their lessons by name, with stars and locks (§8.2). |

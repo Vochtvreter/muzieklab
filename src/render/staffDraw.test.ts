@@ -2,10 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { DEMO_44, DEMO_BARS_44, DEMO_LESSON } from './demoFixtures';
 import { getMeter } from '../core/api';
-import type { MeterId } from '../core/types';
+import type { MeterId, NotatedBar } from '../core/types';
+import { windowStart } from '../ui/lib/playMath';
 import { plainSyllable, type CountMark } from './counting';
 import { parseBars } from './notationText';
-import { drawStaff, missMarkPath, type StaffPalette } from './staffDraw';
+import { drawStaff, fitWindows, missMarkPath, type StaffPalette } from './staffDraw';
 
 const DARK: StaffPalette = { ink: '#e8eeed', staff: '#5d6a6b', hit: '#4cc38a', early: '#f0b429', miss: '#ff6b6b', cursor: '#8fbfc1' };
 const PALETTE = new Set(Object.values(DARK));
@@ -55,6 +56,29 @@ const intoBarLine = (svg: SVGSVGElement): number[] =>
 
 /** Lesson 8.5 (Unit 8 review) with seed 150: bars 3 and 7 have twelve symbols each (eleven notes and a rest). */
 const BUSY = ['h q [16 8 16]', 'h [8 16 16] [16 8 16]', '[16 8 16] 8 8r [16 16 16 16] [16 8 16]', 'h q [16 8 16]', 'h q [16 8 16]', 'h [8 16 16] [16 8 16]', '[16 16 16 16] qr [16 16 16 16] [16 8 16]', 'h h'];
+
+/**
+ * Setup's Busy sixteenths (4/4: quarters, eighths and sixteenths, quarter rests; 4 bars) with seeds 6 and 7. Seed 6's
+ * last bar has fourteen notes, seed 7's bar 3 sixteen sixteenths.
+ */
+const SIXTEENTHS: Record<number, string[]> = {
+  6: ['[16 16 16 16] qr [16 16 16 16] [8 16 16]', 'q [16 16 8] [16 16 16 16] [16 16 16 16]', '[16 16 16 16] qr [16 16 16 16] [8 16 16]', '[16 16 16 16] [16 16 16 16] [8 16 16] [16 16 8]'],
+  7: ['[8 16 16] [16 8 16] q qr', '[8 16 16] q q qr', '[16 16 16 16] [16 16 16 16] [16 16 16 16] [16 16 16 16]', '[8 16 16] [16 8 16] q qr'],
+};
+
+/** How many bars each row of a staff has. */
+const rowLengths = (svg: SVGSVGElement): number[] => {
+  const rows = new Map<number, number>();
+  for (const stave of svg.querySelectorAll('.vf-stave')) {
+    const y = points(stave.querySelector('path')!)[0][1];
+    rows.set(y, (rows.get(y) ?? 0) + 1);
+  }
+  return [...rows.values()];
+};
+
+/** Every window of two rows Play shows in turn, for a number of bars a row (as Play.tsx makes them). */
+const playWindows = (bars: NotatedBar[]) => (per: number): NotatedBar[][] =>
+  [...new Set(bars.map((_, i) => windowStart(i, per, 2, bars.length)))].map((from) => bars.slice(from, from + per * 2));
 
 /** Counts side by side whose words (13 px mono, 7.8 per letter) overlap, as "a/b". */
 function touching(svg: SVGSVGElement): string[] {
@@ -219,18 +243,56 @@ describe('drawStaff', () => {
     const all = parseBars(meter, BUSY);
     // Two rows on a phone: bars 1–4, 3–6 and 5–8. Bar 3 needs a smaller staff, most of all where it starts a window,
     // after the time signature; bars 5–8 would fit at full size and are drawn as small, so the staff and the pad under
-    // it keep their place as the window moves on. Also from Play's 0.8 on a short phone (375 × 553).
+    // it keep their place as the window moves on. Also from Play's 0.8 on a short phone (375 × 553). Its notes fit at
+    // that size, so the rows keep two bars each.
     const windows = [0, 2, 4].map((from) => all.slice(from, from + 4));
-    for (const [width, scale] of [[342, 1], [327, 0.8]]) {
-      const play = { meter, width, scale, cursorSpace: true, shrinkToFit: true, fitWindows: windows };
-      const drawn = windows.map((bars, k) => draw({ ...play, bars, end: k === 2 }));
+    for (const [width, base] of [[342, 1], [327, 0.8]]) {
+      const fit = fitWindows({ meter, width, scale: base }, 2, playWindows(all));
+      expect(fit.barsPerRow, `${width}`).toBe(2);
+      expect(fit.scale, `${width}`).toBeLessThan(base);
+      const drawn = windows.map((bars, k) => draw({ bars, meter, width, scale: fit.scale, cursorSpace: true, end: k === 2 }));
       for (const [k, { svg, size }] of drawn.entries()) {
         expect(intoBarLine(svg), `${width}, window ${k + 1}`).toEqual([]);
         expect(svg.getAttribute('viewBox'), `${width}, window ${k + 1}`).toBe(drawn[0].svg.getAttribute('viewBox'));
         expect(size.height, `${width}, window ${k + 1}`).toBe(drawn[0].size.height);
       }
-      expect(drawn[0].size.height, `${width}`).toBeLessThan(Math.round(174 * scale));
     }
+  });
+
+  it("gives Play's staff fewer bars a row, for the whole exercise, when a busy bar's notes do not fit even at 0.75 (fitWindows)", () => {
+    const meter = getMeter('4/4');
+    // A 390 px phone, and a short one at Play's 0.8 (375 × 553): one bar a row, two rows (bars 1–2, 2–3, 3–4). Tablet
+    // Play: three bars a row. At 0.75 with the usual rows the notes run over the bar line.
+    for (const [seed, width, base, barsPerRow, per] of [[6, 342, 1, 2, 1], [6, 327, 0.8, 2, 1], [7, 706, 1, 4, 3]]) {
+      const all = parseBars(meter, SIXTEENTHS[seed]);
+      const at = `seed ${seed} at ${width}`;
+      expect(playWindows(all)(barsPerRow).flatMap((bars) => intoBarLine(draw({ bars, meter, barsPerRow, width, scale: 0.75 }).svg)), at).not.toEqual([]);
+      const fit = fitWindows({ meter, width, scale: base }, barsPerRow, playWindows(all));
+      expect(fit.barsPerRow, at).toBe(per);
+      expect(fit.scale, at).toBeGreaterThanOrEqual(0.75);
+      const windows = playWindows(all)(per);
+      const drawn = windows.map((bars, k) => draw({ bars, meter, barsPerRow: per, width, scale: fit.scale, cursorSpace: true, end: k === windows.length - 1 }));
+      for (const [k, { svg, size }] of drawn.entries()) {
+        expect(intoBarLine(svg), `${at}, window ${k + 1}`).toEqual([]);
+        expect(size.height, `${at}, window ${k + 1}`).toBe(drawn[0].size.height);
+      }
+    }
+  });
+
+  it("gives Results' staff fewer bars a row when a busy bar's notes do not fit even at 0.75", () => {
+    const meter = getMeter('4/4');
+    // Results on a 320, 375 and 390 px phone: one bar a row; on desktop, three. At 0.75 with the usual rows the notes
+    // run over the bar line.
+    for (const [seed, width, barsPerRow, rows] of [[6, 272, 2, [1, 1, 1, 1]], [6, 327, 2, [1, 1, 1, 1]], [6, 342, 2, [1, 1, 1, 1]], [7, 720, 4, [3, 1]]] as const) {
+      const bars = parseBars(meter, SIXTEENTHS[seed]);
+      const at = `seed ${seed} at ${width}`;
+      expect(intoBarLine(draw({ bars, meter, barsPerRow, width, scale: 0.75 }).svg), at).not.toEqual([]);
+      const { svg } = draw({ bars, meter, barsPerRow, width, shrinkToFit: true });
+      expect(rowLengths(svg), at).toEqual(rows);
+      expect(intoBarLine(svg), at).toEqual([]);
+    }
+    // Where the notes fit at 0.75, the rows keep their bars: lesson 8.5's busy bars on a 390 px phone.
+    expect(rowLengths(draw({ bars: parseBars(meter, BUSY), meter, shrinkToFit: true }).svg)).toEqual([2, 2, 2, 2]);
   });
 
   it('centres a whole-bar rest between its bar lines, after the time signature in the first bar (Learn 3.1, 3.2)', () => {

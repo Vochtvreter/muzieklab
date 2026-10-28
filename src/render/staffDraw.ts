@@ -40,15 +40,10 @@ export interface DrawStaffOptions {
    */
   scale?: number;
   /**
-   * Draw smaller (down to MIN_SCALE) when the notes or counts do not fit the width: Learn on a narrow phone, a busy bar
-   * on Play and Results.
+   * Draw smaller (down to MIN_SCALE) when the notes or counts do not fit the width, and with fewer bars a row when they
+   * do not fit even then: Learn on a narrow phone, a busy bar on Results. Play works its size out first (fitWindows).
    */
   shrinkToFit?: boolean;
-  /**
-   * With shrinkToFit, every window of bars the staff shows in turn (Play's two rows of a longer exercise, each starting
-   * with the time signature): drawn at the size the busiest needs, the staff keeps one height as it moves on.
-   */
-  fitWindows?: NotatedBar[][];
 }
 
 // Layout constants from the design's notation images (vf/render2.js).
@@ -129,8 +124,13 @@ export interface DrawnStaff {
 }
 
 export function drawStaff(host: HTMLElement, o: DrawStaffOptions): DrawnStaff {
-  if (o.shrinkToFit && o.fitWindows) return drawAt(host, o, fitScale(o, o.fitWindows)).staff;
-  return shrink(host, o).drawn.staff;
+  let fit = shrink(host, o);
+  // Notes that still run into their bar line at MIN_SCALE get a wider share of a row with fewer bars, down to one a
+  // row (Setup's Busy sixteenths on a phone): drawn any smaller, they would be too small to read.
+  for (let per = Math.min(o.barsPerRow, o.bars.length) - 1; o.shrinkToFit && !fits(fit.drawn) && per >= 1; per--) {
+    fit = shrink(host, { ...o, barsPerRow: per });
+  }
+  return fit.drawn.staff;
 }
 
 /** Draws the staff at its scale, or with shrinkToFit smaller when its notes or counts do not fit. */
@@ -146,26 +146,51 @@ function shrink(host: HTMLElement, o: DrawStaffOptions): { drawn: ReturnType<typ
   return { drawn, scale };
 }
 
-/** Scales worked out for fitWindows, per exercise and layout: Play draws its staff again on every tap. */
-const fitted = new WeakMap<NotatedBar[][], Map<string, number>>();
+/**
+ * Whether the notes of a drawn staff fit: they got the room they need, or, crowded even so, each still ends before the
+ * bar line closing its bar. VexFlow then sets them closer together than it would, which still reads; past that the
+ * bar line runs through them.
+ */
+const fits = (drawn: { crowd: number; reach: number }): boolean => drawn.crowd <= 1 || drawn.reach < 0;
 
-/** The size at which the notes of every window fit (the smallest of their sizes with shrinkToFit). */
-function fitScale(o: DrawStaffOptions, windows: NotatedBar[][]): number {
-  const key = JSON.stringify([o.width, o.barsPerRow, o.scale ?? 1, o.timeSig, !!o.counts]);
-  const known = fitted.get(windows)?.get(key);
-  if (known !== undefined) return known;
+/** Colours for a staff that is only measured (fitWindows), never shown. */
+const MEASURED: StaffPalette = { ink: '#000', staff: '#999', hit: '#000', early: '#000', miss: '#000', cursor: '#000' };
+
+/**
+ * How Play draws an exercise it shows a window at a time (two rows of a longer one): with the most bars a row, up to
+ * `barsPerRow`, at which every window's notes fit at MIN_SCALE or larger, at the size the busiest window needs there,
+ * measured after the time signature each window starts with. One layout and one size for the whole exercise, so the
+ * staff keeps its height and the pad its place as the window moves on. `windowsOf` gives the windows for a number of
+ * bars a row, in order: the last one ends the piece.
+ */
+export function fitWindows(
+  o: Pick<DrawStaffOptions, 'meter' | 'width' | 'scale'>,
+  barsPerRow: number,
+  windowsOf: (barsPerRow: number) => NotatedBar[][],
+): { barsPerRow: number; scale: number } {
   const host = document.createElement('div');
-  const scale = Math.min(o.scale ?? 1, ...windows.map((bars) => shrink(host, { ...o, bars, marks: undefined, cursor: null }).scale));
-  fitted.set(windows, (fitted.get(windows) ?? new Map<string, number>()).set(key, scale));
-  return scale;
+  for (let per = Math.max(1, barsPerRow); ; per--) {
+    let scale = o.scale ?? 1;
+    // Fewer bars a row as soon as one window does not fit; one a row is the last thing to try.
+    const all = windowsOf(per).every((bars, k, windows) => {
+      const end = k === windows.length - 1;
+      const fit = shrink(host, { ...o, bars, barsPerRow: per, end, cursorSpace: false, palette: MEASURED, shrinkToFit: true });
+      scale = Math.min(scale, fit.scale);
+      return per === 1 || fits(fit.drawn);
+    });
+    if (all) return { barsPerRow: per, scale };
+  }
 }
 
-/** Draws the staff at one scale. `crowd` is how much more room its notes or counts need than they got (above 1). */
-function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff: DrawnStaff; crowd: number } {
+/**
+ * Draws the staff at one scale. `crowd` is how much more room its notes or counts need than they got (above 1), and
+ * `reach` how far its notes reach past the bar line closing their bar (below 0 when every note ends before it).
+ */
+function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff: DrawnStaff; crowd: number; reach: number } {
   const { bars, meter, palette: pal, width } = o;
   const onsets = new Map<number, NoteBox>();
   host.innerHTML = '';
-  if (bars.length === 0 || width <= 0) return { staff: { width, height: 0, onsets }, crowd: 0 };
+  if (bars.length === 0 || width <= 0) return { staff: { width, height: 0, onsets }, crowd: 0, reach: -Infinity };
 
   const per = Math.max(1, Math.min(o.barsPerRow, bars.length));
   const rows = Math.ceil(bars.length / per);
@@ -191,6 +216,7 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
   const counts: { x: number; y: number; text: string; held: boolean }[] = [];
   const missed: StaveNote[] = []; // the note that starts each missed onset (a tied continuation gets no second ×)
   let crowd = 0;
+  let reach = -Infinity;
 
   bars.forEach((bar, i) => {
     const row = Math.floor(i / per);
@@ -273,6 +299,9 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
       rest.setCenterXShift((left + right) / 2 - rest.getGlyphWidth() / 2 - (rest.getAbsoluteX() - rest.getCenterXShift()));
     });
     voice.draw(ctx, stave);
+    // How close the notes come to the bar line closing the bar: the final barline's thin line is END_LINE inside.
+    const line = stave.getX() + stave.getWidth() - (ends ? END_LINE : 0);
+    for (const note of notes) reach = Math.max(reach, rightOf(note) - line);
     beams.forEach((b) => b.setContext(ctx).draw());
     tuplets.forEach((t) => t.setContext(ctx).draw());
     if (o.counts) counts.push(...placeCounts(bar, meter, notes, stave.getX() + stave.getWidth() - 14, stave, o.counts.text));
@@ -283,7 +312,7 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
   for (const [i, note] of onsetNotes) onsets.set(i, boxOf(note));
   const shownH = Math.round(height * scale);
   const svg = host.querySelector('svg');
-  if (!svg) return { staff: { width, height: shownH, onsets }, crowd };
+  if (!svg) return { staff: { width, height: shownH, onsets }, crowd, reach };
   paintSvg(svg, pal, colourById);
   if (missed.length) addMissMarks(svg, missed.map((n) => ({ x: centreX(n), y: n.getYs()[0] })), pal.miss);
   if (cursorNote) placeCursor(host, boxOf(cursorNote), pal.cursor);
@@ -295,7 +324,7 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
   svg.setAttribute('height', String(shownH));
   svg.setAttribute('aria-hidden', 'true');
   svg.style.display = 'block';
-  return { staff: { width, height: shownH, onsets }, crowd };
+  return { staff: { width, height: shownH, onsets }, crowd, reach };
 }
 
 /**
@@ -408,6 +437,15 @@ function addMissMarks(svg: SVGSVGElement, heads: { x: number; y: number }[], col
     g.appendChild(p);
   }
   svg.appendChild(g);
+}
+
+/** Where a note ends on the right: its box holds its flag, but stops a unit short of a dot (placed as Dot.draw does). */
+function rightOf(note: StaveNote): number {
+  const box = boxOf(note);
+  const dots = Dot.getDots(note).map(
+    (d) => note.getModifierStartXY(d.getPosition(), d.checkIndex(), { forceFlagRight: true }).x + d.getXShift() + d.getWidth(),
+  );
+  return Math.max(box.x + box.w, ...dots);
 }
 
 function boxOf(note: StaveNote): NoteBox {
