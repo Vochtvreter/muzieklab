@@ -220,9 +220,12 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     scale: scaleSpoken(sc),
     notes: notes.slice(0, pos).map(noteName).join(', ') || t('scales.play.none'),
   });
+  // Up and down on the shortest phones draws the staff at 1, so a why of two lines leaves Hint and Next scale in view
+  // with its second degree row, also beside a B♭ scale's staff, the tallest (DESIGN.md §9).
+  const staffScale = desktop ? 1.7 : shorter && dir === 'upDown' ? 1 : short || shorter ? 1.1 : bp === 'tablet' ? 1.8 : 1.25;
   const staff = (
     <PitchStaff clef="treble" keyId={keyId} notes={shown} fitNotes={pageNotes} slots={PAGE} cursor={done ? null : pos - start} barlines={false} room={2.2}
-      scale={desktop ? 1.7 : short || shorter ? 1.1 : bp === 'tablet' ? 1.8 : 1.25} label={staffLabel} className="splay-staff-svg" />
+      scale={staffScale} label={staffLabel} className="splay-staff-svg" />
   );
 
   // Degree boxes: given letters when spelling, "?" for the next note when playing.

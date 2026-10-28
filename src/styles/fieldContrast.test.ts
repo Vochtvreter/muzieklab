@@ -132,7 +132,8 @@ describe('the small name under a name button', () => {
 // Scales' degree row (scales.css): the W and H between the boxes (11–12 px bold), still to come, passed (W) and passed
 // in gold (H, and the step and a half), are the step pattern the setup's Show the steps promises, and the degree
 // number in each box (9.5–10.5 px bold) is drawn in the box's ink. Both must read, 4.5:1 or more: the steps on the
-// phone's page (--ground) and in the tablet and desktop cards (--paper), each number on its box's fill.
+// phone's page (--ground) and in the tablet and desktop cards (--paper), each number on its box's fill. A W passed and
+// one still to come must also tell apart, 1.5:1 or more between them (gold sets a passed H apart by its hue).
 describe('the scale degree row', () => {
   const scales = css('scales.css');
   const steps = ['.degree-step', '.degree-step.is-known', '.degree-step.is-H', '.degree-step.is-WH'].map((selector) => ({ selector, ink: tokenOf(declared(scales, selector, 'color')) }));
@@ -148,6 +149,9 @@ describe('the scale degree row', () => {
         expect(contrast(t[s.ink], t['--ground']), s.selector + ' on the page').toBeGreaterThanOrEqual(4.5);
         expect(contrast(t[s.ink], t['--paper']), s.selector + ' on a card').toBeGreaterThanOrEqual(4.5);
       }
+    });
+    it(`${name}: a step passed and one still to come tell apart`, () => {
+      expect(contrast(t[steps[1].ink], t[steps[0].ink]), '.degree-step.is-known against .degree-step').toBeGreaterThanOrEqual(1.5);
     });
     it(`${name}: the degree numbers are 4.5:1 or more on each box`, () => {
       for (const b of boxes) expect(contrast(blend(t[b.ink], t[b.fill], faded), t[b.fill]), b.selector).toBeGreaterThanOrEqual(4.5);

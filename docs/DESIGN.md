@@ -397,7 +397,12 @@ Learn and practice major and minor scales in all 15 keys.
   Read notes: the window starts somewhere new with every scale, so the letters find the keys.
   The player plays the scale note by note; each right
   note is written on the staff and fills the next degree box. The W/H steps sit between
-  the boxes. A wrong key flashes red and the feedback names the step ("From G, go a whole
+  the boxes: those still to come in `--muted`, a W passed in `--accent-ink` (about 1.6:1 from `--muted`, so the two
+  tell apart) and an H or a step and a half passed in gold (`--reward-ink`), each 4.5:1 or more on the page and on a
+  card (§11); the degree numbers take their box's ink, not faded. The ScalePlay and ScaleSpell boards (phone and
+  desktop) draw the steps still to come fainter (#a7b1b0, under 2:1), a W passed in the accent, an H in `--gold-ink`
+  and the numbers at 70–75%.
+  A wrong key flashes red and the feedback names the step ("From G, go a whole
   step: skip one key"). The note's own key an octave off is a mistake too, as the octave counts; the feedback says so
   (*Right note, wrong octave: play the lower C.*), not *Not C*. A key the window has twice, an octave apart, reads
   *low* or *high* after its name to a screen reader (*C, low*), and each degree box reads its note once answered, else
@@ -1492,17 +1497,18 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     degree rows are 40 px high, 4 px apart.
   - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
     0.8, the Read notes staff at 1.15 (not 1.45; about 0.82 and 1.0 with ledger lines) and the Scales staff at 1.1 (not
-    1.25), or smaller still to fit their notes. With a time per note, Read notes' staff card has 6 px above and below
-    and its timer bar sits 4 px under the staff, so a why of three lines with two ledger lines leaves Hint and Next note
-    in view at 375 × 553. The floors are lower (pad 72 px, Read notes piano 64 px with its black
-    keys kept at 44 px and the white keys' labels below them, Scales piano 110 px), and so are the name buttons
-    (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign buttons (64 px, 56 px
-    with Up & down), the analog beat counter (44 px, as the digits' row), Echo's listen card and Calibration's intro.
-    At 320 px wide Read notes leaves out *Any octave counts* above the key labels (screen readers still read it), so
-    the why of a wrong key in a lesson in a key fits on its three lines. Up & down's done line leaves out the scale's
-    15 notes, which its degree rows show right above it (screen readers still read them): it takes two lines at most,
-    in Dutch at 320 px too, and like a why of two lines leaves Hint and Next scale in view beside G♯ harmonic minor's
-    staff, the tallest.
+    1.25; 1 with Up & down, its staff card 4 px above and below), or smaller still to fit their notes. With a time per
+    note, Read notes' staff card has 6 px above and below and its timer bar sits 4 px under the staff, so a why of three
+    lines with two ledger lines leaves Hint and Next note in view at 375 × 553. The floors are lower (pad 72 px, Read
+    notes piano 64 px with its black keys kept at 44 px and the white keys' labels below them, Scales piano 110 px), and
+    so are the name buttons (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign
+    buttons (64 px, 56 px with Up & down), the analog beat counter (44 px, as the digits' row), Echo's listen card and
+    Calibration's intro. At 320 px wide Read notes leaves out *Any octave counts* above the key labels (screen readers
+    still read it), so the why of a wrong key in a lesson in a key fits on its three lines. Up & down's done line leaves
+    out the scale's 15 notes, which its degree rows show right above it (screen readers still read them): it takes two
+    lines at most, in Dutch at 320 px too. Like a why of two lines, it leaves Hint and Next scale in view beside the
+    tallest staff, a B♭ scale's (its high B♭ with its flat), also in B♭ harmonic minor, whose eyebrow takes two lines at
+    375 px beside *2 mistakes*.
 - **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a
   1280 × 720 laptop, `laptop-720`) the page's padding (20 px at the top, 16 px at the bottom), its gap (16 px) and the
   staff card's padding (20 × 40 px, 16 px at the bottom) tighten, and the stat cards are lower (12 px × 18 px), so two

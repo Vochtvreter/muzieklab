@@ -692,8 +692,9 @@
 }
 /*
  * The steps (Show the steps) are text to read, 4.5:1 or more on the phone's page and on a card: the ones still to come
- * in --muted, the ones passed in the accent, a half step and a step and a half in gold (--reward-ink: --gold-ink is
- * 4.2:1 on --ground).
+ * in --muted, a whole step passed in --accent-ink, about 1.6:1 from --muted in light and dark so the two tell apart
+ * (--accent is only 1.1–1.2:1 from it), and a half step and a step and a half passed in gold (--reward-ink: --gold-ink
+ * is 4.2:1 on --ground). The boards (ScalePlay, ScaleSpell) draw the ones still to come at #a7b1b0, under 2:1.
  */
 .degree-step {
   flex: none;
@@ -704,7 +705,7 @@
   color: var(--muted);
 }
 .degree-step.is-known {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .degree-step.is-H,
 .degree-step.is-WH {
@@ -983,12 +984,18 @@
     height: 64px;
   }
   /*
-   * Up and down: the gaps and its two degree rows are lower still, and the sign buttons give up 8 px, so a why of two
-   * lines leaves Hint and Next scale in view beside G♯ harmonic minor's tall staff. The done line leaves out its 15
-   * notes, which the degree rows right above it show; screen readers still read them (the .sr-only pattern, base.css).
+   * Up and down: the gaps and its two degree rows are lower still, the staff is drawn at 1 (ScalesPlay) with 4 px above
+   * and below it, and the sign buttons give up 8 px, so a why of two lines leaves Hint and Next scale in view beside the
+   * tallest staff, a B♭ scale's (its high B♭ with its flat), also in B♭ harmonic minor, whose eyebrow takes two lines at
+   * 375 px beside "2 mistakes". The done line leaves out its 15 notes, which the degree rows right above it show; screen
+   * readers still read them (the .sr-only pattern, base.css).
    */
   .splay--updown {
     gap: 6px;
+  }
+  .splay--updown .splay-staff {
+    padding-top: 4px;
+    padding-bottom: 4px;
   }
   .splay--updown .degree {
     height: 32px;

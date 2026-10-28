@@ -1566,14 +1566,16 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('scales: up and down fits with its second degree row, on the piano and with the signs', async ({ page }) => {
       known(name, 'scales-up-down');
       // Up and down adds the way back as a second degree row (DESIGN.md §3.7): G major on the piano, A♯ harmonic minor
-      // with the signs, whose long name and four sign buttons take the most room on a 320 px phone, and G♯ harmonic
-      // minor, whose staff is the tallest of the long ones and whose done line names all 15 notes.
+      // with the signs, whose long name and four sign buttons take the most room on a 320 px phone, G♯ harmonic minor,
+      // whose done line names all 15 notes, and B♭ harmonic minor: its high B♭ with its flat makes the tallest staff (as
+      // in every B♭ scale), under an eyebrow that takes two lines at 375 px beside "2 mistakes".
       const rounds = [
-        { keys: ['G'], types: ['major'], input: 'piano', title: 'G major' },
-        { keys: ['C#'], types: ['harmonic'], input: 'names', title: 'A♯ harmonic minor' },
-        { keys: ['B'], types: ['harmonic'], input: 'names', title: 'G♯ harmonic minor' },
+        { keys: ['G'], types: ['major'], input: 'piano', title: 'G major', signs: 0 },
+        { keys: ['C#'], types: ['harmonic'], input: 'names', title: 'A♯ harmonic minor', signs: 4 },
+        { keys: ['B'], types: ['harmonic'], input: 'names', title: 'G♯ harmonic minor', signs: 4 },
+        { keys: ['Db'], types: ['harmonic'], input: 'names', title: 'B♭ harmonic minor', signs: 3 },
       ];
-      for (const { title, ...round } of rounds) {
+      for (const { title, signs: signCount, ...round } of rounds) {
         await seed(page, { progress: { scales: { settings: { keyMode: 'one', direction: 'upDown', write: 'signs', showSteps: true, playNotes: false, ...round }, stars: {} } } });
         await page.goto('./#/scales/setup');
         // A fresh load, so the app reads the settings just seeded.
@@ -1586,9 +1588,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i), inPlace);
           if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
         } else {
+          // Four signs where the scale has a double sharp (A♯ and G♯ harmonic minor), three for B♭ harmonic minor.
           const signs = page.getByRole('group', { name: /^Sign for / }).getByRole('button');
-          await expect(signs).toHaveCount(4);
-          for (let i = 0; i < 4; i++) await expectClickable(signs.nth(i), inPlace);
+          await expect(signs).toHaveCount(signCount);
+          for (let i = 0; i < signCount; i++) await expectClickable(signs.nth(i), inPlace);
           await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
           await expectTouchHeight(signs.first());
         }
