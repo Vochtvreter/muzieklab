@@ -8,7 +8,7 @@ import { CHAPTERS } from '../src/ui/learn/chapters';
 import type { Me } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
 import {
-  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectFocusRing, expectNoClippedLabels, expectNoOverlap,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectFocusRing, expectHitHeight, expectNoClippedLabels, expectNoOverlap,
   expectNoPageScroll, expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectStavesFit, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi,
   pad, pathUpTo,
   QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
@@ -146,6 +146,76 @@ async function expectCountsApart(page: Page): Promise<void> {
     }),
   );
   expect(out, 'counts that overlap').toEqual([]);
+}
+
+/**
+ * Learn's tables and diagrams keep their words apart (DESIGN.md §9.1), also on a 320 px phone and in Dutch: a table
+ * row's name stays in its column, clear of its value (5.2's "Gepunteerde" ran over "2 + 1 = 3 tellen"); each beat's
+ * word in 1.3 stays in its column ("halfzwaar" ran into "licht"); a step pattern or a row of letters stays on one line
+ * inside its card (11.4's "W H W W W W" left its "H" alone below); and each count of a beat grid stays in its cell
+ * (5.3's Dutch "(en)" ran over its outline).
+ */
+async function expectLearnWordsApart(page: Page, where = ''): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.evaluate(() => {
+    const lines = (el: Element): DOMRect[] => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return [...range.getClientRects()].filter((r) => r.width > 0);
+    };
+    const left = (el: Element): number => Math.min(...lines(el).map((r) => r.left));
+    const right = (el: Element): number => Math.max(...lines(el).map((r) => r.right));
+    const table = [...document.querySelectorAll('.learn-table-row')].flatMap((row) => {
+      const text = row.querySelector('.learn-table-text')!;
+      const value = row.querySelector('.learn-table-value');
+      const name = text.querySelector('b')!.textContent;
+      if (right(text) > text.getBoundingClientRect().right + 0.5) return [`table: "${name}" runs out of its column`];
+      return value && right(text) > left(value) - 2 ? [`table: "${name}" runs into "${value.textContent}"`] : [];
+    });
+    const beats = [...document.querySelectorAll('.learn-accent-row')].flatMap((row) => {
+      const words = [...row.querySelectorAll('.learn-accent > span:last-child')];
+      return words.flatMap((word, i) => {
+        if (right(word) > word.parentElement!.getBoundingClientRect().right + 0.5) return [`beats: "${word.textContent}" runs out of its column`];
+        return words[i + 1] && right(word) > left(words[i + 1]) - 2 ? [`beats: "${word.textContent}" runs into "${words[i + 1].textContent}"`] : [];
+      });
+    });
+    const values = [...document.querySelectorAll('.learn-example-head .mono-accent, .learn-sig .mono-accent')].flatMap((value) => {
+      const card = value.closest('.learn-section')!;
+      const inside = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).paddingRight);
+      if (new Set(lines(value).map((r) => Math.round(r.top))).size > 1) return [`"${value.textContent}" breaks onto a second line`];
+      return right(value) > inside + 0.5 ? [`"${value.textContent}" runs out of its card`] : [];
+    });
+    const grid = [...document.querySelectorAll('.learn-grid-cell')].flatMap((cell) => {
+      const box = cell.getBoundingClientRect();
+      return left(cell) < box.left + 1 || right(cell) > box.right - 1 ? [`beat grid: "${cell.textContent}" runs over its cell`] : [];
+    });
+    return [...table, ...beats, ...values, ...grid];
+  });
+  expect(out, `${where} Learn words that run into each other`.trim()).toEqual([]);
+}
+
+/**
+ * A side menu that scrolls on its own (DESIGN.md §9 Scrolling) shows the whole focus ring of each item, from the first
+ * to the last with Tab and back with Shift+Tab. Tab scrolls the menu just far enough to show the item's box, and the
+ * ring lies outside it (Learn's 11.5 lost its bottom edge on a 1280 × 800 screen).
+ */
+async function expectRingsInSideMenu(menu: Locator, where = ''): Promise<void> {
+  const items = menu.locator('a, button');
+  const n = await items.count();
+  await items.first().focus();
+  for (const key of [...Array<string>(n - 1).fill('Tab'), ...Array<string>(n - 1).fill('Shift+Tab')]) {
+    await menu.page().keyboard.press(key);
+    const cut = await menu.evaluate((box) => {
+      const el = document.activeElement!;
+      if (!box.contains(el)) return 'the focus left the menu';
+      const style = getComputedStyle(el);
+      const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+      const r = el.getBoundingClientRect();
+      const top = box.getBoundingClientRect().top + box.clientTop;
+      return r.top - ring < top - 0.5 || r.bottom + ring > top + box.clientHeight + 0.5 ? `${el.textContent}: its ring is cut off` : null;
+    });
+    expect(cut, `${where} ${key}`.trim()).toBeNull();
+  }
 }
 
 /**
@@ -483,6 +553,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         });
       });
       expect(missed, 'taps that open another lesson').toEqual([]);
+      // Each lesson's stars are a 44 px tap under their unit's head, which keeps its own 44 px and opens the unit.
+      for (const stars of await page.locator('button.lesson-stars').all()) await expectHitHeight(stars);
+      for (const head of await page.locator('button.unit-head[aria-expanded="false"]').all()) await expectHitHeight(head);
       await expectNoSideScroll(page);
     });
 
@@ -743,6 +816,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.getByRole('button', { name: /^Older 0\.2\.2/ }).click();
         await expect(page.getByRole('heading', { level: 2, name: 'Four-star Results' })).toBeVisible();
         await expectClickable(page.getByRole('button', { name: /^Newer 0\.3\.0/ }));
+        await expectRingsInSideMenu(list);
       } else {
         await expectNotSqueezed(page.locator('.cl-latest'));
         // Tablet uses the full width under the header, as on the board, not the 640 px column.
@@ -1729,6 +1803,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const jump = page.getByRole('navigation', { name: 'Sections' });
       await expect(jump).toHaveCount(layout === 'phone' ? 0 : 1);
       if (layout === 'desktop') await expectNoOverlap(page.locator('.learn-side'), page.locator('.learn-main'));
+      // The Learn link over the title is a 44 px tap; so are the section chips (every tablet size here is a touch
+      // screen), as the sidebar's rows are on one.
+      if (layout !== 'phone') await expectHitHeight(page.locator('a.learn-crumb'));
+      if (layout === 'tablet') for (const chip of await jump.getByRole('link').all()) await expectTouchHeight(chip);
       if (layout !== 'phone') {
         await expectClickable(jump.getByRole('link', { name: /Naming the key/ }));
         await jump.getByRole('link', { name: /Naming the key/ }).click();
@@ -1757,6 +1835,15 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('link', { name: 'Practice on the piano →' }));
       await expectClickable(page.getByRole('link', { name: /Next\s*10 · Key signatures/ }));
       await expectNoSideScroll(page);
+    });
+
+    test('learn: Tab through the chapter sidebar shows each link\'s whole focus ring', async ({ page }) => {
+      known(name, 'learn-side-ring');
+      test.skip(!desktopLayout, 'phone and tablet have no chapter sidebar');
+      for (const c of CHAPTERS) {
+        await page.goto(`./#/learn/${c.n}`);
+        await expectRingsInSideMenu(page.locator('.learn-side'), `chapter ${c.n}:`);
+      }
     });
 
     test('learn: rhythm chapters count under the notes, the note tree switches, words answer the quick check', async ({ page }) => {
@@ -1841,6 +1928,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.learn-practice')).toHaveCount(c.sections.filter((s) => s.practice).length);
         await expectNoSideScroll(page);
         await expectStavesFit(page);
+        await expectLearnWordsApart(page);
         if (c.sections.some((s) => s.practice)) await expectClickable(page.locator('.learn-practice').last());
         await expectClickable(page.getByRole('link', { name: 'Back to all chapters' }));
       }
@@ -3108,7 +3196,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           });
           expect(width, 'the start prompt fits on screen').toBeLessThanOrEqual(VIEWPORTS[name].width - 32);
         }
-        if (hash.startsWith('#/learn/')) await expectCountsApart(page);
+        if (hash.startsWith('#/learn/')) {
+          await expectCountsApart(page);
+          await expectLearnWordsApart(page);
+        }
         if (hash.endsWith('/key')) await expectKeyNamesFit(page);
         if (hash === '#/changelog') {
           // The latest release first, then one with a fix (its chips are in the list on a phone, on the card on desktop).
@@ -3356,6 +3447,25 @@ test.describe('the status filter at every phone width', () => {
         await expectNoSideScroll(page);
       });
     }
+  }
+});
+
+test.describe("Learn's tables and diagrams at every phone width", () => {
+  test.use({ hasTouch: true });
+  // The fixed sizes miss widths in between: Dutch "halfzwaar" ran into "licht" up to 360 px, a common Android width.
+  for (const language of ['en', 'nl']) {
+    test(`${language}: their words stay apart from 320 to 699 px`, async ({ page }) => {
+      await seed(page, { prefs: { language, seenHowTo: true, seenHold: true } });
+      for (const c of CHAPTERS) {
+        await page.setViewportSize({ width: 320, height: 800 });
+        await page.goto(`./#/learn/${c.n}`);
+        await expect(page.locator('.learn-section')).toHaveCount(c.sections.length);
+        for (let width = 320; width < 700; width += 10) {
+          await page.setViewportSize({ width, height: 800 });
+          await expectLearnWordsApart(page, `chapter ${c.n} at ${width} px:`);
+        }
+      }
+    });
   }
 });
 

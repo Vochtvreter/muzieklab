@@ -1021,7 +1021,8 @@ How write and hear work is in §3.5, *Write it, hear it*.
   with rhythm progress: sol).
 - Every open unit is a button that opens and closes it (the current unit is open). An open unit shows its lessons by
   name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars, on a second line
-  where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again. The
+  where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again with
+  a tap on its stars, a 44 px area from the unit's title row down (the row keeps its own 44 px and opens the unit). The
   current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already says it. A note unit's
   node shows its note (*sol*), a rhythm unit's its glyph.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
@@ -1666,7 +1667,8 @@ scroll the whole page on phones with the system scrollbar hidden. At every size 
 edge, never at the side of the content (since 0.13.2; before, a page in a centred column, such as the setups and
 Results (1160 px) or Account (640 px), had it at the column's edge): the page spans the window and pads its content into
 the column, and the Learning path's units, which scroll in a box of their own, reach the window's edge the same way.
-Only a side menu (a Learn chapter's sections, What's new's releases on desktop) scrolls where it stands.
+Only a side menu (a Learn chapter's sections, What's new's releases on desktop) scrolls where it stands. It keeps 6 px
+of room at its top and bottom when Tab scrolls an item to its edge, so the item's focus ring shows whole.
 
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every
@@ -1725,7 +1727,15 @@ ABRSM, Trinity, RCM and Kodály.
 **Narrow phones.** A rhythm example keeps two bars a row on every phone. When its counts would touch (two busy bars on
 a 320 px phone, or Dutch *en*, wider than *&*, at 375 and 390 px) or its notes would run into the bar line (the note
 tree's sixteenths at 320 px), the staff is drawn smaller, down to 0.75, as Play's staff is on a short screen. A held
-count shares the room between its neighbours by how wide their words are. Where everything fits, nothing changes.
+count shares the room between its neighbours by how wide their words are. Where everything fits, nothing changes. The
+tables and diagrams keep their words apart too, at every width and in Dutch:
+- A table row's name keeps its words whole (*Gepunteerde*); its value wraps instead (*2 + 1 = 3* over *tellen*).
+- 1.3's strong and weak beats: each beat is at least as wide as its word (*medium*, *halfzwaar*), and the meters share
+  their columns, so the beats still line up from row to row.
+- A step pattern or a row of letters (*W H W W W W H*, *E G B D F*) stays on one line and its title wraps instead;
+  beside a key signature the letters go under the staff when they do not fit (*F C G D A E B* at 320 px).
+- Under 360 px a beat grid's row names (4.2, 5.3, 7.1) go above their cells, so its 12 columns get the width: Dutch
+  *(en)* is wider than three of them beside the names.
 
 **Practice links** start practice for the section straight away (since 0.10.0; before, they opened the setup, with
 13 controls between the section and the exercise):
@@ -1806,7 +1816,9 @@ On tablet (≥ 700 px) and desktop (≥ 1100 px) a chapter page keeps one column
 sections in reading order, each filling the width. Inside a section, related parts sit side
 by side (lines | spaces, example | rule, text | keyboard) and stack again on narrow screens,
 so notation keeps a readable size instead of stretching. Desktop adds the chapter sidebar;
-on tablet the sidebar becomes a row of section chips under the title. The canvas shows chapter 8 at 834 px (tablet) and 1280 px (desktop).
+on tablet the sidebar becomes a row of section chips under the title. On a touch screen the sidebar's rows and the
+chips are 44 px tall, and the *Learn* link over the title (tablet and desktop) is a 44 px tap. The canvas shows
+chapter 8 at 834 px (tablet) and 1280 px (desktop).
 Both use the full width (up to 1160 px of content) instead of the 640 px column, and the Learn tab's chapter list
 (up to 960 px) shows a chapter's sections in two columns, read down. A jump to a section (a chip, the sidebar, or a
 link to `#/learn/8?s=8.3`) brings it into view and gives it focus, so Tab goes on inside the section.

@@ -1231,8 +1231,16 @@
   flex-direction: column;
 }
 .learn-crumb {
+  position: relative;
+  display: inline-block;
   color: inherit;
   text-decoration: none;
+}
+/* The link is a word in the 12 px eyebrow: a 44 px tap around it, in the room above and below the line. */
+.learn-crumb::after {
+  content: '';
+  position: absolute;
+  inset: -15px -8px;
 }
 .learn-crumb:hover {
   color: var(--accent-ink);
@@ -1279,6 +1287,12 @@
 .learn-chip:hover {
   color: var(--ink);
   border-color: var(--accent);
+}
+/* The chips stand in for the sidebar on tablet: on a touch screen (a phone on its side) they get its 44 px rows. */
+@media (pointer: coarse) {
+  .learn-chip {
+    min-height: 44px;
+  }
 }
 .learn-section {
   scroll-margin-top: 16px;
@@ -1355,6 +1369,12 @@
   gap: 8px;
   font-size: 13px;
 }
+/* A step pattern or a row of letters reads as one thing ("W H W W W W" and "H" below reads as another pattern): it
+   stays on one line, and the title beside it wraps instead. */
+.learn-example-head .mono-accent,
+.learn-sig .mono-accent {
+  white-space: nowrap;
+}
 .learn-aid {
   font-size: 13px;
   color: var(--muted);
@@ -1389,10 +1409,12 @@
   flex-direction: column;
   gap: 10px;
 }
+/* A key signature and its letters; on a 320 px phone "F C G D A E B" goes under the staff, where it fits. */
 .learn-sig {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 4px 12px;
 }
 .learn-sig .pitch-staff {
   width: 150px;
@@ -1580,7 +1602,8 @@
 }
 .learn-table-text {
   flex: 1;
-  min-width: 0;
+  /* No narrower than its longest word ("Gepunteerde" on a 320 px phone): the value wraps instead of lying under it. */
+  min-width: min-content;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -1593,21 +1616,35 @@
   color: var(--muted);
 }
 .learn-table-value {
-  flex: none;
+  flex: 0 1 auto;
   font-size: 13px;
   text-align: right;
 }
-/* Strong, medium and weak beats (chapter 1.3): the height of a bar shows the weight. */
-.learn-accent-row {
+/*
+ * Strong, medium and weak beats (chapter 1.3): the height of a bar shows the weight. The meters share their columns
+ * (subgrid), so the beats line up from row to row, and a column is at least as wide as its word: on a 320 px phone a
+ * quarter of the row is narrower than "medium" (Dutch "halfzwaar"). The 42 px column and 8 px gap put the beats where
+ * they were; a browser without subgrid gives each row its own columns, as before.
+ */
+.learn-accents {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 42px repeat(4, minmax(min-content, 1fr));
+  column-gap: 8px;
+}
+.learn-accent-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 10px 0;
 }
 .learn-accent-beats {
+  grid-column: 2 / -1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: subgrid;
   gap: 8px;
   align-items: end;
 }
@@ -1774,6 +1811,13 @@
   color: var(--muted);
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--rule);
+}
+/* Phones under 360 px: a row's name goes over its cells, so the 12 columns get the width (Dutch "(en)" over three). */
+@media (max-width: 359.98px) {
+  .learn-grid-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
 }
 /* The note tree (chapter 2.2). */
 .learn-tree {
@@ -1943,6 +1987,8 @@
   /* Under the top header a short screen (1280 × 720) is lower than the list: it scrolls on its own. */
   max-height: 100%;
   overflow-y: auto;
+  /* Room for the focus ring of a section link that Tab scrolls to the list's top or bottom edge. */
+  scroll-padding: 6px 0;
   scrollbar-width: thin;
   display: flex;
   flex-direction: column;

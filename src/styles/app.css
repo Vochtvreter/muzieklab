@@ -1476,12 +1476,12 @@ button.lesson-item:active:not(:disabled) {
   }
 }
 /* A unit's five lessons with four stars each (the diamond, the 4th star) take a second line on a 320 px phone, instead
-   of running out of the unit and making the list scroll sideways. The lines are 28 px apart, twice the 14 px each
-   lesson's hit area reaches above and below its stars: the areas meet, so a tap on one line never opens the other's. */
+   of running out of the unit and making the list scroll sideways. The lines are 30 px apart, more than the 25 px each
+   lesson's hit area reaches below its stars and the 4 px above: a tap on one line never opens the other's. */
 .unit-stars {
   display: flex;
   flex-wrap: wrap;
-  gap: 28px 6px;
+  gap: 30px 6px;
   font-size: 12px;
   letter-spacing: -1px;
   color: var(--rule);
@@ -1503,10 +1503,12 @@ button.lesson-stars {
   cursor: pointer;
   border-radius: 6px;
 }
+/* 4 + 15 + 25 = 44 px: from the unit's head, 4 px above the stars (it lies over anything higher, and a tap on it opens
+   the unit), down into the room under the unit. */
 button.lesson-stars::after {
   content: '';
   position: absolute;
-  inset: -14px -3px;
+  inset: -4px -3px -25px;
 }
 button.lesson-stars.has-stars {
   color: var(--reward-star);
@@ -4268,6 +4270,8 @@ button.lesson-stars:hover {
   flex: 0 1 auto;
   min-height: 120px;
   overflow-y: auto;
+  /* Room for the focus ring of a release that Tab scrolls to the list's top or bottom edge. */
+  scroll-padding: 6px 0;
   display: flex;
   flex-direction: column;
   gap: 4px;

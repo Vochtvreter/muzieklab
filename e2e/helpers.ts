@@ -61,6 +61,26 @@ export async function expectTouchHeight(el: Locator): Promise<void> {
   expect((await el.boundingBox())!.height, 'shorter than 44 px').toBeGreaterThanOrEqual(44);
 }
 
+/**
+ * A tap target at least 44 px tall where taps land on it, for a small one whose hit area is a pseudo-element outside
+ * its box (a link in a line of text, the Path's lesson stars): the box says nothing then, and what lies over the area
+ * (a unit's head over the stars) takes those taps. Counted px by px down a line through its middle.
+ */
+export async function expectHitHeight(el: Locator): Promise<void> {
+  const hits = await el.evaluate((node) => {
+    node.scrollIntoView({ block: 'center' });
+    const r = node.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    let n = 0;
+    for (let y = Math.floor(r.top) - 40; y < r.bottom + 40; y++) {
+      const top = document.elementFromPoint(x, y + 0.5);
+      if (top && (top === node || node.contains(top))) n++;
+    }
+    return n;
+  });
+  expect(hits, 'taps that land on it, in px from top to bottom').toBeGreaterThanOrEqual(44);
+}
+
 /** The box shows all of its content (nothing spills out of a card that was squeezed too small). */
 export async function expectNotSqueezed(el: Locator): Promise<void> {
   const spill = await el.evaluate((node) => node.scrollHeight - node.clientHeight);
@@ -96,7 +116,8 @@ export async function expectNoClippedLabels(page: Page): Promise<void> {
 /**
  * The element's focus ring shows on every side when the keyboard reaches it: no box around it cuts the ring off (a
  * card with overflow: hidden, a side list that scrolls on its own). A list that scrolls up and down is only checked at
- * its sides: focus scrolls the element into its view.
+ * its sides: focus scrolls the element into its view. Only its box, though: a side menu's top and bottom edges are
+ * checked item by item with Tab in layout.spec.ts (expectRingsInSideMenu).
  */
 export async function expectFocusRing(el: Locator): Promise<void> {
   // Back one stop and forward again, so the element has focus from the keyboard (:focus-visible).
