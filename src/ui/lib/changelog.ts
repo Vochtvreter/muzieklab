@@ -31,6 +31,7 @@ export const RELEASES: Release[] = [
     changes: [
       { kind: 'fix', text: 'changelog.v0_19_1.tabs' },
       { kind: 'fix', text: 'changelog.v0_19_1.pause' },
+      { kind: 'fix', text: 'changelog.v0_19_1.rhythm' },
       { kind: 'fix', text: 'changelog.v0_19_1.staves' },
       { kind: 'fix', text: 'changelog.v0_19_1.fit' },
       { kind: 'fix', text: 'changelog.v0_19_1.readNotes' },
