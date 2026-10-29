@@ -418,13 +418,18 @@
   fill: var(--muted);
   pointer-events: none;
 }
-/* Timing's "late" and "early" notes are drawn over the line, with a halo of the card's colour: a line that runs
-   through one goes under its letters instead of crossing them out. */
-.prog-chart-note--over {
+/* Timing's "steady", "late" and "early" notes are drawn over the line, with a halo of the colour under them (the
+   band's for "steady", the card's for the others): a line that runs through one goes under its letters instead of
+   crossing them out. */
+.prog-chart-note--over,
+.prog-chart-note--band {
   paint-order: stroke;
   stroke: var(--paper);
   stroke-width: 3px;
   stroke-linejoin: round;
+}
+.prog-chart-note--band {
+  stroke: var(--ground);
 }
 .prog-line {
   fill: none;

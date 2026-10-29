@@ -263,7 +263,8 @@ describe('Progress tab charts', () => {
 
   // A late tapper (headphones not calibrated, a wide leniency) or an early one opens the range up or down: on the 90 px
   // desktop chart the axis labels and the band's word ran into each other, and at any size the line ran through a note.
-  for (const [off, at] of [[150, 1280], [60, 1280], [-62, 1280], [150, 390], [60, 390]] as const) {
+  // A steady player a little late (+10, +20 ms) runs the line through "steady" at the right.
+  for (const [off, at] of [[150, 1280], [60, 1280], [-62, 1280], [150, 390], [60, 390], [10, 1280], [20, 390]] as const) {
     it(`Timing tendency at ${signedMs(off)} (${at} px): its labels keep apart, and the notes are drawn over the line`, () => {
       show(timingAt(off), at);
       const svg = screen.getByRole('img', { name: /^Average timing offset per day/ });
@@ -274,12 +275,13 @@ describe('Progress tab charts', () => {
       expect(axis.some((y) => Math.abs(y - (zero + 4)) < 0.01), 'the zero line keeps its label').toBe(true);
       for (let i = 1; i < axis.length; i++) expect(axis[i] - axis[i - 1], 'axis labels apart').toBeGreaterThanOrEqual(11);
       const band = [...svg.querySelectorAll('text.prog-chart-note')].find((el) => el.textContent === 'steady');
+      if (Math.abs(off) < 30) expect(band, 'a steady player keeps the band word').toBeTruthy();
       if (band) {
         expect(baseline(band), 'the band word above the zero line').toBeLessThanOrEqual(zero + 0.5);
         expect(baseline(note('early · rushing')) - baseline(band), 'the band word clear of the early note').toBeGreaterThanOrEqual(11);
       }
       const line = svg.querySelector('path.prog-line')!;
-      for (const text of ['late · dragging', 'early · rushing']) {
+      for (const text of ['late · dragging', 'early · rushing', ...(band ? ['steady'] : [])]) {
         expect(line.compareDocumentPosition(note(text)) & Node.DOCUMENT_POSITION_FOLLOWING, `${text} is drawn after the line`).toBeTruthy();
       }
     });

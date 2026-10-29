@@ -1204,8 +1204,9 @@ cards below it, and is not remembered: every visit starts on Rhythm.
 - **Timing tendency:** each day the mean offset of the hit notes, against the steady band from −40 to +30 ms (the
   tendency's thresholds, §6.3; the range widens past −70 and +50 ms when needed). A wider range puts the band's lines
   closer together: a line keeps its label (*+30*, *0*, *−40*) only 11 px or more from the others, 0 first, and *steady*
-  moves up to the zero line, or is left out when the band above it is under 11 px. *late · dragging* and *early ·
-  rushing* are drawn over the line, with a halo of the card's colour. The caption names the latest day's tendency
+  moves up to the zero line, or is left out when the band above it is under 11 px. *steady*, *late · dragging* and
+  *early · rushing* are drawn over the line, with a halo of the colour under them (the band's for *steady*, the card's
+  for the others), so the line goes under their letters. The caption names the latest day's tendency
   (*Steady · −22 ms*) and how it started (*Was rushing (−52 ms). A little early is normal.*).
 - **Minutes this week:** every mode, a bar per day, Monday to Sunday, and the total. A rhythm round counts its played
   length with the count-in (Echo also every time it was heard); Read notes the answer times, each at most 15 s; Scales

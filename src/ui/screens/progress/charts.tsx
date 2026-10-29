@@ -242,11 +242,6 @@ function TimingChart({ data, size }: { data: TimingView; size: Breakpoint }): JS
     <div ref={ref}>
       <svg viewBox={`0 0 ${w} ${g.h}`} className="prog-chart" role="img" aria-label={label}>
         <rect x={LEFT} y={y(STEADY_BAND.to)} width={right - LEFT} height={y(STEADY_BAND.from) - y(STEADY_BAND.to)} rx={4} className="prog-band" />
-        {y(0) - y(STEADY_BAND.to) >= LABEL_ROOM && (
-          <text x={right - 6} y={Math.min(y(STEADY_BAND.to) + 14, y(0))} textAnchor="end" className="prog-chart-note">
-            {t('progress.timing.band')}
-          </text>
-        )}
         {[STEADY_BAND.to, 0, STEADY_BAND.from].map((v) => (
           <g key={v}>
             <line x1={LEFT} x2={right} y1={y(v)} y2={y(v)} className={v === 0 ? 'prog-zero' : 'prog-gridline'} />
@@ -259,7 +254,13 @@ function TimingChart({ data, size }: { data: TimingView; size: Breakpoint }): JS
         ))}
         <DayLine days={data.days} x={x} y={y} bottom={g.bottom} end={signedMs}
           title={(p) => t('progress.timing.point', { date: shortDate(p.date), value: signedMs(p.value) })} />
-        {/* Over the line: a dragging line starts at the top left, a rushing one ends at the bottom right. */}
+        {/* Over the line: a steady one ends in the band's word at the right, a dragging one starts at the top left, a
+            rushing one ends at the bottom right. */}
+        {y(0) - y(STEADY_BAND.to) >= LABEL_ROOM && (
+          <text x={right - 6} y={Math.min(y(STEADY_BAND.to) + 14, y(0))} textAnchor="end" className="prog-chart-note prog-chart-note--band">
+            {t('progress.timing.band')}
+          </text>
+        )}
         <text x={LEFT + 6} y={TOP + 11} className="prog-chart-note prog-chart-note--over">
           {t('progress.timing.late')}
         </text>

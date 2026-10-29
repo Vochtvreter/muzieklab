@@ -331,6 +331,15 @@ describe('Dutch', () => {
     expect(majorName('G')).toBe('G majeur');
   });
 
+  it('names keys majeur and mineur, as the key buttons do, never groot or klein', () => {
+    // What's new 0.19.1 once said "C♯ en C♭ groot".
+    expect(
+      [...flatten(catalogs['./nl.json']).entries()]
+        .filter(([, msg]) => /\b[A-G][♯♭]?(?:,? (?:en )?[A-G][♯♭]?)* (?:groot|klein)\b/.test(msg))
+        .map(([key]) => key),
+    ).toEqual([]);
+  });
+
   it('puts the right article before a sign word: het kruis and het herstellingsteken, but de mol', () => {
     setLocale('nl');
     const wrong: string[] = [];
