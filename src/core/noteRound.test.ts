@@ -306,7 +306,8 @@ describe('path lessons: some notes, and read, write and hear', () => {
 
   it('mixes the two notes of a two-note lesson instead of taking turns, and brings the new one up more often', () => {
     // Sol and mi (path unit 3): never repeating, they took strict turns (E G E G …), so every note after the first
-    // could be answered without reading or hearing it, and the stressed mi came no more often than sol.
+    // could be answered without reading or hearing it, and the stressed mi came no more often than sol. (The lessons
+    // that show the note stress mi; Hear mi does not, as there it could be answered without listening: notesPath.ts.)
     const two: NoteSettings = { ...s, only: [32, 30], stress: [30], count: 10 };
     const rounds = Array.from({ length: 40 }, (_, i) => generateRound(two, i + 1).map((n) => n.step));
     const turns = (r: number[]): boolean => r.every((x, i) => i === 0 || x !== r[i - 1]);

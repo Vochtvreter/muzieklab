@@ -66,10 +66,40 @@ describe('First notes, Read notes and Keys units (DESIGN.md §8.2)', () => {
     expect(PITCH_UNITS[0].lessons.map((l) => tasks(l.id))).toEqual([['read'], ['write'], ['read'], ['write'], ['read', 'write']]);
     for (const u of PITCH_UNITS.slice(1)) {
       expect(u.lessons.map((l) => tasks(l.id)), `unit ${u.id}`).toEqual([['read'], ['write'], ['hear'], ['read'], ['read', 'write', 'hear']]);
-      // The new note comes up more often, except in the review.
+      // The new note comes up more often, except in the review and in mi's hearing lesson (below).
       const step = FIRST_NOTES[u.id - 1].step;
-      for (const l of u.lessons.slice(0, 4)) expect(noteLessonSettings('pitch', l.id)!.stress).toEqual([step]);
+      u.lessons.slice(0, 4).forEach((l, i) => expect(noteLessonSettings('pitch', l.id)!.stress, l.id).toEqual(u.id === 2 && i === 2 ? [] : [step]));
       expect(noteLessonSettings('pitch', u.lessons[4].id)!.stress).toEqual([]);
+    }
+  });
+
+  it('cannot be passed without listening in Hear mi, where only sol and mi come', () => {
+    // A note comes at most twice in a row, so after a pair the other one is certain. With mi stressed, answering mi
+    // unless it just came twice scored 82 % on average and opened the next lesson in almost half the rounds.
+    const s = noteLessonSettings('pitch', '2.3')!;
+    expect(s.tasks).toEqual(['hear']);
+    const other = (x: number): number => (x === 30 ? 32 : 30);
+    const pair = (h: number[]): boolean => h.length >= 2 && h[h.length - 1] === h[h.length - 2];
+    // What a player who never listens can do: the feedback names every note, so the order so far is known.
+    const blind: Record<string, (h: number[]) => number> = {
+      mi: (h) => (pair(h) ? other(h[h.length - 1]) : 30),
+      sol: (h) => (pair(h) ? other(h[h.length - 1]) : 32),
+      turns: (h) => (h.length ? other(h[h.length - 1]) : 30),
+      again: (h) => (pair(h) ? other(h[h.length - 1]) : h.length ? h[h.length - 1] : 30),
+    };
+    const seeds = 2000;
+    for (const [name, guess] of Object.entries(blind)) {
+      let sum = 0;
+      let opened = 0;
+      for (let seed = 1; seed <= seeds; seed++) {
+        const steps = generateRound(s, seed).map((n) => n.step);
+        const accuracy = steps.filter((x, i) => guess(steps.slice(0, i)) === x).length / steps.length;
+        sum += accuracy;
+        // Two stars (85 %) open the next lesson.
+        if (accuracy >= 0.85) opened++;
+      }
+      expect(sum / seeds, name).toBeLessThan(0.7);
+      expect(opened / seeds, name).toBeLessThan(0.2);
     }
   });
 

@@ -53,7 +53,9 @@ const PITCH_BASE: Partial<NoteSettings> = {
 /**
  * A First notes unit: the notes learned so far, the new one coming up more often. Read it, write it, hear it (after
  * sol), find it on the piano, then a review that takes turns at all three. Sol alone cannot be heard against itself, so
- * unit 1 writes it against the clock instead, and its review reads and writes.
+ * unit 1 writes it against the clock instead, and its review reads and writes. Of two notes (mi's unit) the hearing
+ * lesson does not stress mi: there it would be the answer three times in four, which a player could give without
+ * listening (with a note at most twice in a row, the note after a pair is the other one).
  */
 function pitchUnit(n: number): NoteUnit {
   const known = FIRST_NOTES.slice(0, n).map((x) => x.step);
@@ -70,7 +72,7 @@ function pitchUnit(n: number): NoteUnit {
       : [
           { stress: [step] }, // Meet the new note
           { tasks: ['write'], stress: [step] }, // Write it
-          { tasks: ['hear'], stress: [step] }, // Hear it
+          { tasks: ['hear'], stress: n === 2 ? [] : [step] }, // Hear it
           { input: 'piano', stress: [step], count: 15 }, // On the piano
           { tasks: ['read', 'write', 'hear'], count: 30 }, // Unit review
         ];

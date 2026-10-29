@@ -315,7 +315,10 @@ A lesson can also narrow the notes (`only`: the positions it draws from; the nam
 to seven, centred and no wider than 96 px each) and stress one (`stress`: three times as often). A note that has
 only one position to come from repeats (sol in unit 1). Of two positions (sol and mi, the path's unit 3) a note may come
 twice in a row, never three times: never repeating, they would take strict turns (E G E G …), which can be answered
-without reading or hearing a note, and mi could come no more often than sol.
+without reading or hearing a note, and mi could come no more often than sol. That unit's hearing lesson (*Hear mi*)
+does not stress mi: wherever either note could come, mi would be the answer three times in four, and after a pair the
+other note is certain, so a player who answered mi unless it had just come twice scored 82 % without listening and
+opened the next lesson in almost half the rounds. Without the stress the best blind guess scores about 64 %.
 
 **Keys.** The player chooses which key to read in, on its own screen (*Key*, opened from
 the setup). All 15 standard key signatures are offered: C major (no signs), then sharps
@@ -365,14 +368,14 @@ changes at most every 4 notes, with a visible clef change.
 **Scoring:** correct / total, average response time, and a per-note weak-spot list. Stars: ★ ≥ 70% · ★★ ≥ 85% ·
 ★★★ ≥ 95% with an average under 2 s (starting values, to tune). XP and streaks work as in the rhythm modes.
 Round done's *Needs practice* shows each missed, hinted or slow note, all of them, in rows that wrap (as *Practice
-missed notes* drills them all), as the player reads it (since 0.10.0; before, in
-scientific pitch, *F5 ×3*): a chip with a small staff (the note's clef and the note, with its own sign; no key signature at this
-size), the name in the player's note names (fa♯ or F♯), and ×count or the seconds. Screen readers hear e.g. *fa, F on
-the top line (treble clef), missed 3 times* or *…, answered with a hint*. A note right only with a hint is not right
-(the score), and *Practice missed notes* drills it, so it has a row of its own, *With a hint*, between *Missed* and
-*Slow*; *Nothing to practise: every note right, and quick.* shows only when all three are empty. The desktop play
-screen's Needs practice card also uses the player's names, and names each note missed or hinted with its own sign (F♯
-missed on a line where an F was right reads F♯).
+missed notes* drills them all; the row's name stays beside its first chips), as the player reads it (since 0.10.0;
+before, in scientific pitch, *F5 ×3*): a chip with a small staff (the note's clef and the note, with its own sign; no
+key signature at this size), the name in the player's note names (fa♯ or F♯), and ×count or the seconds. Screen readers
+hear e.g. *fa, F on the top line (treble clef), missed 3 times* or *…, answered with a hint*. A note right only with a
+hint is not right (the score), and *Practice missed notes* drills it, so it has a row of its own, *With a hint*, between
+*Missed* and *Slow*; *Nothing to practise: every note right, and quick.* shows only when all three are empty. The
+desktop play screen's Needs practice card also uses the player's names, and names each note missed or hinted with its
+own sign (F♯ missed on a line where an F was right reads F♯).
 
 ### 3.7 Scales — *every key*
 
@@ -1007,7 +1010,8 @@ player saw only the rhythm path (Home's Continue card followed it, and the switc
 its line; mi and fa sit just below it, then la, do, re and si above. All seven are on the staff (E4–D5: the bottom
 line to the 4th line), so there are no ledger lines and no key signature, and with all seven learned the next unit
 reads the whole treble staff. A note unit's lessons draw only the notes learned so far (the name buttons show just
-those), and the new note comes up three times as often:
+those), and the new note comes up three times as often, except in the review and in *Hear mi*, a two-note unit's
+hearing lesson, where the stressed note could be answered without listening (§3.5):
 
 | Lesson | Task |
 |---|---|
@@ -2273,13 +2277,14 @@ without code changes:
   heading (the level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new phase's
   heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it to the one left. A screen
   drawn in its other layout (a tablet turned, tablet and desktop; a window made wider or narrower) gives it to the same
-  control there, found by its name or by its place among the name buttons or a piano's keys, else to its heading. In
-  Read notes and Scales a control that a step disables or removes hands it on: an answer that ends the note or the scale
-  (the last sign or key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and
-  Start over to the answers (the first name button, sign or piano key, or the next note's staff to write on). There
-  Space and Enter stay the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`;
-  §3.5, §3.7), so the Enter after one on Next note does not answer with the name button the focus went to. Echo's play
-  button keeps it while the rhythm plays (`aria-disabled`), then Tap it back takes it.
+  control there, found by its name or by its place among the name buttons or a piano's keys, else to its heading (from
+  Play's Tap pad on a tablet, as the desktop layout's pad is no button). In Read notes and Scales a control that a step
+  disables or removes hands it on: an answer that ends the note or the scale (the last sign or key, the staff written on
+  and checked) to Next note or Next scale; Hint, Next note, Next scale and Start over to the answers (the first name
+  button, sign or piano key, or the next note's staff to write on). There Space and Enter stay the exercise's keys, as
+  after a click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5, §3.7), so the Enter after one on Next
+  note does not answer with the name button the focus went to. Echo's play button keeps it while the rhythm plays
+  (`aria-disabled`), then Tap it back takes it.
 - High-contrast theme; big touch targets (≥ 48 px). In a Windows contrast theme (forced colors) the system paints
   every background in the page's colour and all text and borders in one colour, so nothing may be told by a fill or a
   colour alone: a chosen option (`aria-pressed`, a checked radio), the current tab, Play's beat and Read notes' right

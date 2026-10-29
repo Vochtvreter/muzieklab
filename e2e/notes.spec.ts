@@ -534,6 +534,22 @@ test('read notes: turning a tablet keeps the focus on the control it was on', as
   await expect(name).toBeFocused();
 });
 
+test('scales: turning a tablet keeps the focus on the piano key it was on', async ({ page }) => {
+  // The piano is drawn again in the other layout, where its keys show their computer key (E, key D). (Play's Tap pad is
+  // no button in the desktop layout: from there the focus goes to the screen's heading.)
+  await page.setViewportSize(VIEWPORTS.tablet);
+  await startScale(page, { keys: ['C'], input: 'piano' });
+  await expect(page.locator('.stab')).toBeVisible();
+  const piano = page.getByRole('group', { name: /^Piano keyboard/ });
+  await tabTo(page, piano.getByRole('button', { name: 'E', exact: true }));
+  await page.setViewportSize(VIEWPORTS['tablet-landscape']);
+  await expect(page.locator('.splay-desk')).toBeVisible();
+  await expect(piano.getByRole('button', { name: 'E, key D', exact: true })).toBeFocused();
+  await page.setViewportSize(VIEWPORTS.tablet);
+  await expect(page.locator('.stab')).toBeVisible();
+  await expect(piano.getByRole('button', { name: 'E', exact: true })).toBeFocused();
+});
+
 test('read notes: a tap on a staff line writes the note on that line, under the room for a flat over the staff', async ({ page }) => {
   // B♭ major with extra signs, seed 59: the first note is G♭5, whose flat puts the top line lower in the drawing.
   const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['Bb'], extras: 'both', tasks: ['write'], playNotes: false };

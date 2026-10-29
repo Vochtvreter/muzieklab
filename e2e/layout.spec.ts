@@ -1768,6 +1768,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         const b = (await chip.boundingBox())!;
         expect(b.x + b.width, 'a chip inside its card').toBeLessThanOrEqual(card.x + card.width + 0.5);
       }
+      // The row's name stays beside its first chips, not halfway down the rows they wrap to.
+      const label = (await page.locator('.nchips-row').filter({ has: list }).locator('.nchips-label').boundingBox())!;
+      const first = (await list.getByRole('listitem').first().boundingBox())!;
+      expect(Math.abs(label.y + label.height / 2 - (first.y + first.height / 2)), 'Missed beside the first chips').toBeLessThanOrEqual(1);
       await expectClickable(page.getByRole('button', { name: 'Practice missed notes' }));
       await expectNoSideScroll(page);
     });

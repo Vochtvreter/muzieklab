@@ -1032,12 +1032,17 @@
 }
 .nchips-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
+/* Beside the first row of chips, as they wrap to as many rows as there are notes: centred on the height of a chip of
+   notes on the staff (43 px), on one line or two; beside a taller chip (room for ledger lines), in its top part. */
 .nchips-label {
   flex: none;
+  display: flex;
+  align-items: center;
   width: 52px;
+  min-height: 43px;
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);

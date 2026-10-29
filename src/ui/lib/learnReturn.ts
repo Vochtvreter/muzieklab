@@ -1,8 +1,9 @@
 /**
  * A screen opened from Learn carries ?from=9.3 or ?from=9, so its back arrow (or Quit) returns to that section or
  * chapter instead of Home: the exercise or Read notes round a section's Practice link starts, its Results or Round
- * done, and the setup opened from there or from a chapter's Practice button. The Key screens pass it along and back,
- * and so does Calibrate opened from Results.
+ * done, and the setup opened from there or from a chapter's Practice button. So does the round that setup's Start
+ * begins, and its Round done: that round's Quit goes back to the setup, and the Round done's back arrow to the section
+ * or chapter. The Key screens pass it along and back, and so does Calibrate opened from Results.
  */
 import { findChapter } from '../learn/chapters';
 import { hashQuery, useHash, type Route } from '../router';
