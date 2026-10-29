@@ -98,6 +98,17 @@ describe('t()', () => {
     );
   });
 
+  it('counts one minute and one check in the singular in Progress and Skill levels labels', () => {
+    // One short round gives a new player a total of 1 minute; Treble clef, Bass clef and Scales start with one check.
+    expect(t('progress.minutes.label', { days: 'today Thursday 1', total: 1 })).toBe('Minutes practised this week: today Thursday 1; 1 minute in total.');
+    expect(t('progress.minutes.label', { days: 'today Thursday 51', total: 51 })).toBe('Minutes practised this week: today Thursday 51; 51 minutes in total.');
+    expect(t('skills.list.rowChecks', { done: 0, total: 1, n: 1, next: 'Lines: E G B D F' })).toBe('0 of 1 check for level 1, Lines: E G B D F.');
+    expect(t('skills.list.rowChecks', { done: 1, total: 3, n: 7, next: 'Dotted notes' })).toBe('1 of 3 checks for level 7, Dotted notes.');
+    expect(t('skills.detail.meter', { level: 0, max: 10, done: 0, total: 1, n: 1 })).toBe('Level 0 of 10, and 0 of 1 check for level 1');
+    expect(t('skills.detail.checksDone', { done: 0, total: 1 })).toBe('0 of 1 check done');
+    expect(t('skills.detail.checksDone', { done: 1, total: 3 })).toBe('1 of 3 checks done');
+  });
+
   it('counts the scales of Round done for one scale too, and lists the new ones with "and"', () => {
     expect(t('scales.done.cleanAria', { clean: 1, total: 1 })).toBe('1 of 1 scale without a mistake');
     expect(t('scales.done.cleanAria', { clean: 0, total: 1 })).toBe('0 of 1 scale without a mistake');
@@ -202,6 +213,25 @@ describe('locales', () => {
     setLocale('en');
   });
 
+  it('keeps a count on the line of the word after it in the Progress tab, in every language ("160" above "BPM" once)', () => {
+    const ids = Object.keys((en as { achievements: Record<string, unknown> }).achievements);
+    for (const { code } of LOCALES) {
+      setLocale(code);
+      // A no-break space after every number: a narrow badge or link wraps between the parts, never after a number.
+      const texts = [
+        ...[0, 1, 2].flatMap((due) => [1, 6].map((count) => t('progress.skillsSub', { total: 25, max: 60, count, due }))),
+        ...ids.map((id) => t(`achievements.${id}.name`)),
+      ];
+      expect(texts.filter((s) => /\d [\p{L}]/u.test(s)), code).toEqual([]);
+    }
+    setLocale('en');
+    expect(t('progress.skillsSub', { total: 25, max: 60, count: 6, due: 1 })).toBe('25 of 60 levels · 6 skills · 1 review due');
+    expect(t('achievements.tempo160.name')).toBe('Played at 160 BPM');
+    setLocale('nl');
+    expect(t('progress.skillsSub', { total: 25, max: 60, count: 6, due: 1 })).toBe('25 van 60 niveaus · 6 vaardigheden · 1 te herhalen');
+    setLocale('en');
+  });
+
   for (const [path, catalog] of Object.entries(catalogs)) {
     const code = path.slice(2, -'.json'.length);
     if (code === 'en') continue;
@@ -270,6 +300,16 @@ describe('Dutch', () => {
     setLocale('nl');
     expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 1 } })).toBe('Je miste 1 noot in maat 1. Lees één tel vooruit.');
     expect(tipText({ key: 'tip.missed', params: { count: 3, bar: 2 } })).toBe('Je miste 3 noten, de meeste in maat 2. Lees één tel vooruit.');
+  });
+
+  it('counts one minute and one check in the singular in Progress and Skill levels labels', () => {
+    setLocale('nl');
+    expect(t('progress.minutes.label', { days: 'vandaag donderdag 1', total: 1 })).toBe('Minuten geoefend deze week: vandaag donderdag 1; 1 minuut in totaal.');
+    expect(t('progress.minutes.label', { days: 'vandaag donderdag 51', total: 51 })).toBe('Minuten geoefend deze week: vandaag donderdag 51; 51 minuten in totaal.');
+    expect(t('skills.list.rowChecks', { done: 0, total: 1, n: 1, next: 'Lijnen: E G B D F' })).toBe('0 van 1 voorwaarde voor niveau 1, Lijnen: E G B D F.');
+    expect(t('skills.detail.meter', { level: 0, max: 10, done: 0, total: 1, n: 1 })).toBe('Niveau 0 van 10, en 0 van 1 voorwaarde voor niveau 1');
+    expect(t('skills.detail.checksDone', { done: 0, total: 1 })).toBe('0 van 1 voorwaarde gehaald');
+    expect(t('skills.detail.checksDone', { done: 1, total: 3 })).toBe('1 van 3 voorwaarden gehaald');
   });
 
   it('counts the scales of Round done for one scale too, and has a plural verb for the new ones', () => {

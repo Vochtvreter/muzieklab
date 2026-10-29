@@ -2598,7 +2598,7 @@
     "rankNow": "Level {level} · nu",
     "rankNext": "volgende",
     "rankDone": "behaald",
-    "skillsSub": "{total} van {max} niveaus · {count, plural, one {# vaardigheid} other {# vaardigheden}} · {due, plural, =0 {niets te herhalen} other {# te herhalen}}",
+    "skillsSub": "{total}\u00a0van {max}\u00a0niveaus · {count, plural, one {#\u00a0vaardigheid} other {#\u00a0vaardigheden}} · {due, plural, =0 {niets te herhalen} other {#\u00a0te\u00a0herhalen}}",
     "calendar": {
       "range": "{from} – {to}",
       "label": "Oefenkalender, {from} tot {to}. {details}.",
@@ -2632,8 +2632,8 @@
       "rise": ", stijgend van {first}% naar {peak}% op {date}",
       "high": ", hoogste {peak}% op {date}",
       "today": ", vandaag {value}%",
-      "gaps": "; niet geoefend op {days}",
-      "gapCount": "; {count, plural, one {# dag} other {# dagen}} niet geoefend",
+      "gaps": "; geen ritmerondes op {days}",
+      "gapCount": "; {count, plural, one {# dag} other {# dagen}} zonder ritmeronde",
       "point": "{date}: {value}%",
       "empty": "Geen ritmerondes in de laatste 14 dagen."
     },
@@ -2670,7 +2670,7 @@
     "minutes": {
       "title": "Minuten deze week",
       "total": "{value} min",
-      "label": "Minuten geoefend deze week: {days}; {total} minuten in totaal.",
+      "label": "Minuten geoefend deze week: {days}; {total, plural, one {# minuut} other {# minuten}} in totaal.",
       "day": "{day} {value}",
       "dayToday": "vandaag {day} {value}",
       "bar": "{day}: {value} min",
@@ -2915,7 +2915,7 @@
       "next": "volgende: {name}",
       "allPassed": "alle niveaus gehaald",
       "rowLevel": "{name}: niveau {level} van {max}.",
-      "rowChecks": "{done} van {total} voorwaarden voor niveau {n}, {next}.",
+      "rowChecks": "{done} van {total, plural, one {# voorwaarde} other {# voorwaarden}} voor niveau {n}, {next}.",
       "rowLater": "Niveau {n}, {next}, komt later.",
       "rowDone": "Alle niveaus gehaald.",
       "legendPassed": "Gehaald",
@@ -2926,12 +2926,12 @@
     "detail": {
       "back": "Terug naar Vaardigheden",
       "of": "van {max}",
-      "meter": "Niveau {level} van {max}, en {done} van {total} voorwaarden voor niveau {n}",
+      "meter": "Niveau {level} van {max}, en {done} van {total, plural, one {# voorwaarde} other {# voorwaarden}} voor niveau {n}",
       "meterLevel": "Niveau {level} van {max}",
       "next": "Volgende · niveau {n}",
       "checks": "{total, plural, one {{progress} voorwaarde} other {{progress} voorwaarden}}",
       "progress": "{done} van {total}",
-      "checksDone": "{done} van {total} voorwaarden gehaald",
+      "checksDone": "{done} van {total, plural, one {# voorwaarde} other {# voorwaarden}} gehaald",
       "done": "Gehaald",
       "top": "Niveau {n}",
       "allPassed": "Alle niveaus gehaald",
@@ -2948,7 +2948,7 @@
   },
   "achievements": {
     "streak7": {
-      "name": "7 dagen op rij",
+      "name": "7\u00a0dagen op rij",
       "text": "Oefen zeven dagen achter elkaar"
     },
     "perfectBar": {
@@ -2964,7 +2964,7 @@
       "text": "Twee sterren op een ritme met zestienden"
     },
     "tempo160": {
-      "name": "Gespeeld op 160 BPM",
+      "name": "Gespeeld op 160\u00a0BPM",
       "text": "Twee sterren op 160 BPM of sneller"
     }
   },

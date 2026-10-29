@@ -314,10 +314,10 @@
   background: var(--accent-soft);
   color: var(--accent-ink);
 }
+/* The next level's name wraps rather than end in "…" (DESIGN.md §11): Dutch names are longer ("Tweekwartsmaat, achtste
+   rusten"), and a 320 px phone has room for few words. */
 .skill-row-line {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-wrap: pretty;
   font-size: 12.5px;
   color: var(--muted);
 }

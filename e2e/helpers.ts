@@ -95,8 +95,9 @@ export async function expectNoOverlap(a: Locator, b: Locator): Promise<void> {
 }
 
 /**
- * No button or segmented choice cuts its words off (longer translations must wrap or fit, DESIGN.md §11), nor a line
- * inside one that clips its own text (a Learn chapter's subtitle once ended in "…").
+ * No button, link or segmented choice cuts its words off (longer translations must wrap or fit, DESIGN.md §11), nor a
+ * line inside one that clips its own text (a Learn chapter's subtitle once ended in "…", and a Skill levels row its
+ * next level's name).
  */
 export async function expectNoClippedLabels(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -105,9 +106,12 @@ export async function expectNoClippedLabels(page: Page): Promise<void> {
     const cut = (el: Element): boolean => el.scrollWidth > el.clientWidth + 1;
     // A line that clips; text for screen readers only (.sr-only, a box of 1 px) is not shown at all.
     const clips = (el: Element): boolean => el.clientWidth > 1 && getComputedStyle(el).overflowX !== 'visible';
-    return [...document.querySelectorAll<HTMLElement>('button, .seg-btn, a.btn, select')]
+    // A link that is not a button may draw past its own box (a word with a 44 px tap area around it): only the lines
+    // inside it that clip count.
+    const box = (el: Element): boolean => !el.matches('a:not(.btn)') && cut(el);
+    return [...document.querySelectorAll<HTMLElement>('button, .seg-btn, a, select')]
       .filter((el) => el.offsetParent !== null && words(el))
-      .filter((el) => cut(el) || [...el.querySelectorAll('*')].some((x) => clips(x) && words(x) && cut(x)))
+      .filter((el) => box(el) || [...el.querySelectorAll('*')].some((x) => clips(x) && words(x) && cut(x)))
       .map((el) => (el.textContent ?? '').trim() || el.getAttribute('aria-label') || el.tagName);
   });
   expect(clipped, 'labels cut off').toEqual([]);

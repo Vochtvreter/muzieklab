@@ -268,12 +268,13 @@ async function expectRingsOnPage(page: Page): Promise<void> {
 
 /**
  * A screen's head keeps its title whole beside what is next to it (DESIGN.md §9): the title's words fit its box, and
- * nothing in the head runs past its right edge (Dutch on a 320 px phone: "Toonladders" beside "Over toonladders").
+ * nothing in the head runs past its right edge (Dutch on a 320 px phone: "Toonladders" beside "Over toonladders", and
+ * Progress's streak chip beside "Voortgang").
  */
 async function expectHeadFits(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   const out = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('.screen-head')]
+    [...document.querySelectorAll<HTMLElement>('.screen-head, .prog-title-row')]
       .filter((head) => head.offsetParent !== null)
       .flatMap((head) => {
         const right = head.getBoundingClientRect().right;
@@ -285,6 +286,38 @@ async function expectHeadFits(page: Page): Promise<void> {
       }),
   );
   expect(out, 'screen heads').toEqual([]);
+}
+
+/**
+ * A number stays on the line of the word after it where a Progress line wraps: an achievement's name in its narrow
+ * column ("Played at 160" over "BPM" once) and the Skill levels link ("· 1" over "review due", Dutch "· 6" over
+ * "vaardigheden").
+ */
+async function expectCountsWithWords(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.prog-badge-name, .prog-skills-text > span')]
+      .filter((el) => el.offsetParent !== null)
+      .flatMap((el) => {
+        const split: string[] = [];
+        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let node = walk.nextNode() as Text | null; node; node = walk.nextNode() as Text | null) {
+          // The number's last digit and the first letter of the word after it: on one line, or the number ends a line.
+          for (const m of node.data.matchAll(/\d+\s(?=\S)/g)) {
+            const top = (at: number): number => {
+              const range = document.createRange();
+              range.setStart(node, at);
+              range.setEnd(node, at + 1);
+              return range.getBoundingClientRect().top;
+            };
+            const end = m.index + m[0].length;
+            if (Math.abs(top(end - 2) - top(end)) > 1) split.push(`"${el.textContent}": ${m[0].trim()} ends a line`);
+          }
+        }
+        return split;
+      }),
+  );
+  expect(out, 'numbers split from their words').toEqual([]);
 }
 
 /**
@@ -2341,6 +2374,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('img', { name: /^Minutes practised this week: .*; 51 minutes in total\.$/ })).toBeVisible();
       await expect(page.getByRole('listitem', { name: 'Ties: 78%, weak spot' })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Achievements' }).getByText('3 earned')).toBeVisible();
+      await expectCountsWithWords(page);
       const practice = page.getByRole('link', { name: 'Practice weak spots' });
       await expectClickable(practice);
       await expectTouchHeight(practice);
@@ -3624,6 +3658,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/progress');
       await expect(page).toHaveTitle(/^Voortgang/);
       await expect(page.getByText('25 van 60 niveaus · 6 vaardigheden · 1 te herhalen')).toBeVisible();
+      // The streak chip beside "Voortgang" (under it on a 320 px phone), and the achievements' names.
+      await expectHeadFits(page);
+      await expectCountsWithWords(page);
       for (const view of ['Ritme', 'Noten', 'Toonladders']) {
         const button = page.getByRole('group', { name: 'Voortgang tonen voor' }).getByRole('button', { name: view, exact: true });
         await button.click();

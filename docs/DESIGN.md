@@ -1167,11 +1167,11 @@ worked out by `game/progressView.ts` from the progress and today's date; the scr
 
 **Head.** A segmented switch, *Show progress for*: **Rhythm · Notes · Scales** (Rhythm first). It changes only the
 cards below it, and is not remembered: every visit starts on Rhythm.
-- Phone: the title with the streak chip (*12-day streak*), the level line and the switch stay at the top while the
-  cards scroll under them. The level line reads *Level 7 · Measure* and *1445 / 1750 XP* (the total, and the XP where
-  the next level starts), then the bar, filled for the XP into the level, then *305 XP to level 8 · next rank Groove*.
-  On a phone under 700 px tall (the phone browser sizes) the whole page scrolls, head included, so the cards still
-  show.
+- Phone: the title with the streak chip (*12-day streak*; under the title, at the right, where the two do not fit side
+  by side: in Dutch on a 320 px phone), the level line and the switch stay at the top while the cards scroll under them.
+  The level line reads *Level 7 · Measure* and *1445 / 1750 XP* (the total, and the XP where the next level starts),
+  then the bar, filled for the XP into the level, then *305 XP to level 8 · next rank Groove*. On a phone under 700 px
+  tall (the phone browser sizes) the whole page scrolls, head included, so the cards still show.
 - Tablet and desktop: the title and the switch (340 px, 360 px on desktop) in one row, no streak chip. The level is
   the **Level card**: *Level 7 · Measure*, the bar, *1445 / 1750 XP* and *305 XP to level 8*, and the *Ranks* ladder
   (six rows: reached, *Level 7 · now*, next, later). The bar's label says *95 of 400 XP, 23 percent of the way to
@@ -1191,16 +1191,22 @@ cards below it, and is not remembered: every visit starts on Rhythm.
 
 **The cards.** Each is a section with an eyebrow heading (`h2`); the charts are SVG drawn at the card's width, each a
 `role="img"` with a sentence built from the data, and a title per point.
-- **Skill levels:** *25 of 60 levels · 6 skills · 1 review due*, a link to the Skill levels screen (§8.6).
+- **Skill levels:** *25 of 60 levels · 6 skills · 1 review due*, a link to the Skill levels screen (§8.6). A number
+  stays on the line of the word after it (a no-break space in the message), as in the achievements' names (*Played at
+  160 BPM*).
 - **Streak calendar:** five weeks, Monday to Sunday, ending this week. Days of the current streak are gold (with dark
   ink on the gold in both themes), earlier practice days a gold tint, missed days plain, today outlined, later days
   empty; a legend, and *Practised 28 of 32 days* over the calendar's days so far.
 - **Accuracy · 14 days:** rhythm rounds only (tap and Echo): each day the mean of its rounds' accuracy, a line with a
   gap and a tick for a day without one, the latest value at the end and the average beside the title. The scale is
-  60–100%, and drops to 20% or 0% when a day is under 60%.
+  60–100%, and drops to 20% or 0% when a day is under 60%. Its label names those days *no rhythm rounds on Oct 3*: a day
+  of only Read notes or Scales is still a practice day, in the streak and in Minutes.
 - **Timing tendency:** each day the mean offset of the hit notes, against the steady band from −40 to +30 ms (the
-  tendency's thresholds, §6.3; the range widens past −70 and +50 ms when needed). The caption names the latest day's
-  tendency (*Steady · −22 ms*) and how it started (*Was rushing (−52 ms). A little early is normal.*).
+  tendency's thresholds, §6.3; the range widens past −70 and +50 ms when needed). A wider range puts the band's lines
+  closer together: a line keeps its label (*+30*, *0*, *−40*) only 11 px or more from the others, 0 first, and *steady*
+  moves up to the zero line, or is left out when the band above it is under 11 px. *late · dragging* and *early ·
+  rushing* are drawn over the line, with a halo of the card's colour. The caption names the latest day's tendency
+  (*Steady · −22 ms*) and how it started (*Was rushing (−52 ms). A little early is normal.*).
 - **Minutes this week:** every mode, a bar per day, Monday to Sunday, and the total. A rhythm round counts its played
   length with the count-in (Echo also every time it was heard); Read notes the answer times, each at most 15 s; Scales
   the time on its play screen, at most 90 s a scale. A day with any practice shows at least 1 minute.
@@ -1307,9 +1313,9 @@ as Settings' sub-pages, with Progress current; on a phone at least 700 px tall t
 - Two tiles for the last 30 days: *+4 levels up in 30 days* and *1 review due · Theory* (*0 · No review due*, neutral,
   when none is).
 - *Your skills · 10 levels each*: a row per skill, a link to its screen, with its icon, a chip (*Review due*, or *+2
-  this month* for levels passed in the last 30 days), a 10-segment meter (passed levels slate, the next one gold for
-  the share of its checks done) and *Level 6 · next: Dotted notes*. Below 335 px of list width (345 px in Dutch) every
-  chip goes under its name.
+  this month* for levels passed in the last 30 days), a 10-segment meter (passed levels slate, the next one gold for the
+  share of its checks done) and *Level 6 · next: Dotted notes*, which wraps when the name is long (Dutch, a narrow
+  phone). Below 335 px of list width (345 px in Dutch) every chip goes under its name.
 - **Focus next:** the lowest skill, ties by the order above: *Bass clef is your lowest skill: level 3, 2 levels behind
   treble clef.* It is compared with its pair (Rhythm reading and Rhythm by ear, Treble and Bass clef) when that is
   higher, else with the highest skill; with all level, *Your skills are all at level 3.* Then the skill's button.

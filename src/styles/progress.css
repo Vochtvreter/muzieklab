@@ -11,11 +11,17 @@
   gap: 14px;
   padding-bottom: 12px;
 }
+/* The streak chip goes under the title, at the right, where the two do not fit side by side (Dutch on a 320 px phone:
+   "Voortgang" beside "Nog geen reeks"), as Home's chips go under the brand. */
 .prog-title-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
+}
+.prog-title-row .streak-pill {
+  margin-left: auto;
 }
 .prog-body {
   display: flex;
@@ -410,6 +416,15 @@
   font-family: var(--font-ui);
   font-size: 11px;
   fill: var(--muted);
+  pointer-events: none;
+}
+/* Timing's "late" and "early" notes are drawn over the line, with a halo of the card's colour: a line that runs
+   through one goes under its letters instead of crossing them out. */
+.prog-chart-note--over {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 .prog-line {
   fill: none;

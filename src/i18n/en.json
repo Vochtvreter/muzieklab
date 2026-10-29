@@ -2598,7 +2598,7 @@
     "rankNow": "Level {level} · now",
     "rankNext": "next",
     "rankDone": "reached",
-    "skillsSub": "{total} of {max} levels · {count, plural, one {# skill} other {# skills}} · {due, plural, =0 {no review due} one {# review due} other {# reviews due}}",
+    "skillsSub": "{total}\u00a0of {max}\u00a0levels · {count, plural, one {#\u00a0skill} other {#\u00a0skills}} · {due, plural, =0 {no review due} one {#\u00a0review\u00a0due} other {#\u00a0reviews\u00a0due}}",
     "calendar": {
       "range": "{from} – {to}",
       "label": "Practice calendar, {from} to {to}. {details}.",
@@ -2632,8 +2632,8 @@
       "rise": ", rising from {first}% to {peak}% on {date}",
       "high": ", highest {peak}% on {date}",
       "today": ", {value}% today",
-      "gaps": "; no practice on {days}",
-      "gapCount": "; no practice on {count, plural, one {# day} other {# days}}",
+      "gaps": "; no rhythm rounds on {days}",
+      "gapCount": "; no rhythm rounds on {count, plural, one {# day} other {# days}}",
       "point": "{date}: {value}%",
       "empty": "No rhythm rounds in the last 14 days."
     },
@@ -2670,7 +2670,7 @@
     "minutes": {
       "title": "Minutes this week",
       "total": "{value} min",
-      "label": "Minutes practised this week: {days}; {total} minutes in total.",
+      "label": "Minutes practised this week: {days}; {total, plural, one {# minute} other {# minutes}} in total.",
       "day": "{day} {value}",
       "dayToday": "today {day} {value}",
       "bar": "{day}: {value} min",
@@ -2915,7 +2915,7 @@
       "next": "next: {name}",
       "allPassed": "every level passed",
       "rowLevel": "{name}: level {level} of {max}.",
-      "rowChecks": "{done} of {total} checks for level {n}, {next}.",
+      "rowChecks": "{done} of {total, plural, one {# check} other {# checks}} for level {n}, {next}.",
       "rowLater": "Level {n}, {next}, comes later.",
       "rowDone": "Every level passed.",
       "legendPassed": "Passed",
@@ -2926,12 +2926,12 @@
     "detail": {
       "back": "Back to Skill levels",
       "of": "of {max}",
-      "meter": "Level {level} of {max}, and {done} of {total} checks for level {n}",
+      "meter": "Level {level} of {max}, and {done} of {total, plural, one {# check} other {# checks}} for level {n}",
       "meterLevel": "Level {level} of {max}",
       "next": "Next · level {n}",
       "checks": "{total, plural, one {{progress} check} other {{progress} checks}}",
       "progress": "{done} of {total}",
-      "checksDone": "{done} of {total} checks done",
+      "checksDone": "{done} of {total, plural, one {# check} other {# checks}} done",
       "done": "Done",
       "top": "Level {n}",
       "allPassed": "Every level passed",
@@ -2964,7 +2964,7 @@
       "text": "Two stars on a rhythm with sixteenths"
     },
     "tempo160": {
-      "name": "Played at 160 BPM",
+      "name": "Played at 160\u00a0BPM",
       "text": "Two stars at 160 BPM or faster"
     }
   },

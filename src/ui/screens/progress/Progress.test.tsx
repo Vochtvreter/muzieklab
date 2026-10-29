@@ -6,6 +6,7 @@ import { syncedOf } from '../../../game/merge';
 import { DEFAULT_PREFS, PREFS_KEY, PROGRESS_KEY, type Progress } from '../../../game/storage';
 import type { Settings } from '../../../core/types';
 import { setLocale, t } from '../../../i18n';
+import { signedMs } from '../../lib/format';
 import { StoreProvider, useStore } from '../../store';
 import { ProgressScreen } from './Progress';
 
@@ -44,6 +45,13 @@ function show(progress: Progress, at = 390): void {
   );
 }
 
+/** The sample player with each of the charts' 14 days (Oct 2–15) played at a mean timing offset of `off` ms. */
+function timingAt(off: number): Progress {
+  const p = richProgress();
+  for (let d = 2; d <= 15; d++) p.stats.days[`2026-10-${String(d).padStart(2, '0')}`] = { sec: 600, rounds: 2, acc: 170, off: off * 40, hits: 40, cells: {} };
+  return p;
+}
+
 const view = (name: string, group = 'Show progress for'): void => {
   fireEvent.click(within(screen.getByRole('group', { name: group })).getByRole('button', { name }));
 };
@@ -79,7 +87,7 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     screen.getByRole('img', {
       name: 'Practice calendar, Sep 14 to Oct 18. Practised 28 of 32 days; missed Sep 16, Sep 20, Sep 25 and Oct 3; streak from Oct 4 to today, Oct 15.',
     });
-    screen.getByRole('img', { name: 'Rhythm accuracy per day from Oct 2 to Oct 15, rising from 76% to 88% on Oct 14, 80% today; no practice on Oct 3. Average 83%.' });
+    screen.getByRole('img', { name: 'Rhythm accuracy per day from Oct 2 to Oct 15, rising from 76% to 88% on Oct 14, 80% today; no rhythm rounds on Oct 3. Average 83%.' });
     screen.getByRole('img', { name: 'Minutes practised this week: Monday 14, Tuesday 9, Wednesday 17 and today Thursday 11; 51 minutes in total.' });
     screen.getByRole('img', {
       name: 'Average timing offset per day from Oct 2 to Oct 15: from minus 52 ms, rushing, to minus 22 ms today, inside the steady band from minus 40 to plus 30 ms.',
@@ -152,7 +160,7 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     expect(screen.getByText('No practice this week yet.')).toBeTruthy();
     expect(screen.getByText('0 earned')).toBeTruthy();
     expect(screen.getByText('0 of 60 levels · 6 skills · no review due')).toBeTruthy();
-    expect(t('progress.skillsSub', { total: 30, max: 60, count: 6, due: 2 })).toBe('30 of 60 levels · 6 skills · 2 reviews due');
+    expect(t('progress.skillsSub', { total: 30, max: 60, count: 6, due: 2 })).toBe('30\u00a0of 60\u00a0levels · 6\u00a0skills · 2\u00a0reviews\u00a0due');
     expect(screen.queryByRole('link', { name: 'Practice weak spots' })).toBeNull();
     expect(screen.getByRole('listitem', { name: 'Quarter: locked until unit 2' })).toBeTruthy();
     view('Notes');
@@ -233,6 +241,49 @@ describe('Progress tab charts', () => {
       box.mockRestore();
     }
   });
+
+  it('a day with only Read notes or Scales is a practice day: the accuracy line says it had no rhythm round', () => {
+    const p = richProgress();
+    // Oct 13 (a Tuesday) with Read notes and Scales only: no rhythm round, but still in the streak and in Minutes.
+    p.stats.days['2026-10-13'] = { sec: 540, rounds: 0, acc: 0, off: 0, hits: 0, cells: {} };
+    show(p);
+    screen.getByRole('img', { name: /80% today; no rhythm rounds on Oct 3 and Oct 13\. Average \d+%\.$/ });
+    screen.getByRole('img', { name: /^Minutes practised this week: Monday 14, Tuesday 9,/ });
+    expect(screen.getAllByRole('img').map((img) => img.getAttribute('aria-label') ?? '').filter((name) => /no practice/i.test(name))).toEqual([]);
+    expect(t('progress.accuracy.gapCount', { count: 12 })).toBe('; no rhythm rounds on 12 days');
+  });
+
+  it('Timing tendency on the boards: every label where the boards draw it', () => {
+    show(richProgress(), 1280);
+    const svg = screen.getByRole('img', { name: /^Average timing offset per day/ });
+    expect([...svg.querySelectorAll('text.prog-axis')].map((el) => el.textContent)).toEqual(['+30', '0', '−40']);
+    const band = [...svg.querySelectorAll('text.prog-chart-note')].find((el) => el.textContent === 'steady');
+    expect(Number(band?.getAttribute('y'))).toBeCloseTo(33.7, 1);
+  });
+
+  // A late tapper (headphones not calibrated, a wide leniency) or an early one opens the range up or down: on the 90 px
+  // desktop chart the axis labels and the band's word ran into each other, and at any size the line ran through a note.
+  for (const [off, at] of [[150, 1280], [60, 1280], [-62, 1280], [150, 390], [60, 390]] as const) {
+    it(`Timing tendency at ${signedMs(off)} (${at} px): its labels keep apart, and the notes are drawn over the line`, () => {
+      show(timingAt(off), at);
+      const svg = screen.getByRole('img', { name: /^Average timing offset per day/ });
+      const baseline = (el: Element): number => Number(el.getAttribute('y'));
+      const note = (text: string): Element => [...svg.querySelectorAll('text.prog-chart-note')].find((el) => el.textContent === text)!;
+      const zero = Number(svg.querySelector('line.prog-zero')!.getAttribute('y1'));
+      const axis = [...svg.querySelectorAll('text.prog-axis')].map(baseline).sort((a, b) => a - b);
+      expect(axis.some((y) => Math.abs(y - (zero + 4)) < 0.01), 'the zero line keeps its label').toBe(true);
+      for (let i = 1; i < axis.length; i++) expect(axis[i] - axis[i - 1], 'axis labels apart').toBeGreaterThanOrEqual(11);
+      const band = [...svg.querySelectorAll('text.prog-chart-note')].find((el) => el.textContent === 'steady');
+      if (band) {
+        expect(baseline(band), 'the band word above the zero line').toBeLessThanOrEqual(zero + 0.5);
+        expect(baseline(note('early · rushing')) - baseline(band), 'the band word clear of the early note').toBeGreaterThanOrEqual(11);
+      }
+      const line = svg.querySelector('path.prog-line')!;
+      for (const text of ['late · dragging', 'early · rushing']) {
+        expect(line.compareDocumentPosition(note(text)) & Node.DOCUMENT_POSITION_FOLLOWING, `${text} is drawn after the line`).toBeTruthy();
+      }
+    });
+  }
 });
 
 describe('Progress tab in Dutch', () => {
@@ -254,5 +305,15 @@ describe('Progress tab in Dutch', () => {
     view('Noten', 'Voortgang tonen voor');
     expect(screen.getByText('bovenste tussenruimte · viool')).toBeTruthy();
     expect(screen.getByText('3,1 s')).toBeTruthy();
+  });
+
+  it('says a practised day without a rhythm round had no rhythm round, not that it was not practised', () => {
+    setLocale('nl');
+    const p = richProgress();
+    p.stats.days['2026-10-13'] = { sec: 540, rounds: 0, acc: 0, off: 0, hits: 0, cells: {} };
+    show(p);
+    screen.getByRole('img', { name: /vandaag 80%; geen ritmerondes op 3 okt en 13 okt\. Gemiddeld \d+%\.$/ });
+    expect(t('progress.accuracy.gapCount', { count: 12 })).toBe('; 12 dagen zonder ritmeronde');
+    expect(t('progress.accuracy.gapCount', { count: 1 })).toBe('; 1 dag zonder ritmeronde');
   });
 });

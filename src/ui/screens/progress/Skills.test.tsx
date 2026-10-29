@@ -126,7 +126,10 @@ describe('Skill levels', () => {
     const tiles = within(screen.getByRole('region', { name: 'Last 30 days' }));
     expect(tiles.getByText('No review due')).toBeTruthy();
     expect(screen.getByText('Your skills are all at level 0.')).toBeTruthy();
-    expect(screen.getAllByRole('link', { name: /: level 0 of 10\. 0 of \d+ checks for level 1, / })).toHaveLength(6);
+    expect(screen.getAllByRole('link', { name: /: level 0 of 10\. 0 of \d+ checks? for level 1, / })).toHaveLength(6);
+    // Treble clef, Bass clef and Scales have one check for level 1: "check", as the skill's screen writes it.
+    expect(screen.getByRole('link', { name: 'Treble clef: level 0 of 10. 0 of 1 check for level 1, Lines: E G B D F.' })).toBeTruthy();
+    expect(screen.queryAllByRole('link', { name: /0 of 1 checks/ })).toHaveLength(0);
     // Rhythm reading comes first in the skills' order: its button opens the Learning path.
     expect(screen.getByRole('link', { name: 'Continue unit 2' }).getAttribute('href')).toBe('#/path');
   });
@@ -238,6 +241,19 @@ describe('One skill', () => {
     expect(next.getByRole('link', { name: 'Free practice' }).getAttribute('href')).toBe('#/setup');
     expect(screen.getByRole('img', { name: 'Level 8 of 10' })).toBeTruthy();
     expect(within(screen.getByRole('region', { name: 'All levels' })).getAllByRole('listitem')[8].textContent).toBe('9SyncopationLater');
+  });
+
+  it('a new player: one check for level 1 is "1 check" in the labels too, in English and in Dutch', () => {
+    open('#/progress/skills/treble', null);
+    expect(screen.getByRole('img', { name: 'Level 0 of 10, and 0 of 1 check for level 1' })).toBeTruthy();
+    const next = within(screen.getByRole('region', { name: 'Next · level 1' }));
+    expect(next.getByText('0 of 1').closest('.skill-meta')?.textContent).toBe('0 of 1 check');
+    expect(next.getByRole('img', { name: '0 of 1 check done' })).toBeTruthy();
+    cleanup();
+    localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ language: 'nl' }));
+    open('#/progress/skills/treble', null);
+    expect(screen.getByRole('img', { name: 'Niveau 0 van 10, en 0 van 1 voorwaarde voor niveau 1' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '0 van 1 voorwaarde gehaald' })).toBeTruthy();
   });
 
   it('every level passed', () => {
