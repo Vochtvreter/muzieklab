@@ -932,8 +932,9 @@ test('a Read notes setup opened from a chapter keeps the way back to it: Quit re
   await page.getByRole('link', { name: 'Quit', exact: true }).click();
   await expect(page).toHaveURL(/#\/notes\?from=8$/);
   await expect(page.getByRole('link', { name: 'Back to chapter 8' })).toBeVisible();
+  // Back opens the chapter at its end, where its Practice button is (placeOf).
   await page.goBack();
-  await expect(page).toHaveURL(/#\/learn\/8$/);
+  await expect(page).toHaveURL(/#\/learn\/8\?s=check$/);
 
   // Round done of a round started there returns to the chapter; Change setup, Start and Quit go back to that setup.
   await page.getByRole('link', { name: 'Practice reading notes' }).click();

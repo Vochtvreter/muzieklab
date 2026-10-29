@@ -43,13 +43,14 @@ const jumpTo = (id: string) => (): void => {
  * Where the reader is in a chapter (`page`, its scroller): for a link in the chapter's column, the section (or the
  * quick check, 'check') it is in or comes after, so the chapter's end is the quick check; for one around it (the
  * sidebar, the tab bar), the section at the top of the view: the last one whose top, less the margin jumpTo leaves
- * above it, is at or above the top of the view, so jumpTo opens the same view again and the place never moves on.
+ * above it (its own scroll margin and the page's scroll padding), is at or above the top of the view, so jumpTo opens
+ * the same view again and the place never moves on.
  * Scrolled to the end, where the last sections cannot reach the top, it is the quick check, which jumpTo scrolls to the
  * end again. Null before the first section.
  */
 function placeOf(page: HTMLElement, link: Element, ids: string[]): string | null {
   const inColumn = !!link.closest('.learn-main');
-  const top = page.getBoundingClientRect().top;
+  const top = page.getBoundingClientRect().top + (parseFloat(getComputedStyle(page).scrollPaddingTop) || 0);
   const end = page.scrollTop > 0 && page.scrollTop + page.clientHeight >= page.scrollHeight - 1;
   const atTop = (el: Element): boolean => end || el.getBoundingClientRect().top - (parseFloat(getComputedStyle(el).scrollMarginTop) || 0) <= top + 1;
   let place: string | null = null;
