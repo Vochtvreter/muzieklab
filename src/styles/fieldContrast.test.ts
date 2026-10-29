@@ -215,16 +215,21 @@ describe('a dark theme chosen in Settings', () => {
 
 // The keyboard's focus ring (base.css: 3 px, 2 px away from the control) borders what is behind the control: the page,
 // a card, a segmented control's track, the pad's card. WCAG 1.4.11 asks 3:1 against it, in light and in dark. On the
-// Continue card's slate fill, which turns light in dark, no gold does: the ring there is the ink on the fill.
+// slate fill of a card with controls on it, which turns light in dark, no gold does: the ring there is the ink on the
+// fill. Those cards are the Continue card and What's new's latest release (its try link), on a phone and on desktop.
 describe('the focus ring', () => {
+  const filled = ['.continue-card', '.cl-latest', '.cl-card--latest'];
   for (const [name, t] of themes) {
     it(`${name}: 3:1 or more on the page, a card, a track and the soft accent`, () => {
       for (const surface of ['--ground', '--paper', '--track', '--accent-soft']) {
         expect(contrast(t['--focus'], t[surface]), surface).toBeGreaterThanOrEqual(3);
       }
     });
-    it(`${name}: 3:1 or more on the Continue card`, () => {
-      expect(tokenOf(declared(css('app.css'), '.continue-card', '--focus'))).toBe('--on-fill');
+    it(`${name}: 3:1 or more on the cards filled with the accent`, () => {
+      for (const card of filled) {
+        expect(tokenOf(declared(css('app.css'), card, 'background')), card).toBe('--accent');
+        expect(tokenOf(declared(css('app.css'), card, '--focus')), card).toBe('--on-fill');
+      }
       expect(contrast(t['--on-fill'], t['--accent'])).toBeGreaterThanOrEqual(3);
     });
   }

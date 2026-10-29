@@ -2285,11 +2285,19 @@
   }
 }
 /*
- * Forced colors (see app.css): a right answer takes the selection colours (out of forced colors, for its words), a
- * wrong one a thick dashed edge and its name struck through, so they no longer look like the buttons around them. A
- * chosen key's signature keeps the page's colour behind it, as on the keys around it.
+ * Forced colors (see app.css): a piano's black keys, drawn only with their fill, get an edge (filled in the text
+ * colour, they would hide a played key's dot in some themes), and the Learn piano's marked keys a thick one in the
+ * selection colour. A right answer takes the selection colours (out of forced colors, for its words), a wrong one a
+ * thick dashed edge and its name struck through, so they no longer look like the buttons around them. A chosen key's
+ * signature keeps the page's colour behind it, as on the keys around it.
  */
 @media (forced-colors: active) {
+  .piano-black {
+    border: 2px solid CanvasText;
+  }
+  .piano-white.is-marked {
+    border: 3px solid Highlight;
+  }
   .name-btn.is-right,
   .piano-white.is-right,
   .piano-black.is-right {

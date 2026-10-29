@@ -24,6 +24,11 @@
   flex-direction: column;
   overflow-y: auto;
   scrollbar-width: none;
+  /*
+   * Room for the focus ring of a control that Tab scrolls to the box's top or bottom edge, as on .page: on some screens
+   * this box scrolls, not the page (the Scales hub on a phone on its side and on a laptop, desktop Home).
+   */
+  scroll-padding: 6px 0;
 }
 .shell-main::-webkit-scrollbar {
   display: none;
@@ -1099,6 +1104,15 @@
 .path {
   --pb: 14px;
   gap: 12px;
+}
+/*
+ * On a phone the units scroll, not the page, and Start sits on the page's bottom edge: the page pads --pb - 12 px under
+ * it, 6 px here, so its focus ring shows whole (DESIGN.md §9 Scrolling; with 2 px the ring lost its bottom line).
+ */
+@media (max-width: 699.98px) {
+  .path {
+    --pb: 18px;
+  }
 }
 /* vw, not %: the units use --px too, and the page always spans the window. */
 .path--tablet {
@@ -3886,6 +3900,8 @@ button.lesson-stars:hover {
   border-radius: 24px;
   background: var(--accent);
   color: var(--on-fill);
+  /* The release's try link sits on the slate fill: the ring is the ink on the fill, as on the Continue card. */
+  --focus: var(--on-fill);
 }
 .cl-latest-head {
   grid-area: head;
@@ -4382,6 +4398,7 @@ button.lesson-stars:hover {
 .cl-card--latest {
   background: var(--accent);
   color: var(--on-fill);
+  --focus: var(--on-fill);
 }
 .cl-card-staff {
   position: absolute;

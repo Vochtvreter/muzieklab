@@ -309,6 +309,11 @@
   margin: 0 auto;
   gap: 20px;
   overflow: visible;
+  /*
+   * The shell's main box scrolls, not the page: the page grows with its content, so its padding stays under the last
+   * control (Go round the circle) on a short window and that control's focus ring shows whole (it lay on the box's edge).
+   */
+  flex: 1 0 auto;
 }
 .hub--tablet {
   --px: 32px;

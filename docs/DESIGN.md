@@ -1528,29 +1528,31 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     over or under the staff. From 360 px wide its key labels sit beside *Any octave counts*. The scale's name is 18 px
     (22 px on the board), so a long one (*A♯ harmonisch mineur*) stays on one line at 375 px, and Up & down's two
     degree rows are 40 px high, 4 px apart.
-  - Under 660 px tall (375 × 553, 320 × 568, 375 × 629): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
-    0.8, the Read notes staff at 1.15 (not 1.45; about 0.82 and 1.0 with ledger lines) and the Scales staff at 1.1 (not
-    1.25; 1 with Up & down, its staff card 4 px above and below), or smaller still to fit their notes. With a time per
-    note, Read notes' staff card has 6 px above and below and its timer bar sits 4 px under the staff, so a why of three
-    lines with two ledger lines leaves Hint and Next note in view at 375 × 553. The floors are lower (pad 72 px, Read
-    notes piano 64 px with its black keys kept at 44 px and the white keys' labels below them, Scales piano 110 px), and
-    so are the name buttons (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are 6 px), the sign
-    buttons (64 px, 56 px with Up & down), the analog beat counter (44 px, as the digits' row), Echo's listen card and
-    Calibration's intro. At 320 px wide Read notes leaves out *Any octave counts* above the key labels (screen readers
-    still read it), so the why of a wrong key in a lesson in a key fits on its three lines. Up & down's done line leaves
-    out the scale's 15 notes, which its degree rows show right above it (screen readers still read them): it takes two
-    lines at most, in Dutch at 320 px too. Like a why of two lines, it leaves Hint and Next scale in view beside the
-    tallest staff, a B♭ scale's (its high B♭ with its flat), also in B♭ harmonic minor, whose eyebrow takes two lines at
-    375 px beside *2 mistakes*.
+  - Under 660 px tall (375 × 553, 320 × 568, 375 × 629): the gaps are 8 px, and the staves are drawn smaller: the rhythm
+    staff at 0.8, the Read notes staff at 1.15 (not 1.45; about 0.82 and 1.0 with ledger lines) and the Scales staff at
+    1.1 (not 1.25; 1 with Up & down, its staff card 4 px above and below), or smaller still to fit their notes. With a
+    time per note, Read notes' staff card has 6 px above and below and its timer bar sits 4 px under the staff, so a why
+    of three lines with two ledger lines leaves Hint and Next note in view at 375 × 553. The floors are lower (pad
+    72 px, Read notes piano 64 px with its black keys kept at 44 px and the white keys' labels below them, Scales piano
+    110 px), and so are the name buttons (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are
+    6 px), the sign buttons (64 px, 56 px with Up & down), the analog beat counter (44 px, as the digits' row), Echo's
+    listen card and Calibration's intro. At 320 px wide Read notes leaves out *Any octave counts* above the key labels
+    (screen readers still read it), so the why of a wrong key in a lesson in a key fits on its three lines. Up & down's
+    done line leaves out the scale's 15 notes, which its degree rows show right above it (screen readers still read
+    them): it takes two lines at most, in Dutch at 320 px too. Like a why of two lines, it leaves Hint and Next scale in
+    view beside the tallest staff, a B♭ scale's (its high B♭ with its flat), also in B♭ harmonic minor, whose eyebrow
+    takes two lines at 375 px beside *2 mistakes*.
 - **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a
   1280 × 720 laptop, `laptop-720`) the page's padding (20 px at the top, 16 px at the bottom), its gap (16 px) and the
   staff card's padding (20 × 40 px, 16 px at the bottom) tighten, and the stat cards are lower (12 px × 18 px), so two
-  staff rows, a timing lane of four rows (16 bars) and the analog pendulum fit. Under 822 px only the room under the
-  pad row is smaller (12 px, not 36 px), which shows only when 16 bars with the pendulum and the room for a triplet's 3
-  fill a 1280 × 800 window or a 1180 × 820 tablet on its side. Under 720 px tall (a 1366 × 768 laptop's window in
-  Chrome, 1366 × 657) the header's padding (12 px above and below), the page's (12 px) and its gap (12 px), the staff
-  card's padding (14 × 40 px, 10 px at the bottom), the stat cards (8 × 16 px, 8 px apart) tighten once more and the
-  pad is at least 160 px high, so 16 bars fit there too (they ran 53 px past it).
+  staff rows, a timing lane of four rows (16 bars) and the analog pendulum fit. Under 822 px only the room under the pad
+  row is smaller (12 px, not 36 px), which shows only when 16 bars with the pendulum and the room for a triplet's 3 fill
+  a 1280 × 800 window or a 1180 × 820 tablet on its side. Under 720 px tall (a 1366 × 768 laptop's window in Chrome,
+  1366 × 657) the header's padding (12 px above and below), the page's (12 px) and its gap (12 px), the staff card's
+  padding (14 × 40 px, 10 px at the bottom), the stat cards (8 × 16 px, 8 px apart) tighten once more and the pad is at
+  least 160 px high, so 16 bars fit there too (they ran 53 px past it). Under about 650 px (1366 × 625, with Chrome's
+  bookmarks bar) 16 bars with the pendulum still run about 25 px over; that would take a smaller staff on short desktop
+  windows.
   Read notes and Scales fit a window 800 px tall or more (1280 × 800, a 1180 × 820 tablet on its side): under 960 px
   tall their page's padding (20 px at the top, 16 px at the bottom) and gap (16 px), the staff card's padding
   (14 × 40 px) and the answer card's (18 × 24 px, 12 px between its rows) tighten and the piano is 160 px high (210 px
@@ -1676,8 +1678,9 @@ and 4.53:1 in dark (`src/styles/fieldContrast.test.ts` checks it). The Foundatio
 The keyboard's focus ring (3 px, 2 px away from the control) borders what is behind the control, so it is 3:1 or more
 against the page, a card, a track and Accent soft (WCAG 1.4.11): in light a dark gold, the gold text's `--reward-ink`
 (4.2–5.4:1), as the reward gold `#e0a526` is only 1.7–2.2:1 there; in dark the bright gold (7.4–9.9:1). On the
-Continue card's slate fill, which turns light in dark, no gold is 3:1, so the ring there is the ink on the fill
-(`--on-fill`: white in light, near-black in dark). `src/styles/fieldContrast.test.ts` checks both.
+slate fill of a card with controls on it (the Continue card, and What's new's latest release with its try link), which
+turns light in dark, no gold is 3:1, so the ring there is the ink on the fill (`--on-fill`: white in light, near-black
+in dark). `src/styles/fieldContrast.test.ts` checks both.
 
 Type: **Unbounded** (display, scores, counts), **Figtree** (UI and body),
 **JetBrains Mono** (numbers, ms, BPM, codes), **Noto Music** (note and rest glyphs on
@@ -1713,9 +1716,11 @@ edge, never at the side of the content (since 0.13.2; before, a page in a centre
 Results (1160 px) or Account (640 px), had it at the column's edge): the page spans the window and pads its content into
 the column, and the Learning path's units, which scroll in a box of their own, reach the window's edge the same way.
 Only a side menu (a Learn chapter's sections, What's new's releases on desktop) scrolls where it stands. Each box that
-scrolls (a page, the Path's units, a side menu) keeps 6 px of room at its top and bottom when Tab scrolls a control to
-its edge, so the control's focus ring shows whole (Setup and Results keep more at the bottom, above their sticky
-buttons).
+scrolls keeps 6 px of room at its top and bottom when Tab scrolls a control to its edge, so the control's focus ring
+shows whole: a page, the Path's units, a side menu, and the shell's main box around the page, which scrolls instead on
+desktop Home and on the Scales hub in a short window (the hub's page grows with its content, so its padding stays
+under Go round the circle). Setup and Results keep more at the bottom, above their sticky buttons. A page that does not
+scroll keeps as much under a control on its bottom edge: the Path's Start on a phone, where the units scroll.
 
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every
@@ -2265,9 +2270,9 @@ without code changes:
 - High-contrast theme; big touch targets (≥ 48 px). In a Windows contrast theme (forced colors) the system paints
   every background in the page's colour and all text and borders in one colour, so nothing may be told by a fill or a
   colour alone: a chosen option (`aria-pressed`, a checked radio), the current tab, Play's beat and Read notes' right
-  answer take the system's selection colours, a switch has an edge and a knob, a filled button an edge, and a wrong
-  answer a dashed edge with its name struck through (`base.css`, `app.css`, `notes.css`, `scales.css`; a layout test
-  checks it in light and dark).
+  answer take the system's selection colours, a switch has an edge and a knob, a filled button and a piano's black key
+  an edge, the Learn piano's marked keys a thick edge in the selection colour, and a wrong answer a dashed edge with its
+  name struck through (`base.css`, `app.css`, `notes.css`, `scales.css`; a layout test checks it in light and dark).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,
   borders and bars. Gold and red text use `--gold-ink` and `--miss-ink` the same way: Play's GOOD · LATE and MISS are

@@ -222,14 +222,15 @@ async function expectRingsInSideMenu(menu: Locator): Promise<void> {
  * A page that scrolls (DESIGN.md §9 Scrolling) shows the whole focus ring of each control on it, from the first to the
  * last with Tab and back with Shift+Tab. Tab scrolls the page just far enough to show the control's box, and the ring
  * lies outside it: Settings' Privacy row lost the bottom edge of its ring, and the language buttons the top edge on the
- * way back up. No box around the control cuts the ring off, on any side.
+ * way back up. No box around the control cuts the ring off, on any side. The controls are those in the shell's main
+ * box, which is what scrolls on some screens (the Scales hub on a phone on its side, desktop Home).
  */
 async function expectRingsOnPage(page: Page): Promise<void> {
-  await page.locator('.page').locator('a[href], button:not(:disabled)').first().focus();
+  await page.locator('main.shell-main').locator('a[href], button:not(:disabled)').first().focus();
   const check = (): Promise<string | null> =>
     page.evaluate(() => {
       const el = document.activeElement as HTMLElement | null;
-      if (!el?.closest('.page')) return 'left';
+      if (!el?.closest('main.shell-main')) return 'left';
       if (!el.matches(':focus-visible')) return null;
       const style = getComputedStyle(el);
       const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
@@ -941,9 +942,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     test('scrolling pages: Tab shows the whole focus ring of a control it scrolls to the top or bottom edge', async ({ page }) => {
       known(name, 'page-rings');
-      for (const hash of ['#/settings', '#/changelog', '#/learn', '#/learn/2']) {
+      // The Scales hub and Home scroll the shell's main box on a phone on its side and a laptop, not the page; the Path's
+      // page does not scroll on a phone (its units do), and Start lesson sits at its bottom edge.
+      for (const hash of ['#/settings', '#/changelog', '#/learn', '#/learn/2', '#/scales', '#/path', '#/']) {
         await page.goto('./' + hash);
-        await expect(page.locator('.page').locator('a[href], button').first()).toBeVisible();
+        await expect(page.locator('main.shell-main').locator('a[href], button').first()).toBeVisible();
         await expectRingsOnPage(page);
       }
     });
@@ -3811,9 +3814,9 @@ test.describe('exercise screens at phone heights between the steps', () => {
 /**
  * Forced colors (a Windows contrast theme) paint every background in the page's colour and all text and borders in one
  * colour (DESIGN.md §11). A state shown only by a fill or a colour then disappears; each must still show: the chosen
- * option of every group beside one that is not chosen, a switch's knob and edge, a filled button's shape, Play's beat
- * and Read notes' right and wrong answers. Compared by what the browser paints (the computed colours are the forced
- * ones).
+ * option of every group beside one that is not chosen, a switch's knob and edge, a filled button's shape, Play's beat,
+ * Read notes' right and wrong answers, a piano's black keys and the Learn piano's marked keys. Compared by what the
+ * browser paints (the computed colours are the forced ones).
  */
 test.describe('forced colors (a contrast theme)', () => {
   test.use({ viewport: VIEWPORTS.phone, hasTouch: true });
@@ -3851,10 +3854,20 @@ test.describe('forced colors (a contrast theme)', () => {
           const dot = document.querySelector('.beats-dot');
           const fill = dot && getComputedStyle(dot);
           if (fill && (fill.backgroundColor === ground || /, 0\)$/.test(fill.backgroundColor)) && fill.outlineStyle === 'none') out.push("Play's beat is not marked");
-          const plain = document.querySelector('.name-btn:not(.is-right):not(.is-wrong)');
-          for (const mark of ['is-right', 'is-wrong']) {
-            const el = document.querySelector('.name-btn.' + mark);
-            if (el && plain && look(el) === look(plain)) out.push(`a name button ${mark}: looks like the others`);
+          for (const kind of ['.name-btn', '.piano-white', '.piano-black']) {
+            const plain = document.querySelector(`${kind}:not(.is-right):not(.is-wrong):not(.is-marked)`);
+            for (const mark of ['is-right', 'is-wrong', 'is-marked']) {
+              const el = document.querySelector(`${kind}.${mark}`);
+              if (el && plain && look(el) === look(plain)) out.push(`${kind} ${mark}: looks like the others`);
+            }
+          }
+          // A piano's black key, drawn only with its fill: it must differ from the page or have an edge.
+          for (const key of document.querySelectorAll('.piano-black')) {
+            const s = getComputedStyle(key);
+            const filled = s.backgroundColor !== ground && !/, 0\)$|transparent/.test(s.backgroundColor);
+            if (!filled && (s.borderTopStyle === 'none' || parseFloat(s.borderTopWidth) === 0) && s.outlineStyle === 'none') {
+              out.push(`${key.getAttribute('aria-label')}: the black key is not drawn`);
+            }
           }
           return out;
         });
@@ -3875,6 +3888,23 @@ test.describe('forced colors (a contrast theme)', () => {
       await expect(page.locator('.name-btn.is-wrong')).toHaveCount(1);
       await expect(page.locator('.name-btn.is-right')).toHaveCount(1);
       await expect.poll(lost, 'Read notes').toEqual([]);
+      // Read notes on the piano: its black keys, and a wrong black key and the right white one marked. In C major with
+      // no signs every note is a white key, so the first black key is wrong.
+      const piano: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano' };
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings: piano, seed: 7, focus: [] });
+      await page.goto('about:blank');
+      await page.goto('./#/notes/play');
+      const black = page.locator('.piano-black');
+      await expect(black).toHaveCount(5);
+      await expect.poll(lost, 'the piano').toEqual([]);
+      await black.first().click();
+      await expect(page.locator('.piano-black.is-wrong')).toHaveCount(1);
+      await expect(page.locator('.piano-white.is-right')).toHaveCount(1);
+      await expect.poll(lost, 'the piano, answered').toEqual([]);
+      // Learn's piano diagram: the half steps' keys (E, F, B, C) are marked.
+      await page.goto('./#/learn/9?s=9.2');
+      await expect(page.locator('.piano-white.is-marked')).toHaveCount(4);
+      await expect.poll(lost, "Learn's piano").toEqual([]);
       // Play's beat counter: its ring in the count-in, then its circle on bar 1.
       await page.goto('./#/setup');
       await page.getByRole('button', { name: /^Start · / }).click();
@@ -3882,6 +3912,16 @@ test.describe('forced colors (a contrast theme)', () => {
       expect(await lost(), 'the count-in').toEqual([]);
       await expect(page.getByRole('img', { name: /^Counting beat 1 / })).toBeVisible({ timeout: 8000 });
       expect(await lost(), 'bar 1').toEqual([]);
+      // Scales on the piano: D major's F♯ and C♯ are black keys.
+      await seed(page, {
+        prefs: { seenHowTo: true, seenHold: true },
+        progress: { scales: { settings: { keyMode: 'one', keys: ['D'], types: ['major'], input: 'piano', direction: 'up', write: 'signs', showSteps: true, playNotes: false }, stars: {} } },
+      });
+      await page.goto('about:blank');
+      await page.goto('./#/scales/setup');
+      await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+      await expect(page.locator('.spiano .piano-black').first()).toBeVisible();
+      await expect.poll(lost, 'the Scales piano').toEqual([]);
     });
   }
 });
