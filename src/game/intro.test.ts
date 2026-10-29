@@ -2,7 +2,7 @@ import { DEFAULT_SETTINGS } from '../core/defaults';
 import { generateExercise } from '../core/generator';
 import { PPQ, type Bar, type Exercise } from '../core/types';
 import { ALL_LESSONS, lessonSettings } from './path';
-import { exerciseHas, INTRO_IDS, introId, introsOf, lessonIntros, unseenIntros } from './intro';
+import { exerciseHas, INTRO_IDS, introId, introsOf, lessonIntros, SHOW_IDS, unseenIntros } from './intro';
 
 const ids = (lessonId: string): string[] => lessonIntros(lessonId).map(introId);
 
@@ -34,6 +34,11 @@ describe('lessonIntros', () => {
     expect(new Set(all).size).toBe(all.length);
     for (const id of all) expect(INTRO_IDS).toContain(id);
     expect(INTRO_IDS).toEqual(expect.arrayContaining(['triplets', 'rest:sixteenth', 'meter:4/4']));
+  });
+
+  it('every id a start can ask for is known (SHOW_IDS): the intro ids, any rest, each dotted value and the figures', () => {
+    expect(SHOW_IDS).toEqual(expect.arrayContaining([...INTRO_IDS, 'rest', 'dotted:eighth', 'dotted:quarter', 'figure:eighth-pair', 'figure:eighth-sixteenths']));
+    for (const { lesson } of ALL_LESSONS) for (const id of lesson.preview ?? []) expect(SHOW_IDS, lesson.id).toContain(id);
   });
 
   it('an unknown lesson introduces nothing', () => {
@@ -75,6 +80,12 @@ describe('exerciseHas', () => {
     for (const id of ['meter:3/4', 'note:whole', 'rest:half', 'note:eighth', 'ties', 'triplets']) expect(exerciseHas(ex, [id]), id).toBe(false);
     const tied = exercise([{ events: [note(0, 2 * q), note(2 * q, 2 * q)] }, { events: [note(0, 2 * q, { tieFromPrev: true }), note(2 * q, 2 * q)] }]);
     expect(exerciseHas(tied, ['ties'])).toBe(true);
+  });
+
+  it("finds any rest as 'rest', the whole-bar rest too, as 'dotted' is any dotted value", () => {
+    expect(exerciseHas(exercise([{ events: [note(0, 2 * q), rest(2 * q, q), note(3 * q, q)] }]), ['rest'])).toBe(true);
+    expect(exerciseHas(exercise([{ events: [note(0, 4 * q)] }, { events: [rest(0, 4 * q)] }, { events: [note(0, 4 * q)] }]), ['rest'])).toBe(true);
+    expect(exerciseHas(exercise([{ events: [note(0, 2 * q), note(2 * q, 2 * q)] }]), ['rest'])).toBe(false);
   });
 
   it('tells one dotted value from another: a dotted half is no dotted quarter', () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, LETTERS, PPQ, checkSettings, getMeter, sanitizeNoteSettings, sanitizeScaleSettings } from '../../core/api';
+import { SHOW_IDS } from '../../game/intro';
 import { ALL_LESSONS, lessonSettings } from '../../game/path';
 import { PATH_UNITS, pathUnitOf } from '../../game/tracks';
 import { parseBars } from '../../render/notationText';
@@ -133,6 +134,8 @@ describe('Learn chapters', () => {
         const settings = { ...DEFAULT_SETTINGS, mode: 'echo' as const, ...s.practice.rhythm };
         expect(settings.mode, s.id).toBe('tap');
         expect(checkSettings(settings).playable.length, s.id).toBeGreaterThan(0);
+        // An id the start does not know would never be found: every start would try all its seeds in vain.
+        for (const id of s.practice.shows ?? []) expect(SHOW_IDS, s.id).toContain(id);
       }
     }
   });

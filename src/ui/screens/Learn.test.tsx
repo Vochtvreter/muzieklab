@@ -151,6 +151,29 @@ describe("Learn: a rhythm section's practice", () => {
     expect(restoreRun()?.shows).toEqual(['ties']);
   });
 
+  it("asks for 5.3's dotted eighth, where a dotted quarter has a dot too, and keeps that after a reload on Play", async () => {
+    // A start seed whose exercise has a dot but no dotted eighth: the link once played it as it came.
+    vi.mocked(crypto.getRandomValues).mockImplementation(<T extends ArrayBufferView | null>(a: T): T => {
+      (a as unknown as Uint32Array)[0] = 22 * 2;
+      return a;
+    });
+    open('#/learn/practice?s=5.3');
+    await waitFor(() => expect(window.location.hash).toBe('#/play?from=5.3'));
+    expect(stored().shows).toEqual(['dotted', 'dotted:eighth']);
+    expect(stored().seed).not.toBe(22);
+    // Rebuilt after a reload, the run still asks for it, so Next does too.
+    const run = restoreRun()!;
+    expect(exerciseHas(run.exercise, ['dotted:eighth'])).toBe(true);
+    expect(run.shows).toEqual(['dotted', 'dotted:eighth']);
+  });
+
+  it('a reload on Play keeps every id a practice can ask for, and drops unknown ones', () => {
+    const settings = { ...DEFAULT_SETTINGS, notes: ['quarter', 'eighth', 'sixteenth'], dotted: true };
+    const shows = ['dotted', 'dotted:eighth', 'figure:eighth-pair', 'rest', 'note:sixteenth', 'tie', 'dotted:triplet', 7];
+    sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings, seed: 1, lessonId: null, daily: null, shows }));
+    expect(restoreRun()?.shows).toEqual(['dotted', 'dotted:eighth', 'figure:eighth-pair', 'rest', 'note:sixteenth']);
+  });
+
   it('plays 2 bars for the tie with Bars at 1, where no exercise has one, and the player keeps 1 bar', async () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ lastSettings: { ...DEFAULT_SETTINGS, bars: 1 } }));
     open('#/learn/practice?s=5.1');

@@ -91,7 +91,26 @@ export type Block =
  * What a section's practice link starts: a Read notes round or a rhythm exercise straight away, or the Scales setup,
  * set up for the section.
  */
-export type Practice = { notes: Partial<NoteSettings> } | { rhythm: Partial<Settings> } | { scales: Partial<ScaleSettings> };
+export type Practice = { notes: Partial<NoteSettings> } | RhythmPractice | { scales: Partial<ScaleSettings> };
+
+export interface RhythmPractice {
+  rhythm: Partial<Settings>;
+  /**
+   * What every exercise must show besides the extra the preset turns on, where the preset alone does not make sure of
+   * what the section teaches (ids of game/intro.ts, SHOW_IDS): 5.3's 'dotted:eighth', where a dotted quarter has a dot
+   * too; 'rest' for any rest. Only what an exercise can have with any bars and density: a whole note beside a half and
+   * a quarter needs 2 bars.
+   */
+  shows?: string[];
+}
+
+/**
+ * What a rhythm practice link's exercise must show (makeRunShowing in ui/store.tsx): the extra its preset turns on
+ * (5.1's tie, which the generator only makes likely), and the section's own `shows`.
+ */
+export function practiceShows(p: RhythmPractice): string[] {
+  return [...(['dotted', 'ties', 'triplets'] as const).filter((k) => p.rhythm[k]), ...(p.shows ?? [])];
+}
 
 export interface Section {
   /** "9.3": chapter and section number. */
@@ -258,7 +277,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'rhythm', meter: '4/4', bars: ['q qr q qr', 'hr h'], alt: 'countAlt' },
           { kind: 'tip', text: 'game' },
         ],
-        practice: { rhythm: { ...RHYTHM, rests: ['half', 'quarter'] } },
+        practice: { rhythm: { ...RHYTHM, rests: ['half', 'quarter'] }, shows: ['rest'] },
       },
       {
         id: '3.2',
@@ -274,7 +293,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'rhythm', meter: '4/4', bars: ['8.r 16 q qr 8r 8'], alt: 'dottedAlt' },
           { kind: 'text', text: 'noTie' },
         ],
-        practice: { rhythm: { ...RHYTHM, meters: ['2/4', '3/4', '4/4'], rests: ['whole', 'half', 'quarter'] } },
+        practice: { rhythm: { ...RHYTHM, meters: ['2/4', '3/4', '4/4'], rests: ['whole', 'half', 'quarter'] }, shows: ['rest'] },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
@@ -294,7 +313,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'text', text: 'rest' },
           { kind: 'rhythm', meter: '4/4', bars: ['q 8 8r 8r 8 q'], alt: 'restAlt' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'] } },
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'] }, shows: ['figure:eighth-pair'] },
       },
       {
         id: '4.2',
@@ -321,7 +340,7 @@ export const CHAPTERS: Chapter[] = [
           },
           { kind: 'rhythm', meter: '4/4', bars: ['[16 16 16 16] [8 8] [8 16 16] q'], alt: 'staffAlt' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'] } },
+        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'] }, shows: ['note:sixteenth'] },
       },
       {
         id: '4.3',
@@ -341,7 +360,7 @@ export const CHAPTERS: Chapter[] = [
           },
           { kind: 'tip', text: 'game' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth', 'sixteenth'], rests: ['quarter', 'eighth'] } },
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth', 'sixteenth'], rests: ['quarter', 'eighth'] }, shows: ['note:eighth', 'note:sixteenth'] },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
@@ -408,7 +427,7 @@ export const CHAPTERS: Chapter[] = [
           },
           { kind: 'rhythm', meter: '4/4', bars: ['[8. 16] [8. 16] q q'], alt: 'staffAlt' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'], dotted: true } },
+        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'], dotted: true }, shows: ['dotted:eighth'] },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },

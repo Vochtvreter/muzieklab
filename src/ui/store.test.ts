@@ -4,7 +4,7 @@ import { noteLessonSettings } from '../game/notesPath';
 import { ALL_LESSONS, lessonSettings } from '../game/path';
 import { PATH_UNITS } from '../game/tracks';
 import { defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type DayStats, type Prefs, type Progress } from '../game/storage';
-import { CHAPTERS } from './learn/chapters';
+import { CHAPTERS, practiceShows } from './learn/chapters';
 import type { Me } from '../../shared/api';
 import { makeLessonRun, makeNoteRun, makeRun, makeRunShowing, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, runSetup, type Action, type AppState } from './store';
 
@@ -390,24 +390,68 @@ describe('makeLessonRun', () => {
 
 describe('makeRunShowing', () => {
   const seeds = Array.from({ length: 150 }, (_, i) => (Math.imul(i + 1, 2654435761) >>> 1) || 1);
-  const rhythm = CHAPTERS.flatMap((c) => c.sections).flatMap((s) => (s.practice && 'rhythm' in s.practice ? [{ id: s.id, settings: { ...DEFAULT_SETTINGS, ...s.practice.rhythm } }] : []));
+  /** Each Learn section's rhythm practice: its settings over the default setup, and what its start asks for. */
+  const rhythm = CHAPTERS.flatMap((c) => c.sections).flatMap((s) =>
+    s.practice && 'rhythm' in s.practice ? [{ id: s.id, settings: { ...DEFAULT_SETTINGS, ...s.practice.rhythm }, shows: practiceShows(s.practice) }] : [],
+  );
 
-  it("a Learn section's rhythm practice shows the extra it turns on: 5.1 and 6.1 a tie, 5.2 a dot, 7.1 a triplet", () => {
-    for (const { id, settings } of rhythm) {
-      const shows = (['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k]);
-      for (const seed of seeds) {
-        const run = makeRunShowing(settings, seed, shows)!;
-        expect(exerciseHas(run.exercise, shows), `${id}, seed ${seed}`).toBe(true);
-        expect(run).toMatchObject({ lessonId: null, daily: null });
-        // Kept for Next, which shows it too.
-        expect(run.shows ?? [], id).toEqual(shows);
-        expect(run.exercise.settings).toEqual(settings);
+  it("a Learn section's rhythm practice shows what the section teaches, with any bars and density: 5.1 a tie, 5.3 a dotted eighth", () => {
+    // What each section's title and text teach. 1.2's and 1.3's meters come one to an exercise; 2.1's whole, half and
+    // quarter notes fit together only from 2 bars, where every exercise has all three (below).
+    const teaches: Record<string, string[]> = {
+      '1.1': ['note:quarter'],
+      '1.2': [],
+      '1.3': [],
+      '2.1': [],
+      '3.1': ['rest'],
+      '3.2': ['rest'],
+      '4.1': ['figure:eighth-pair'],
+      '4.2': ['note:sixteenth'],
+      '4.3': ['note:eighth', 'note:sixteenth'],
+      '5.1': ['ties'],
+      '5.2': ['dotted'],
+      '5.3': ['dotted:eighth'],
+      '6.1': ['ties'],
+      '7.1': ['triplets'],
+    };
+    expect(rhythm.map((r) => r.id)).toEqual(Object.keys(teaches));
+    // The player's own bars, density and amount of rests stay (the preset leaves them): each of them, on fewer seeds.
+    const players = [
+      ...[1, 2, 4].map((bars) => ({ bars, density: 'balanced' as const, restAmount: 'some' as const, starts: seeds.slice(0, 60) })),
+      ...[1, 4].flatMap((bars) =>
+        (['sparse', 'busy'] as const).flatMap((density) => (['few', 'many'] as const).map((restAmount) => ({ bars, density, restAmount, starts: seeds.slice(0, 10) }))),
+      ),
+    ];
+    for (const { id, settings, shows } of rhythm) {
+      // It asks for the extra the preset turns on, and for what the section names.
+      expect(shows, id).toEqual(expect.arrayContaining((['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k])));
+      for (const { starts, ...player } of players) {
+        // Not 5.2's dot with Bars at 1 and Busy notes: the generator makes one in about 1 exercise of 100 there, which
+        // 200 seeds miss in about 1 start in 4.
+        if (id === '5.2' && player.bars === 1 && player.density === 'busy') continue;
+        const s = { ...settings, ...player };
+        for (const seed of starts) {
+          const run = makeRunShowing(s, seed, shows)!;
+          const at = `${id}, ${player.bars} bars ${player.density} ${player.restAmount}, seed ${seed}`;
+          expect(exerciseHas(run.exercise, [...teaches[id], ...shows]), at).toBe(true);
+          if (id === '2.1' && player.bars >= 2) expect(exerciseHas(run.exercise, ['note:whole', 'note:half', 'note:quarter']), at).toBe(true);
+          expect(run).toMatchObject({ lessonId: null, daily: null });
+          // Kept for Next, which shows it too.
+          expect(run.shows ?? [], at).toEqual(shows);
+          // The settings asked for, but for a tie with Bars at 1 (below).
+          if (!s.ties || s.bars > 1) expect(run.exercise.settings, at).toEqual(s);
+        }
       }
     }
     // Without the search about one 5.1 exercise in four has no tie: ties across the bar line are a chance, and an
-    // eighth, quarter, eighth syncopates without one.
-    const ties = rhythm.find((r) => r.id === '5.1')!.settings;
-    expect(seeds.filter((seed) => !exerciseHas(makeRun(ties, seed, null)!.exercise, ['ties'])).length).toBeGreaterThan(seeds.length / 10);
+    // eighth, quarter, eighth syncopates without one. About one 5.3 exercise in six has no dotted eighth, only a dotted
+    // quarter.
+    const plain = (id: string, ids: string[]): number => {
+      const { settings } = rhythm.find((r) => r.id === id)!;
+      return seeds.filter((seed) => !exerciseHas(makeRun(settings, seed, null)!.exercise, ids)).length;
+    };
+    expect(plain('5.1', ['ties'])).toBeGreaterThan(seeds.length / 10);
+    expect(plain('5.3', ['dotted:eighth'])).toBeGreaterThan(seeds.length / 10);
   });
 
   it("a tie needs two bars: with Bars at 1 5.1's and 6.1's practice plays 2 and shows one, and the setup keeps 1", () => {

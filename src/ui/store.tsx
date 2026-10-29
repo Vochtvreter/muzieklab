@@ -38,7 +38,7 @@ import { Rng } from '../core/rng';
 import { awardAchievements, roundAchievements } from '../game/achievements';
 import { dailyTier } from '../game/daily';
 import { mergePrefs, mergeSynced, sameValue, type Synced } from '../game/merge';
-import { exerciseHas, INTRO_IDS, introId, lessonIntros } from '../game/intro';
+import { exerciseHas, introId, lessonIntros, SHOW_IDS } from '../game/intro';
 import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, findLesson, lessonSettings, recordLessonResult } from '../game/path';
 import { passSkills } from '../game/skills';
@@ -81,7 +81,7 @@ export interface Run {
    * waits for a tap (Ready · Start) before it makes sound.
    */
   needsGesture?: boolean;
-  /** What a Learn section's practice shows (intro ids, makeRunShowing): Next keeps it. */
+  /** What a Learn section's practice shows (ids of game/intro.ts, makeRunShowing): Next keeps it. */
   shows?: string[];
   /** The player's Bars where the run plays more (a tie needs 2 bars, makeRunShowing): the setup keeps it (runSetup). */
   setupBars?: number;
@@ -118,7 +118,8 @@ export function restoreRun(): Run | null {
     if (!v || typeof v.seed !== 'number' || typeof v.settings !== 'object' || v.settings === null) return null;
     const lessonId = typeof v.lessonId === 'string' ? v.lessonId : null;
     const daily = typeof v.daily === 'string' ? v.daily : null;
-    const shows = Array.isArray(v.shows) ? v.shows.filter((x) => INTRO_IDS.includes(x)) : [];
+    // Every id a practice can ask for (SHOW_IDS), 5.3's 'dotted:eighth' too, so Next after a reload still shows it.
+    const shows = Array.isArray(v.shows) ? v.shows.filter((x) => SHOW_IDS.includes(x)) : [];
     const settings = sanitizeSettings(v.settings);
     const run = settings && makeRun(settings, v.seed, lessonId, daily);
     if (!run) return null;
@@ -693,9 +694,10 @@ function lessonShows(settings: Settings, lessonId: string): string[] {
 }
 
 /**
- * A run whose exercise shows every symbol given (intro ids, game/intro.ts): from `seed`, other seeds are tried until
- * the exercise has them all (else the last one). A Learn section's practice shows the extra it turns on (5.1's tie,
- * which the generator only makes likely), and keeps `shows` for Next.
+ * A run whose exercise shows every symbol given (ids of game/intro.ts, exerciseHas): from `seed`, other seeds are tried
+ * until the exercise has them all (else the last one). A Learn section's practice shows what the section teaches
+ * (practiceShows in learn/chapters.ts: 5.1's tie, which the generator only makes likely; 5.3's dotted eighth), and keeps
+ * `shows` for Next.
  */
 export function makeRunShowing(settings: Settings, seed: number, ids: readonly string[], lessonId: string | null = null): Run | null {
   // No exercise of 1 bar has a tie: the generator ties over a bar line, or in a quarter, half, quarter, which never

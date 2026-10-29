@@ -749,6 +749,46 @@ test('learn: Practice ties starts an exercise with a tie in it', async ({ page }
   expect(exerciseHas(generateExercise(next.settings, next.seed), ['ties']), 'New exercise').toBe(true);
 });
 
+test('learn: Practice dotted eighths starts an exercise with a dotted eighth, also Next after a reload on Play', async ({ page }) => {
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  const stored = (): Promise<{ settings: Settings; seed: number }> => page.evaluate(() => JSON.parse(sessionStorage.getItem('muzieklab.run.v1')!));
+  // The start seed set below, for every start in the tab, also after a reload.
+  await page.addInitScript(() => {
+    const s = Number(sessionStorage.getItem('e2e.seed'));
+    if (s) crypto.getRandomValues = <T extends ArrayBufferView | null>(a: T): T => ((a as unknown as Uint32Array)[0] = s * 2, a);
+  });
+  await page.goto('./#/learn/5');
+  const link = page.getByRole('link', { name: 'Practice dotted eighths →' });
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.3$/);
+  const { settings } = await stored();
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  // A start seed whose exercise has a dot, but on a quarter, not an eighth (about one in six). The link once played it
+  // as it came, as the dot was all it asked for.
+  const has = (seed: number, id: string): boolean => exerciseHas(generateExercise(settings, seed), [id]);
+  let seed = 1;
+  while (!has(seed, 'dotted') || has(seed, 'dotted:eighth')) seed++;
+  await page.evaluate((s) => sessionStorage.setItem('e2e.seed', String(s)), seed);
+  await page.reload();
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.3$/);
+  const run = await stored();
+  expect(exerciseHas(generateExercise(run.settings, run.seed), ['dotted:eighth']), `from seed ${seed}`).toBe(true);
+  await expect(page.getByRole('img', { name: /^Rhythm in 4\/4/ })).toHaveAccessibleName(/dotted eighth note/);
+  // After a reload on Play, which rebuilds the run from the one saved in the tab, Results' New exercise (nothing
+  // tapped, so under 2 stars) has one too.
+  await page.reload();
+  await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('button', { name: 'New exercise' }).click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.3$/);
+  const next = await stored();
+  expect(exerciseHas(generateExercise(next.settings, next.seed), ['dotted:eighth']), `New exercise from seed ${seed}`).toBe(true);
+  await expect(page.getByRole('img', { name: /^Rhythm in 4\/4/ })).toHaveAccessibleName(/dotted eighth note/);
+});
+
 test('learn: with Bars at 1 Practice ties plays 2 bars with a tie, and the player keeps 1 bar', async ({ page }) => {
   await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
   // The player's 1 bar is seeded once, not before every load as seedStorage does, so a reload reads the setup the app

@@ -1829,11 +1829,14 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
 13 controls between the section and the exercise):
 - Rhythm links start an exercise with the section's preset in Tap mode (Echo would hide the notation the section
   teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1). The
-  exercise shows the extra the preset turns on (5.1's and 6.1's tie, 5.2's dot, 7.1's triplet), which the generator
-  only makes likely: the start tries other seeds until it does, as a lesson does for what it introduces, and Results'
-  Next keeps that, also after a reload on Play. One exception to the player's bars: no exercise of 1 bar has a tie, so
-  with Bars at 1 5.1 and 6.1 play 2 bars, and so do their Retry and Next. The player's setup keeps 1 bar (Setup,
-  Practice settings and the next start show it).
+  exercise shows what the section teaches: the extra the preset turns on (5.1's and 6.1's tie, 5.2's dot, 7.1's
+  triplet), which the generator only makes likely, and what the section names where the preset alone does not make
+  sure of it (`shows` in `learn/chapters.ts`): 5.3's dotted eighth, where about one exercise in six had only a dotted
+  quarter, and 3.1's and 3.2's rest, 4.1's eighth pair, 4.2's sixteenth and 4.3's eighth and sixteenth, which many
+  exercises lacked, most of all with Bars at 1 or sparse notes. The start tries other seeds until it does, as a lesson
+  does for what it introduces, and Results' Next keeps that, also after a reload on Play. One exception to the
+  player's bars: no exercise of 1 bar has a tie, so with Bars at 1 5.1 and 6.1 play 2 bars, and so do their Retry and
+  Next. The player's setup keeps 1 bar (Setup, Practice settings and the next start show it).
 - Read notes links start the round.
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
   to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip

@@ -90,6 +90,12 @@ const FIGURES: Record<string, Figure> = {
   'figure:eighth-sixteenths': [['eighth', 0], ['sixteenth', 0], ['sixteenth', 0]],
 };
 
+/**
+ * Every id exerciseHas knows, for validating a stored run's `shows`: the intro ids, 'rest' (any rest, as 'dotted' is
+ * any dotted value), each dotted value and the figures.
+ */
+export const SHOW_IDS: readonly string[] = [...INTRO_IDS, 'rest', ...NOTE_VALUES.map((v) => 'dotted:' + v), ...Object.keys(FIGURES)];
+
 /** The figures a bar shows (FIGURES): 'figure:eighth-sixteenths' where an eighth and two sixteenths fill a beat. */
 export function barFigures(bar: NotatedBar): string[] {
   const s = bar.symbols;
@@ -100,7 +106,7 @@ export function barFigures(bar: NotatedBar): string[] {
 /**
  * The intro ids of what an exercise's staff shows: its time signature, note and rest values, dots, ties, triplets;
  * and each dotted value and figure, as a lesson's `preview` names them (path.ts: 'dotted:quarter',
- * 'figure:eighth-sixteenths').
+ * 'figure:eighth-sixteenths'), and 'rest' for any rest (a Learn section's practice `shows`, chapters.ts).
  */
 function shownIds(exercise: Exercise): Set<string> {
   const ids = new Set<string>(['meter:' + exercise.meter.id]);
@@ -108,6 +114,7 @@ function shownIds(exercise: Exercise): Set<string> {
     for (const s of bar.symbols) {
       // A whole-bar rest is drawn as the whole rest; a triplet's notes count as the triplet, not as eighths.
       ids.add(s.tuplet ? 'triplets' : s.kind + ':' + s.value);
+      if (s.kind === 'rest') ids.add('rest');
       if (s.dots) ids.add('dotted').add('dotted:' + s.value);
       if (s.tieToNext) ids.add('ties');
     }
@@ -117,8 +124,8 @@ function shownIds(exercise: Exercise): Set<string> {
 }
 
 /**
- * Whether an exercise's staff shows every symbol given (intro ids, 'dotted:quarter', 'figure:eighth-sixteenths'), e.g.
- * all its lesson is about.
+ * Whether an exercise's staff shows every symbol given (SHOW_IDS: intro ids, 'dotted:quarter',
+ * 'figure:eighth-sixteenths', 'rest'), e.g. all its lesson is about.
  */
 export function exerciseHas(exercise: Exercise, ids: readonly string[]): boolean {
   if (ids.length === 0) return true;

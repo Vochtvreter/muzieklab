@@ -15,7 +15,7 @@ import { AppShell } from '../components/AppShell';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle } from '../hooks';
 import { Blocks } from '../learn/Blocks';
-import { CHAPTERS, findChapter, PLANNED_CHAPTERS, parseNoteName, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
+import { CHAPTERS, findChapter, PLANNED_CHAPTERS, parseNoteName, practiceShows, sectionIds, sectionKey, type Answer, type Chapter, type Quiz, type Section } from '../learn/chapters';
 import { stopLearnSound } from '../learn/Listen';
 import { announce } from '../lib/announce';
 import { letterName, spokenName } from '../lib/noteText';
@@ -171,9 +171,6 @@ function SectionCheck({ section, read, onRight }: { section: Section; read: bool
   );
 }
 
-/** The extras a rhythm preset can turn on, which are also their intro ids (game/intro.ts). */
-const EXTRAS = ['dotted', 'ties', 'triplets'] as const;
-
 /**
  * A section's practice: a Read notes round or a rhythm exercise straight away, or the Scales setup, set up for the
  * section on top of the player's own setup. Play and the summary carry ?from=8.2, so Quit and their back arrow return
@@ -200,10 +197,10 @@ function useStartSection(): (section: Section, opts?: { replace?: boolean; needs
     } else {
       const settings = { ...state.settings, ...p.rhythm };
       dispatch({ type: 'settings', settings });
-      // The exercise shows the extra the section turns on (5.1's tie), which the generator only makes likely; for a tie
-      // it has 2 bars at least, also with the player's Bars at 1, which the setup keeps (makeRunShowing).
-      const shows = EXTRAS.filter((k) => p.rhythm[k]);
-      startPractice(settings, { replace, query, needsGesture, shows });
+      // The exercise shows what the section teaches: the extra it turns on (5.1's tie), which the generator only makes
+      // likely, and what it names (5.3's dotted eighth). For a tie it has 2 bars at least, also with the player's Bars
+      // at 1, which the setup keeps (makeRunShowing).
+      startPractice(settings, { replace, query, needsGesture, shows: practiceShows(p) });
     }
   };
 }
