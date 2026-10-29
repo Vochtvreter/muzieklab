@@ -1832,11 +1832,21 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
   exercise shows what the section teaches: the extra the preset turns on (5.1's and 6.1's tie, 5.2's dot, 7.1's
   triplet), which the generator only makes likely, and what the section names where the preset alone does not make
   sure of it (`shows` in `learn/chapters.ts`): 5.3's dotted eighth, where about one exercise in six had only a dotted
-  quarter, and 3.1's and 3.2's rest, 4.1's eighth pair, 4.2's sixteenth and 4.3's eighth and sixteenth, which many
-  exercises lacked, most of all with Bars at 1 or sparse notes. The start tries other seeds until it does, as a lesson
-  does for what it introduces, and Results' Next keeps that, also after a reload on Play. One exception to the
-  player's bars: no exercise of 1 bar has a tie, so with Bars at 1 5.1 and 6.1 play 2 bars, and so do their Retry and
-  Next. The player's setup keeps 1 bar (Setup, Practice settings and the next start show it).
+  quarter, and 3.1's rest, 3.2's rest and silent bar (one whole rest), 4.1's eighth pair and eighth rest, 4.2's four
+  sixteenths in one beat and 4.3's eighth and sixteenth, which many exercises lacked, most of all with Bars at 1 or
+  sparse notes. The start tries other seeds until it does, as a lesson does for what it introduces, and Results' Next
+  keeps that, also after a reload on Play. One exception to the player's bars: no exercise of 1 bar has a tie, so with
+  Bars at 1 5.1 and 6.1 play 2 bars, and so do their Retry and Next. The player's setup keeps 1 bar (Setup, Practice
+  settings and the next start show it). Where none of the seeds a start tries has it all, it keeps the exercise that
+  comes closest (what the title names counts first). So some exercises still lack a part of it:
+  - 2.1 has no whole note with Bars at 1, where it does not fit beside a half and a quarter (from 2 bars every exercise
+    has all three).
+  - 3.2 has a silent bar only from 3 bars: the first bar opens with a note and the last ends on one. With Bars at 1
+    or 2 it shows a rest and does not look for a silent bar.
+  - With Bars at 1 and Sparse notes, 4.1's eighth rest and 4.2's four sixteenths in one beat are missing in about 1
+    start in 4 to 1 in 2. The eighth pair and a sixteenth are always there.
+  - 5.2 with Bars at 1 and Busy notes has no dot in up to 1 start in 4 (with few rests), as the generator makes one
+    there in about 1 exercise of 100.
 - Read notes links start the round.
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
   to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip

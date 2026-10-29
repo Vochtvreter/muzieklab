@@ -80,10 +80,13 @@ A new kind of block (counting under the notes, for example) is a case in the `Bl
   bars, so with the player's Bars at 1 a `ties` preset plays 2; the player's setup keeps 1. Where the preset alone
   does not make sure of what the section teaches, name it with `shows` beside the preset, in the ids of
   `src/game/intro.ts` (`SHOW_IDS`): 5.3 *Dotted eighth and sixteenth* has `shows: ['dotted:eighth']`, as a dotted
-  quarter has a dot too; 3.1 has `'rest'` (any rest), 4.2 `'note:sixteenth'`, 4.1 `'figure:eighth-pair'`. Every start
-  and Next then has it. Name only what an exercise can have at any Bars, density and amount of rests: a whole note
-  beside a half and a quarter needs 2 bars. Give a new rhythm link its row in the `teaches` table of
-  `src/ui/store.test.ts`, which checks what its exercises show.
+  quarter has a dot too; 3.1 has `'rest'` (any rest), 4.1 `['figure:eighth-pair', 'rest:eighth']`, 4.2
+  `['note:sixteenth', 'figure:four-sixteenths']`. Every start and Next then has it, unless none of the seeds a start
+  tries has all of it: it then keeps the exercise that comes closest, the first id counting most, so put the title's
+  figure first. DESIGN.md §9.1 lists those gaps, such as 4.1's eighth rest with Bars at 1 and Sparse notes. Name only
+  what an exercise can have at any Bars, density and amount of rests: a whole note beside a half and a quarter needs 2
+  bars. One exception: 3.2's silent bar (`'rest:whole'`) needs 3, and a start with fewer does not look for it. Give a
+  new rhythm link its row in the `teaches` table of `src/ui/store.test.ts`, which checks what its exercises show.
   Quit, and the back arrow on Results or Round done, return to the section; their setup button opens the setup with
   the preset. `practice: { scales: { keyMode: 'one', keys: ['C'], types: ['major'] } }` opens the Scales setup.
 - The chapter's `practice: 'notes' | 'rhythm' | 'scales'` picks the big button at the end.

@@ -2,7 +2,7 @@ import { DEFAULT_SETTINGS } from '../core/defaults';
 import { generateExercise } from '../core/generator';
 import { PPQ, type Bar, type Exercise } from '../core/types';
 import { ALL_LESSONS, lessonSettings } from './path';
-import { exerciseHas, INTRO_IDS, introId, introsOf, lessonIntros, SHOW_IDS, unseenIntros } from './intro';
+import { exerciseHas, INTRO_IDS, introId, introsOf, lessonIntros, SHOW_IDS, showScore, unseenIntros } from './intro';
 
 const ids = (lessonId: string): string[] => lessonIntros(lessonId).map(introId);
 
@@ -86,6 +86,15 @@ describe('exerciseHas', () => {
     expect(exerciseHas(exercise([{ events: [note(0, 2 * q), rest(2 * q, q), note(3 * q, q)] }]), ['rest'])).toBe(true);
     expect(exerciseHas(exercise([{ events: [note(0, 4 * q)] }, { events: [rest(0, 4 * q)] }, { events: [note(0, 4 * q)] }]), ['rest'])).toBe(true);
     expect(exerciseHas(exercise([{ events: [note(0, 2 * q), note(2 * q, 2 * q)] }]), ['rest'])).toBe(false);
+  });
+
+  it('scores how close an exercise comes to showing it all, each symbol before all the ones after it', () => {
+    const ex = exercise([{ events: [note(0, 2 * q), rest(2 * q, q), note(3 * q, q)] }]);
+    expect(showScore(ex, ['note:half', 'rest:quarter'])).toBe(3);
+    expect(showScore(ex, [])).toBe(0);
+    expect(showScore(ex, ['note:eighth', 'rest:whole'])).toBe(0);
+    // The first one shown counts for more than both after it.
+    expect(showScore(ex, ['note:half', 'note:eighth', 'rest:whole'])).toBeGreaterThan(showScore(ex, ['note:eighth', 'note:half', 'rest:quarter']));
   });
 
   it('tells one dotted value from another: a dotted half is no dotted quarter', () => {

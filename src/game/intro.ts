@@ -132,3 +132,13 @@ export function exerciseHas(exercise: Exercise, ids: readonly string[]): boolean
   const shown = shownIds(exercise);
   return ids.every((id) => shown.has(id));
 }
+
+/**
+ * How close an exercise's staff comes to showing every symbol given (exerciseHas), each counting for more than all the
+ * ones after it: 2 ** ids.length - 1 when it shows them all, 0 when it shows none.
+ */
+export function showScore(exercise: Exercise, ids: readonly string[]): number {
+  if (ids.length === 0) return 0;
+  const shown = shownIds(exercise);
+  return ids.reduce((score, id) => score * 2 + (shown.has(id) ? 1 : 0), 0);
+}

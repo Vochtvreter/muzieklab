@@ -38,7 +38,7 @@ import { Rng } from '../core/rng';
 import { awardAchievements, roundAchievements } from '../game/achievements';
 import { dailyTier } from '../game/daily';
 import { mergePrefs, mergeSynced, sameValue, type Synced } from '../game/merge';
-import { exerciseHas, introId, lessonIntros, SHOW_IDS } from '../game/intro';
+import { introId, lessonIntros, SHOW_IDS, showScore } from '../game/intro';
 import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, findLesson, lessonSettings, recordLessonResult } from '../game/path';
 import { passSkills } from '../game/skills';
@@ -695,17 +695,30 @@ function lessonShows(settings: Settings, lessonId: string): string[] {
 
 /**
  * A run whose exercise shows every symbol given (ids of game/intro.ts, exerciseHas): from `seed`, other seeds are tried
- * until the exercise has them all (else the last one). A Learn section's practice shows what the section teaches
- * (practiceShows in learn/chapters.ts: 5.1's tie, which the generator only makes likely; 5.3's dotted eighth), and keeps
- * `shows` for Next.
+ * until the exercise has them all, else the run keeps the one that comes closest (showScore: the first ids first). A
+ * Learn section's practice shows what the section teaches (practiceShows in learn/chapters.ts: 5.1's tie, which the
+ * generator only makes likely; 5.3's dotted eighth), and keeps `shows` for Next.
  */
 export function makeRunShowing(settings: Settings, seed: number, ids: readonly string[], lessonId: string | null = null): Run | null {
   // No exercise of 1 bar has a tie: the generator ties over a bar line, or in a quarter, half, quarter, which never
   // ends an exercise. So a run that must show one plays 2 bars, and only that run: the player keeps Bars at 1.
   const s = ids.includes('ties') && settings.bars < 2 ? { ...settings, bars: 2 } : settings;
+  // Nor has an exercise of 1 or 2 bars a silent bar (3.2's whole rest): the first bar opens with a note and the last
+  // ends on one. So with fewer than 3 bars a run does not look for it, and plays the player's bars.
+  const want = s.bars < 3 ? ids.filter((id) => id !== 'rest:whole') : ids;
+  const all = 2 ** want.length - 1;
   const seeds = new Rng(seed);
   let run = makeRun(s, seed, lessonId);
-  for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(s, seeds.int(0x7fffffff), lessonId);
+  let score = run ? showScore(run.exercise, want) : all;
+  for (let i = 1; i < INTRO_TRIES && score < all; i++) {
+    const next = makeRun(s, seeds.int(0x7fffffff), lessonId);
+    if (!next) break;
+    const k = showScore(next.exercise, want);
+    if (k > score) {
+      run = next;
+      score = k;
+    }
+  }
   if (!run || lessonId || !ids.length) return run;
   return { ...run, shows: [...ids], ...(s !== settings && { setupBars: settings.bars }) };
 }

@@ -396,8 +396,7 @@ describe('makeRunShowing', () => {
   );
 
   it("a Learn section's rhythm practice shows what the section teaches, with any bars and density: 5.1 a tie, 5.3 a dotted eighth", () => {
-    // What each section's title and text teach. 1.2's and 1.3's meters come one to an exercise; 2.1's whole, half and
-    // quarter notes fit together only from 2 bars, where every exercise has all three (below).
+    // What each section's title and text teach. 1.2's and 1.3's meters come one to an exercise.
     const teaches: Record<string, string[]> = {
       '1.1': ['note:quarter'],
       '1.2': [],
@@ -405,8 +404,8 @@ describe('makeRunShowing', () => {
       '2.1': [],
       '3.1': ['rest'],
       '3.2': ['rest'],
-      '4.1': ['figure:eighth-pair'],
-      '4.2': ['note:sixteenth'],
+      '4.1': ['figure:eighth-pair', 'rest:eighth'],
+      '4.2': ['note:sixteenth', 'figure:four-sixteenths'],
       '4.3': ['note:eighth', 'note:sixteenth'],
       '5.1': ['ties'],
       '5.2': ['dotted'],
@@ -415,6 +414,13 @@ describe('makeRunShowing', () => {
       '7.1': ['triplets'],
     };
     expect(rhythm.map((r) => r.id)).toEqual(Object.keys(teaches));
+    // What fits only from so many bars, and is then in every exercise: 2.1's whole, half and quarter notes together from
+    // 2, 3.2's silent bar (one whole rest) from 3 (below).
+    const fromBars: Record<string, [number, string[]]> = { '2.1': [2, ['note:whole', 'note:half', 'note:quarter']], '3.2': [3, ['rest:whole']] };
+    // What 200 seeds do not always find with Bars at 1 and Sparse notes, where the start keeps the exercise that comes
+    // closest, with the rest of it: 4.1's eighth rest and 4.2's four sixteenths in one beat (about 1 start in 4 to 1 in 2
+    // lacks them).
+    const gaps: Record<string, string> = { '4.1': 'rest:eighth', '4.2': 'figure:four-sixteenths' };
     // The player's own bars, density and amount of rests stay (the preset leaves them): each of them, on fewer seeds.
     const players = [
       ...[1, 2, 4].map((bars) => ({ bars, density: 'balanced' as const, restAmount: 'some' as const, starts: seeds.slice(0, 60) })),
@@ -425,16 +431,18 @@ describe('makeRunShowing', () => {
     for (const { id, settings, shows } of rhythm) {
       // It asks for the extra the preset turns on, and for what the section names.
       expect(shows, id).toEqual(expect.arrayContaining((['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k])));
+      const [from, more] = fromBars[id] ?? [Infinity, []];
       for (const { starts, ...player } of players) {
         // Not 5.2's dot with Bars at 1 and Busy notes: the generator makes one in about 1 exercise of 100 there, which
         // 200 seeds miss in about 1 start in 4.
         if (id === '5.2' && player.bars === 1 && player.density === 'busy') continue;
         const s = { ...settings, ...player };
+        const gap = player.bars === 1 && player.density === 'sparse' ? gaps[id] : undefined;
+        const want = [...teaches[id], ...shows, ...more].filter((x) => (player.bars >= from || !more.includes(x)) && x !== gap);
         for (const seed of starts) {
           const run = makeRunShowing(s, seed, shows)!;
           const at = `${id}, ${player.bars} bars ${player.density} ${player.restAmount}, seed ${seed}`;
-          expect(exerciseHas(run.exercise, [...teaches[id], ...shows]), at).toBe(true);
-          if (id === '2.1' && player.bars >= 2) expect(exerciseHas(run.exercise, ['note:whole', 'note:half', 'note:quarter']), at).toBe(true);
+          expect(exerciseHas(run.exercise, want), at).toBe(true);
           expect(run).toMatchObject({ lessonId: null, daily: null });
           // Kept for Next, which shows it too.
           expect(run.shows ?? [], at).toEqual(shows);
@@ -445,13 +453,46 @@ describe('makeRunShowing', () => {
     }
     // Without the search about one 5.1 exercise in four has no tie: ties across the bar line are a chance, and an
     // eighth, quarter, eighth syncopates without one. About one 5.3 exercise in six has no dotted eighth, only a dotted
-    // quarter.
+    // quarter, and most of 3.2's have no silent bar.
     const plain = (id: string, ids: string[]): number => {
       const { settings } = rhythm.find((r) => r.id === id)!;
       return seeds.filter((seed) => !exerciseHas(makeRun(settings, seed, null)!.exercise, ids)).length;
     };
     expect(plain('5.1', ['ties'])).toBeGreaterThan(seeds.length / 10);
     expect(plain('5.3', ['dotted:eighth'])).toBeGreaterThan(seeds.length / 10);
+    expect(plain('3.2', ['rest:whole'])).toBeGreaterThan(seeds.length / 2);
+  });
+
+  it("a silent bar needs three bars: 3.2's practice has one from 3 bars, and with fewer does not look for it", () => {
+    const { settings, shows } = rhythm.find((r) => r.id === '3.2')!;
+    expect(shows).toEqual(['rest', 'rest:whole']);
+    for (const bars of [1, 2, 3]) {
+      const player = { ...settings, bars };
+      // No exercise of 1 or 2 bars has one, from any seed: the first bar opens with a note and the last ends on one.
+      if (bars < 3) expect(seeds.some((seed) => exerciseHas(makeRun(player, seed, null)!.exercise, ['rest:whole']))).toBe(false);
+      for (const seed of seeds.slice(0, 30)) {
+        const run = makeRunShowing(player, seed, shows)!;
+        const at = `${bars} bars, seed ${seed}`;
+        expect(exerciseHas(run.exercise, bars < 3 ? ['rest'] : shows), at).toBe(true);
+        // With fewer it looks only for a rest, so a start stays fast.
+        if (bars < 3) expect(run.exercise, at).toEqual(makeRunShowing(player, seed, ['rest'])!.exercise);
+        // The player's bars, also in the setup, and Next asks for it again.
+        expect(run.exercise.settings, at).toEqual(player);
+        expect(runSetup(run)).toEqual(player);
+        expect(run.shows).toEqual(shows);
+      }
+    }
+  });
+
+  it('keeps the exercise that comes closest when no seed shows it all, the first symbols first', () => {
+    // 4.1's notes never make a sixteenth, and with Bars at 1 and Sparse notes many of its exercises lack an eighth pair
+    // or an eighth rest: the start keeps one with the pair, the first asked for.
+    const s = { ...rhythm.find((r) => r.id === '4.1')!.settings, bars: 1, density: 'sparse' as const };
+    for (const seed of seeds.slice(0, 10)) {
+      const run = makeRunShowing(s, seed, ['figure:eighth-pair', 'rest:eighth', 'note:sixteenth'])!;
+      expect(exerciseHas(run.exercise, ['figure:eighth-pair']), `seed ${seed}`).toBe(true);
+      expect(exerciseHas(run.exercise, ['note:sixteenth'])).toBe(false);
+    }
   });
 
   it("a tie needs two bars: with Bars at 1 5.1's and 6.1's practice plays 2 and shows one, and the setup keeps 1", () => {

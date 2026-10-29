@@ -98,8 +98,10 @@ export interface RhythmPractice {
   /**
    * What every exercise must show besides the extra the preset turns on, where the preset alone does not make sure of
    * what the section teaches (ids of game/intro.ts, SHOW_IDS): 5.3's 'dotted:eighth', where a dotted quarter has a dot
-   * too; 'rest' for any rest. Only what an exercise can have with any bars and density: a whole note beside a half and
-   * a quarter needs 2 bars.
+   * too; 'rest' for any rest. Where no seed tried shows them all, the start keeps the exercise closest to it, so the
+   * title's figure goes first (4.1's eighth pair before its eighth rest). Only what an exercise can have with any bars
+   * and density: a whole note beside a half and a quarter needs 2 bars. A silent bar ('rest:whole', 3.2) needs 3, and
+   * a run of fewer does not look for it (makeRunShowing).
    */
   shows?: string[];
 }
@@ -293,7 +295,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'rhythm', meter: '4/4', bars: ['8.r 16 q qr 8r 8'], alt: 'dottedAlt' },
           { kind: 'text', text: 'noTie' },
         ],
-        practice: { rhythm: { ...RHYTHM, meters: ['2/4', '3/4', '4/4'], rests: ['whole', 'half', 'quarter'] }, shows: ['rest'] },
+        practice: { rhythm: { ...RHYTHM, meters: ['2/4', '3/4', '4/4'], rests: ['whole', 'half', 'quarter'] }, shows: ['rest', 'rest:whole'] },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
@@ -313,7 +315,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'text', text: 'rest' },
           { kind: 'rhythm', meter: '4/4', bars: ['q 8 8r 8r 8 q'], alt: 'restAlt' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'] }, shows: ['figure:eighth-pair'] },
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'] }, shows: ['figure:eighth-pair', 'rest:eighth'] },
       },
       {
         id: '4.2',
@@ -340,7 +342,7 @@ export const CHAPTERS: Chapter[] = [
           },
           { kind: 'rhythm', meter: '4/4', bars: ['[16 16 16 16] [8 8] [8 16 16] q'], alt: 'staffAlt' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'] }, shows: ['note:sixteenth'] },
+        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'] }, shows: ['note:sixteenth', 'figure:four-sixteenths'] },
       },
       {
         id: '4.3',
