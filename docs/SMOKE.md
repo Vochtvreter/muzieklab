@@ -129,6 +129,11 @@ that commit.
 
 No app bug is known.
 
+One server setting is known to be missing: the deploy copies the app but not `deploy/Caddyfile`, and the server still
+has the copy from before 0.19.1, which sends a missing file in `assets/` with the year-long cache header. `caching: a
+missing file in assets/ is not kept for a year` is marked as failing (`test.fail`) until the new Caddyfile is on the
+server ([DEPLOY.md](DEPLOY.md)); then it fails as passing, and the mark comes out.
+
 A done scale looked up the step after its last note until 0.17.2 (the console said `[i18n] missing message:
 scales.how.undefined`): `scales: a G major round played on the computer keyboard, three stars` checks it now, as every
 test fails on a missing message. Several tabs opened at once was the other one until 0.17.1 (tabs that started together
