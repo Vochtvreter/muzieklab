@@ -152,7 +152,8 @@ hand when its author is on the allowlist (§4).
 
 ### What a report holds
 
-Each report holds (`shared/feedback.ts`; stored as it was sent, BACKEND-PLAN.md §3.9):
+Each report holds (`shared/feedback.ts`; stored as it was sent, less a link's token and what was typed in a field,
+`withoutSecrets`, BACKEND-PLAN.md §3.9):
 
 - **What should change:** the kind, the title and the description.
 - **Where:** the route (`#/settings`) and the marked element: its CSS selector, a readable name (`button “Start”`, a

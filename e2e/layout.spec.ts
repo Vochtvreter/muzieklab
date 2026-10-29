@@ -4133,7 +4133,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         expect(Math.round(left ? f.x : vp.width - f.x - f.width), 'at the edge').toBe(0);
         expect(Math.min(f.width, f.height), 'a touch target').toBeGreaterThanOrEqual(44);
         const boxes = await controls.evaluateAll((els) =>
-          els.map((el) => ({ ...el.getBoundingClientRect().toJSON(), name: el.getAttribute('aria-label') || el.textContent?.trim() || el.className }) as DOMRect & { name: string }),
+          els.map((el) => ({ ...el.getBoundingClientRect().toJSON(), name: el.getAttribute('aria-label') || el.textContent?.trim() || el.getAttribute('class') || el.tagName.toLowerCase() }) as DOMRect & { name: string }),
         );
         expect(boxes.length).toBeGreaterThan(0);
         for (const r of boxes) {
@@ -4455,6 +4455,32 @@ test.describe('feedback: the keyboard, and the marked part’s name', () => {
     const sent = api.callsTo('POST /feedback')[0].body as FeedbackReport;
     expect(sent.target.label).toBe('field “New password”');
     expect(JSON.stringify(sent)).not.toContain('pw-secret');
+  });
+
+  test('a click on the staff a lesson’s note is written on marks its slider, as the arrow keys pick it', async ({ page }) => {
+    await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    // Lesson 3.2 writes mi (and sol) on the staff.
+    await seed(page, { progress: { lessons: pathUpTo('3.1') }, prefs: { seenHowTo: true, seenHold: true } });
+    await page.goto('./#/path');
+    await page.getByRole('button', { name: 'Start lesson 3.2' }).click();
+    const staff = page.getByRole('slider', { name: /goes on the staff$/ });
+    await expect(staff).toBeVisible();
+    const name = `slider “${await staff.getAttribute('aria-label')}”`;
+    const r = (await staff.boundingBox())!;
+    await page.getByRole('button', { name: FAB }).click();
+    // The arrow keys pick the slider, not the staff drawing inside it.
+    const layer = page.getByRole('dialog', { name: /part you mean/ });
+    const pick = layer.locator('.fb-bar-pick');
+    for (let i = 0; i < 40 && (await pick.textContent()) !== name; i++) await page.keyboard.press('ArrowDown');
+    await expect(pick).toHaveText(name);
+    // A click on the drawing marks the same, with the slider's box.
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    await expect(form.locator('.fb-marked-text .mono-muted')).toHaveText(name);
+    const spot = (await page.locator('.fb-spot').boundingBox())!;
+    expect(spot.width).toBeCloseTo(r.width, 0);
+    expect(spot.height).toBeCloseTo(r.height, 0);
   });
 });
 

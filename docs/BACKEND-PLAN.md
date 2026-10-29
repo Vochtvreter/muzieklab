@@ -333,8 +333,9 @@ every permission. An index on `accounts.roles` serves counting who has a role, a
 ```
 
 New in 0.17.0 ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) §3). A report is what an account with `feedback.give` sent with the
-feedback tool: the fields of a `FeedbackReport` (`shared/feedback.ts`) as the app sent them, and the review. It is not
-to be mixed up with a closure's `feedback` (§3.7), what someone writes when they delete their account.
+feedback tool: the fields of a `FeedbackReport` (`shared/feedback.ts`) as the app sent them, less a link's token and
+what was typed in a field (`withoutSecrets`, §7 `POST /feedback`), and the review. It is not to be mixed up with a
+closure's `feedback` (§3.7), what someone writes when they delete their account.
 
 - **What is checked.** The route checks the report's shape with a JSON schema: every field, and the length of each
   text. The description must say something. `context.prefs`, the player's settings, may have any shape, so, as in

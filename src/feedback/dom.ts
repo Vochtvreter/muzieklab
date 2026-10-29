@@ -115,8 +115,11 @@ export function elementAt(x: number, y: number, doc: Document = document): Eleme
 
 /** What the arrow keys step through while marking: controls, headings, text and pictures. */
 const PARTS = 'a[href], button, input, select, textarea, summary, [role="button"], [role="switch"], [role="slider"], [tabindex]:not([tabindex="-1"]), h1, h2, h3, h4, p, img, svg, [role="img"]';
-/** A control or a picture: what is inside it (a button's icon or words, a staff's notes) is marked as part of it. */
-const WHOLE = 'a[href], button, summary, label, svg, [role="img"]';
+/**
+ * A control or a picture: what is inside it (a button's icon or words, the staff a Path lesson's note is written on,
+ * a staff's notes) is marked as part of it.
+ */
+const WHOLE = 'a[href], button, summary, label, [role="button"], [role="switch"], [role="slider"], svg, [role="img"]';
 
 /**
  * The part a tap, a click or a drawn box's centre marks at a point: the control or picture the element there is in, the

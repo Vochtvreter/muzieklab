@@ -73,17 +73,6 @@
 .fb-root:not(.shell ~ .fb-root) .fb-fab--high {
   top: 30%;
 }
-/*
- * A portrait phone, where the staff card runs to the 16 px gutter: the card stops before the tab (44 px less the
- * gutter, and a gap), so no note, rest or bar line of the staff, nor the current note's column, lies under it. The
- * staves draw themselves in the room they are given. As long as the tool is on, also while marking, so the staff does
- * not move under the finger.
- */
-@media (max-width: 699.98px) and (orientation: portrait) {
-  .frame:has(~ .fb-root) :is(.play-staff, .nplay-staff) {
-    margin-right: calc(32px + env(safe-area-inset-right, 0px));
-  }
-}
 .fb-root:not(.shell ~ .fb-root) .fb-fab--low {
   top: 75%;
 }
@@ -102,6 +91,17 @@
     border-right: 1.5px solid var(--accent-ring);
     border-left: 0;
     border-radius: 0 26px 26px 0;
+  }
+}
+/*
+ * A portrait phone, where the staff card runs to the 16 px gutter: the card stops before the tab (44 px less the
+ * gutter, and a gap), so no note, rest or bar line of the staff, nor the current note's column, lies under it. The
+ * staves draw themselves in the room they are given. As long as the tool is on, also while marking, so the staff does
+ * not move under the finger.
+ */
+@media (max-width: 699.98px) and (orientation: portrait) {
+  .frame:has(~ .fb-root) :is(.play-staff, .nplay-staff) {
+    margin-right: calc(32px + env(safe-area-inset-right, 0px));
   }
 }
 

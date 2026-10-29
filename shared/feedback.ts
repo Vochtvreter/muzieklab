@@ -30,7 +30,7 @@ export interface Rect {
 /** The part of the screen that was marked: one element (a tap or click) or a box drawn over the screen. */
 export interface FeedbackTarget {
   mode: 'element' | 'area';
-  /** A CSS selector for the element (for an area: the element under its centre). */
+  /** A CSS selector for the element (for an area: the part under its centre, partAt in src/feedback/dom.ts). */
   selector: string;
   /** How a person would name it: `button “Start”`, `heading “Settings”`. */
   label: string;

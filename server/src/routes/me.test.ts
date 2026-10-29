@@ -71,8 +71,9 @@ describe('PATCH /me', () => {
   it('refuses a name that shows nothing or turns the text around it, and keeps the joiners an emoji or a name needs', async () => {
     const t = await makeApp(mongo);
     const { cookie } = await annSignedIn(t);
-    // A zero-width space, a Hangul filler and word joiners show nothing; a tab; a right-to-left override and isolate.
-    for (const name of ['\u200B', ' \u3164 ', '\u2060\u2060', 'Ann\tde Vries', 'Smoke \u202Enimda', 'Ann \u2067de Vries']) {
+    // A zero-width space, a Hangul filler, word joiners and the blank Braille pattern show nothing; a tab; a
+    // right-to-left override and isolate.
+    for (const name of ['\u200B', ' \u3164 ', '\u2060\u2060', '\u2800', ' \u2800 ', 'Ann\tde Vries', 'Smoke \u202Enimda', 'Ann \u2067de Vries']) {
       const res = await t.call({ method: 'PATCH', url: '/api/v1/me', cookie, payload: { name } });
       expect(res.statusCode, JSON.stringify(name)).toBe(400);
       expect(res.json()).toMatchObject({ error: 'bad_request' });
@@ -165,6 +166,7 @@ describe('POST /me/email', () => {
       [{ password: PASSWORD, email: 'a\u0000b@example.com' }, 422, 'email_invalid'],
       [{ password: PASSWORD, email: 'new@exam\u001bple.com' }, 422, 'email_invalid'],
       [{ password: PASSWORD, email: 'new\u202E@example.com' }, 422, 'email_invalid'],
+      [{ password: PASSWORD, email: 'new\u2800@example.com' }, 422, 'email_invalid'],
       [{ password: PASSWORD, email: 'Taken@Example.com' }, 409, 'email_taken'],
     ];
     for (const [payload, status, error] of cases) {

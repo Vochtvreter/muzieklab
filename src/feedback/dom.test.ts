@@ -81,7 +81,8 @@ describe('partAt', () => {
     document.body.innerHTML = `
       <nav><a href="#/"><span class="nav-pill"><svg><path d="M0 0"/></svg></span>Home</a></nav>
       <button class="clef-btn"><span class="clef-text" style="display: block"><b style="display: block">Bass</b><span style="display: block">F clef</span></span></button>
-      <div class="card"><svg class="staff"><g><path d="M1 1"/></g></svg><p>Below</p></div>`;
+      <div class="card"><svg class="staff"><g><path d="M1 1"/></g></svg><p>Below</p></div>
+      <div role="slider" tabindex="0" aria-label="Where mi goes"><div aria-hidden="true"><svg class="staff"><path d="M2 2"/></svg></div></div>`;
     const at = (el: Element): string => {
       const up: Element[] = [];
       for (let n: Element | null = el; n && n !== document.body; n = n.parentElement) up.push(n);
@@ -90,7 +91,9 @@ describe('partAt', () => {
     };
     expect(at(document.querySelector('a path')!)).toBe('link “Home”');
     expect(at(document.querySelector('b')!)).toBe('button “Bass F clef”');
-    expect(at(document.querySelector('.staff path')!)).toBe('drawing (svg.staff)');
+    expect(at(document.querySelector('.card .staff path')!)).toBe('drawing (svg.staff)');
+    // A custom control around a picture: the slider, as the keyboard picks it, not the staff it draws.
+    expect(at(document.querySelector('[role="slider"] path')!)).toBe('slider “Where mi goes”');
     // Outside any control or picture, the element itself.
     expect(at(document.querySelector('p')!)).toBe('text “Below”');
   });
@@ -236,6 +239,7 @@ describe('markableParts', () => {
       </div>
       <div style="opacity: 0"><button>Next scale</button></div>
       <button><svg></svg>Skip to summary</button>
+      <div role="slider" tabindex="0" aria-label="Where mi goes"><svg><text>mi</text></svg></div>
     </main>
     <div ${TOOL_ATTR}><button>Cancel</button></div>`;
   const names = (): (string | null)[] => markableParts().map((el) => el.textContent);
@@ -245,7 +249,8 @@ describe('markableParts', () => {
     // jsdom lays nothing out and has no checkVisibility: every element gets a box.
     const rects = vi.spyOn(Element.prototype, 'getClientRects').mockReturnValue([new DOMRect(0, 0, 10, 10)] as unknown as DOMRectList);
     try {
-      expect(names()).toEqual(['C major', 'Start over', 'Next scale', 'Skip to summary']);
+      // The slider, not the staff it draws: a tap on the staff marks the slider too (partAt).
+      expect(names()).toEqual(['C major', 'Start over', 'Next scale', 'Skip to summary', 'mi']);
     } finally {
       rects.mockRestore();
     }
@@ -264,7 +269,7 @@ describe('markableParts', () => {
       return true;
     };
     try {
-      expect(names()).toEqual(['C major', 'Start over', 'Skip to summary']);
+      expect(names()).toEqual(['C major', 'Start over', 'Skip to summary', 'mi']);
     } finally {
       proto.checkVisibility = had;
     }
