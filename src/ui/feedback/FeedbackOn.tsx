@@ -9,8 +9,8 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as 
 import pkg from '../../../package.json';
 import { buildIssue, FEEDBACK_DESCRIPTION_MAX, FEEDBACK_KINDS, type FeedbackKind, type FeedbackReport, type FeedbackSaved, type FeedbackTarget, type Rect } from '../../../shared/feedback';
 import { api, type ApiError } from '../../api/client';
-import { boxFrom, captureContext, describeElement, elementAt, markableParts, targetFor, TOOL_ATTR } from '../../feedback/dom';
-import { getLocale, t } from '../../i18n';
+import { boxFrom, captureContext, describeElement, markableParts, partAt, targetFor, TOOL_ATTR } from '../../feedback/dom';
+import { getLocale, hasMessage, t } from '../../i18n';
 import { useAccount } from '../account';
 import { Segmented } from '../components/Controls';
 import { CopyField } from '../components/Form';
@@ -40,6 +40,21 @@ function tabPlace(route: Route): string {
 
 type Step = 'idle' | 'marking' | 'form';
 
+/**
+ * A marked part: the target the report keeps, and its name as the form shows it, with the role in the language shown
+ * (the report keeps it in English, as the issue it becomes is).
+ */
+interface Marked {
+  target: FeedbackTarget;
+  name: string;
+}
+
+/** A part's role in the language shown (feedback.role.*); one without a word of its own keeps the report's. */
+const roleWord = (role: string): string => (hasMessage('feedback.role.' + role) ? t('feedback.role.' + role) : role);
+
+/** An element marked (or a drawn box with it under its centre): the report's target, and the name the form shows. */
+const markOf = (el: Element, area?: Rect): Marked => ({ target: targetFor(el, area), name: describeElement(el, roleWord) });
+
 /** What the form holds as it is filled in. */
 interface Draft {
   kind: FeedbackKind;
@@ -51,7 +66,7 @@ const EMPTY: Draft = { kind: 'change', title: '', description: '' };
 /** `onHide`: the account turns the button off on this device (Settings → Account turns it on again). */
 export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
   const [step, setStep] = useState<Step>('idle');
-  const [target, setTarget] = useState<FeedbackTarget | null>(null);
+  const [marked, setMarked] = useState<Marked | null>(null);
   // Each mark gets a fresh form (the screen captured again, nothing sent yet); what was typed stays through Mark again,
   // and only a new report (the Feedback button, Mark another) starts empty.
   const [marks, setMarks] = useState(0);
@@ -60,7 +75,7 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
   const [again, setAgain] = useState(false);
   const bp = useBreakpoint();
   const place = tabPlace(useRoute());
-  const { shown, closing } = useLingering(step === 'form' ? target : null, 240);
+  const { shown, closing } = useLingering(step === 'form' ? marked : null, 240);
   // Closing the tool takes away the control that had the focus (Cancel, the form), and the Feedback button comes back
   // as a new element: the focus goes to it, so the keyboard and a screen reader keep their place. Only closing an open
   // tool asks for that: Esc on the button itself closes nothing, and a request left by it would move the focus after
@@ -95,7 +110,8 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
   }, [step, again]);
-  const side = shown && bp === 'desktop' ? (shown.rect.x + shown.rect.width / 2 > window.innerWidth / 2 ? ' fb-root--left' : ' fb-root--right') : '';
+  const spot = shown?.target.rect;
+  const side = spot && bp === 'desktop' ? (spot.x + spot.width / 2 > window.innerWidth / 2 ? ' fb-root--left' : ' fb-root--right') : '';
 
   return (
     // Keys typed in the tool stay in it: exercise screens take letters and Space from the window (the pad, the piano).
@@ -114,8 +130,8 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
       {step === 'marking' && (
         <MarkLayer
           onCancel={close}
-          onMark={(tg) => {
-            setTarget(tg);
+          onMark={(m) => {
+            setMarked(m);
             setMarks((n) => n + 1);
             setStep('form');
           }}
@@ -123,9 +139,9 @@ export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
       )}
       {shown && (
         <>
-          <div className={'fb-spot' + (closing ? ' m-fade-out' : '')} style={boxStyle(shown.rect)} aria-hidden="true" />
+          <div className={'fb-spot' + (closing ? ' m-fade-out' : '')} style={boxStyle(shown.target.rect)} aria-hidden="true" />
           <Sheet variant={bp === 'desktop' ? 'dialog' : 'sheet'} closing={closing} panelKey="feedback" labelledBy="fb-title" maxWidth={bp === 'desktop' ? 480 : undefined}>
-            <FeedbackForm key={marks} target={shown} draft={draft} onDraft={(patch) => setDraft((d) => ({ ...d, ...patch }))} onClose={close}
+            <FeedbackForm key={marks} target={shown.target} name={shown.name} draft={draft} onDraft={(patch) => setDraft((d) => ({ ...d, ...patch }))} onClose={close}
               onLeave={() => setStep('idle')} onRemark={() => startMarking('same')} onAnother={() => startMarking('new')} onHide={onHide} />
           </Sheet>
         </>
@@ -147,7 +163,7 @@ const ARROWS: Record<string, 1 | -1> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -
  * pick a part instead, which the hint bar names, and Enter marks it. The layer is modal: Tab keeps to Cancel and the
  * picked part. A tap on the hint bar moves it to the other edge, off what it was over.
  */
-function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCancel(): void }): JSX.Element {
+function MarkLayer({ onMark, onCancel }: { onMark(m: Marked): void; onCancel(): void }): JSX.Element {
   const [hover, setHover] = useState<Rect | null>(null);
   const [drag, setDrag] = useState<Rect | null>(null);
   const [picked, setPicked] = useState<Element | null>(null);
@@ -156,7 +172,7 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
   // A tap or click that went down and up on the layer itself: its click marks the spot.
   const tapped = useRef(false);
   // A drag's box, waiting for the end of its gesture.
-  const dragged = useRef<{ target: FeedbackTarget; timer: number } | null>(null);
+  const dragged = useRef<{ marked: Marked; timer: number } | null>(null);
   const coarse = useMediaQuery('(pointer: coarse)');
   const layerRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -176,7 +192,7 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
     if (!d) return;
     dragged.current = null;
     window.clearTimeout(d.timer);
-    onMark(d.target);
+    onMark(d.marked);
   };
   const down = (e: ReactPointerEvent<HTMLDivElement>): void => {
     // Another press while a box waits: its click marks the box.
@@ -192,7 +208,7 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
       setDrag(boxFrom(a, p));
       setHover(null);
     } else if (!a && e.pointerType === 'mouse') {
-      const el = elementAt(p.x, p.y);
+      const el = partAt(p.x, p.y);
       setHover(el ? el.getBoundingClientRect() : null);
       setPicked(null);
     }
@@ -203,9 +219,9 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
     if (!a) return;
     const box = boxFrom(a, { x: e.clientX, y: e.clientY });
     if (box.width >= DRAG_PX || box.height >= DRAG_PX) {
-      const el = elementAt(box.x + box.width / 2, box.y + box.height / 2) ?? document.querySelector('main') ?? document.body;
+      const el = partAt(box.x + box.width / 2, box.y + box.height / 2) ?? document.querySelector('main') ?? document.body;
       setDrag(box);
-      dragged.current = { target: targetFor(el, box), timer: window.setTimeout(markDragged, CLICK_AFTER_MS) };
+      dragged.current = { marked: markOf(el, box), timer: window.setTimeout(markDragged, CLICK_AFTER_MS) };
       return;
     }
     tapped.current = true;
@@ -217,8 +233,8 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
     }
     if (!tapped.current) return;
     tapped.current = false;
-    const el = elementAt(e.clientX, e.clientY);
-    if (el) onMark(targetFor(el));
+    const el = partAt(e.clientX, e.clientY);
+    if (el) onMark(markOf(el));
     else setDrag(null);
   };
 
@@ -246,7 +262,7 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
       pick(ARROWS[e.key]);
     } else if ((e.key === 'Enter' || e.key === ' ') && e.target === layerRef.current && picked) {
       e.preventDefault();
-      onMark(targetFor(picked));
+      onMark(markOf(picked));
     }
   };
 
@@ -259,7 +275,7 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
         <span className="fb-bar-text">
           <span id="fb-hint">{t(coarse ? 'feedback.markHintTouch' : 'feedback.markHint')}</span>
           <span className="fb-bar-pick" aria-live="polite">
-            {picked ? describeElement(picked) : ''}
+            {picked ? describeElement(picked, roleWord) : ''}
           </span>
         </span>
         <button ref={cancelRef} type="button" className="small-btn" onClick={onCancel}>
@@ -271,8 +287,10 @@ function MarkLayer({ onMark, onCancel }: { onMark(t: FeedbackTarget): void; onCa
   );
 }
 
-function FeedbackForm({ target, draft, onDraft, onClose, onLeave, onRemark, onAnother, onHide }: {
+function FeedbackForm({ target, name, draft, onDraft, onClose, onLeave, onRemark, onAnother, onHide }: {
   target: FeedbackTarget;
+  /** The marked part's name in the language shown. */
+  name: string;
   /** What is typed, kept by the tool so that Mark again keeps it. */
   draft: Draft;
   onDraft(patch: Partial<Draft>): void;
@@ -385,7 +403,7 @@ function FeedbackForm({ target, draft, onDraft, onClose, onLeave, onRemark, onAn
       <div className="fb-marked">
         <span className="fb-marked-text">
           <b>{t(target.mode === 'area' ? 'feedback.markedArea' : 'feedback.marked')}</b>
-          <span className="mono-muted">{target.label}</span>
+          <span className="mono-muted">{name}</span>
         </span>
         <button type="button" className="small-btn" onClick={onRemark}>
           {t('feedback.markAgain')}

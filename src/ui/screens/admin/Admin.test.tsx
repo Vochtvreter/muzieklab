@@ -329,4 +329,16 @@ describe('Admin: Invite someone', () => {
     expect(document.activeElement).toBe(name);
     expect(paths()).not.toContain('/api/v1/admin/invites');
   });
+
+  it('a name that shows nothing (a zero-width space) is an empty one: nothing is sent', async () => {
+    answer = (path) => (path === '/api/v1/me' ? json(200, ADMIN) : json(404, { error: 'not_found', message: '' }));
+    inStore(<AdminInvite />);
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'lies@example.com' } });
+    const name = screen.getByLabelText('Name');
+    fireEvent.change(name, { target: { value: '\u200B' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create invite' }));
+    expect(await screen.findByText('Type their name.')).toBeTruthy();
+    expect(document.activeElement).toBe(name);
+    expect(paths()).not.toContain('/api/v1/admin/invites');
+  });
 });

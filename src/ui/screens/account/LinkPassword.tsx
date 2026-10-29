@@ -17,7 +17,7 @@ import { ErrorRetry, FormError, HiddenUsername, onSubmit, PasswordField, SubmitB
 import { FocusedPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { screenHeading } from '../../lib/screenFocus';
-import { errorMessage, failureOf, fieldError, formError, nameCharactersError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
+import { errorMessage, failureOf, fieldError, formError, nameCharactersError, nameIsBlank, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
 import { SignOut, useRefocus } from './AccountSection';
 
@@ -116,7 +116,7 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
 
   const submit = async (): Promise<void> => {
     setFail(null);
-    const noName = kind === 'invite' && !name.trim();
+    const noName = kind === 'invite' && nameIsBlank(name);
     const bad = kind === 'invite' ? nameCharactersError(name) : null;
     setNameEmpty(noName);
     setBadName(bad);

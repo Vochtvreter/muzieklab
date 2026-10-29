@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { act, cleanup, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, type Me } from '../../../shared/api';
 import { FEEDBACK_DESCRIPTION_MAX, type FeedbackReport } from '../../../shared/feedback';
 import { ACCOUNT_KEY } from '../../game/storage';
 import { setLocale } from '../../i18n';
 import { resetAccountCheck } from '../account';
+import { PasswordField } from '../components/Form';
 import { StoreProvider } from '../store';
 import { FeedbackOn } from './FeedbackOn';
 
@@ -334,6 +336,72 @@ describe('Feedback tool: marking', () => {
     } finally {
       proto.checkVisibility = had;
     }
+  });
+
+  it('in Dutch, the bar and the form name the part in Dutch; the report keeps it in English, as its issue', async () => {
+    const proto = Element.prototype as Element & { checkVisibility?: () => boolean };
+    const had = proto.checkVisibility;
+    proto.checkVisibility = () => true;
+    try {
+      setLocale('nl');
+      localStorage.setItem(ACCOUNT_KEY, JSON.stringify(me));
+      render(
+        <StoreProvider>
+          <main className="frame">
+            <h1>Vrij oefenen</h1>
+            <button type="button">Start</button>
+          </main>
+          <FeedbackOn onHide={() => undefined} />
+        </StoreProvider>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Feedback: markeer een deel van dit scherm' }));
+      const layer = screen.getByRole('dialog', { name: /^Klik op het deel dat je bedoelt/ });
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+      expect(within(layer).getByText('kop “Vrij oefenen”')).toBeTruthy();
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+      expect(within(layer).getByText('knop “Start”')).toBeTruthy();
+      fireEvent.keyDown(layer, { key: 'Enter' });
+      const form = await screen.findByRole('dialog', { name: 'Feedback' });
+      expect(within(form).getByText('knop “Start”')).toBeTruthy();
+      fireEvent.change(form.querySelector('textarea')!, { target: { value: 'Start staat te laag.' } });
+      fireEvent.click(within(form).getByRole('button', { name: 'Versturen' }));
+      await waitFor(() => expect(sent()).toHaveLength(1));
+      expect(sent()[0].target.label).toBe('button “Start”');
+    } finally {
+      proto.checkVisibility = had;
+    }
+  });
+
+  it('a tap on a password field marks the field by its label, without what was typed in it', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(me));
+    function Screen(): JSX.Element {
+      const [pw, setPw] = useState('');
+      return (
+        <main className="frame">
+          <PasswordField label="New password" autoComplete="new-password" value={pw} onChange={setPw} />
+        </main>
+      );
+    }
+    render(
+      <StoreProvider>
+        <Screen />
+        <FeedbackOn onHide={() => undefined} />
+      </StoreProvider>,
+    );
+    const input = screen.getByLabelText('New password');
+    fireEvent.change(input, { target: { value: 'pw-secret-typed' } });
+    // React keeps it in the attribute too, which the report's markup would copy.
+    expect(input.getAttribute('value')).toBe('pw-secret-typed');
+    document.elementsFromPoint = () => [input];
+    fireEvent.click(screen.getByRole('button', { name: FAB }));
+    tap(screen.getByRole('dialog', { name: LAYER }));
+    const form = await screen.findByRole('dialog', { name: 'Feedback' });
+    expect(within(form).getByText('field “New password”')).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText(DESC), { target: { value: 'The rules are hard to read.' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(sent()).toHaveLength(1));
+    expect(JSON.stringify(sent()[0])).not.toContain('pw-secret');
+    expect(sent()[0].target).toMatchObject({ label: 'field “New password”', text: '' });
   });
 });
 

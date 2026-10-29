@@ -19,7 +19,7 @@ import { Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { rolesText } from '../../lib/admin';
-import { errorMessage, failureOf, fieldError, formError, nameCharactersError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
+import { errorMessage, failureOf, fieldError, formError, nameCharactersError, nameIsBlank, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { navigate } from '../../router';
 import { OfflineNote, useRefocus } from './AccountSection';
 
@@ -107,9 +107,10 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
     setSaved(false);
     setFail(null);
     const bad = nameCharactersError(name);
-    setEmpty(!name.trim());
+    const blank = nameIsBlank(name);
+    setEmpty(blank);
     setBadName(bad);
-    if (!name.trim() || bad) {
+    if (blank || bad) {
       nameRef.current?.focus();
       return;
     }

@@ -23,7 +23,7 @@ import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { dayOfUntil, holdsMore, setListNotice, sortRoles, today, type LinkKind } from '../../lib/admin';
 import { announce } from '../../lib/announce';
-import { errorMessage, failureOf, fieldError, formError, nameCharactersError, type Failure } from '../../lib/apiErrors';
+import { errorMessage, failureOf, fieldError, formError, nameCharactersError, nameIsBlank, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
 import { useRefocus } from '../account/AccountSection';
 import { GateMessage, LinkResult, NoAccess, RoleSwitches, useAdminGate, useRoleList } from './AdminParts';
@@ -217,7 +217,7 @@ function ProfileCard({ detail, account, outranked, onChange, fail }: CardProps):
   const submit = async (): Promise<void> => {
     setSaved(false);
     setFailure(null);
-    const missing = { name: !name.trim(), email: !email.trim() };
+    const missing = { name: nameIsBlank(name), email: !email.trim() };
     const bad = nameCharactersError(name);
     setEmpty(missing);
     setBadName(bad);

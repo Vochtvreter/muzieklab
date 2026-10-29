@@ -289,7 +289,10 @@ describe('PATCH /admin/accounts/:id', () => {
     expect(res.json<AccountDetail>()).toMatchObject({ name: 'Anne', email: 'anne@example.com' });
     expect((await patch(t, admin.cookie, id, { email: 'taken@example.com' })).json()).toMatchObject({ error: 'email_taken' });
     expect((await patch(t, admin.cookie, id, { email: 'nope' })).json()).toMatchObject({ error: 'email_invalid' });
+    // Another account's address with a hidden character: it would look the same in the list.
+    expect((await patch(t, admin.cookie, id, { email: '\u200Btaken@example.com' })).json()).toMatchObject({ error: 'email_invalid' });
     expect((await patch(t, admin.cookie, id, { name: '' })).statusCode).toBe(400);
+    expect((await patch(t, admin.cookie, id, { name: '\u2060\u2060' })).statusCode).toBe(400);
     const entry = await collections(t.db).audit.findOne({ targetId: ann._id, action: 'account.update' });
     expect(entry?.details).toEqual({ fields: ['name', 'email'], name: 'Anne', email: 'anne@example.com', previousEmail: 'ann@example.com' });
   });

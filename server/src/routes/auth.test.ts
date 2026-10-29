@@ -1108,9 +1108,15 @@ describe('invites', () => {
       expect(res.statusCode).toBe(409);
       expect(res.json()).toMatchObject({ error: 'email_taken' });
     }
-    const bad = await t.call({ method: 'POST', url: '/api/v1/admin/invites', cookie: admin.cookie, payload: { email: 'not an email', name: 'X', roles: [] } });
-    expect(bad.statusCode).toBe(422);
-    expect(bad.json()).toMatchObject({ error: 'email_invalid' });
+    // Nor a second account under the same address with a hidden character in it, which would look the same.
+    for (const email of ['not an email', 'bob@example.com\u200B', '\u200Bbob@example.com']) {
+      const bad = await t.call({ method: 'POST', url: '/api/v1/admin/invites', cookie: admin.cookie, payload: { email, name: 'X', roles: [] } });
+      expect(bad.statusCode, JSON.stringify(email)).toBe(422);
+      expect(bad.json()).toMatchObject({ error: 'email_invalid' });
+    }
+    // Nor an invite to someone whose name shows nothing.
+    const blank = await t.call({ method: 'POST', url: '/api/v1/admin/invites', cookie: admin.cookie, payload: { email: 'cy@example.com', name: '\u200B', roles: [] } });
+    expect(blank.statusCode).toBe(400);
   });
 
   it('is for admins only', async () => {

@@ -4133,7 +4133,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         expect(Math.round(left ? f.x : vp.width - f.x - f.width), 'at the edge').toBe(0);
         expect(Math.min(f.width, f.height), 'a touch target').toBeGreaterThanOrEqual(44);
         const boxes = await controls.evaluateAll((els) =>
-          els.map((el) => ({ ...el.getBoundingClientRect().toJSON(), name: el.getAttribute('aria-label') ?? el.textContent ?? '' }) as DOMRect & { name: string }),
+          els.map((el) => ({ ...el.getBoundingClientRect().toJSON(), name: el.getAttribute('aria-label') || el.textContent?.trim() || el.className }) as DOMRect & { name: string }),
         );
         expect(boxes.length).toBeGreaterThan(0);
         for (const r of boxes) {
@@ -4147,6 +4147,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/notes');
       await clearOf(page.getByRole('button', { name: /^Start · / }));
       await page.getByRole('button', { name: /^Start · / }).click();
+      // Nor the staff: its last note, often the one to name, is read there.
+      await clearOf(page.locator('.nplay-staff svg'));
       await clearOf(page.getByRole('group', { name: 'Note names' }).getByRole('button'));
       await clearOf(page.getByRole('group', { name: 'Answer with' }).getByRole('button'));
       await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
@@ -4157,6 +4159,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/scales/setup');
       await clearOf(page.getByRole('button', { name: /^Start · / }));
       await page.getByRole('button', { name: /^Start · / }).click();
+      await clearOf(page.locator('.nplay-staff svg'));
       await clearOf(piano);
       // Hidden in their place until then, so out of the accessibility tree.
       const tools = page.getByRole('button', { name: /^(Hear it so far|Start over)/ });
@@ -4173,6 +4176,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: /^Start · / }).click();
       await clearOf(page.getByRole('button', { name: 'Got it' }));
       await page.getByRole('button', { name: 'Got it' }).click();
+      await clearOf(page.locator(':is(.play-staff, .tplay-staff, .dplay-staff) svg'));
       await clearOf(page.getByRole('button', { name: /^(Tap pad|Pause)$/ }));
       // A form on its own: the account's own new-password link.
       await page.goto('./#/reset/' + TOKEN);
@@ -4186,6 +4190,48 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         return [vp.width - (f.x + f.width), vp.height - (f.y + f.height)];
       };
       await expect.poll(async () => (await corner()).every((gap) => gap >= 0 && gap <= 80), 'in the bottom-right corner').toBe(true);
+    });
+
+    test('with the tab bar or header, a page scrolled to its end has room under it: the button is on none of its controls', async ({ page }) => {
+      await mockApi(page, { ...adminApi(), ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      const fab = page.getByRole('button', { name: FAB });
+      /** The controls a tap on the button would hit instead: shown where it is, with every box that scrolls at its end. */
+      const underIt = (): Promise<string[]> =>
+        page.evaluate(() => {
+          for (const el of document.querySelectorAll('*')) {
+            if (['auto', 'scroll'].includes(getComputedStyle(el).overflowY)) el.scrollTop = el.scrollHeight;
+          }
+          const button = document.querySelector<HTMLElement>('.fb-fab')!;
+          const f = button.getBoundingClientRect();
+          button.style.visibility = 'hidden';
+          const hit: string[] = [];
+          for (const el of document.querySelectorAll('a[href], button, input, select, textarea, summary, [role="button"], [role="switch"], [role="slider"]')) {
+            if (el.closest('[data-feedback-ui]')) continue;
+            const r = el.getBoundingClientRect();
+            const [x0, x1, y0, y1] = [Math.max(r.left, f.left), Math.min(r.right, f.right), Math.max(r.top, f.top), Math.min(r.bottom, f.bottom)];
+            let shown = false;
+            for (let x = x0 + 1; x < x1 && !shown; x += 4) {
+              for (let y = y0 + 1; y < y1 && !shown; y += 4) {
+                const top = document.elementFromPoint(x, y);
+                shown = !!top && (top === el || el.contains(top));
+              }
+            }
+            if (shown) hit.push(`${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 40)} (${Math.round(x1 - x0)} × ${Math.round(y1 - y0)})`);
+          }
+          button.style.visibility = '';
+          return hit;
+        });
+      const found: Record<string, string[]> = {};
+      for (const hash of ['#/', '#/path', '#/learn', '#/learn/1', '#/progress', '#/progress/skills', '#/settings', '#/changelog', '#/account', '#/privacy', '#/admin', '#/admin/invite', '#/admin/deleted', '#/admin/feedback']) {
+        await page.goto('./' + hash);
+        await expectClickable(fab, { scroll: false });
+        // Once its answers have come and the screen is filled in.
+        await page.waitForLoadState('networkidle');
+        const hit = await underIt();
+        if (hit.length) found[hash] = hit;
+      }
+      expect(found, 'controls under the Feedback button').toEqual({});
     });
 
     test('the tab at the screen edge shows its whole focus ring', async ({ page }) => {
@@ -4374,6 +4420,42 @@ test.describe('feedback: the keyboard, and the marked part’s name', () => {
     const sent = api.callsTo('POST /feedback')[0].body as FeedbackReport;
     expect(sent.target.label + sent.target.text).not.toMatch(/\dPulse|meterBeat/);
   });
+
+  test('a click on a control’s icon or word marks the control; a field is named by its label, without what was typed', async ({ page }) => {
+    const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    /** Marks the spot at the centre of `el`: the name the form gives it. */
+    const markAt = async (el: Locator): Promise<string> => {
+      const r = (await el.boundingBox())!;
+      await page.getByRole('button', { name: FAB }).click();
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+      return (await form.locator('.fb-marked-text .mono-muted').textContent()) ?? '';
+    };
+    const close = async (): Promise<void> => {
+      await page.keyboard.press('Escape');
+      await expect(form).toHaveCount(0);
+    };
+    await page.goto('./#/settings');
+    expect(await markAt(page.getByRole('link', { name: /^Ann de Vries/ }).locator('svg.row-chevron'))).toMatch(/^link “Ann de Vries/);
+    // The marked box is the row's, not the chevron's.
+    const row = (await page.getByRole('link', { name: /^Ann de Vries/ }).boundingBox())!;
+    expect((await page.locator('.fb-spot').boundingBox())!.width).toBeCloseTo(row.width, 0);
+    await close();
+    await page.goto('./#/notes');
+    expect(await markAt(page.locator('.clef-btn b', { hasText: 'Bass' }))).toMatch(/^button “.*Bass F clef”$/);
+    await close();
+    await page.goto('./#/account');
+    const field = page.getByLabel('New password');
+    await field.fill('pw-secret-e2e');
+    expect(await markAt(field)).toBe('field “New password”');
+    await form.getByLabel('What should change?').fill('The rules are hard to read.');
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Saved for review' })).toBeVisible();
+    const sent = api.callsTo('POST /feedback')[0].body as FeedbackReport;
+    expect(sent.target.label).toBe('field “New password”');
+    expect(JSON.stringify(sent)).not.toContain('pw-secret');
+  });
 });
 
 test.describe('feedback: marking a staff drawing', () => {
@@ -4393,16 +4475,11 @@ test.describe('feedback: marking a staff drawing', () => {
     await expect(staff).toBeVisible();
     // A path longer than the report's markup keeps of a value.
     expect(await staff.evaluate((svg) => Math.max(...[...svg.querySelectorAll('path')].map((p) => p.getAttribute('d')?.length ?? 0)))).toBeGreaterThan(120);
-    // A spot on the drawing clear of its lines and notes, so the click marks the drawing, not one of its paths.
-    const spot = await staff.evaluate((svg) => {
-      const r = svg.getBoundingClientRect();
-      const x = r.x + r.width / 2;
-      for (let y = r.y + r.height / 2; y > r.y; y--) if (document.elementFromPoint(x, y) === svg) return { x, y };
-      return null;
-    });
+    // A click on the drawing, on one of its lines or notes too, marks the whole staff picture, as the arrow keys pick it.
+    const r = (await staff.boundingBox())!;
     await page.getByRole('button', { name: FAB }).click();
-    await page.mouse.click(spot!.x, spot!.y);
-    await expect(page.getByRole('dialog', { name: 'Feedback' }).locator('.fb-marked')).toContainText('drawing');
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+    await expect(page.getByRole('dialog', { name: 'Feedback' }).locator('.fb-marked')).toContainText('image “The notes so far');
     expect(errors).toEqual([]);
   });
 });

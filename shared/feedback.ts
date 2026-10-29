@@ -90,16 +90,39 @@ const KIND_WORD: Record<FeedbackKind, string> = { bug: 'Bug', change: 'Change re
 
 const round = (r: Rect): Rect => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) });
 
-/** An invite or new-password screen's route, with its token: '/reset/<token>', or '#/reset/<token>' in an address. */
-const TOKEN_ROUTE = /(^|#)\/(invite|reset)\/[^/?#\s]+/g;
+/**
+ * An invite or new-password screen's route, with its token: '/reset/<token>', or '#/reset/<token>' in an address, or
+ * in the text or markup of a marked part (an admin's link card). A token is base64url, so the match ends at the space,
+ * quote or tag after it.
+ */
+const TOKEN_ROUTE = /(^|#)\/(invite|reset)\/[\w-]+/g;
 
 /**
- * The route or address with an invite or new-password link's token left out ('/reset/:token'). Whoever has the token
- * can claim the account (BACKEND-PLAN.md §5.1), and a report is read by its reviewers and may become a public issue,
- * so the app leaves it out of what it sends, and the API again of what it stores.
+ * The route, address or text with an invite or new-password link's token left out ('/reset/:token'). Whoever has the
+ * token can claim the account (BACKEND-PLAN.md §5.1), and a report is read by its reviewers and may become a public
+ * issue, so the app leaves it out of what it sends, and the API again of what it stores.
  */
 export function withoutToken(routeOrUrl: string): string {
   return routeOrUrl.replace(TOKEN_ROUTE, '$1/$2/:token');
+}
+
+/** A field's start tag as a browser writes it, its attributes whole (a quoted value may hold a '>'), cut short or not. */
+const FIELD_TAG = /<(?:input|textarea)\b(?: [^\s"'>/=]+(?:="[^"]*(?:"|$))?)*/gi;
+const FIELD_VALUE = / value="[^"]*(?:"|$)/gi;
+/** A text area's start tag and its text, up to its end tag or the end of markup that was cut. */
+const AREA_TEXT = /(<textarea\b(?: [^\s"'>/=]+(?:="[^"]*")?)*>)[^<]*/gi;
+
+/**
+ * The marked part as a report keeps it: no link token in its name, text or markup (withoutToken), and nothing typed in
+ * a field in its markup. React keeps what is typed in a field in its value attribute, a password too, and a text area's
+ * in its text. The app leaves them out of what it sends (src/feedback/dom.ts), and the API again of what it stores and
+ * hands out, for a report sent before the app did.
+ */
+export function withoutSecrets(target: FeedbackTarget): FeedbackTarget {
+  const html = withoutToken(target.html)
+    .replace(FIELD_TAG, (tag) => tag.replace(FIELD_VALUE, ''))
+    .replace(AREA_TEXT, '$1');
+  return { ...target, label: withoutToken(target.label), text: withoutToken(target.text), html };
 }
 
 /** One line with no line breaks or runs of spaces, cut to `max` characters. */

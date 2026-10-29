@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildIssue, type FeedbackReport } from '../../shared/feedback';
-import { boxFrom, captureContext, describeElement, markableParts, selectorFor, targetFor, TOOL_ATTR } from './dom';
+import { boxFrom, captureContext, describeElement, markableParts, partAt, selectorFor, targetFor, TOOL_ATTR } from './dom';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -52,6 +52,47 @@ describe('describeElement', () => {
     // As written: a heading shown in capitals keeps its own case.
     document.body.innerHTML = '<h2 style="text-transform: uppercase">Account</h2>';
     expect(describeElement(document.querySelector('h2')!)).toBe('heading “Account”');
+  });
+
+  it('names a field by its label, not its class', () => {
+    document.body.innerHTML = `
+      <label for="pw">New password</label><input id="pw" class="tfield-input" type="password">
+      <span id="cap">Message to send</span><textarea class="tfield-input" aria-labelledby="cap"></textarea>`;
+    expect(describeElement(document.querySelector('input')!)).toBe('field “New password”');
+    expect(describeElement(document.querySelector('textarea')!)).toBe('field “Message to send”');
+  });
+
+  it('says the role in the language shown when asked to; the report keeps it in English', () => {
+    document.body.innerHTML = '<button aria-label="Tap pad"><span>Tap</span></button>';
+    const btn = document.querySelector('button')!;
+    const dutch = (role: string): string => ({ button: 'knop' })[role] ?? role;
+    expect(describeElement(btn, dutch)).toBe('knop “Tap pad”');
+    expect(targetFor(btn).label).toBe('button “Tap pad”');
+  });
+});
+
+describe('partAt', () => {
+  afterEach(() => {
+    // jsdom has none of its own: each test stands one in.
+    delete (document as Partial<Document>).elementsFromPoint;
+  });
+
+  it('marks the control or picture a tap lands in, as the keyboard picks it: not its icon or a word in it', () => {
+    document.body.innerHTML = `
+      <nav><a href="#/"><span class="nav-pill"><svg><path d="M0 0"/></svg></span>Home</a></nav>
+      <button class="clef-btn"><span class="clef-text" style="display: block"><b style="display: block">Bass</b><span style="display: block">F clef</span></span></button>
+      <div class="card"><svg class="staff"><g><path d="M1 1"/></g></svg><p>Below</p></div>`;
+    const at = (el: Element): string => {
+      const up: Element[] = [];
+      for (let n: Element | null = el; n && n !== document.body; n = n.parentElement) up.push(n);
+      document.elementsFromPoint = () => [...up, document.body, document.documentElement];
+      return describeElement(partAt(0, 0)!);
+    };
+    expect(at(document.querySelector('a path')!)).toBe('link “Home”');
+    expect(at(document.querySelector('b')!)).toBe('button “Bass F clef”');
+    expect(at(document.querySelector('.staff path')!)).toBe('drawing (svg.staff)');
+    // Outside any control or picture, the element itself.
+    expect(at(document.querySelector('p')!)).toBe('text “Below”');
   });
 });
 
@@ -113,6 +154,43 @@ describe('targetFor', () => {
     expect(page.scrollTop).toBe(354);
     page.scrollTop = 10;
     expect(targetFor(start).scroll).toEqual({ x: 0, y: 10 });
+  });
+
+  it('leaves out what was typed in a field: React keeps it in the value attribute, a password too', () => {
+    document.body.innerHTML = `<form class="card-pad">
+      <input type="email" name="username" hidden value="me@example.com">
+      <label for="cur">Current password</label><input id="cur" type="password" value="pw-secret-1">
+      <label for="new">New password</label><input id="new" type="text" value="pw-secret-2">
+      <label for="why">Why?</label><textarea id="why">typed-reason</textarea>
+      <button>Change password</button></form>`;
+    const form = document.querySelector('form')!;
+    for (const el of [form, ...form.querySelectorAll('input, textarea')]) {
+      const tg = targetFor(el);
+      expect(JSON.stringify(tg)).not.toMatch(/pw-secret|me@example\.com|typed-reason/);
+    }
+    expect(targetFor(form).html).toContain('Change password');
+    expect(targetFor(document.getElementById('new')!).label).toBe('field “New password”');
+    // Only in the report's copy: the page keeps what was typed.
+    expect(document.getElementById('cur')!.getAttribute('value')).toBe('pw-secret-1');
+    expect(document.querySelector('textarea')!.value).toBe('typed-reason');
+  });
+
+  it('leaves out an invite or new-password token in the marked part’s name, text and markup, also where it is cut', () => {
+    const token = 'Ab3_x-'.repeat(7) + 'Z';
+    const link = (kind: string): string => `https://test.vivanova.app/#/${kind}/${token}`;
+    document.body.innerHTML = `<div class="link-result">
+      <p title="${link('reset')}">Hi Ann, here's a link to choose a new password: ${link('reset')} — it works until Friday.</p>
+      <a href="#/invite/${token}">Open ${link('invite')}</a>
+      <p class="long">${'x'.repeat(240)} ${link('invite')}</p></div>`;
+    const context = captureContext({ version: '0.19.1', route: '/admin/invite', themeSetting: 'system', locale: 'en', prefs: {} });
+    for (const el of [document.querySelector('.link-result')!, ...document.querySelectorAll('p, a')]) {
+      const tg = targetFor(el);
+      const issue = buildIssue({ kind: 'bug', title: '', description: 'x', target: tg, context });
+      // Not a part of it either: a cut keeps the start of the token.
+      for (const part of [JSON.stringify(tg), issue.title + issue.body]) expect(part).not.toContain(token.slice(0, 12));
+    }
+    expect(targetFor(document.querySelector('p')!).text).toContain('#/reset/:token — it works until Friday.');
+    expect(targetFor(document.querySelector('a')!).html).toContain('href="#/invite/:token"');
   });
 
   it('cuts long values in a copy outside the page, so a cut SVG path is never parsed (and logged) there', () => {

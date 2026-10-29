@@ -31,6 +31,25 @@
   justify-content: center;
 }
 /*
+ * The screens in the .shell, which comes before the tool: the page leaves room under its end for the button, so a page
+ * scrolled to its end has none of its controls under it, and what stays at the bottom (Path's Start lesson) is clear of
+ * it too. On a phone the page's padding is --pb less 12 px: 68 px, the 59 px the button stands above the tab bar and a
+ * gap; from 700 px it is --pb: the button's 16 + 44 px and a gap. As long as the tool is on, also while marking, so the
+ * page does not move under the finger.
+ */
+.shell:has(~ .fb-root) .page {
+  --pb: 80px;
+}
+@media (min-width: 700px) {
+  .shell:has(~ .fb-root) .page {
+    --pb: 72px;
+  }
+  /* Home on a desktop: its two columns have padding of their own. */
+  .shell:has(~ .fb-root) .home-desk {
+    padding-bottom: 72px;
+  }
+}
+/*
  * Screens without the tab bar or header (an exercise, its setup and results, a form on its own) keep their controls
  * low on the screen, under the corner: there the button is a tab on the right edge, halfway down, at every size. While
  * an exercise is played (--high) its answers take the lower half and, on Scales, the middle, so the tab sits 30% of
@@ -53,6 +72,17 @@
 }
 .fb-root:not(.shell ~ .fb-root) .fb-fab--high {
   top: 30%;
+}
+/*
+ * A portrait phone, where the staff card runs to the 16 px gutter: the card stops before the tab (44 px less the
+ * gutter, and a gap), so no note, rest or bar line of the staff, nor the current note's column, lies under it. The
+ * staves draw themselves in the room they are given. As long as the tool is on, also while marking, so the staff does
+ * not move under the finger.
+ */
+@media (max-width: 699.98px) and (orientation: portrait) {
+  .frame:has(~ .fb-root) :is(.play-staff, .nplay-staff) {
+    margin-right: calc(32px + env(safe-area-inset-right, 0px));
+  }
 }
 .fb-root:not(.shell ~ .fb-root) .fb-fab--low {
   top: 75%;

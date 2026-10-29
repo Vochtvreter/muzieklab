@@ -74,11 +74,21 @@ export function passwordLengthFailure(password: string): Failure | null {
   return n < PASSWORD_MIN || n > PASSWORD_MAX ? failureOf(new ApiError(422, 'password_length')) : null;
 }
 
+/** What shows nothing: spaces, and characters such as the zero-width space, the word joiner and the Hangul filler. */
+const INVISIBLE = /[\s\p{Default_Ignorable_Code_Point}]/gu;
+
+/**
+ * Whether a name shows nothing, so is as good as empty (the field says to type it): spaces only, or characters that
+ * show nothing (a zero-width space). The server refuses it too.
+ */
+export const nameIsBlank = (name: string): boolean => !name.replace(INVISIBLE, '');
+
 /**
  * A name the server would refuse for what is in it: a tab or another control character inside it (a name pasted from
- * two spreadsheet cells has a tab, which hardly shows). Its answer names no field, so the name is checked before the
- * request is sent: the message for the name field, or null. Around the name it is only space, which is trimmed.
+ * two spreadsheet cells has a tab, which hardly shows), or a bidi override or isolate, which turns the text after it
+ * around. Its answer names no field, so the name is checked before the request is sent: the message for the name
+ * field, or null. Around the name it is only space, which is trimmed.
  */
 export function nameCharactersError(name: string): string | null {
-  return /\p{Cc}/u.test(name.trim()) ? t('form.hiddenCharacters') : null;
+  return /[\p{Cc}\u202A-\u202E\u2066-\u2069]/u.test(name.trim()) ? t('form.hiddenCharacters') : null;
 }

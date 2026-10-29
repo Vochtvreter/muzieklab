@@ -90,8 +90,9 @@ there too, which opens the reports.
    phone in landscape has it on the left edge, as its answers are on the right.
 2. Press it, then tap or click the part you mean, or drag to draw a box. With a mouse, the element a click would mark is
    outlined. With the keyboard, the arrow keys pick the screen's parts in turn, the hint bar names the one picked, and
-   Enter marks it. The hint bar sits at the top; tap it to move it to the bottom (and back) when it is over what you
-   mean. Press Esc or Cancel to stop. To mark something further down the page, scroll first, then press Feedback.
+   Enter marks it. A tap or click marks the same parts: one on a control's icon or a word in it marks the control. The
+   hint bar sits at the top; tap it to move it to the bottom (and back) when it is over what you mean. Press Esc or
+   Cancel to stop. To mark something further down the page, scroll first, then press Feedback.
    However the tool closes (Esc, Cancel, or the sheet's X or Close), the focus goes back to the Feedback button.
 3. A sheet opens (a dialog on desktop, beside the marked spot). The spot stays lit and the rest of the screen dims.
    Choose **Bug**, **Change** or **Idea**, then say what should change (at most 5000 characters). A title is
@@ -154,11 +155,15 @@ hand when its author is on the allowlist (§4).
 Each report holds (`shared/feedback.ts`; stored as it was sent, BACKEND-PLAN.md §3.9):
 
 - **What should change:** the kind, the title and the description.
-- **Where:** the route (`#/settings`) and the marked element: its CSS selector, a readable name (`button “Start”`), its
-  text (its parts apart, as it reads) and its markup (shortened). An invite or new-password screen's route and address
-  keep `:token` in place of the link's token (`#/reset/:token`): whoever has a token can claim the account, and a
-  report is read by its reviewers and may become a public issue. The app leaves it out, and the API again, both when it
-  stores a report and when it hands one out (for a report kept before it did). It also holds the marked box in CSS
+- **Where:** the route (`#/settings`) and the marked element: its CSS selector, a readable name (`button “Start”`, a
+  field by its label: `field “New password”`; in English whatever the app's language, as the issue is), its text (its
+  parts apart, as it reads) and its markup (shortened). What was typed in a field is never in it: React keeps it in the
+  field's `value` attribute (a password too), and a text area's in its text, so both are left out. An invite or
+  new-password link's token is left out too, `:token` in its place (`#/reset/:token`), in the route and address of its
+  screen and in the marked element's name, text and markup (an admin's link card shows the link): whoever has a token
+  can claim the account, and a report is read by its reviewers and may become a public issue. The app leaves these
+  out, and the API again, both when it stores a report and when it hands one out (for a report kept before it did,
+  `withoutSecrets` in `shared/feedback.ts`). It also holds the marked box in CSS
   pixels and the page's scroll offset: how far the boxes around the element are scrolled (a screen scrolls inside the
   page, not the window), leaving out scroll that does not move it (a sticky part, such as Settings' side column, counts
   only how far it went along before it stuck; a fixed one stays put whatever scrolls), so the box plus the offset is

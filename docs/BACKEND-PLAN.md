@@ -133,8 +133,8 @@ hex strings and dates as ISO strings. Phase 1 has five collections: `accounts`, 
 ```js
 {
   _id: ObjectId("…"),
-  email: "ann@example.com",            // trimmed and lower-cased; unique index
-  name: "Ann",                         // 1 to 80 characters
+  email: "ann@example.com",            // trimmed and lower-cased, no control or hidden characters; unique index
+  name: "Ann",                         // 1 to 80 characters, at least one of them visible; no control or bidi characters
   passwordHash: "scrypt$32768$8$3$<salt>$<hash>",  // null until the invite is accepted (§5.5)
   status: "invited",                   // "invited" | "active" | "blocked"
   roles: ["teacher"],                  // global roles (§4.1), kept in the order admin, editor, teacher
@@ -299,7 +299,7 @@ harder; it is not done, as the log keeps ids on purpose (§3.5).
 ```js
 {
   _id: "testers",                       // the role's id: admin, editor, teacher, or a custom one (^[a-z][a-z0-9-]{1,31}$)
-  name: "Testers",                      // 1 to 80 characters; the app names the built-in roles itself, in its language
+  name: "Testers",                      // as an account's name; the app names the built-in roles itself, in its language
   description: "Send feedback from the app.",  // up to 200 characters
   permissions: ["feedback.give"],       // in the order of PERMISSIONS
   builtIn: false,
@@ -824,7 +824,7 @@ As built in phase 1 (*public*: anyone; otherwise signed in, with that permission
 | `POST /admin/roles` | `roles.manage`, plus every permission put in | Id, name, optional description and permissions → the role. 409 `role_exists` for an id in use (a built-in one too). |
 | `PATCH /admin/roles/:id` | `roles.manage`, plus every permission added or taken out | Name, description and permissions; only the fields sent change. 409 `built_in_role` for a built-in role's name or description, or admin's permissions. |
 | `DELETE /admin/roles/:id` | `roles.manage`, plus every permission in it, and `roles.grant` while accounts have it | A custom role only (409 `built_in_role`); every account that had it loses it. |
-| `POST /feedback` | `feedback.give` | A feedback report (`shared/feedback.ts`) → `{ id }`: the report is stored as `new`, for review (§3.9). The description must say something, and no key in `context.prefs` may start with `$` (else 400 `bad_request`). After 30 in an hour from one account: 429 `too_many_attempts`, with `retryAfter`. An invite or new-password token in the route or URL is stored as `:token` (`/reset/:token`), as the app sends it; the reads below (and the author's export) leave it out the same way, for a report stored before that. Nothing goes to GitHub yet ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) §3). |
+| `POST /feedback` | `feedback.give` | A feedback report (`shared/feedback.ts`) → `{ id }`: the report is stored as `new`, for review (§3.9). The description must say something, and no key in `context.prefs` may start with `$` (else 400 `bad_request`). After 30 in an hour from one account: 429 `too_many_attempts`, with `retryAfter`. An invite or new-password token in the route or URL, or in the marked element's name, text or markup, is stored as `:token` (`/reset/:token`), and what was typed in a field (an `<input>`'s `value`, a `<textarea>`'s text) is left out of the markup, as the app sends it; the reads below (and the author's export) leave them out the same way, for a report stored before that. Nothing goes to GitHub yet ([FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) §3). |
 | `GET /admin/feedback?status=` | `feedback.review` | The reports, newest first, at most 500: id, kind, title, description, route, the marked spot's label and mode, status, author (`{ id, name }`, or null once the account is gone) and `createdAt`. `status` is new, accepted or declined; without it, every report. `counts` has how many there are of each status, whatever the filter. |
 | `GET /admin/feedback/:id` | `feedback.review` | One report: the list's fields, the report as sent, the note, the reviewer (`{ id, name }` or null) and `reviewedAt`. 404 `not_found` for a report that is not there. |
 | `PATCH /admin/feedback/:id` | `feedback.review` | `status` and `note` → the report, as GET. Only the fields sent change. A change records who made it, as the reviewer, and when; sending what is there already changes nothing. A note of more than 2000 characters, or with a control character other than a line break, is 400 `bad_request`; 404 as GET. |

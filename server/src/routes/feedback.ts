@@ -14,6 +14,7 @@ import {
   type FeedbackSaved,
   type FeedbackStatus,
   type FeedbackUpdateRequest,
+  withoutSecrets,
   withoutToken,
 } from '../../../shared/feedback.js';
 import { writeAudit } from '../accounts/audit.js';
@@ -150,8 +151,8 @@ export const feedbackRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (ap
         kind,
         title,
         description,
-        target,
-        // Also when an app sent them with the token in.
+        // Also when an app sent them with a link's token, or what was typed in a field, in.
+        target: withoutSecrets(target),
         context: { ...context, url: withoutToken(context.url), route: withoutToken(context.route) },
         status: 'new',
         authorId: actor._id,

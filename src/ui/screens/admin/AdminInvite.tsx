@@ -13,7 +13,7 @@ import { Icon } from '../../components/Icon';
 import { Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
-import { failureOf, fieldError, formError, nameCharactersError, type Failure } from '../../lib/apiErrors';
+import { failureOf, fieldError, formError, nameCharactersError, nameIsBlank, type Failure } from '../../lib/apiErrors';
 import { Link } from '../../router';
 import { GateMessage, LinkResult, RoleSwitches, useAdminGate } from './AdminParts';
 
@@ -57,7 +57,7 @@ function InviteForm({ account, focus, onCreated }: { account: UseAccount; focus:
   const canGrant = account.can('roles.grant');
 
   const submit = async (): Promise<void> => {
-    const missing = { email: !email.trim(), name: !name.trim() };
+    const missing = { email: !email.trim(), name: nameIsBlank(name) };
     const bad = nameCharactersError(name);
     setEmpty(missing);
     setBadName(bad);

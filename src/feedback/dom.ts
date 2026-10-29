@@ -56,12 +56,14 @@ const ROLE_OF: Record<string, string> = {
  * The element's text as it reads, its parts apart: textContent runs a chapter row's "1", "Pulse and meter" and "Beat,
  * tempo…" together. A part laid out on its own (a block, a flex item, a chip) gets a space either side, and a hidden
  * one adds nothing. As written, not as shown: innerText would give a heading its style puts in capitals as ACCOUNT.
- * Read up to `max` characters, the most a report keeps.
+ * Read up to `max` characters, the most a report keeps. A text area's text is what was typed in it, which a report
+ * leaves out (markup).
  */
 function readableText(el: Element, max = 300): string {
   const view = el.ownerDocument.defaultView;
   let text = '';
   const walk = (node: Node): void => {
+    if (node instanceof Element && node.tagName === 'TEXTAREA') return;
     for (const child of node.childNodes) {
       if (text.length > max) return;
       if (child.nodeType === Node.TEXT_NODE) text += child.textContent;
@@ -79,16 +81,26 @@ function readableText(el: Element, max = 300): string {
   return text;
 }
 
-/** How a person would name the element: its role and accessible name or text, else its tag and first class. */
-export function describeElement(el: Element): string {
+/** The text of what labels the element: the elements its aria-labelledby names, else a field's <label>s. */
+function labelText(el: Element): string {
+  const by = (el.getAttribute('aria-labelledby') ?? '').split(/\s+/).map((id) => (id ? el.ownerDocument.getElementById(id) : null));
+  const labels: Element[] = by.some(Boolean) ? by.filter((n): n is HTMLElement => n !== null) : [...((el as HTMLInputElement).labels ?? [])];
+  return labels.map((l) => readableText(l)).join(' ');
+}
+
+/**
+ * How a person would name the element: its role and accessible name (a field's is its label) or text, else its tag
+ * and first class. `roleWord` says the role in the language shown; a report keeps it in English, as its issue is.
+ */
+export function describeElement(el: Element, roleWord: (role: string) => string = (role) => role): string {
   const role = el.getAttribute('role') ?? ROLE_OF[el.tagName.toUpperCase()];
-  const name = el.getAttribute('aria-label') ?? el.getAttribute('title') ?? el.getAttribute('alt') ?? readableText(el);
+  const name = el.getAttribute('aria-label') || labelText(el) || el.getAttribute('title') || el.getAttribute('alt') || readableText(el);
   const named = clip(name, 50);
   const cls = [...el.classList].find((c) => !PASSING.test(c));
   const tag = el.tagName.toLowerCase() + (cls ? '.' + cls : '');
-  if (role && named) return `${role} “${named}”`;
+  if (role && named) return `${roleWord(role)} “${named}”`;
   if (named) return `${tag} “${named}”`;
-  return role ? `${role} (${tag})` : tag;
+  return role ? `${roleWord(role)} (${tag})` : tag;
 }
 
 /** The topmost page element at a point, looking through the feedback tool's own layer. */
@@ -103,6 +115,19 @@ export function elementAt(x: number, y: number, doc: Document = document): Eleme
 
 /** What the arrow keys step through while marking: controls, headings, text and pictures. */
 const PARTS = 'a[href], button, input, select, textarea, summary, [role="button"], [role="switch"], [role="slider"], [tabindex]:not([tabindex="-1"]), h1, h2, h3, h4, p, img, svg, [role="img"]';
+/** A control or a picture: what is inside it (a button's icon or words, a staff's notes) is marked as part of it. */
+const WHOLE = 'a[href], button, summary, label, svg, [role="img"]';
+
+/**
+ * The part a tap, a click or a drawn box's centre marks at a point: the control or picture the element there is in, the
+ * outermost one, as the arrow keys pick it (markableParts), else that element. A tap on a tab's icon marks the tab, and
+ * one on a word of a button the button, so the report names and lights what was meant.
+ */
+export function partAt(x: number, y: number, doc: Document = document): Element | null {
+  let part = elementAt(x, y, doc);
+  for (let up = part?.closest(WHOLE); up; up = up.parentElement?.closest(WHOLE)) part = up;
+  return part;
+}
 
 /**
  * Whether the element can be seen: laid out, not visibility: hidden (Scales' Hear it so far and Start over wait so in
@@ -124,21 +149,28 @@ export function markableParts(doc: Document = document): Element[] {
   return [...doc.body.querySelectorAll(PARTS)].filter(
     (el) =>
       !el.closest(`[${TOOL_ATTR}], [aria-hidden="true"], .sr-only`) &&
-      !el.parentElement?.closest('a[href], button, summary, label, svg, [role="img"]') &&
+      !el.parentElement?.closest(WHOLE) &&
       shows(el),
   );
 }
 
-/** Markup with the tool's own elements and long attribute values left out, cut to `max` characters. */
+/**
+ * Markup with the tool's own elements, what was typed in a field, a link's token and long attribute values left out,
+ * cut to `max` characters. React keeps what is typed in a field in its value attribute (a text area's in its text), a
+ * password too, so the copy drops it.
+ */
 function markup(el: Element, max = 1500): string {
   // The copy is made in a document of its own, which renders nothing: a cut value (an SVG <path d> cut mid-number) set
   // on a copy in the page's document is parsed there, and the browser logs it as an error.
   const copy = el.ownerDocument.implementation.createHTMLDocument('').importNode(el, true);
   copy.querySelectorAll(`[${TOOL_ATTR}]`).forEach((n) => n.remove());
   for (const n of [copy, ...copy.querySelectorAll('*')]) {
+    if (n.tagName === 'INPUT') n.removeAttribute('value');
+    else if (n.tagName === 'TEXTAREA') n.textContent = '';
     for (const a of [...n.attributes]) if (a.value.length > 120) n.setAttribute(a.name, a.value.slice(0, 117) + '…');
   }
-  const html = copy.outerHTML.replace(/\s+/g, ' ');
+  // A token cut with its value still has its start, which the route before it finds.
+  const html = withoutToken(copy.outerHTML).replace(/\s+/g, ' ');
   return html.length > max ? html.slice(0, max - 1) + '…' : html;
 }
 
@@ -198,13 +230,16 @@ function movedWith(part: Element, box: Element): { x: number; y: number } {
   return { x: top.x - now.x, y: top.y - now.y };
 }
 
-/** The target for a marked element, or for a drawn box with the element under its centre. */
+/**
+ * The target for a marked element, or for a drawn box with the element under its centre; without a link's token
+ * (withoutToken), which an admin's link card shows, nor what was typed in a field (markup).
+ */
 export function targetFor(el: Element, area?: Rect, win: Window = window): FeedbackTarget {
   return {
     mode: area ? 'area' : 'element',
     selector: selectorFor(el),
-    label: describeElement(el),
-    text: clip(readableText(el), 300),
+    label: withoutToken(describeElement(el)),
+    text: clip(withoutToken(readableText(el)), 300),
     html: markup(el),
     rect: toRect(area ?? el.getBoundingClientRect()),
     scroll: scrollOf(el, win),
