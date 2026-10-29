@@ -458,8 +458,10 @@ async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, inp
   await check();
   for (const k of keys.slice(1)) await page.keyboard.press(k);
   await expect(feedback).toHaveClass(/is-right/);
-  // The done line names the 15 notes, for screen readers too where the degree rows show them instead.
+  // The done line names the 15 notes (where the degree rows show them instead, not on screen; screen readers hear them
+  // in the line said, beside it).
   await expect(feedback.locator('.nfeedback-notes')).toHaveText(/^(\S+ ){14}\S+$/);
+  await expect(page.locator('.nfeedback + [aria-live]')).toHaveText(/\. ([^,]+, ){14}[^,]+$/);
   await check();
   // With its mistakes the scale comes back at the end of the round: the main button is Next scale.
   await expectClickable(page.getByRole('button', { name: words.next }), inPlace);
@@ -1785,8 +1787,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const nav = wide ? page.getByRole('banner').getByRole('navigation', { name: 'Main' }) : page.getByRole('navigation', { name: 'Main' });
       await expect(nav.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
       await expectClickable(page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Minor' }));
+      // The keys are named as said (F sharp major), as a screen reader would not read F♯ right.
       const circle = page.getByRole('group', { name: 'Circle of fifths, major keys' });
-      for (const key of ['C major', 'F♯ major', 'B major', 'D♭ major']) await expectClickable(circle.getByRole('button', { name: new RegExp('^' + key) }));
+      for (const key of ['C major', 'F sharp major', 'B major', 'D flat major']) await expectClickable(circle.getByRole('button', { name: new RegExp('^' + key) }));
       await circle.getByRole('button', { name: /^D major/ }).click();
       await expect(page.getByRole('button', { name: 'Practice D major' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'Practice D major' }));
@@ -1798,23 +1801,23 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // Minor: the inner ring comes to the front; tapping the selected bottom key again switches its spelling.
       await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Minor' }).click();
       const minor = page.getByRole('group', { name: 'Circle of fifths, minor keys' });
-      await minor.getByRole('button', { name: /^B♭ minor/ }).click();
-      await minor.getByRole('button', { name: /^B♭ minor/ }).click();
+      await minor.getByRole('button', { name: /^B flat minor/ }).click();
+      await minor.getByRole('button', { name: /^B flat minor/ }).click();
       await expect(page.getByRole('button', { name: 'Practice A♯ minor' })).toBeVisible();
       // Seven sharps, seven flats and six sharps read whole between the inner ring's keys, and so do C♯ major's seven
       // sharps between the faint minor keys.
       await expectSigUncovered(page);
-      await minor.getByRole('button', { name: /^G♯ minor/ }).click();
-      await minor.getByRole('button', { name: /^G♯ minor/ }).click();
+      await minor.getByRole('button', { name: /^G sharp minor/ }).click();
+      await minor.getByRole('button', { name: /^G sharp minor/ }).click();
       await expect(page.getByRole('button', { name: 'Practice A♭ minor' })).toBeVisible();
       await expectSigUncovered(page);
-      await minor.getByRole('button', { name: /^D♯ minor/ }).click();
+      await minor.getByRole('button', { name: /^D sharp minor/ }).click();
       await expect(page.getByRole('button', { name: 'Practice D♯ minor' })).toBeVisible();
       await expectSigUncovered(page);
       await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Major' }).click();
       const major = page.getByRole('group', { name: 'Circle of fifths, major keys' });
-      await major.getByRole('button', { name: /^D♭ major/ }).click();
-      await major.getByRole('button', { name: /^D♭ major/ }).click();
+      await major.getByRole('button', { name: /^D flat major/ }).click();
+      await major.getByRole('button', { name: /^D flat major/ }).click();
       await expect(page.getByRole('button', { name: 'Practice C♯ major' })).toBeVisible();
       await expectSigUncovered(page);
       await expectNoSideScroll(page);
@@ -3539,6 +3542,19 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
     }
+
+    test('#/scales/setup with 15 keys chosen: the keys fit their control', async ({ page }) => {
+      known(name, 'nl#/scales/setup-pick');
+      // "15 toonsoorten" is wider than a third of the control at 320 px: it takes a second line instead of running out.
+      const keys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'];
+      await seed(page, { progress: { scales: { settings: { keyMode: 'pick', keys, types: ['major'], input: 'piano', direction: 'up', write: 'signs', showSteps: true, playNotes: false }, stars: {} } } });
+      await page.goto('./#/scales/setup');
+      // A fresh load, so the app reads the settings just seeded.
+      await page.reload();
+      await expect(page.getByRole('group', { name: 'Toonsoorten' }).getByRole('button', { name: '15 toonsoorten' })).toHaveAttribute('aria-pressed', 'true');
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
 
     test('scales: G♯ harmonic minor up and down, answered to the end, fits', async ({ page }) => {
       known(name, 'nl-scales-up-down');

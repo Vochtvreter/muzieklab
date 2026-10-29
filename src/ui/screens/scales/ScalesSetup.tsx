@@ -73,7 +73,7 @@ export function ScalesSetup(): JSX.Element {
           <div className="wide-main">
             <div className="field">
               <div className="label">{t('scales.setup.keys')}</div>
-              <Segmented<ScaleKeys> label={t('scales.setup.keys')} value={s.keyMode} onChange={pickKeys}
+              <Segmented<ScaleKeys> label={t('scales.setup.keys')} value={s.keyMode} onChange={pickKeys} className="ssetup-keys"
                 options={[
                   { value: 'one', label: keyName(s.keyMode === 'one' ? keys[0] : hubKey, false) },
                   { value: 'circle', label: t('scales.setup.circle') },

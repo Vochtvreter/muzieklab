@@ -2,7 +2,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_SCALE_SETTINGS } from '../../../core/api';
+import { DEFAULT_SCALE_SETTINGS, type KeyId, type ScaleType } from '../../../core/api';
 import { defaultProgress, PROGRESS_KEY } from '../../../game/storage';
 import { makeScaleRun, StoreProvider, useStore } from '../../store';
 import { ScalesDone } from './ScalesDone';
@@ -19,13 +19,13 @@ window.matchMedia = (query: string) =>
 
 const TODAY = '2026-10-15';
 
-/** Plays a round of one scale without a mistake on TODAY, then shows Round done. */
-function Round(): JSX.Element | null {
+/** Plays a round of these keys (G major) without a mistake on TODAY, then shows Round done. */
+function Round({ keys = ['G'], types = ['major'] }: { keys?: KeyId[]; types?: ScaleType[] }): JSX.Element | null {
   const { state, dispatch } = useStore();
   useEffect(() => {
-    const run = makeScaleRun({ ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys: ['G'] }, 5);
+    const run = makeScaleRun({ ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys, types }, 5);
     dispatch({ type: 'scaleStart', run });
-    dispatch({ type: 'scaleFinish', played: [{ scale: run.scales[0], mistakes: 0 }], today: TODAY, seconds: 30 });
+    dispatch({ type: 'scaleFinish', played: run.scales.map((scale) => ({ scale, mistakes: 0 })), today: TODAY, seconds: 30 });
   }, []);
   return state.scaleLast ? <ScalesDone /> : null;
 }
@@ -62,5 +62,29 @@ describe('Round done: an achievement the round earned', () => {
     expect(sheet.getByText('7-day streak')).toBeTruthy();
     expect(sheet.getByText('Practice on seven days in a row')).toBeTruthy();
     expect(screen.queryByText('Achievement unlocked · 7-day streak')).toBeNull();
+  });
+});
+
+// The circle draws one dot per position, but B and C♭, F♯ and G♭, D♭ and C♯ are two scales each: both are named when
+// both reach ★★ in the round, as the count beside them counts both.
+describe('Round done: the circle card', () => {
+  it('names both spellings of a position that reached two stars', () => {
+    const { unmount } = render(
+      <StoreProvider>
+        <Round keys={['F#', 'Gb', 'Db', 'C#']} />
+      </StoreProvider>,
+    );
+    expect(screen.getByText(/reached ★★ this round/).textContent).toContain('F♯ major, G♭ major, D♭ major and C♯ major reached ★★ this round.');
+    // Said in words to a screen reader.
+    expect(screen.getByRole('img', { name: /New this round: F sharp major, G flat major, D flat major and C sharp major\.$/ })).toBeTruthy();
+    unmount();
+    localStorage.clear();
+
+    render(
+      <StoreProvider>
+        <Round keys={['B', 'Cb']} types={['natural']} />
+      </StoreProvider>,
+    );
+    expect(screen.getByText(/reached ★★ this round/).textContent).toContain('G♯ minor and A♭ minor reached ★★ this round.');
   });
 });

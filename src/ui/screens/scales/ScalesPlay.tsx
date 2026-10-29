@@ -33,8 +33,8 @@ import type { KeyMark } from '../../components/NoteInputs';
 import { DegreeRow, keyNames, SCALE_GAP_KBD, SCALE_WHITE_KBD, ScalePiano, SignButtons, type DegreeCell } from '../../components/ScaleInputs';
 import { PHONE_LANDSCAPE, SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useMediaQuery } from '../../hooks';
 import { keyForTabbedControl } from '../../lib/focusModality';
-import { letterName } from '../../lib/noteText';
-import { noteName, scaleName, scaleSpoken, stepHow, stepLabel, stepsOf } from '../../lib/scaleText';
+import { letterName, spokenName } from '../../lib/noteText';
+import { noteName, noteSpoken, scaleName, scaleSpoken, stepHow, stepLabel, stepsOf } from '../../lib/scaleText';
 import { useFocusHandOff } from '../../lib/screenFocus';
 import { leave, Link, navigate } from '../../router';
 import { todayIso, useStore, type ScaleRun } from '../../store';
@@ -226,7 +226,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const shown = useMemo(() => pageNotes.slice(0, pos - start), [pageNotes, pos, start]);
   const staffLabel = t('scales.play.staffLabel', {
     scale: scaleSpoken(sc),
-    notes: notes.slice(0, pos).map(noteName).join(', ') || t('scales.play.none'),
+    notes: notes.slice(0, pos).map(noteSpoken).join(', ') || t('scales.play.none'),
   });
   // Up and down on the shortest phones draws the staff at 1, so a why of two lines leaves Hint and Next scale in view
   // with its second degree row, also beside a B♭ scale's staff, the tallest (DESIGN.md §9).
@@ -236,17 +236,17 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
       scale={staffScale} label={staffLabel} className="splay-staff-svg" />
   );
 
-  // Degree boxes: given letters when spelling, "?" for the next note when playing.
-  const cell = (i: number): DegreeCell => {
+  // Degree boxes: given letters when spelling, "?" for the next note when playing. The text follows the box's state,
+  // which the way down's first box (the top note again) sets itself: still to come while the top note is the next one up.
+  const cell = (i: number, state: DegreeCell['state'] = i < pos ? 'done' : i === pos ? 'current' : 'next'): DegreeCell => {
     const n = notes[i];
-    const state: DegreeCell['state'] = i < pos ? 'done' : i === pos ? 'current' : 'next';
     const letter = t('notes.letter.' + letterOf(n.step));
-    const text = i < pos ? noteName(n) : piano ? (i === pos ? '?' : '') : letter;
-    return { degree: n.degree, text, given: piano ? undefined : letter, state };
+    const text = state === 'done' ? noteName(n) : piano ? (state === 'current' ? '?' : '') : letter;
+    return { degree: n.degree, text, spoken: state === 'done' ? noteSpoken(n) : undefined, given: piano ? undefined : letter, state };
   };
   const stepCells = s.showSteps ? steps : steps.map(() => null);
   const upCells = notes.slice(0, PAGE).map((_, i) => cell(i));
-  const downCells = dir === 'upDown' ? [{ ...cell(PAGE - 1), state: pos >= PAGE ? ('done' as const) : ('next' as const) }, ...notes.slice(PAGE).map((_, i) => cell(PAGE + i))] : [];
+  const downCells = dir === 'upDown' ? [cell(PAGE - 1, pos >= PAGE ? 'done' : 'next'), ...notes.slice(PAGE).map((_, i) => cell(PAGE + i))] : [];
   const degrees = (
     <div className="splay-degrees">
       <DegreeRow cells={upCells} steps={stepCells.slice(0, PAGE - 1)} known={Math.max(0, pos - 1)} label={t('scales.play.degreesUp')} />
@@ -254,29 +254,26 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     </div>
   );
 
-  // The feedback line: what to play or spell next, a wrong answer and why, the hint, or the scale done.
-  const prev = pos > 0 ? noteName(notes[pos - 1]) : '';
+  // The feedback line: what to play or spell next, a wrong answer and why, the hint, or the scale done. It shows the
+  // notes with their signs (F𝄪) and says them in words to a screen reader (F double sharp), as the degree boxes do.
   const way = dir === 'upDown' && pos >= PAGE ? 'down' : 'up';
   const how = pos > 0 && !done ? stepHow(steps[pos - 1]) : '';
-  let feedback: string;
-  let tone = '';
-  if (done) {
-    feedback = t(mistakes ? 'scales.play.doneMistakes' : 'scales.play.doneClean', { scale: scaleName(sc), count: mistakes });
-    tone = 'right';
-  } else if (wrong) {
-    const given = wrong.kind === 'piano' ? keyNames(wrong.midi) : letterName(curLetter, wrong.alter);
-    // The note's own key an octave off: "Not C" would deny the C that was played.
-    if (wrong.kind === 'piano' && isWrongOctave(cur, wrong)) feedback = t(wrong.midi > cur.midi ? 'scales.play.wrongOctaveHigh' : 'scales.play.wrongOctaveLow', { note: noteName(cur) });
-    else feedback = pos === 0 ? t('scales.play.wrongStart', { given, scale: scaleName(sc) }) : t(way === 'up' ? 'scales.play.wrongUp' : 'scales.play.wrongDown', { given, prev, how });
-    tone = 'wrong';
-  } else if (hinted) {
-    feedback = pos === 0 ? t('scales.play.hintStart', { scale: scaleName(sc) }) : t(way === 'up' ? 'scales.play.hintUp' : 'scales.play.hintDown', { prev, step: stepLabel(steps[pos - 1]), how });
-    tone = 'hint';
-  } else if (piano) {
-    feedback = pos === 0 ? t('scales.play.idleStart', { tonic: noteName(notes[0]) }) : t(way === 'up' ? 'scales.play.idleUp' : 'scales.play.idleDown', { degree: cur.degree, prev, how: s.showSteps ? how : t('scales.play.nextNote') });
-  } else {
-    feedback = t('scales.play.idleSign', { letter: t('notes.letter.' + curLetter) });
-  }
+  const tone = done ? 'right' : wrong ? 'wrong' : hinted ? 'hint' : '';
+  const line = (spoken: boolean): string => {
+    const note = spoken ? noteSpoken : noteName;
+    const scale = spoken ? scaleSpoken(sc) : scaleName(sc);
+    const prev = pos > 0 ? note(notes[pos - 1]) : '';
+    if (done) return t(mistakes ? 'scales.play.doneMistakes' : 'scales.play.doneClean', { scale, count: mistakes });
+    if (wrong) {
+      const given = wrong.kind === 'piano' ? keyNames(wrong.midi, spoken) : (spoken ? spokenName : letterName)(curLetter, wrong.alter);
+      // The note's own key an octave off: "Not C" would deny the C that was played.
+      if (wrong.kind === 'piano' && isWrongOctave(cur, wrong)) return t(wrong.midi > cur.midi ? 'scales.play.wrongOctaveHigh' : 'scales.play.wrongOctaveLow', { note: note(cur) });
+      return pos === 0 ? t('scales.play.wrongStart', { given, scale }) : t(way === 'up' ? 'scales.play.wrongUp' : 'scales.play.wrongDown', { given, prev, how });
+    }
+    if (hinted) return pos === 0 ? t('scales.play.hintStart', { scale }) : t(way === 'up' ? 'scales.play.hintUp' : 'scales.play.hintDown', { prev, step: stepLabel(steps[pos - 1]), how });
+    if (piano) return pos === 0 ? t('scales.play.idleStart', { tonic: note(notes[0]) }) : t(way === 'up' ? 'scales.play.idleUp' : 'scales.play.idleDown', { degree: cur.degree, prev, how: s.showSteps ? how : t('scales.play.nextNote') });
+    return t('scales.play.idleSign', { letter: t('notes.letter.' + curLetter) });
+  };
 
   const keyMarks: Partial<Record<number, KeyMark>> = {};
   if (pos > 0) keyMarks[notes[pos - 1].midi] = 'right';
@@ -288,19 +285,24 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     <SignButtons letter={curLetter} choices={choices} wrong={wrong?.kind === 'sign' ? wrong.alter : null} onPick={(alter) => answer({ kind: 'sign', alter })} disabled={done} kbd={kbd} />
   );
   // The done line ends with the scale's notes. Up and down on the shortest phones leaves them to the degree rows, which
-  // show all 15, and to screen readers (scales.css).
+  // show all 15 (scales.css). Screen readers get the line said, in a live region of its own beside it.
   const feedbackBox = (
-    <div className={'nfeedback m-ease' + (tone ? ' is-' + tone : '')} aria-live="polite">
-      <span>
-        {feedback}
-        {done && (
-          <>
-            {' '}
-            <span className="nfeedback-notes">{notes.map(noteName).join(' ')}</span>
-          </>
-        )}
+    <>
+      <div className={'nfeedback m-ease' + (tone ? ' is-' + tone : '')} aria-hidden="true">
+        <span>
+          {line(false)}
+          {done && (
+            <>
+              {' '}
+              <span className="nfeedback-notes">{notes.map(noteName).join(' ')}</span>
+            </>
+          )}
+        </span>
+      </div>
+      <span className="sr-only" aria-live="polite">
+        {line(true) + (done ? ' ' + notes.map(noteSpoken).join(', ') : '')}
       </span>
-    </div>
+    </>
   );
   const nextLabel = t(idx + 1 >= afterScale(queue, idx, mistakes).length ? 'scales.play.finish' : 'scales.play.next');
   const nextBtn = (

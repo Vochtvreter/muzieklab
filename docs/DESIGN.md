@@ -387,8 +387,13 @@ Learn and practice major and minor scales in all 15 keys.
   The three positions at the bottom carry both spellings (B/C♭, F♯/G♭, D♭/C♯); tapping
   the selected key again switches spelling. Each key is filled by progress (★ light,
   ★★ mid, ★★★ dark slate); for minor, by how many of the three forms have ★★ or more.
+  A position of two spellings shows the selected one, else the one with more progress (the first on a tie), so it is
+  filled whichever spelling earned it, as on Round done's circle.
   A key on the faint ring switches the ring and keeps the focus: the keys come in one order on both tabs, the major
   ring first, so a keyboard or screen-reader user stays on the key just chosen.
+  A second spelling (*C♭* under *B*) is smaller than the name and, on the ring in front, drawn at 90%, which keeps it
+  4.5:1 or more on every fill (§11; at 80% a ★★ key's was 4.2:1 in dark). On the faint ring it is `--muted` as the name
+  is, not fainter, which took it under 4.5:1 on the page and on the disc. The ScaleHub boards draw it at 75% on both.
   The centre shows the selected key signature; six or seven signs take two balanced lines (*F♯ C♯ G♯* over
   *D♯ A♯ E♯ B♯*), so none runs under the inner ring's keys beside it. Under the circle: the scale's notes (each
   letter once, sharps and flats tinted), stars, *Options* and *Practice*, plus *Go round
@@ -421,7 +426,10 @@ Learn and practice major and minor scales in all 15 keys.
   step: skip one key"). The note's own key an octave off is a mistake too, as the octave counts; the feedback says so
   (*Right note, wrong octave: play the lower C.*), not *Not C*. A key the window has twice, an octave apart, reads
   *low* or *high* after its name to a screen reader (*C, low*), and each degree box reads its note once answered, else
-  *now* or *not yet* (after the given letter when spelling: *F, now*). *Hear it so far* and *Start over* appear once
+  *now* or *not yet* (after the given letter when spelling: *F, now*). Notes show their signs (*F𝄪*) but are named as
+  they are said (*F double sharp*, Dutch *fisis*), which a screen reader would read as a symbol or skip: in the degree
+  boxes, the staff's description, the feedback line, the hub's notes and circle keys (*G sharp minor*) and Round done's
+  circle, as in Learn (§9.1). *Hear it so far* and *Start over* appear once
   the first note is played (since 0.10.0; before that they would do nothing). They are hidden but keep their place,
   so nothing moves when they come. When the scale is done, *Hear it so far* reads *Hear the scale*. This holds for
   play and spell, on phone and tablet (the row under the feedback) and on desktop (the side panel). Computer keys
@@ -1502,6 +1510,8 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   line at 360 px, and at 320 px the link takes two (*Toonladders* beside *Over toonladders*).
 - The Key screen (Read notes and Scales) under 360 px wide draws each key's signature 66 px wide (72 px on the board),
   fitted to that width, so the longest Dutch names (*C♭ majeur*, 13 px) end inside their buttons.
+- The Scales setup's *Keys* control: a set of keys chosen, in Dutch (*15 toonsoorten*), is wider than a third of the
+  control at 320 px, so its label takes a second line instead of running out of the control.
 - Setup's tempo value (*112 BPM · Moderato*) is never broken in two. Under about 345 px wide it does not fit beside
   *Tempo*, so it takes a line of its own under it, right aligned. The *Bars* and *Tempo* labels stay level at the top,
   with the stepper and the slider level below them.
@@ -2270,6 +2280,8 @@ without code changes:
   field, a sheet); the first screen is left to the page load. So does a screen redrawn in a language picked elsewhere,
   and what Try again brings in place of its message. A button that is busy, or has nothing to do (a Save once saved, a
   setup stepper's − or + at its end), keeps the focus: it is `aria-disabled`, not disabled, which drops it to the page.
+  An outline button that is disabled (Hint once asked, Scales' Start over once the scale is done, Read notes' Lower and
+  Higher once the note is checked) is dimmed to 50%, as the sign buttons are, so a tap that does nothing is no surprise.
   A button that gives way to another hands it on (Block and Unblock; Sign out to Sign in; Calibrate's Try again to the
   Tap pad, and the Tap pad, when the run ends, to Save or else Try again). Reset progress leaves only its line
   (*Progress was reset.*, read out), so it hands it to the About heading. A sheet that closes gives it back to the

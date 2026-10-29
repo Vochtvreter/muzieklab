@@ -450,6 +450,12 @@
   border: 1.5px solid var(--line);
   border-radius: 16px;
 }
+/* Disabled (Hint once asked, Start over once the scale is done, Read notes' Lower and Higher once the note is checked):
+   dimmed as the signs beside them are, so a tap that does nothing is no surprise. A busy button, or one with nothing to
+   do, is aria-disabled instead and keeps its look (DESIGN.md §11). */
+.btn--outline:disabled {
+  opacity: 0.5;
+}
 .btn--blocked,
 .btn--blocked:disabled {
   background: var(--track);

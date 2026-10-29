@@ -26,7 +26,7 @@ import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
 import { keySignsAria, letterName } from '../../lib/noteText';
-import { keyName, noteName } from '../../lib/scaleText';
+import { keyName, noteName, noteSpoken } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore } from '../../store';
 import { useStartScales } from './start';
@@ -100,11 +100,12 @@ export function ScalesHub(): JSX.Element {
     </div>
   );
   const circle = <CircleOfFifths tab={tab} selected={key} stars={stars} onPick={pick} />;
+  // Shown with their signs, said in words: a screen reader reads a sign as a symbol or skips it.
   const noteChips = (
-    <div className="hub-notes" role="list" aria-label={t('scales.hub.notesAria', { notes: notes.map(noteName).join(' ') })}>
+    <div className="hub-notes" role="list" aria-label={t('scales.hub.notesAria', { notes: notes.map(noteSpoken).join(', ') })}>
       {notes.map((n, i) => (
-        <span key={i} role="listitem" className={'hub-note' + (n.alter !== 0 ? ' is-sign' : '')}>
-          {noteName(n)}
+        <span key={i} role="listitem" aria-label={noteSpoken(n)} className={'hub-note' + (n.alter !== 0 ? ' is-sign' : '')}>
+          <span aria-hidden="true">{noteName(n)}</span>
         </span>
       ))}
     </div>

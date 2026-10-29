@@ -159,6 +159,34 @@ describe('the scale degree row', () => {
   }
 });
 
+// The circle of fifths (scales.css): a key's second spelling (C♭ under B, a♭ under g♯; 9–15 px) is drawn fainter than
+// its name, and must still be 4.5:1 or more: on each fill of the ring in front, and on the faint ring, whose keys are
+// working buttons too (one switches the ring), on what is behind them: the page for the outer ring, the disc for the
+// inner one. There the name is --muted already, so the second spelling is not drawn fainter.
+describe('the second spellings on the circle of fifths', () => {
+  const scales = css('scales.css');
+  const faded = Number(declared(scales, '.circle-key-alt', 'opacity') ?? 1);
+  const levels = ['.circle-key', '.circle-key.is-l1', '.circle-key.is-l2', '.circle-key.is-l3'].map((selector) => ({
+    selector,
+    ink: tokenOf(declared(scales, selector, 'color')),
+    fill: tokenOf(declared(scales, selector, 'background')),
+  }));
+  const off = tokenOf(declared(scales, '.circle-key.is-off', 'color'));
+  const offFaded = Number(declared(scales, '.circle-key.is-off .circle-key-alt', 'opacity') ?? faded);
+  const disc = tokenOf(declared(scales, '.circle-disc', 'background'));
+  for (const [name, t] of themes) {
+    it(`${name}: 4.5:1 or more on each fill of the ring in front`, () => {
+      for (const l of levels) expect(contrast(blend(t[l.ink], t[l.fill], faded), t[l.fill]), l.selector).toBeGreaterThanOrEqual(4.5);
+    });
+    it(`${name}: 4.5:1 or more on the faint ring, on the page and on the disc`, () => {
+      for (const fill of ['--ground', disc]) {
+        expect(contrast(t[off], t[fill]), 'the name on ' + fill).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(blend(t[off], t[fill], offFaded), t[fill]), 'the second spelling on ' + fill).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+});
+
 // The total beside a score ("2 / 3" over Read notes' staff on a phone and a tablet, as on the desktop's Correct card;
 // "1 / 1" on Scales' Round done; the "0 →" before a new count on its circle card) is text the player reads, 20–46 px:
 // 4.5:1 or more on the page and on a card, in light and dark. --faint (2.7:1 on the page in light) is too pale.

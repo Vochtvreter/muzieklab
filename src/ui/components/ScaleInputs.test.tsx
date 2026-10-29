@@ -31,6 +31,18 @@ describe('DegreeRow', () => {
     const { container } = render(<DegreeRow cells={piano} steps={[null, null]} known={0} label="Scale degrees going up" />);
     expect(labels(container.querySelectorAll('[role="listitem"]'))).toEqual(['Degree 1: D', 'Degree 2: now', 'Degree 3: not yet']);
   });
+
+  it('names an answered note as it is said, not by its sign', () => {
+    // G♯ harmonic minor's 6th and 7th: a screen reader reads ♯ and 𝄪 as symbols, or skips 𝄪 (F𝄪 would sound like F).
+    const cells: DegreeCell[] = [
+      { degree: 6, text: 'E', spoken: 'E', state: 'done' },
+      { degree: 7, text: 'F𝄪', spoken: 'F double sharp', state: 'done' },
+      { degree: 8, text: '?', state: 'current' },
+    ];
+    const { container } = render(<DegreeRow cells={cells} steps={[null, null]} known={1} label="Scale degrees going up" />);
+    expect(labels(container.querySelectorAll('[role="listitem"]'))).toEqual(['Degree 6: E', 'Degree 7: F double sharp', 'Degree 8: now']);
+    expect(container.querySelectorAll('.degree-name')[1].textContent).toBe('F𝄪');
+  });
 });
 
 describe('ScalePiano', () => {

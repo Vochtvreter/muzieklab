@@ -175,10 +175,11 @@
 .circle-key--minor .circle-key-name {
   font-size: 3.75cqw;
 }
+/* Fainter than the name, and still 4.5:1 or more on every fill (at 0.8 a ★★ key's was 4.2:1 in dark). */
 .circle-key-alt {
   font-size: 2.9cqw;
   font-weight: 600;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 .circle-key--minor .circle-key-alt {
   font-size: 2.65cqw;
@@ -206,6 +207,11 @@
 .circle-key.is-off .circle-key-name {
   font-size: 3.5cqw;
   font-weight: 600;
+}
+/* A faint key is a working button (it switches the ring): its second spelling is --muted as its name is, not fainter,
+   which took it under 4.5:1 on the page and on the disc. */
+.circle-key.is-off .circle-key-alt {
+  opacity: 1;
 }
 .circle-key--minor.is-off .circle-key-name {
   font-size: 3.2cqw;
@@ -553,6 +559,12 @@
   padding-left: 2px;
   padding-right: 2px;
   font-size: 13.5px;
+}
+/* The keys: a set chosen, in a longer language ("15 toonsoorten"), is wider than a third of the control at 320 px; it
+   takes a second line instead of running out. */
+.ssetup-keys .seg-btn {
+  white-space: normal;
+  line-height: 1.2;
 }
 .ssw {
   border-radius: 14px;

@@ -13,7 +13,7 @@ import { AchievementBadges, LevelUpContent } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
 import { andList } from '../../lib/format';
-import { circleLabel, keyName, scaleName } from '../../lib/scaleText';
+import { circleLabel, keyName, keySpoken, scaleName } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore, type ScaleLast } from '../../store';
 import { useStartScales } from './start';
@@ -180,14 +180,14 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
   const n0 = countOf(before);
   const n1 = countOf(after);
   const total = minor ? 45 : 15;
-  const fresh: KeyId[] = [];
+  // Every key new this round, in circle order: a position of two spellings has one dot, but both may be new.
+  const fresh = CIRCLE.flat().filter((k) => filled(after, k) && !was(k));
   const C = 88;
   const R = 67;
   const dots = CIRCLE.map((keys, pos) => {
     const key = keys.find((k) => filled(after, k) && !was(k)) ?? keys.find((k) => filled(after, k)) ?? keys[0];
     const on = filled(after, key);
     const isNew = on && !was(key);
-    if (isNew) fresh.push(key);
     const a = (pos * Math.PI) / 6;
     const x = C + R * Math.sin(a);
     const y = C - R * Math.cos(a);
@@ -208,10 +208,12 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
     );
   });
   const names = fresh.map((k) => keyName(k, minor));
+  // The circle's description names them as said ("C sharp major"): a screen reader reads a sign as a symbol or skips it.
+  const said = fresh.map((k) => keySpoken(k, minor));
   return (
     <div className="card cprog">
       <svg viewBox="0 0 176 176" className="cprog-svg" role="img"
-        aria-label={t(minor ? 'scales.done.circleMinorAria' : 'scales.done.circleMajorAria', { count: n1, total, fresh: andList(names) || t('scales.done.noneNew') })}>
+        aria-label={t(minor ? 'scales.done.circleMinorAria' : 'scales.done.circleMajorAria', { count: n1, total, fresh: andList(said) || t('scales.done.noneNew') })}>
         <circle cx={C} cy={C} r={R} className="cprog-ring" />
         {dots}
         <text x={C} y={C + 3} textAnchor="middle" className="cprog-count">

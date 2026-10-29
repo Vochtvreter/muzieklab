@@ -31,6 +31,8 @@ export interface DegreeCell {
   degree: number;
   /** The box's text: the note once answered; before, the given letter when spelling, or "?" for the next key to play. */
   text: string;
+  /** The note once answered, as it is said ("F double sharp"): a screen reader reads F𝄪's sign as a symbol or skips it. */
+  spoken?: string;
   /** The given letter, when spelling. */
   given?: string;
   state: 'done' | 'current' | 'next';
@@ -41,7 +43,7 @@ export interface DegreeCell {
  * the letter given when spelling (a given F must not sound like an answer, nor the piano's "?").
  */
 function degreeName(c: DegreeCell): string {
-  if (c.state === 'done') return c.text;
+  if (c.state === 'done') return c.spoken ?? c.text;
   const when = t(c.state === 'current' ? 'scales.play.now' : 'scales.play.unknown');
   return c.given ? t('common.commaList', { a: c.given, b: when }) : when;
 }
