@@ -12,8 +12,8 @@ sessions run it to check the test site.
 
 - **The site** (`site.spec.ts`): `/api/v1/health` answers ok with its database (and, when `SMOKE_COMMIT` is set, as that
   commit); the test site is kept out of search engines (`X-Robots-Tag: noindex`); files in `assets/` are cached for a
-  year (a missing one is not) and the page, `sw.js` and the manifest are checked on every visit; the manifest, its icons and the service
-  worker are there; an unknown path is a 404.
+  year (a missing one is not) and the page, `sw.js` and the manifest are checked on every visit; the manifest, its icons
+  and the service worker are there; an unknown path is a 404.
 - **Every screen** (`screens.spec.ts`), signed out, on a phone (390 × 844), a tablet (834 × 1194) and a desktop (1280 ×
   800), light and dark: its heading shows, nothing scrolls sideways, no button cuts its words off, no message key shows
   instead of its text, and nothing fails on the page (an error thrown, an error in the console, or a failed request).

@@ -159,10 +159,11 @@ export function openedFrom(to: Route, query?: string): boolean {
 }
 
 /**
- * Quit: leaves an exercise for `to`, or a screen that is gone once its action is done (Cancel invite, Delete report)
- * for its list. When it was opened from there (Learn's section, the Read notes setup, the accounts list), it goes back
- * to it; swapping the screen for it would leave the same address twice in a row in the history, and the browser's Back
- * would then seem to do nothing. Otherwise the screen is swapped for `to`, so Back does not walk into it again. A Key
+ * Quit: leaves an exercise for `to`, or a screen that is gone once its action is done for the one it belongs under
+ * (Cancel invite and Delete report for their list; Sign in, Sign out everywhere and Delete account for Settings). When
+ * it was opened from there (Learn's section, the Read notes setup, the accounts list, Settings), it goes back to it;
+ * swapping the screen for it would leave the same address twice in a row in the history, and the browser's Back would
+ * then seem to do nothing. Otherwise the screen is swapped for `to`, so Back does not walk into it again. A Key
  * screen's Use leaves it for its setup the same way. An address without a hash is Home.
  */
 export function leave(to: Route, query?: string): void {

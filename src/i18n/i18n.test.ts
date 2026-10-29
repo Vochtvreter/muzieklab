@@ -350,9 +350,9 @@ describe('Dutch', () => {
 
   it("says the deleted accounts' file holds every entry, not only the ones shown above it", () => {
     setLocale('nl');
-    // The file has every entry whatever the filter, and beyond the newest 500 the list shows (AdminClosures, ClosuresFile).
+    // The file has every entry whatever the filter, and beyond the newest 500 the list shows
+    // (AdminClosures, ClosuresFile).
     expect(t('closures.downloadSub')).toBe('Alle verwijderde accounts, met de anonieme voortgang, als JSON.');
-    expect(t('closures.downloadSub')).not.toMatch(/hierboven/);
   });
 
   it('says Change setup one way on every Round done, with no English word in it', () => {

@@ -11,7 +11,7 @@ import { FormError, onSubmit, PasswordField, SubmitButton, TextField } from '../
 import { FocusedPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { failureOf, fieldError, formError, type Failure } from '../../lib/apiErrors';
-import { Link, navigate } from '../../router';
+import { leave, Link, navigate } from '../../router';
 
 export function SignIn(): JSX.Element {
   const account = useAccount();
@@ -49,7 +49,8 @@ export function SignIn(): JSX.Element {
     submitting.current = true;
     try {
       await account.signIn(email.trim(), password);
-      navigate('/settings', { replace: true });
+      // Back to Settings, if it was opened from there (leave): Back then goes on to the screen before Settings.
+      leave('/settings');
     } catch (e) {
       submitting.current = false;
       if (!mounted.current) return;

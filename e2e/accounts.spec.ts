@@ -698,6 +698,40 @@ test('delete account after the session ended elsewhere: Sign in says the account
   await expect(page.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toHaveCount(0);
 });
 
+test('account: one Back after Delete account, Sign out everywhere or Sign in leaves Settings, for the screen before it', async ({ page }) => {
+  const api = await mockApi(page, { ...MEMBER, 'DELETE /me': { status: 204 } });
+  const tab = (name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name });
+  // Opened from Settings, the screen goes back to it, which is not then in the history twice, one after the other.
+  for (const [button, confirmLabel, done] of [
+    [/^Delete account/, 'Delete', 'Your account was deleted. An anonymous copy of your progress is kept.'],
+    [/^Sign out everywhere/, 'Sign out', 'Signed out on every device.'],
+  ] as const) {
+    await page.goto('about:blank');
+    await page.goto('./#/');
+    await tab('Settings').click();
+    await accountSection(page).getByRole('link', { name: /^Sam Jansen/ }).click();
+    await page.getByRole('button', { name: button }).click();
+    const confirm = page.getByRole('alertdialog');
+    if (confirmLabel === 'Delete') await confirm.getByLabel('Password', { exact: true }).fill('my password here');
+    await confirm.getByRole('button', { name: confirmLabel, exact: true }).click();
+    await expect(page).toHaveURL(/#\/settings$/);
+    await expect(notice(page)).toHaveText(done);
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/$/);
+  }
+  // Signed out now: Sign in, from Settings, goes back to it as well.
+  api.set({ 'POST /auth/sign-in': { json: ME_MEMBER } });
+  await tab('Settings').click();
+  await accountSection(page).getByRole('link', { name: /^Sign in/ }).click();
+  await page.getByLabel('Email').fill(ME_MEMBER.email);
+  await page.getByLabel('Password', { exact: true }).fill('my password here');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(accountSection(page).getByRole('link', { name: /^Sam Jansen/ })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/$/);
+});
+
 test('no API (production today): no Account section, and no request until Settings opens', async ({ page }) => {
   const requests: string[] = [];
   page.on('request', (r) => {

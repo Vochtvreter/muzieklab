@@ -20,7 +20,7 @@ import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { rolesText } from '../../lib/admin';
 import { errorMessage, failureOf, fieldError, formError, nameCharactersError, nameIsBlank, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
-import { navigate } from '../../router';
+import { leave, navigate } from '../../router';
 import { OfflineNote, useRefocus } from './AccountSection';
 
 const NAME_MAX = 80;
@@ -28,9 +28,17 @@ const NAME_MAX = 80;
 export function AccountScreen(): JSX.Element {
   const account = useAccount();
   const { me, api: reach } = account;
+  // Set once Sign out everywhere or Delete account is done: the account is gone, and the screen goes to Settings, not
+  // to Sign in, while the Back that leave() starts is on its way.
+  const leaving = useRef(false);
   useEffect(() => {
-    if (reach === 'reachable' && !me) navigate('/signin', { replace: true });
+    if (reach === 'reachable' && !me && !leaving.current) navigate('/signin', { replace: true });
   }, [reach, me]);
+  // Back to Settings, if it was opened from there (leave): Back then goes on to the screen before Settings.
+  const done = (): void => {
+    leaving.current = true;
+    leave('/settings');
+  };
   const offline = reach === 'unreachable';
   // After Try again found the API: the start of the profile, which can be changed again.
   const refocus = useRefocus(() => document.getElementById('h-profile'));
@@ -56,11 +64,11 @@ export function AccountScreen(): JSX.Element {
                 <PasswordForm me={me} account={account} />
               </Section>
               <Section id="devices" title={t('account.devices')}>
-                <SignOutEverywhere account={account} />
+                <SignOutEverywhere account={account} onDone={done} />
               </Section>
               <Section id="data" title={t('account.data')}>
                 <Download account={account} />
-                <DeleteAccount account={account} />
+                <DeleteAccount account={account} onDone={done} />
               </Section>
             </>
           )}
@@ -315,7 +323,7 @@ function PasswordForm({ me, account }: Part & { me: Me }): JSX.Element {
 }
 
 /** Sign out everywhere, confirmed; then Settings says so. */
-function SignOutEverywhere({ account }: Part): JSX.Element {
+function SignOutEverywhere({ account, onDone }: Part & { onDone(): void }): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   return (
     <ConfirmAction label={t('account.signOutEverywhere')} sub={t('account.signOutEverywhereSub')} icon="quit" tone="plain"
@@ -325,7 +333,7 @@ function SignOutEverywhere({ account }: Part): JSX.Element {
         setError(null);
         try {
           await account.signOutEverywhere();
-          navigate('/settings', { replace: true });
+          onDone();
           return true;
         } catch (e) {
           setError(errorMessage(e));
@@ -373,7 +381,7 @@ function Download({ account }: Part): JSX.Element {
  * the progress and prefs on the account: kept as an anonymous copy (the default), or deleted too. The line under the
  * choice says what the chosen one does. Feedback is optional and kept without a name either way.
  */
-function DeleteAccount({ account }: Part): JSX.Element {
+function DeleteAccount({ account, onDone }: Part & { onDone(): void }): JSX.Element {
   const [password, setPassword] = useState('');
   const [removeData, setRemoveData] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -400,7 +408,7 @@ function DeleteAccount({ account }: Part): JSX.Element {
         try {
           await api.del<void>('/me', { password, removeData, feedback: feedback.trim() || undefined });
           account.setSignedOut(removeData ? 'deleted' : 'deletedKept');
-          navigate('/settings', { replace: true });
+          onDone();
           return true;
         } catch (e) {
           const f = failureOf(account.handleError(e));
