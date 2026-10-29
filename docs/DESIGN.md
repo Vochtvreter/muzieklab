@@ -394,7 +394,8 @@ Learn and practice major and minor scales in all 15 keys.
   ring first, so a keyboard or screen-reader user stays on the key just chosen.
   A second spelling (*C♭* under *B*) is smaller than the name and, on the ring in front, drawn at 90%, which keeps it
   4.5:1 or more on every fill (§11; at 80% a ★★ key's was 4.2:1 in dark). On the faint ring it is `--muted` as the name
-  is, not fainter, which took it under 4.5:1 on the page and on the disc. The ScaleHub boards draw it at 75% on both.
+  is, not fainter, which took it under 4.5:1 on the page and on the disc. The ScaleHub boards draw it on both rings at
+  75% on phone and 80% on tablet and desktop.
   The centre shows the selected key signature; six or seven signs take two balanced lines (*F♯ C♯ G♯* over
   *D♯ A♯ E♯ B♯*), so none runs under the inner ring's keys beside it. Under the circle: the scale's notes (each
   letter once, sharps and flats tinted), stars, *Options* and *Practice*, plus *Go round
