@@ -8,8 +8,8 @@ describe('learnReturn', () => {
     expect(learnReturn(q('from=10.2'))).toEqual({ to: '/learn/10', query: 's=10.2', chapter: 10 });
   });
 
-  it("goes back to the chapter from its Practice button, or when the section is not one of the chapter's", () => {
-    expect(learnReturn(q('from=8'))).toEqual({ to: '/learn/8', chapter: 8 });
+  it("goes back to the chapter's end from its Practice button there, and to the chapter when the section is not one of its", () => {
+    expect(learnReturn(q('from=8'))).toEqual({ to: '/learn/8', query: 's=check', chapter: 8 });
     expect(learnReturn(q('from=3.9'))).toEqual({ to: '/learn/3', chapter: 3 });
   });
 

@@ -3,6 +3,9 @@ import { DEFAULT_NOTE_SETTINGS, generateRound, noteMidi, pianoKeyMidi, type Note
 import { LETTERS, letterOf, pitchClass } from '../src/core/pitch';
 import { noteLessonSettings } from '../src/game/notesPath';
 import { DEFAULT_SETTINGS } from '../src/core/defaults';
+import { generateExercise } from '../src/core/generator';
+import type { Settings } from '../src/core/types';
+import { exerciseHas } from '../src/game/intro';
 import { pad, pathUpTo, seed as seedStorage, VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
@@ -585,7 +588,7 @@ test('read notes in Dutch: times with a decimal comma, on the desktop play scree
   await page.keyboard.press(LETTERS.find((L) => L !== letterOf(first.step))!.toLowerCase());
   await expect(page.locator('.nfeedback')).toHaveText(/^Dat was/);
   await expect(page.locator('.stat', { hasText: 'Gem. tijd' }).locator('.nstat-big')).toHaveText(/^\d+,\d s$/);
-  await page.getByRole('button', { name: 'Naar het overzicht' }).click();
+  await page.getByRole('button', { name: 'Naar de samenvatting' }).click();
   await expect(page.getByRole('heading', { name: 'Ronde klaar' })).toBeVisible();
   await expect(page.getByText(/^0 van 1 noot goed · gem\. \d+,\d s/)).toBeVisible();
   await expect(page.locator('.ncard-head')).toHaveText(/^Tijd per noot ?gem\. \d+,\d s$/);
@@ -716,6 +719,36 @@ test('learn: a rhythm practice link starts the exercise for its section; Quit, R
   await expect(page).toHaveURL(/#\/learn\/7\?s=7\.1$/);
 });
 
+test('learn: Practice ties starts an exercise with a tie in it', async ({ page }) => {
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  const stored = (): Promise<{ settings: Settings; seed: number }> => page.evaluate(() => JSON.parse(sessionStorage.getItem('muzieklab.run.v1')!));
+  await page.goto('./#/learn/5');
+  const link = page.getByRole('link', { name: 'Practice ties →' });
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  const { settings } = await stored();
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  // A start seed whose exercise has no tie (about one in four with 4 bars: a tie across the bar line is a chance, and
+  // an eighth, quarter, eighth syncopates without one). The link once played it as it came.
+  let seed = 1;
+  while (exerciseHas(generateExercise(settings, seed), ['ties'])) seed++;
+  await page.evaluate((s) => {
+    crypto.getRandomValues = <T extends ArrayBufferView | null>(a: T): T => ((a as unknown as Uint32Array)[0] = s * 2, a);
+  }, seed);
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  const run = await stored();
+  expect(exerciseHas(generateExercise(run.settings, run.seed), ['ties']), `from seed ${seed}`).toBe(true);
+  await expect(page.getByRole('img', { name: /^Rhythm in 4\/4/ })).toHaveAccessibleName(/, tied/);
+  // Results' New exercise (nothing tapped, so under 2 stars) goes on with one.
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('button', { name: 'New exercise' }).click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  const next = await stored();
+  expect(exerciseHas(generateExercise(next.settings, next.seed), ['ties']), 'New exercise').toBe(true);
+});
+
 test("learn: the browser's Back from a practice link returns to its section, as Quit does", async ({ page }) => {
   await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);
@@ -745,6 +778,54 @@ test("learn: the browser's Back from a practice link returns to its section, as 
     await expect(page).toHaveURL(new RegExp(`#/learn/${n}\\?s=${id.replace('.', '\\.')}$`));
     await expect(page.getByRole('heading', { name: new RegExp(`^${id.replace('.', '\\.')}\\s*\\D`) })).toBeInViewport();
   }
+});
+
+test("learn: the browser's Back to a chapter returns where the reader left it, and the Learn tab keeps its open chapter", async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  // Left from its end (the next chapter, its Practice button, all chapters), the chapter opens at its end again, not
+  // at the top: it is built afresh in its own scroller on the way back, so the browser cannot restore the place.
+  const ends: [RegExp, RegExp][] = [
+    [/^Next/, /#\/learn\/2$/],
+    [/^Practice rhythm$/, /#\/setup\?from=1$/],
+    [/^Back to all chapters$/, /#\/learn$/],
+  ];
+  for (const [name, to] of ends) {
+    await page.goto('./#/learn/1');
+    const link = page.getByRole('link', { name });
+    await link.scrollIntoViewIfNeeded();
+    await link.click();
+    await expect(page).toHaveURL(to);
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/learn\/1\?s=check$/);
+    await expect(page.locator('a.learn-nav-link--next')).toBeInViewport();
+  }
+  // The setup's back arrow returns there too, to the Practice button that opened it.
+  await page.getByRole('link', { name: /^Practice rhythm$/ }).click();
+  await page.getByRole('link', { name: 'Back to chapter 1' }).click();
+  await expect(page).toHaveURL(/#\/learn\/1\?s=check$/);
+  await expect(page.locator('a.learn-nav-link--next')).toBeInViewport();
+
+  // Opened at 1.1 and read on into 1.3, then left by the tab bar: Back opens 1.3, not the section in the address.
+  await page.goto('./#/learn/1?s=1.1');
+  await expect(page.locator('#s1-1')).toBeFocused();
+  await page.locator('#s1-3').evaluate((el) => {
+    el.scrollIntoView({ block: 'start' });
+    el.closest('.page')!.scrollTop += 40;
+  });
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/1\?s=1\.3$/);
+  await expect(page.getByRole('heading', { name: /^1\.3\s*\D/ })).toBeInViewport();
+
+  // The Learn tab opens the chapter that was open when it was left, not the first one not read yet.
+  await page.goto('./#/learn');
+  await page.getByRole('button', { name: /^10\s*\D/ }).click();
+  await page.getByRole('link', { name: /^10\.3\s*\D/ }).click();
+  await expect(page).toHaveURL(/#\/learn\/10\?s=10\.3$/);
+  await page.goBack();
+  await expect(page.getByRole('button', { name: /^10\s*\D/ })).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('button', { name: /^1\s*\D/ })).toHaveAttribute('aria-expanded', 'false');
 });
 
 test('after Quit, one Back leaves the screen Quit returned to', async ({ page }) => {
@@ -844,6 +925,54 @@ test('a Read notes setup opened from a chapter keeps the way back to it: Quit re
   await expect(page).toHaveURL(/#\/notes\?from=8$/);
   await page.goBack();
   await expect(page).toHaveURL(/#\/notes\/done\?from=8$/);
+});
+
+test("a finished screen's back arrow leaves it as Quit does, so Back does not open it again", async ({ page }) => {
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  // From the Learn tab to a section, its practice link, Skip and Back to chapter on Round done or Results: the first
+  // Back returns to the Learn tab (it once opened the finished screen again, and then the section a second time).
+  const links: [number, string, string, string][] = [
+    [8, '8.4', 'Practice with ledger lines →', 'Skip to summary'],
+    [3, '3.2', 'Practice reading rests →', 'Skip to results'],
+  ];
+  for (const [n, id, name, skip] of links) {
+    const section = id.replace('.', '\\.');
+    await page.goto('./#/learn');
+    const row = page.getByRole('button', { name: new RegExp(`^${n}\\s*\\D`) });
+    if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click();
+    await page.getByRole('link', { name: new RegExp(`^${section}\\s*\\D`) }).click();
+    await page.getByRole('link', { name }).click();
+    await page.getByRole('button', { name: skip }).click();
+    await page.getByRole('link', { name: `Back to chapter ${n}` }).click();
+    await expect(page).toHaveURL(new RegExp(`#/learn/${n}\\?s=${section}$`));
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/learn$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Learn' })).toBeVisible();
+  }
+
+  // Started elsewhere, the back arrow swaps the finished screen for where it goes: Back then returns to the screen the
+  // round was started from (Read notes' setup, Home for Scales, the rhythm setup), not to the round.
+  const rounds: [RegExp, RegExp, string, string, RegExp][] = [
+    [/^Read notes/, /^Start · /, 'Skip to summary', 'Back to home', /#\/notes$/],
+    [/^Scales/, /^Practice C major/, 'Skip to summary', 'Back to Scales', /#\/$/],
+  ];
+  for (const [tile, start, skip, back, before] of rounds) {
+    await page.goto('./#/');
+    await page.getByRole('link', { name: tile }).click();
+    await page.getByRole('button', { name: start }).click();
+    await page.getByRole('button', { name: skip }).click();
+    await page.getByRole('link', { name: back }).click();
+    await page.goBack();
+    await expect(page).toHaveURL(before);
+  }
+  await page.goto('./#/setup');
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('link', { name: 'Back to home' }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/setup$/);
 });
 
 test('learn: a practice link opened in a new tab starts the same practice there', async ({ page, context }) => {

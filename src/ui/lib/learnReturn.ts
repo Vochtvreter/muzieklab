@@ -10,19 +10,23 @@ import { hashQuery, useHash, type Route } from '../router';
 
 export interface LearnReturn {
   to: Route;
-  /** 's=9.3': scroll to the section. */
+  /** 's=9.3': scroll to the section; 's=check': to the chapter's quick check, at its end. */
   query?: string;
   chapter: number;
 }
 
-/** Where Back goes from a screen opened from Learn; null when it was not opened from Learn. */
+/**
+ * Where Back goes from a screen opened from Learn; null when it was not opened from Learn. A chapter's own Practice
+ * button (`from=9`) is at its end, beside the quick check, so Back returns there and not to the chapter's top.
+ */
 export function learnReturn(query: URLSearchParams): LearnReturn | null {
   const from = query.get('from') ?? '';
   const m = /^(\d{1,2})(?:\.\d{1,2})?$/.exec(from);
   const chapter = m ? findChapter(Number(m[1])) : undefined;
   if (!chapter) return null;
   const to: Route = `/learn/${chapter.n}`;
-  return chapter.sections.some((s) => s.id === from) ? { to, query: 's=' + from, chapter: chapter.n } : { to, chapter: chapter.n };
+  if (chapter.sections.some((s) => s.id === from)) return { to, query: 's=' + from, chapter: chapter.n };
+  return from === m?.[1] ? { to, query: 's=check', chapter: chapter.n } : { to, chapter: chapter.n };
 }
 
 /**
@@ -41,7 +45,7 @@ export function calibrateBackQuery(query: URLSearchParams): string | undefined {
 
 /** The Learn return of the current screen, and the query that carries it on to the Key screen and back. */
 export function useLearnReturn(): { back: LearnReturn | null; carry: string | undefined } {
-  const back = learnReturn(hashQuery(useHash()));
-  const from = back ? (back.query ? back.query.slice(2) : String(back.chapter)) : null;
-  return { back, carry: from ? 'from=' + from : undefined };
+  const query = hashQuery(useHash());
+  const back = learnReturn(query);
+  return { back, carry: back ? 'from=' + query.get('from') : undefined };
 }

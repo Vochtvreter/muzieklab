@@ -174,6 +174,27 @@ describe('Link', () => {
     expect(back).toHaveBeenCalledOnce();
   });
 
+  it("with leaves (a finished screen's back arrow), leaves as Quit does: back where it came from, else in its place", () => {
+    window.history.replaceState(null, '', '#/learn/3?s=3.2');
+    navigate('/play', { query: 'from=3.2' });
+    navigate('/results', { replace: true, query: 'from=3.2' });
+    render(createElement(Link, { to: '/learn/3', query: 's=3.2', leaves: true }, 'Back to chapter 3'));
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+    fireEvent.click(link('Back to chapter 3'));
+    expect(back).toHaveBeenCalledOnce();
+    cleanup();
+
+    window.history.replaceState(null, '', '#/setup');
+    navigate('/play');
+    navigate('/results', { replace: true });
+    const length = window.history.length;
+    render(createElement(Link, { to: '/', leaves: true }, 'Back to home'));
+    fireEvent.click(link('Back to home'));
+    expect(back).toHaveBeenCalledOnce();
+    expect(window.location.hash).toBe('#/');
+    expect(window.history.length).toBe(length);
+  });
+
   it('leaves a click that opens a new tab or window to the browser, and one its own onClick took', async () => {
     const own = vi.fn((e: { preventDefault(): void }) => e.preventDefault());
     render(createElement('div', null, createElement(Link, { to: '/admin/feedback' }, 'Feedback'), createElement(Link, { to: '/settings', onClick: own }, 'Settings')));

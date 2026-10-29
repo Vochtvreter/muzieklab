@@ -81,6 +81,8 @@ export interface Run {
    * waits for a tap (Ready · Start) before it makes sound.
    */
   needsGesture?: boolean;
+  /** What a Learn section's practice shows (intro ids, makeRunShowing): Next keeps it. */
+  shows?: string[];
 }
 
 /** The current run, per tab (sessionStorage), so a reload on Play rebuilds the same exercise. */
@@ -665,8 +667,8 @@ export function makeRun(settings: Settings, seed: number, lessonId: string | nul
 }
 
 /**
- * Seeds a lesson start tries for an exercise with all its lesson is about. Most lessons find one in the first few
- * tries; 3.4's whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
+ * Seeds a start tries for an exercise that shows what it should. Most lessons find one in the first few tries; 3.4's
+ * whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
  */
 const INTRO_TRIES = 200;
 
@@ -682,15 +684,20 @@ function lessonShows(settings: Settings, lessonId: string): string[] {
 }
 
 /**
- * A lesson run whose exercise shows all its lesson is about (lessonShows): from `seed`, other seeds are tried until the
- * exercise has it all (else the last one).
+ * A run whose exercise shows every symbol given (intro ids, game/intro.ts): from `seed`, other seeds are tried until
+ * the exercise has them all (else the last one). A Learn section's practice shows the extra it turns on (5.1's tie,
+ * which the generator only makes likely), and keeps `shows` for Next.
  */
-export function makeLessonRun(settings: Settings, seed: number, lessonId: string): Run | null {
-  const ids = lessonShows(settings, lessonId);
+export function makeRunShowing(settings: Settings, seed: number, ids: readonly string[], lessonId: string | null = null): Run | null {
   const seeds = new Rng(seed);
   let run = makeRun(settings, seed, lessonId);
   for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(settings, seeds.int(0x7fffffff), lessonId);
-  return run;
+  return run && !lessonId && ids.length ? { ...run, shows: [...ids] } : run;
+}
+
+/** A lesson run whose exercise shows all its lesson is about (lessonShows). */
+export function makeLessonRun(settings: Settings, seed: number, lessonId: string): Run | null {
+  return makeRunShowing(settings, seed, lessonShows(settings, lessonId), lessonId);
 }
 
 function initialState(): AppState {

@@ -361,6 +361,14 @@ describe('Dutch', () => {
     expect([...flatten(catalogs['./nl.json']).entries()].filter(([, msg]) => /\bsetup\b/i.test(msg)).map(([key]) => key)).toEqual([]);
   });
 
+  it('says Skip to summary one way in a Read notes round and a Scales round', () => {
+    setLocale('nl');
+    // Both lead to Ronde klaar. Read notes once said "Naar het overzicht", the word for the Scales tab's circle.
+    expect(t('notes.play.skip')).toBe('Naar de samenvatting');
+    expect(t('scales.play.skip')).toBe(t('notes.play.skip'));
+    expect(t('notes.play.finish')).toBe(t('notes.play.skip'));
+  });
+
   it('falls back to English for a key a catalog lacks', () => {
     setLocale('nl');
     expect(hasMessage('nope.not.here')).toBe(false);

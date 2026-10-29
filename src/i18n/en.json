@@ -1826,7 +1826,7 @@
         "presto": "Presto",
         "prestoText": "very fast",
         "prestoBpm": "168–200",
-        "mark": "Sometimes the exact tempo is written as a metronome mark: ♩ = 80 means 80 quarter-note beats per minute. The Tempo setting in Practice works the same way.",
+        "mark": "Sometimes the exact tempo is written as a metronome mark: ♩ = 80 means 80 quarter-note beats per minute. The Tempo setting in Free practice works the same way.",
         "game": "In the game: the count-in clicks one bar of beats at the exercise’s tempo, so you feel the pulse before the first note. In Echo mode you hear a rhythm first and tap it back without the notation.",
         "practice": "Practice at a steady tempo",
         "check": {
@@ -2155,7 +2155,7 @@
         "qhqPlainAlt": "A bar of 4/4: a quarter on 1, a half note on 2 held through (3), a quarter on 4",
         "qhqTied": "Written with a tie",
         "qhqTiedAlt": "A bar of 4/4: a quarter on 1, a quarter on 2 tied to a quarter on (3), a quarter on 4",
-        "game": "The game writes it the second way, with the tie, so beat 3 stays visible. Turn on Ties in Practice to get syncopation.",
+        "game": "The game writes it the second way, with the tie, so beat 3 stays visible. Turn on Ties in Free practice to get syncopation.",
         "tip": "In the game: press on the “&” or the weak beat and keep holding through the next beat. A count in grey brackets gets no new press.",
         "practice": "Practice syncopation",
         "check": {
@@ -2186,7 +2186,7 @@
         "gridAlt": "One beat, divided: two eighths counted 1 &; three triplet eighths counted 1 trip let",
         "staffAlt": "A bar of 4/4: triplet eighths marked 3, counted 1 trip let, a quarter on 2, triplet eighths counted 3 trip let, a quarter on 4",
         "compare": "Keep the beat steady: the triplet’s three notes are each a little shorter than an eighth, and the next beat comes at the same time as always.",
-        "game": "In the game: turn on Triplets under Extras in Practice. Triplets are made of eighths, so keep eighth notes on too.",
+        "game": "In the game: turn on Triplets under Extras in Free practice. Triplets are made of eighths, so keep eighth notes on too.",
         "practice": "Practice triplets",
         "check": {
           "question": "Three triplet eighths start on beat 1. How do you count them?",

@@ -146,6 +146,23 @@ describe('Learn chapters', () => {
     }
   });
 
+  it('call the setup by its name, Free practice, where a text sends the player there', () => {
+    try {
+      for (const locale of ['en', 'nl']) {
+        setLocale(locale);
+        for (const [id, key] of [['1.1', 'mark'], ['6.1', 'game'], ['7.1', 'game']]) {
+          expect(t(sectionKey(id, key)), `${locale} ${id}`).toContain(t('setup.title'));
+        }
+      }
+      // No screen is called Practice ("The Tempo setting in Practice" once named it so).
+      setLocale('en');
+      const texts = sections.flatMap((s) => s.blocks.flatMap(blockKeys).map((key) => t(sectionKey(s.id, key))));
+      expect(texts.filter((text) => /\b(in|under|on) (the )?Practice\b/.test(text))).toEqual([]);
+    } finally {
+      setLocale('en');
+    }
+  });
+
   it("name in 3.1's tip the Path unit where holding starts, by its number in the Path", () => {
     // Rhythm unit 2 is the Path's unit 4 (tracks.ts), as chapter 3's header says.
     const rhythm = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson.id).hold)!.unit.id;

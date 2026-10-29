@@ -6,7 +6,7 @@ import { PATH_UNITS } from '../game/tracks';
 import { defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type DayStats, type Prefs, type Progress } from '../game/storage';
 import { CHAPTERS } from './learn/chapters';
 import type { Me } from '../../shared/api';
-import { makeLessonRun, makeNoteRun, makeRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
+import { makeLessonRun, makeNoteRun, makeRun, makeRunShowing, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -385,6 +385,33 @@ describe('makeLessonRun', () => {
     for (const lessonId of ['1.1', '1.3', '1.2', '3.1']) {
       for (const seed of seeds.slice(0, 20)) expect(makeLessonRun(lessonSettings(lessonId), seed, lessonId)!.exercise.seed).toBe(seed);
     }
+  });
+});
+
+describe('makeRunShowing', () => {
+  const seeds = Array.from({ length: 150 }, (_, i) => (Math.imul(i + 1, 2654435761) >>> 1) || 1);
+  const rhythm = CHAPTERS.flatMap((c) => c.sections).flatMap((s) => (s.practice && 'rhythm' in s.practice ? [{ id: s.id, settings: { ...DEFAULT_SETTINGS, ...s.practice.rhythm } }] : []));
+
+  it("a Learn section's rhythm practice shows the extra it turns on: 5.1 and 6.1 a tie, 5.2 a dot, 7.1 a triplet", () => {
+    for (const { id, settings } of rhythm) {
+      const shows = (['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k]);
+      for (const seed of seeds) {
+        const run = makeRunShowing(settings, seed, shows)!;
+        expect(exerciseHas(run.exercise, shows), `${id}, seed ${seed}`).toBe(true);
+        expect(run).toMatchObject({ lessonId: null, daily: null });
+        // Kept for Next, which shows it too.
+        expect(run.shows ?? [], id).toEqual(shows);
+        expect(run.exercise.settings).toEqual(settings);
+      }
+    }
+    // Without the search about one 5.1 exercise in four has no tie: ties across the bar line are a chance, and an
+    // eighth, quarter, eighth syncopates without one.
+    const ties = rhythm.find((r) => r.id === '5.1')!.settings;
+    expect(seeds.filter((seed) => !exerciseHas(makeRun(ties, seed, null)!.exercise, ['ties'])).length).toBeGreaterThan(seeds.length / 10);
+  });
+
+  it('keeps the first seed when there is nothing to show', () => {
+    for (const seed of seeds.slice(0, 20)) expect(makeRunShowing(DEFAULT_SETTINGS, seed, [])).toEqual(makeRun(DEFAULT_SETTINGS, seed, null));
   });
 });
 

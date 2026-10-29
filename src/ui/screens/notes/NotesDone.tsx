@@ -196,7 +196,8 @@ export function NotesDone(): JSX.Element | null {
     <ExerciseFrame className="frame--results" wide={wide}>
       <div className="page results ndone no-scrollbar">
         <div className="screen-head">
-          <Link to={lesson ? '/path' : (back?.to ?? '/')} query={lesson ? undefined : back?.query}
+          {/* Leaves as Quit does, so the browser's Back does not open the finished round again. */}
+          <Link to={lesson ? '/path' : (back?.to ?? '/')} query={lesson ? undefined : back?.query} leaves
             aria-label={lesson ? t('notes.done.lessonBack') : back ? t('learn.backToChapter', { n: back.chapter }) : t('notes.done.back')} className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>

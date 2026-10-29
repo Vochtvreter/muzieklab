@@ -243,7 +243,7 @@ before it is built (CLAUDE.md, *Designs first*).
 
 | Section | Content | Notes |
 |---|---|---|
-| 1.1 The beat and tempo | Beat = the pulse you tap your foot to; BPM; tempo words table. **New:** the metronome mark ♩ = 80, as on the Practice setup. *In the game:* the count-in, the metronome setting, and Echo (listen, then tap it back without the notation). | As on the board. Metronome mark: ABRSM G1, Trinity G2. |
+| 1.1 The beat and tempo | Beat = the pulse you tap your foot to; BPM; tempo words table. **New:** the metronome mark ♩ = 80, as on the Free practice setup. *In the game:* the count-in, the metronome setting, and Echo (listen, then tap it back without the notation). | As on the board. Metronome mark: ABRSM G1, Trinity G2. |
 | 1.2 Bars and time signatures | Bar, barline, final barline; top number = beats, bottom = beat note; 2/4, 3/4, 4/4 counted. **New:** C means 4/4 (common time). | C: ABRSM G1, RCM L1, HaFaBra A booklets. Cut time ¢ waits for 2/2 support (HaFaBra B, ABRSM G2). |
 | 1.3 Strong and weak beats | S W / S W W / S W M W. | As on the board (*maataccent*, *zwaar-licht* in HaFaBra A). |
 | **1.4 The upbeat** (new) | A piece can start before beat 1: the notes before the first full bar are the upbeat, counted from the end of the bar ("4 \| 1 2 3 4"). The last bar is usually short by the same amount. No practice link yet. | Every course: HaFaBra A, Flemish year 1, ABRSM G3, RCM L3. The game's exercises always start on beat 1, so it explains without practice, as chapter 7 does on the board. |

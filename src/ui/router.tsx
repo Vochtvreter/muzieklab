@@ -160,33 +160,33 @@ export function openedFrom(to: Route, query?: string): boolean {
 
 /**
  * Quit: leaves an exercise for `to`, or a screen that is gone once its action is done for the one it belongs under
- * (Cancel invite and Delete report for their list; Sign in, Sign out everywhere and Delete account for Settings). When
- * it was opened from there (Learn's section, the Read notes setup, the accounts list, Settings), it goes back to it;
- * swapping the screen for it would leave the same address twice in a row in the history, and the browser's Back would
- * then seem to do nothing. Otherwise the screen is swapped for `to`, so Back does not walk into it again. A Key
- * screen's Use leaves it for its setup the same way. An address without a hash is Home.
+ * (Results' and Round done's back arrow; Cancel invite and Delete report for their list; Sign in, Sign out everywhere
+ * and Delete account for Settings). When it was opened from there (Learn's section, the Read notes setup, the accounts
+ * list, Settings), it goes back to it; swapping the screen for it would leave the same address twice in a row in the
+ * history, and the browser's Back would then seem to do nothing. Otherwise the screen is swapped for `to`, so Back does
+ * not walk into it again. A Key screen's Use leaves it for its setup the same way. An address without a hash is Home.
  */
 export function leave(to: Route, query?: string): void {
   if (openedFrom(to, query)) window.history.back();
   else navigate(to, { replace: true, query });
 }
 
-type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
-  to: Route;
-  query?: string;
-};
+type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { to: Route; query?: string; leaves?: boolean };
 
 /**
  * A real link (<a href="#/…">), so it works with the keyboard, middle-click and screen readers. A plain click goes
- * through navigate(), so the screen it opens knows where it came from (leave()); one that opens a new tab or window
- * (Ctrl, Cmd, Shift or Alt), or that its own onClick took, is left to the browser.
+ * through navigate(), so the screen it opens knows where it came from (leave()); with `leaves`, the back arrow of a
+ * screen that is gone once done (Results, Round done), it leave()s for `to` instead, so the browser's Back does not
+ * open the finished screen again. One that opens a new tab or window (Ctrl, Cmd, Shift or Alt), or that its own
+ * onClick took, is left to the browser.
  */
-export function Link({ to, query, onClick, ...rest }: LinkProps): JSX.Element {
+export function Link({ to, query, leaves, onClick, ...rest }: LinkProps): JSX.Element {
   const click = (e: MouseEvent<HTMLAnchorElement>): void => {
     onClick?.(e);
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (rest.target && rest.target !== '_self')) return;
     e.preventDefault();
-    navigate(to, { query });
+    if (leaves) leave(to, query);
+    else navigate(to, { query });
   };
   return <a href={'#' + to + (query ? '?' + query : '')} onClick={click} {...rest} />;
 }

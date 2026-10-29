@@ -76,6 +76,8 @@ A new kind of block (counting under the notes, for example) is a case in the `Bl
 - `practice: { notes: { clefs: ['bass'], range: 'staff' } }` starts a Read notes round straight away, with those
   settings on top of the player's own (answer with, notes per round and the timer stay). `practice: { rhythm: { meters:
   ['3/4'] } }` starts a rhythm exercise the same way, in Tap mode (tempo, bars and the metronome stay the player's).
+  An extra the preset turns on (`dotted`, `ties`, `triplets`) is in the exercise and in Results' Next (a tie needs two
+  bars or more).
   Quit, and the back arrow on Results or Round done, return to the section; their setup button opens the setup with
   the preset. `practice: { scales: { keyMode: 'one', keys: ['C'], types: ['major'] } }` opens the Scales setup.
 - The chapter's `practice: 'notes' | 'rhythm' | 'scales'` picks the big button at the end.

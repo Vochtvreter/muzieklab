@@ -135,7 +135,8 @@ export function ScalesDone(): JSX.Element | null {
     <ExerciseFrame className="frame--results" wide>
       <div className="page results sdone no-scrollbar">
         <div className="screen-head">
-          <Link to="/scales" aria-label={t('scales.done.back')} className="icon-btn icon-btn--edge-sm">
+          {/* Leaves as Quit does, so the browser's Back does not open the finished round again. */}
+          <Link to="/scales" leaves aria-label={t('scales.done.back')} className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">

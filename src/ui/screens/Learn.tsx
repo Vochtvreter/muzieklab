@@ -19,7 +19,7 @@ import { CHAPTERS, findChapter, PLANNED_CHAPTERS, parseNoteName, sectionIds, sec
 import { stopLearnSound } from '../learn/Listen';
 import { announce } from '../lib/announce';
 import { letterName, spokenName } from '../lib/noteText';
-import { hashQuery, Link, navigate, useHash, type Route } from '../router';
+import { hashQuery, Link, navigate, parseHash, useHash, type Route } from '../router';
 import { todayIso, useStore } from '../store';
 import { useStartNotes } from './notes/start';
 import { useStartPractice } from './start';
@@ -39,6 +39,23 @@ const jumpTo = (id: string) => (): void => {
   el?.focus({ preventScroll: true });
 };
 
+/**
+ * Where the reader is in a chapter (`page`, its scroller): for a link in the chapter's column, the section (or the
+ * quick check, 'check') it is in or comes after, so the chapter's end is the quick check; for one around it (the
+ * sidebar, the tab bar), the last one whose top is above the middle of the view. Null before the first section.
+ */
+function placeOf(page: HTMLElement, link: Element, ids: string[]): string | null {
+  const inColumn = !!link.closest('.learn-main');
+  const middle = page.getBoundingClientRect().top + page.clientHeight / 2;
+  let place: string | null = null;
+  for (const id of [...ids, 'check']) {
+    const el = document.getElementById(anchor(id));
+    if (!el) continue;
+    if (inColumn ? el.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING : el.getBoundingClientRect().top <= middle) place = id;
+  }
+  return place;
+}
+
 type Status = 'done' | 'reading' | 'new';
 function chapterStatus(read: string[], sections: string[]): Status {
   const n = sections.filter((s) => read.includes(s)).length;
@@ -50,8 +67,16 @@ export function LearnHub(): JSX.Element {
   const bp = useBreakpoint();
   useDocTitle(t('app.docTitle', { page: t('learn.docTitle') }));
   const read = state.progress.learnRead;
-  // One chapter open at a time: the first one not done yet.
-  const [open, setOpen] = useState<number | null>(() => CHAPTERS.find((c) => chapterStatus(read, sectionIds(c)) !== 'done')?.n ?? null);
+  // One chapter open at a time: the first one not done yet, or after the browser's Back the one that was open. The
+  // tab's place in the history keeps it, beside where the tab was opened from (leave()).
+  const [open, setOpen] = useState<number | null>(() => {
+    const kept = (window.history.state as { learnOpen?: number | null } | null)?.learnOpen;
+    if (kept === null || CHAPTERS.some((c) => c.n === kept)) return kept as number | null;
+    return CHAPTERS.find((c) => chapterStatus(read, sectionIds(c)) !== 'done')?.n ?? null;
+  });
+  useEffect(() => {
+    window.history.replaceState({ ...window.history.state, learnOpen: open }, '');
+  }, [open]);
   const all = CHAPTERS.flatMap(sectionIds);
   const readCount = all.filter((s) => read.includes(s)).length;
   const total = all.length;
@@ -140,6 +165,9 @@ function SectionCheck({ section, read, onRight }: { section: Section; read: bool
   );
 }
 
+/** The extras a rhythm preset can turn on, which are also their intro ids (game/intro.ts). */
+const EXTRAS = ['dotted', 'ties', 'triplets'] as const;
+
 /**
  * A section's practice: a Read notes round or a rhythm exercise straight away, or the Scales setup, set up for the
  * section on top of the player's own setup. Play and the summary carry ?from=8.2, so Quit and their back arrow return
@@ -166,26 +194,22 @@ function useStartSection(): (section: Section, opts?: { replace?: boolean; needs
     } else {
       const settings = { ...state.settings, ...p.rhythm };
       dispatch({ type: 'settings', settings });
-      startPractice(settings, { replace, query, needsGesture });
+      // The exercise shows the extra the section turns on (5.1's tie), which the generator only makes likely.
+      startPractice(settings, { replace, query, needsGesture, shows: EXTRAS.filter((k) => p.rhythm[k]) });
     }
   };
 }
 
 /**
  * "Practice the treble clef →" starts the section's practice (useStartSection). The browser's Back returns to the
- * section: the chapter's own entry in the history is set to it first, as the chapter is built afresh on the way back.
- * Opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift), its own address starts the same practice
- * there.
+ * section, as the chapter keeps it as the reader's place on the way out (LearnChapter). Opened in a new tab or window
+ * (a middle click, or with Ctrl, Cmd or Shift), its own address starts the same practice there.
  */
 function PracticeLink({ section }: { section: Section }): JSX.Element {
   const start = useStartSection();
   const click = (e: MouseEvent): void => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
-    const here = '#' + chapterRoute(Number(section.id.split('.')[0])) + '?s=' + section.id;
-    // Only the address changes (no hashchange): the practice screen opens next, in this same click, so the chapter
-    // never renders with ?s= in the address and jumps to the section on its way out.
-    if (window.location.hash !== here) window.history.replaceState(window.history.state, '', here);
     start(section);
   };
   return (
@@ -329,6 +353,48 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
     if (target) jumpTo(target)();
   }, [target]);
 
+  // A link that leaves the chapter (a practice link, the next chapter, the sidebar, the tab bar) first sets its own
+  // place in the history to where the reader is (placeOf, ?s=), so the browser's Back opens it there: the chapter is
+  // built afresh on the way back, in its own scroller, so the browser cannot restore the place itself. In the capture
+  // phase, before the link's own click opens the next screen, which keeps this address as where it came from (leave()).
+  // Only the address changes (no hashchange), so the chapter never renders with the new ?s= and jumps on its way out.
+  const pageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onClick = (e: globalThis.MouseEvent): void => {
+      const link = e.target instanceof Element ? e.target.closest('a') : null;
+      const href = link?.getAttribute('href') ?? '';
+      if (!link || !pageRef.current || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (!href.startsWith('#/') || (link.target && link.target !== '_self') || parseHash(href) === route) return;
+      const place = placeOf(pageRef.current, link, sectionIds(chapter));
+      const here = '#' + route + (place ? '?s=' + place : '');
+      if (window.location.hash !== here) window.history.replaceState(window.history.state, '', here);
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [chapter, route]);
+
+  // On a short screen the sidebar scrolls on its own, and it is built afresh for each chapter: it starts with the open
+  // chapter in view (its title, and its sections as far as they fit), the last ones of the list too. Its own scroll
+  // only, as scrollIntoView would move the page as well. Again once the fonts are in, which may change the rows.
+  const sideRef = useRef<HTMLElement>(null);
+  const openRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    let on = true;
+    const show = (): void => {
+      const side = sideRef.current;
+      const open = openRef.current;
+      if (!on || !side || !open) return;
+      const s = side.getBoundingClientRect();
+      const o = open.getBoundingClientRect();
+      if (o.bottom > s.bottom) side.scrollTop += Math.min(o.bottom - s.bottom, o.top - s.top);
+    };
+    show();
+    void document.fonts?.ready.then(show);
+    return () => {
+      on = false;
+    };
+  }, [n, bp]);
+
   const wide = bp !== 'phone';
   const counter = { n, total: PLANNED_CHAPTERS };
   const meta = chapterMeta(chapter);
@@ -341,13 +407,13 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
 
   return (
     <AppShell bp={bp} active="/learn" fill>
-      <div className={'page learn-chapter no-scrollbar' + (wide ? ' learn-chapter--wide' : '')}>
+      <div ref={pageRef} className={'page learn-chapter no-scrollbar' + (wide ? ' learn-chapter--wide' : '')}>
         {bp === 'desktop' && (
-          <aside className="learn-side">
+          <aside ref={sideRef} className="learn-side">
             <span className="eyebrow">{t('learn.chaptersHead')}</span>
             {CHAPTERS.map((c) =>
               c === chapter ? (
-                <nav key={c.n} aria-label={t('learn.jump')} className="learn-side-chapter">
+                <nav key={c.n} ref={openRef} aria-label={t('learn.jump')} className="learn-side-chapter">
                   <span className="learn-side-title">
                     <span className="learn-side-n">{c.n}</span>
                     {title}

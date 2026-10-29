@@ -1890,6 +1890,11 @@
 }
 .learn-nav-link b {
   font-size: 14px;
+  /* A word longer than the card ("herstellingstekens" on a 320 px phone) breaks instead of running into its padding;
+     shorter ones keep whole ("mollen", not "mol-len"). */
+  overflow-wrap: break-word;
+  hyphens: auto;
+  hyphenate-limit-chars: 12 4 4;
 }
 .learn-nav-link:hover b {
   color: var(--accent-ink);

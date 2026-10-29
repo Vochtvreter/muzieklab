@@ -189,7 +189,17 @@ async function expectLearnWordsApart(page: Page, where = ''): Promise<void> {
       const box = cell.getBoundingClientRect();
       return left(cell) < box.left + 1 || right(cell) > box.right - 1 ? [`beat grid: "${cell.textContent}" runs over its cell`] : [];
     });
-    return [...table, ...beats, ...values, ...grid];
+    // A chapter's title in the previous / next cards wraps inside the card's padding (Dutch "herstellingstekens" ran
+    // 10 px into it at 320 px).
+    const nav = [...document.querySelectorAll('.learn-nav-link b')].flatMap((title) => {
+      const card = title.closest('.learn-nav-link')!;
+      const box = card.getBoundingClientRect();
+      const style = getComputedStyle(card);
+      return left(title) < box.left + parseFloat(style.paddingLeft) - 0.5 || right(title) > box.right - parseFloat(style.paddingRight) + 0.5
+        ? [`chapter link: "${title.textContent}" runs into its card's padding`]
+        : [];
+    });
+    return [...table, ...beats, ...values, ...grid, ...nav];
   });
   expect(out, `${where} Learn words that run into each other`.trim()).toEqual([]);
 }
@@ -2119,6 +2129,21 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
     // Phone and tablet have no chapter sidebar. One test per chapter, as each tabs through some 20 links and back.
     if (desktopLayout) {
+      test("learn: the chapter sidebar shows the open chapter's sections, and the chapter stays at its top", async ({ page }) => {
+        // On a short screen the sidebar scrolls on its own: it once opened at its top, with the open chapter (the last
+        // of the list for 9 to 11) below its bottom edge.
+        for (const c of CHAPTERS) {
+          await page.goto(`./#/learn/${c.n}`);
+          await expect(page.getByRole('heading', { level: 1 })).toContainText(String(c.n));
+          const open = page.locator('.learn-side-chapter');
+          await expect(open.locator('a')).toHaveCount(c.sections.length + 1);
+          for (const item of [open.locator('.learn-side-title'), ...(await open.locator('a').all())]) {
+            await expect(item, `chapter ${c.n}: ${await item.textContent()}`).toBeInViewport({ ratio: 1 });
+          }
+          expect(await page.locator('.learn-chapter').evaluate((el) => el.scrollTop), `chapter ${c.n} opens at its top`).toBe(0);
+        }
+      });
+
       for (const c of CHAPTERS) {
         test(`learn: Tab through chapter ${c.n}'s sidebar shows each link's whole focus ring`, async ({ page }) => {
           known(name, `learn-side-ring-${c.n}`);

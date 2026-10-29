@@ -1814,21 +1814,27 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
   beside a key signature the letters go under the staff when they do not fit (*F C G D A E B* at 320 px).
 - Under 360 px a beat grid's row names (4.2, 5.3, 7.1) go above their cells, so its 12 columns get the width: Dutch
   *(en)* is wider than three of them beside the names.
+- A chapter's title in the previous / next cards hyphenates a word longer than the card (*herstellingste-kens* at
+  320 px) instead of running into its padding; words under 12 letters stay whole.
 
 **Practice links** start practice for the section straight away (since 0.10.0; before, they opened the setup, with
 13 controls between the section and the exercise):
 - Rhythm links start an exercise with the section's preset in Tap mode (Echo would hide the notation the section
-  teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1).
+  teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1). The
+  exercise shows the extra the preset turns on (5.1's and 6.1's tie, 5.2's dot, 7.1's triplet), which the generator
+  only makes likely: the start tries other seeds until it does, as a lesson does for what it introduces, and Results'
+  Next keeps that. With Bars at 1 no exercise has a tie, so 5.1 and 6.1 then play without one.
 - Read notes links start the round.
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
   to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip
   (§6.1). The browser's Back from the screen the link opened returns to the section too: the link first sets the
-  chapter's own place in the history to it (`#/learn/8?s=8.3`). Quit then goes back to that place instead of adding
-  the section again, so one Back after Quit leaves the chapter. Every exercise's Quit does this when it returns to the
-  screen it was opened from: Read notes to its setup, Scales to the Scales tab, Play to Home, a lesson to the Path. A
-  Read notes setup opened from a chapter (`?from=8`, its Practice button or Round done's *Change setup*) passes it on
-  to the round its Start starts: Quit goes back to that setup, still *Back to chapter 8*, and Round done's back arrow to
-  the chapter.
+  chapter's own place in the history to it (`#/learn/8?s=8.3`). Quit and the back arrow then go back to that place
+  instead of adding the section again, so one Back after them leaves the chapter. Every exercise's Quit, and the back
+  arrow of Results and Round done, does this when it returns to the screen it was opened from: Read notes to its setup,
+  Scales to the Scales tab, Play to Home, a lesson to the Path. Otherwise the finished screen gives its place in the
+  history to where the arrow goes, so Back never opens it again. A Read notes setup opened from a chapter (`?from=8`,
+  its Practice button or Round done's *Change setup*) passes it on to the round its Start starts: Quit goes back to that
+  setup, still *Back to chapter 8*, and Round done's back arrow to the chapter.
 - A practice link opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift) starts the same practice
   there: its address, `#/learn/practice?s=8.3`, sets up the section's practice in its own place. A plain click starts
   it in the same tab. No tap led to the new tab, so the browser does not let it make sound yet: a rhythm practice
@@ -1836,6 +1842,14 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
 - Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.
+
+**The browser's Back to a chapter** opens it where the reader left it, not at its top (the chapter is built afresh in
+its own scroller, so the browser cannot keep the place). Every link that leaves a chapter first sets the chapter's own
+place in the history to where the reader is (`?s=`), as the practice links do: for a link in the chapter, the section
+it is in, and for those at its end (previous / next, the Practice button, *Back to all chapters*) the quick check
+(`?s=check`); for the sidebar or the tab bar, the section at the top of the view. A screen opened from the chapter's
+Practice button returns to its end too (its back arrow, Quit). Back to the Learn tab opens the chapter that was open
+there; otherwise the tab opens the first one not done.
 
 **Hearing the examples** (since 0.10.0). Examples that show music can be heard. A small round slate play button sits
 with the example: a 36 px accent circle in a 44 px touch target, with an on-fill icon and the label *Play* / *Stop*.
@@ -1904,7 +1918,9 @@ On tablet (≥ 700 px) and desktop (≥ 1100 px) a chapter page keeps one column
 sections in reading order, each filling the width. Inside a section, related parts sit side
 by side (lines | spaces, example | rule, text | keyboard) and stack again on narrow screens,
 so notation keeps a readable size instead of stretching. Desktop adds the chapter sidebar;
-on tablet the sidebar becomes a row of section chips under the title. On a touch screen the sidebar's rows and the
+on tablet the sidebar becomes a row of section chips under the title. On a short screen (1280 × 720, a tablet in
+landscape) the sidebar scrolls on its own, and it opens with the open chapter's title and sections in view, also for
+the last chapters of the list; the page stays at its top. On a touch screen the sidebar's rows and the
 chips are 44 px tall, and the *Learn* link over the title (tablet and desktop) is a 44 px tap. The canvas shows
 chapter 8 at 834 px (tablet) and 1280 px (desktop).
 Both use the full width (up to 1160 px of content) instead of the 640 px column, and the Learn tab's chapter list
