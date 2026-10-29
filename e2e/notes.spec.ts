@@ -750,36 +750,70 @@ test('learn: Practice ties starts an exercise with a tie in it', async ({ page }
 });
 
 test('learn: with Bars at 1 Practice ties plays 2 bars with a tie, and the player keeps 1 bar', async ({ page }) => {
-  await seedStorage(page, {
-    prefs: { seenHowTo: true, seenHold: true },
-    progress: { lessons: {}, practiceDays: [], lastSettings: { ...DEFAULT_SETTINGS, bars: 1 } },
-  });
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
+  // The player's 1 bar is seeded once, not before every load as seedStorage does, so a reload reads the setup the app
+  // saved.
+  await page.addInitScript((lastSettings) => {
+    if (sessionStorage.getItem('e2e.seeded')) return;
+    sessionStorage.setItem('e2e.seeded', '1');
+    localStorage.setItem('muzieklab.progress.v1', JSON.stringify({ lessons: {}, practiceDays: [], lastSettings }));
+  }, { ...DEFAULT_SETTINGS, bars: 1 });
   await page.setViewportSize(VIEWPORTS.phone);
-  const stored = (): Promise<{ settings: Settings; seed: number }> => page.evaluate(() => JSON.parse(sessionStorage.getItem('muzieklab.run.v1')!));
+  const stored = (): Promise<{ settings: Settings; seed: number; setupBars?: number }> => page.evaluate(() => JSON.parse(sessionStorage.getItem('muzieklab.run.v1')!));
+  // The free-practice setup the run saved, which Setup and the next start take.
+  const setupBars = (): Promise<number> => page.evaluate(() => JSON.parse(localStorage.getItem('muzieklab.progress.v1')!).lastSettings.bars);
+  const skip = page.getByRole('button', { name: 'Skip to results' });
   await page.goto('./#/learn/5');
   // No exercise of 1 bar has a tie: the link once played one without.
-  await page.getByRole('link', { name: 'Practice ties →' }).click();
+  const link = page.getByRole('link', { name: 'Practice ties →' });
+  await link.click();
   await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
   const run = await stored();
-  expect(run.settings).toMatchObject({ bars: 2, ties: true });
+  expect(run).toMatchObject({ settings: { bars: 2, ties: true }, setupBars: 1 });
   expect(exerciseHas(generateExercise(run.settings, run.seed), ['ties'])).toBe(true);
   await expect(page.getByRole('img', { name: /^Rhythm in 4\/4/ })).toHaveAccessibleName(/, tied/);
+  expect(await setupBars()).toBe(1);
+  // Results' Try again (nothing tapped, so under 2 stars: Retry) plays the same 2 bars, and the player keeps 1.
+  await skip.click();
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  await expect(skip).toBeVisible();
+  expect(await stored(), 'Try again').toEqual(run);
+  expect(await setupBars(), 'Try again').toBe(1);
   // Results' New exercise goes on with 2 bars and a tie.
-  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await skip.click();
   await page.getByRole('button', { name: 'New exercise' }).click();
   await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  await expect(skip).toBeVisible();
   const next = await stored();
-  expect(next.settings.bars, 'New exercise').toBe(2);
+  expect(next, 'New exercise').toMatchObject({ settings: { bars: 2 }, setupBars: 1 });
   expect(exerciseHas(generateExercise(next.settings, next.seed), ['ties']), 'New exercise').toBe(true);
-  // Only those runs: Practice settings opens the setup with the player's 1 bar, also after a reload.
-  await page.getByRole('button', { name: 'Skip to results' }).click();
+  expect(await setupBars(), 'New exercise').toBe(1);
+  // Only those runs: Practice settings on Play's Pause sheet and on Results opens the setup with the player's 1 bar.
+  const ties = page.getByRole('button', { name: 'Ties', exact: true });
+  const bars = page.getByRole('group', { name: 'Bars', exact: true }).locator('[aria-live]');
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Practice settings' }).click();
+  await expect(page).toHaveURL(/#\/setup\?from=5\.1$/);
+  await expect(ties).toHaveAttribute('aria-pressed', 'true');
+  await expect(bars, 'Play').toHaveText('1');
+  // Also after a reload on Play, which rebuilds the run from the one saved in the tab, the player's bars with it.
+  await page.getByRole('link', { name: 'Back to chapter 5' }).click();
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  await page.reload();
+  await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await skip.click();
   await page.getByRole('link', { name: 'Practice settings' }).click();
   await expect(page).toHaveURL(/#\/setup\?from=5\.1$/);
-  await expect(page.getByRole('button', { name: 'Ties', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  const bars = page.getByRole('group', { name: 'Bars', exact: true }).locator('[aria-live]');
-  await expect(bars).toHaveText('1');
+  await expect(ties).toHaveAttribute('aria-pressed', 'true');
+  await expect(bars, 'Results, after a reload on Play').toHaveText('1');
+  // And after a reload on Setup, which reads the setup the app saved.
+  expect(await setupBars(), 'the setup saved').toBe(1);
   await page.reload();
-  await expect(bars).toHaveText('1');
+  await expect(ties).toHaveAttribute('aria-pressed', 'true');
+  await expect(bars, 'after a reload on Setup').toHaveText('1');
 });
 
 test("learn: the browser's Back from a practice link returns to its section, as Quit does", async ({ page }) => {

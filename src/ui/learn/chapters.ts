@@ -133,8 +133,9 @@ const C_ONLY: Partial<NoteSettings> = { keys: ['C'], mixKeys: false, extras: 'no
 
 /**
  * Every rhythm practice link spells out all musical settings, so nothing from the player's last setup leaks in;
- * tempo, bars and the metronome stay theirs. The link starts the exercise straight away, in Tap mode: Echo would hide
- * the notation the section is about.
+ * tempo, bars and the metronome stay theirs (a `ties` preset plays 2 bars at Bars 1, as no exercise of 1 bar has a tie:
+ * makeRunShowing in ui/store.tsx). The link starts the exercise straight away, in Tap mode: Echo would hide the
+ * notation the section is about.
  */
 const RHYTHM: Partial<Settings> = { mode: 'tap', meters: ['4/4'], notes: ['half', 'quarter'], rests: ['quarter'], dotted: false, ties: false, triplets: false };
 
