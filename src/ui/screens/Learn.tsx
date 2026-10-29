@@ -42,16 +42,21 @@ const jumpTo = (id: string) => (): void => {
 /**
  * Where the reader is in a chapter (`page`, its scroller): for a link in the chapter's column, the section (or the
  * quick check, 'check') it is in or comes after, so the chapter's end is the quick check; for one around it (the
- * sidebar, the tab bar), the last one whose top is above the middle of the view. Null before the first section.
+ * sidebar, the tab bar), the section at the top of the view: the last one whose top, less the margin jumpTo leaves
+ * above it, is at or above the top of the view, so jumpTo opens the same view again and the place never moves on.
+ * Scrolled to the end, where the last sections cannot reach the top, it is the quick check, which jumpTo scrolls to the
+ * end again. Null before the first section.
  */
 function placeOf(page: HTMLElement, link: Element, ids: string[]): string | null {
   const inColumn = !!link.closest('.learn-main');
-  const middle = page.getBoundingClientRect().top + page.clientHeight / 2;
+  const top = page.getBoundingClientRect().top;
+  const end = page.scrollTop > 0 && page.scrollTop + page.clientHeight >= page.scrollHeight - 1;
+  const atTop = (el: Element): boolean => end || el.getBoundingClientRect().top - (parseFloat(getComputedStyle(el).scrollMarginTop) || 0) <= top + 1;
   let place: string | null = null;
   for (const id of [...ids, 'check']) {
     const el = document.getElementById(anchor(id));
     if (!el) continue;
-    if (inColumn ? el.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING : el.getBoundingClientRect().top <= middle) place = id;
+    if (inColumn ? el.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING : atTop(el)) place = id;
   }
   return place;
 }
@@ -194,8 +199,10 @@ function useStartSection(): (section: Section, opts?: { replace?: boolean; needs
     } else {
       const settings = { ...state.settings, ...p.rhythm };
       dispatch({ type: 'settings', settings });
-      // The exercise shows the extra the section turns on (5.1's tie), which the generator only makes likely.
-      startPractice(settings, { replace, query, needsGesture, shows: EXTRAS.filter((k) => p.rhythm[k]) });
+      // The exercise shows the extra the section turns on (5.1's tie), which the generator only makes likely. Not a tie
+      // with Bars at 1: a tie only crosses a bar line, so no exercise has one, and the search would try every seed.
+      const shows = EXTRAS.filter((k) => p.rhythm[k] && (k !== 'ties' || settings.bars > 1));
+      startPractice(settings, { replace, query, needsGesture, shows });
     }
   };
 }
@@ -347,10 +354,15 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
   // An example still sounding stops when another chapter opens or Learn closes.
   useEffect(() => stopLearnSound, [n]);
 
-  // #/learn/10?s=10.2 opens at that section.
+  // #/learn/10?s=10.2 opens at that section, and scrolls there again on the next frame: on tablet and desktop the
+  // examples' staves are drawn after this, once their width is known, and at the chapter's end, where the page scrolls
+  // no further, they would leave it short of the end (elsewhere scroll anchoring keeps the section in place).
   const target = hashQuery(hash).get('s');
   useEffect(() => {
-    if (target) jumpTo(target)();
+    if (!target) return;
+    jumpTo(target)();
+    const frame = requestAnimationFrame(() => document.getElementById(anchor(target))?.scrollIntoView({ block: 'start' }));
+    return () => cancelAnimationFrame(frame);
   }, [target]);
 
   // A link that leaves the chapter (a practice link, the next chapter, the sidebar, the tab bar) first sets its own

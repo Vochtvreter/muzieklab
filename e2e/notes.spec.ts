@@ -826,6 +826,30 @@ test("learn: the browser's Back to a chapter returns where the reader left it, a
   await page.goBack();
   await expect(page.getByRole('button', { name: /^10\s*\D/ })).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('button', { name: /^1\s*\D/ })).toHaveAttribute('aria-expanded', 'false');
+
+  // On a tablet 8.1 is shorter than half the view, so 8.2 starts above its middle: Back opens 8.1, the section at the
+  // top of the view, again and again (it went one section further down at each Home and Back).
+  await page.setViewportSize(VIEWPORTS.tablet);
+  await page.goto('./#/learn/8?s=8.1');
+  await expect(page.locator('#s8-1')).toBeFocused();
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('link', { name: 'Home', exact: true }).click();
+    await expect(page).toHaveURL(/#\/$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/learn\/8\?s=8\.1$/);
+  }
+  await expect(page.getByRole('heading', { name: /^8\.1\s*\D/ })).toBeInViewport();
+  // Read to the end, where the last sections cannot reach the top: Back opens the end again, with the examples above
+  // it drawn after the chapter opened.
+  await page.goto('./#/learn/3');
+  const chapter = page.locator('.page.learn-chapter');
+  await chapter.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/3\?s=check$/);
+  await expect.poll(() => chapter.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(2);
+  await expect(page.locator('a.learn-nav-link--next')).toBeInViewport({ ratio: 1 });
 });
 
 test('after Quit, one Back leaves the screen Quit returned to', async ({ page }) => {

@@ -2,10 +2,12 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
+import { DEFAULT_SETTINGS } from '../../core/defaults';
 import { PREFS_KEY, PROGRESS_KEY } from '../../game/storage';
 import { setLocale } from '../../i18n';
 import { resetAccountCheck } from '../account';
 import { PlayButton } from '../learn/Listen';
+import { restoreRun, RUN_KEY } from '../store';
 
 // Phone width for useBreakpoint; the app scrolls to the top on every route, and a chapter to the section it opens at.
 window.matchMedia = (query: string) =>
@@ -125,5 +127,35 @@ describe('Learn: a practice link opened in a new tab', () => {
   it('goes to the Learn tab for a section that is not there', async () => {
     open('#/learn/practice?s=4.9');
     await waitFor(() => expect(window.location.hash).toBe('#/learn'));
+  });
+});
+
+describe("Learn: a rhythm section's practice", () => {
+  // newSeed's first seed, so a start that keeps it is one that did not look further.
+  const seed = 12345;
+  const stored = (): { seed: number; settings: { bars: number; ties: boolean }; shows?: string[] } => JSON.parse(sessionStorage.getItem(RUN_KEY) ?? 'null');
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation(<T extends ArrayBufferView | null>(a: T): T => {
+      (a as unknown as Uint32Array)[0] = seed * 2;
+      return a;
+    });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("asks for 5.1's tie, and keeps that for Retry and Next after a reload on Play", async () => {
+    open('#/learn/practice?s=5.1');
+    await waitFor(() => expect(window.location.hash).toBe('#/play?from=5.1'));
+    expect(stored().shows).toEqual(['ties']);
+    expect(restoreRun()?.shows).toEqual(['ties']);
+  });
+
+  it('asks for no tie with Bars at 1, where no exercise has one: it keeps the first seed and nothing for Next', async () => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ lastSettings: { ...DEFAULT_SETTINGS, bars: 1 } }));
+    open('#/learn/practice?s=5.1');
+    await waitFor(() => expect(window.location.hash).toBe('#/play?from=5.1'));
+    expect(stored()).toMatchObject({ seed, settings: { bars: 1, ties: true } });
+    expect(stored().shows).toBeUndefined();
+    expect(restoreRun()?.shows).toBeUndefined();
   });
 });

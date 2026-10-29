@@ -38,7 +38,7 @@ import { Rng } from '../core/rng';
 import { awardAchievements, roundAchievements } from '../game/achievements';
 import { dailyTier } from '../game/daily';
 import { mergePrefs, mergeSynced, sameValue, type Synced } from '../game/merge';
-import { exerciseHas, introId, lessonIntros } from '../game/intro';
+import { exerciseHas, INTRO_IDS, introId, lessonIntros } from '../game/intro';
 import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, findLesson, lessonSettings, recordLessonResult } from '../game/path';
 import { passSkills } from '../game/skills';
@@ -93,12 +93,14 @@ interface StoredRun {
   seed: number;
   lessonId: string | null;
   daily?: string | null;
+  /** Run.shows, so Retry and Next after a reload keep it too. */
+  shows?: string[];
 }
 
 function saveRun(run: Run | null): void {
   try {
     if (!run) sessionStorage.removeItem(RUN_KEY);
-    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId, daily: run.daily } satisfies StoredRun));
+    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId, daily: run.daily, shows: run.shows } satisfies StoredRun));
   } catch {
     /* storage blocked: a reload goes back to Setup, as before */
   }
@@ -113,9 +115,10 @@ export function restoreRun(): Run | null {
     if (!v || typeof v.seed !== 'number' || typeof v.settings !== 'object' || v.settings === null) return null;
     const lessonId = typeof v.lessonId === 'string' ? v.lessonId : null;
     const daily = typeof v.daily === 'string' ? v.daily : null;
+    const shows = Array.isArray(v.shows) ? v.shows.filter((x) => INTRO_IDS.includes(x)) : [];
     const settings = sanitizeSettings(v.settings);
     const run = settings && makeRun(settings, v.seed, lessonId, daily);
-    return run && { ...run, needsGesture: true };
+    return run && { ...run, needsGesture: true, ...(shows.length ? { shows } : {}) };
   } catch {
     return null;
   }

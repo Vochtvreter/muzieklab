@@ -1823,7 +1823,8 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
   teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1). The
   exercise shows the extra the preset turns on (5.1's and 6.1's tie, 5.2's dot, 7.1's triplet), which the generator
   only makes likely: the start tries other seeds until it does, as a lesson does for what it introduces, and Results'
-  Next keeps that. With Bars at 1 no exercise has a tie, so 5.1 and 6.1 then play without one.
+  Next keeps that, also after a reload on Play. A tie only crosses a bar line, so with Bars at 1 5.1 and 6.1 play
+  without one and do not look for it.
 - Read notes links start the round.
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
   to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip
@@ -1847,9 +1848,10 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
 its own scroller, so the browser cannot keep the place). Every link that leaves a chapter first sets the chapter's own
 place in the history to where the reader is (`?s=`), as the practice links do: for a link in the chapter, the section
 it is in, and for those at its end (previous / next, the Practice button, *Back to all chapters*) the quick check
-(`?s=check`); for the sidebar or the tab bar, the section at the top of the view. A screen opened from the chapter's
-Practice button returns to its end too (its back arrow, Quit). Back to the Learn tab opens the chapter that was open
-there; otherwise the tab opens the first one not done.
+(`?s=check`); for the sidebar or the tab bar, the section at the top of the view, or the quick check when the chapter
+is scrolled to its end, where its last sections cannot reach the top. A screen opened from the chapter's Practice
+button returns to its end too (its back arrow, Quit). Back to the Learn tab opens the chapter that was open there;
+otherwise the tab opens the first one not done.
 
 **Hearing the examples** (since 0.10.0). Examples that show music can be heard. A small round slate play button sits
 with the example: a 36 px accent circle in a 44 px touch target, with an on-fill icon and the label *Play* / *Stop*.
