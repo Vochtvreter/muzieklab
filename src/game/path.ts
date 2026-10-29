@@ -8,9 +8,10 @@ export { UNLOCK_STARS } from './track';
 export interface Lesson extends TrackLesson {
   settings: Partial<Settings>; // preset on top of the unit's base
   /**
-   * What the bar of Home's preview must show, where the title names more than the symbols the lesson adds, or other
-   * ones (3.2 adds the half rest, which a three-four exercise never has; ui/lib/lessons.ts): 'note:half',
-   * 'rest:eighth', 'dotted:quarter'.
+   * What every exercise of the lesson (makeLessonRun, ui/store.tsx) and the bar of Home's preview must show, where the
+   * title names more than the symbols the lesson adds, or other ones (3.2 adds the half rest, which a three-four
+   * exercise never has; ui/lib/lessons.ts): 'note:half', 'rest:eighth', 'dotted:quarter', or a figure
+   * (game/intro.ts): 'figure:eighth-sixteenths'.
    */
   preview?: string[];
 }
@@ -110,7 +111,7 @@ export const UNITS: Unit[] = [
   unit(8, '𝅘𝅥𝅯', { ...BASE, notes: ['quarter', 'sixteenth'], rests: ['quarter'] }, [
     { density: 'sparse', bars: 2, tempo: 60 }, // Four sixteenths
     { notes: ['half', 'quarter', 'sixteenth'], bars: 4, tempo: 60 }, // Sixteenths and half notes
-    { notes: ['quarter', 'eighth', 'sixteenth'], bars: 2, tempo: 60 }, // Eighth and two sixteenths
+    { notes: ['quarter', 'eighth', 'sixteenth'], bars: 2, tempo: 60, preview: ['figure:eighth-sixteenths'] }, // Eighth and two sixteenths
     { notes: ['half', 'quarter', 'eighth', 'sixteenth'], rests: ['quarter', 'eighth'], bars: 4, tempo: 70 }, // Sixteenth combinations
     { meters: ['2/4', '3/4', '4/4'], notes: ['half', 'quarter', 'eighth', 'sixteenth'], rests: ['quarter', 'eighth'], bars: 8, tempo: 80 }, // Unit review
   ]),

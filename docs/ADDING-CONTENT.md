@@ -100,9 +100,11 @@ Set `PLANNED_CHAPTERS` in `chapters.ts` when the plan grows ("chapter 9 of 11").
    the lesson before, with the dot, tie or triplet when it has them (`src/ui/lib/lessons.ts`). Where the title names
    something else, or the lesson adds what its exercises never have (a half rest in three-four), say what the bar must
    show with `preview` (*Eighths with half notes*: `['note:eighth', 'note:half']`; *Dotted quarter + eighth*:
-   `['dotted:quarter', 'note:eighth']`; *Rests in three-four*: `['rest:quarter']`). Every exercise of the lesson shows
-   it too, with what the lesson introduces and its dot or tie (`makeLessonRun` in `src/ui/store.tsx`), so `preview`
-   names only what most exercises of the lesson can have.
+   `['dotted:quarter', 'note:eighth']`; *Rests in three-four*: `['rest:quarter']`), or a figure (*Eighth and two
+   sixteenths*: `['figure:eighth-sixteenths']`, an eighth and two sixteenths that fill a beat; a new figure gets its id
+   in `barFigures`, `src/game/intro.ts`). Every exercise of the lesson shows it too, with what the lesson introduces
+   and its dot or tie (`makeLessonRun` in `src/ui/store.tsx`), so `preview` names only what most exercises of the
+   lesson can have.
 2. **Text:** `path.u{n}.title` and `path.u{n}.l1` … `l5` in `en.json`.
 3. **Place it:** add `['rhythm', n]` to `ORDER` in `src/game/tracks.ts`, where it belongs in the Learning path
    (DESIGN.md §8.2: rhythm units take turns with the note units). The path numbers its units in that order.

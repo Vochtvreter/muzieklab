@@ -115,8 +115,9 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
       4.1 the eighth, 6.1 the tie, 7.1 the dot …); lesson 1.1 brings nothing, because How to play covers it. Every
       lesson run (Continue, the Path, *Next lesson*, *Next exercise*) has an exercise that shows all of what its lesson
       brings, and what it is about though nothing in it is new: what its title names (its `preview` in `game/path.ts`:
-      7.4's dotted quarter, which the generator leaves out when a dotted half is the exercise's dotted value) and the
-      dot or the tie of its unit (6.2 *Ties with eighths*). The start tries new seeds until the spelled exercise has
+      7.4's dotted quarter, which the generator leaves out when a dotted half is the exercise's dotted value, and 8.3's
+      eighth and two sixteenths in one beat, which about half its exercises would not have) and the dot or the tie of
+      its unit (6.2 *Ties with eighths*). The start tries new seeds until the spelled exercise has
       each of them (`makeLessonRun` in `ui/store.tsx`, `exerciseHas` in `game/intro.ts`; up to 200 seeds, because 3.4's
       whole rest is in only about 1 exercise in 22, where most lessons need a few), and keeps the last one tried if
       none has. The sheet lists only what the

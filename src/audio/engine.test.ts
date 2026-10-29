@@ -57,28 +57,32 @@ describe('audio engine without Web Audio', () => {
   });
 });
 
+/** A context whose clock moves only when a test sets currentTime: enough for unlock(), start() and the tap sound. */
+class FakeContext extends EventTarget {
+  static made: FakeContext[] = [];
+  state = 'running';
+  currentTime = 0;
+  sampleRate = 44100;
+  closed = false;
+  destination = {};
+  constructor() {
+    super();
+    FakeContext.made.push(this);
+  }
+  private param = () => ({ value: 1, setValueAtTime() {}, setTargetAtTime() {}, exponentialRampToValueAtTime() {}, cancelScheduledValues() {} });
+  private node = () => ({ connect() {}, disconnect() {}, start() {}, stop() {}, gain: this.param(), frequency: this.param() });
+  createGain = this.node;
+  createOscillator = this.node;
+  createBuffer = () => ({});
+  createBufferSource = () => ({ ...this.node(), buffer: null });
+  resume = async () => undefined;
+  close = async () => {
+    this.closed = true;
+  };
+}
+
 // iOS, back from the background: the context can stay 'interrupted', or say 'running' with a frozen clock.
 describe('audio engine coming back from the background', () => {
-  class FakeContext extends EventTarget {
-    static made: FakeContext[] = [];
-    state = 'running';
-    currentTime = 0;
-    sampleRate = 44100;
-    closed = false;
-    destination = {};
-    constructor() {
-      super();
-      FakeContext.made.push(this);
-    }
-    private node = () => ({ connect() {}, disconnect() {}, gain: { value: 1, setTargetAtTime() {} } });
-    createGain = this.node;
-    createBuffer = () => ({});
-    createBufferSource = () => ({ ...this.node(), buffer: null, start() {} });
-    resume = async () => undefined;
-    close = async () => {
-      this.closed = true;
-    };
-  }
   const doc = Object.assign(new EventTarget(), { visibilityState: 'visible' });
 
   beforeEach(() => {
@@ -140,10 +144,13 @@ describe('audio engine whose AudioContext cannot be created', () => {
   const meter = { id: '4/4', barTicks: 192, beatTicks: 48, beatsPerBar: 4, beamGroups: [48, 48, 48, 48], weightAt: () => 0 } as Meter;
   const timeline: Timeline = { notes: [], totalSeconds: 2, beatSeconds: 0.5 };
   let made = 0;
-  class Refused {
+  /** Whether the browser makes a context now: a refusal can pass (a device plugged in). */
+  let allow = false;
+  class Refused extends FakeContext {
     constructor() {
       made++;
-      throw new DOMException('The AudioContext could not be created', 'NotSupportedError');
+      if (!allow) throw new DOMException('The AudioContext could not be created', 'NotSupportedError');
+      super();
     }
   }
 
@@ -151,6 +158,8 @@ describe('audio engine whose AudioContext cannot be created', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] });
     vi.resetModules();
     made = 0;
+    allow = false;
+    FakeContext.made = [];
     vi.stubGlobal('AudioContext', Refused);
     vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible' }));
     vi.stubGlobal('window', new EventTarget());
@@ -160,7 +169,7 @@ describe('audio engine whose AudioContext cannot be created', () => {
     vi.useRealTimers();
   });
 
-  it('runs silently on the performance clock, as without Web Audio, and tries again next time', async () => {
+  it('runs silently on the performance clock, as without Web Audio, and asks again at the next unlock', async () => {
     const engine = (await import('./engine')).getAudioEngine();
     await expect(engine.unlock()).resolves.toBeUndefined();
     const seen: number[] = [];
@@ -180,7 +189,38 @@ describe('audio engine whose AudioContext cannot be created', () => {
     engine.tapUp();
     engine.stop();
     expect(engine.audioState()).toBe('none');
-    // Each sound asks again, so a refusal that passes (a device plugged in) brings the sound back.
-    expect(made).toBeGreaterThan(1);
+    // The sounds of the run did not ask again; the next unlock() (the next Start, Listen or Calibrate) does.
+    expect(made).toBe(1);
+    await engine.unlock();
+    expect(made).toBe(2);
+  });
+
+  it('keeps a run on the performance clock when the browser would make a context during it', async () => {
+    const engine = (await import('./engine')).getAudioEngine();
+    // The page has been open a while: a new context's clock, near 0, is far from the performance clock.
+    vi.advanceTimersByTime(40_000);
+    await engine.unlock(); // Start: refused
+    const seen: number[] = [];
+    const off = engine.onBeat((b) => seen.push(b.index));
+    const started = engine.start({ timeline, meter, tempo: 120, countInBars: 1, metronome: 'on', playRhythm: false, leadIn: 0.2 });
+    expect(started.exerciseStart).toBeCloseTo(40 + 0.2 + 2);
+    vi.advanceTimersByTime(700);
+    allow = true;
+    // A tap on the pad during the count-in: it makes no context, so the beats still come.
+    engine.tapDown();
+    engine.tapUp();
+    expect(FakeContext.made).toHaveLength(0);
+    expect(engine.now()).toBeCloseTo(performance.now() / 1000);
+    expect(engine.audioState()).toBe('none');
+    vi.advanceTimersByTime(5000);
+    expect(seen).toEqual([-4, -3, -2, -1, 0, 1, 2, 3]);
+    off();
+    engine.stop();
+    // The next Start makes one: the sound is back, on its clock.
+    await engine.unlock();
+    expect(FakeContext.made).toHaveLength(1);
+    FakeContext.made[0].currentTime = 0.5;
+    expect(engine.now()).toBe(0.5);
+    expect(engine.audioState()).toBe('running');
   });
 });

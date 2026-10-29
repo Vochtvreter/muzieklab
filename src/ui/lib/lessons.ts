@@ -1,6 +1,6 @@
 /** How the Learning path looks for a given progress: unit states, the lesson tiles and the rhythm previews. Pure. */
 import type { NotatedBar, Settings } from '../../core/api';
-import { introId, lessonIntros } from '../../game/intro';
+import { barFigures, introId, lessonIntros } from '../../game/intro';
 import { ALL_LESSONS, findLesson, lessonSettings } from '../../game/path';
 import { starsOf, unitStatesIn, type LessonOutcome } from '../../game/track';
 import { findPathLesson, LEARNING_PATH, PATH_UNITS, pathNext, pathOutcome, type PathLesson, type PathUnit } from '../../game/tracks';
@@ -46,7 +46,10 @@ function settingFeatures(s: Settings): Set<string> {
   return f;
 }
 
-/** What a bar shows, as feature keys: 'rest:half', 'dotted', 'dotted:quarter', 'ties', 'triplets'. */
+/**
+ * What a bar shows, as feature keys: 'rest:half', 'dotted', 'dotted:quarter', 'ties', 'triplets',
+ * 'figure:eighth-sixteenths'.
+ */
 export function barFeatures(bar: NotatedBar): Set<string> {
   const f = new Set<string>();
   for (const sym of bar.symbols) {
@@ -56,6 +59,8 @@ export function barFeatures(bar: NotatedBar): Set<string> {
     if (sym.tieToNext) f.add('ties');
     if (sym.tuplet) f.add('triplets');
   }
+  // And its figures (game/intro.ts), which a lesson can be about too: 8.3's eighth and two sixteenths in one beat.
+  for (const id of barFigures(bar)) f.add(id);
   return f;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type NotatedSymbol, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type NotatedSymbol, PPQ, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
 import { introId, lessonIntros } from '../../game/intro';
 import { ALL_LESSONS } from '../../game/path';
 import { defaultProgress, type Progress } from '../../game/storage';
@@ -362,6 +362,13 @@ describe('lesson preview', () => {
     const p = lessonPreview(id)!;
     const bar = exerciseView(p.run.exercise)!.bars[p.bar];
     for (const check of checks) expect(bar.symbols.some(check)).toBe(true);
+  });
+
+  it('8.3 Eighth and two sixteenths: its bar has an eighth and two sixteenths that fill a beat', () => {
+    const p = lessonPreview('8.3')!;
+    const s = exerciseView(p.run.exercise)!.bars[p.bar].symbols;
+    const figure = [is('note', 'eighth'), is('note', 'sixteenth'), is('note', 'sixteenth')];
+    expect(s.some((x, i) => x.start % PPQ === 0 && figure.every((check, k) => s[i + k] !== undefined && check(s[i + k])))).toBe(true);
   });
 
   // A unit review names nothing: its bar shows what it can of the unit's symbols. Every other lesson's shows all of

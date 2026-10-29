@@ -672,8 +672,8 @@ const INTRO_TRIES = 200;
 /**
  * What a lesson's exercise must show: every symbol the lesson introduces (game/intro.ts), so the intro sheet never
  * names one the staff does not have; what its title names, its `preview` (path.ts: 7.4's dotted quarter, where the
- * generator takes any dotted value, often the dotted half); and the dot or the tie its unit is about, also in a lesson
- * that adds no symbol (6.2 Ties with eighths).
+ * generator takes any dotted value, often the dotted half; 8.3's eighth and two sixteenths in one beat); and the dot or
+ * the tie its unit is about, also in a lesson that adds no symbol (6.2 Ties with eighths).
  */
 function lessonShows(settings: Settings, lessonId: string): string[] {
   const flags = (['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k]);

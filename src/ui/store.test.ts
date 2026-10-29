@@ -361,15 +361,19 @@ describe('makeLessonRun', () => {
     }
   });
 
-  it('a lesson starts with an exercise that shows what it is about, also when nothing in it is new (7.4 the dotted quarter, 6.2 the tie)', () => {
+  it('a lesson starts with an exercise that shows what it is about, also when nothing in it is new (7.4 the dotted quarter, 6.2 the tie, 8.3 its figure)', () => {
     // Without the search most 7.4 exercises would have no dotted quarter: their dotted half is the dotted value.
     const s74 = lessonSettings('7.4');
     expect(seeds.filter((seed) => !exerciseHas(makeRun(s74, seed, '7.4')!.exercise, ['dotted:quarter'])).length).toBeGreaterThan(seeds.length / 3);
     const s62 = lessonSettings('6.2');
     expect(seeds.filter((seed) => !exerciseHas(makeRun(s62, seed, '6.2')!.exercise, ['ties'])).length).toBeGreaterThan(seeds.length / 10);
+    // Nor would about half of 8.3's have an eighth and two sixteenths in one beat.
+    const s83 = lessonSettings('8.3');
+    expect(seeds.filter((seed) => !exerciseHas(makeRun(s83, seed, '8.3')!.exercise, ['figure:eighth-sixteenths'])).length).toBeGreaterThan(seeds.length / 3);
+    for (const seed of seeds) expect(exerciseHas(makeLessonRun(s83, seed, '8.3')!.exercise, ['figure:eighth-sixteenths']), `8.3, seed ${seed}`).toBe(true);
     for (const { lesson } of ALL_LESSONS) {
       const settings = lessonSettings(lesson.id);
-      // What the title names (its `preview`: 7.4's dotted quarter), and the dot or the tie its unit is about.
+      // What the title names (its `preview`: 7.4's dotted quarter, 8.3's figure), and the dot or the tie its unit is about.
       const about = [...(lesson.preview ?? []), ...(['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k])];
       for (const seed of seeds.slice(0, 30)) {
         expect(exerciseHas(makeLessonRun(settings, seed, lesson.id)!.exercise, [...ids(lesson.id), ...about]), `${lesson.id}, seed ${seed}`).toBe(true);

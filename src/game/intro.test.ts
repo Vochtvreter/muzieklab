@@ -86,6 +86,19 @@ describe('exerciseHas', () => {
     expect(exerciseHas(dq, ['dotted:half'])).toBe(false);
   });
 
+  it('finds an eighth and two sixteenths only where they fill one beat (8.3)', () => {
+    const fig = ['figure:eighth-sixteenths'];
+    // Beat 2: "2 & a".
+    const on = exercise([{ events: [note(0, q / 4), note(q / 4, q / 4), note(q / 2, q / 2), note(q, q / 2), note(1.5 * q, q / 4), note(1.75 * q, q / 4), note(2 * q, 2 * q)] }]);
+    expect(exerciseHas(on, [...fig, 'note:eighth', 'note:sixteenth'])).toBe(true);
+    // The eighth on the "&" of beat 1, its sixteenths on beat 2; two sixteenths and an eighth; a dotted eighth.
+    const across = exercise([{ events: [note(0, q / 2), note(q / 2, q / 2), note(q, q / 4), note(1.25 * q, q / 4), note(1.5 * q, q / 2), note(2 * q, 2 * q)] }]);
+    const reversed = exercise([{ events: [note(0, q / 4), note(q / 4, q / 4), note(q / 2, q / 2), note(q, 3 * q)] }]);
+    const dotted = exercise([{ events: [note(0, 0.75 * q), note(0.75 * q, q / 4), note(q, 3 * q)] }]);
+    for (const ex of [across, reversed, dotted]) expect(exerciseHas(ex, fig)).toBe(false);
+    expect(exerciseHas(across, ['note:eighth', 'note:sixteenth'])).toBe(true);
+  });
+
   it('finds what a lesson introduces in an exercise that has it', () => {
     // 1.2 (the half note) has it in every exercise; 3.4's whole rest needs a seed that has one.
     for (let seed = 1; seed <= 20; seed++) expect(exerciseHas(generateExercise(lessonSettings('1.2'), seed), ids('1.2'))).toBe(true);

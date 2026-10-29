@@ -4,7 +4,7 @@
  * quarter notes and four-four are what How to play covers.
  */
 import { spellExercise } from '../core/speller';
-import { METER_IDS, NOTE_VALUES, type Exercise, type MeterId, type NoteValue, type Settings } from '../core/types';
+import { METER_IDS, NOTE_VALUES, PPQ, type Exercise, type MeterId, type NotatedBar, type NotatedSymbol, type NoteValue, type Settings } from '../core/types';
 import { ALL_LESSONS, lessonSettings } from './path';
 
 export type Intro = { kind: 'meter'; meter: MeterId } | { kind: 'note' | 'rest'; value: NoteValue } | { kind: 'dotted' | 'ties' | 'triplets' };
@@ -70,9 +70,22 @@ export function introsOf(lessonIds: Iterable<string>): string[] {
   return [...ids];
 }
 
+const plainNote = (s: NotatedSymbol | undefined, value: NoteValue): boolean => s?.kind === 'note' && s.value === value && !s.dots && !s.tuplet;
+
+/**
+ * The figures a bar shows that a lesson can be about (path.ts, `preview`): 'figure:eighth-sixteenths', an eighth note
+ * and two sixteenth notes that fill one beat, "1 & a" (8.3 Eighth and two sixteenths). Every meter counts quarter beats.
+ */
+export function barFigures(bar: NotatedBar): string[] {
+  const s = bar.symbols;
+  const eighthSixteenths = s.some((x, i) => x.start % PPQ === 0 && plainNote(x, 'eighth') && plainNote(s[i + 1], 'sixteenth') && plainNote(s[i + 2], 'sixteenth'));
+  return eighthSixteenths ? ['figure:eighth-sixteenths'] : [];
+}
+
 /**
  * The intro ids of what an exercise's staff shows: its time signature, note and rest values, dots, ties, triplets;
- * and each dotted value, as a lesson's `preview` names it (path.ts: 'dotted:quarter').
+ * and each dotted value and figure, as a lesson's `preview` names them (path.ts: 'dotted:quarter',
+ * 'figure:eighth-sixteenths').
  */
 function shownIds(exercise: Exercise): Set<string> {
   const ids = new Set<string>(['meter:' + exercise.meter.id]);
@@ -83,11 +96,15 @@ function shownIds(exercise: Exercise): Set<string> {
       if (s.dots) ids.add('dotted').add('dotted:' + s.value);
       if (s.tieToNext) ids.add('ties');
     }
+    for (const id of barFigures(bar)) ids.add(id);
   }
   return ids;
 }
 
-/** Whether an exercise's staff shows every symbol given (intro ids, 'dotted:quarter'), e.g. all its lesson is about. */
+/**
+ * Whether an exercise's staff shows every symbol given (intro ids, 'dotted:quarter', 'figure:eighth-sixteenths'), e.g.
+ * all its lesson is about.
+ */
 export function exerciseHas(exercise: Exercise, ids: readonly string[]): boolean {
   if (ids.length === 0) return true;
   const shown = shownIds(exercise);
