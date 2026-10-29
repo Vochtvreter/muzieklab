@@ -196,3 +196,36 @@ describe('judgement words', () => {
     });
   }
 });
+
+// Settings → Dark ("Always dark.") sets data-theme="dark" on a light device: it must look as the device's dark mode
+// does, so its block has every token the device's dark block has, with the same value. The diamond's were missing,
+// and "All perfect! Diamond star" stayed the light theme's #1d6a96 on the dark page, 3.1:1.
+describe('a dark theme chosen in Settings', () => {
+  it("has the same tokens as the device's dark theme", () => {
+    expect(block(":root[data-theme='dark']")).toEqual(block(":root:not([data-theme='light'])"));
+  });
+
+  for (const [name, t] of themes) {
+    it(`${name}: the diamond's words are 4.5:1 or more on the page and on a card`, () => {
+      expect(contrast(t['--diamond-ink'], t['--ground'])).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(t['--diamond-ink'], t['--paper'])).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});
+
+// The keyboard's focus ring (base.css: 3 px, 2 px away from the control) borders what is behind the control: the page,
+// a card, a segmented control's track, the pad's card. WCAG 1.4.11 asks 3:1 against it, in light and in dark. On the
+// Continue card's slate fill, which turns light in dark, no gold does: the ring there is the ink on the fill.
+describe('the focus ring', () => {
+  for (const [name, t] of themes) {
+    it(`${name}: 3:1 or more on the page, a card, a track and the soft accent`, () => {
+      for (const surface of ['--ground', '--paper', '--track', '--accent-soft']) {
+        expect(contrast(t['--focus'], t[surface]), surface).toBeGreaterThanOrEqual(3);
+      }
+    });
+    it(`${name}: 3:1 or more on the Continue card`, () => {
+      expect(tokenOf(declared(css('app.css'), '.continue-card', '--focus'))).toBe('--on-fill');
+      expect(contrast(t['--on-fill'], t['--accent'])).toBeGreaterThanOrEqual(3);
+    });
+  }
+});

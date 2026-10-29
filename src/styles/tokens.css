@@ -84,7 +84,9 @@
   /* Scrollbar, focus, links */
   --scroll-thumb: #b9c3c2;
   --scroll-thumb-hover: #8a9596;
-  --focus: #e0a526;
+  /* The keyboard's focus ring borders what is behind the control: 3:1 or more against the page, a card, a track and
+     the soft accent (WCAG 1.4.11), which the reward gold (1.7–2.2:1) is not. The gold text's colour, --reward-ink. */
+  --focus: #8a6412;
   --link: #2f6669;
   --link-hover: #1f4a4c;
 
@@ -135,22 +137,11 @@
     --reward-star: #f0c35a;
     --reward-text: #f0c35a;
     --on-reward: #101415;
-  --diamond: #7fd8f2;
-  --diamond-hi: #f2fdff;
-  --diamond-deep: #4a9fe0;
-  --diamond-glow: rgba(127, 216, 242, 0.45);
-  --diamond-ink: #8fdcf5;
-  --diamond-on-fill-hi: #7fd8f2;
-  --diamond-on-fill: #1f8fc2;
-  --diamond-on-fill-deep: #0f4f8a;
     --diamond: #7fd8f2;
     --diamond-hi: #f2fdff;
     --diamond-deep: #4a9fe0;
     --diamond-glow: rgba(127, 216, 242, 0.45);
     --diamond-ink: #8fdcf5;
-  --diamond-on-fill-hi: #7fd8f2;
-  --diamond-on-fill: #1f8fc2;
-  --diamond-on-fill-deep: #0f4f8a;
     --diamond-on-fill-hi: #7fd8f2;
     --diamond-on-fill: #1f8fc2;
     --diamond-on-fill-deep: #0f4f8a;
@@ -216,6 +207,14 @@
   --reward-star: #f0c35a;
   --reward-text: #f0c35a;
   --on-reward: #101415;
+  --diamond: #7fd8f2;
+  --diamond-hi: #f2fdff;
+  --diamond-deep: #4a9fe0;
+  --diamond-glow: rgba(127, 216, 242, 0.45);
+  --diamond-ink: #8fdcf5;
+  --diamond-on-fill-hi: #7fd8f2;
+  --diamond-on-fill: #1f8fc2;
+  --diamond-on-fill-deep: #0f4f8a;
   --good: #4cc38a;
   --gold: #f0b429;
   --gold-ink: #f0c35a;

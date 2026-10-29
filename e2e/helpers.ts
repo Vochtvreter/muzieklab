@@ -116,8 +116,8 @@ export async function expectNoClippedLabels(page: Page): Promise<void> {
 /**
  * The element's focus ring shows on every side when the keyboard reaches it: no box around it cuts the ring off (a
  * card with overflow: hidden, a side list that scrolls on its own). A list that scrolls up and down is only checked at
- * its sides: focus scrolls the element into its view. Only its box, though: a side menu's top and bottom edges are
- * checked item by item with Tab in layout.spec.ts (expectRingsInSideMenu).
+ * its sides: focus scrolls the element into its view. Only its box, though: a side menu's and a page's top and bottom
+ * edges are checked control by control with Tab in layout.spec.ts (expectRingsInSideMenu, expectRingsOnPage).
  */
 export async function expectFocusRing(el: Locator): Promise<void> {
   // Back one stop and forward again, so the element has focus from the keyboard (:focus-visible).

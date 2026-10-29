@@ -225,6 +225,8 @@
   padding: calc(var(--pt) - 36px + env(safe-area-inset-top, 0px)) var(--px) calc(var(--pb) - 12px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   scrollbar-width: none;
+  /* Room for the focus ring of a control that Tab scrolls to the page's top or bottom edge, as in the side menus. */
+  scroll-padding: 6px 0;
 }
 .page::-webkit-scrollbar {
   display: none;
@@ -715,6 +717,8 @@
   flex: 1 0 auto;
   background: var(--accent);
   color: var(--on-fill);
+  /* No gold is 3:1 on the slate fill, which turns light in dark (1.2:1 and 1.1:1): the ring is the ink on the fill. */
+  --focus: var(--on-fill);
   border-radius: 22px;
   padding: 20px;
   display: flex;
@@ -1232,6 +1236,7 @@
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
+  scroll-padding: 6px 0;
 }
 /* The units' scroll box reaches the window's edges, so its scrollbar is at the edge, as a page's is (DESIGN.md §9). */
 .path:not(.path--desk) .units {
@@ -2125,7 +2130,7 @@ button.lesson-stars:hover {
 /*
  * Tall phones have room under the staff: a bigger pendulum reads better at arm's length. A phone under 800 px tall has
  * not: with eight bars the pad is at its floor, so the pendulum gives up height and Skip stays on the screen (under
- * 600 px tall it is as high as the digits' row, below).
+ * 660 px tall it is as high as the digits' row, below).
  */
 @media (min-height: 800px) and (max-width: 1099.98px) {
   .play .beats--analog {
@@ -2309,12 +2314,13 @@ button.lesson-stars:hover {
 }
 
 /*
- * A phone browser (DESIGN.md §9): its toolbars leave 390 × 664 on an iPhone 14 and 375 × 553 on an iPhone SE, not the
- * whole screen. Play still may not scroll, so the gaps and the page's padding tighten first, then the pad gives up
- * height down to a smaller minimum; below 600 px the staff is drawn at 0.8 as well (Play.tsx, SHORTER_PHONE in
- * hooks.ts). Calibration's pad follows the same rules (its own block below).
+ * A phone browser (DESIGN.md §9): its toolbars leave 390 × 664 on an iPhone 14, 430 × 739 on an iPhone Pro Max and
+ * 375 × 553 on an iPhone SE, not the whole screen. Play still may not scroll, so under 800 px the gaps and the page's
+ * padding tighten first, then the pad gives up height down to a smaller minimum; below 660 px the staff is drawn at
+ * 0.8 as well (Play.tsx, SHORTER_PHONE in hooks.ts). With the steps at 700 and 600 px, eight bars ran past phones
+ * 700–760 and 600–660 px tall and cut off Skip. Calibration's pad follows the same rules (its own block below).
  */
-@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
   .play {
     --pt: 46px;
     --pb: 24px;
@@ -2335,7 +2341,7 @@ button.lesson-stars:hover {
     width: auto;
   }
 }
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .play {
     --pt: 44px;
     --pb: 22px;
@@ -2651,7 +2657,9 @@ button.lesson-stars:hover {
  * under the pad row is smaller (12 px, not 36 px), which shows only when 16 bars with the pendulum and the room for a
  * triplet's 3 fill a 1280 × 800 window (the boards' size) or a 1180 × 820 tablet on its side. Under 800 px (a 1280 × 720
  * laptop) the spacing tightens and the stat cards are lower, so two staff rows, a timing lane of four rows (16 bars) and
- * the pendulum fit. Read notes and Scales keep theirs and scroll (.nplay-main).
+ * the pendulum fit. Under 720 px (a 1366 × 768 laptop's window, 1366 × 657 under Chrome's bars) the header, the spacing
+ * and the stat cards tighten once more and the pad is lower (160 px), as the 16 bars ran 53 px past the window. Read
+ * notes and Scales have steps of their own (.nplay-main, notes.css) and scroll on a laptop.
  */
 @media (min-width: 1100px) and (max-height: 821.98px) {
   .dplay-main:not(.nplay-main) {
@@ -2668,6 +2676,28 @@ button.lesson-stars:hover {
   }
   .dstats .stat {
     padding: 12px 18px;
+  }
+}
+@media (min-width: 1100px) and (max-height: 719.98px) {
+  .dplay:not(.nplay-desk):not(.splay-desk) > .dplay-head {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .dplay-main:not(.nplay-main) {
+    padding: 12px 40px;
+    gap: 12px;
+  }
+  .dplay-staff {
+    padding: 14px 40px 10px;
+  }
+  .dpad {
+    min-height: 160px;
+  }
+  .dstats {
+    gap: 8px;
+  }
+  .dstats .stat {
+    padding: 8px 16px;
   }
 }
 
@@ -4794,7 +4824,7 @@ button.lesson-stars:hover {
 }
 
 /* A phone browser (see Play): tighter gaps first, then a smaller intro and card on the shortest screens; the pad shrinks. */
-@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
   .cal {
     --pt: 46px;
     --pb: 24px;
@@ -4817,7 +4847,7 @@ button.lesson-stars:hover {
     min-width: 0;
   }
 }
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .cal {
     --pt: 44px;
     --pb: 22px;
@@ -5248,7 +5278,7 @@ button.lesson-stars:hover {
   opacity: 0.5;
 }
 /* The shortest phone browsers (375 × 553): a smaller play button and card, so the pad keeps its glyph. */
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   /* Later than .play-staff--echo, so the listen card gets this padding too (room for the play button's halo). */
   .echo-card {
     min-height: 200px;
@@ -5286,4 +5316,63 @@ button.lesson-stars:hover {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0.9;
+}
+
+/*
+ * Forced colors (a Windows contrast theme, DESIGN.md §11): backgrounds turn the page's colour and shadows go, so what
+ * is drawn only with them is drawn again in system colours. A switch gets an edge and a knob, in the selection colours
+ * when it is on; a filled button keeps its shape with an edge; the current tab and Play's beat take the selection
+ * colours (the chosen options are in base.css). What has words on the selection colour is taken out of forced colors,
+ * as there: the plate the system draws behind words, in the page's colour, would hide them.
+ */
+@media (forced-colors: active) {
+  .switch {
+    outline: 2px solid CanvasText;
+    outline-offset: -2px;
+  }
+  .switch-knob {
+    background: CanvasText;
+  }
+  .switch.is-on {
+    background: Highlight;
+    outline-color: Highlight;
+  }
+  .switch.is-on .switch-knob {
+    background: HighlightText;
+  }
+  .btn--accent,
+  .btn--ink,
+  .btn--on-fill {
+    border: 2px solid ButtonText;
+  }
+  .nav-item.is-current .nav-pill,
+  .nav--top .nav-item.is-current {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .beats:not(.beats--analog) {
+    forced-color-adjust: none;
+  }
+  .beat {
+    color: CanvasText;
+  }
+  .beats-dot {
+    background: Highlight;
+  }
+  .beat.is-on {
+    color: HighlightText;
+  }
+  /* The count-in's ring, as the outlined circle it is in colour. */
+  .beats.is-count-in .beats-dot {
+    background: transparent;
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .beats.is-count-in .beat.is-on {
+    color: CanvasText;
+  }
+  .analog-dots span.is-on {
+    background: Highlight;
+  }
 }

@@ -937,25 +937,28 @@
   }
 }
 
-/*
- * A phone browser (DESIGN.md §9, see Play in app.css): tighter gaps, and the piano gives up height so its letters stay
- * in view. On the shortest screens the staff is smaller (ScalesPlay), and so are the degrees and the sign buttons. Up
- * and down has a second degree row, so its rows are lower from the first step on.
- */
-@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
-  .splay {
-    gap: 10px;
-  }
-  /* A long name stays on one line: "A♯ harmonisch mineur" at 375 px, "A♯ harmonic minor" at 320 px. */
-  .splay .splay-title {
-    font-size: 18px;
-  }
+/* A phone in portrait: the piano gives up height so its letters stay in view, only what is missing (as Read notes'). */
+@media (max-width: 699.98px) and (orientation: portrait) {
   .splay .splay-inputs {
     flex-shrink: 1;
     min-height: 0;
   }
   .splay .spiano {
     min-height: 140px;
+  }
+}
+/*
+ * A phone browser (DESIGN.md §9, see Play in app.css): tighter gaps. On the shortest screens the staff is smaller
+ * (ScalesPlay), and so are the degrees and the sign buttons. Up and down has a second degree row, so its rows are lower
+ * from the first step on.
+ */
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
+  .splay {
+    gap: 10px;
+  }
+  /* A long name stays on one line: "A♯ harmonisch mineur" at 375 px, "A♯ harmonic minor" at 320 px. */
+  .splay .splay-title {
+    font-size: 18px;
   }
   .splay--updown .splay-degrees {
     gap: 4px;
@@ -964,7 +967,7 @@
     height: 40px;
   }
 }
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .splay {
     gap: 8px;
   }
@@ -1223,4 +1226,22 @@
 .cprog-total {
   font-size: 14px;
   color: var(--muted);
+}
+/*
+ * Forced colors (see app.css): the degree being answered keeps its edge, a played key its dot, and a wrong sign is
+ * marked as Read notes' wrong answers are.
+ */
+@media (forced-colors: active) {
+  .degree.is-current {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .spiano-dot.is-on,
+  .piano-black .spiano-dot.is-on {
+    background: Highlight;
+  }
+  .ssign.is-wrong {
+    border: 3px dashed CanvasText;
+    text-decoration: line-through;
+  }
 }

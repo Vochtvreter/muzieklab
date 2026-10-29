@@ -261,3 +261,24 @@ input[type='range'] {
     animation: none !important;
   }
 }
+
+/*
+ * Forced colors (a Windows contrast theme, DESIGN.md §11): the system paints every background in the page's colour and
+ * all text and borders in one colour, so an option chosen only by its fill or its colour looks like the others. What is
+ * chosen takes the system's selection colours, as in the player's other apps; like reduced motion above, the player's
+ * setting goes over each control's own colours. It is taken out of forced colors, or the plate the system draws behind
+ * each word, in the page's colour, would hide its words; they all take the selection's text colour (a key's minor name
+ * sets its own). The rest of what forced colors hide is in app.css, notes.css and scales.css.
+ */
+@media (forced-colors: active) {
+  [aria-pressed='true'],
+  [role='radio'][aria-checked='true'] {
+    forced-color-adjust: none;
+    background-color: Highlight !important;
+    color: HighlightText !important;
+    border-color: Highlight !important;
+  }
+  :is([aria-pressed='true'], [role='radio'][aria-checked='true']) * {
+    color: inherit !important;
+  }
+}

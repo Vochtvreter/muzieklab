@@ -763,6 +763,30 @@
   justify-self: center;
   margin: 0;
 }
+/*
+ * A desktop window under 960 px tall (a 1280 × 800 laptop, a 1180 × 820 tablet on its side): at the board's spacing,
+ * with its 210 px piano, the key labels' row and Hint and Next note under the answers did not fit, nor a staff with
+ * ledger lines, and the page scrolled them out of the window. The spacing tightens and the piano is lower (160 px), so
+ * two ledger lines and a why of two lines fit; under 800 px tall (a 1280 × 720 laptop) the page still scrolls (DESIGN.md
+ * §9). Scales' desktop layout has the same cards, and the same need with Up & down.
+ */
+@media (min-width: 1100px) and (max-height: 959.98px) {
+  .nplay-main {
+    padding-top: 20px;
+    padding-bottom: 16px;
+    gap: 16px;
+  }
+  .nplay-staff--desk {
+    padding: 14px 40px;
+  }
+  .nanswer {
+    padding: 18px 24px;
+    gap: 12px;
+  }
+  .nanswer .piano {
+    height: 160px;
+  }
+}
 
 /*
  * Name it · tablet (App design canvas, NoteTablet): under the exercise header (.tframe, app.css), the question and the
@@ -2106,24 +2130,33 @@
   flex-shrink: 0;
 }
 /*
- * A phone browser (DESIGN.md §9, see Play in app.css): the page's gaps tighten, and the piano gives up height so Hint
- * and Next note stay in view. On the shortest screens the staff is drawn smaller (NotesPlay), and the feedback, the name
- * buttons and the actions are lower.
+ * A phone in portrait: the piano gives up height so Hint and Next note stay in view. Only what is missing, so a tall
+ * phone keeps the board's piano; at any height, as a range with ledger lines does not fit a phone up to about 820 px
+ * tall at the board's spacing. Down to 100 px: a why of three lines under two ledger lines needs it just above the
+ * shortest step (660 px), and the black keys are still 61 px, with the white keys' labels below them.
  */
-@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (orientation: portrait) {
+  .nplay .ninputs {
+    flex-shrink: 1;
+    min-height: 0;
+  }
+  .nplay .piano {
+    min-height: 100px;
+  }
+}
+/*
+ * A phone browser (DESIGN.md §9, see Play in app.css): the page's gaps tighten. On the shortest screens the staff is
+ * drawn smaller (NotesPlay), and the feedback, the name buttons and the actions are lower.
+ */
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
   .nplay-staff {
     padding: 10px 12px;
   }
   .nplay .ninputs {
-    flex-shrink: 1;
-    min-height: 0;
     gap: 8px;
   }
-  .nplay .piano {
-    min-height: 120px;
-  }
 }
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .nplay-staff {
     padding: 8px 12px;
   }
@@ -2160,7 +2193,7 @@
  * From 360 px wide the piano labels fit beside "Any octave counts" again, which leaves the piano 23 px more on a phone
  * browser's short screen (375 × 667 as well as 375 × 553).
  */
-@media (min-width: 360px) and (max-width: 389.98px) and (max-height: 699.98px) and (orientation: portrait) {
+@media (min-width: 360px) and (max-width: 389.98px) and (max-height: 799.98px) and (orientation: portrait) {
   .nlabels {
     flex-direction: row;
     align-items: center;
@@ -2173,11 +2206,11 @@
   }
 }
 /*
- * A 320 px phone under 600 px tall: "Any octave counts" would take a line of its own above the key labels, the line
+ * A 320 px phone under 660 px tall: "Any octave counts" would take a line of its own above the key labels, the line
  * that the why of a wrong key in a lesson in a key needs (three lines there). It is left out; screen readers still read
  * it (the .sr-only pattern, base.css).
  */
-@media (max-width: 359.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 359.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .nplay .nlabels > span {
     position: absolute;
     width: 1px;
@@ -2211,6 +2244,24 @@
     grid-column: 1;
     grid-row: 4;
   }
+  /*
+   * Read notes' staff card and feedback are as compact as on the shortest portrait phones: a round that writes draws
+   * the staff bigger (lesson 1.4 with its timer bar too) and a hear round adds Hear it again, and with a why of two
+   * lines the column ran past the screen and cut Skip to summary. Scales keeps its own (scales.css).
+   */
+  .nplay:not(.splay) .nplay-staff {
+    padding: 8px 12px;
+  }
+  .nplay:not(.splay) .nplay-staff--timer {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    gap: 4px;
+  }
+  .nplay:not(.splay) .nfeedback {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
   .nplay .skip-link.nplay-skip {
     display: flex;
     align-items: center;
@@ -2231,5 +2282,30 @@
   }
   .nplay .piano {
     height: 150px;
+  }
+}
+/*
+ * Forced colors (see app.css): a right answer takes the selection colours (out of forced colors, for its words), a
+ * wrong one a thick dashed edge and its name struck through, so they no longer look like the buttons around them. A
+ * chosen key's signature keeps the page's colour behind it, as on the keys around it.
+ */
+@media (forced-colors: active) {
+  .name-btn.is-right,
+  .piano-white.is-right,
+  .piano-black.is-right {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .name-btn.is-wrong,
+  .piano-white.is-wrong,
+  .piano-black.is-wrong {
+    border: 3px dashed CanvasText;
+    text-decoration: line-through;
+  }
+  .key-btn[aria-pressed='true'] .key-thumb {
+    background: Canvas;
+    border-radius: 8px;
   }
 }

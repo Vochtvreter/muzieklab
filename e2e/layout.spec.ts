@@ -219,6 +219,43 @@ async function expectRingsInSideMenu(menu: Locator): Promise<void> {
 }
 
 /**
+ * A page that scrolls (DESIGN.md §9 Scrolling) shows the whole focus ring of each control on it, from the first to the
+ * last with Tab and back with Shift+Tab. Tab scrolls the page just far enough to show the control's box, and the ring
+ * lies outside it: Settings' Privacy row lost the bottom edge of its ring, and the language buttons the top edge on the
+ * way back up. No box around the control cuts the ring off, on any side.
+ */
+async function expectRingsOnPage(page: Page): Promise<void> {
+  await page.locator('.page').locator('a[href], button:not(:disabled)').first().focus();
+  const check = (): Promise<string | null> =>
+    page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el?.closest('.page')) return 'left';
+      if (!el.matches(':focus-visible')) return null;
+      const style = getComputedStyle(el);
+      const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+      const r = el.getBoundingClientRect();
+      for (let box = el.parentElement; box; box = box.parentElement) {
+        const o = getComputedStyle(box);
+        const b = box.getBoundingClientRect();
+        const [left, top] = [b.left + box.clientLeft, b.top + box.clientTop];
+        const cut =
+          (o.overflowX !== 'visible' && (r.left - ring < left - 0.5 || r.right + ring > left + box.clientWidth + 0.5)) ||
+          (o.overflowY !== 'visible' && (r.top - ring < top - 0.5 || r.bottom + ring > top + box.clientHeight + 0.5));
+        if (cut) return `${(el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 40)}: its ring is cut off by ${box.tagName.toLowerCase()}.${box.className}`;
+      }
+      return null;
+    });
+  for (const key of ['Tab', 'Shift+Tab']) {
+    for (let i = 0; i < 200; i++) {
+      await page.keyboard.press(key);
+      const cut = await check();
+      if (cut === 'left') break;
+      expect(cut, key).toBeNull();
+    }
+  }
+}
+
+/**
  * A screen's head keeps its title whole beside what is next to it (DESIGN.md §9): the title's words fit its box, and
  * nothing in the head runs past its right edge (Dutch on a 320 px phone: "Toonladders" beside "Over toonladders").
  */
@@ -383,18 +420,21 @@ function upDownKeys(s: Scale, input: string): string[] {
 /**
  * A Scales round of one scale up and down, just started, answered to the end: the first note wrong, a Hint, the second
  * note wrong (a why of two lines on a phone), then the rest, and the done line with all 15 notes. Each time the
- * feedback changes, a portrait phone or tablet fits with the answer buttons in view (DESIGN.md §9), and a phone in
- * landscape shows the feedback whole in its left column, from the top (only Skip to summary may need a scroll there).
+ * feedback changes, a portrait phone or tablet fits with the answer buttons in view (DESIGN.md §9), so does a desktop
+ * window 800 px tall or more, and a phone in landscape shows the feedback whole in its left column, from the top (only
+ * Skip to summary may need a scroll there).
  */
 async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, input: string, words: { hint: string; next: RegExp }): Promise<void> {
   const { width, height } = VIEWPORTS[name];
   const portrait = width < 1100 && height > width;
   const landscape = width < 1100 && height < width;
+  // Desktop fits from 800 px tall; a laptop's shorter window scrolls (DESIGN.md §9).
+  const desk = width >= 1100 && height >= 800;
   const inPlace = { scroll: !portrait };
   const feedback = page.locator('.nfeedback');
   const hint = page.getByRole('button', { name: words.hint, exact: true });
   const check = async (): Promise<void> => {
-    if (portrait) await expectFits(page);
+    if (portrait || desk) await expectFits(page);
     if (landscape) {
       await page.locator('.splay').evaluate((el) => el.scrollTo(0, 0));
       await expect(feedback, 'the feedback is in view').toBeInViewport({ ratio: 1 });
@@ -438,6 +478,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
      */
     const portraitLayout = !desktopLayout && VIEWPORTS[name].height > VIEWPORTS[name].width;
     const inPlace = { scroll: !portraitLayout };
+    /**
+     * Desktop Read notes and Scales fit a window 800 px tall or more (1280 × 800, a tablet on its side); a laptop's
+     * shorter one scrolls (DESIGN.md §9, Short desktop windows).
+     */
+    const deskFits = desktopLayout && VIEWPORTS[name].height >= 800;
 
     test('home: start the first lesson and free practice', async ({ page }) => {
       known(name, 'home');
@@ -894,6 +939,15 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('scrolling pages: Tab shows the whole focus ring of a control it scrolls to the top or bottom edge', async ({ page }) => {
+      known(name, 'page-rings');
+      for (const hash of ['#/settings', '#/changelog', '#/learn', '#/learn/2']) {
+        await page.goto('./' + hash);
+        await expect(page.locator('.page').locator('a[href], button').first()).toBeVisible();
+        await expectRingsOnPage(page);
+      }
+    });
+
     test('calibration: pad and the timing plot without scrolling', async ({ page }) => {
       known(name, 'calibration');
       await page.goto('./#/calibrate');
@@ -1340,6 +1394,37 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('path lesson: a timed write after a wrong note, and a hear, fit with Skip to summary, on a phone on its side too', async ({ page }) => {
+      known(name, 'notes-write-hear-fit');
+      // Writing draws the staff bigger and a hear round adds Hear it again to the staff card: in a phone's landscape
+      // column, with lesson 1.4's timer bar and a why of two lines under it, the page scrolled and cut Skip to summary.
+      const fits = portraitLayout || name === 'phone-landscape';
+      const skip = page.getByRole('button', { name: 'Skip to summary' });
+      await seed(page, { progress: { lessons: pathUpTo('1.3') }, prefs: { seenHowTo: true, seenHold: true, noteNames: 'letters' } });
+      await page.goto('./#/path');
+      await page.getByRole('button', { name: 'Start lesson 1.4' }).click();
+      await expect(page.getByRole('slider', { name: /goes on the staff$/ })).toBeVisible();
+      if (fits) await expectFits(page);
+      // Four steps up from where the note starts is the top space, E: wrong, for sol.
+      for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowUp');
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.nfeedback')).toHaveText(/^You wrote E/);
+      if (fits) {
+        await expectFits(page);
+        await expectClickable(skip, { scroll: false });
+      }
+      // A new page load, so the app reads the progress seeded now (the later script runs last).
+      await seed(page, { progress: { lessons: pathUpTo('3.2') }, prefs: { seenHowTo: true, seenHold: true, noteNames: 'letters' } });
+      await page.goto('about:blank');
+      await page.goto('./#/path');
+      await page.getByRole('button', { name: 'Start lesson 3.3' }).click();
+      await expect(page.getByRole('button', { name: 'Hear it again' })).toBeVisible();
+      if (fits) {
+        await expectFits(page);
+        await expectClickable(skip, { scroll: false });
+      }
+    });
+
     test('read notes: setup, key and start', async ({ page }) => {
       known(name, 'notes-setup');
       await page.goto('./#/notes');
@@ -1408,7 +1493,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.locator('.nfeedback')).toHaveText(/^.+\. This note is|^This is /);
       await expectClickable(keys.nth(0), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
-      if (portraitLayout) await expectFits(page);
+      if (portraitLayout || deskFits) await expectFits(page);
       await expectScrollbarAtEdge(page);
       if (tablet) {
         // A smaller tablet window (700 × 1000): the piano gives up height, and everything still fits.
@@ -1503,10 +1588,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.reload();
         await expect(page.getByRole('img', { name: /staff in G major/ })).toBeVisible();
         // Within the note's 5 s: the idle line, then the hint, each two lines long on a phone.
-        if (portraitLayout) await expectFits(page);
+        if (portraitLayout || deskFits) await expectFits(page);
         await page.getByRole('button', { name: 'Hint' }).dispatchEvent('click');
         await expect(page.locator('.nfeedback')).toHaveClass(/is-hint/);
-        if (portraitLayout) await expectFits(page);
+        if (portraitLayout || deskFits) await expectFits(page);
         if (round.input === 'piano') {
           const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
           await expect(keys).toHaveCount(12);
@@ -1535,7 +1620,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('img', { name: /staff in G♭ major/ })).toBeVisible();
       await page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button', { name: /^G, sol/ }).dispatchEvent('click');
       await expect(page.locator('.nfeedback')).toHaveText(/^That was G♭ \(sol♭\): .+ is G, and the flat in the key signature makes it G♭/);
-      if (portraitLayout) await expectFits(page);
+      if (portraitLayout || deskFits) await expectFits(page);
+      // On desktop too, Next note is in the window without a scroll (at 1280 × 800 it was below it).
+      if (deskFits) await expect(page.getByRole('button', { name: /^Next note/ })).toBeInViewport({ ratio: 1 });
       await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
       await expectStavesFit(page);
@@ -1872,7 +1959,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           await expectTouchHeight(signs.first());
         }
         await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
-        if (portraitLayout) await expectFits(page);
+        if (portraitLayout || deskFits) await expectFits(page);
         // Each line the feedback says on the way, from why the first note is wrong to the done line, stays in view.
         await answerUpAndDown(page, name, { key: round.keys[0], type: round.types[0] } as Scale, round.input, { hint: 'Hint', next: /^Next scale/ });
         await expectNoSideScroll(page);
@@ -2443,6 +2530,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
         await expectFits(page);
       }
+      if (desktopLayout) {
+        // A 1366 × 768 laptop's window (1366 × 657 under Chrome's bars): the spacing tightens once more, and the pad and
+        // the stat cards still fit under the staff.
+        await page.setViewportSize({ width: 1366, height: 657 });
+        await expect(page.locator('.dpad')).toBeInViewport({ ratio: 1 });
+        await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
+        await expectFits(page);
+      }
       await expectNoSideScroll(page);
     });
 
@@ -2566,7 +2661,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
       }
       if (desktopLayout) {
-        // The key-cap pad and the four stat cards, the Metronome switch last, all in the window.
+        // The key-cap pad and the four stat cards, the Metronome switch last, all in the window, in a 1366 × 768
+        // laptop's window too (1366 × 657 under Chrome's bars).
+        await expect(page.locator('.dpad')).toBeInViewport({ ratio: 1 });
+        await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
+        await expectFits(page);
+        await page.setViewportSize({ width: 1366, height: 657 });
         await expect(page.locator('.dpad')).toBeInViewport({ ratio: 1 });
         await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
       } else {
@@ -3643,6 +3743,146 @@ test.describe("Learn's tables and diagrams at every phone width", () => {
         }
       });
     }
+  }
+});
+
+/**
+ * Exercise screens fit a portrait phone at every height, not only at the sizes in VIEWPORTS (DESIGN.md §9, Phone
+ * browsers). Between the short-screen steps, on phones 600–660 and 700–800 px tall (an iPhone Pro Max in Safari is
+ * 430 × 739, an iPhone mini 375 × 629, Android phones in Chrome 360 × 640 to 412 × 732), Play, Read notes and Scales ran
+ * past the screen and cut off Skip, Hint and Next note. Each screen is started once and the window resized.
+ */
+test.describe('exercise screens at phone heights between the steps', () => {
+  test.use({ hasTouch: true, viewport: VIEWPORTS.phone });
+  const SIZES = [[390, 720], [430, 739], [360, 700], [412, 790], [390, 661], [320, 661], [375, 629], [414, 622], [360, 640]] as const;
+  const each = async (page: Page, check: () => Promise<void>): Promise<void> => {
+    for (const [width, height] of SIZES) {
+      await page.setViewportSize({ width, height });
+      await test.step(`${width} × ${height}`, check);
+    }
+  };
+
+  test('play: eight bars with the pendulum, the pad and Skip in view', async ({ page }) => {
+    await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth'], rests: ['quarter'], bars: 8, tempo: 60 }, 3, { metronomeLook: 'analog' });
+    await page.goto('./#/play');
+    await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+    await expect(page.locator('.beats--analog')).toBeVisible();
+    await each(page, async () => {
+      await expectFits(page);
+      await expectClickable(pad(page), { scroll: false });
+      await expectTouchHeight(pad(page));
+      await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+    });
+  });
+
+  test('read notes: two ledger lines on the piano and a why of three lines, Hint and Next note in view', async ({ page }) => {
+    // G♭ major, seed 1234, as in "ledger lines with a key signature and a timer fit": the natural key for the first
+    // note says why in three lines on a phone.
+    const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano', range: 'ledger2', keys: ['Gb'], clefs: ['treble', 'bass'], extras: 'both', count: 30, playNotes: false, timer: 5 };
+    await seed(page, { prefs: { seenHowTo: true, seenHold: true, noteNames: 'letters' } });
+    await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 1234, focus: [] });
+    await page.goto('./#/notes/play');
+    await page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button', { name: /^G, sol/ }).dispatchEvent('click');
+    await expect(page.locator('.nfeedback')).toHaveText(/^That was G♭ \(sol♭\)/);
+    await each(page, async () => {
+      await expectFits(page);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), { scroll: false });
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), { scroll: false });
+      await expectTouchHeight(page.locator('.piano-black').first());
+    });
+  });
+
+  test('scales: up and down on the piano, its letters and Skip in view', async ({ page }) => {
+    await seed(page, {
+      prefs: { seenHowTo: true, seenHold: true },
+      progress: { scales: { settings: { keyMode: 'one', keys: ['Bb'], types: ['harmonic'], input: 'piano', direction: 'upDown', write: 'signs', showSteps: true, playNotes: false }, stars: {} } },
+    });
+    await page.goto('./#/scales/setup');
+    await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+    await expect(page.getByRole('list', { name: 'Scale degrees going down' })).toBeVisible();
+    await each(page, async () => {
+      await expectFits(page);
+      for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
+      await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), { scroll: false });
+    });
+  });
+});
+
+/**
+ * Forced colors (a Windows contrast theme) paint every background in the page's colour and all text and borders in one
+ * colour (DESIGN.md §11). A state shown only by a fill or a colour then disappears; each must still show: the chosen
+ * option of every group beside one that is not chosen, a switch's knob and edge, a filled button's shape, Play's beat
+ * and Read notes' right and wrong answers. Compared by what the browser paints (the computed colours are the forced
+ * ones).
+ */
+test.describe('forced colors (a contrast theme)', () => {
+  test.use({ viewport: VIEWPORTS.phone, hasTouch: true });
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`${scheme}: the chosen options, the switches, the filled buttons, the beat and the answers still show`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, forcedColors: 'active' });
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, noteNames: 'letters' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
+      const lost = (): Promise<string[]> =>
+        page.evaluate(() => {
+          const look = (el: Element): string => {
+            const s = getComputedStyle(el);
+            return [s.backgroundColor, s.color, s.borderTopColor, s.borderTopStyle, s.borderTopWidth, s.outlineStyle, s.textDecorationLine].join(' ');
+          };
+          const ground = getComputedStyle(document.body).backgroundColor;
+          const out: string[] = [];
+          // Each chosen option beside one of its group that is not chosen (a segment, a chip, a sign, a key on the circle).
+          for (const on of document.querySelectorAll('[aria-pressed=true], [role=radio][aria-checked=true]')) {
+            const others = on.matches('[role=radio]') ? '[role=radio][aria-checked=false]' : '[aria-pressed=false]';
+            let off: Element | null = null;
+            for (let box = on.parentElement, up = 0; box && !off && up < 3; box = box.parentElement, up++) off = box.querySelector(others);
+            const name = on.getAttribute('aria-label') || on.textContent;
+            if (off && look(on) === look(off)) out.push(`${name}: the chosen option looks like the others`);
+          }
+          for (const track of document.querySelectorAll('.switch')) {
+            const knob = getComputedStyle(track.querySelector('.switch-knob')!);
+            const s = getComputedStyle(track);
+            if (knob.backgroundColor === s.backgroundColor) out.push('a switch: its knob is not drawn');
+            if (s.backgroundColor === ground && s.outlineStyle === 'none' && s.borderTopStyle === 'none') out.push('a switch: its track is not drawn');
+          }
+          for (const btn of document.querySelectorAll('.btn--accent, .btn--ink')) {
+            const s = getComputedStyle(btn);
+            if (s.backgroundColor === ground && s.borderTopStyle === 'none') out.push(`${btn.textContent}: drawn as plain text`);
+          }
+          // The beat's circle, filled, or a ring in the count-in.
+          const dot = document.querySelector('.beats-dot');
+          const fill = dot && getComputedStyle(dot);
+          if (fill && (fill.backgroundColor === ground || /, 0\)$/.test(fill.backgroundColor)) && fill.outlineStyle === 'none') out.push("Play's beat is not marked");
+          const plain = document.querySelector('.name-btn:not(.is-right):not(.is-wrong)');
+          for (const mark of ['is-right', 'is-wrong']) {
+            const el = document.querySelector('.name-btn.' + mark);
+            if (el && plain && look(el) === look(plain)) out.push(`a name button ${mark}: looks like the others`);
+          }
+          return out;
+        });
+      for (const hash of ['#/setup', '#/settings', '#/notes', '#/scales']) {
+        await page.goto('./' + hash);
+        await expect(page.locator('.page').getByRole('button').first()).toBeVisible();
+        await expect.poll(lost, hash).toEqual([]);
+      }
+      // Read notes: a wrong name marks it and the right one.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS };
+      const [first] = generateRound(settings, 7);
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 7, focus: [] });
+      // A new page load, so the app reads the round just seeded (from the app, a new hash alone keeps its state).
+      await page.goto('about:blank');
+      await page.goto('./#/notes/play');
+      const wrong = letterOf(first.step) === 'C' ? 'D' : 'C';
+      await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${wrong}(,|$)`) }).click();
+      await expect(page.locator('.name-btn.is-wrong')).toHaveCount(1);
+      await expect(page.locator('.name-btn.is-right')).toHaveCount(1);
+      await expect.poll(lost, 'Read notes').toEqual([]);
+      // Play's beat counter: its ring in the count-in, then its circle on bar 1.
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.locator('.beats.is-count-in')).toHaveCount(1);
+      expect(await lost(), 'the count-in').toEqual([]);
+      await expect(page.getByRole('img', { name: /^Counting beat 1 / })).toBeVisible({ timeout: 8000 });
+      expect(await lost(), 'bar 1').toEqual([]);
+    });
   }
 });
 

@@ -38,6 +38,8 @@
     overflow-y: auto;
     margin: 0 calc(-1 * var(--px));
     padding: 6px var(--px) calc(var(--pb) - 12px + env(safe-area-inset-bottom, 0px));
+    /* Room for the focus ring of a card scrolled to the box's edge, as on a page. */
+    scroll-padding: 6px 0;
   }
 }
 
