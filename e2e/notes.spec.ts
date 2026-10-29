@@ -281,6 +281,14 @@ test('read notes: the sign row only when a note can have a sign', async ({ page 
   await expect(page.getByRole('radiogroup', { name: 'Sharp or flat' })).toBeVisible();
   await expect(page.getByText('Mind the key signature. Pick the sign, then the name.')).toBeVisible();
   await expect(page.getByText('Type the letter; press = for ♯, 0 for ♮ or − for ♭ first')).toBeVisible();
+  // A radio group: one Tab stop, and the arrows pick the next sign (they did nothing, and Tab stopped at all three).
+  const natural = page.getByRole('radio', { name: 'natural' });
+  await tabTo(page, natural);
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('radio', { name: 'sharp' })).toBeFocused();
+  await expect(page.getByRole('radio', { name: 'sharp' })).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement?.getAttribute('role')), 'the next Tab leaves the group').not.toBe('radio');
 });
 
 test('read notes: round done names the missed notes in do re mi after a round in do re mi', async ({ page }) => {
@@ -505,6 +513,26 @@ for (const size of ['phone', 'desktop'] as const) {
     await expect(slider).toBeFocused();
   });
 }
+
+test('read notes: turning a tablet keeps the focus on the control it was on', async ({ page }) => {
+  // The tablet and desktop layouts are drawn in other trees: the turn took the focused control away, and the focus fell
+  // to the page.
+  await seedRun(page, { ...DEFAULT_NOTE_SETTINGS, playNotes: false }, 4242);
+  await page.setViewportSize(VIEWPORTS.tablet);
+  await page.goto('./#/notes/play');
+  await expect(page.locator('.ntab')).toBeVisible();
+  const hint = page.getByRole('button', { name: 'Hint' });
+  await tabTo(page, hint);
+  await page.setViewportSize(VIEWPORTS['tablet-landscape']);
+  await expect(page.locator('.nplay-desk')).toBeVisible();
+  await expect(hint).toBeFocused();
+  // A name button, whose name says its computer key in the desktop layout only.
+  const name = page.getByRole('group', { name: 'Note names' }).getByRole('button').nth(2);
+  await tabTo(page, name);
+  await page.setViewportSize(VIEWPORTS.tablet);
+  await expect(page.locator('.ntab')).toBeVisible();
+  await expect(name).toBeFocused();
+});
 
 test('read notes: a tap on a staff line writes the note on that line, under the room for a flat over the staff', async ({ page }) => {
   // B♭ major with extra signs, seed 59: the first note is G♭5, whose flat puts the top line lower in the drawing.
@@ -737,6 +765,69 @@ test('after Quit, one Back leaves the screen Quit returned to', async ({ page })
     await expect(page).toHaveURL(/#\/$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeAttached();
   }
+});
+
+test('after Use on a Key screen, one Back leaves the setup it went back to', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  // Read notes: the Key row, a key and Use. Use once swapped the Key screen for a second copy of the setup, so the
+  // first Back stayed on the setup.
+  await page.goto('./#/');
+  await page.getByRole('link', { name: /^Read notes/ }).click();
+  await page.getByRole('link', { name: /^Key: C major/ }).click();
+  await page.getByRole('button', { name: /^G major or E minor/ }).click();
+  await page.getByRole('button', { name: 'Use G major' }).click();
+  await expect(page.getByRole('link', { name: /^Key: G major/ })).toBeVisible();
+  await expect(page).toHaveURL(/#\/notes$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeAttached();
+
+  // Scales: its Key screen by Choose…, then, with keys chosen, by Change. One Back leaves the setup after both.
+  await page.getByRole('link', { name: /^Scales/ }).click();
+  await page.getByRole('link', { name: 'Options' }).click();
+  await page.getByRole('group', { name: 'Keys' }).getByRole('button', { name: 'Choose…' }).click();
+  await page.getByRole('group', { name: 'Key' }).getByRole('button', { name: 'Mix keys' }).click();
+  await page.getByRole('button', { name: /^G major or E minor/ }).click();
+  await page.getByRole('button', { name: 'Use 2 keys' }).click();
+  await expect(page).toHaveURL(/#\/scales\/setup$/);
+  await page.getByRole('link', { name: 'Change', exact: true }).click();
+  await page.getByRole('button', { name: /^D major or B minor/ }).click();
+  await page.getByRole('button', { name: 'Use 3 keys' }).click();
+  await expect(page.getByRole('group', { name: 'Keys' }).getByRole('button', { name: '3 keys' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/scales\/setup$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/scales$/);
+});
+
+test('a Read notes setup opened from a chapter keeps the way back to it: Quit returns to it, and one Back to the chapter', async ({ page }) => {
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/learn/8');
+  await page.getByRole('link', { name: 'Practice reading notes' }).click();
+  await expect(page).toHaveURL(/#\/notes\?from=8$/);
+  // Start once left ?from=8 behind: Quit landed on a setup whose back arrow went Home, and Back showed the setup again.
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page).toHaveURL(/#\/notes\/play\?from=8$/);
+  await page.getByRole('link', { name: 'Quit', exact: true }).click();
+  await expect(page).toHaveURL(/#\/notes\?from=8$/);
+  await expect(page.getByRole('link', { name: 'Back to chapter 8' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/8$/);
+
+  // Round done of a round started there returns to the chapter; Change setup, Start and Quit go back to that setup.
+  await page.getByRole('link', { name: 'Practice reading notes' }).click();
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/notes\/done\?from=8$/);
+  await expect(page.getByRole('link', { name: 'Back to chapter 8' })).toBeVisible();
+  await page.getByRole('link', { name: 'Change setup' }).first().click();
+  await expect(page).toHaveURL(/#\/notes\?from=8$/);
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await page.getByRole('link', { name: 'Quit', exact: true }).click();
+  await expect(page).toHaveURL(/#\/notes\?from=8$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/notes\/done\?from=8$/);
 });
 
 test('learn: a practice link opened in a new tab starts the same practice there', async ({ page, context }) => {

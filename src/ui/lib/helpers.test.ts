@@ -5,7 +5,7 @@ import { ALL_LESSONS } from '../../game/path';
 import { defaultProgress, type Progress } from '../../game/storage';
 import { PATH_UNITS } from '../../game/tracks';
 import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
-import { barFeatures, continueLesson, lessonOutcome, lessonPreview, newFeatures, previewFeatures, tileStates, unitStates } from './lessons';
+import { barFeatures, continueLesson, lessonOutcome, lessonPreview, newFeatures, noteLessonPreview, previewFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
 import { barAt, beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
 import { setupHints, startBlockedKey } from './setupHints';
@@ -391,5 +391,26 @@ describe('lesson preview', () => {
       );
       expect(ids.filter((x) => !shown.has(x)), lesson.id).toEqual([]);
     }
+  });
+});
+
+describe('note lesson preview', () => {
+  // Home draws the notes on one staff: a round that starts in another clef or key than the lesson's first (18.2 starts
+  // in bass clef, 26.3 in E♭ major) drew bass notes under a treble staff, and a B♭ with no flat as a B.
+  const lessons = PATH_UNITS.flatMap((u) => u.lessons).filter((l) => l.track === 'notes' || l.track === 'keys');
+  it.each([4, 6])('draws up to %i notes, at least 4, each in the clef and key of its staff', (count) => {
+    for (const lesson of lessons) {
+      const p = noteLessonPreview(lesson, count)!;
+      expect(p.notes.length, lesson.id).toBeGreaterThanOrEqual(4);
+      expect(p.notes.length, lesson.id).toBeLessThanOrEqual(count);
+      for (const n of p.notes) expect([n.clef, n.key], lesson.id).toEqual([p.clef, p.key]);
+    }
+  });
+
+  it('is the first notes of the round, the same every visit', () => {
+    const lesson = lessons.find((l) => l.id === '18.2')!;
+    expect(noteLessonPreview(lesson, 4)!.notes).toEqual(noteLessonPreview(lesson, 6)!.notes.slice(0, 4));
+    expect(noteLessonPreview(lesson, 4)!.clef).toBe('bass');
+    expect(noteLessonPreview(PATH_UNITS[0].lessons[0], 4)).toBeNull();
   });
 });

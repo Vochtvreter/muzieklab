@@ -92,14 +92,14 @@ function blend(ink: string, fill: string, alpha: number): string {
 }
 
 // Read notes' answer marks (notes.css): a black piano key turns green or red, and its label (C♯ D♭, 11 px bold) must
-// still read, 4.5:1 or more. Its fill is --good or --miss, which turn light in dark, so the label is --on-fill, the ink
-// for filled accents. (In light, white on --good is the 4.3:1 tokens.css notes.)
+// still read, 4.5:1 or more, in light too: white on --good is only the 4.3:1 tokens.css notes. The fills turn light in
+// dark, so the label is --on-fill, the ink for filled accents.
 describe('the marked black piano keys', () => {
   const notes = css('notes.css');
   for (const mark of ['right', 'wrong']) {
     const fill = tokenOf(declared(notes, `.piano-black.is-${mark}`, 'background'));
     const ink = tokenOf(declared(notes, `.piano-black.is-${mark}`, 'color'));
-    for (const [name, t] of themes.slice(1)) {
+    for (const [name, t] of themes) {
       it(`${name}: the label on the ${mark} key is 4.5:1 or more against its fill`, () => {
         expect(fill).toMatch(/^--[\w-]+$/);
         expect(ink, 'the label follows the theme').toMatch(/^--[\w-]+$/);

@@ -21,11 +21,11 @@ import {
   rangeSteps,
   roundHasSigns,
   roundLetters,
+  staffPage,
   type Alter,
   type Given,
   type Letter,
   type NoteAnswer,
-  type RoundNote,
   type Step,
 } from '../../../core/api';
 import { pathLessonOf } from '../../../game/tracks';
@@ -56,7 +56,7 @@ import {
   type NameSystem,
 } from '../../lib/noteText';
 import { useFocusHandOff } from '../../lib/screenFocus';
-import { leave, Link, navigate } from '../../router';
+import { leave, Link, navigate, openedFrom } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
 
 /** A right answer without a hint moves on after this long. */
@@ -79,17 +79,6 @@ export function NotesPlay(): JSX.Element | null {
   }, [run]);
   if (!run) return null;
   return <Round key={run.seed + ':' + run.notes.length} run={run} />;
-}
-
-/** The notes on the staff now: the current clef-and-key run, in pages of `size` (a new clef or key starts a new staff). */
-export function staffPage(notes: RoundNote[], i: number, size: number): { from: number; to: number } {
-  const same = (a: RoundNote, b: RoundNote): boolean => a.clef === b.clef && a.key === b.key;
-  let start = i;
-  while (start > 0 && same(notes[start - 1], notes[i])) start--;
-  let end = i + 1;
-  while (end < notes.length && same(notes[end], notes[i])) end++;
-  const from = start + Math.floor((i - start) / size) * size;
-  return { from, to: Math.min(end, from + size) };
 }
 
 const markOf = (a: NoteAnswer | undefined): PitchMark | undefined =>
@@ -253,9 +242,11 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [done, timer]);
 
-  // Quit goes back where the round started: the Path for a lesson, the Learn section, the Read notes setup otherwise.
-  const home = run.lesson ? '/path' : (back?.to ?? '/notes');
-  const homeQuery = run.lesson ? undefined : back?.query;
+  // Quit goes back where the round started: the Path for a lesson, the Read notes setup it was started from (also one
+  // opened from Learn, ?from=8), else the Learn section, or the setup.
+  const fromSetup = !run.lesson && openedFrom('/notes', carry);
+  const home = run.lesson ? '/path' : fromSetup ? '/notes' : (back?.to ?? '/notes');
+  const homeQuery = run.lesson ? undefined : fromSetup ? carry : back?.query;
   const quit = (): void => leave(home, homeQuery);
   const skip = (): void => finish(answers.slice(0, done ? i + 1 : i));
 

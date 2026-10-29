@@ -251,7 +251,8 @@ like the rhythm notation.
   `core/noteRound.ts`). The player picks the sign first (♮, no sign, is the default) and the seven buttons
   update to show it (D♯, re♯). The written spelling is required: right letter with the
   wrong sign is wrong, and F♯ is not accepted for a written G♭. Desktop keys: − = ♭,
-  0 = ♮, = = ♯, then the letter.
+  0 = ♮, = = ♯, then the letter. The row is a radio group: one Tab stop, on the sign picked, and the arrow keys pick the
+  next sign (round the ends), Home and End the first and last.
   After a wrong letter or a timeout the right button turns green with the note's own name (F♯ also when ♮ is picked,
   D when ♯ is), so the green mark never sits on a name that is wrong; a right letter with the wrong sign stays red, as
   it reads.
@@ -312,7 +313,9 @@ lesson presets do not set it). Audio is unlocked from the Start tap and from eve
 
 A lesson can also narrow the notes (`only`: the positions it draws from; the name buttons show just their names, one
 to seven, centred and no wider than 96 px each) and stress one (`stress`: three times as often). A note that has
-only one position to come from repeats (sol in unit 1).
+only one position to come from repeats (sol in unit 1). Of two positions (sol and mi, the path's unit 3) a note may come
+twice in a row, never three times: never repeating, they would take strict turns (E G E G …), which can be answered
+without reading or hearing a note, and mi could come no more often than sol.
 
 **Keys.** The player chooses which key to read in, on its own screen (*Key*, opened from
 the setup). All 15 standard key signatures are offered: C major (no signs), then sharps
@@ -338,6 +341,8 @@ notes read the same.
   already: there the setup's summary does not say *extra signs appear*, and the round is not counted as harder (XP).
 - Learn chapter 9 *Sharps, flats and naturals* and chapter 10 *Key signatures* explain all of this; the Key screen
   ("What is a key?") links to 10.1.
+- *Use* goes back to the setup's own place in the history, so one Back from the setup leaves it (Scales' *Choose…* and
+  *Change* too).
 
 **Settings** (Read notes setup screen)
 
@@ -352,14 +357,15 @@ notes read the same.
 | Time per note | off · 5 s · 3 s | off |
 | Hear the notes (since 0.10.0) | on · off | on |
 
-**Note generator:** draws from the allowed positions, spelled in the chosen key, with no immediate repeats and no
-more than two steps of the same direction in a row, and boosts notes the player recently
-got wrong or answered slowly (spaced repetition per note). In mixed-clef rounds the clef
+**Note generator:** draws from the allowed positions, spelled in the chosen key, with no immediate repeats (of only two
+positions, no more than two in a row) and no more than two steps of the same direction in a row, and boosts notes the
+player recently got wrong or answered slowly (spaced repetition per note). In mixed-clef rounds the clef
 changes at most every 4 notes, with a visible clef change.
 
 **Scoring:** correct / total, average response time, and a per-note weak-spot list. Stars: ★ ≥ 70% · ★★ ≥ 85% ·
 ★★★ ≥ 95% with an average under 2 s (starting values, to tune). XP and streaks work as in the rhythm modes.
-Round done's *Needs practice* shows each missed, hinted or slow note as the player reads it (since 0.10.0; before, in
+Round done's *Needs practice* shows each missed, hinted or slow note, all of them, in rows that wrap (as *Practice
+missed notes* drills them all), as the player reads it (since 0.10.0; before, in
 scientific pitch, *F5 ×3*): a chip with a small staff (the note's clef and the note, with its own sign; no key signature at this
 size), the name in the player's note names (fa♯ or F♯), and ×count or the seconds. Screen readers hear e.g. *fa, F on
 the top line (treble clef), missed 3 times* or *…, answered with a hint*. A note right only with a hint is not right
@@ -1047,7 +1053,9 @@ How write and hear work is in §3.5, *Write it, hear it*.
   two stars; Next lesson starts the next lesson of either kind.
 - Home's Continue card follows the Learning path (since 0.11.0): a rhythm lesson shows a bar of its rhythm, a First
   notes lesson the notes learned so far with their names (the new one highlighted), and a later note lesson a few
-  notes of its round. The daily challenge follows the highest open rhythm unit (§3.4).
+  notes of its round, on the staff they are read on: those of the round's first clef and key, as Play starts a new
+  staff for a new one (4 on a phone, 4 to 6 on a tablet or desktop). A screen reader hears that clef and key (*A few
+  notes from the lesson: bass clef, E♭ major*). The daily challenge follows the highest open rhythm unit (§3.4).
 - Not yet: free practice cannot write or hear notes. The Progress tab (since 0.19.0, §8.5) counts every kind of
   practice: its accuracy, timing and skill map count rhythm rounds (free practice, lessons, the daily, Echo), its Notes
   view every Read notes round (free practice and note lessons), and its minutes every mode. The skill levels (§8.6)
@@ -1369,12 +1377,12 @@ chapter 8 · Notes on the staff (since 0.3.4 chapters 8–10, see §9.1).
 Built in v0.3 (ahead of v1.2, whose rhythm chapters 1–7 come next; the Learn tab holds chapter 8 until then):
 - **Pitch engine** (`core/pitch.ts`): staff positions as letter steps (C4 = 28), the 15 key signatures with their major
   and relative minor, written names and pitch classes.
-- **Rounds** (`core/noteRound.ts`): the seeded generator (allowed positions per range, no immediate repeats, at most two
-  moves the same way, clef runs of 4–6 notes, a new key every 5 notes when mixed, extra signs on a quarter of the notes,
-  weak spots and *Practice missed notes* boosted), judging (names need the written spelling; the piano accepts the
-  sounding key), the score (right without a hint / answered; hints count as not right), weak spots (misses +2, hints and
-  answers over 3 s +1, quick right answers −1; 0–5 per note) and XP: notes × (2 + difficulty / 4) × accuracy, + 5 for 3
-  stars. Mixed input alternates names and piano every 5 notes.
+- **Rounds** (`core/noteRound.ts`): the seeded generator (allowed positions per range, no immediate repeats (of two
+  positions, at most two in a row), at most two moves the same way, clef runs of 4–6 notes, a new key every 5 notes when
+  mixed, extra signs on a quarter of the notes, weak spots and *Practice missed notes* boosted), judging (names need the
+  written spelling; the piano accepts the sounding key), the score (right without a hint / answered; hints count as not
+  right), weak spots (misses +2, hints and answers over 3 s +1, quick right answers −1; 0–5 per note) and XP: notes ×
+  (2 + difficulty / 4) × accuracy, + 5 for 3 stars. Mixed input alternates names and piano every 5 notes.
 - **Screens:** Home's free practice is two tiles (Rhythm, Read notes); Read notes setup, Key, Name it (names with the
   sign row, or the piano; computer keys on desktop; a right answer moves on by itself after 0.7 s, a wrong one waits
   for Next note), Round done (time per note, needs practice, by sign, New round / Practice missed notes), and Learn
@@ -1801,7 +1809,10 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
   (§6.1). The browser's Back from the screen the link opened returns to the section too: the link first sets the
   chapter's own place in the history to it (`#/learn/8?s=8.3`). Quit then goes back to that place instead of adding
   the section again, so one Back after Quit leaves the chapter. Every exercise's Quit does this when it returns to the
-  screen it was opened from: Read notes to its setup, Scales to the Scales tab, Play to Home, a lesson to the Path.
+  screen it was opened from: Read notes to its setup, Scales to the Scales tab, Play to Home, a lesson to the Path. A
+  Read notes setup opened from a chapter (`?from=8`, its Practice button or Round done's *Change setup*) passes it on
+  to the round its Start starts: Quit goes back to that setup, still *Back to chapter 8*, and Round done's back arrow to
+  the chapter.
 - A practice link opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift) starts the same practice
   there: its address, `#/learn/practice?s=8.3`, sets up the section's practice in its own place. A plain click starts
   it in the same tab. No tap led to the new tab, so the browser does not let it make sound yet: a rhythm practice
@@ -2260,13 +2271,15 @@ without code changes:
   (*Progress was reset.*, read out), so it hands it to the About heading. A sheet that closes gives it back to the
   control that opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or the screen's
   heading (the level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new phase's
-  heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it to the one left. In Read
-  notes and Scales a control that a step disables or removes hands it on: an answer that ends the note or the scale (the
-  last sign or key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and Start
-  over to the answers (the first name button, sign or piano key, or the next note's staff to write on). There Space and
-  Enter stay the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5,
-  §3.7), so the Enter after one on Next note does not answer with the name button the focus went to. Echo's play button
-  keeps it while the rhythm plays (`aria-disabled`), then Tap it back takes it.
+  heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it to the one left. A screen
+  drawn in its other layout (a tablet turned, tablet and desktop; a window made wider or narrower) gives it to the same
+  control there, found by its name or by its place among the name buttons or a piano's keys, else to its heading. In
+  Read notes and Scales a control that a step disables or removes hands it on: an answer that ends the note or the scale
+  (the last sign or key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and
+  Start over to the answers (the first name button, sign or piano key, or the next note's staff to write on). There
+  Space and Enter stay the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`;
+  §3.5, §3.7), so the Enter after one on Next note does not answer with the name button the focus went to. Echo's play
+  button keeps it while the rhythm plays (`aria-disabled`), then Tap it back takes it.
 - High-contrast theme; big touch targets (≥ 48 px). In a Windows contrast theme (forced colors) the system paints
   every background in the page's colour and all text and borders in one colour, so nothing may be told by a fill or a
   colour alone: a chosen option (`aria-pressed`, a checked radio), the current tab, Play's beat and Read notes' right
@@ -2274,11 +2287,12 @@ without code changes:
   an edge, the Learn piano's marked keys a thick edge in the selection colour, and a wrong answer a dashed edge with its
   name struck through (`base.css`, `app.css`, `notes.css`, `scales.css`; a layout test checks it in light and dark).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
-  larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,
-  borders and bars. Gold and red text use `--gold-ink` and `--miss-ink` the same way: Play's GOOD · LATE and MISS are
-  4.5:1 or more on the page, on desktop's pad card (Accent soft) and on paper (`src/styles/fieldContrast.test.ts`). The
-  total after a score (Read notes' "2 / 3", Scales' "1 / 1" on Round done) is `--muted`: `--faint` is 2.7:1 on the page
-  in light.
+  larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills without
+  text, dots, borders and bars. A green fill with text on it is `--good-ink` too: Read notes' right black piano key,
+  whose name is white in light (4.3:1 on `--good`). Gold and red text use `--gold-ink` and `--miss-ink` the same way:
+  Play's GOOD · LATE and MISS are 4.5:1 or more on the page, on desktop's pad card (Accent soft) and on paper
+  (`src/styles/fieldContrast.test.ts`). The total after a score (Read notes' "2 / 3", Scales' "1 / 1" on Round done) is
+  `--muted`: `--faint` is 2.7:1 on the page in light.
 
 ---
 

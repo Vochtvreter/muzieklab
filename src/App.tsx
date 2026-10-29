@@ -5,7 +5,8 @@ import { resolveLocale, setLocale, t } from './i18n';
 import { Announcer } from './ui/components/Announcer';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { FeedbackTool } from './ui/feedback/FeedbackTool';
-import { focusHeading, focusLost } from './ui/lib/screenFocus';
+import { useBreakpoint, useExerciseLayout } from './ui/hooks';
+import { focusHeading, focusLost, useFocusAcrossLayouts } from './ui/lib/screenFocus';
 import { guardFollowUpTap } from './ui/lib/tapGuard';
 import { routeParam, useRoute } from './ui/router';
 import { AccountScreen } from './ui/screens/account/Account';
@@ -84,6 +85,9 @@ function Screens(): JSX.Element {
   useTheme(state.prefs.theme);
   // Progress on the account, while someone is signed in (BACKEND-PLAN.md §6).
   useProgressSync();
+  // A tablet turned, or a window made wider or narrower, draws the screen in its other layout: the focus goes on to the
+  // same control there (an exercise screen keeps the phone layout on a phone on its side, the other screens do not).
+  useFocusAcrossLayouts(useBreakpoint() + ' ' + useExerciseLayout());
   // t() reads module state: switch the catalog before the screens render, and remount them on a change so text kept
   // in state or memos is redone in the new language. A language from elsewhere (another tab, the account) that comes
   // while an exercise is played waits until its screen is left, as the remount would start the exercise over.

@@ -80,7 +80,7 @@ export function NotesSetup(): JSX.Element {
 
             <div className="field">
               <div className="label">{t('notes.setup.key')}</div>
-              <Link to="/notes/key" query={carry} className="key-row" aria-label={t('notes.setup.keyAria', { name: keyName, sub: keySub })}>
+              <Link to="/notes/key" query={carry} remember className="key-row" aria-label={t('notes.setup.keyAria', { name: keyName, sub: keySub })}>
                 <span className="key-thumb">
                   <PitchStaff clef="treble" keyId={key} notes={[]} slots={0} room={1.5} />
                 </span>
@@ -183,7 +183,8 @@ export function NotesSetup(): JSX.Element {
               </span>
             </div>
 
-            <button type="button" className="btn btn--accent start-btn" onClick={() => start(s)}>
+            {/* Opened from Learn (?from=8): the round and its Round done keep the way back, as Round done's do. */}
+            <button type="button" className="btn btn--accent start-btn" onClick={() => start(s, [], { query: carry })}>
               {t('notes.setup.start', { count: s.count })}
             </button>
           </div>

@@ -253,8 +253,9 @@ function pickAlter(rng: Rng, key: KeyId, letter: Letter, extras: Extras): Alter 
 }
 
 /**
- * A round of notes (§3.5): drawn from the allowed positions, spelled in the key, with no immediate repeats and at most
- * two moves the same way in a row. Weak spots (and `focus`, for *Practice missed notes*) come up more often.
+ * A round of notes (§3.5): drawn from the allowed positions, spelled in the key, with no immediate repeats (of two
+ * positions, at most twice in a row) and at most two moves the same way in a row. Weak spots (and `focus`, for
+ * *Practice missed notes*) come up more often.
  */
 export function generateRound(s: NoteSettings, seed: number, weak: WeakSpots = {}, focus: string[] = []): RoundNote[] {
   const rng = new Rng(seed);
@@ -264,32 +265,51 @@ export function generateRound(s: NoteSettings, seed: number, weak: WeakSpots = {
   const focusSet = new Set(focus);
   const notes: RoundNote[] = [];
   let prev: Step | null = null;
+  // How many times in a row `prev` has come.
+  let again = 0;
   let dirs: number[] = [];
   for (let i = 0; i < total; i++) {
     const clef = clefs[i];
     const key = keys[i];
     if (i > 0 && clefs[i - 1] !== clef) {
       prev = null;
+      again = 0;
       dirs = [];
     }
     const all = roundSteps(s, clef);
+    // Two positions only (sol and mi, path unit 3): never repeating, they would take strict turns (E G E G …), which
+    // can be answered without reading or hearing a note, and the stressed one could come no more often. There a note
+    // may come twice in a row, never three times.
+    const repeat = all.length === 2 && again < 2 ? null : prev;
     const sameWay = dirs.length >= 2 && dirs[dirs.length - 1] === dirs[dirs.length - 2] ? dirs[dirs.length - 1] : 0;
-    let options = all.filter((st) => st !== prev && !(prev !== null && sameWay !== 0 && Math.sign(st - prev) === sameWay));
-    if (options.length === 0) options = all.filter((st) => st !== prev);
+    let options = all.filter((st) => st !== repeat && !(prev !== null && sameWay !== 0 && Math.sign(st - prev) === sameWay));
+    if (options.length === 0) options = all.filter((st) => st !== repeat);
     // One position only (the first lesson's sol): it comes again.
     if (options.length === 0) options = all;
     const weights = options.map((st) => {
       const id = noteId(clef, st);
       return (1 + Math.min(MAX_WEAK, weak[id] ?? 0)) * (focusSet.has(id) ? 8 : 1) * (s.stress.includes(st) ? STRESS_WEIGHT : 1);
     });
-    const step = options[Math.max(0, rng.weighted(weights))];
+    const step: Step = options[Math.max(0, rng.weighted(weights))];
     if (prev !== null) dirs.push(Math.sign(step - prev));
+    again = step === prev ? again + 1 : 1;
     prev = step;
     const alter = pickAlter(rng, key, letterOf(step), s.extras);
     const input = s.input === 'mixed' ? (Math.floor(i / INPUT_RUN) % 2 === 0 ? 'names' : 'piano') : s.input;
     notes.push({ clef, key, step, alter, sign: signShown(key, { step, alter }), input, task: noteTask(s, i) });
   }
   return notes;
+}
+
+/** The notes on one staff: note `i`'s run of one clef and key, in pages of `size` (a new clef or key: a new staff). */
+export function staffPage(notes: RoundNote[], i: number, size: number): { from: number; to: number } {
+  const same = (a: RoundNote, b: RoundNote): boolean => a.clef === b.clef && a.key === b.key;
+  let start = i;
+  while (start > 0 && same(notes[start - 1], notes[i])) start--;
+  let end = i + 1;
+  while (end < notes.length && same(notes[end], notes[i])) end++;
+  const from = start + Math.floor((i - start) / size) * size;
+  return { from, to: Math.min(end, from + size) };
 }
 
 // --- Answers ---------------------------------------------------------------------------------------------------

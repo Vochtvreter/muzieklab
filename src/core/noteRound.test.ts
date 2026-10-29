@@ -304,6 +304,19 @@ describe('path lessons: some notes, and read, write and hear', () => {
     expect(one.every((n) => n.step === 32)).toBe(true);
   });
 
+  it('mixes the two notes of a two-note lesson instead of taking turns, and brings the new one up more often', () => {
+    // Sol and mi (path unit 3): never repeating, they took strict turns (E G E G …), so every note after the first
+    // could be answered without reading or hearing it, and the stressed mi came no more often than sol.
+    const two: NoteSettings = { ...s, only: [32, 30], stress: [30], count: 10 };
+    const rounds = Array.from({ length: 40 }, (_, i) => generateRound(two, i + 1).map((n) => n.step));
+    const turns = (r: number[]): boolean => r.every((x, i) => i === 0 || x !== r[i - 1]);
+    expect(rounds.filter(turns).length).toBeLessThan(rounds.length / 4);
+    // Twice in a row, never three times.
+    for (const r of rounds) for (let i = 2; i < r.length; i++) expect(r[i] === r[i - 1] && r[i] === r[i - 2]).toBe(false);
+    const all = rounds.flat();
+    expect(all.filter((x) => x === 30).length / all.length).toBeGreaterThan(0.55);
+  });
+
   it('brings the new note up more often', () => {
     // No note comes twice in a row, so with three notes even a stressed one is at most every other note.
     const count = (x: NoteSettings): number => [1, 2, 3, 4, 5].reduce((n, seed) => n + generateRound(x, seed).filter((y) => y.step === 31).length, 0);

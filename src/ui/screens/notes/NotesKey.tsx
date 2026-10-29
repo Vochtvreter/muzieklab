@@ -13,7 +13,7 @@ import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
 import { keySignsAria, letterName, majorName, minorName } from '../../lib/noteText';
-import { Link, navigate, type Route } from '../../router';
+import { leave, Link, type Route } from '../../router';
 import { useStore } from '../../store';
 
 export function NotesKey(): JSX.Element {
@@ -24,7 +24,8 @@ export function NotesKey(): JSX.Element {
     <KeyScreen keys={roundKeys(s)} mix={s.mixKeys && s.keys.length > 1} back="/notes" backQuery={carry} mixText={t('notes.keys.mixText')}
       onUse={(keys, mix) => {
         dispatch({ type: 'noteSettings', settings: { ...s, keys, mixKeys: mix } });
-        navigate('/notes', { replace: true, query: carry });
+        // Back to the setup's own place in the history: one Back from there leaves it.
+        leave('/notes', carry);
       }} />
   );
 }

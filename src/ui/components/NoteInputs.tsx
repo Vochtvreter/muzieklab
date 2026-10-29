@@ -3,7 +3,7 @@
  * A–G with the do re mi name in small type), and the one-octave piano (7 white, 5 black keys, optional labels).
  * Desktop shows each control's computer key.
  */
-import type { CSSProperties } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
 import { BLACK_KEYS, LETTERS, WHITE_KEYS, type Alter, type Letter } from '../../core/api';
 import { t } from '../../i18n';
 import { letterName, signGlyph, signKey, signWord, solfegeName, spokenName, type NameSystem } from '../lib/noteText';
@@ -26,19 +26,32 @@ interface SignRowProps {
   kbd?: boolean;
 }
 
+/** The arrow keys that go to the next sign (1) or the one before (−1). */
+const ARROWS: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+
 /** ♭ · ♮ · ♯, picked before the name (♮, no sign, is the default). A radio group with a sliding highlight. */
 export function SignRow({ value, onChange, disabled, kbd }: SignRowProps): JSX.Element {
   const i = SIGNS.indexOf(value);
   const blob = { '--i': i } as CSSProperties;
+  // As a radio group does (a screen reader says so): one Tab stop, on the sign picked, and the arrow keys pick and
+  // focus the next sign, round the ends, Home and End the first and last. Alt with an arrow stays the browser's Back.
+  const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
+    if (disabled || e.altKey || e.ctrlKey || e.metaKey) return;
+    const to = e.key === 'Home' ? 0 : e.key === 'End' ? SIGNS.length - 1 : e.key in ARROWS ? (i + ARROWS[e.key] + SIGNS.length) % SIGNS.length : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    onChange(SIGNS[to]);
+    e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')[to]?.focus();
+  };
   return (
     <div className="sign-row">
       <span className="label sign-row-label" aria-hidden="true">
         {t('notes.play.signLabel')}
       </span>
-      <div role="radiogroup" aria-label={t('notes.play.signGroup')} className="sign-group" style={blob}>
+      <div role="radiogroup" aria-label={t('notes.play.signGroup')} className="sign-group" style={blob} onKeyDown={onKey}>
         {SIGNS.map((a) => (
           <button key={a} type="button" role="radio" aria-checked={a === value} aria-label={signWord(a)} disabled={disabled}
-            className={'sign-btn' + (a === value ? ' is-on' : '')} onClick={() => onChange(a)}>
+            tabIndex={a === value ? 0 : -1} className={'sign-btn' + (a === value ? ' is-on' : '')} onClick={() => onChange(a)}>
             <span className="sign-glyph">{signGlyph(a)}</span>
             <span className="sign-word">{t('notes.signButton.' + signKey(a))}</span>
             {kbd && <kbd className="kbd kbd--cap">{SIGN_KBD[a]}</kbd>}

@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { hashQuery, leave, navigate, parseHash, routeParam } from './router';
+import { hashQuery, leave, Link, navigate, openedFrom, parseHash, routeParam } from './router';
 
 const TOKEN = 'q3Vb9JzR1kLx7Pm2Ws5Tn8Yc4Hd6Fg0Ae-Ui_Oj3Ks';
 const ID = '6718f0c2a1b2c3d4e5f60001';
@@ -122,5 +124,40 @@ describe('leave', () => {
     expect(back).not.toHaveBeenCalled();
     expect(window.location.hash).toBe('#/');
     expect(window.history.length).toBe(length);
+  });
+});
+
+describe('a Key screen and back', () => {
+  beforeEach(() => window.history.replaceState(null, '', '#/notes'));
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('opens the Key screen from a plain click on the setup\'s link with navigate(), so Use can go back to the setup', () => {
+    render(createElement(Link, { to: '/notes/key', query: 'from=8', remember: true }, 'Key'));
+    window.history.replaceState(null, '', '#/notes?from=8');
+    fireEvent.click(screen.getByRole('link', { name: 'Key' }));
+    expect(window.location.hash).toBe('#/notes/key?from=8');
+    expect(openedFrom('/notes', 'from=8')).toBe(true);
+    // Use swapped the Key screen for a second copy of the setup, so the first Back stayed on it.
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+    leave('/notes', 'from=8');
+    expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('leaves a click for a new tab or window to the browser', () => {
+    render(createElement(Link, { to: '/notes/key', remember: true }, 'Key'));
+    const link = screen.getByRole('link', { name: 'Key' });
+    for (const opts of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) expect(fireEvent.click(link, opts)).toBe(true);
+    expect(window.location.hash).toBe('#/notes');
+  });
+
+  it('knows a round was started from a setup opened from Learn, and not from the chapter', () => {
+    window.history.replaceState(null, '', '#/notes?from=8');
+    navigate('/notes/play', { query: 'from=8' });
+    expect(openedFrom('/notes', 'from=8')).toBe(true);
+    expect(openedFrom('/notes')).toBe(false);
+    expect(openedFrom('/learn/8')).toBe(false);
   });
 });

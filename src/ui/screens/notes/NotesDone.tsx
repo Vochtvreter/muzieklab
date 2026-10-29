@@ -302,10 +302,11 @@ const chipNote = (c: NoteChip): PitchNote => ({ step: c.step, sign: c.alter === 
 
 function Needs({ r, system }: { r: RoundResult; system: NameSystem }): JSX.Element {
   // A note right only with a hint is not right (the score), and Practice missed notes drills it: it is listed too.
+  // Every note, not the first six: Practice missed notes drills them all (the rows wrap, and the column scrolls).
   const groups = [
-    { key: 'missed', label: t('notes.done.missed'), chips: r.missed.slice(0, 6) },
-    { key: 'hinted', label: t('notes.done.hintedGroup'), chips: r.hintedNotes.slice(0, 6) },
-    { key: 'slow', label: t('notes.done.slow'), chips: r.slow.slice(0, 6) },
+    { key: 'missed', label: t('notes.done.missed'), chips: r.missed },
+    { key: 'hinted', label: t('notes.done.hintedGroup'), chips: r.hintedNotes },
+    { key: 'slow', label: t('notes.done.slow'), chips: r.slow },
   ].filter((g) => g.chips.length > 0);
   // One staff height for every chip: room (in staff spaces) for the note furthest off the staff, and for a clef or sign
   // that reaches further.

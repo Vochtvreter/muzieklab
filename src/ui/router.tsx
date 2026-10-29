@@ -7,7 +7,7 @@
  * #/account, #/privacy, and the admin screens #/admin, #/admin/invite, #/admin/account/<id> and #/admin/deleted.
  * Feedback reports (docs/FEEDBACK-LOOP.md): #/admin/feedback and one report, #/admin/feedback/<id>.
  */
-import { useSyncExternalStore, type AnchorHTMLAttributes } from 'react';
+import { useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent } from 'react';
 import type { SkillId } from '../game/storage';
 
 export type Route =
@@ -152,22 +152,41 @@ export function navigate(to: Route, opts: { replace?: boolean; query?: string } 
   }
 }
 
+/** Whether the current screen was opened with navigate() from this address. An address without a hash is Home. */
+export function openedFrom(to: Route, query?: string): boolean {
+  const from = (window.history.state as Entry | null)?.from;
+  return from !== undefined && (from || '#/') === '#' + to + (query ? '?' + query : '');
+}
+
 /**
  * Quit: leaves an exercise for `to`. When the exercise was opened from there (Learn's section, the Read notes setup),
  * it goes back to it; swapping the exercise for it would leave the same address twice in a row in the history, and the
  * browser's Back would then seem to do nothing. Otherwise the exercise is swapped for `to`, so Back does not walk into
- * it again. An address without a hash is Home.
+ * it again. A Key screen's Use leaves it for its setup the same way.
  */
 export function leave(to: Route, query?: string): void {
-  const hash = '#' + to + (query ? '?' + query : '');
-  const from = (window.history.state as Entry | null)?.from;
-  if (from !== undefined && (from || '#/') === hash) window.history.back();
+  if (openedFrom(to, query)) window.history.back();
   else navigate(to, { replace: true, query });
 }
 
-type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { to: Route; query?: string };
+type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
+  to: Route;
+  query?: string;
+  /**
+   * A plain click opens the screen with navigate(), so the screen keeps where it was opened from and leave() can go
+   * back there (a setup's way to its Key screen). A new tab or window (a middle click, or with Ctrl, Cmd, Shift or Alt)
+   * opens the link as it is.
+   */
+  remember?: boolean;
+};
 
 /** A real link (<a href="#/…">), so it works with the keyboard, middle-click and screen readers. */
-export function Link({ to, query, ...rest }: LinkProps): JSX.Element {
-  return <a href={'#' + to + (query ? '?' + query : '')} {...rest} />;
+export function Link({ to, query, remember, onClick, ...rest }: LinkProps): JSX.Element {
+  const click = (e: MouseEvent<HTMLAnchorElement>): void => {
+    onClick?.(e);
+    if (!remember || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    navigate(to, { query });
+  };
+  return <a href={'#' + to + (query ? '?' + query : '')} onClick={remember ? click : onClick} {...rest} />;
 }

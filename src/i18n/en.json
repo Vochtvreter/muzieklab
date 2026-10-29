@@ -99,7 +99,7 @@
     "scalesTile": "Scales",
     "scalesTileSub": "All the keys",
     "notesPreview": "The notes so far: {names}",
-    "notesPreviewRound": "A few notes from the lesson"
+    "notesPreviewRound": "A few notes from the lesson: {clef}, {key}"
   },
   "tile": {
     "next": "next lesson, no stars yet",

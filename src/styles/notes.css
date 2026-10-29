@@ -617,9 +617,12 @@
   background: var(--miss-soft);
   color: var(--miss-ink);
 }
-/* --good and --miss turn light in dark: the label takes the ink for a filled accent, white in light and dark in dark. */
+/*
+ * The right key is filled with the green for text, --good-ink: white on --good is only 4.3:1. The fills turn light in
+ * dark, so the label takes the ink for a filled accent, white in light and dark in dark.
+ */
 .piano-black.is-right {
-  background: var(--good);
+  background: var(--good-ink);
   color: var(--on-fill);
 }
 .piano-black.is-wrong {

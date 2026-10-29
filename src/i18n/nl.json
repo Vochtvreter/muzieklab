@@ -99,7 +99,7 @@
     "scalesTile": "Toonladders",
     "scalesTileSub": "Alle toonsoorten",
     "notesPreview": "De noten tot nu toe: {names}",
-    "notesPreviewRound": "Een paar noten uit de les"
+    "notesPreviewRound": "Een paar noten uit de les: {clef}, {key}"
   },
   "tile": {
     "next": "volgende les, nog geen sterren",

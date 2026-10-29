@@ -1,6 +1,7 @@
-/** How the Learning path looks for a given progress: unit states, the lesson tiles and the rhythm previews. Pure. */
-import type { NotatedBar, Settings } from '../../core/api';
+/** How the Learning path looks for a given progress: unit states, the lesson tiles and Home's previews. Pure. */
+import { generateRound, staffPage, type Clef, type KeyId, type NotatedBar, type RoundNote, type Settings } from '../../core/api';
 import { barFigures, introId, lessonIntros } from '../../game/intro';
+import { noteLessonSettings } from '../../game/notesPath';
 import { ALL_LESSONS, findLesson, lessonSettings } from '../../game/path';
 import { starsOf, unitStatesIn, type LessonOutcome } from '../../game/track';
 import { findPathLesson, LEARNING_PATH, PATH_UNITS, pathNext, pathOutcome, type PathLesson, type PathUnit } from '../../game/tracks';
@@ -121,6 +122,19 @@ function makeLessonPreview(lessonId: string): { run: Run; bar: number } | null {
     }
   }
   return best && { run: best.run, bar: best.bar };
+}
+
+/**
+ * The Home preview of a Read notes or Keys lesson: the first notes of a round (the same every visit), up to `count`,
+ * on the staff they are read on. Only the round's first clef and key, as Play draws a new staff for a new one (18.2
+ * starts in bass clef, 26.3 in E♭ major). Null for other lessons.
+ */
+export function noteLessonPreview(lesson: PathLesson, count: number): { clef: Clef; key: KeyId; notes: RoundNote[] } | null {
+  if (lesson.track !== 'notes' && lesson.track !== 'keys') return null;
+  const settings = noteLessonSettings(lesson.track, lesson.ref);
+  if (!settings) return null;
+  const round = generateRound(settings, seedFromString(lesson.key));
+  return { clef: round[0].clef, key: round[0].key, notes: round.slice(0, staffPage(round, 0, count).to) };
 }
 
 /** What a finished rhythm lesson (by its rhythm id) means for the Learning path, for Results (§6.4): see outcomeIn (track.ts). */

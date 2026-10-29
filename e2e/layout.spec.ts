@@ -599,6 +599,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('home: a note lesson that starts in another clef and key shows its notes on their own staff', async ({ page }) => {
+      known(name, 'home-note-preview');
+      // Lesson 25.3 reads B♭ and E♭ major in both clefs, and its round starts with bass notes in E♭: the card drew them
+      // under a treble staff in B♭, the lesson's first clef and key.
+      await seed(page, { progress: { lessons: pathUpTo('25.2') }, prefs: { seenHowTo: true, seenHold: true } });
+      await page.goto('./');
+      await expect(page.getByText('Continue · Unit 25 · Lesson 3 of 5', { exact: true })).toBeVisible();
+      await expect(page.locator('.continue-card').getByRole('img', { name: 'A few notes from the lesson: bass clef, E♭ major' })).toBeVisible();
+      await expectStavesFit(page);
+      await expectNoSideScroll(page);
+    });
+
     test('path: a unit of four-star lessons keeps its stars in its column', async ({ page }) => {
       known(name, 'path-stars');
       // Four stars (the diamond, or the 4th star) are wider than three: a unit's five do not fit on one line at 320 px.
@@ -1726,6 +1738,37 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(page.locator('.wide-side').getByRole('button', { name: 'Practice missed notes' }));
         await expectNoOverlap(page.locator('.wide-main'), page.locator('.wide-side'));
       }
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: round done lists every note missed, its chips wrapping inside the card', async ({ page }) => {
+      known(name, 'notes-done-many');
+      // Twenty notes, each named a letter too high: more notes missed than the six the card once showed, while Practice
+      // missed notes drilled them all.
+      const settings = { ...DEFAULT_NOTE_SETTINGS, count: 20, playNotes: false };
+      const seed = 7;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      const notes = generateRound(settings, seed);
+      const letters = 'ABCDEFG';
+      const feedback = page.locator('.nfeedback');
+      for (const [i, n] of notes.entries()) {
+        await page.keyboard.press(letters[(letters.indexOf(letterOf(n.step)) + 1) % 7].toLowerCase());
+        await expect(feedback).toHaveText(/^That was /);
+        await page.keyboard.press('Enter');
+        if (i < notes.length - 1) await expect(feedback).not.toHaveText(/^That was /);
+      }
+      await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+      const missed = new Set(notes.map((n) => `${n.step}:${n.alter}`)).size;
+      expect(missed).toBeGreaterThan(6);
+      const list = page.getByRole('list', { name: 'Missed' });
+      await expect(list.getByRole('listitem')).toHaveCount(missed);
+      const card = (await page.locator('.ncard').filter({ has: list }).boundingBox())!;
+      for (const chip of await list.getByRole('listitem').all()) {
+        const b = (await chip.boundingBox())!;
+        expect(b.x + b.width, 'a chip inside its card').toBeLessThanOrEqual(card.x + card.width + 0.5);
+      }
+      await expectClickable(page.getByRole('button', { name: 'Practice missed notes' }));
       await expectNoSideScroll(page);
     });
 
