@@ -134,3 +134,53 @@ describe('audio engine coming back from the background', () => {
     expect(FakeContext.made[0].closed).toBe(true);
   });
 });
+
+// A browser can refuse a context (privacy hardening, no audio device, too many contexts): its constructor throws.
+describe('audio engine whose AudioContext cannot be created', () => {
+  const meter = { id: '4/4', barTicks: 192, beatTicks: 48, beatsPerBar: 4, beamGroups: [48, 48, 48, 48], weightAt: () => 0 } as Meter;
+  const timeline: Timeline = { notes: [], totalSeconds: 2, beatSeconds: 0.5 };
+  let made = 0;
+  class Refused {
+    constructor() {
+      made++;
+      throw new DOMException('The AudioContext could not be created', 'NotSupportedError');
+    }
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] });
+    vi.resetModules();
+    made = 0;
+    vi.stubGlobal('AudioContext', Refused);
+    vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible' }));
+    vi.stubGlobal('window', new EventTarget());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('runs silently on the performance clock, as without Web Audio, and tries again next time', async () => {
+    const engine = (await import('./engine')).getAudioEngine();
+    await expect(engine.unlock()).resolves.toBeUndefined();
+    const seen: number[] = [];
+    const off = engine.onBeat((b) => seen.push(b.index));
+    const t0 = engine.now();
+    let started: { exerciseStart: number } | null = null;
+    expect(() => {
+      started = engine.start({ timeline, meter, tempo: 120, countInBars: 1, metronome: 'on', playRhythm: true, leadIn: 0.2 });
+    }).not.toThrow();
+    expect(started!.exerciseStart).toBeCloseTo(t0 + 0.2 + 2);
+    vi.advanceTimersByTime(5000);
+    expect(seen).toEqual([-4, -3, -2, -1, 0, 1, 2, 3]);
+    off();
+    expect(() => engine.clicks(4, 60)).not.toThrow();
+    expect(() => engine.pitches([60, 64])).not.toThrow();
+    expect(() => engine.tapDown()).not.toThrow();
+    engine.tapUp();
+    engine.stop();
+    expect(engine.audioState()).toBe('none');
+    // Each sound asks again, so a refusal that passes (a device plugged in) brings the sound back.
+    expect(made).toBeGreaterThan(1);
+  });
+});

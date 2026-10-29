@@ -114,9 +114,12 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
       what each lesson brings that no earlier lesson used (1.2 the half note, 2.2 the quarter rest, 3.1 three-four,
       4.1 the eighth, 6.1 the tie, 7.1 the dot …); lesson 1.1 brings nothing, because How to play covers it. Every
       lesson run (Continue, the Path, *Next lesson*, *Next exercise*) has an exercise that shows all of what its lesson
-      brings: the start tries new seeds until the spelled exercise has each of them (`makeLessonRun` in `ui/store.tsx`,
-      `exerciseHas` in `game/intro.ts`; up to 200 seeds, because 3.4's whole rest is in only about 1 exercise in 22,
-      where most lessons need a few), and keeps the last one tried if none has. The sheet lists only what the
+      brings, and what it is about though nothing in it is new: what its title names (its `preview` in `game/path.ts`:
+      7.4's dotted quarter, which the generator leaves out when a dotted half is the exercise's dotted value) and the
+      dot or the tie of its unit (6.2 *Ties with eighths*). The start tries new seeds until the spelled exercise has
+      each of them (`makeLessonRun` in `ui/store.tsx`, `exerciseHas` in `game/intro.ts`; up to 200 seeds, because 3.4's
+      whole rest is in only about 1 exercise in 22, where most lessons need a few), and keeps the last one tried if
+      none has. The sheet lists only what the
       exercise shows, so it never names a symbol the staff does not have (nor saves it as shown). What was shown is
       kept in `prefs.seenIntros`. The sheet has the eyebrow *New in this lesson* and the lesson title as its heading.
       Each symbol gets a 72 px accent-soft tile with its glyph (Noto Music, as the Setup buttons draw it; a
@@ -907,7 +910,10 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   2 s and has the code in its title. On tablet and desktop it is the third ghost button, after Listen and Practice
   settings (in the side panel since 0.13.0, on a row of its own when the panel is narrow); on a phone (< 700 px) that
   row has no room, so it is a small muted link (13 px, 44 px target) at the very
-  bottom, under the main buttons. A daily challenge's date line (*Oct 22*) sits under the title, as on Round done; it
+  bottom, under the main buttons. Where the browser refuses the clipboard (a site permission, some in-app browsers),
+  it copies with the browser's copy command instead; where that fails too, the code shows on a line of its own under
+  it, in a read-only field, selected, with *Selected. Copy it with your device's copy command.*, as the Copy field does
+  (§9.2). A daily challenge's date line (*Oct 22*) sits under the title, as on Round done; it
   no longer says *same for everyone*, as the daily follows the player's unit (§3.4).
 - After a lesson (since 0.8.0), a badge under the score says what the run means for the Learning Path, and the main
   button follows it:
@@ -1034,9 +1040,10 @@ How write and hear work is in §3.5, *Write it, hear it*.
 - In Dutch a path unit is a *blok* (*Blok 3 · Les 1 van 5*, *Blok 1 van 8*, *Leerpad, blokken 1, 3, 5*), so it is not
   confused with a Learn chapter, which stays a *hoofdstuk* (since 0.10.0, §11).
 - A lesson round counts every note: skipping to the summary counts the notes left as missed, so a lesson cannot be
-  passed on its first few notes. Play names the lesson; Quit goes back to the Path. Results and Round done name the
-  lesson and its unit, show what the run did for the path (§6.4) and offer Next lesson once the lesson has two stars;
-  Next lesson starts the next lesson of either kind.
+  passed on its first few notes. Play names the lesson; Quit goes back to the Path, also for a lesson started from
+  Home's Continue card, and so do Results' and Round done's back arrows (*Back to the path*). Results and Round done
+  name the lesson and its unit, show what the run did for the path (§6.4) and offer Next lesson once the lesson has
+  two stars; Next lesson starts the next lesson of either kind.
 - Home's Continue card follows the Learning path (since 0.11.0): a rhythm lesson shows a bar of its rhythm, a First
   notes lesson the notes learned so far with their names (the new one highlighted), and a later note lesson a few
   notes of its round. The daily challenge follows the highest open rhythm unit (§3.4).
@@ -1340,6 +1347,9 @@ Built in v0.2 (dark theme was already in the MVP):
   code is still later. Since 0.10.0 Results no longer shows the code itself, only a quiet *Copy code* (§6.4).
 - **Echo mode:** a Tap · Echo switch on Practice setup. Play first shows a listen card (two plays), then the normal
   Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
+  The beat counter is the one Settings picks in both phases (the pendulum with the analog look). A listen cut off
+  before its end (the app sent to the background, the tab hidden, the audio suspended or interrupted) stops and does
+  not count, as the tapping pauses then.
 
 **v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Two things
 change in the app:
@@ -1482,6 +1492,12 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 - Setup's tempo value (*112 BPM · Moderato*) is never broken in two. Under about 345 px wide it does not fit beside
   *Tempo*, so it takes a line of its own under it, right aligned. The *Bars* and *Tempo* labels stay level at the top,
   with the stepper and the slider level below them.
+- Setup's *More options* under 370 px wide put each label (*Metronome*, *Count-in*, *Density*, *Rest amount*) on a
+  line of its own over its segmented control, which takes the width, as Settings' rows do under 390 px: beside the
+  238 px control a label had 30 px at 320 px, and the control drew over it.
+- Home's daily challenge card under 375 px wide puts its button on a line of its own under the date and the text, the
+  card's width, as on desktop: once the daily is done, *Play again* (nl *Nog een keer*) left the text at 320 px a
+  column narrower than its words.
 - **Phone browsers** (since 0.10.0). In Safari or Chrome the toolbars take about 180 px of a phone's screen, so the
   sizes to check include the visible area: 390 × 664 (an iPhone 14 in Safari) and 375 × 553 (an iPhone SE in Safari),
   `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens
@@ -1584,9 +1600,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     width (four bars a row; three where a busy bar's notes do not fit, see the rhythm staff above); the Count and Combo
     cards (the pendulum in the Count card with the analog look); the judgement; a big pad that fills the rest of the
     height (its ring grows with it, up to 230 px); Skip to results. Echo's tap-back phase is the same.
-  - Echo's listen phase, on tablet like Play with the listen card where the staff goes, the Count and Combo cards, *Listen
-    first* and the pad off; on desktop Play's desktop layout with the listen card in the staff card and a key cap that is
-    off. Its header has help and Quit, no Pause.
+  - Echo's listen phase, on tablet like Play with the listen card where the staff goes, the Count and Combo cards (the
+    pendulum in the Count card with the analog look, as on Play), *Listen first* and the pad off; on desktop Play's
+    desktop layout with the listen card in the staff card and a key cap that is off. Its header has help and Quit, no
+    Pause.
   - Read notes (App design canvas, NoteTablet): the exercise header; the eyebrow, the question and the correct count; a
     big staff card (six bars, not the board's eight: eight leave no room for a sign before the last note); the feedback;
     the answer card with the input switch, the sign row, 200 px name keys or the piano, and Hint / Next note; Skip to
@@ -1755,7 +1772,7 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
   (§6.1). The browser's Back from the screen the link opened returns to the section too: the link first sets the
   chapter's own place in the history to it (`#/learn/8?s=8.3`). Quit then goes back to that place instead of adding
   the section again, so one Back after Quit leaves the chapter. Every exercise's Quit does this when it returns to the
-  screen it was opened from: Read notes to its setup, Scales to the Scales tab, Play to Home.
+  screen it was opened from: Read notes to its setup, Scales to the Scales tab, Play to Home, a lesson to the Path.
 - A practice link opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift) starts the same practice
   there: its address, `#/learn/practice?s=8.3`, sets up the section's practice in its own place. A plain click starts
   it in the same tab. No tap led to the new tab, so the browser does not let it make sound yet: a rhythm practice

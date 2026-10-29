@@ -70,21 +70,24 @@ export function introsOf(lessonIds: Iterable<string>): string[] {
   return [...ids];
 }
 
-/** The intro ids of what an exercise's staff shows: its time signature, note and rest values, dots, ties, triplets. */
+/**
+ * The intro ids of what an exercise's staff shows: its time signature, note and rest values, dots, ties, triplets;
+ * and each dotted value, as a lesson's `preview` names it (path.ts: 'dotted:quarter').
+ */
 function shownIds(exercise: Exercise): Set<string> {
   const ids = new Set<string>(['meter:' + exercise.meter.id]);
   for (const bar of spellExercise(exercise)) {
     for (const s of bar.symbols) {
       // A whole-bar rest is drawn as the whole rest; a triplet's notes count as the triplet, not as eighths.
       ids.add(s.tuplet ? 'triplets' : s.kind + ':' + s.value);
-      if (s.dots) ids.add('dotted');
+      if (s.dots) ids.add('dotted').add('dotted:' + s.value);
       if (s.tieToNext) ids.add('ties');
     }
   }
   return ids;
 }
 
-/** Whether an exercise's staff shows every symbol given (intro ids), e.g. everything its lesson introduces. */
+/** Whether an exercise's staff shows every symbol given (intro ids, 'dotted:quarter'), e.g. all its lesson is about. */
 export function exerciseHas(exercise: Exercise, ids: readonly string[]): boolean {
   if (ids.length === 0) return true;
   const shown = shownIds(exercise);

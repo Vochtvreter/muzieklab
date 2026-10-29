@@ -40,7 +40,7 @@ import { dailyTier } from '../game/daily';
 import { mergePrefs, mergeSynced, sameValue, type Synced } from '../game/merge';
 import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
-import { ALL_LESSONS, lessonSettings, recordLessonResult } from '../game/path';
+import { ALL_LESSONS, findLesson, lessonSettings, recordLessonResult } from '../game/path';
 import { passSkills } from '../game/skills';
 import { markSeen, recordNotes, recordRhythm, recordScales, SCALE_CAP_S, type EchoPlays } from '../game/stats';
 import { pathLessonOf, pathLessonOpen } from '../game/tracks';
@@ -664,17 +664,28 @@ export function makeRun(settings: Settings, seed: number, lessonId: string | nul
 }
 
 /**
- * Seeds a lesson start tries for an exercise with everything the lesson introduces. Most lessons find one in the first
- * few tries; 3.4's whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
+ * Seeds a lesson start tries for an exercise with all its lesson is about. Most lessons find one in the first few
+ * tries; 3.4's whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
  */
 const INTRO_TRIES = 200;
 
 /**
- * A lesson run whose exercise shows every symbol the lesson introduces (game/intro.ts), so the intro sheet never names
- * one the staff does not have: from `seed`, other seeds are tried until the exercise has them all (else the last one).
+ * What a lesson's exercise must show: every symbol the lesson introduces (game/intro.ts), so the intro sheet never
+ * names one the staff does not have; what its title names, its `preview` (path.ts: 7.4's dotted quarter, where the
+ * generator takes any dotted value, often the dotted half); and the dot or the tie its unit is about, also in a lesson
+ * that adds no symbol (6.2 Ties with eighths).
+ */
+function lessonShows(settings: Settings, lessonId: string): string[] {
+  const flags = (['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k]);
+  return [...new Set([...lessonIntros(lessonId).map(introId), ...(findLesson(lessonId)?.lesson.preview ?? []), ...flags])];
+}
+
+/**
+ * A lesson run whose exercise shows all its lesson is about (lessonShows): from `seed`, other seeds are tried until the
+ * exercise has it all (else the last one).
  */
 export function makeLessonRun(settings: Settings, seed: number, lessonId: string): Run | null {
-  const ids = lessonIntros(lessonId).map(introId);
+  const ids = lessonShows(settings, lessonId);
   const seeds = new Rng(seed);
   let run = makeRun(settings, seed, lessonId);
   for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(settings, seeds.int(0x7fffffff), lessonId);

@@ -424,6 +424,7 @@
     "dottedQuarter": "dotted quarter rest",
     "eighth": "eighth rest",
     "dottedEighth": "dotted eighth rest",
+    "tripletEighth": "triplet eighth rest",
     "sixteenth": "sixteenth rest"
   },
   "notation": {
@@ -617,7 +618,9 @@
     "copyCode": "Copy code",
     "copied": "Copied",
     "copyTitle": "Copy the exercise code: {code}",
+    "code": "Exercise code",
     "backHome": "Back to home",
+    "lessonBack": "Back to the path",
     "accuracy": "{value}%",
     "summary": "accuracy",
     "streakKept": "Streak kept · {count, plural, one {# day} other {# days}}",
@@ -773,7 +776,7 @@
     "resultLate": "Measured over {count} taps. Your taps reach Muzieklab {ms} ms after the click, so every score is shifted by that much.",
     "resultEarly": "Measured over {count} taps. Your taps reach Muzieklab {ms} ms before the click, so every score is shifted by that much.",
     "resultZero": "Measured over {count} taps. Your taps land right on the click, so no shift is needed.",
-    "tooFew": "Only {count, plural, one {# tap} other {# taps}} landed near a click. Try again and tap on every click.",
+    "tooFew": "{count, plural, =0 {No taps} one {Only # tap} other {Only # taps}} landed near a click. Try again and tap on every click.",
     "save": "Save",
     "again": "Try again"
   },

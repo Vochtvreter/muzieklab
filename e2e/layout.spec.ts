@@ -496,6 +496,38 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('home: the daily challenge card once it is played, in English and Dutch: every word inside its column', async ({ page }) => {
+      known(name, 'home-daily-done');
+      await page.clock.setFixedTime(new Date('2026-10-27T10:00:00'));
+      const progress = { lessons: {}, practiceDays: ['2026-10-27'], daily: { day: '2026-10-27', tier: 1, stars: 2, accuracy: 91 } };
+      for (const [language, again] of [['en', 'Play again'], ['nl', 'Nog een keer']] as const) {
+        await seed(page, { prefs: { language }, progress });
+        await page.goto('./');
+        // The longer label: at 320 px it left the text a column of 62 px (40 px in Dutch), narrower than its words.
+        await expect(page.locator('.daily-btn')).toHaveText(again);
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const past = await page.locator('.daily-text').evaluate((col) => {
+          const right = col.getBoundingClientRect().right;
+          const words: string[] = [];
+          const walk = document.createTreeWalker(col, NodeFilter.SHOW_TEXT);
+          for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+            for (const m of (n.textContent ?? '').matchAll(/\S+/g)) {
+              const r = document.createRange();
+              r.setStart(n, m.index!);
+              r.setEnd(n, m.index! + m[0].length);
+              if (r.getBoundingClientRect().right > right + 1) words.push(m[0]);
+            }
+          }
+          return words;
+        });
+        expect(past, `${language}: words past the text column`).toEqual([]);
+        await expectNoOverlap(page.locator('.daily-text'), page.locator('.daily-btn'));
+        await expectNotSqueezed(page.locator('.daily-card'));
+        await expectClickable(page.locator('.daily-btn'));
+        await expectNoSideScroll(page);
+      }
+    });
+
     test('home and path: lesson stars, with the diamond as four diamond stars', async ({ page }) => {
       known(name, 'home-stars');
       // Sol's unit passed; rhythm unit 1 (the path's unit 2) with a diamond, a 4th star and two stars.
@@ -582,6 +614,33 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: next }).click();
       }
       await expectNoSideScroll(page);
+    });
+
+    test('setup: More options keeps each label whole, clear of its control, in English and Dutch', async ({ page }) => {
+      known(name, 'setup-more');
+      for (const language of ['en', 'nl']) {
+        await seed(page, { prefs: { language } });
+        await page.goto('./#/setup');
+        // Open, or still open from the round before.
+        const toggle = page.locator('.more-toggle');
+        if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+        await expect(page.locator('#setup-more')).toHaveCSS('opacity', '1');
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        // At 320 px the labels were squeezed to 30 px beside the 238 px controls, which painted over them (Metron…).
+        const covered = await page.locator('.more-row').evaluateAll((rows) =>
+          rows.flatMap((row) => {
+            const label = row.querySelector('.more-label')!;
+            const text = document.createRange();
+            text.selectNodeContents(label);
+            const [t, c] = [text.getBoundingClientRect(), row.querySelector('.seg')!.getBoundingClientRect()];
+            const over = t.right > c.left + 0.5 && t.left < c.right && t.bottom > c.top && t.top < c.bottom;
+            return label.scrollWidth > label.clientWidth + 1 || over ? [label.textContent] : [];
+          }),
+        );
+        expect(covered, `${language}: labels cut off or under their controls`).toEqual([]);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
     });
 
     test('setup: the tempo value stays whole, and the Bars and Tempo labels level', async ({ page }) => {
@@ -926,6 +985,35 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.wide')).toHaveCount(0);
       }
       await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('results: where copying is not allowed, Copy code shows the code selected, to copy by hand', async ({ page }) => {
+      known(name, 'results-copy-refused');
+      // The clipboard refuses (a site permission, some in-app browsers), and so does the copy command.
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new DOMException('denied', 'NotAllowedError')) } });
+        document.execCommand = () => false;
+      });
+      await seedRun(page, QUARTERS, 3);
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      const copy = page.getByRole('button', { name: 'Copy code' });
+      await expectClickable(copy);
+      await copy.click();
+      const field = page.getByRole('textbox', { name: 'Exercise code' });
+      await expect(field).toHaveValue(/^T44-Q-R-1B-120-/);
+      await expect(field).toBeFocused();
+      expect(await field.evaluate((el: HTMLInputElement) => el.selectionEnd! - el.selectionStart!)).toBe((await field.inputValue()).length);
+      await expect(page.getByRole('status').filter({ hasText: /^Selected\./ })).toBeVisible();
+      await expectClickable(field);
+      // On a line under Copy code: in the side panel on tablet and desktop, at the bottom on a phone, the buttons in view.
+      if (VIEWPORTS[name].width >= 700) await expect(page.locator('.wide-side').getByRole('textbox', { name: 'Exercise code' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'New exercise' }));
+      await expectNoOverlap(field, page.locator('.results-main'));
       await expectNoSideScroll(page);
     });
 
@@ -2429,6 +2517,36 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.tplay-count .beats--analog')).toBeVisible();
         await expectFits(page);
       }
+      await expectNoSideScroll(page);
+    });
+
+    test('echo with the analog metronome: the pendulum while listening, as while tapping back', async ({ page }) => {
+      known(name, 'echo-analog');
+      await seed(page, {
+        prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true, holdMode: 'tap', metronomeLook: 'analog' },
+        progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, mode: 'echo' } },
+      });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      const play = page.getByRole('button', { name: 'Play the rhythm' });
+      await expectClickable(play, { scroll: false });
+      // Where Play has it: the Count card on tablet and desktop, under the card on a phone. No digits beside it.
+      const count = page.locator(desktopLayout ? '.dstats' : tabletLayout && portraitLayout ? '.tplay-count' : '.play');
+      await expect(count.locator('.beats--analog')).toBeVisible();
+      await expect(page.locator('.dbeats, .beats:not(.beats--analog)')).toHaveCount(0);
+      if (!desktopLayout) {
+        // The taller pendulum leaves the listen card and the pad in view, also in a phone browser (DESIGN.md §9).
+        await expect(pad(page)).toBeInViewport({ ratio: 1 });
+        await expectFits(page);
+      }
+      await play.click();
+      // It swings while the rhythm plays.
+      const rod = page.locator('.beats--analog .analog-rod');
+      await expect.poll(() => rod.getAttribute('transform'), { timeout: 4000 }).not.toMatch(/^rotate\(0\.00 /);
+      await expect(page.locator('.dbeats, .beats:not(.beats--analog)')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Tap it back' }).click({ timeout: 15_000 });
+      await expect(page.locator('.beats--analog')).toBeVisible();
+      await expect(page.locator('.dbeats, .beats:not(.beats--analog)')).toHaveCount(0);
       await expectNoSideScroll(page);
     });
 

@@ -119,7 +119,15 @@ describe('t()', () => {
       expect(hasMessage('rest.dotted' + c)).toBe(true);
     }
     expect(hasMessage('value.tripletEighth')).toBe(true);
+    // A rest inside a triplet is a triplet's third too, not a plain half-beat rest.
+    expect(hasMessage('rest.tripletEighth')).toBe(true);
     for (const k of ['beat', 'e', 'and', 'a', 'trip', 'let']) expect(hasMessage('count.' + k)).toBe(true);
+  });
+
+  it('says no taps, not "Only 0 taps", when calibration measured none', () => {
+    expect(t('calibrate.tooFew', { count: 0 })).toBe('No taps landed near a click. Try again and tap on every click.');
+    expect(t('calibrate.tooFew', { count: 1 })).toBe('Only 1 tap landed near a click. Try again and tap on every click.');
+    expect(t('calibrate.tooFew', { count: 5 })).toBe('Only 5 taps landed near a click. Try again and tap on every click.');
   });
 
   it('has unit and lesson titles for the whole MVP path', () => {
@@ -249,6 +257,13 @@ describe('Dutch', () => {
     expect(t('notes.done.chartLabel', { count: 12, avg: formatDecimal(2.2), missed: 0 })).toBe(
       'Antwoordtijd voor elk van de 12 noten. Gemiddeld 2,2 seconden. Geen noten gemist.',
     );
+  });
+
+  it('says no taps, not "Maar 0 tikken", when calibration measured none', () => {
+    setLocale('nl');
+    expect(t('calibrate.tooFew', { count: 0 })).toBe('Er viel geen tik dicht bij een klik. Probeer het opnieuw en tik op elke klik.');
+    expect(t('calibrate.tooFew', { count: 1 })).toBe('Maar 1 tik viel dicht bij een klik. Probeer het opnieuw en tik op elke klik.');
+    expect(t('calibrate.tooFew', { count: 3 })).toBe('Maar 3 tikken vielen dicht bij een klik. Probeer het opnieuw en tik op elke klik.');
   });
 
   it('names the bar of one missed note without "de meeste"', () => {

@@ -1901,6 +1901,17 @@ button.lesson-stars:hover {
   flex: none;
   width: 238px;
 }
+/* Under 370 px a label no longer fits beside its 238 px control, which drew over it (Metron…): stack them, as in Settings. */
+@media (max-width: 369.98px) {
+  .more-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .more-row .seg {
+    width: auto;
+  }
+}
 .preview-card {
   flex: none;
   background: var(--paper);
@@ -3297,6 +3308,16 @@ button.lesson-stars:hover {
 }
 .copy-link:hover {
   color: var(--ink);
+}
+/* Where copying is not allowed: the code itself under Copy code, selected, with the hint, on a line of its own. */
+.code-shown {
+  flex: 1 0 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.code-shown .copy-value {
+  flex: none;
 }
 /*
  * Results and the round summaries scroll when they are taller than the screen (8 bars, a 1280 × 800 laptop, a small
@@ -4922,6 +4943,18 @@ button.lesson-stars:hover {
   padding: 0 18px;
   border-radius: 12px;
   font-size: 15px;
+}
+/*
+ * Under 375 px the button leaves the text too narrow a column for its words once it says Play again (nl Nog een keer):
+ * it goes full width under the date and text, as on desktop.
+ */
+@media (max-width: 374.98px) {
+  .daily-card:not(.daily-card--desk) {
+    flex-wrap: wrap;
+  }
+  .daily-card:not(.daily-card--desk) .daily-btn {
+    flex: 1 0 100%;
+  }
 }
 /* Desktop: the Play button runs the full width under the date and text. */
 .daily-card--desk {

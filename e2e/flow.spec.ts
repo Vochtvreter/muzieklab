@@ -327,7 +327,7 @@ test('after quitting, Back does not walk into the exercise again', async ({ page
   await seed(page, { progress: { lessons: SOL_DONE } });
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./');
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: /^Play the daily challenge for / }).click();
   await page.getByRole('button', { name: 'Got it' }).click();
   await page.getByRole('link', { name: 'Quit exercise' }).click();
   // Play was opened from Home, so Quit goes back to Home's own place in the history (here an address without a hash).
@@ -336,6 +336,48 @@ test('after quitting, Back does not walk into the exercise again', async ({ page
   await page.goBack();
   // Back from Home now leaves Home, or lands on Play waiting for a tap; never a running exercise.
   if (page.url().includes('#/play')) await expect(page.getByRole('dialog', { name: 'Ready?' })).toBeVisible();
+
+  // A lesson quits to the Path, in Play's place: Back from there is Home again, not the exercise.
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await expect(page).toHaveURL(/#\/path$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/(#\/)?$/);
+  await expect(page.getByRole('button', { name: 'Continue lesson' })).toBeVisible();
+});
+
+test('a rhythm lesson quits to the Path, as a note lesson does, and its Results lead back there (DESIGN.md §8.2)', async ({ page }) => {
+  await seed(page, { progress: { lessons: SOL_DONE }, prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/path');
+  const start = page.getByRole('button', { name: 'Start lesson 2.1' });
+  // The ✕ at the top, and Pause → Quit lesson.
+  await start.click();
+  await expect(page).toHaveURL(/#\/play$/);
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await expect(page).toHaveURL(/#\/path$/);
+  await start.click();
+  await page.getByRole('button', { name: 'Pause' }).click();
+  await page.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Quit lesson' }).click();
+  await expect(page).toHaveURL(/#\/path$/);
+  // Opened from Home's Continue card too.
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await expect(page.getByRole('link', { name: 'Quit exercise' })).toHaveAttribute('href', '#/path');
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await expect(page).toHaveURL(/#\/path$/);
+  // Results' back arrow, as Round done's after a note lesson.
+  await start.click();
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await expect(page.getByRole('heading', { name: 'Lesson 2.1 done' })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to the path' }).click();
+  await expect(page).toHaveURL(/#\/path$/);
+  // Desktop: the Quit link in the exercise header.
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await start.click();
+  await page.getByRole('link', { name: 'Quit', exact: true }).click();
+  await expect(page).toHaveURL(/#\/path$/);
 });
 
 test('Esc does not start the Ready sheet (browsers do not let Esc start audio); Start does', async ({ page }) => {
@@ -461,9 +503,9 @@ test('the first lesson that judges holds shows How to play again, with holding, 
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await eyebrows(), 'the closing sheet keeps its eyebrow').toEqual(['New: hold each note']);
   await expect(page.getByRole('img', { name: /Count-in, beat|Counting beat/ })).toBeAttached({ timeout: 3000 });
-  // Only once: the next hold lesson starts straight away.
+  // Only once: the next hold lesson starts straight away. Quit leads to the Path.
   await page.getByRole('link', { name: 'Quit exercise' }).click();
-  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await page.getByRole('button', { name: 'Start lesson 4.1' }).click();
   await expect(page.getByText('Lesson 4.1', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });

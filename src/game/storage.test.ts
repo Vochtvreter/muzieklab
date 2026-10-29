@@ -242,6 +242,12 @@ describe('prefs and progress storage', () => {
     expect(p.leniency).toBe('relaxed');
     expect(p.volumes).toEqual({ metronome: 1, rhythm: 0.8, tap: 0.5 });
     expect(p.calibrationMs).toBe(41);
+    // Settings shows the calibration's day: only a real day (yyyy-mm-dd, as Calibrate saves it), never the stored text.
+    for (const [calibratedAt, kept] of [['2026-10-12', '2026-10-12'], ['not a date', null], ['2026-13-45', null], ['2026-02-30', null], ['', null], [12, null]] as const) {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ calibrationMs: 40, calibratedAt }));
+      expect(loadPrefs().calibratedAt, String(calibratedAt)).toBe(kept);
+      expect(loadPrefs().calibrationMs).toBe(40);
+    }
 
     localStorage.setItem(
       PROGRESS_KEY,

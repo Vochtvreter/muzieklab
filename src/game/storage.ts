@@ -237,6 +237,12 @@ function subset<T extends string>(v: unknown, options: readonly T[]): T[] | null
   return options.filter((o) => v.includes(o));
 }
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** A stored day that is a real one (2026-13-45 is not, and would be shown as Feb 14), else null. */
+function calendarDay(v: unknown): string | null {
+  if (typeof v !== 'string' || !ISO_DATE.test(v)) return null;
+  const [y, m, d] = v.split('-').map(Number);
+  return localDateIso(new Date(y, m - 1, d)) === v ? v : null;
+}
 
 function readJson(key: string): unknown {
   try {
@@ -271,7 +277,8 @@ export function sanitizePrefs(raw: unknown): Prefs {
     tapSoundOn: bool(raw.tapSoundOn, d.tapSoundOn),
     leniency: oneOf(raw.leniency, ['strict', 'normal', 'relaxed'] as const, d.leniency),
     calibrationMs: num(raw.calibrationMs, d.calibrationMs, -500, 500),
-    calibratedAt: typeof raw.calibratedAt === 'string' ? raw.calibratedAt : null,
+    // Settings shows its day: text that is not one (storage edited or broken) would be shown as it is.
+    calibratedAt: calendarDay(raw.calibratedAt),
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
     seenHold: bool(raw.seenHold, d.seenHold),
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),

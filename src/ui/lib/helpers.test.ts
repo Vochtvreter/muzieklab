@@ -302,6 +302,26 @@ describe('staff text alternative', () => {
     );
     expect(label).toBe('Rhythm in 4/4. Bar 1: dotted quarter note, eighth note, half rest.');
   });
+
+  it('reads a rest inside a triplet as a triplet rest, as the bracket over it draws it', () => {
+    const tuplet = { num: 3, den: 2, id: 0 } as const;
+    const label = describeBars(
+      [
+        {
+          symbols: [
+            { value: 'eighth', dots: 0, kind: 'note', tieToNext: false, start: 0, duration: 16, onsetIndex: 0, tuplet },
+            { value: 'eighth', dots: 0, kind: 'rest', tieToNext: false, start: 16, duration: 16, onsetIndex: -1, tuplet },
+            { value: 'eighth', dots: 0, kind: 'note', tieToNext: false, start: 32, duration: 16, onsetIndex: 1, tuplet },
+            { value: 'eighth', dots: 0, kind: 'rest', tieToNext: false, start: 48, duration: 24, onsetIndex: -1 },
+            { value: 'eighth', dots: 0, kind: 'note', tieToNext: false, start: 72, duration: 24, onsetIndex: 2 },
+            { value: 'half', dots: 0, kind: 'note', tieToNext: false, start: 96, duration: 96, onsetIndex: 3 },
+          ],
+        },
+      ],
+      '4/4',
+    );
+    expect(label).toBe('Rhythm in 4/4. Bar 1: triplet eighth note, triplet eighth rest, triplet eighth note, eighth rest, eighth note, half note.');
+  });
 });
 
 describe('lesson preview', () => {

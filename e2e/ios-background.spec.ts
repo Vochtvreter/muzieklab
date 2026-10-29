@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pad, seed, SOL_DONE, VIEWPORTS } from './helpers';
+import { pad, QUARTERS, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
  * iOS, back from the background (most often as a Home Screen app): the AudioContext the page had can stay
@@ -36,6 +36,8 @@ test.beforeEach(async ({ page }) => {
     (window as unknown as { breakAudio(mode: string): void }).breakAudio = (mode) => {
       for (const c of made) c.broken = { mode, t: c.currentTime };
     };
+    // What a browser does to a page in the background, or Chromium to a tab: the context says 'suspended'.
+    (window as unknown as { suspendAudio(): Promise<unknown> }).suspendAudio = () => Promise.all(made.map((c) => c.suspend().catch(() => undefined)));
   });
   // Sol's unit passed, so Continue starts a rhythm lesson.
   await seed(page, { prefs: { seenHowTo: true, seenHold: true }, progress: { lessons: SOL_DONE } });
@@ -79,9 +81,10 @@ for (const mode of ['frozen', 'interrupted'] as const) {
     // Play once so the page has an AudioContext, as after any earlier exercise.
     await page.getByRole('button', { name: 'Continue lesson' }).click();
     await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+    // A lesson quits to the Path; Home is a tab away.
     await page.getByRole('link', { name: 'Quit exercise' }).click();
-    // Back to Home's own place in the history, here an address without a hash.
-    await expect(page).toHaveURL(/\/(#\/)?$/);
+    await expect(page).toHaveURL(/#\/path$/);
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Continue lesson' })).toBeVisible();
 
     await background(page, mode);
@@ -111,4 +114,30 @@ test('a clock that freezes without the page being hidden pauses with a note, and
   await expect(page.getByText('The sound was interrupted.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: /Resume/ }).click();
   await playToResults(page);
+});
+
+test('echo: leaving the app while the rhythm plays gives that listen back', async ({ page }) => {
+  test.setTimeout(60_000);
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, mode: 'echo', bars: 2 } } });
+  await page.goto('./#/setup');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  const play = page.getByRole('button', { name: 'Play the rhythm' });
+  // To the background and back while it plays (iOS interrupts the audio then), and the audio suspended while in view.
+  for (const cut of ['background', 'suspended'] as const) {
+    await play.click();
+    await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
+    await expect(page.getByText('1 play left')).toBeVisible();
+    if (cut === 'background') await background(page, 'interrupted');
+    else await page.evaluate(() => (window as unknown as { suspendAudio(): Promise<unknown> }).suspendAudio());
+    // Stopped and not counted, also once the rhythm would have ended: both plays left, and nothing to tap back yet.
+    await expect(page.getByText('2 plays left'), cut).toBeVisible();
+    await page.waitForTimeout(7000);
+    await expect(page.getByText('2 plays left'), cut).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tap it back' }), cut).toHaveCount(0);
+    await expect(play, cut).toBeEnabled();
+  }
+  // Heard to the end, it counts.
+  await play.click();
+  await expect(page.getByRole('button', { name: 'Tap it back' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('1 play left')).toBeVisible();
 });

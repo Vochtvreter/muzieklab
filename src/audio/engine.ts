@@ -152,7 +152,7 @@ class WebAudioEngine implements AudioEngine {
     window.addEventListener('pagehide', hidden);
   }
 
-  /** Lazily creates the context (null where Web Audio is missing, e.g. tests). */
+  /** Lazily creates the context (null where Web Audio is missing, e.g. tests, or the browser will not make one). */
   private context(): AudioContext | null {
     if (this.ctx) return this.ctx;
     const Ctor = audioContextClass();
@@ -166,7 +166,14 @@ class WebAudioEngine implements AudioEngine {
         /* read-only in some versions */
       }
     }
-    const ctx = new Ctor({ latencyHint: 'interactive' });
+    let ctx: AudioContext;
+    try {
+      ctx = new Ctor({ latencyHint: 'interactive' });
+    } catch {
+      // Refused (privacy hardening, no audio device, too many contexts): silent on the performance clock, as without
+      // Web Audio. The next sound asks again.
+      return null;
+    }
     ctx.addEventListener('statechange', () => {
       if (ctx !== this.ctx) return; // a replaced context closing
       this.markClock();

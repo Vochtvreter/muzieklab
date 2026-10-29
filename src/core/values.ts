@@ -40,7 +40,8 @@ export function valueKey(value: NoteValue, dots: 0 | 1, triplet = false): string
   return dots ? 'value.dotted' + CAP[value] : 'value.' + value;
 }
 
-/** i18n key for a rest value, e.g. rest.quarter, rest.dottedEighth. */
-export function restKey(value: NoteValue, dots: 0 | 1): string {
+/** i18n key for a rest value, e.g. rest.quarter, rest.dottedEighth, rest.tripletEighth (a rest inside a triplet). */
+export function restKey(value: NoteValue, dots: 0 | 1, triplet = false): string {
+  if (triplet) return 'rest.triplet' + CAP[value];
   return dots ? 'rest.dotted' + CAP[value] : 'rest.' + value;
 }

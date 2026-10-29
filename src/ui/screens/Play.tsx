@@ -66,6 +66,7 @@ function EchoPlay({ run, view }: { run: Run; view: ExerciseView }): JSX.Element 
   const [plays, setPlays] = useState(0);
   const [autoPlay, setAutoPlay] = useState(false);
   const onPlayed = useCallback(() => setPlays((n) => n + 1), []);
+  const onCancelled = useCallback(() => setPlays((n) => Math.max(0, n - 1)), []);
   const where = echoWhere(runWhere(run));
   // A fresh run object for each attempt: Play starts it straight away (the tap on Tap it back is the gesture). On a
   // phone the tap-back card's Hear again comes in where Tap it back was: a double tap's second tap must not press it.
@@ -87,7 +88,10 @@ function EchoPlay({ run, view }: { run: Run; view: ExerciseView }): JSX.Element 
     if (focusLost()) focusHeading();
   }, [tapping]);
   if (tapping) return <PlayRun run={run} view={view} echo={{ playsLeft: ECHO_PLAYS - plays, plays, onHearAgain: hearAgain }} />;
-  return <EchoListen run={run} view={view} where={where} playsLeft={ECHO_PLAYS - plays} autoPlay={autoPlay} onPlayed={onPlayed} onTapBack={tapBack} />;
+  return (
+    <EchoListen run={run} view={view} where={where} playsLeft={ECHO_PLAYS - plays} autoPlay={autoPlay} onPlayed={onPlayed} onCancelled={onCancelled}
+      onTapBack={tapBack} />
+  );
 }
 
 interface EchoProps {
@@ -111,9 +115,11 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const shorter = useMediaQuery(SHORTER_PHONE);
   const ex = run.exercise;
   const lesson = run.lessonId ? findLesson(run.lessonId) : null;
-  // Started from a Learn section (?from=1.1): Quit returns there, and Results and the setup keep it.
+  // Started from a Learn section (?from=1.1): Quit returns there, and Results and the setup keep it. A lesson quits to
+  // the Path, as a note lesson does (DESIGN.md §8.2), also when Home's Continue started it.
   const { back, carry } = useLearnReturn();
-  const exit = back?.to ?? '/';
+  const exit = run.lessonId ? '/path' : (back?.to ?? '/');
+  const exitQuery = run.lessonId ? undefined : back?.query;
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
 
   const plays = echo?.plays;
@@ -257,11 +263,11 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const fbClass = 'judgement' + (s.feedback ? ' tone-' + s.feedback.tone : '');
   const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : echo && s.phase === 'running' ? t('play.echo.yourTurnCue') : ' ';
 
-  // Quit returns to Home (or the Learn section), so that Back neither walks into the exercise again nor lands on that
-  // screen a second time (router.leave).
+  // Quit returns to Home (the Path for a lesson, or the Learn section), so that Back neither walks into the exercise
+  // again nor lands on that screen a second time (router.leave).
   const quit = (): void => {
     s.stop();
-    leave(exit, back?.query);
+    leave(exit, exitQuery);
   };
   const quitLink = (e: MouseEvent): void => {
     e.preventDefault();
@@ -332,7 +338,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
         <Icon name="pause" size={16} />
         {t('play.pause')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
       </button>
-      <Link to={exit} query={back?.query} className="text-link-btn" onClick={quitLink}>
+      <Link to={exit} query={exitQuery} className="text-link-btn" onClick={quitLink}>
         {t('play.quitShort')}
       </Link>
     </ExerciseHeader>
@@ -388,7 +394,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       <div className="page play">
         <h1 className="sr-only">{t('play.heading')}</h1>
         <div className="play-top">
-          <Link to={exit} query={back?.query} aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
+          <Link to={exit} query={exitQuery} aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('play.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>

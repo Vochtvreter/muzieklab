@@ -9,18 +9,19 @@ import { LISTEN_LEAD_IN_S as LEAD_IN_S } from '../../game/stats';
 import { t } from '../../i18n';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
-import { BeatRow, TapPad } from '../components/Bits';
+import { AnalogMetronome, BeatRow, TapPad } from '../components/Bits';
 import { ExerciseHeader } from '../components/ExerciseHeader';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import type { ExerciseView } from '../exerciseView';
-import { useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering } from '../hooks';
+import { useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering, useReducedMotion } from '../hooks';
 import { metersLabel } from '../lib/format';
 import { beatAt, type BeatState } from '../lib/playMath';
 import { focusLost } from '../lib/screenFocus';
 import { leave, Link } from '../router';
 import { useStore, type Run } from '../store';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
+import { STOPPED_AUDIO } from './playSession';
 import { HowToContent } from './PlaySheets';
 
 /** How often the rhythm can be heard (the first listen included). */
@@ -54,21 +55,26 @@ interface ListenProps {
   /** Start playing on mount (Hear again from the tap phase). */
   autoPlay: boolean;
   onPlayed(): void;
+  /** A listen cut off before its end (the app left, the audio stopped): it is not counted. */
+  onCancelled(): void;
   onTapBack(): void;
 }
 
 /** Listen: a big play button, the plays left, the beat counter and the (not yet active) pad. */
-export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, onTapBack }: ListenProps): JSX.Element {
+export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, onCancelled, onTapBack }: ListenProps): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
   const tablet = useExerciseLayout() === 'tablet';
   const keys = useKeyboardHints(bp);
+  const still = useReducedMotion();
   const ex = run.exercise;
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(playsLeft < ECHO_PLAYS);
   const [beat, setBeat] = useState<BeatState>(IDLE_BEAT);
+  /** Beats since the first beat, with the fraction: the analog metronome's swing. */
+  const [at, setAt] = useState(0);
   const [help, setHelp] = useState<'help' | null>(state.prefs.seenEchoHowTo ? null : 'help');
   const timer = useRef<number | null>(null);
   const raf = useRef<number | null>(null);
@@ -104,8 +110,9 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     const tick = (): void => {
       const tg = eng.heardNow() - started.exerciseStart;
       const now = beatAt(tg, beatSec, ex.meter.beatsPerBar, ex.meter.beatsPerBar, view.timeline.totalSeconds);
-      // A new state only when the beat changes, not every frame.
+      // A new state only when the beat changes, not every frame; the analog metronome swings with every frame.
       setBeat((b) => (b.inBar === now.inBar && b.countIn === now.countIn ? b : now));
+      if (state.prefs.metronomeLook === 'analog') setAt(tg / beatSec);
       raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
@@ -116,6 +123,33 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
       setHeard(true);
     }, Math.max(0, started.end - eng.now() + 0.25) * 1000);
   }, [playing, playsLeft, state.prefs, view, ex, onPlayed]);
+
+  // Leaving the app or the tab, or the audio stopping under it (an iOS call or Siri, the browser suspended it), cuts
+  // the rhythm off: the listen stops and is given back, as the tapping pauses then (playSession.ts).
+  useEffect(() => {
+    if (!playing) return;
+    let cut = false;
+    const stop = (): void => {
+      if (cut) return;
+      cut = true;
+      stopLoop();
+      engine().stop();
+      setBeat(IDLE_BEAT);
+      setPlaying(false);
+      onCancelled();
+    };
+    const onVis = (): void => {
+      if (document.visibilityState === 'hidden') stop();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    const off = engine().onStateChange((s) => {
+      if (STOPPED_AUDIO.has(s)) stop();
+    });
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      off();
+    };
+  }, [playing, onCancelled]);
 
   // Hear again from the tap phase: play straight away (the tap there was the gesture).
   const autoPlayed = useRef(false);
@@ -167,6 +201,10 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
   const beatLabel = beat.inBar === null
     ? t('play.beats', { total: ex.meter.beatsPerBar })
     : t(beat.countIn ? 'play.countIn' : 'play.countingBeat', { beat: beat.inBar + 1, total: ex.meter.beatsPerBar });
+  // The beat counter Settings asks for, as on Play, so it keeps its look once the tapping starts.
+  const analog = state.prefs.metronomeLook === 'analog' && (
+    <AnalogMetronome beats={ex.meter.beatsPerBar} active={beat.inBar} at={at} tempo={ex.tempo} label={beatLabel} still={still} />
+  );
 
   const listenBody = (
     <>
@@ -196,7 +234,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
   if (desktop || tablet) {
     // Play's tablet and desktop layout (Play.tsx): the exercise header, the listen card in the staff card, then the
     // count and the pad, which takes taps once the rhythm is tapped back.
-    const count: CountProps = { beats: ex.meter.beatsPerBar, beat, label: beatLabel, countIn: beat.countIn };
+    const count: CountProps = { beats: ex.meter.beatsPerBar, beat, label: beatLabel, countIn: beat.countIn, analog };
     const header = (
       <ExerciseHeader tablet={tablet} eyebrow={where}
         line={
@@ -277,7 +315,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
           {listenBody}
         </section>
 
-        <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />
+        {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />}
         <div aria-live="polite" className="judgement judgement--phone tone-muted">
           {cue}
         </div>

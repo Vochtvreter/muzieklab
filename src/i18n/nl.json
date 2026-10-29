@@ -424,6 +424,7 @@
     "dottedQuarter": "gepunteerde kwartrust",
     "eighth": "achtste rust",
     "dottedEighth": "gepunteerde achtste rust",
+    "tripletEighth": "achtste triool-rust",
     "sixteenth": "zestiende rust"
   },
   "notation": {
@@ -617,7 +618,9 @@
     "copyCode": "Kopieer code",
     "copied": "Gekopieerd",
     "copyTitle": "Kopieer de code van de oefening: {code}",
+    "code": "Code van de oefening",
     "backHome": "Terug naar start",
+    "lessonBack": "Terug naar het leerpad",
     "accuracy": "{value}%",
     "summary": "nauwkeurigheid",
     "streakKept": "Reeks gehouden · {count, plural, one {# dag} other {# dagen}}",
@@ -773,7 +776,7 @@
     "resultLate": "Gemeten over {count} tikken. Je tikken komen {ms} ms na de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
     "resultEarly": "Gemeten over {count} tikken. Je tikken komen {ms} ms voor de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
     "resultZero": "Gemeten over {count} tikken. Je tikken vallen precies op de klik, dus er hoeft niets te verschuiven.",
-    "tooFew": "Maar {count, plural, one {# tik viel} other {# tikken vielen}} dicht bij een klik. Probeer het opnieuw en tik op elke klik.",
+    "tooFew": "{count, plural, =0 {Er viel geen tik} one {Maar # tik viel} other {Maar # tikken vielen}} dicht bij een klik. Probeer het opnieuw en tik op elke klik.",
     "save": "Bewaren",
     "again": "Opnieuw"
   },

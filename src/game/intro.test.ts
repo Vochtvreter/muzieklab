@@ -77,6 +77,15 @@ describe('exerciseHas', () => {
     expect(exerciseHas(tied, ['ties'])).toBe(true);
   });
 
+  it('tells one dotted value from another: a dotted half is no dotted quarter', () => {
+    const ex = exercise([{ events: [note(0, 3 * q), note(3 * q, q)] }, { events: [note(0, 4 * q)] }]);
+    expect(exerciseHas(ex, ['dotted', 'dotted:half'])).toBe(true);
+    expect(exerciseHas(ex, ['dotted:quarter'])).toBe(false);
+    const dq = exercise([{ events: [note(0, 1.5 * q), note(1.5 * q, q / 2), note(2 * q, 2 * q)] }]);
+    expect(exerciseHas(dq, ['dotted:quarter', 'note:eighth'])).toBe(true);
+    expect(exerciseHas(dq, ['dotted:half'])).toBe(false);
+  });
+
   it('finds what a lesson introduces in an exercise that has it', () => {
     // 1.2 (the half note) has it in every exercise; 3.4's whole rest needs a seed that has one.
     for (let seed = 1; seed <= 20; seed++) expect(exerciseHas(generateExercise(lessonSettings('1.2'), seed), ids('1.2'))).toBe(true);
