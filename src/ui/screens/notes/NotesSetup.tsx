@@ -80,7 +80,7 @@ export function NotesSetup(): JSX.Element {
 
             <div className="field">
               <div className="label">{t('notes.setup.key')}</div>
-              <Link to="/notes/key" query={carry} remember className="key-row" aria-label={t('notes.setup.keyAria', { name: keyName, sub: keySub })}>
+              <Link to="/notes/key" query={carry} className="key-row" aria-label={t('notes.setup.keyAria', { name: keyName, sub: keySub })}>
                 <span className="key-thumb">
                   <PitchStaff clef="treble" keyId={key} notes={[]} slots={0} room={1.5} />
                 </span>

@@ -27,7 +27,7 @@ import { useMounted } from '../../hooks';
 import { setListNotice } from '../../lib/admin';
 import { announce } from '../../lib/announce';
 import { errorMessage, failureOf, type Failure } from '../../lib/apiErrors';
-import { Link, navigate, parseHash } from '../../router';
+import { leave, Link, parseHash } from '../../router';
 import { authorName, kindName, reportTitle } from './AdminFeedback';
 import { GateMessage, NoAccess, useAdminGate } from './AdminParts';
 
@@ -372,7 +372,8 @@ function ActionsCard({ detail, fail }: { detail: FeedbackDetail; fail(e: unknown
     try {
       await api.del<void>(`/admin/feedback/${detail.id}`);
       setListNotice(t('feedbackReview.deleted'));
-      navigate('/admin/feedback', { replace: true });
+      // Back to the list it was opened from, if it was (leave): Back then goes on to the screen before the list.
+      leave('/admin/feedback');
       return true;
     } catch (e) {
       if (mounted.current) setRemoveError(fail(e).message);

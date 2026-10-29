@@ -24,7 +24,7 @@ import { useMounted } from '../../hooks';
 import { dayOfUntil, holdsMore, setListNotice, sortRoles, today, type LinkKind } from '../../lib/admin';
 import { announce } from '../../lib/announce';
 import { errorMessage, failureOf, fieldError, formError, nameCharactersError, nameIsBlank, type Failure } from '../../lib/apiErrors';
-import { Link, navigate } from '../../router';
+import { leave, Link } from '../../router';
 import { useRefocus } from '../account/AccountSection';
 import { GateMessage, LinkResult, NoAccess, RoleSwitches, useAdminGate, useRoleList } from './AdminParts';
 
@@ -457,7 +457,8 @@ function AccessCard({ detail, self, outranked, account, onChange, fail, reload }
       // refused (409 wrong_status) instead of deleted.
       await api.del<void>(invited ? `${path}?expect=invited` : path);
       setListNotice(t(invited ? 'admin.inviteCancelled' : 'admin.deleted', { name }));
-      navigate('/admin', { replace: true });
+      // Back to the list it was opened from, if it was (leave): Back then goes on to the screen before the list.
+      leave('/admin');
       return true;
     } catch (e) {
       if (!mounted.current) return false;

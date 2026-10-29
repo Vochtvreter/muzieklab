@@ -845,6 +845,7 @@
     "submit": "Sign in",
     "busy": "Signing in…",
     "forgot": "Forgot your password? Ask the person who invited you.",
+    "sessionEnded": "You were signed out, so nothing was changed. Sign in again to go on.",
     "privacy": "Privacy"
   },
   "invite": {

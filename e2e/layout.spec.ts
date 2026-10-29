@@ -3000,6 +3000,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('sign in after a request found the session ended: the line over the form, and the form in reach', async ({ page }) => {
+        known(name, 'signin-ended');
+        await mockApi(page, { ...MEMBER, 'GET /me/export': apiError('unauthenticated', 401) });
+        await page.goto('./#/account');
+        await page.getByRole('button', { name: /^Download my data/ }).click();
+        await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+        const line = page.locator('.hint-box');
+        await expect(line).toHaveText('You were signed out, so nothing was changed. Sign in again to go on.');
+        await expectNotSqueezed(line);
+        await expectNoOverlap(line, page.locator('.acct-head'));
+        await expectNoOverlap(line, page.locator('.acct-form'));
+        await expectClickable(page.getByLabel('Email'));
+        await expectClickable(page.getByLabel('Password', { exact: true }));
+        await expectClickable(page.getByRole('button', { name: 'Sign in' }));
+        await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
       test('accept invite: the name, a new password and Create account', async ({ page }) => {
         known(name, 'invite');
         await mockApi(page, { ...SIGNED_OUT, 'POST /auth/invite/check': { json: INVITE_LINK }, 'POST /auth/invite/accept': apiError('password_common', 422) });

@@ -132,8 +132,8 @@ export function useRoute(): Route {
 }
 
 /**
- * A screen opened with navigate() keeps, in its place in the history, the address it was opened from; a screen swapped
- * in for it keeps it too (Results for Play at the end, Play for Results on Retry). leave() goes back there.
+ * A screen opened with navigate() or a Link keeps, in its place in the history, the address it was opened from; a screen
+ * swapped in for it keeps it too (Results for Play at the end, Play for Results on Retry). leave() goes back there.
  */
 interface Entry {
   from?: string;
@@ -159,10 +159,11 @@ export function openedFrom(to: Route, query?: string): boolean {
 }
 
 /**
- * Quit: leaves an exercise for `to`. When the exercise was opened from there (Learn's section, the Read notes setup),
- * it goes back to it; swapping the exercise for it would leave the same address twice in a row in the history, and the
- * browser's Back would then seem to do nothing. Otherwise the exercise is swapped for `to`, so Back does not walk into
- * it again. A Key screen's Use leaves it for its setup the same way.
+ * Quit: leaves an exercise for `to`, or a screen that is gone once its action is done (Cancel invite, Delete report)
+ * for its list. When it was opened from there (Learn's section, the Read notes setup, the accounts list), it goes back
+ * to it; swapping the screen for it would leave the same address twice in a row in the history, and the browser's Back
+ * would then seem to do nothing. Otherwise the screen is swapped for `to`, so Back does not walk into it again. A Key
+ * screen's Use leaves it for its setup the same way. An address without a hash is Home.
  */
 export function leave(to: Route, query?: string): void {
   if (openedFrom(to, query)) window.history.back();
@@ -172,21 +173,19 @@ export function leave(to: Route, query?: string): void {
 type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
   to: Route;
   query?: string;
-  /**
-   * A plain click opens the screen with navigate(), so the screen keeps where it was opened from and leave() can go
-   * back there (a setup's way to its Key screen). A new tab or window (a middle click, or with Ctrl, Cmd, Shift or Alt)
-   * opens the link as it is.
-   */
-  remember?: boolean;
 };
 
-/** A real link (<a href="#/…">), so it works with the keyboard, middle-click and screen readers. */
-export function Link({ to, query, remember, onClick, ...rest }: LinkProps): JSX.Element {
+/**
+ * A real link (<a href="#/…">), so it works with the keyboard, middle-click and screen readers. A plain click goes
+ * through navigate(), so the screen it opens knows where it came from (leave()); one that opens a new tab or window
+ * (Ctrl, Cmd, Shift or Alt), or that its own onClick took, is left to the browser.
+ */
+export function Link({ to, query, onClick, ...rest }: LinkProps): JSX.Element {
   const click = (e: MouseEvent<HTMLAnchorElement>): void => {
     onClick?.(e);
-    if (!remember || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (rest.target && rest.target !== '_self')) return;
     e.preventDefault();
     navigate(to, { query });
   };
-  return <a href={'#' + to + (query ? '?' + query : '')} onClick={remember ? click : onClick} {...rest} />;
+  return <a href={'#' + to + (query ? '?' + query : '')} onClick={click} {...rest} />;
 }

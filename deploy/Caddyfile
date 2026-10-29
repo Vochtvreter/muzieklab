@@ -11,11 +11,22 @@
 		Referrer-Policy strict-origin-when-cross-origin
 	}
 
-	# Files in assets/ have a content hash in their name, so they never change: cache them for a year.
-	@assets path /assets/*
+	# Files in assets/ have a content hash in their name, so they never change: cache them for a year. Only the ones
+	# that are there: the header is set before file_server answers, so a name that is missing (asked for during a
+	# deploy, or one a rollback brings back) would keep its 404 for a year too.
+	@assets {
+		path /assets/*
+		file
+	}
 	header @assets Cache-Control "public, max-age=31536000, immutable"
-	# Everything else (index.html, the service worker, the manifest, icons) is checked on each visit, so an update shows.
-	@other not path /assets/*
+	# Everything else (index.html, the service worker, the manifest, icons, a missing file) is checked on each visit, so
+	# an update shows.
+	@other {
+		not {
+			path /assets/*
+			file
+		}
+	}
 	header @other Cache-Control "no-cache"
 
 	header /manifest.webmanifest Content-Type application/manifest+json

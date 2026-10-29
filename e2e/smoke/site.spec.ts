@@ -27,7 +27,7 @@ test('robots: the test site is kept out of search engines, production is not', a
   }
 });
 
-test('caching: hashed files are kept for a year; the page, service worker and manifest are checked on every visit', async ({ request }) => {
+test('caching: hashed files are kept for a year, a missing one is not; the page, service worker and manifest are checked on every visit', async ({ request }) => {
   const html = await request.get(SITE);
   expect(html.status()).toBe(200);
   expect(html.headers()['content-type']).toContain('text/html');
@@ -43,6 +43,11 @@ test('caching: hashed files are kept for a year; the page, service worker and ma
     expect(res.status(), `/${path}`).toBe(200);
     expect(res.headers()['cache-control'], `/${path}`).toBe('no-cache');
   }
+  // A name in assets/ that is not there (asked for during a deploy, or one a rollback brings back) is not kept for a
+  // year: a browser would not ask again once it is there.
+  const missing = await request.get(SITE + 'assets/no-such-file-' + Date.now().toString(36) + '.js');
+  expect(missing.status()).toBe(404);
+  expect(missing.headers()['cache-control'] ?? '', 'a missing file in assets/').not.toContain('immutable');
 });
 
 test('the manifest and the service worker are served, with every icon', async ({ request }) => {

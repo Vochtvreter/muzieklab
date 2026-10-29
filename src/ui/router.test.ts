@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashQuery, leave, Link, navigate, openedFrom, parseHash, routeParam } from './router';
@@ -135,7 +135,7 @@ describe('a Key screen and back', () => {
   });
 
   it('opens the Key screen from a plain click on the setup\'s link with navigate(), so Use can go back to the setup', () => {
-    render(createElement(Link, { to: '/notes/key', query: 'from=8', remember: true }, 'Key'));
+    render(createElement(Link, { to: '/notes/key', query: 'from=8' }, 'Key'));
     window.history.replaceState(null, '', '#/notes?from=8');
     fireEvent.click(screen.getByRole('link', { name: 'Key' }));
     expect(window.location.hash).toBe('#/notes/key?from=8');
@@ -146,18 +146,47 @@ describe('a Key screen and back', () => {
     expect(back).toHaveBeenCalledOnce();
   });
 
-  it('leaves a click for a new tab or window to the browser', () => {
-    render(createElement(Link, { to: '/notes/key', remember: true }, 'Key'));
-    const link = screen.getByRole('link', { name: 'Key' });
-    for (const opts of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) expect(fireEvent.click(link, opts)).toBe(true);
-    expect(window.location.hash).toBe('#/notes');
-  });
-
   it('knows a round was started from a setup opened from Learn, and not from the chapter', () => {
     window.history.replaceState(null, '', '#/notes?from=8');
     navigate('/notes/play', { query: 'from=8' });
     expect(openedFrom('/notes', 'from=8')).toBe(true);
     expect(openedFrom('/notes')).toBe(false);
     expect(openedFrom('/learn/8')).toBe(false);
+  });
+});
+
+describe('Link', () => {
+  beforeEach(() => window.history.replaceState(null, '', '#/admin'));
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+  const link = (name: string) => screen.getByRole('link', { name });
+  // A link the browser follows itself changes the address a moment after the click.
+  const settled = () => new Promise((done) => setTimeout(done, 10));
+
+  it('keeps the address it was opened from, as navigate() does: leave() goes back to the list instead of adding it again', async () => {
+    render(createElement(Link, { to: `/admin/account/${ID}` }, 'Lies Bakker'));
+    fireEvent.click(link('Lies Bakker'));
+    await waitFor(() => expect(window.location.hash).toBe('#/admin/account/' + ID));
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+    leave('/admin');
+    expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('leaves a click that opens a new tab or window to the browser, and one its own onClick took', async () => {
+    const own = vi.fn((e: { preventDefault(): void }) => e.preventDefault());
+    render(createElement('div', null, createElement(Link, { to: '/admin/feedback' }, 'Feedback'), createElement(Link, { to: '/settings', onClick: own }, 'Settings')));
+    for (const keys of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }]) {
+      const click = createEvent.click(link('Feedback'), keys);
+      fireEvent(link('Feedback'), click);
+      expect(click.defaultPrevented, JSON.stringify(keys)).toBe(false);
+    }
+    await settled();
+    window.history.replaceState(null, '', '#/admin');
+    fireEvent.click(link('Settings'));
+    await settled();
+    expect(own).toHaveBeenCalledOnce();
+    expect(window.location.hash).toBe('#/admin');
   });
 });

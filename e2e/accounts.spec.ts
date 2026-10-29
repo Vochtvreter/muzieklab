@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { PERMISSIONS, type AccountDetail, type AdminUpdateRequest, type Closure, type InviteRequest, type Me, type RoleInfo, type SaveProgressRequest } from '../shared/api';
 import {
-  ACCOUNTS, accountDetail, adminApi, announcer, apiError, CLOSURES, expectClickable, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi, recordAnnouncements,
-  RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
+  ACCOUNTS, accountDetail, adminApi, announcer, apiError, CLOSURES, expectClickable, feedbackServer, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi,
+  recordAnnouncements, RESET_LINK_CREATED, seed, seedAccount, SIGNED_OUT, signedInAs, TOKEN, VIEWPORTS,
 } from './helpers';
 
 /**
@@ -493,6 +493,39 @@ test('two tabs: the second one takes up the account the first signed out of, and
   expect(await two.evaluate(() => localStorage.getItem('muzieklab.account.v1'))).toBeNull();
 });
 
+test('accept invite open in two tabs: once one tab accepts it, the other goes to Settings, never asking to sign out of the new account', async ({ context }) => {
+  // Both tabs show the form (the invite email clicked twice); tab one creates the account, tab two is not reloaded.
+  let who: Me | null = null;
+  const routes = {
+    ...SIGNED_OUT,
+    'GET /me': () => (who ? { json: who } : apiError('unauthenticated', 401)),
+    'POST /auth/invite/check': { json: LINK },
+    'POST /auth/invite/accept': () => {
+      who = LIES;
+      return { json: LIES };
+    },
+  };
+  const two = await context.newPage();
+  const api2 = await mockApi(two, routes);
+  await two.goto('./#/invite/' + TOKEN);
+  await expect(two.getByLabel('New password')).toBeVisible();
+  const one = await context.newPage();
+  await mockApi(one, routes);
+  await one.goto('./#/invite/' + TOKEN);
+  await one.getByLabel('New password').fill('a tune in seven notes');
+  await one.getByRole('button', { name: 'Create account' }).click();
+  await expect(accountSection(one).getByRole('link', { name: /^Lies Bakker/ })).toBeVisible();
+
+  // Tab two takes up the account (the storage event): the link's own, so its invite was accepted, not someone else's.
+  await expect(two).toHaveURL(/#\/settings$/);
+  await expect(accountSection(two).getByRole('link', { name: /^Lies Bakker/ })).toBeVisible();
+  await expect(two.getByText(/Sign out first to use this link/)).toHaveCount(0);
+  expect(api2.callsTo('POST /auth/sign-out')).toHaveLength(0);
+  // The used link left tab two's history too.
+  await two.goBack();
+  await expect(two).not.toHaveURL(/invite/);
+});
+
 test('account: sign out everywhere, confirmed', async ({ page }) => {
   const api = await mockApi(page, MEMBER);
   await page.goto('./#/account');
@@ -522,6 +555,28 @@ test('account: sign out everywhere, confirmed', async ({ page }) => {
   await expect(notice(page)).toHaveText('Op elk apparaat uitgelogd.');
   await page.waitForTimeout(500);
   expect(await said()).toEqual([]);
+});
+
+test('account: sign out everywhere when the session had already ended says nothing was changed, never that every device was signed out', async ({ page }) => {
+  // The password was changed on another device, which ended this one's session: the request and its renewal are
+  // refused, so the other device is still signed in.
+  const api = await mockApi(page, {
+    ...MEMBER,
+    'POST /auth/sign-out-everywhere': apiError('unauthenticated', 401),
+    'POST /auth/refresh': apiError('unauthenticated', 401),
+  });
+  await page.goto('./#/account');
+  await page.getByRole('button', { name: /^Sign out everywhere/ }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/#\/signin$/);
+  await expect(page.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toBeVisible();
+  await expect(announcer(page)).toHaveText('You were signed out, so nothing was changed. Sign in again to go on.');
+  await expect(page.getByText('Signed out on every device.')).toHaveCount(0);
+  expect(api.callsTo('POST /auth/sign-out-everywhere')).toHaveLength(1);
+  // Said once: Settings, after it, shows Sign in without it.
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await expect(accountSection(page).getByRole('link', { name: /^Sign in/ })).toBeVisible();
+  await expect(notice(page)).toHaveCount(0);
 });
 
 test('account: download my data', async ({ page }) => {
@@ -612,6 +667,35 @@ test('a session that ended signs the account out (a 401 on any request)', async 
   await passwords.getByLabel('New password').fill('a tune in seven notes');
   await passwords.getByRole('button', { name: 'Change password' }).click();
   await expect(page).toHaveURL(/#\/signin$/);
+  await expect(page.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toBeVisible();
+});
+
+test('delete account after the session ended elsewhere: Sign in says the account was not deleted', async ({ page }) => {
+  // A new password on another device ended this one's session: DELETE /me and its renewal are refused.
+  const api = await mockApi(page, {
+    ...MEMBER,
+    'DELETE /me': apiError('unauthenticated', 401),
+    'POST /auth/refresh': apiError('unauthenticated', 401),
+  });
+  await page.goto('./#/account');
+  await page.getByRole('button', { name: /^Delete account/ }).click();
+  const confirm = page.getByRole('alertdialog', { name: 'Delete your account?' });
+  await confirm.getByRole('button', { name: 'Delete too' }).click();
+  await confirm.getByLabel('Password', { exact: true }).fill('my password here');
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+  // The confirm said "you're signed out": without a word on why, ending there reads as done.
+  await expect(page).toHaveURL(/#\/signin$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeFocused();
+  await expect(page.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toBeVisible();
+  await expect(announcer(page)).toHaveText('You were signed out, so nothing was changed. Sign in again to go on.');
+  expect(api.callsTo('DELETE /me')).toHaveLength(1);
+  // Signed in again: the line is gone, as it was for that visit of Sign in only.
+  api.set({ 'POST /auth/sign-in': { json: ME_MEMBER } });
+  await page.getByLabel('Email').fill(ME_MEMBER.email);
+  await page.getByLabel('Password', { exact: true }).fill('my password here');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(page.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toHaveCount(0);
 });
 
 test('no API (production today): no Account section, and no request until Settings opens', async ({ page }) => {
@@ -1381,6 +1465,33 @@ test('admin one account: Delete account, confirmed; the list says so', async ({ 
   await expect(page.locator('.acct-card--status')).toHaveText("Piet Visser's account was deleted.");
   await expect(announcer(page)).toHaveText("Piet Visser's account was deleted.");
   expect(api.callsTo('DELETE /admin/accounts/:id').map((c) => c.params.id)).toEqual([PIET_BLOCKED.id]);
+});
+
+test('admin: one Back after Cancel invite, Delete account or Delete report leaves the list, for the screen before it', async ({ page }) => {
+  await mockApi(page, { ...adminApi(), ...feedbackServer().routes, 'DELETE /admin/accounts/:id': { status: 204 } });
+  // Opened from the list, the screen goes back to it, which is not then in the history twice, one after the other.
+  for (const [row, button, confirmLabel, done] of [
+    [LIES_INVITED.name, /^Cancel invite/, 'Cancel invite', 'The invite for Lies Bakker was canceled.'],
+    [PIET_BLOCKED.name, /^Delete account/, 'Delete', "Piet Visser's account was deleted."],
+  ] as const) {
+    await page.goto('./#/settings');
+    await accountSection(page).getByRole('link', { name: /^Accounts/ }).click();
+    await page.getByRole('link', { name: new RegExp('^' + escaped(row)) }).click();
+    await page.getByRole('button', { name: button }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: confirmLabel, exact: true }).click();
+    await expect(page).toHaveURL(/#\/admin$/);
+    await expect(page.locator('.acct-card--status')).toHaveText(done);
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/settings$/);
+  }
+  await accountSection(page).getByRole('link', { name: /^Feedback/ }).click();
+  await page.getByRole('link', { name: /^Start lesson does nothing/ }).click();
+  await page.getByRole('button', { name: 'Delete report' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page).toHaveURL(/#\/admin\/feedback$/);
+  await expect(page.locator('.acct-card--status')).toContainText('The report was deleted.');
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/settings$/);
 });
 
 test('admin one account: an account that is not there anymore says so, with the way back', async ({ page }) => {

@@ -270,9 +270,10 @@ export interface ScaleHub {
 
 /**
  * A one-line message Settings → Account shows after an account change that ends on Settings (signed out, the account
- * deleted, a new password set from a link…). It stays until Settings is left.
+ * deleted, a new password set from a link…). It stays until Settings is left. `sessionEnded` is Sign in's instead: a
+ * request was refused because the session had ended (account.ts, handleError).
  */
-export type AccountNotice = 'signedOut' | 'signedOutEverywhere' | 'deleted' | 'deletedKept' | 'welcome' | 'passwordReset' | 'progressAdded';
+export type AccountNotice = 'signedOut' | 'signedOutEverywhere' | 'deleted' | 'deletedKept' | 'welcome' | 'passwordReset' | 'progressAdded' | 'sessionEnded';
 
 /**
  * Progress on the account (BACKEND-PLAN.md §6, ui/sync.ts): 'idle' until the first sync of this app session, 'saving'

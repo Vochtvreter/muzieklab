@@ -21,7 +21,7 @@ import { t } from '../i18n';
 import { announce } from './lib/announce';
 import { useStore, type AccountNotice, type AccountState, type Action } from './store';
 
-/** What Settings → Account says after an account change (the message's key). */
+/** What Settings → Account says after an account change (the message's key); Sign in says `sessionEnded`. */
 export const NOTICE_TEXT: Record<AccountNotice, string> = {
   signedOut: 'settings.noticeSignedOut',
   signedOutEverywhere: 'settings.noticeSignedOutEverywhere',
@@ -30,6 +30,7 @@ export const NOTICE_TEXT: Record<AccountNotice, string> = {
   welcome: 'settings.noticeWelcome',
   passwordReset: 'settings.noticePasswordReset',
   progressAdded: 'settings.noticeProgressAdded',
+  sessionEnded: 'signIn.sessionEnded',
 };
 
 /**
@@ -186,7 +187,10 @@ export interface UseAccount {
   signIn(email: string, password: string): Promise<Me>;
   /** POST /auth/sign-out (this device). A session that had already ended counts as signed out too. */
   signOut(notice?: AccountNotice): Promise<void>;
-  /** POST /auth/sign-out-everywhere (every device of the account, this one too). */
+  /**
+   * POST /auth/sign-out-everywhere (every device of the account, this one too). Unlike signOut, a session that had
+   * already ended is a failure: no other device was signed out, so it rejects through handleError.
+   */
   signOutEverywhere(): Promise<void>;
   /**
    * GET /me again now (Try again, or to pick up roles an admin changed). Resolves with what the answer said: reachable,
@@ -200,7 +204,8 @@ export interface UseAccount {
   setNotice(notice: AccountNotice | null): void;
   /**
    * For a failed request on any account or admin screen: a 401 means the session ended (signed out from now on; the
-   * account screens then go to Sign in). Returns the error as an ApiError, for errorMessage / failureOf.
+   * account screens then go to Sign in, which says nothing was changed: the `sessionEnded` notice). Returns the error
+   * as an ApiError, for errorMessage / failureOf.
    */
   handleError(e: unknown): ApiError;
 }
@@ -232,10 +237,12 @@ export function useAccount(): UseAccount {
   const setNotice = useCallback((n: AccountNotice | null) => dispatch({ type: 'accountNotice', notice: n }), [dispatch]);
 
   // Only a 401 changes the state. No answer to one request is shown as that request's error: the screen keeps its
-  // forms (and what was typed) instead of switching to the offline layout, which only GET /me decides.
+  // forms (and what was typed) instead of switching to the offline layout, which only GET /me decides. After a 401 the
+  // screen gives way to Sign in before it can show its error, so Sign in says that nothing was changed, and it is read
+  // out: landing there signed out after Delete account would read as done.
   const handleError = useCallback((e: unknown): ApiError => {
     const err = asApiError(e);
-    if (err.code === 'unauthenticated') setSignedOut();
+    if (err.code === 'unauthenticated') setSignedOut('sessionEnded');
     return err;
   }, [setSignedOut]);
 
@@ -262,11 +269,12 @@ export function useAccount(): UseAccount {
       setSignedOut(n);
     },
     signOutEverywhere: async () => {
+      // Not as signOut: a session that had already ended (a new password on another device) could not end the others,
+      // so a 401 is not "signed out on every device".
       try {
         await api.post<void>('/auth/sign-out-everywhere');
       } catch (e) {
-        const err = asApiError(e);
-        if (err.code !== 'unauthenticated') throw handleError(err);
+        throw handleError(e);
       }
       setSignedOut('signedOutEverywhere');
     },

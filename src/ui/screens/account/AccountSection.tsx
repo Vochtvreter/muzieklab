@@ -51,6 +51,12 @@ export function AccountSection(): JSX.Element | null {
     },
     [setNotice],
   );
+  // A request refused because the session ended (the feedback sheet's, say) is Sign in's line, not a done line: it was
+  // read out, and here the Sign in row says enough. Gone, so a later Sign in does not show it.
+  const ended = notice === 'sessionEnded';
+  useEffect(() => {
+    if (ended) setNotice(null);
+  }, [ended, setNotice]);
 
   if (!me && reach !== 'reachable') return null;
   const offline = reach === 'unreachable';
@@ -73,7 +79,7 @@ export function AccountSection(): JSX.Element | null {
       ) : (
         <RowLink to="/signin" title={t('settings.signIn')} sub={t('settings.signInSub')} />
       )}
-      {notice && (
+      {notice && !ended && (
         <div className="row-status m-in">
           <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
           {t(NOTICE_TEXT[notice])}

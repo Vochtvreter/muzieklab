@@ -4,7 +4,8 @@
  * - New password (#/reset/<token>): a new password → signed in, and every other device signed out.
  * The link is checked first, so a used or expired one says so before anyone types a password. On success the token
  * leaves the history (replace), and Settings says what happened.
- * Someone else signed in on this device: who, and Sign out before the form, with its confirm opening on Remove.
+ * Someone else signed in on this device: who, and Sign out before the form, with its confirm opening on Remove. An
+ * invite's own account signed in (another tab accepted it, and the store took that up): Settings, as after accepting.
  * Signing in with the link straight away, or after Sign out with Keep, adds the progress on this device to the link's
  * account, as a first sign-in on a device does; the card says so.
  */
@@ -74,6 +75,14 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
     };
   }, [kind, token, attempt]);
 
+  // An invited account cannot sign in, so the invite's own account signed in means it was accepted, in another tab
+  // with the same link (opened twice from the email). Not someone else to sign out: the link is used, and leaves the
+  // history.
+  const accepted = kind === 'invite' && check.state === 'good' && account.me?.email === check.link.email;
+  useEffect(() => {
+    if (accepted) navigate('/settings', { replace: true });
+  }, [accepted]);
+
   const title = t(kind === 'invite' ? 'invite.title' : 'reset.title');
   const back = { back: '/' as const, backLabel: t('invite.back') };
 
@@ -95,14 +104,15 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
   }
 
   const { link } = check;
-  // An invite is always for someone else: an invited account cannot sign in yet.
-  const other = account.me && (kind === 'invite' || account.me.email !== link.email) ? account.me : null;
+  const other = account.me && account.me.email !== link.email ? account.me : null;
   const head = {
     title: kind === 'invite' ? t('invite.welcome', { name: link.name }) : title,
     docTitle: title,
     sub: t(kind === 'invite' ? 'invite.choose' : 'reset.choose', { email: link.email }),
     ...back,
   };
+  // On its way to Settings: no form for a link that is used.
+  if (accepted) return <FocusedPage {...head}>{null}</FocusedPage>;
   if (other) {
     return (
       <FocusedPage {...head}>

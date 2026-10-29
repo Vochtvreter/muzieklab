@@ -82,7 +82,7 @@ export function ScalesSetup(): JSX.Element {
               <span className="muted-text input-hint" aria-live="polite">
                 {keyHint}{' '}
                 {s.keyMode === 'pick' && (
-                  <Link to="/scales/key" query={carry} remember className="text-link">
+                  <Link to="/scales/key" query={carry} className="text-link">
                     {t('scales.setup.change')}
                   </Link>
                 )}

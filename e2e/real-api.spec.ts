@@ -313,10 +313,11 @@ test('blocking signs a member out at their next request and refuses sign-in unti
   const access = a.getByRole('region', { name: 'Access' });
   await expect(access.locator('.row-status')).toHaveText("Blocked. They're signed out.");
 
-  // The member's next request finds the session gone: signed out, to Sign in.
+  // The member's next request finds the session gone: signed out, to Sign in, which says the name was not saved.
   await m.getByLabel('Name').fill(member.name + ' B.');
   await m.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(m).toHaveURL(/#\/signin$/);
+  await expect(m.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toBeVisible();
   await m.getByLabel('Email').fill(member.email);
   await m.getByLabel('Password', { exact: true }).fill(member.password);
   await m.getByRole('button', { name: 'Sign in' }).click();
@@ -355,9 +356,18 @@ test("a new-password link: set on another device, and the member's other devices
   await expect(accountSection(other).locator('.row-status')).toHaveText('Password saved. Your other devices are signed out.');
   await expect(accountRow(other, member.name)).toBeVisible();
 
-  // The first device is signed out; the old password no longer works, the new one does.
+  // The first device is signed out, but does not know yet (Settings was open there): its Sign out everywhere is refused,
+  // and Sign in says nothing was changed, never that every device was signed out.
+  await m.evaluate(() => (location.hash = '#/account'));
+  await m.getByRole('button', { name: /^Sign out everywhere/ }).click();
+  await m.getByRole('alertdialog').getByRole('button', { name: 'Sign out' }).click();
+  await expect(m).toHaveURL(/#\/signin$/);
+  await expect(m.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toBeVisible();
+  await expect(m.getByText('Signed out on every device.')).toHaveCount(0);
+  await m.goto('./#/settings');
   await m.reload();
   await expect(accountSection(m).getByRole('link', { name: /^Sign in/ })).toBeVisible();
+  // The old password no longer works, the new one does.
   await signIn(m, member.email, member.password);
   await expect(m.getByRole('alert')).toHaveText('Email or password is not right.');
   await m.getByLabel('Password', { exact: true }).fill(NEW_PASSWORD);

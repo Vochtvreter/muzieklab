@@ -845,6 +845,7 @@
     "submit": "Inloggen",
     "busy": "Inloggen…",
     "forgot": "Wachtwoord vergeten? Vraag het aan degene die je heeft uitgenodigd.",
+    "sessionEnded": "Je bent uitgelogd, dus er is niets gewijzigd. Log opnieuw in om verder te gaan.",
     "privacy": "Privacy"
   },
   "invite": {
@@ -1090,7 +1091,7 @@
     "days": "{count, plural, one {# dag geoefend} other {# dagen geoefend}}",
     "file": "Bestand",
     "download": "Downloaden als bestand",
-    "downloadSub": "Alles hierboven, met de anonieme voortgang, als JSON.",
+    "downloadSub": "Alle verwijderde accounts, met de anonieme voortgang, als JSON.",
     "downloading": "Downloaden…",
     "newest": "De nieuwste {count} van {total} staan hier. Het bestand bevat ze allemaal."
   },

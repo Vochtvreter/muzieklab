@@ -517,7 +517,9 @@ only to that person. When links stop working is in §5.3.
   hash, so the time taken does not tell either. What is not an email address at all is refused at once, without a
   hash and without counting.
 - **Sign out** deletes the session. **Sign out everywhere** (Account) deletes all of the account's sessions and its
-  new-password links.
+  new-password links. A 401 counts as signed out for Sign out, not for Sign out everywhere: a session that had already
+  ended (a new password on another device) ended no other, so the app goes to Sign in, which says nothing was changed,
+  as for any request an account screen sends after its session ended.
 - A **blocked** account cannot sign in, and its sessions are deleted when it is blocked.
 
 **Too many tries** slow down rather than lock: a hard lockout would let anyone lock someone else out. The first plan

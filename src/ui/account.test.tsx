@@ -5,6 +5,7 @@ import type { Me } from '../../shared/api';
 import { RENEWED_KEY } from '../api/client';
 import { ACCOUNT_KEY } from '../game/storage';
 import { keepSignedIn, RECHECK_MS, RENEW_MS, resetAccountCheck, useAccount, type UseAccount } from './account';
+import { listenToAnnouncements } from './lib/announce';
 import { StoreProvider } from './store';
 
 const ME: Me = {
@@ -232,6 +233,61 @@ describe('useAccount', () => {
       latest.handleError(new ApiError(401, 'unauthenticated'));
     });
     expect(shown()).toBe('reachable nobody');
+  });
+
+  it('a request the session had ended for signs out with a line for Sign in: nothing was changed, sign in again', async () => {
+    const said: string[] = [];
+    const stop = listenToAnnouncements((text) => said.push(text));
+    fetchMock.mockResolvedValueOnce(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    const { ApiError } = await import('../api/client');
+    act(() => {
+      latest.handleError(new ApiError(401, 'unauthenticated'));
+    });
+    expect(shown()).toBe('reachable nobody');
+    // Delete account ends signed out too: without the line, Sign in reads as if the account was deleted.
+    expect(latest.notice).toBe('sessionEnded');
+    expect(said).toEqual(['You were signed out, so nothing was changed. Sign in again to go on.']);
+    stop();
+  });
+
+  it('sign out everywhere on a session that had already ended: refused, so it never says every device was signed out', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    // The session ended on another device (a new password there): the request and the renewal it tries are refused,
+    // so no other device was signed out.
+    fetchMock.mockImplementation(async () => json(401, { error: 'unauthenticated', message: '' }));
+    await act(async () => {
+      await expect(latest.signOutEverywhere()).rejects.toMatchObject({ code: 'unauthenticated' });
+    });
+    expect(shown()).toBe('reachable nobody');
+    expect(latest.notice).toBe('sessionEnded');
+  });
+
+  it('sign out everywhere that worked says so', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await act(async () => {
+      await latest.signOutEverywhere();
+    });
+    expect(shown()).toBe('reachable nobody');
+    expect(latest.notice).toBe('signedOutEverywhere');
   });
 
   it('drops an answer to GET /me that a sign-in overtook', async () => {
