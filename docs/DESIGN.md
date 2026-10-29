@@ -387,8 +387,9 @@ Learn and practice major and minor scales in all 15 keys.
   The three positions at the bottom carry both spellings (B/C♭, F♯/G♭, D♭/C♯); tapping
   the selected key again switches spelling. Each key is filled by progress (★ light,
   ★★ mid, ★★★ dark slate); for minor, by how many of the three forms have ★★ or more.
-  A position of two spellings shows the selected one, else the one with more progress (the first on a tie), so it is
-  filled whichever spelling earned it, as on Round done's circle.
+  A position of two spellings shows the selected one, else the one with more progress on the ring in front (the first
+  on a tie), so it is filled whichever spelling earned it, as on Round done's circle. The faint ring takes the same
+  spelling, so it still holds the relative minor (*C♭* over *a♭*, not *g♯*). The ScaleHub boards always draw the first.
   A key on the faint ring switches the ring and keeps the focus: the keys come in one order on both tabs, the major
   ring first, so a keyboard or screen-reader user stays on the key just chosen.
   A second spelling (*C♭* under *B*) is smaller than the name and, on the ring in front, drawn at 90%, which keeps it
@@ -445,8 +446,8 @@ Learn and practice major and minor scales in all 15 keys.
   that need them: then a fourth button, 𝄪 (key X), joins the row. No scale here needs a
   double flat. *Hint* names the step from the note before. Right after a wrong sign it takes the place of why and of
   the sign's red mark; the next mistake says why again, and Hint can be asked once more.
-- **Up and down** adds the way back: the degree row gets a second line, from 7 down to 1, and
-  the piano window stays the same.
+- **Up and down** adds the way back: the degree row gets a second line, from 8 (the top note again, answered once it is
+  played or spelled going up) down to 1, and the piano window stays the same.
 - **Melodic minor down** is written as natural minor (the classical form).
 - **Scoring:** a scale is right when it was finished without mistakes; stars by mistakes
   (0 → ★★★, 1 → ★★, 2–3 → ★). A scale with mistakes comes back at the end of the round.
@@ -1560,8 +1561,8 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     6 px), the sign buttons (64 px, 56 px with Up & down), the analog beat counter (44 px, as the digits' row), Echo's
     listen card and Calibration's intro. At 320 px wide Read notes leaves out *Any octave counts* above the key labels
     (screen readers still read it), so the why of a wrong key in a lesson in a key fits on its three lines. Up & down's
-    done line leaves out the scale's 15 notes, which its degree rows show right above it (screen readers still read
-    them): it takes two lines at most, in Dutch at 320 px too. Like a why of two lines, it leaves Hint and Next scale in
+    done line leaves out the scale's 15 notes, which its degree rows show right above it (screen readers hear them in
+    the line said beside it): it takes two lines at most, in Dutch at 320 px too. Like a why of two lines, it leaves Hint and Next scale in
     view beside the tallest staff, a B♭ scale's (its high B♭ with its flat), also in B♭ harmonic minor, whose eyebrow
     takes two lines at 375 px beside *2 mistakes*.
 - **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a

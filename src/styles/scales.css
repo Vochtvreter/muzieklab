@@ -1008,7 +1008,7 @@
    * and below it, and the sign buttons give up 8 px, so a why of two lines leaves Hint and Next scale in view beside the
    * tallest staff, a B♭ scale's (its high B♭ with its flat), also in B♭ harmonic minor, whose eyebrow takes two lines at
    * 375 px beside "2 mistakes". The done line leaves out its 15 notes, which the degree rows right above it show; screen
-   * readers still read them (the .sr-only pattern, base.css).
+   * readers hear them in the line said beside it (ScalesPlay's live region), as this one is hidden from them.
    */
   .splay--updown {
     gap: 6px;
@@ -1024,15 +1024,7 @@
     height: 56px;
   }
   .splay--updown .nfeedback-notes {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
+    display: none;
   }
 }
 /* Phone in landscape: the staff and the degrees on the left; the piano or the signs on the right. */

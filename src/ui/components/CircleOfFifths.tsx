@@ -2,9 +2,9 @@
  * The Scales hub's circle of fifths (DESIGN.md §3.7): 12 positions clockwise from C, major keys on the outer ring and
  * their relative minors on the inner one. The ring in front (Major / Minor) is filled by progress; the other one is
  * drawn faint and switches when tapped. The three positions at the bottom have two spellings: each shows the one
- * selected, else the one with more progress, and tapping the selected one again switches spelling. The centre shows the
- * selected key signature. Sizes are fractions of the circle, so it scales from a 320 px phone to the 520 px desktop
- * board.
+ * selected, else the one with more progress on the ring in front, on both rings, and tapping the selected one again
+ * switches spelling. The centre shows the selected key signature. Sizes are fractions of the circle, so it scales from a
+ * 320 px phone to the 520 px desktop board.
  */
 import type { CSSProperties } from 'react';
 import { CIRCLE, circlePosition, keySigns, majorLevel, minorLevel, type KeyId, type ScaleStars } from '../../core/api';
@@ -37,16 +37,20 @@ export function CircleOfFifths({ tab, selected, stars, onPick, className }: Prop
   const selPos = circlePosition(selected);
   const signs = keySigns(selected);
   const sigText = signs.length ? signs.map((s) => letterName(s.letter, s.alter)).join(' ') : t('scales.hub.noSigns');
+  const levelOf = (which: Ring, k: KeyId): number => (which === 'major' ? majorLevel(stars, k) : minorLevel(stars, k));
+  // The spelling shown at each position: the selected one when it is here, else the one with more progress on the ring
+  // in front (the first on a tie), so the key is filled whichever spelling earned it, as on Round done's circle. Both
+  // rings take it, so the faint ring still holds the relative minor (C♭ over a♭), never the other spelling's (g♯).
+  const shownAt = CIRCLE.map((keys) =>
+    keys.includes(selected) ? selected : keys.reduce((best, k) => (levelOf(tab, k) > levelOf(tab, best) ? k : best)),
+  );
 
   const ring = (which: Ring): JSX.Element[] =>
     CIRCLE.map((keys, pos) => {
       const active = which === tab;
-      const levelOf = (k: KeyId): number => (which === 'major' ? majorLevel(stars, k) : minorLevel(stars, k));
-      // The spelling shown at this position: the selected one when it is here, else the one with more progress (the
-      // first on a tie), so the key is filled whichever spelling earned it, as on Round done's circle.
-      const shown = keys.includes(selected) ? selected : keys.reduce((best, k) => (levelOf(k) > levelOf(best) ? k : best));
+      const shown = shownAt[pos];
       const other = keys.find((k) => k !== shown);
-      const level = levelOf(shown);
+      const level = levelOf(which, shown);
       const size = SIZE[which][active ? 'on' : 'off'];
       const on = active && pos === selPos;
       const style = { ...at(pos, R[which]), width: size * 100 + '%', height: size * 100 + '%' } as CSSProperties;

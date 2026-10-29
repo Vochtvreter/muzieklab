@@ -32,13 +32,16 @@ describe('CircleOfFifths', () => {
   });
 
   it('fills a position of two spellings by the one with progress, as Round done does', () => {
-    const { rerender } = render(<CircleOfFifths tab="major" selected="C" stars={{ 'Cb-major': 3, 'C#-major': 2, 'Gb-major': 1, 'F#-major': 2 }} onPick={() => {}} />);
+    const { rerender } = render(<CircleOfFifths tab="major" selected="C" stars={{ 'Cb-major': 3, 'C#-major': 2, 'F#-major': 1, 'Gb-major': 2 }} onPick={() => {}} />);
     expect(screen.getByRole('button', { name: 'C flat major: 3 stars (or B major)' }).className).toContain('is-l3');
+    // The faint ring takes the same spelling, so it still holds the relative minor: a♭ under C♭, not g♯.
+    expect(screen.getByRole('button', { name: 'A flat minor: no form with 2 stars yet (or G sharp minor)' }).className).toContain('is-off');
     expect(screen.getByRole('button', { name: 'C sharp major: 2 stars (or D flat major)' }).className).toContain('is-l2');
-    // Both have stars: the one with more.
-    expect(screen.getByRole('button', { name: 'F sharp major: 2 stars (or G flat major)' }).className).toContain('is-l2');
+    // Both have stars: the one with more, the second spelling here.
+    expect(screen.getByRole('button', { name: 'G flat major: 2 stars (or F sharp major)' }).className).toContain('is-l2');
     rerender(<CircleOfFifths tab="minor" selected="C" stars={{ 'Ab-natural': 2, 'Ab-harmonic': 3 }} onPick={() => {}} />);
     expect(screen.getByRole('button', { name: 'A flat minor: 2 forms with 2 stars (or G sharp minor)' }).className).toContain('is-l2');
+    expect(screen.getByRole('button', { name: 'C flat major: no stars yet (or B major)' }).className).toContain('is-off');
     // None on either: the first spelling, as before.
     expect(screen.getByRole('button', { name: 'D sharp minor: no form with 2 stars yet (or E flat minor)' }).className).toContain('is-l0');
     // The selected spelling is the one shown, even with less progress.
