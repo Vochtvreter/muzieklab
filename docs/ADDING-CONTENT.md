@@ -76,8 +76,8 @@ A new kind of block (counting under the notes, for example) is a case in the `Bl
 - `practice: { notes: { clefs: ['bass'], range: 'staff' } }` starts a Read notes round straight away, with those
   settings on top of the player's own (answer with, notes per round and the timer stay). `practice: { rhythm: { meters:
   ['3/4'] } }` starts a rhythm exercise the same way, in Tap mode (tempo, bars and the metronome stay the player's).
-  An extra the preset turns on (`dotted`, `ties`, `triplets`) is in the exercise and in Results' Next (a tie needs two
-  bars or more).
+  An extra the preset turns on (`dotted`, `ties`, `triplets`) is in the exercise and in Results' Next. A tie needs two
+  bars, so with the player's Bars at 1 a `ties` preset plays 2; the player's setup keeps 1.
   Quit, and the back arrow on Results or Round done, return to the section; their setup button opens the setup with
   the preset. `practice: { scales: { keyMode: 'one', keys: ['C'], types: ['major'] } }` opens the Scales setup.
 - The chapter's `practice: 'notes' | 'rhythm' | 'scales'` picks the big button at the end.
@@ -101,10 +101,11 @@ Set `PLANNED_CHAPTERS` in `chapters.ts` when the plan grows ("chapter 9 of 11").
    Continue card shows a bar with what a lesson is about: the symbols it is the first to use, else what it adds over
    the lesson before, with the dot, tie or triplet when it has them (`src/ui/lib/lessons.ts`). Where the title names
    something else, or the lesson adds what its exercises never have (a half rest in three-four), say what the bar must
-   show with `preview` (*Eighths with half notes*: `['note:eighth', 'note:half']`; *Dotted quarter + eighth*:
-   `['dotted:quarter', 'note:eighth']`; *Rests in three-four*: `['rest:quarter']`), or a figure (*Eighth and two
-   sixteenths*: `['figure:eighth-sixteenths']`, an eighth and two sixteenths that fill a beat; a new figure gets its id
-   in `barFigures`, `src/game/intro.ts`). Every exercise of the lesson shows it too, with what the lesson introduces
+   show with `preview` (*Eighths with half notes*: `['note:eighth', 'note:half']`; *Dotted quarters in three-four*:
+   `['dotted:quarter']`; *Rests in three-four*: `['rest:quarter']`). A title that names a figure gets the figure
+   (*Eighth and two sixteenths*: `['figure:eighth-sixteenths']`, an eighth and two sixteenths that fill a beat; also
+   *Eighth-note pairs*, *Dotted quarter + eighth* and *Four sixteenths*); a new figure gets its id and notes in
+   `FIGURES`, `src/game/intro.ts`. Every exercise of the lesson shows it too, with what the lesson introduces
    and its dot or tie (`makeLessonRun` in `src/ui/store.tsx`), so `preview` names only what most exercises of the
    lesson can have.
 2. **Text:** `path.u{n}.title` and `path.u{n}.l1` … `l5` in `en.json`.

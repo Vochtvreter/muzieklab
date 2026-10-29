@@ -749,6 +749,39 @@ test('learn: Practice ties starts an exercise with a tie in it', async ({ page }
   expect(exerciseHas(generateExercise(next.settings, next.seed), ['ties']), 'New exercise').toBe(true);
 });
 
+test('learn: with Bars at 1 Practice ties plays 2 bars with a tie, and the player keeps 1 bar', async ({ page }) => {
+  await seedStorage(page, {
+    prefs: { seenHowTo: true, seenHold: true },
+    progress: { lessons: {}, practiceDays: [], lastSettings: { ...DEFAULT_SETTINGS, bars: 1 } },
+  });
+  await page.setViewportSize(VIEWPORTS.phone);
+  const stored = (): Promise<{ settings: Settings; seed: number }> => page.evaluate(() => JSON.parse(sessionStorage.getItem('muzieklab.run.v1')!));
+  await page.goto('./#/learn/5');
+  // No exercise of 1 bar has a tie: the link once played one without.
+  await page.getByRole('link', { name: 'Practice ties →' }).click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  const run = await stored();
+  expect(run.settings).toMatchObject({ bars: 2, ties: true });
+  expect(exerciseHas(generateExercise(run.settings, run.seed), ['ties'])).toBe(true);
+  await expect(page.getByRole('img', { name: /^Rhythm in 4\/4/ })).toHaveAccessibleName(/, tied/);
+  // Results' New exercise goes on with 2 bars and a tie.
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('button', { name: 'New exercise' }).click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  const next = await stored();
+  expect(next.settings.bars, 'New exercise').toBe(2);
+  expect(exerciseHas(generateExercise(next.settings, next.seed), ['ties']), 'New exercise').toBe(true);
+  // Only those runs: Practice settings opens the setup with the player's 1 bar, also after a reload.
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('link', { name: 'Practice settings' }).click();
+  await expect(page).toHaveURL(/#\/setup\?from=5\.1$/);
+  await expect(page.getByRole('button', { name: 'Ties', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const bars = page.getByRole('group', { name: 'Bars', exact: true }).locator('[aria-live]');
+  await expect(bars).toHaveText('1');
+  await page.reload();
+  await expect(bars).toHaveText('1');
+});
+
 test("learn: the browser's Back from a practice link returns to its section, as Quit does", async ({ page }) => {
   await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);

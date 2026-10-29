@@ -200,9 +200,9 @@ function useStartSection(): (section: Section, opts?: { replace?: boolean; needs
     } else {
       const settings = { ...state.settings, ...p.rhythm };
       dispatch({ type: 'settings', settings });
-      // The exercise shows the extra the section turns on (5.1's tie), which the generator only makes likely. Not a tie
-      // with Bars at 1: a tie only crosses a bar line, so no exercise has one, and the search would try every seed.
-      const shows = EXTRAS.filter((k) => p.rhythm[k] && (k !== 'ties' || settings.bars > 1));
+      // The exercise shows the extra the section turns on (5.1's tie), which the generator only makes likely; for a tie
+      // it has 2 bars at least, also with the player's Bars at 1, which the setup keeps (makeRunShowing).
+      const shows = EXTRAS.filter((k) => p.rhythm[k]);
       startPractice(settings, { replace, query, needsGesture, shows });
     }
   };

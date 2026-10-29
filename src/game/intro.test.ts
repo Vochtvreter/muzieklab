@@ -99,6 +99,24 @@ describe('exerciseHas', () => {
     expect(exerciseHas(across, ['note:eighth', 'note:sixteenth'])).toBe(true);
   });
 
+  it("finds the other figures a lesson's title names, each from a beat: 4.1's, 7.3's and 8.1's", () => {
+    const figs = ['figure:eighth-pair', 'figure:dotted-quarter-eighth', 'figure:four-sixteenths'];
+    // "1 &", a quarter, "3 (4) &"; then "1 e & a".
+    const on = exercise([
+      { events: [note(0, q / 2), note(q / 2, q / 2), note(q, q), note(2 * q, 1.5 * q), note(3.5 * q, q / 2)] },
+      { events: [note(0, q / 4), note(q / 4, q / 4), note(q / 2, q / 4), note(0.75 * q, q / 4), note(q, q), note(2 * q, 2 * q)] },
+    ]);
+    expect(exerciseHas(on, figs)).toBe(true);
+    // The same values, not in those figures: an eighth and an eighth rest, an eighth and two sixteenths, a dotted
+    // quarter and an eighth rest; three sixteenths and a sixteenth rest, a dotted eighth and a sixteenth.
+    const off = exercise([
+      { events: [note(0, q / 2), rest(q / 2, q / 2), note(q, q / 2), note(1.5 * q, q / 4), note(1.75 * q, q / 4), note(2 * q, 1.5 * q), rest(3.5 * q, q / 2)] },
+      { events: [note(0, q / 4), note(q / 4, q / 4), note(q / 2, q / 4), rest(0.75 * q, q / 4), note(q, 0.75 * q), note(1.75 * q, q / 4), note(2 * q, 2 * q)] },
+    ]);
+    expect(exerciseHas(off, ['note:eighth', 'dotted:quarter', 'note:sixteenth'])).toBe(true);
+    for (const id of figs) expect(exerciseHas(off, [id]), id).toBe(false);
+  });
+
   it('finds what a lesson introduces in an exercise that has it', () => {
     // 1.2 (the half note) has it in every exercise; 3.4's whole rest needs a seed that has one.
     for (let seed = 1; seed <= 20; seed++) expect(exerciseHas(generateExercise(lessonSettings('1.2'), seed), ids('1.2'))).toBe(true);

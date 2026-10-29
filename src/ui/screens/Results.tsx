@@ -25,7 +25,7 @@ import { calibrateQuery, useLearnReturn } from '../lib/learnReturn';
 import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
-import { useStore, type LastResult } from '../store';
+import { runSetup, useStore, type LastResult } from '../store';
 import { useReplay, useStartPathLesson } from './start';
 
 const COUNTS: { key: Judgement | 'extra'; tone: string }[] = [
@@ -129,7 +129,7 @@ export function Results(): JSX.Element | null {
   };
   const toSettings = (): void => {
     engine().stop();
-    dispatch({ type: 'settings', settings: ex.settings });
+    dispatch({ type: 'settings', settings: runSetup(run) });
   };
 
   const diamond = result.stars === DIAMOND;

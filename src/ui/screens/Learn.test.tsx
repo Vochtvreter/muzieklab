@@ -3,11 +3,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
 import { DEFAULT_SETTINGS } from '../../core/defaults';
+import { exerciseHas } from '../../game/intro';
 import { PREFS_KEY, PROGRESS_KEY } from '../../game/storage';
 import { setLocale } from '../../i18n';
 import { resetAccountCheck } from '../account';
 import { PlayButton } from '../learn/Listen';
-import { restoreRun, RUN_KEY } from '../store';
+import { restoreRun, RUN_KEY, runSetup } from '../store';
 
 // Phone width for useBreakpoint; the app scrolls to the top on every route, and a chapter to the section it opens at.
 window.matchMedia = (query: string) =>
@@ -150,12 +151,16 @@ describe("Learn: a rhythm section's practice", () => {
     expect(restoreRun()?.shows).toEqual(['ties']);
   });
 
-  it('asks for no tie with Bars at 1, where no exercise has one: it keeps the first seed and nothing for Next', async () => {
+  it('plays 2 bars for the tie with Bars at 1, where no exercise has one, and the player keeps 1 bar', async () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ lastSettings: { ...DEFAULT_SETTINGS, bars: 1 } }));
     open('#/learn/practice?s=5.1');
     await waitFor(() => expect(window.location.hash).toBe('#/play?from=5.1'));
-    expect(stored()).toMatchObject({ seed, settings: { bars: 1, ties: true } });
-    expect(stored().shows).toBeUndefined();
-    expect(restoreRun()?.shows).toBeUndefined();
+    expect(stored()).toMatchObject({ settings: { bars: 2, ties: true }, shows: ['ties'] });
+    const run = restoreRun()!;
+    expect(exerciseHas(run.exercise, ['ties'])).toBe(true);
+    // Only this run, also after a reload on Play: the setup saved, which Setup and the next start take, keeps 1 bar.
+    expect(run.shows).toEqual(['ties']);
+    expect(runSetup(run)).toMatchObject({ bars: 1, ties: true });
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(PROGRESS_KEY)!).lastSettings).toMatchObject({ bars: 1, ties: true }));
   });
 });

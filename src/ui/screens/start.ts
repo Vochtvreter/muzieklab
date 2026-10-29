@@ -7,7 +7,7 @@ import { unlockAudio } from '../audio';
 import { newSeed } from '../lib/format';
 import { guardFollowUpTap } from '../lib/tapGuard';
 import { navigate } from '../router';
-import { makeLessonRun, makeRun, makeRunShowing, practiceSettings, runSettings, todayIso, useStore, type Run } from '../store';
+import { makeLessonRun, makeRun, makeRunShowing, practiceSettings, runSettings, runSetup, todayIso, useStore, type Run } from '../store';
 import { useStartNoteLesson } from './notes/start';
 
 /**
@@ -100,11 +100,13 @@ export function useReplay(): (prev: Run, same: boolean, query?: string) => void 
     (prev: Run, same: boolean, query?: string) => {
       unlockAudio();
       const { exercise, lessonId } = prev;
+      // Next in free practice starts from the player's setup (runSetup): with Bars at 1 a tie plays 2 bars again, and
+      // the player keeps 1.
       const run: Run | null = same
-        ? { exercise, lessonId, daily: prev.daily, shows: prev.shows }
+        ? { exercise, lessonId, daily: prev.daily, shows: prev.shows, setupBars: prev.setupBars }
         : lessonId
           ? makeLessonRun(exercise.settings, newSeed(), lessonId)
-          : makeRunShowing(exercise.settings, newSeed(), prev.shows ?? []);
+          : makeRunShowing(runSetup(prev), newSeed(), prev.shows ?? []);
       if (!run) return;
       dispatch({ type: 'start', run });
       guardFollowUpTap();

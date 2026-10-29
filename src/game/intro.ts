@@ -70,16 +70,31 @@ export function introsOf(lessonIds: Iterable<string>): string[] {
   return [...ids];
 }
 
-const plainNote = (s: NotatedSymbol | undefined, value: NoteValue): boolean => s?.kind === 'note' && s.value === value && !s.dots && !s.tuplet;
+/** A figure's notes in order, each a value and its dots. */
+type Figure = ReadonlyArray<readonly [NoteValue, 0 | 1]>;
+
+const isNote = (s: NotatedSymbol | undefined, [value, dots]: Figure[number]): boolean => s?.kind === 'note' && s.value === value && s.dots === dots && !s.tuplet;
 
 /**
- * The figures a bar shows that a lesson can be about (path.ts, `preview`): 'figure:eighth-sixteenths', an eighth note
- * and two sixteenth notes that fill one beat, "1 & a" (8.3 Eighth and two sixteenths). Every meter counts quarter beats.
+ * The figures a lesson's title names (path.ts, `preview`), as notes that start on a beat; every meter counts quarter
+ * beats.
  */
+const FIGURES: Record<string, Figure> = {
+  // 4.1 Eighth-note pairs: "1 &".
+  'figure:eighth-pair': [['eighth', 0], ['eighth', 0]],
+  // 7.3 Dotted quarter + eighth: "1 (2) &".
+  'figure:dotted-quarter-eighth': [['quarter', 1], ['eighth', 0]],
+  // 8.1 Four sixteenths: "1 e & a".
+  'figure:four-sixteenths': [['sixteenth', 0], ['sixteenth', 0], ['sixteenth', 0], ['sixteenth', 0]],
+  // 8.3 Eighth and two sixteenths: "1 & a".
+  'figure:eighth-sixteenths': [['eighth', 0], ['sixteenth', 0], ['sixteenth', 0]],
+};
+
+/** The figures a bar shows (FIGURES): 'figure:eighth-sixteenths' where an eighth and two sixteenths fill a beat. */
 export function barFigures(bar: NotatedBar): string[] {
   const s = bar.symbols;
-  const eighthSixteenths = s.some((x, i) => x.start % PPQ === 0 && plainNote(x, 'eighth') && plainNote(s[i + 1], 'sixteenth') && plainNote(s[i + 2], 'sixteenth'));
-  return eighthSixteenths ? ['figure:eighth-sixteenths'] : [];
+  const shows = (figure: Figure): boolean => s.some((x, i) => x.start % PPQ === 0 && figure.every((note, k) => isNote(s[i + k], note)));
+  return Object.keys(FIGURES).filter((id) => shows(FIGURES[id]));
 }
 
 /**

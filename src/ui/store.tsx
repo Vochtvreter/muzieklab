@@ -83,6 +83,8 @@ export interface Run {
   needsGesture?: boolean;
   /** What a Learn section's practice shows (intro ids, makeRunShowing): Next keeps it. */
   shows?: string[];
+  /** The player's Bars where the run plays more (a tie needs 2 bars, makeRunShowing): the setup keeps it (runSetup). */
+  setupBars?: number;
 }
 
 /** The current run, per tab (sessionStorage), so a reload on Play rebuilds the same exercise. */
@@ -93,14 +95,15 @@ interface StoredRun {
   seed: number;
   lessonId: string | null;
   daily?: string | null;
-  /** Run.shows, so Retry and Next after a reload keep it too. */
+  /** Run.shows and Run.setupBars, so Retry and Next after a reload keep them too. */
   shows?: string[];
+  setupBars?: number;
 }
 
 function saveRun(run: Run | null): void {
   try {
     if (!run) sessionStorage.removeItem(RUN_KEY);
-    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId, daily: run.daily, shows: run.shows } satisfies StoredRun));
+    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId, daily: run.daily, shows: run.shows, setupBars: run.setupBars } satisfies StoredRun));
   } catch {
     /* storage blocked: a reload goes back to Setup, as before */
   }
@@ -118,7 +121,10 @@ export function restoreRun(): Run | null {
     const shows = Array.isArray(v.shows) ? v.shows.filter((x) => INTRO_IDS.includes(x)) : [];
     const settings = sanitizeSettings(v.settings);
     const run = settings && makeRun(settings, v.seed, lessonId, daily);
-    return run && { ...run, needsGesture: true, ...(shows.length ? { shows } : {}) };
+    if (!run) return null;
+    const { setupBars } = v;
+    const fewer = typeof setupBars === 'number' && Number.isInteger(setupBars) && setupBars >= 1 && setupBars < run.exercise.settings.bars;
+    return { ...run, needsGesture: true, ...(shows.length ? { shows } : {}), ...(fewer ? { setupBars } : {}) };
   } catch {
     return null;
   }
@@ -368,7 +374,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, settings: action.settings };
     case 'start': {
       const free = !action.run.lessonId && !action.run.daily;
-      const progress = free ? { ...state.progress, lastSettings: action.run.exercise.settings } : state.progress;
+      const progress = free ? { ...state.progress, lastSettings: runSetup(action.run) } : state.progress;
       return { ...state, run: action.run, progress };
     }
     case 'finish': {
@@ -692,10 +698,23 @@ function lessonShows(settings: Settings, lessonId: string): string[] {
  * which the generator only makes likely), and keeps `shows` for Next.
  */
 export function makeRunShowing(settings: Settings, seed: number, ids: readonly string[], lessonId: string | null = null): Run | null {
+  // No exercise of 1 bar has a tie: the generator ties over a bar line, or in a quarter, half, quarter, which never
+  // ends an exercise. So a run that must show one plays 2 bars, and only that run: the player keeps Bars at 1.
+  const s = ids.includes('ties') && settings.bars < 2 ? { ...settings, bars: 2 } : settings;
   const seeds = new Rng(seed);
-  let run = makeRun(settings, seed, lessonId);
-  for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(settings, seeds.int(0x7fffffff), lessonId);
-  return run && !lessonId && ids.length ? { ...run, shows: [...ids] } : run;
+  let run = makeRun(s, seed, lessonId);
+  for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(s, seeds.int(0x7fffffff), lessonId);
+  if (!run || lessonId || !ids.length) return run;
+  return { ...run, shows: [...ids], ...(s !== settings && { setupBars: settings.bars }) };
+}
+
+/**
+ * The setup a free run leaves the player (saved as the free-practice setup; Setup opened from Play or Results): its
+ * exercise's settings, with the player's own Bars where the run played more (setupBars).
+ */
+export function runSetup(run: Run): Settings {
+  const { settings } = run.exercise;
+  return run.setupBars ? { ...settings, bars: run.setupBars } : settings;
 }
 
 /** A lesson run whose exercise shows all its lesson is about (lessonShows). */

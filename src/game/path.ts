@@ -10,8 +10,8 @@ export interface Lesson extends TrackLesson {
   /**
    * What every exercise of the lesson (makeLessonRun, ui/store.tsx) and the bar of Home's preview must show, where the
    * title names more than the symbols the lesson adds, or other ones (3.2 adds the half rest, which a three-four
-   * exercise never has; ui/lib/lessons.ts): 'note:half', 'rest:eighth', 'dotted:quarter', or a figure
-   * (game/intro.ts): 'figure:eighth-sixteenths'.
+   * exercise never has; ui/lib/lessons.ts): 'note:half', 'rest:eighth', 'dotted:quarter', or the figure a title names
+   * (game/intro.ts, FIGURES): 'figure:eighth-sixteenths'.
    */
   preview?: string[];
 }
@@ -79,7 +79,7 @@ export const UNITS: Unit[] = [
     { rests: ['whole', 'half', 'quarter'], bars: 8, tempo: 90 }, // Unit review
   ]),
   unit(4, '𝅘𝅥𝅮', { ...BASE, notes: ['half', 'quarter', 'eighth'], rests: ['quarter'] }, [
-    { notes: ['quarter', 'eighth'], rests: [], density: 'sparse', bars: 2, tempo: 60 }, // Eighth-note pairs
+    { notes: ['quarter', 'eighth'], rests: [], density: 'sparse', bars: 2, tempo: 60, preview: ['figure:eighth-pair'] }, // Eighth-note pairs
     { notes: ['quarter', 'eighth'], bars: 4, tempo: 70 }, // Eighths and quarters
     { rests: ['half', 'quarter'], bars: 4, tempo: 70, preview: ['note:eighth', 'note:half'] }, // Eighths with half notes
     { meters: ['3/4'], bars: 4, tempo: 80 }, // Eighths in three-four
@@ -103,13 +103,13 @@ export const UNITS: Unit[] = [
   unit(7, '𝅘𝅥.', { ...BASE, dotted: true, notes: ['half', 'quarter'], rests: ['quarter'] }, [
     { meters: ['3/4'], bars: 2, tempo: 70 }, // Dotted half notes
     { bars: 4, tempo: 80 }, // Dotted halves in four-four
-    { notes: ['half', 'quarter', 'eighth'], bars: 4, tempo: 80, preview: ['dotted:quarter', 'note:eighth'] }, // Dotted quarter + eighth
+    { notes: ['half', 'quarter', 'eighth'], bars: 4, tempo: 80, preview: ['figure:dotted-quarter-eighth'] }, // Dotted quarter + eighth
     { meters: ['3/4'], notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'], bars: 4, tempo: 80, preview: ['dotted:quarter'] }, // Dotted quarters in three-four
     { meters: ['2/4', '3/4', '4/4'], notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'], ties: true, bars: 8, tempo: 90 }, // Unit review
   ]),
   // Four sixteenths first: without eighths a beat can only split into four sixteenths.
   unit(8, '𝅘𝅥𝅯', { ...BASE, notes: ['quarter', 'sixteenth'], rests: ['quarter'] }, [
-    { density: 'sparse', bars: 2, tempo: 60 }, // Four sixteenths
+    { density: 'sparse', bars: 2, tempo: 60, preview: ['figure:four-sixteenths'] }, // Four sixteenths
     { notes: ['half', 'quarter', 'sixteenth'], bars: 4, tempo: 60 }, // Sixteenths and half notes
     { notes: ['quarter', 'eighth', 'sixteenth'], bars: 2, tempo: 60, preview: ['figure:eighth-sixteenths'] }, // Eighth and two sixteenths
     { notes: ['half', 'quarter', 'eighth', 'sixteenth'], rests: ['quarter', 'eighth'], bars: 4, tempo: 70 }, // Sixteenth combinations

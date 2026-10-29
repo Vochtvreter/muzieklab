@@ -28,7 +28,7 @@ import { metersLabel } from '../lib/format';
 import { focusHeading, focusLost } from '../lib/screenFocus';
 import { guardFollowUpTap } from '../lib/tapGuard';
 import { leave, Link, navigate } from '../router';
-import { todayIso, useStore, type Run } from '../store';
+import { runSetup, todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
 import { HowToContent, IntroContent, PauseContent, ReadyContent, useListen } from './PlaySheets';
@@ -275,7 +275,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   };
   const toSettings = (): void => {
     s.stop();
-    dispatch({ type: 'settings', settings: ex.settings });
+    dispatch({ type: 'settings', settings: runSetup(run) });
     navigate('/setup', { query: carry });
   };
 

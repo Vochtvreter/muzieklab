@@ -6,7 +6,7 @@ import { PATH_UNITS } from '../game/tracks';
 import { defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type DayStats, type Prefs, type Progress } from '../game/storage';
 import { CHAPTERS } from './learn/chapters';
 import type { Me } from '../../shared/api';
-import { makeLessonRun, makeNoteRun, makeRun, makeRunShowing, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
+import { makeLessonRun, makeNoteRun, makeRun, makeRunShowing, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, runSetup, type Action, type AppState } from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -408,6 +408,26 @@ describe('makeRunShowing', () => {
     // eighth, quarter, eighth syncopates without one.
     const ties = rhythm.find((r) => r.id === '5.1')!.settings;
     expect(seeds.filter((seed) => !exerciseHas(makeRun(ties, seed, null)!.exercise, ['ties'])).length).toBeGreaterThan(seeds.length / 10);
+  });
+
+  it("a tie needs two bars: with Bars at 1 5.1's and 6.1's practice plays 2 and shows one, and the setup keeps 1", () => {
+    const tied = rhythm.filter((r) => r.settings.ties);
+    expect(tied.map((r) => r.id)).toEqual(['5.1', '6.1']);
+    for (const { id, settings } of tied) {
+      for (const bars of [1, 2, 4]) {
+        const player = { ...settings, bars };
+        // No exercise of 1 bar has a tie, from any seed.
+        if (bars === 1) expect(seeds.some((seed) => exerciseHas(makeRun(player, seed, null)!.exercise, ['ties']))).toBe(false);
+        for (const seed of seeds) {
+          const run = makeRunShowing(player, seed, ['ties'])!;
+          expect(exerciseHas(run.exercise, ['ties']), `${id}, ${bars} bars, seed ${seed}`).toBe(true);
+          expect(run.exercise.settings).toEqual({ ...player, bars: Math.max(bars, 2) });
+          // Only that run: the free-practice setup it saves, and Setup opened from it, keep the player's bars.
+          expect(reducer(state(), { type: 'start', run }).progress.lastSettings, `${id}, ${bars} bars`).toEqual(player);
+          expect(runSetup(run)).toEqual(player);
+        }
+      }
+    }
   });
 
   it('keeps the first seed when there is nothing to show', () => {
