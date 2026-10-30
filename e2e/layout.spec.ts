@@ -162,8 +162,9 @@ async function expectCountsApart(page: Page): Promise<void> {
  * Learn's tables and diagrams keep their words apart (DESIGN.md §9.1), also on a 320 px phone and in Dutch: a table
  * row's name stays in its column, clear of its value (5.2's "Gepunteerde" ran over "2 + 1 = 3 tellen"); each beat's
  * word in 1.3 stays in its column ("halfzwaar" ran into "licht"); a step pattern or a row of letters stays on one line
- * inside its card (11.4's "W H W W W W" left its "H" alone below); and each count of a beat grid stays in its cell
- * (5.3's Dutch "(en)" ran over its outline).
+ * inside its card (11.4's "W H W W W W" left its "H" alone below); each count of a beat grid stays in its cell
+ * (5.3's Dutch "(en)" ran over its outline); and the counts under a rhythm that meet letter to letter stay apart (7.1's
+ * "trip let" read as "triplet").
  */
 async function expectLearnWordsApart(page: Page, where = ''): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -199,6 +200,16 @@ async function expectLearnWordsApart(page: Page, where = ''): Promise<void> {
       const box = cell.getBoundingClientRect();
       return left(cell) < box.left + 1 || right(cell) > box.right - 1 ? [`beat grid: "${cell.textContent}" runs over its cell`] : [];
     });
+    // The counts under a rhythm: two that meet letter to letter keep a gap ("trip" and "let", 1–2 px apart under 390 px,
+    // read as one word, "triplet").
+    const counts = [...document.querySelectorAll('.learn-rhythm .staff-counts')].flatMap((row) => {
+      const words = [...row.querySelectorAll('text')].map((word) => ({ text: word.textContent ?? '', box: word.getBoundingClientRect() }));
+      return words.flatMap((word, i) => {
+        const next = words[i + 1];
+        const meet = next && Math.abs(next.box.top - word.box.top) < 1 && /\p{L}$/u.test(word.text) && /^\p{L}/u.test(next.text);
+        return meet && next.box.left - word.box.right < 2.5 ? [`counts: "${word.text}" runs into "${next.text}"`] : [];
+      });
+    });
     // A chapter's title in the previous / next cards wraps inside the card's padding (Dutch "herstellingstekens" ran
     // 10 px into it at 320 px).
     const nav = [...document.querySelectorAll('.learn-nav-link b')].flatMap((title) => {
@@ -209,7 +220,7 @@ async function expectLearnWordsApart(page: Page, where = ''): Promise<void> {
         ? [`chapter link: "${title.textContent}" runs into its card's padding`]
         : [];
     });
-    return [...table, ...beats, ...values, ...grid, ...nav];
+    return [...table, ...beats, ...values, ...grid, ...counts, ...nav];
   });
   expect(out, `${where} Learn words that run into each other`.trim()).toEqual([]);
 }
@@ -614,7 +625,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('link', { name: /^Read notes/ }));
       await expectClickable(page.getByRole('link', { name: /^Scales/ }));
       // Tablet and desktop: the tabs sit in a top header (DESIGN.md §9), on desktop too, not in a sidebar.
-      if (VIEWPORTS[name].width >= 700) await expect(page.getByRole('banner').getByRole('navigation', { name: 'Main' })).toBeVisible();
+      if (VIEWPORTS[name].width >= 700) {
+        await expect(page.getByRole('banner').getByRole('navigation', { name: 'Main' })).toBeVisible();
+        // The brand beside them is a link Home too: as tall a tap as theirs, though its word is 24 px.
+        await expectHitHeight(page.getByRole('banner').getByRole('link', { name: 'Muzieklab' }));
+      }
       // Tablet: the staff box keeps the height of its one line of notes instead of stretching down the tall screen.
       if (tabletLayout) expect((await page.locator('.continue-staff').boundingBox())!.height).toBeLessThan(200);
       await expectNoOverlap(page.locator('.continue-card'), page.locator('.free'));
@@ -2866,6 +2881,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
         await expect(page.locator('.beats')).toBeInViewport({ ratio: 1 });
         await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+        // Skip ends at the page's bottom edge on a phone under 800 px tall, and Play does not scroll: its ring shows whole.
+        await expectFocusRing(page.getByRole('button', { name: 'Skip to results' }));
       }
       if (!desktopLayout) {
         await expectClickable(pad(page), { scroll: false });
@@ -4274,6 +4291,7 @@ test.describe('exercise screens at phone heights between the steps', () => {
       await expectClickable(pad(page), { scroll: false });
       await expectTouchHeight(pad(page));
       await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+      await expectFocusRing(page.getByRole('button', { name: 'Skip to results' }));
     });
   });
 
@@ -4308,6 +4326,58 @@ test.describe('exercise screens at phone heights between the steps', () => {
       await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), { scroll: false });
     });
   });
+});
+
+/**
+ * Desktop Read notes from 1100 px, where the desktop layout starts, to the 1180 px of a tablet on its side (DESIGN.md
+ * §9, Short desktop windows). Beside the 304 px stats column the answer card is narrowest there: the keyboard hint
+ * dropped under the do re mi · A B C · Piano switch (up to 1110 px on the piano, 1130 px with the name buttons in
+ * Dutch), the card grew by a line, and two ledger lines with a timer scrolled the page.
+ */
+test.describe('desktop Read notes at widths under 1180 px', () => {
+  test.use({ viewport: VIEWPORTS.desktop });
+  const WIDTHS = [1100, 1110, 1120, 1130, 1140, 1160, 1180];
+  for (const language of ['en', 'nl']) {
+    test(`${language}: the keyboard hint stays beside the switch, and the round fits`, async ({ page }) => {
+      // G♭ major with a timer, seed 1234, as in "ledger lines with a key signature and a timer fit": a treble G♭ below
+      // the second ledger line, which the natural key answers wrong, with a why of two lines.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano', range: 'ledger2', keys: ['Gb'], clefs: ['treble', 'bass'], extras: 'both', count: 30, playNotes: false, timer: 5 };
+      await seed(page, { prefs: { language, seenHowTo: true, seenHold: true, noteNames: 'letters' } });
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 1234, focus: [] });
+      await page.goto('./#/notes/play');
+      const head = page.locator('.nanswer-head');
+      const modes = head.locator('.nmode');
+      await expect(modes).toBeVisible();
+      const expectBeside = async (where: string): Promise<void> => {
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        for (const width of WIDTHS) {
+          await page.setViewportSize({ width, height: 800 });
+          const [row, mode, hint] = [(await head.boundingBox())!, (await modes.boundingBox())!, (await head.locator('.muted-text').boundingBox())!];
+          expect(hint.y, `${where} at ${width} px: the hint beside the switch`).toBeLessThan(mode.y + mode.height);
+          expect(hint.height, `${where} at ${width} px: the hint on one line`).toBeLessThan(24);
+          expect(hint.x + hint.width, `${where} at ${width} px: the hint inside the card`).toBeLessThanOrEqual(row.x + row.width + 0.5);
+        }
+        await expectNoClippedLabels(page);
+      };
+      // The name buttons' hint is the longest, in Dutch ("Typ de letter; druk eerst op = voor ♯, 0 voor ♮ of − voor ♭").
+      await modes.getByRole('button', { name: 'A B C' }).click();
+      await expect(page.locator('.name-grid')).toBeVisible();
+      await expectBeside('the name buttons');
+      await modes.getByRole('button', { name: 'Piano' }).click();
+      await expect(page.locator('.piano')).toBeVisible();
+      await expectBeside('the piano');
+      // The natural G for G♭ (the G of A S D F G H J): the why under the timer's bar and the two ledger lines.
+      await page.keyboard.press('g');
+      await expect(page.locator('.nfeedback')).toHaveClass(/is-wrong/);
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 800 });
+        await test.step(`${width} × 800`, async () => {
+          await expectFits(page);
+          await expect(page.locator('.nanswer')).toBeInViewport({ ratio: 1 });
+        });
+      }
+    });
+  }
 });
 
 /**
@@ -4430,15 +4500,16 @@ test.describe('forced colors (a contrast theme)', () => {
       await seed(page, { progress: richProgress(), prefs: { ...PROGRESS_PREFS, seenHowTo: true, seenHold: true } });
       /**
        * How each element is drawn, by its computed (forced) colours: its fill (none when it is the page's), its edge,
-       * its ring and its text colour; null when there is none on the screen.
+       * its ring and its text colour; null when there is none on the screen. A selector may end in ::before.
        */
       const looks = (selectors: string[]): Promise<(string | null)[]> =>
         page.evaluate((sels) => {
           const ground = getComputedStyle(document.body).backgroundColor;
           return sels.map((sel) => {
-            const el = document.querySelector(sel);
+            const [box, pseudo] = sel.split(/(?=::before$)/);
+            const el = document.querySelector(box);
             if (!el) return null;
-            const s = getComputedStyle(el);
+            const s = getComputedStyle(el, pseudo ?? null);
             const fill = s.backgroundColor === ground || /^rgba\(.*, 0\)$|transparent/.test(s.backgroundColor) ? 'none' : s.backgroundColor;
             const edge = s.borderTopStyle === 'none' || parseFloat(s.borderTopWidth) === 0 ? 'none' : `${s.borderTopStyle} ${s.borderTopWidth} ${s.borderTopColor}`;
             const ring = s.outlineStyle === 'none' ? 'none' : `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor}`;
@@ -4514,10 +4585,48 @@ test.describe('forced colors (a contrast theme)', () => {
       await expectDrawn("the level sheet's XP bar", ['.xp-bar', '.xp-bar > div']);
       await expectDistinct("the level sheet's XP bar", ['.xp-bar', '.xp-bar > div']);
 
+      // Learn: the tab's progress bar (chapters 1–4 read), 1.1's beats on their time line and the play buttons' circles,
+      // 1.3's strong, medium and weak beats, and 5.3's beat grid, whose held counts ("(&)") are outlined otherwise.
+      await page.goto('./#/learn');
+      await expectDrawn('the Learn progress bar', ['.learn-progress-bar', '.learn-progress-bar > div']);
+      await expectDistinct('the Learn progress bar', ['.learn-progress-bar', '.learn-progress-bar > div']);
+      await page.goto('./#/learn/1?s=1.1');
+      await expect(page.locator('.learn-pulse-dot').first()).toBeVisible();
+      await expectDrawn('the 1.1 pulse', ['.learn-pulse-dot', '.learn-pulse-row:not(.learn-pulse-axis) .learn-pulse-track::before', '.learn-play-dot']);
+      await expectDistinct('the 1.1 pulse', ['.learn-pulse-dot', '.learn-play-dot']);
+      const accent = (level: string): string => `.learn-accent${level} .learn-accent-bar`;
+      await expectDrawn('the 1.3 beats', [accent('.is-strong'), accent('.is-medium'), accent('.is-weak')]);
+      await expectDistinct('the 1.3 beats', [accent('.is-strong'), accent('.is-weak')]);
+      await page.goto('./#/learn/5?s=5.3');
+      await expect(page.locator('.learn-grid-cell.is-held').first()).toBeVisible();
+      await expectDrawn('the beat grid', ['.learn-grid-cell:not(.is-held)', '.learn-grid-cell.is-held']);
+      await expectDistinct('the beat grid', ['.learn-grid-cell:not(.is-held)', '.learn-grid-cell.is-held']);
+
+      // Read notes with a time per note: the time left under the staff and the round's progress beside the ✕; on Round
+      // done, the time chart's legend, whose dots are its bars' colours.
+      const timed: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, timer: 5, count: 10, playNotes: false };
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings: timed, seed: 7, focus: [] });
+      await page.goto('about:blank');
+      await page.goto('./#/notes/play');
+      await page.getByRole('group', { name: 'Note names' }).getByRole('button').first().click();
+      await expect(page.locator('.nfeedback')).toHaveClass(/is-(right|wrong)/);
+      await expectDrawn('Read notes', ['.ntimer', '.ntimer > div', '.progress', '.progress > div']);
+      await expectDistinct('Read notes', ['.ntimer', '.ntimer > div']);
+      await expectDistinct('Read notes', ['.progress', '.progress > div']);
+      await page.getByRole('button', { name: 'Skip to summary' }).click();
+      await expect(page.locator('.nchart')).toBeVisible();
+      await expectDrawn("the time chart's legend", ['.nlegend-dot.is-right', '.nlegend-dot.is-hint', '.nlegend-dot.is-missed']);
+      await expectDistinct("the time chart's legend", ['.nlegend-dot.is-right', '.nlegend-dot.is-hint', '.nlegend-dot.is-missed']);
+      const bars = await page.locator('.nchart-bar').evaluateAll((els) => els.map((el) => getComputedStyle(el).fill));
+      const dots = await page.locator('.nlegend-dot').evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
+      for (const fill of bars) expect(dots, "the bars' colours are the legend's").toContain(fill);
+
       // Results: Skip, so none of the three stars is earned; each is outlined, not filled in the text's colour as an
-      // earned one is.
+      // earned one is. Play's progress bar, before.
       await page.goto('./#/setup');
       await page.getByRole('button', { name: /^Start · / }).click();
+      await expectDrawn('Play', ['.progress', '.progress > div']);
+      await expectDistinct('Play', ['.progress', '.progress > div']);
       await page.getByRole('button', { name: 'Skip to results' }).click();
       await expect(page.getByRole('img', { name: '0 of 3 stars' })).toBeVisible();
       const off = await page.locator('.score-stars-row > span').evaluateAll((stars) =>

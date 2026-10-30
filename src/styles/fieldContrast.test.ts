@@ -276,3 +276,34 @@ describe('the focus ring', () => {
     });
   }
 });
+
+// Home's Continue card: a lesson tile not played yet (its number, 12 px, and its hollow stars) sits on the tile, a white
+// overlay on the slate fill, so its ink needs 4.5:1 against that blend, not against the plain fill: --on-fill-muted is
+// 4.85:1 on the fill and 3.85:1 on the tile in light.
+describe("the Continue card's unplayed lesson tiles", () => {
+  const app = css('app.css');
+  const ink = tokenOf(declared(app, '.tiles--fill .tile--upcoming', 'color'));
+  const overlay = tokenOf(declared(app, '.tiles--fill .tile', 'background'));
+  for (const [name, t] of themes) {
+    it(`${name}: 4.5:1 or more on the tile`, () => {
+      const [, alpha] = /^rgba\(\s*255,\s*255,\s*255,\s*([\d.]+)\)$/.exec(t[overlay] ?? '') ?? [];
+      expect(alpha, `${overlay} is white over the fill`).toBeDefined();
+      expect(contrast(t[ink], blend('#ffffff', t['--accent'], Number(alpha)))).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});
+
+// The Path's unlock hint under the first locked unit ("Opens with 2 stars on every unit 1 lesson", 13 px) is the only
+// line that says how to open the units after it: text the player reads, 4.5:1 or more on the page after any fading of
+// the boxes it sits in (the locked unit, its body). Faded with the body (0.6), it was 2.4:1 in light and 3.4:1 in dark.
+describe("the Path's unlock hint", () => {
+  const app = css('app.css');
+  const ink = tokenOf(declared(app, '.unit-sub', 'color'));
+  const faded = ['.unit--locked', '.unit--locked .unit-body', '.unit-sub'].reduce((alpha, box) => alpha * Number(declared(app, box, 'opacity') ?? 1), 1);
+  for (const [name, t] of themes) {
+    it(`${name}: 4.5:1 or more on the page`, () => {
+      expect(ink).toMatch(/^--[\w-]+$/);
+      expect(contrast(blend(t[ink], t['--ground'], faded), t['--ground'])).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});

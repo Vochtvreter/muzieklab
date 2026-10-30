@@ -52,6 +52,16 @@
 .brand:hover {
   color: var(--ink);
 }
+/* The header's brand is a link Home, a 24 px word: a 44 px tap around it, as tall as the items beside it, in the
+   header's room above and below it. */
+.topbar .brand {
+  position: relative;
+}
+.topbar .brand::after {
+  content: '';
+  position: absolute;
+  inset: -10px -8px;
+}
 .brand--home {
   font-size: 21px;
 }
@@ -830,7 +840,7 @@
   color: var(--accent-ink);
 }
 .tiles--fill .tile--upcoming {
-  color: var(--on-fill-muted);
+  color: var(--on-tile-muted);
 }
 .tile--btn {
   border: 0;
@@ -1343,7 +1353,9 @@
   gap: 4px;
   padding: 2px 0 20px;
 }
-.unit--locked .unit-body {
+/* A locked unit's title and lock are faded; the unlock hint under the first one is not: it is the one line that says
+   how to open the units, and faded with them it was 2.4:1 in light. */
+.unit--locked .unit-head {
   opacity: 0.6;
 }
 .unit-title {
@@ -2271,6 +2283,14 @@ button.lesson-stars:hover {
 }
 .skip-link:disabled {
   visibility: hidden;
+}
+/*
+ * Play on a phone does not scroll, and under 800 px tall Skip ends 0–2 px above the page's bottom edge, which cut off
+ * the bottom of a ring drawn outside it: this one is drawn inside its 44 px box, clear of the word. Read notes' and
+ * Scales' Skip (.nplay-skip) keep the room for theirs.
+ */
+.play .skip-link:not(.nplay-skip):focus-visible {
+  outline-offset: -3px;
 }
 
 /*
@@ -5391,9 +5411,10 @@ button.lesson-stars:hover {
  * Forced colors (a Windows contrast theme, DESIGN.md §11): backgrounds turn the page's colour and shadows go, so what
  * is drawn only with them is drawn again in system colours. A switch gets an edge and a knob, in the selection colours
  * when it is on; a filled button keeps its shape with an edge; the current tab and Play's beat take the selection
- * colours (the chosen options are in base.css). The XP bar keeps an edge and fills in the text colour, and a result's
- * stars not earned, told apart only by their grey, are outlined. What has words on the selection colour is taken out
- * of forced colors, as there: the plate the system draws behind words, in the page's colour, would hide them.
+ * colours (the chosen options are in base.css). The XP bar and an exercise's progress bar (Play, Read notes, Scales)
+ * keep an edge and fill in the text colour, and a result's stars not earned, told apart only by their grey, are
+ * outlined. What has words on the selection colour is taken out of forced colors, as there: the plate the system draws
+ * behind words, in the page's colour, would hide them.
  */
 @media (forced-colors: active) {
   .switch {
@@ -5445,10 +5466,12 @@ button.lesson-stars:hover {
   .analog-dots span.is-on {
     background: Highlight;
   }
-  .xp-bar {
+  .xp-bar,
+  .progress {
     border: 1px solid CanvasText;
   }
-  .xp-bar > div {
+  .xp-bar > div,
+  .progress > div {
     forced-color-adjust: none;
     background: CanvasText;
   }

@@ -58,6 +58,10 @@ const COUNT_Y = 36; // baseline of the counts below the staff line
 const COUNT_GAP = 24; // least room between a held count and the counts beside it
 const COUNT_CHAR_W = 7.8; // width of one letter of the counts (13 px JetBrains Mono, notes.css .staff-counts)
 const COUNT_PAD = 1; // least space between the words of two counts
+// Where two counts meet letter to letter, about half a letter, as the 390 px boards draw "trip let": 1 apart on a phone
+// under 390 px, "trip" and "let" read as one word, "triplet" (Dutch "e" and "en" as "een"). A bracket, a digit or "&"
+// already keeps two words apart.
+const WORD_PAD = 3.5;
 const MIN_SCALE = 0.75; // the smallest a staff is drawn to make its notes and counts fit
 const END_LINE = 5; // the final barline's thin line, this far before the end of its stave
 const MISS_DY = 17; // a missed note's × sits this far below its head: clear of ties and the cursor, inside the row
@@ -355,7 +359,7 @@ export function paintSvg(svg: SVGSVGElement, pal: StaffPalette, colourById: Map<
 const centreX = (note: StaveNote): number => (note.getNoteHeadBeginX() + note.getNoteHeadEndX()) / 2;
 
 /** How far apart the centres of two counts side by side must be, so their words do not touch. */
-const apart = (a: string, b: string): number => ((a.length + b.length) * COUNT_CHAR_W) / 2 + COUNT_PAD;
+const apart = (a: string, b: string): number => ((a.length + b.length) * COUNT_CHAR_W) / 2 + (/\p{L}$/u.test(a) && /^\p{L}/u.test(b) ? WORD_PAD : COUNT_PAD);
 
 /** How much more room the closest two counts side by side need than they have (above 1: their words touch). */
 function countCrowding(counts: { x: number; y: number; text: string }[]): number {

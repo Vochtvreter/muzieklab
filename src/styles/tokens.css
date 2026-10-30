@@ -31,6 +31,9 @@
   --on-fill: #ffffff;
   --on-fill-muted: #cfe2e2;
   --tile-overlay: rgba(255, 255, 255, 0.1);
+  /* A lesson tile not played yet on the Continue card: --on-fill-muted is 4.85:1 on the fill, but the tile's overlay
+     lightens it, and there it was 3.85:1. Light 4.59:1 on the tile, dark 5.67:1. */
+  --on-tile-muted: #ebf3f3;
   /* Rewards (stars, streak) */
   --reward: #e0a526;
   --reward-soft: #f8edd2;
@@ -131,6 +134,7 @@
     --on-fill: #101415;
     --on-fill-muted: #1f4446;
     --tile-overlay: rgba(255, 255, 255, 0.1);
+    --on-tile-muted: #1f4446;
     --reward: #f0b429;
     --reward-soft: #3a2f14;
     --reward-ink: #f0c35a;
@@ -201,6 +205,7 @@
   --on-fill: #101415;
   --on-fill-muted: #1f4446;
   --tile-overlay: rgba(255, 255, 255, 0.1);
+  --on-tile-muted: #1f4446;
   --reward: #f0b429;
   --reward-soft: #3a2f14;
   --reward-ink: #f0c35a;

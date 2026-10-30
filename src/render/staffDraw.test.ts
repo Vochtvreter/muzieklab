@@ -80,12 +80,16 @@ const rowLengths = (svg: SVGSVGElement): number[] => {
 const playWindows = (bars: NotatedBar[]) => (per: number): NotatedBar[][] =>
   [...new Set(bars.map((_, i) => windowStart(i, per, 2, bars.length)))].map((from) => bars.slice(from, from + per * 2));
 
-/** Counts side by side whose words (13 px mono, 7.8 per letter) overlap, as "a/b". */
+/**
+ * Counts side by side whose words (13 px mono, 7.8 per letter) overlap, as "a/b"; where they meet letter to letter,
+ * also closer than 3 units, as "trip" and "let" read as one word, "triplet".
+ */
 function touching(svg: SVGSVGElement): string[] {
   const counts = [...svg.querySelectorAll('.staff-counts text')].map((t) => ({ x: Number(t.getAttribute('x')), y: t.getAttribute('y'), text: t.textContent! }));
   return counts.flatMap((c, i) => {
     const a = counts[i - 1];
-    return a && a.y === c.y && c.x - a.x < ((a.text.length + c.text.length) * 7.8) / 2 ? [`${a.text}/${c.text}`] : [];
+    const gap = a && /\p{L}$/u.test(a.text) && /^\p{L}/u.test(c.text) ? 3 : 0;
+    return a && a.y === c.y && c.x - a.x < ((a.text.length + c.text.length) * 7.8) / 2 + gap ? [`${a.text}/${c.text}`] : [];
   });
 }
 
@@ -191,11 +195,11 @@ describe('drawStaff', () => {
     expect(window.querySelectorAll('rect[width="1"]')).toHaveLength(piece.querySelectorAll('rect[width="1"]').length);
   });
 
-  it('draws a Learn staff smaller when its counts or notes do not fit: a 320 px phone (248 px staff), Dutch at 375 px', () => {
+  it('draws a Learn staff smaller when its counts or notes do not fit: a 320 px phone (248 px staff), 360 and 375 px, Dutch too', () => {
     const dutch = (m: CountMark): string => (m.part === 'and' ? 'en' : plainSyllable(m));
     const meter = getMeter('4/4');
     const examples = [['h. q', 'q. 8 h'], ['[8t 8t 8t] q [8t 8t 8t] q'], ['hr q q', 'q qr qr q'], ['q q q q~', 'q q h'], ['[8. 16] [8. 16] q q']];
-    for (const [text, width] of [[plainSyllable, 248], [dutch, 248], [dutch, 303], [dutch, 318]] as const) {
+    for (const [text, width] of [[plainSyllable, 248], [plainSyllable, 288], [plainSyllable, 303], [dutch, 248], [dutch, 288], [dutch, 303], [dutch, 318]] as const) {
       for (const src of examples) {
         const { svg } = draw({ bars: parseBars(meter, src), meter, barsPerRow: 2, width, counts: { text, held: DARK.staff }, shrinkToFit: true });
         expect(touching(svg), `${src.join(' | ')} at ${width}`).toEqual([]);

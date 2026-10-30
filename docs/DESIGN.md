@@ -1097,7 +1097,8 @@ How write and hear work is in §3.5, *Write it, hear it*.
   there (*Mix*) comes from the catalog.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
   said once, under the first locked unit: *Opens with 2 stars on every unit N lesson* (since 0.10.0; before, every
-  locked unit repeated it).
+  locked unit repeated it). The title row is faded (0.6), the hint is not: it is text the player reads, 4.5:1 on the
+  page (§11; the Path boards fade the whole unit).
 - Under the header: *Unit N of 26 · stars* and *Theory: Learn*; a screen reader hears *Unit N of 26, 40 of 390 stars*
   (at the end *All done, …*), not only the stars. Desktop: the title and a *Notes and rhythm* card with
   a progress bar on the left; the current unit's name, the same line and Start over the units on the right.
@@ -1681,7 +1682,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   a staff with two ledger lines and a why of two lines. On a shorter laptop window their page scrolls. Read notes'
   stats column is 304 px wide (240 px on the board, which draws only *2 / 3*), so the Correct card holds the widest
   score, *50 / 50*, on one line, and Avg time an average of 10 s or more: at 240 px the score broke after the slash
-  from the 10th note on. The answer card beside it is 64 px narrower.
+  from the 10th note on. The answer card beside it is 64 px narrower, so under about 1130 px wide its *do re mi · A B C
+  · Piano* switch (330 px on the board) narrows beside a long keyboard hint, to about 300 px at 1100 px, and the hint
+  stays on its row: on a line of its own (up to 1110 px on the piano, 1130 px with the Dutch name buttons) it made the
+  card a line taller, and two ledger lines with a timer scrolled the page.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
@@ -1852,7 +1856,9 @@ scrolls keeps 6 px of room at its top and bottom when Tab scrolls a control to i
 shows whole: a page, the Path's units, a side menu, and the shell's main box around the page, which scrolls instead on
 desktop Home and on the Scales hub in a short window (the hub's page grows with its content, so its padding stays
 under Go round the circle). Setup and Results keep more at the bottom, above their sticky buttons. A page that does not
-scroll keeps as much under a control on its bottom edge: the Path's Start on a phone, where the units scroll.
+scroll keeps as much under a control on its bottom edge: the Path's Start on a phone, where the units scroll. Play's
+Skip on a phone under 800 px tall ends at the page's bottom edge (the room under it went to the pad), so it draws its
+ring inside its 44 px box instead.
 
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every
@@ -2485,8 +2491,13 @@ without code changes:
   circle of fifths' levels an edge (★ dashed, ★★ double) or the text colour's fill (★★★), and so do its legend's dots.
   On Progress and Skill levels a streak day, the current rank, the next level's part and this week's bar take the
   selection colours, an earlier practice day a solid edge and a missed one a dashed edge, the skill map's bands a fill,
-  an edge or a dashed edge; every bar and meter (the XP bar too) keeps an edge and fills in the text colour (`base.css`,
-  `app.css`, `notes.css`, `scales.css`, `progress.css`, `skills.css`; layout tests check it in light and dark).
+  an edge or a dashed edge; every bar and meter keeps an edge and fills in the text colour: the XP bar, an exercise's
+  progress bar (Play, Read notes, Scales), Read notes' time per note and the Learn tab's progress too (before, these
+  disappeared). The legend under Round done's time chart keeps the colours of the chart's bars, which the browser does
+  not force. Learn's diagrams are drawn in the text colour: 1.1's beats on their time line (the beat just heard in the
+  selection colour), 1.3's strong and medium beats filled and its weak ones outlined, the beat grid's cells outlined (a
+  held count's dashed), and a play button keeps its circle as an edge (`base.css`, `app.css`, `notes.css`,
+  `scales.css`, `progress.css`, `skills.css`; layout tests check it in light and dark).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills without
   text, dots, borders and bars. A green fill with text on it is `--good-ink` too: Read notes' right black piano key,
@@ -2494,7 +2505,10 @@ without code changes:
   Play's GOOD · LATE and MISS are 4.5:1 or more on the page, on desktop's pad card (Accent soft) and on paper
   (`src/styles/fieldContrast.test.ts`). The total after a score (Read notes' "2 / 3", Scales' "1 / 1" on Round done) is
   `--muted`: `--faint` is 2.7:1 on the page in light. So is Setup's *Nothing to preview yet* on its card, where
-  `--faint` was 3.1:1 (3.6:1 in dark).
+  `--faint` was 3.1:1 (3.6:1 in dark). Text on a tile is measured on the tile: a lesson not played yet on Home's
+  Continue card is `--on-tile-muted` (4.6:1 on the tile's white overlay in light), as `--on-fill-muted`, which the
+  boards draw there, is 4.85:1 on the plain fill but 3.85:1 on the tile. Fading counts too: the Path's unlock hint
+  (*Opens with 2 stars…*) is not faded with the locked unit's title (it was 2.4:1 in light, 3.4:1 in dark).
 
 ---
 

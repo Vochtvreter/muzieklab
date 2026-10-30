@@ -706,8 +706,15 @@
   align-items: center;
   gap: 10px;
 }
+/*
+ * Read notes' switch is 330 px (the board's), less beside a long keyboard hint: from 1100 px wide the answer card beside
+ * the 304 px stats column has too little room for both (the Dutch name buttons' hint is 337 px), and the hint dropped
+ * onto a line of its own, so two ledger lines and a why of two lines no longer fitted the window. The row breaks by the
+ * 260 px the switch starts from, so the switch narrows before the hint goes under it.
+ */
 .nanswer-head .nmode {
-  width: 330px;
+  flex: 1 1 260px;
+  max-width: 330px;
   background: var(--ground);
 }
 .nanswer-head .muted-text {
@@ -2317,7 +2324,11 @@
  * colour, they would hide a played key's dot in some themes), and the Learn piano's marked keys a thick one in the
  * selection colour. A right answer takes the selection colours (out of forced colors, for its words), a wrong one a
  * thick dashed edge and its name struck through, so they no longer look like the buttons around them. A chosen key's
- * signature keeps the page's colour behind it, as on the keys around it.
+ * signature keeps the page's colour behind it, as on the keys around it. Read notes' time left and the Learn tab's
+ * progress keep an edge and fill in the text colour, as every bar does; the time chart's legend keeps the colours of
+ * the chart's bars, which the browser does not force. Learn's diagrams are drawn in the text colour too: 1.1's beats
+ * on their time line (the beat just heard in the selection colour), 1.3's strong and medium beats filled and its weak
+ * ones outlined, the beat grid's cells outlined (a held count's dashed), and a play button keeps its circle.
  */
 @media (forced-colors: active) {
   .piano-black {
@@ -2343,5 +2354,41 @@
   .key-btn[aria-pressed='true'] .key-thumb {
     background: Canvas;
     border-radius: 8px;
+  }
+  /* Outside the time bar's 4 px, which an edge inside would halve. */
+  .ntimer {
+    outline: 1px solid CanvasText;
+  }
+  .learn-progress-bar,
+  .learn-accent-bar {
+    border: 1px solid CanvasText;
+  }
+  .ntimer > div,
+  .learn-progress-bar > div,
+  .learn-pulse-dot,
+  .learn-pulse-track::before,
+  .learn-accent.is-strong .learn-accent-bar,
+  .learn-accent.is-medium .learn-accent-bar {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .learn-pulse-dot.is-on {
+    background: Highlight;
+  }
+  .learn-accent.is-medium .learn-accent-bar {
+    opacity: 1;
+  }
+  .nlegend-dot {
+    forced-color-adjust: none;
+  }
+  .learn-play-dot {
+    border: 2px solid ButtonText;
+  }
+  .learn-grid-cell {
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+  .learn-grid-cell.is-held {
+    outline-style: dashed;
   }
 }
