@@ -14,6 +14,7 @@ import { AppShell } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle, useToday } from '../../hooks';
 import { labelText, rich } from '../../lib/format';
+import { fromSkills } from '../../lib/learnReturn';
 import { spokenName } from '../../lib/noteText';
 import { todayIso, useStore } from '../../store';
 import { LevelMeter, LevelName, SkillBack, SkillCtaLink, SkillIcon } from './Skills';
@@ -48,7 +49,7 @@ function NextCard({ skill: s }: { skill: SkillView }): JSX.Element {
           {t('skills.detail.top', { n: SKILL_LEVELS })}
         </h2>
         <div className="skill-next-name">{t('skills.detail.allPassed')}</div>
-        <SkillCtaLink cta={s.cta} />
+        <SkillCtaLink cta={s.cta} from={fromSkills(s.id)} />
       </section>
     );
   }
@@ -96,7 +97,7 @@ function NextCard({ skill: s }: { skill: SkillView }): JSX.Element {
           </ul>
         </>
       )}
-      <SkillCtaLink cta={s.cta} />
+      <SkillCtaLink cta={s.cta} from={fromSkills(s.id)} />
     </section>
   );
 }
@@ -194,7 +195,7 @@ export function SkillDetail({ skill }: { skill: SkillId }): JSX.Element {
                 <h2 id="review-title">{t('skills.review.title')}</h2>
                 <p>{t('skills.review.text', { count: s.review.days ?? 0 })}</p>
               </div>
-              <SkillCtaLink cta={s.cta} review />
+              <SkillCtaLink cta={s.cta} from={fromSkills(skill)} review />
             </section>
           )}
 

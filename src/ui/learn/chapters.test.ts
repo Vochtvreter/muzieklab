@@ -52,6 +52,10 @@ describe('Learn chapters', () => {
     expect(Math.max(...CHAPTERS.map((c) => c.n))).toBeLessThanOrEqual(PLANNED_CHAPTERS);
   });
 
+  it('say what they build on, except where a track starts: 1 for rhythm, 8 for reading notes', () => {
+    expect(CHAPTERS.filter((c) => !c.builds?.length).map((c) => c.n)).toEqual([1, 8]);
+  });
+
   it('build only on earlier chapters, and name Path units that exist', () => {
     for (const c of CHAPTERS) {
       (c.builds ?? []).forEach((n) => expect(CHAPTERS.some((x) => x.n === n) && n < c.n, `chapter ${c.n} builds on ${n}`).toBe(true));

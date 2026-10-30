@@ -1499,6 +1499,33 @@ test('admin one account: a password link pressed at the bottom of the screen com
   expect(await page.locator('.page').evaluate((el) => el.scrollTop)).toBe(0);
 });
 
+test('admin one account: a link whose first line lands just under the screen\'s edge comes into view too', async ({ page }) => {
+  // The answer and its first line each move in from 4 px above (.m-in): the line is measured where it lands, so one
+  // that lands up to 8 px under the edge is not taken for one on screen.
+  let made = 0;
+  await mockApi(page, { ...adminApi(), 'POST /admin/accounts/:id/reset-link': () => ({ json: { ...RESET_LINK_CREATED, link: RESET_LINK_CREATED.link + ++made } }) });
+  await page.goto('./#/admin/account/' + SAM_ACTIVE.id);
+  const button = page.getByRole('button', { name: /^(New password link|Making a link…)/ });
+  const line = done(page, 'New link ready. Send it yourself.');
+  const bottom = async (el: import('@playwright/test').Locator): Promise<number> => {
+    const r = (await el.boundingBox())!;
+    return r.y + r.height;
+  };
+  const edge = (): Promise<number> => page.locator('.page').evaluate((el) => Math.min(window.innerHeight, el.getBoundingClientRect().bottom));
+  const settled = (): Promise<unknown> => page.waitForFunction(() => document.getAnimations().every((a) => a.playState === 'finished'));
+  await button.click();
+  await expect(line).toBeVisible();
+  await settled();
+  // Scrolled so that the next link's line lands 4 px under the edge, with the button on screen.
+  await page.locator('.page').evaluate((el, by) => el.scrollBy(0, by), (await bottom(line)) - (await edge()) - 4);
+  expect((await bottom(line)) - (await edge())).toBeCloseTo(4, 0);
+  await button.click();
+  await expect(page.getByLabel('New password link', { exact: true })).toHaveValue(RESET_LINK_CREATED.link + 2);
+  await settled();
+  await expectClickable(page.getByRole('button', { name: 'Copy message' }), { scroll: false });
+  await expectClickable(button, { scroll: false });
+});
+
 test('admin: Deleted accounts: feedback that shows nothing (an older entry, kept as written) says No feedback.', async ({ page }) => {
   const blank: Closure = { ...CLOSURES[1], feedback: '\u200b\u2800\u2060' };
   await mockApi(page, { ...adminApi(), 'GET /admin/closures': { json: { closures: [blank], total: 1 } } });

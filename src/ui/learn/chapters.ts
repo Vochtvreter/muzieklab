@@ -574,6 +574,7 @@ export const CHAPTERS: Chapter[] = [
   },
   {
     n: 9,
+    builds: [8],
     practice: 'notes',
     sections: [
       {
@@ -618,6 +619,7 @@ export const CHAPTERS: Chapter[] = [
   },
   {
     n: 10,
+    builds: [8, 9],
     practice: 'notes',
     sections: [
       {

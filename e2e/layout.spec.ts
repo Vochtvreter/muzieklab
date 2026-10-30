@@ -2683,7 +2683,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const practice = page.getByRole('link', { name: 'Practice weak spots' });
       await expectClickable(practice);
       await practice.click();
-      await expect(page).toHaveURL(/#\/setup$/);
+      await expect(page).toHaveURL(/#\/setup\?from=progress$/);
       await expect(page.getByRole('heading', { level: 1, name: 'Free practice' })).toBeVisible();
       // The weak spots, ties (78%) and the dotted quarter + eighth (72%): ties and dotted notes on, with quarters and
       // eighths, ready to start.
@@ -2693,6 +2693,43 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('button', { name: 'Eighth note', exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
       await expectNoSideScroll(page);
+      // Its back arrow returns to Progress.
+      await page.getByRole('link', { name: 'Back to Progress' }).click();
+      await expect(page).toHaveURL(/#\/progress$/);
+      await expect(page.getByRole('heading', { level: 1, name: 'Progress' })).toBeVisible();
+    });
+
+    test('progress and skill levels: the setups and the Scales tab their buttons open go back to them, Progress current', async ({ page }) => {
+      known(name, 'progress-back');
+      const progressTab = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Progress', exact: true });
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      await seed(page, { progress: richProgress(), prefs: PROGRESS_PREFS });
+      await page.goto('./#/progress');
+      const show = (view: string) => page.getByRole('group', { name: 'Show progress for' }).getByRole('button', { name: view, exact: true }).click();
+      await show('Notes');
+      await page.getByRole('link', { name: 'Read notes', exact: true }).click();
+      await expect(page).toHaveURL(/#\/notes\?from=progress$/);
+      await page.getByRole('link', { name: 'Back to Progress' }).click();
+      await expect(page).toHaveURL(/#\/progress$/);
+      await show('Scales');
+      await page.getByRole('link', { name: 'Open the circle of fifths' }).click();
+      await expect(page).toHaveURL(/#\/scales\?from=progress$/);
+      await expect(progressTab).toHaveAttribute('aria-current', 'page');
+      await page.getByRole('link', { name: 'Back to Progress' }).click();
+      await expect(page).toHaveURL(/#\/progress$/);
+
+      // A skill's button goes back to the skill, Focus next to Skill levels.
+      await page.goto('./#/progress/skills/scales');
+      await page.getByRole('link', { name: 'Practice scales' }).click();
+      await expect(page).toHaveURL(/#\/scales\?from=skills\.scales$/);
+      await expect(progressTab).toHaveAttribute('aria-current', 'page');
+      await page.getByRole('link', { name: 'Back to Scales in Skill levels' }).click();
+      await expect(page).toHaveURL(/#\/progress\/skills\/scales$/);
+      await page.goto('./#/progress/skills');
+      await page.getByRole('region', { name: 'Focus next' }).getByRole('link', { name: 'Read bass notes' }).click();
+      await expect(page).toHaveURL(/#\/notes\?from=skills$/);
+      await page.getByRole('link', { name: 'Back to Skill levels' }).click();
+      await expect(page).toHaveURL(/#\/progress\/skills$/);
     });
 
     test('skill levels: list and one skill', async ({ page }) => {
@@ -3339,6 +3376,21 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('invite and new password links with someone signed in whose name is one long word: the note wraps in its card', async ({ page }) => {
+        known(name, 'link-signed-in-long-name');
+        // As long as a name may be (80 characters), in the widest letter, with no space to break at.
+        const long = { ...ME_MEMBER, name: 'W'.repeat(80) };
+        await seedAccount(page, long);
+        await mockApi(page, { ...signedInAs(long), 'POST /auth/invite/check': { json: INVITE_LINK }, 'POST /auth/reset/check': { json: INVITE_LINK } });
+        for (const hash of ['#/invite/' + TOKEN, '#/reset/' + TOKEN]) {
+          await page.goto('./' + hash);
+          const card = page.locator('.set-card');
+          await expect(card.locator('.acct-lead')).toContainText(long.name);
+          await expectWordsInRow(card, '.acct-lead');
+          await expectNoSideScroll(page);
+        }
+      });
+
       test('new password: one field and Save password', async ({ page }) => {
         known(name, 'reset');
         await mockApi(page, { ...SIGNED_OUT, 'POST /auth/reset/check': { json: { ...INVITE_LINK, email: 'sam@example.com', name: 'Sam Jansen' } } });
@@ -3545,6 +3597,31 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           await expectWordsInRow(row, '.toggle-row-text');
           await expectNoSideScroll(page);
         }
+      });
+
+      test('admin one account with a long one-word name: Block, Delete and Cancel invite, and the list\'s line after, wrap in their cards', async ({ page }) => {
+        known(name, 'admin-long-name');
+        // As long as a name may be (80 characters), in the widest letter, with no space to break at.
+        const long = 'W'.repeat(80);
+        const lies = { ...ACCOUNTS[0], name: long };
+        const sam = { ...ACCOUNTS[1], name: long };
+        await mockApi(page, { ...adminApi([lies, sam, ...ACCOUNTS.slice(2)]), 'DELETE /admin/accounts/:id': { status: 204 } });
+        await page.goto('./#/admin/account/' + sam.id);
+        for (const [button, question] of [[/^Block/, `Block ${long}?`], [/^Delete account/, `Delete ${long}'s account?`]] as const) {
+          await page.getByRole('button', { name: button }).click();
+          const confirm = page.getByRole('alertdialog', { name: question });
+          await expectWordsInRow(confirm, '.reset-text');
+          await expectNoSideScroll(page);
+          await confirm.getByRole('button', { name: 'Cancel' }).click();
+        }
+        await page.goto('./#/admin/account/' + lies.id);
+        await page.getByRole('button', { name: /^Cancel invite/ }).click();
+        const confirm = page.getByRole('alertdialog', { name: `Cancel the invite for ${long}?` });
+        await expectWordsInRow(confirm, '.reset-text');
+        await confirm.getByRole('button', { name: 'Cancel invite' }).click();
+        await expect(page.locator('.acct-card--status')).toHaveText(`The invite for ${long} was canceled.`);
+        await expectWordsInRow(page.locator('.acct-card--status'), '.form-done > span');
+        await expectNoSideScroll(page);
       });
 
       test('own account with a long one-word role: the roles line under Profile wraps in its card', async ({ page }) => {
@@ -3919,6 +3996,41 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('link', { name: /^Ritme lezen: niveau 6 van 10\./ }).click();
       await expect(page.getByRole('heading', { level: 1, name: 'Ritme lezen' })).toBeVisible();
       await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('#/progress Scales: the minor scales\' column heads stay apart, and each key on one line', async ({ page }) => {
+      known(name, 'nl#/progress-minors');
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      // The widest key names ("A♯ mineur") give the forms' columns the least room; Natuurlijk Harmonisch Melodisch ran
+      // together on a 320 px phone.
+      const progress = richProgress();
+      for (const key of ['A#', 'G#', 'D#', 'Bb', 'Eb', 'Ab']) progress.scales.stars[key + '-natural'] = 1;
+      await seed(page, { progress, prefs: { ...PROGRESS_PREFS, language: 'nl' } });
+      await page.goto('./#/progress');
+      await page.getByRole('group', { name: 'Voortgang tonen voor' }).getByRole('button', { name: 'Toonladders', exact: true }).click();
+      const table = page.locator('.prog-minors');
+      await expect(table.locator('tbody tr')).toHaveCount(10);
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const out = await table.evaluate((el) => {
+        const lines = (x: Element): DOMRect[] => {
+          const range = document.createRange();
+          range.selectNodeContents(x);
+          return [...range.getClientRects()].filter((r) => r.width > 0);
+        };
+        const heads = [...el.querySelectorAll('thead th')];
+        const apart = heads.slice(1).flatMap((th, i) => {
+          const gap = Math.min(...lines(th).map((r) => r.left)) - Math.max(...lines(heads[i]).map((r) => r.right));
+          return gap < 4 ? [`"${heads[i].textContent}" and "${th.textContent}" are ${gap.toFixed(1)} px apart`] : [];
+        });
+        const keys = [...el.querySelectorAll('tbody th')].flatMap((th) =>
+          new Set(lines(th).map((r) => Math.round(r.top))).size > 1 ? [`"${th.textContent}" takes two lines`] : [],
+        );
+        const card = el.closest('.prog-card')!;
+        const inside = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).paddingRight);
+        return [...apart, ...keys, ...(el.getBoundingClientRect().right > inside + 0.5 ? ['the table runs out of its card'] : [])];
+      });
+      expect(out, 'the minor scales table').toEqual([]);
       await expectNoSideScroll(page);
     });
 
@@ -4543,6 +4655,27 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // The focus is back on the button that opened the tool, so the keyboard and a screen reader keep their place.
       await expect(fab).toBeFocused();
       await expectNoSideScroll(page);
+    });
+
+    test('in Dutch: Kopiëren beside Versturen keeps its icon whole, and so does its check on Gekopieerd', async ({ page, context }) => {
+      // The longest labels of the two buttons: on a narrow phone the copy icon was squeezed to a sliver, and the check
+      // was gone.
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await seed(page, { prefs: { language: 'nl' } });
+      await page.goto('./#/settings');
+      await page.getByRole('button', { name: 'Feedback: markeer een deel van dit scherm' }).click();
+      await page.mouse.click(VIEWPORTS[name].width / 2, VIEWPORTS[name].height / 2);
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      await form.getByLabel('Wat moet er anders?').fill('Zeg ook in milliseconden wat elke speelruimte doet.');
+      const icon = (label: string): Promise<number> =>
+        form.getByRole('button', { name: label, exact: true }).locator('svg').evaluate((svg) => svg.getBoundingClientRect().width);
+      expect(await icon('Kopiëren'), 'the copy icon').toBeCloseTo(18, 0);
+      await form.getByRole('button', { name: 'Kopiëren', exact: true }).click();
+      await expect(form.getByRole('button', { name: 'Gekopieerd', exact: true })).toBeVisible();
+      expect(await icon('Gekopieerd'), 'the check').toBeCloseTo(18, 0);
+      await expectNoClippedLabels(page);
     });
 
     test('without the tab bar or header the button is a tab at the edge, on none of the controls that stay put', async ({ page }) => {

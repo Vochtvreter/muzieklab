@@ -48,7 +48,7 @@ export function NotesSetup(): JSX.Element {
     <ExerciseFrame className="frame--setup" wide>
       <div className="page setup nsetup no-scrollbar">
         <div className="screen-head">
-          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('common.back')} className="icon-btn icon-btn--edge">
+          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back?.label ?? t('common.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">

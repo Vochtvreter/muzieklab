@@ -58,7 +58,7 @@ export function ScalesSetup(): JSX.Element {
     <ExerciseFrame className="frame--setup" wide>
       <div className="page setup ssetup no-scrollbar">
         <div className="screen-head">
-          <Link to={back?.to ?? '/scales'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('scales.setup.back')}
+          <Link to={back?.to ?? '/scales'} query={back?.query} aria-label={back?.label ?? t('scales.setup.back')}
             className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>

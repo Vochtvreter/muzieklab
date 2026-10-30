@@ -117,7 +117,8 @@ describe('Skill levels', () => {
       const focus = within(screen.getByRole('region', { name: 'Focus next' }));
       expect(focus.getByText(/is your lowest skill/).textContent).toBe('Bass clef is your lowest skill: level 3, 2 levels behind treble clef.');
       expect(focus.getByText('Bass clef').tagName).toBe('B');
-      expect(focus.getByRole('link', { name: 'Read bass notes' }).getAttribute('href')).toBe('#/notes');
+      // The setup it opens goes back to Skill levels.
+      expect(focus.getByRole('link', { name: 'Read bass notes' }).getAttribute('href')).toBe('#/notes?from=skills');
       expect(screen.getByText(/^A level is passed when all its checks are met/).textContent).toContain('for 14 days shows Review due until');
     });
   }
@@ -221,14 +222,15 @@ describe('One skill', () => {
   it("rhythm by ear's button puts Echo mode on the rhythm setup", () => {
     open('#/progress/skills/ear');
     const cta = screen.getByRole('link', { name: 'Practice Echo' });
-    expect(cta.getAttribute('href')).toBe('#/setup');
+    expect(cta.getAttribute('href')).toBe('#/setup?from=skills.ear');
     fireEvent.click(cta);
-    // The setup (where the link goes) opens with Echo picked.
+    // The setup (where the link goes) opens with Echo picked, and its back arrow returns to the skill.
     act(() => {
-      window.location.hash = '#/setup';
+      window.location.hash = '#/setup?from=skills.ear';
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     expect(screen.getByRole('group', { name: 'Mode' }).querySelector('[aria-pressed="true"]')?.textContent).toBe('Echo');
+    expect(screen.getByRole('link', { name: 'Back to Rhythm by ear in Skill levels' }).getAttribute('href')).toBe('#/progress/skills/ear');
   });
 
   it("the clefs' button puts the clef on the Read notes setup", () => {
@@ -262,7 +264,7 @@ describe('One skill', () => {
     expect(next.getByText('This level comes later, with its lessons.')).toBeTruthy();
     expect(next.queryByRole('listitem')).toBeNull();
     expect(next.queryByText(/checks/)).toBeNull();
-    expect(next.getByRole('link', { name: 'Free practice' }).getAttribute('href')).toBe('#/setup');
+    expect(next.getByRole('link', { name: 'Free practice' }).getAttribute('href')).toBe('#/setup?from=skills.rhythm');
     expect(screen.getByRole('img', { name: 'Level 8 of 10' })).toBeTruthy();
     expect(within(screen.getByRole('region', { name: 'All levels' })).getAllByRole('listitem')[8].textContent).toBe('9SyncopationLater');
   });
@@ -310,7 +312,7 @@ describe('One skill', () => {
     expect(screen.getByRole('img', { name: 'Level 10 of 10' })).toBeTruthy();
     const card = within(screen.getByRole('region', { name: 'Level 10' }));
     expect(card.getByText('Every level passed')).toBeTruthy();
-    expect(card.getByRole('link', { name: 'Practice scales' }).getAttribute('href')).toBe('#/scales');
+    expect(card.getByRole('link', { name: 'Practice scales' }).getAttribute('href')).toBe('#/scales?from=skills.scales');
     expect(within(screen.getByRole('region', { name: 'All levels' })).getAllByText('Passed')).toHaveLength(10);
   });
 

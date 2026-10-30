@@ -423,7 +423,9 @@ Learn and practice major and minor scales in all 15 keys.
 - **Where the hub sits:** it is a Home page, opened from Home's Scales tile, so it keeps the
   app's navigation with Home current (§9): the tab bar on phone, with a back arrow as on a
   Learn chapter; the top header on tablet and desktop. Opened from Learn chapter 11's Practice button, Learn is
-  current instead and its back arrow returns to the chapter (*Back to chapter 11*, §9.1). Tablet and desktop put the circle and
+  current instead and its back arrow returns to the chapter (*Back to chapter 11*, §9.1). Opened from Progress (*Open
+  the circle of fifths*, or Scales' *Practice scales* on Skill levels), Progress is current and its back arrow returns
+  there (§8.5). Tablet and desktop put the circle and
   the selected key side by side: the key signature, the stars per form (one rating for major,
   natural / harmonic / melodic for minor), the scale's notes and *Options* / *Practice*.
 - **Starts on C major** (since 0.8.0): no sharps or flats and only white keys, where method books start; G, one sharp,
@@ -1280,10 +1282,22 @@ cards below it, and is not remembered: every visit starts on Rhythm.
 - **Accuracy per clef:** treble and bass over every Read notes round.
 - **Slowest notes:** the three notes with the longest average answer time (from 3 answers), named as the Note names
   setting says, with the sign the last round's key gives them, where they sit (*top space · treble*) and the seconds.
-- **Key:** the last Read notes round's key signature on its staff, its name and what it does, and **Read notes**.
+- **Key:** the last Read notes round's key signature on its staff, its name and what it does, and **Read notes**. A
+  key or sign with ♯ or ♭ is said in words to a screen reader (*F sharp major · D sharp minor, 6 sharps: F sharp, …*),
+  as on the Read notes setup's Key row (§3.5).
 - **Major scales:** the 15 major scales round the circle of fifths with their best stars; *9 of 15* with ★★ or more.
 - **Minor scales:** the minor keys started, with the best stars of each form (natural, harmonic, melodic), and **Open
-  the circle of fifths** (the Scales hub).
+  the circle of fifths** (the Scales hub). Each form's column is as wide as its head, with 2 px of room on each side;
+  on a card under 280 px wide (a 320 px phone) the heads are 11 px, so in Dutch *Natuurlijk Harmonisch Melodisch*
+  stay apart and *A♯ mineur* stays on one line.
+
+**The way back.** A screen opened from a button here keeps where it came from (`?from=progress`), as one opened from
+Learn does (§9.1): the rhythm setup from *Practice weak spots*, the Read notes setup from *Read notes* and the Scales
+hub from *Open the circle of fifths*. Its back arrow (*Back to Progress*) returns to the Progress tab, as do the back
+arrows of the rounds' Results and Round done, and the hub has Progress current. A skill's button on Skill levels
+(§8.6) does the same: from *Focus next* back to Skill levels (`?from=skills`), from a skill's own screen back to it
+(`?from=skills.bass`, *Back to Bass clef in Skill levels*). A button that opens a tab (the Path, Learn) needs no way
+back. Progress itself starts on Rhythm again (see Head).
 
 **A new player** (no board) sees every card: short muted lines instead of a chart (*No rhythm rounds in the last 14
 days.*, *No practice this week yet.*, *No Read notes round yet.*, *No minor scale started yet.*, and for slowest notes

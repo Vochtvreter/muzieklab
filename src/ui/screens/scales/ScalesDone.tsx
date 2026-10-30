@@ -140,7 +140,7 @@ export function ScalesDone(): JSX.Element | null {
       <div className="page results sdone no-scrollbar">
         <div className="screen-head">
           {/* Leaves as Quit does, so the browser's Back does not open the finished round again. */}
-          <Link to={back?.to ?? '/scales'} query={back?.query} leaves aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('scales.done.back')}
+          <Link to={back?.to ?? '/scales'} query={back?.query} leaves aria-label={back?.label ?? t('scales.done.back')}
             className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>

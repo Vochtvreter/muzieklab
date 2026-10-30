@@ -144,7 +144,8 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     expect(screen.getByText('G major · E minor')).toBeTruthy();
     expect(screen.getByText('1 sharp: every F is F♯')).toBeTruthy();
     expect(screen.getByText('last round · treble')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Read notes' }).getAttribute('href')).toBe('#/notes');
+    // The setup it opens goes back to Progress, as do the other practice buttons here.
+    expect(screen.getByRole('link', { name: 'Read notes' }).getAttribute('href')).toBe('#/notes?from=progress');
     expect(screen.getByRole('link', { name: /^Skill levels/ })).toBeTruthy();
 
     view('Scales');
@@ -156,7 +157,7 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     expect(majors[9].getAttribute('aria-label')).toBe('B flat major: 2 of 3 stars');
     const rows = within(screen.getByRole('table')).getAllByRole('row');
     expect(rows.map((r) => r.querySelector('th')?.textContent)).toEqual(['Key', 'A minor', 'E minor', 'D minor', 'B minor']);
-    expect(screen.getByRole('link', { name: 'Open the circle of fifths' }).getAttribute('href')).toBe('#/scales');
+    expect(screen.getByRole('link', { name: 'Open the circle of fifths' }).getAttribute('href')).toBe('#/scales?from=progress');
   });
 
   // As on the Scales hub: a screen reader reads a sign as a symbol or skips it, and F♯ major would then sound like F
@@ -169,6 +170,11 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     view('Notes');
     screen.getByRole('img', { name: 'Key signature of F sharp major: 6 sharps' });
     expect(screen.getByText('F♯ major · D♯ minor')).toBeTruthy();
+    // The card's lines too, which come straight after the staff's name: as written, and in words.
+    const key = heading('Key').closest('section')!;
+    expect(seen(key)).toContain('F♯ major · D♯ minor6 sharps: F♯, C♯, G♯, D♯, A♯, E♯');
+    expect(heard(key)).toContain('F sharp major · D sharp minor6 sharps: F sharp, C sharp, G sharp, D sharp, A sharp, E sharp');
+    expect(heard(key)).not.toMatch(/[♯♭]/);
     // The slowest notes as the last round's key spells them.
     const slow = within(heading('Slowest notes').closest('section')!).getAllByRole('listitem');
     expect(slow.map(seen)).toEqual(['𝄞E♯top space · treble3.1 s', '𝄞F♯top line · treble2.6 s', '𝄢C♯second space · bass2.4 s']);
@@ -186,7 +192,7 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     const before = settings!;
     expect(before.ties).toBe(false);
     fireEvent.click(screen.getByRole('link', { name: 'Practice weak spots' }));
-    expect(window.location.hash).toBe('#/setup');
+    expect(window.location.hash).toBe('#/setup?from=progress');
     // Ties (78%) and dotted quarter + eighth (72%) are the weak spots.
     expect(settings).toMatchObject({ ties: true, dotted: true });
     expect(settings!.notes).toEqual(expect.arrayContaining(['quarter', 'eighth']));
@@ -410,6 +416,9 @@ describe('Progress tab in Dutch', () => {
     view('Noten', 'Voortgang tonen voor');
     expect(screen.getByText('bovenste tussenruimte · viool')).toBeTruthy();
     expect(screen.getByText('3,1 s')).toBeTruthy();
+    const key = heading('Toonsoort').closest('section')!;
+    expect(seen(key)).toContain('G majeur · E mineur1 kruis: elke F is een F♯');
+    expect(heard(key)).toContain('G majeur · E mineur1 kruis: elke F is een fis');
     // Keys as said in Dutch, as on the Scales hub: bes majeur, not B♭ majeur.
     view('Toonladders', 'Voortgang tonen voor');
     const majors = within(heading('Majeurtoonladders').closest('section')!).getAllByRole('listitem');

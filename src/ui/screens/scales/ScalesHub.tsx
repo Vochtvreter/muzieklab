@@ -3,7 +3,8 @@
  * the selected key: its notes, stars, *Options* and *Practice*, plus *Go round the circle*. A Home page: the tab bar
  * with Home current on phone, the top header on tablet and desktop, where the circle and the selected key sit side by
  * side (App design canvas, Tablet and Desktop · Scales). Opened from Learn chapter 11's Practice button (?from=11),
- * Learn is current, its back arrow returns to the chapter, and the setup and the rounds it opens keep that.
+ * Learn is current, its back arrow returns to the chapter, and the setup and the rounds it opens keep that; opened from
+ * Progress (?from=progress, or a Skill levels screen's), the same with Progress.
  */
 import {
   CIRCLE,
@@ -54,8 +55,8 @@ export function ScalesHub(): JSX.Element {
   const kbd = useKeyboardHints(bp);
   const start = useStartScales();
   const { back, carry } = useLearnReturn();
-  // The tab it was opened from is current (DESIGN.md §9): Home, or Learn from chapter 11.
-  const fromTab = back ? '/learn' : '/';
+  // The tab it was opened from is current (DESIGN.md §9): Home, Learn from chapter 11, or Progress.
+  const fromTab = back?.tab ?? '/';
   useDocTitle(t('app.docTitle', { page: t('scales.title') }));
   const { tab, key } = state.scaleHub;
   const minor = tab === 'minor';
@@ -140,7 +141,7 @@ export function ScalesHub(): JSX.Element {
   );
   const head = (
     <div className="screen-head screen-head--link hub-head">
-      <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('scales.hub.back')}
+      <Link to={back?.to ?? '/'} query={back?.query} aria-label={back?.label ?? t('scales.hub.back')}
         className="icon-btn icon-btn--edge">
         <Icon name="back" />
       </Link>

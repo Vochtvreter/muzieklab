@@ -321,7 +321,7 @@ export function Results(): JSX.Element | null {
           {/* A lesson goes back to the Path, as Quit does on Play and Round done's arrow after a note lesson. It leaves as
               Quit does, so the browser's Back does not open the finished exercise again. */}
           <Link to={run.lessonId ? '/path' : (back?.to ?? '/')} query={run.lessonId ? undefined : back?.query} leaves
-            aria-label={run.lessonId ? t('results.lessonBack') : back ? t('learn.backToChapter', { n: back.chapter }) : t('results.backHome')}
+            aria-label={run.lessonId ? t('results.lessonBack') : (back?.label ?? t('results.backHome'))}
             className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>

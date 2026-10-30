@@ -2951,6 +2951,7 @@
     },
     "detail": {
       "back": "Terug naar Vaardigheden",
+      "backToSkill": "Terug naar {name} in Vaardigheden",
       "of": "van {max}",
       "meter": "Niveau {level} van {max}, en {done} van {total, plural, one {# voorwaarde} other {# voorwaarden}} voor niveau {n}",
       "meterLevel": "Niveau {level} van {max}",

@@ -5,7 +5,7 @@
  * what game/progressView.ts works out; each card says something short for a new player instead of an empty chart.
  */
 import type { ReactNode } from 'react';
-import { staffOffset, type Clef, type Step } from '../../../core/api';
+import { staffOffset, type Clef, type KeyId, type Step } from '../../../core/api';
 import type { AchievementView, CalendarView, CellView, NotesView, ProgressHeader, ScalesView, SkillsView, SlowNote } from '../../../game/progressView';
 import type { CellId } from '../../../game/storage';
 import { t } from '../../../i18n';
@@ -13,6 +13,7 @@ import { PitchStaff } from '../../../render/PitchStaff';
 import { Icon } from '../../components/Icon';
 import { ACHIEVEMENT_ICONS } from '../../lib/achievementIcons';
 import { andList, rich, starsLabel, starsText } from '../../lib/format';
+import { FROM_PROGRESS } from '../../lib/learnReturn';
 import { keyPairName, keySignsAria, keySignsText, letterName, solfegeName, spokenName } from '../../lib/noteText';
 import { circleLabel, keyName, keySpoken } from '../../lib/scaleText';
 import { Link } from '../../router';
@@ -261,7 +262,7 @@ export function SkillMapCard({ cells, onPractice }: { cells: CellView[]; onPract
           </span>
         </div>
         {onPractice && (
-          <Link to="/setup" className="btn btn--accent prog-btn"
+          <Link to="/setup" query={FROM_PROGRESS} className="btn btn--accent prog-btn"
             onClick={(e) => {
               // A new tab (Ctrl, Cmd, Shift or a middle click) just opens the setup; this tab's setup stays as it is.
               if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -388,6 +389,25 @@ export function SlowCard({ notes, solfege }: { notes: NotesView; solfege: boolea
   );
 }
 
+/**
+ * A key's name and what its signature does. Where they write a sign, screen readers get them in words instead, as on
+ * the Read notes setup's Key row: a reader reads a sign as a symbol or skips it, and "F♯ major" would sound like F major.
+ */
+function KeyText({ keyId }: { keyId: KeyId }): JSX.Element {
+  const name = keyPairName(keyId);
+  const nameSaid = t('notes.keyPair', { major: keySpoken(keyId, false), minor: keySpoken(keyId, true) });
+  const signs = keySignsText(keyId);
+  const signsSaid = keySignsText(keyId, true);
+  return (
+    <span className="prog-key-text">
+      <b aria-hidden={nameSaid !== name || undefined}>{name}</b>
+      {nameSaid !== name && <span className="sr-only">{nameSaid}</span>}
+      <span aria-hidden={signsSaid !== signs || undefined}>{signs}</span>
+      {signsSaid !== signs && <span className="sr-only">{signsSaid}</span>}
+    </span>
+  );
+}
+
 /** The last round's key: its signature drawn on the staff, its name and what it does; and Read notes. */
 export function KeyCard({ lastKey }: { lastKey: NotesView['lastKey'] }): JSX.Element {
   return (
@@ -398,15 +418,12 @@ export function KeyCard({ lastKey }: { lastKey: NotesView['lastKey'] }): JSX.Ele
             <PitchStaff clef={lastKey.clef} keyId={lastKey.key} notes={[]} slots={0} room={1.5}
               label={t('progress.key.label', { major: keySpoken(lastKey.key, false), signs: keySignsAria(lastKey.key) })} />
           </span>
-          <span className="prog-key-text">
-            <b>{keyPairName(lastKey.key)}</b>
-            <span>{keySignsText(lastKey.key)}</span>
-          </span>
+          <KeyText keyId={lastKey.key} />
         </div>
       ) : (
         <p className="prog-empty">{t('progress.key.empty')}</p>
       )}
-      <Link to="/notes" className="btn btn--outline prog-btn prog-btn--outline">
+      <Link to="/notes" query={FROM_PROGRESS} className="btn btn--outline prog-btn prog-btn--outline">
         {t('progress.key.read')}
         <Arrow />
       </Link>
@@ -479,7 +496,7 @@ export function MinorsCard({ scales }: { scales: ScalesView }): JSX.Element {
       ) : (
         <p className="prog-empty">{t('progress.minors.empty')}</p>
       )}
-      <Link to="/scales" className="btn btn--outline prog-btn prog-btn--outline prog-btn--end">
+      <Link to="/scales" query={FROM_PROGRESS} className="btn btn--outline prog-btn prog-btn--outline prog-btn--end">
         {t('progress.minors.circle')}
         <Arrow />
       </Link>

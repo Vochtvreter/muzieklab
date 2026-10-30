@@ -251,9 +251,10 @@ textarea.fb-input:focus-visible {
 .fb-error p {
   margin: 0;
 }
+/* Copy is never narrower than its icon and longest word ("Gekopieerd" in Dutch on a 320 px phone); Send takes the rest. */
 .fb-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(min-content, 1fr) minmax(0, 1.4fr);
   gap: 10px;
 }
 .fb-actions .btn {

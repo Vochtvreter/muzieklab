@@ -109,9 +109,11 @@
   flex-direction: column;
   gap: 16px;
 }
+/* "You're signed in as {name}" on another account's link: a one-word name wraps rather than running out of the card. */
 .acct-lead {
   font-size: 15px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Rows inside Settings cards (their corners: app.css, after .row-link) ---------- */
@@ -490,6 +492,11 @@
 }
 .form-done svg {
   flex: none;
+}
+/* A message can name an account ("The invite for {name} was canceled."): a one-word name wraps in its card. */
+.form-error > span,
+.form-done > span {
+  overflow-wrap: anywhere;
 }
 .btn[aria-busy='true'] {
   opacity: 0.75;

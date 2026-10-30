@@ -2951,6 +2951,7 @@
     },
     "detail": {
       "back": "Back to Skill levels",
+      "backToSkill": "Back to {name} in Skill levels",
       "of": "of {max}",
       "meter": "Level {level} of {max}, and {done} of {total, plural, one {# check} other {# checks}} for level {n}",
       "meterLevel": "Level {level} of {max}",

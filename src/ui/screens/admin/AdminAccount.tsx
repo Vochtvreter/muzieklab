@@ -556,8 +556,21 @@ function reveal(answer: HTMLElement): void {
   const top = Math.max(0, port?.top ?? 0);
   const bottom = Math.min(window.innerHeight, port?.bottom ?? Infinity);
   const button = answer.previousElementSibling?.getBoundingClientRect();
-  const line = (answer.querySelector('.form-done, .form-error') ?? answer).getBoundingClientRect();
-  if (button && button.bottom > top && button.top < bottom && line.bottom > bottom) answer.scrollIntoView?.({ block: 'nearest' });
+  const line = answer.querySelector<HTMLElement>('.form-done, .form-error') ?? answer;
+  if (button && button.bottom > top && button.top < bottom && landedBottom(line, answer) > bottom) answer.scrollIntoView?.({ block: 'nearest' });
+}
+
+/**
+ * Where the line's bottom is once it has moved in. The new answer and its line each fade in from 4 px above (.m-in),
+ * and reveal() runs as they start: measured there, a line that lands up to 8 px under the screen's edge seemed on it.
+ */
+function landedBottom(line: HTMLElement, answer: HTMLElement): number {
+  let lift = 0;
+  for (let el: HTMLElement | null = line; el && el !== answer; el = el.parentElement) {
+    const transform = getComputedStyle(el).transform;
+    if (transform && transform !== 'none') lift += new DOMMatrixReadOnly(transform).m42;
+  }
+  return line.getBoundingClientRect().bottom - lift;
 }
 
 /**
