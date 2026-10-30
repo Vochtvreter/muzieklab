@@ -406,8 +406,8 @@ Learn and practice major and minor scales in all 15 keys.
   the circle* (all 15 in circle order).
 - **Where the hub sits:** it is a Home page, opened from Home's Scales tile, so it keeps the
   app's navigation with Home current (§9): the tab bar on phone, with a back arrow as on a
-  Learn chapter; the top header on tablet and desktop. Opened from Learn chapter 11's Practice button, its back arrow
-  returns to the chapter (*Back to chapter 11*, §9.1). Tablet and desktop put the circle and
+  Learn chapter; the top header on tablet and desktop. Opened from Learn chapter 11's Practice button, Learn is
+  current instead and its back arrow returns to the chapter (*Back to chapter 11*, §9.1). Tablet and desktop put the circle and
   the selected key side by side: the key signature, the stars per form (one rating for major,
   natural / harmonic / melodic for minor), the scale's notes and *Options* / *Practice*.
 - **Starts on C major** (since 0.8.0): no sharps or flats and only white keys, where method books start; G, one sharp,
@@ -1887,7 +1887,7 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
 - Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup (chapter 11's
-  the Scales tab, its circle of fifths).
+  opens the Scales tab, with its circle of fifths).
 
 **The browser's Back to a chapter** opens it where the reader left it, not at its top (the chapter is built afresh in
 its own scroller, so the browser cannot keep the place). Every link that leaves a chapter first sets the chapter's own
@@ -1896,9 +1896,11 @@ it is in, and for those at its end (previous / next, the Practice button, *Back 
 (`?s=check`); for the sidebar or the tab bar, the section at the top of the view, or the quick check when the chapter
 is scrolled to its end, where its last sections cannot reach the top. A jump to a section (the sidebar, the tablet's
 chips) sets the place the same way first, so Back returns to where the reader was before it, or to the chapter's top
-when that was above the first section, with the focus on the title. A screen opened from the chapter's Practice
-button returns to its end too (its back arrow, Quit). Back to the Learn tab opens the chapter that was open there;
-otherwise the tab opens the first one not done.
+when that was above the first section, with the focus on the title. It leaves the place as it is when the reader is
+already at the section it jumps to, or back at the place the last jump came from (the chips sit above the sections, so
+a second chip finds the top), so no place is in the history twice in a row and every Back goes somewhere. A screen
+opened from the chapter's Practice button returns to its end too (its back arrow, Quit). Back to the Learn tab opens
+the chapter that was open there; otherwise the tab opens the first one not done.
 
 **A phone turned on its side** is tablet-wide and gets the top header in place of the tab bar (§9), but the chapter
 stays as it was: its quick-check answers, an example still playing with its *Stop*, and the reader's place, the

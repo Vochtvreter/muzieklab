@@ -3,7 +3,7 @@
  * the selected key: its notes, stars, *Options* and *Practice*, plus *Go round the circle*. A Home page: the tab bar
  * with Home current on phone, the top header on tablet and desktop, where the circle and the selected key sit side by
  * side (App design canvas, Tablet and Desktop · Scales). Opened from Learn chapter 11's Practice button (?from=11),
- * its back arrow returns to the chapter, and the setup and the rounds it opens keep that.
+ * Learn is current, its back arrow returns to the chapter, and the setup and the rounds it opens keep that.
  */
 import {
   CIRCLE,
@@ -51,6 +51,8 @@ export function ScalesHub(): JSX.Element {
   const kbd = useKeyboardHints(bp);
   const start = useStartScales();
   const { back, carry } = useLearnReturn();
+  // The tab it was opened from is current (DESIGN.md §9): Home, or Learn from chapter 11.
+  const fromTab = back ? '/learn' : '/';
   useDocTitle(t('app.docTitle', { page: t('scales.title') }));
   const { tab, key } = state.scaleHub;
   const minor = tab === 'minor';
@@ -149,7 +151,7 @@ export function ScalesHub(): JSX.Element {
 
   if (bp === 'phone') {
     return (
-      <AppShell bp={bp} active="/">
+      <AppShell bp={bp} active={fromTab}>
         <div className="page hub no-scrollbar">
           {head}
           {switcher}
@@ -226,7 +228,7 @@ export function ScalesHub(): JSX.Element {
   );
 
   return (
-    <AppShell bp={bp} active="/" wide fill>
+    <AppShell bp={bp} active={fromTab} wide fill>
       <div className={'page hub hub--wide hub--' + bp + ' no-scrollbar'}>
         {head}
         {bp === 'tablet' ? (

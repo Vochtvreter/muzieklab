@@ -20,7 +20,7 @@ import { stopLearnSound } from '../learn/Listen';
 import { announce } from '../lib/announce';
 import { letterName, spokenName } from '../lib/noteText';
 import { focusHeading } from '../lib/screenFocus';
-import { hashQuery, Link, navigate, useHash, type Route } from '../router';
+import { hashQuery, Link, navigate, openedFrom, parseHash, useHash, type Route } from '../router';
 import { todayIso, useStore } from '../store';
 import { useStartNotes } from './notes/start';
 import { useStartPractice } from './start';
@@ -378,7 +378,10 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
   // phase, before the link's own click opens the next screen, which keeps this address as where it came from (leave()).
   // Only the address changes (no hashchange), so the chapter never renders with the new ?s= and jumps on its way out.
   // So does a jump to a section (the sidebar, the chips): Back then returns to where the reader was before it, the
-  // chapter's top when that was above the first section, and not to the section jumped to.
+  // chapter's top when that was above the first section, and not to the section jumped to. Not when that place is the
+  // section jumped to, as the address would change without the chapter knowing and its next render would jump back
+  // there; nor when it is the place this entry was opened from (a chip, above the sections, finds the chapter's top
+  // after a jump from it), which would put it in the history twice in a row, and Back would seem to do nothing.
   useEffect(() => {
     const onClick = (e: globalThis.MouseEvent): void => {
       const link = e.target instanceof Element ? e.target.closest('a') : null;
@@ -386,7 +389,9 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
       if (!link || !pageRef.current || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       if (!href.startsWith('#/') || (link.target && link.target !== '_self')) return;
       const place = placeOf(pageRef.current, link, sectionIds(chapter));
-      const here = '#' + route + (place ? '?s=' + place : '');
+      const query = place ? 's=' + place : undefined;
+      const here = '#' + route + (query ? '?' + query : '');
+      if (parseHash(href) === route && (href === here || openedFrom(route, query))) return;
       if (window.location.hash !== here) window.history.replaceState(window.history.state, '', here);
     };
     document.addEventListener('click', onClick, true);

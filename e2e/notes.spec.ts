@@ -979,6 +979,39 @@ test("learn: the browser's Back after a jump to a section returns where the read
   await expect(page.getByRole('heading', { name: /^8\.2\s*\D/ })).toBeInViewport();
   await page.goForward();
   await expect(page.getByRole('heading', { name: /^8\.5\s*\D/ })).toBeInViewport();
+
+  // A jump to the section already at the top of the view, read into by hand, changed the address without the chapter
+  // knowing: the next right answer, further down, sent the page and the focus back to that section.
+  await page.goto('./#/learn/8');
+  await page.locator('#s8-3').evaluate((el) => {
+    el.scrollIntoView({ block: 'start' });
+    el.closest('.page')!.scrollTop += 200;
+  });
+  await jump.getByRole('link', { name: /^8\.3\s*\D/ }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
+  const right = page.locator('#s8-5 .learn-answer').nth(1);
+  await right.scrollIntoViewIfNeeded();
+  const before = await chapter.evaluate((el) => el.scrollTop);
+  await right.click();
+  await expect(page.locator('#s8-5').getByText('✓ read')).toBeVisible();
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  expect(await chapter.evaluate((el) => el.scrollTop)).toBe(before);
+  await expect(right).toBeFocused();
+
+  // Two jumps by the chips, which sit above the sections: the second set the first one's place to the chapter's top,
+  // so the second Back went to the top again and seemed to do nothing.
+  await page.setViewportSize(VIEWPORTS.tablet);
+  await page.goto('./#/learn/8');
+  await jump.getByRole('link', { name: /^8\.3\s*\D/ }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
+  await jump.getByRole('link', { name: /^8\.5\s*\D/ }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.5$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
+  await expect(page.getByRole('heading', { name: /^8\.3\s*\D/ })).toBeInViewport();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/8$/);
+  await expect.poll(() => chapter.evaluate((el) => el.scrollTop)).toBe(0);
 });
 
 test('learn: a phone turned on its side keeps the chapter where it was, its answers, and Stop on the example playing', async ({ page }) => {
@@ -987,12 +1020,36 @@ test('learn: a phone turned on its side keeps the chapter where it was, its answ
   const section = page.locator('#s11-3');
   await section.locator('.learn-answer').first().click();
   await expect(section.locator('.nfeedback')).toBeVisible();
+  // Read 150 px into 11.3. How far the top of the view is into it, measured as the chapter puts a section at the top
+  // (under the page's scroll padding, less the section's scroll margin), and its height, which the new width changes.
+  await section.evaluate((el) => {
+    el.scrollIntoView({ block: 'start' });
+    el.closest('.page')!.scrollTop += 150;
+  });
+  const place = (): Promise<{ into: number; height: number }> =>
+    section.evaluate((el) => {
+      const scroller = el.closest('.page')!;
+      const top = scroller.getBoundingClientRect().top + (parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0);
+      const into = top - el.getBoundingClientRect().top + (parseFloat(getComputedStyle(el).scrollMarginTop) || 0);
+      return { into, height: (el as HTMLElement).offsetHeight };
+    });
+  // The chapter notes the place as the reader scrolls: a frame or two for that scroll to be seen.
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  const before = await place();
+  expect(before.into).toBeGreaterThan(140);
   // Past 700 px the shell has a header in place of the tab bar: the chapter was built again, at its top, with no answer.
+  // Then the text reflowed and the browser left the view elsewhere: 11.2 at the top on the way back to portrait.
   for (const size of ['phone-landscape', 'phone'] as const) {
     await page.setViewportSize(VIEWPORTS[size]);
     await expect(page.locator('.shell')).toHaveClass(size === 'phone' ? /shell--phone/ : /shell--tablet/);
     await expect(section.locator('.nfeedback'), size).toBeVisible();
-    await expect(section, size).toBeInViewport();
+    // As far into the section, for its height at this width.
+    await expect
+      .poll(async () => {
+        const now = await place();
+        return Math.abs(now.into - (before.into / before.height) * now.height);
+      }, size)
+      .toBeLessThan(8);
   }
   // An example still sounding kept playing with no Stop to press.
   await page.goto('./#/learn/2?s=2.2');
@@ -1558,7 +1615,9 @@ test('learn: chapter 11 links to the Scales setup and the circle', async ({ page
   await page.getByRole('link', { name: 'Practice scales' }).click();
   await expect(page.getByRole('group', { name: 'Circle of fifths, major keys' })).toBeVisible();
   // The circle opened from the chapter returns to its end, as every chapter's Practice button does (it went Home).
+  // Learn, the tab it was opened from, is current.
   await expect(page).toHaveURL(/#\/scales\?from=11$/);
+  await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Learn');
   await page.getByRole('link', { name: 'Back to chapter 11' }).click();
   await expect(page).toHaveURL(/#\/learn\/11\?s=check$/);
   await expect(page.getByRole('link', { name: 'Practice scales' })).toBeInViewport();
@@ -1573,8 +1632,9 @@ test('learn: chapter 11 links to the Scales setup and the circle', async ({ page
   await page.getByRole('link', { name: 'Quit', exact: true }).click();
   await expect(page).toHaveURL(/#\/scales\?from=11$/);
   await expect(page.getByRole('link', { name: 'Back to chapter 11' })).toBeVisible();
-  // Opened from Home, its back arrow still goes Home.
+  // Opened from Home, its back arrow still goes Home, with Home current.
   await page.goto('./#/');
   await page.getByRole('link', { name: /^Scales/ }).click();
   await expect(page.getByRole('link', { name: 'Back to Home' })).toHaveAttribute('href', '#/');
+  await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Home');
 });
