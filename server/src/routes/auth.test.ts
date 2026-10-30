@@ -871,7 +871,8 @@ describe('the Origin check', () => {
     const post = (headers: Record<string, string | undefined>) =>
       t.app.inject({ method: 'POST', url: '/api/v1/auth/sign-in', payload, headers: { host: HOST, ...headers } });
 
-    for (const origin of [undefined, 'https://evil.example', 'null', 'https://test.vivanova.app:8443', 'not a url']) {
+    // Plain http of this host is another origin (port 80): a network attacker can serve it, as the site has no HSTS.
+    for (const origin of [undefined, 'https://evil.example', 'null', 'https://test.vivanova.app:8443', 'not a url', `http://${HOST}`, `http://${HOST}:80`]) {
       const res = await post(origin === undefined ? {} : { origin });
       expect(res.statusCode, String(origin)).toBe(403);
       expect(res.json()).toEqual({ error: 'bad_origin', message: expect.any(String) });
@@ -888,6 +889,8 @@ describe('the Origin check', () => {
       t.app.inject({ method: 'POST', url: '/api/v1/auth/sign-in', payload, headers: { host, origin } });
     expect((await post('localhost:5173', 'http://localhost:5173')).statusCode).toBe(200);
     expect((await post('localhost:5173', 'http://localhost:5174')).statusCode).toBe(403);
+    // npm run e2e:real serves the app on 127.0.0.1.
+    expect((await post('127.0.0.1:4180', 'http://127.0.0.1:4180')).statusCode).toBe(200);
   });
 
   it('needs no Origin for GET', async () => {

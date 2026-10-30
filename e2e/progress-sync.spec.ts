@@ -35,6 +35,31 @@ test('a first sign-in adds this device’s progress to the account, and Settings
   expect(server.copy().rev).toBe(1);
 });
 
+test('a first sign-in in another tab: that tab says the progress is on the account, and this one only follows it', async ({ page, context }) => {
+  const LINE = 'The progress on this device is on your account now too.';
+  await seed(page, { progress: { xp: 340, practiceDays: ['2026-10-24'], lessons: { '1.1': { stars: 3, bestAccuracy: 92 } } } });
+  const server = progressServer();
+  await mockApi(page, { ...SIGNED_OUT, ...server.routes });
+  await page.goto('./#/settings');
+  await expect(accountSection(page).getByRole('link', { name: /^Sign in/ })).toBeVisible();
+  const said = await recordAnnouncements(page);
+  // The second tab shares the first one's storage, progress and all.
+  const other = await context.newPage();
+  await mockApi(other, { ...SIGNED_OUT, ...server.routes, 'POST /auth/sign-in': { json: ME_MEMBER } });
+  await other.goto('./#/signin');
+  await other.getByLabel('Email').fill('sam@example.com');
+  await other.getByLabel('Password', { exact: true }).fill('a good long password');
+  await other.getByRole('button', { name: 'Sign in' }).click();
+  await expect(accountSection(other).getByText(LINE)).toBeVisible();
+  await expect(announcer(other)).toHaveText(LINE);
+  // The first tab shows the account and syncs it too, without the line.
+  await expect(accountSection(page).getByRole('link', { name: /^Sam Jansen/ })).toBeVisible();
+  await expect(syncLine(page)).toHaveText('Progress saved to your account');
+  await expect(accountSection(page).getByText(LINE)).toHaveCount(0);
+  expect(await said()).toEqual([]);
+  expect(server.copy().data?.progress).toMatchObject({ xp: 340, lessons: { '1.1': { stars: 3, bestAccuracy: 92 } } });
+});
+
 test('the account’s progress and settings come to a device, merged with its own', async ({ page }) => {
   await seed(page, { progress: { xp: 50, lessons: { '1.2': { stars: 1, bestAccuracy: 40 } } } });
   await seedAccount(page, ME_MEMBER);

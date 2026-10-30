@@ -680,8 +680,9 @@ request and a long one that only keeps the session going, and the app renews the
   everyone on the test site signs in once more. (Production had no accounts yet.) A rollback to an older API finds no
   session either, so everyone would sign in again after one.
 - **Forged requests** from other sites are stopped twice: `SameSite=Lax`, and every request that changes something
-  (anything but GET, HEAD and OPTIONS) must have an `Origin` header with the same host and port as its `Host` header
-  (else 403 `bad_origin`). Bodies must be JSON: a `text/plain` body, which a form on another site can send, gets 415.
+  (anything but GET, HEAD and OPTIONS) must have an `Origin` header with the same host and port as its `Host` header,
+  over https (else 403 `bad_origin`). Plain http, the same host on port 80 to a browser, passes only on localhost and
+  127.0.0.1, for development. Bodies must be JSON: a `text/plain` body, which a form on another site can send, gets 415.
 
 ### 5.5 Passwords
 

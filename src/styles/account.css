@@ -165,12 +165,15 @@
   color: var(--ink);
   text-align: left;
 }
+/* A custom role's name and description are an admin's words: a long word with no break point wraps rather than running
+   under the switch and out of the card, as in a row link. */
 .toggle-row-text {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-wrap: anywhere;
 }
 .toggle-row-text b {
   font-size: 15px;

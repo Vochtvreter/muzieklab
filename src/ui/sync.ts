@@ -41,6 +41,8 @@ export interface SyncHost {
   me(): Me | null;
   /** What Settings → Account says now (a new password's line, kept over the first sign-in's). */
   notice(): AccountNotice | null;
+  /** The account was signed in in another tab and taken up here: that tab says what the first sign-in did. */
+  elsewhere(): boolean;
   local(): Synced;
   dispatch(action: Action): void;
 }
@@ -272,10 +274,12 @@ export class ProgressSync {
 
   /**
    * A first sign-in on a device with progress: say it is on the account now. Not over a new password's line, which says
-   * the other devices were signed out (the sync line says the progress is saved).
+   * the other devices were signed out (the sync line says the progress is saved). Not in a tab that took the account up
+   * from the tab it was signed in in either: that one says it. (This one's sync started before that one's had saved
+   * what it agreed with the account, so it is a first here too.)
    */
   private added(local: Synced): void {
-    if (isEmptyProgress(local.progress) || this.host.notice() === 'passwordReset') return;
+    if (isEmptyProgress(local.progress) || this.host.notice() === 'passwordReset' || this.host.elsewhere()) return;
     this.host.dispatch({ type: 'accountNotice', notice: 'progressAdded' });
     announce(t('settings.noticeProgressAdded'));
   }
@@ -311,23 +315,29 @@ export function progressSync(): ProgressSync | null {
 /** Runs the sync for the app: mounted once, inside the StoreProvider. */
 export function useProgressSync(): void {
   const { state, dispatch } = useStore();
-  const { me, notice } = state.account;
-  const live = useRef({ me, notice, local: syncedOf(state.prefs, state.progress) });
+  const { me, notice, elsewhere } = state.account;
+  const live = useRef({ me, notice, elsewhere, local: syncedOf(state.prefs, state.progress) });
   const sync = useRef<ProgressSync | null>(null);
   if (!sync.current) {
-    sync.current = new ProgressSync({ me: () => live.current.me, notice: () => live.current.notice, local: () => live.current.local, dispatch });
+    sync.current = new ProgressSync({
+      me: () => live.current.me,
+      notice: () => live.current.notice,
+      elsewhere: () => live.current.elsewhere,
+      local: () => live.current.local,
+      dispatch,
+    });
     engine = sync.current;
   }
   const synced = syncedOf(state.prefs, state.progress);
   // What the sync reads is the state as committed: updated before the effects below ask it to run.
   useEffect(() => {
-    live.current = { me, notice, local: synced };
+    live.current = { me, notice, elsewhere, local: synced };
   });
 
   // Signed in (on start with a cached account, or a sign-in): sync now. Signed out: forget the account's copy.
   const id = me?.id ?? null;
   useEffect(() => {
-    live.current = { me, notice, local: synced };
+    live.current = { me, notice, elsewhere, local: synced };
     if (id) void sync.current!.request('start');
     else sync.current!.forget();
   }, [id]);
@@ -340,7 +350,7 @@ export function useProgressSync(): void {
       first.current = false;
       return;
     }
-    live.current = { me, notice, local: synced };
+    live.current = { me, notice, elsewhere, local: synced };
     if (id) sync.current!.changed();
   }, [state.progress, key]);
 

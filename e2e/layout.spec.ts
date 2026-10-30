@@ -5,7 +5,7 @@ import { pianoWindow, scaleNotes, type Scale } from '../src/core/scale';
 import { noteLessonSettings } from '../src/game/notesPath';
 import { lessonSettings } from '../src/game/path';
 import { CHAPTERS } from '../src/ui/learn/chapters';
-import type { Me } from '../shared/api';
+import type { Me, RoleInfo } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
 import {
   ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, calibrateAlong, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectFocusRing, expectHitHeight, expectNoClippedLabels, expectNoOverlap,
@@ -94,17 +94,17 @@ async function failedSecondLink(page: Page, button: string, alert: string): Prom
 }
 
 /**
- * A row link's words stay in their column, left of the chevron: a long name or email with no break point wraps instead
- * of running under the chevron and out of the card.
+ * A row link's words stay in their column, left of the chevron (a switch row's, `.toggle-row-text`, left of its
+ * switch): a long name or email with no break point wraps instead of running under the chevron and out of the card.
  */
-async function expectWordsInRow(row: Locator): Promise<void> {
+async function expectWordsInRow(row: Locator, column = '.row-link-text'): Promise<void> {
   await row.evaluate(() => document.fonts.ready.then(() => undefined));
-  const m = await row.evaluate((el) => {
-    const text = el.querySelector('.row-link-text')!;
+  const m = await row.evaluate((el, column) => {
+    const text = el.querySelector(column)!;
     const range = document.createRange();
     range.selectNodeContents(text);
     return { words: Math.max(...[...range.getClientRects()].map((r) => r.right)), column: text.getBoundingClientRect().right };
-  });
+  }, column);
   expect(m.words, 'the words run out of their column').toBeLessThanOrEqual(m.column + 0.5);
 }
 
@@ -3402,6 +3402,24 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectFieldsFit(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
+      });
+
+      test('admin one account and invite with a long one-word role: its name and description wrap left of the switch', async ({ page }) => {
+        known(name, 'admin-long-role');
+        // Admins name and describe custom roles: a one-word name of 80 characters (the most it may be) and a one-word
+        // description, each wider than the row's words at every size.
+        const role: RoleInfo = { id: 'coordinators', name: 'Muziekschoolleerkrachtencoördinatorenvergaderingsvoorzittersplaatsvervangerschap',
+          description: 'Leerkrachtencoördinatorenvergaderingsvoorzittersplaatsvervangersbevoegdhedenoverzichtsbeheerderstoegangsrechtenbeheer',
+          permissions: ['accounts.read'], builtIn: false, accounts: 1 };
+        const sam = { ...ACCOUNTS[1], roles: [role.id] };
+        await mockApi(page, { ...adminApi(ACCOUNTS.map((a) => (a.id === sam.id ? sam : a))), 'GET /admin/roles': { json: { roles: [role] } } });
+        for (const hash of ['#/admin/account/' + sam.id, '#/admin/invite']) {
+          await page.goto('./' + hash);
+          const row = page.getByRole('switch', { name: role.name });
+          await expect(row).toBeVisible();
+          await expectWordsInRow(row, '.toggle-row-text');
+          await expectNoSideScroll(page);
+        }
       });
 
       test('admin one account: a second password link that fails, with the earlier one dimmed in its place', async ({ page }) => {

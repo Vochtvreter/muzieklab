@@ -307,6 +307,11 @@ export interface AccountState {
   api: 'unknown' | 'reachable' | 'unreachable';
   notice: AccountNotice | null;
   sync: SyncStatus;
+  /**
+   * Signed in or out in another tab, and taken up here (accountStored): what that says, such as the first sign-in's
+   * line about this device's progress (ui/sync.ts), is said in the tab where it happened, not here as well.
+   */
+  elsewhere: boolean;
 }
 
 export interface AppState {
@@ -442,12 +447,18 @@ export function reducer(state: AppState, action: Action): AppState {
       return progress === state.progress ? state : { ...state, progress };
     }
     case 'signedIn': {
-      // The same account again (GET /me, a change of name…) keeps its sync status; another one starts over.
-      const sync = state.account.me?.id === action.me.id ? state.account.sync : 'idle';
-      return { ...state, account: { me: action.me, api: 'reachable', notice: action.notice ?? null, sync } };
+      // The same account again (GET /me, a change of name…) keeps its sync status, and where it was signed in; another
+      // one starts over.
+      const same = state.account.me?.id === action.me.id;
+      const { sync, elsewhere } = same ? state.account : { sync: 'idle' as const, elsewhere: false };
+      return { ...state, account: { me: action.me, api: 'reachable', notice: action.notice ?? null, sync, elsewhere } };
     }
-    case 'signedOut':
-      return { ...state, account: { me: null, api: 'reachable', notice: action.notice ?? null, sync: 'idle' } };
+    case 'signedOut': {
+      // A second sign-out with no line of its own keeps the first one's: the progress sync's 401 right after Delete
+      // account's, both before a render, so the sync still saw the account signed in.
+      const notice = action.notice ?? (state.account.me ? null : state.account.notice);
+      return { ...state, account: { me: null, api: 'reachable', notice, sync: 'idle', elsewhere: false } };
+    }
     case 'syncStatus':
       return state.account.sync === action.status ? state : { ...state, account: { ...state.account, sync: action.status } };
     case 'syncApply':
@@ -463,9 +474,9 @@ export function reducer(state: AppState, action: Action): AppState {
       const was = state.account.me;
       if (sameValue(was, action.me)) return state;
       // The same account: as it is now. Another one, or nobody: as after a sign-in or out, without the line Settings
-      // shows for that (it was said in the tab where it happened).
+      // shows for that, now or after this tab's first sync (it was said in the tab where it happened).
       if (action.me && was?.id === action.me.id) return { ...state, account: { ...state.account, me: action.me } };
-      return { ...state, account: { ...state.account, me: action.me, notice: null, sync: 'idle' } };
+      return { ...state, account: { ...state.account, me: action.me, notice: null, sync: 'idle', elsewhere: true } };
     }
     case 'apiUnreachable':
       return state.account.api === 'unreachable' ? state : { ...state, account: { ...state.account, api: 'unreachable' } };
@@ -763,7 +774,7 @@ function initialState(): AppState {
     scaleHub: { tab: 'major', key: scaleSettings.keys[0] },
     scaleRun: route === '/scales/play' ? restoreScaleRun() : null,
     scaleLast: null,
-    account: { me: loadAccount(), api: 'unknown', notice: null, sync: 'idle' },
+    account: { me: loadAccount(), api: 'unknown', notice: null, sync: 'idle', elsewhere: false },
   };
 }
 

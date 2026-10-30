@@ -76,7 +76,7 @@ const appState = (progress: Progress = defaultProgress()): AppState => ({
   scaleHub: { tab: 'major', key: 'C' },
   scaleRun: null,
   scaleLast: null,
-  account: { me: ME, api: 'reachable', notice: null, sync: 'idle' },
+  account: { me: ME, api: 'reachable', notice: null, sync: 'idle', elsewhere: false },
 });
 
 /**
@@ -92,6 +92,7 @@ class Device {
     this.sync = new ProgressSync({
       me: () => this.state.account.me,
       notice: () => this.state.account.notice,
+      elsewhere: () => this.state.account.elsewhere,
       local: () => syncedOf(this.state.prefs, this.state.progress),
       dispatch: (a: Action) => {
         this.state = reducer(this.state, a);
@@ -190,6 +191,21 @@ describe('ProgressSync: a first sign-in', () => {
     await phone.run((d) => d.sync.request('start'));
     expect(server.progress().xp).toBe(40);
     expect(phone.state.account.notice).toBe('passwordReset');
+    expect(said).toEqual([]);
+    stop();
+  });
+
+  it('in a tab that took up the account another tab signed in, saves too but says nothing: that tab says it', async () => {
+    const said: string[] = [];
+    const stop = listenToAnnouncements((text) => said.push(text));
+    const tab = new Device();
+    tab.pass('1.1', 3, 40);
+    tab.do({ type: 'signedOut' });
+    tab.do({ type: 'accountStored', me: ME });
+    await tab.run((d) => d.sync.request('start'));
+    expect(server.progress().lessons).toEqual({ '1.1': { stars: 3, bestAccuracy: 60 } });
+    expect(tab.state.account.sync).toBe('saved');
+    expect(tab.state.account.notice).toBeNull();
     expect(said).toEqual([]);
     stop();
   });

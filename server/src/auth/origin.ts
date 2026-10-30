@@ -20,11 +20,17 @@ function parseOrigin(origin: string | undefined): URL | null {
   }
 }
 
-/** True when the request's Origin header is this site: the same host and port as the Host header. */
+/**
+ * True when the request's Origin header is this site: the same host and port as the Host header, over https (or http on
+ * localhost, for development).
+ */
 export function sameOrigin(request: FastifyRequest): boolean {
   const origin = parseOrigin(request.headers.origin);
   const host = request.headers.host;
   if (!origin || !host) return false;
+  // Host names no scheme, so plain http of this host (port 80, another origin) would match it below. The site is https;
+  // http is development on localhost only, as for siteOrigin and originFromUrl.
+  if (origin.protocol === 'http:' && !isLocal(origin)) return false;
   try {
     // Read Host as a URL of the origin's scheme, so a default port written out (":443") compares equal to none.
     return new URL(`${origin.protocol}//${host}`).host === origin.host;

@@ -2060,7 +2060,8 @@ server.
     your progress is kept.* (after Delete account, by the choice made), *You're signed in. Welcome to Muzieklab.*, *Password saved. Your
     other devices are signed out.*, or, after a first sign-in on a device that had progress, *The progress on this
     device is on your account now too.* It is read out once, when it happens (not again when the language is switched),
-    and it goes when Settings is left.
+    and it goes when Settings is left. It shows only in the tab where it happened: another tab of the browser follows
+    the account without it.
 - Settings → About has a **Privacy** row (*What stays on this device, and what an account stores*), with or without an
   API. Its *Reset progress* confirm says, while signed in, *Streak, stars and XP, on every device with your account.
   No undo.*, and resets the account's progress too.

@@ -698,6 +698,40 @@ test('delete account after the session ended elsewhere: Sign in says the account
   await expect(page.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toHaveCount(0);
 });
 
+test('delete account after the session ended, as the progress sync finds it ended too: Sign in still says so', async ({ page }) => {
+  const api = await mockApi(page, MEMBER);
+  await page.goto('./#/account');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('muzieklab.sync.v1'))).not.toBeNull();
+  // The session ended elsewhere. Delete account's request and the sync's (the device back online) both get a 401, and
+  // the renewal they share is refused once both are in.
+  let synced = (): void => undefined;
+  const syncAsked = new Promise<void>((done) => (synced = done));
+  let refusedSyncs = 0;
+  api.set({
+    'DELETE /me': apiError('unauthenticated', 401),
+    'GET /progress': () => {
+      refusedSyncs++;
+      synced();
+      return apiError('unauthenticated', 401);
+    },
+    'POST /auth/refresh': async () => {
+      await syncAsked;
+      await new Promise((done) => setTimeout(done, 300));
+      return apiError('unauthenticated', 401);
+    },
+  });
+  await page.getByRole('button', { name: /^Delete account/ }).click();
+  const confirm = page.getByRole('alertdialog', { name: 'Delete your account?' });
+  await confirm.getByLabel('Password', { exact: true }).fill('my password here');
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect.poll(() => api.callsTo('POST /auth/refresh').length).toBe(1);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page).toHaveURL(/#\/signin$/);
+  await expect(page.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toBeVisible();
+  expect(refusedSyncs).toBe(1);
+  expect(api.callsTo('POST /auth/refresh')).toHaveLength(1);
+});
+
 test('account: one Back after Delete account, Sign out everywhere or Sign in leaves Settings, for the screen before it', async ({ page }) => {
   const api = await mockApi(page, { ...MEMBER, 'DELETE /me': { status: 204 } });
   const tab = (name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name });
