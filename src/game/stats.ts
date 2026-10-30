@@ -152,6 +152,13 @@ export function recordEcho(p: Progress, exercise: Exercise, result: Pick<JudgeRe
   return withStats(p, { echo: { ...p.stats.echo, [level]: [n + (counts ? 1 : 0), long ? Math.max(best, stars) : best] } });
 }
 
+/**
+ * `part` of `whole` as a whole percent, rounded down, as Results shows a run's accuracy (§6.3): a skill check, a band or
+ * a weak spot is met only by the real value, so 89.5% is 89%, not the notes check's 90%. The 1e-9 keeps a whole percent
+ * that floating point puts just under it (57 of 100 is 56.99999999999999).
+ */
+export const wholePercentOf = (part: number, whole: number): number => Math.max(0, Math.min(100, Math.floor((part / whole) * 100 + 1e-9)));
+
 /** The faster of two average answer times, where 0 means none yet. */
 export const fastest = (a: number, b: number): number => (a === 0 ? b : b === 0 ? a : Math.min(a, b));
 
@@ -216,7 +223,7 @@ export function recordNotes(p: Progress, notes: RoundNote[], answers: NoteAnswer
   for (const clef of CLEFS) {
     const c = perClef[clef];
     if (!c || c.total < READING_MIN_NOTES) continue;
-    const acc = Math.round((c.right / c.total) * 100);
+    const acc = wholePercentOf(c.right, c.total);
     const avg = Math.round(c.ms / c.total);
     for (const level of readingLevels(settings, clef)) {
       const key = `${clef}:${level}`;
@@ -262,6 +269,6 @@ export function cellTotals(p: Progress, today: string): Record<CellId, [number, 
 /** Notes counted in a cell's totals. */
 export const cellNotes = (totals: [number, number]): number => Math.round(totals[1] / POINTS.perfect);
 
-/** A cell's rolling accuracy as a whole %, or null under MIN_CELL_NOTES notes. */
+/** A cell's rolling accuracy as a whole %, rounded down (wholePercentOf), or null under MIN_CELL_NOTES notes. */
 export const cellAccuracy = (totals: [number, number]): number | null =>
-  cellNotes(totals) >= MIN_CELL_NOTES ? Math.round((totals[0] / totals[1]) * 100) : null;
+  cellNotes(totals) >= MIN_CELL_NOTES ? wholePercentOf(totals[0], totals[1]) : null;

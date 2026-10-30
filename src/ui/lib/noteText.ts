@@ -63,11 +63,11 @@ export function minorName(key: KeyId): string {
 /** "G major · E minor" */
 export const keyPairName = (key: KeyId): string => t('notes.keyPair', { major: majorName(key), minor: minorName(key) });
 
-/** "1 sharp: every F is F♯", "2 sharps: F♯, C♯", "No sharps or flats". */
-export function keySignsText(key: KeyId): string {
+/** "1 sharp: every F is F♯", "2 sharps: F♯, C♯", "No sharps or flats"; `spoken`, for screen readers: "F sharp, C sharp". */
+export function keySignsText(key: KeyId, spoken = false): string {
   const signs = keySigns(key);
   if (signs.length === 0) return t('notes.keyNone');
-  const names = signs.map((s) => letterName(s.letter, s.alter));
+  const names = signs.map((s) => (spoken ? spokenName : letterName)(s.letter, s.alter));
   const msg = signs[0].alter > 0 ? 'notes.keySharps' : 'notes.keyFlats';
   return t(msg, { count: signs.length, letter: t('notes.letter.' + signs[0].letter), name: names[0], names: names.join(', ') });
 }

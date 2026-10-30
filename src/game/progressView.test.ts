@@ -150,6 +150,15 @@ describe('skillMap', () => {
     expect(map[7]).toMatchObject({ name: 'skills.cell.sixteenths', notes: 0, unlockUnit: pathUnitOf('rhythm', 8) });
   });
 
+  it('bands a cell by its accuracy rounded down: 89.6% is no 90%, 79.6% is a weak spot', () => {
+    const cells = { quarter: [1075, 1200], half: [955, 1200] } as DayStats['cells'];
+    const map = skillMap(progress({ lessons: pathTo(13) }, { days: { [TODAY]: day({ cells }) } }), TODAY);
+    expect(map.slice(0, 2).map((c) => [c.id, c.accuracy, c.band, c.weak])).toEqual([
+      ['quarter', 89, 'mid', false],
+      ['half', 79, 'weak', true],
+    ]);
+  });
+
   it('locks a cell until its rhythm unit is open, unless it was played', () => {
     const fresh = skillMap(progress(), TODAY);
     expect(fresh.every((c) => c.locked && c.accuracy === null)).toBe(true);
@@ -195,6 +204,8 @@ describe('achievements, notes and scales', () => {
       { id: 'bass:21', clef: 'bass', step: 21, letter: 'C', alter: 0, seconds: 2.4, answers: 3 },
     ]);
     expect(n.lastKey).toEqual({ key: 'G', clef: 'treble' });
+    // Rounded down, as Read notes' Round done shows a round: 179 of 200 (89.5%) is 89%.
+    expect(notesView(progress({}, { clefs: { treble: [179, 200], bass: [57, 100] } })).clefs.map((c) => c.accuracy)).toEqual([89, 57]);
     expect(notesView(progress())).toEqual({ clefs: [{ clef: 'treble', accuracy: null, answered: 0 }, { clef: 'bass', accuracy: null, answered: 0 }], slowest: [], lastKey: null });
   });
 

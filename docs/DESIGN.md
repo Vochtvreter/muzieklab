@@ -354,6 +354,9 @@ notes read the same.
   ("What is a key?") links to 10.1.
 - *Use* goes back to the setup's own place in the history, so one Back from the setup leaves it (Scales' *Choose…* and
   *Change* too).
+- A screen reader hears the keys in words, as the Scales hub says them (§3.7): each key (*F sharp major or D sharp
+  minor, 6 sharps*; Dutch *fis majeur of dis mineur, 6 kruisen*), the summary read out when the key changes, *Use F
+  sharp major*, and the setup's Key row. The screen still writes them with their signs (*F♯ major*).
 
 **Settings** (Read notes setup screen)
 
@@ -860,10 +863,14 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 ### 6.3 Scores
 
 - **Accuracy %** = points / max points (floored at 0). It is shown in whole percent rounded down (Results, Play's *So
-  far*, Home's daily, the personal bests, Read notes' *Round done*, Progress' *Accuracy · 14 days*), so a run never
-  shows a threshold it did not reach: 31 Perfect and a Great are 99.7%, shown as 99%, as 100% is only the diamond's;
-  89.7% (two stars) shows 89%, not 90%. The stored accuracy keeps its fraction; the day's figures for Progress (§8.5)
-  add each round in whole percent, rounded down too.
+  far*, Home's daily, the personal bests, Read notes' *Round done*, Progress' *Accuracy · 14 days*, *Accuracy per clef*
+  and skill map, Skill levels' *now 89%*), so a run never shows a threshold it did not reach: 31 Perfect and a Great
+  are 99.7%, shown as 99%, as 100% is only the diamond's; 89.7% (two stars) shows 89%, not 90%. The stored accuracy
+  keeps its fraction; the day's figures for Progress (§8.5) add each round in whole percent, rounded down too. A target
+  is met only by the real value: the skill map's bands and weak spots (§8.4) and the skill checks (§8.6) compare the
+  accuracy rounded down, so a Read notes round with 89.5% of its treble notes right is 89%, short of the 90% check, and
+  a cell at 84.6% is short of 85%. A Read notes check keeps its best in whole percent, rounded down (bests saved by
+  earlier versions were rounded to the nearest and stay so).
 - **Stars:** ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% · ★★★★ ≥ 95% with no Good and no Miss (no
   yellow or red noteheads).
 - **Three star slots are shown** (☆☆☆) on the results, the lesson tiles and the Path. The 4th star is a hidden
@@ -1162,9 +1169,10 @@ built (since 0.19.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
   *Sixteenths*). Whole notes and triplets count for none. The first note after a rest also counts for *Rests*. A note
   adds the points the accuracy gives it (§6.3) to its cells, out of a Perfect's.
 - **Rolling accuracy.** The points are kept per local day (`progress.stats.days`, the newest 42 days), and a cell's
-  accuracy is its points earned over points possible across the last 42 days, as a whole percent. It shows from 12
-  notes in that window (*—* before). A per-day sum instead of a moving average, because two devices' days merge (each
-  day keeps one device's record, BACKEND-PLAN §6.2) and old figures drop out of the window as practice moves on.
+  accuracy is its points earned over points possible across the last 42 days, as a whole percent rounded down (§6.3:
+  89.6% is in the 80–89% band). It shows from 12 notes in that window (*—* before). A per-day sum instead of a moving
+  average, because two devices' days merge (each day keeps one device's record, BACKEND-PLAN §6.2) and old figures drop
+  out of the window as practice moves on.
 - **Bands and weak spots.** 90% and up, 80–89%, and under 80%: a **weak spot**. A cell is locked until the Learning path
   opens the first lesson of the rhythm unit that teaches it (Quarter and Half: unit 1, Rests: 2, Eighths: 4, Ties: 6,
   the dotted cells: 7, Sixteenths: 8), unless it already has notes in any day kept (not only the window, so a cell
@@ -1317,10 +1325,10 @@ checked after a sync).
   notes of that clef answered. It covers level 1 when it draws every line of the staff, 2 every space, 3 every staff
   position, 4 every note from middle C up to G (treble) or down to F (bass), 5 and 8 every note of the one- or
   two-ledger-line range; 6, 7, 9 and 10 when it covers the whole staff in a key with 1, 2–3, 4–5 or 6–7 sharps or
-  flats. Checks: *A round over the whole staff at 90%* (the best accuracy of that clef's notes in such a round) and,
-  from level 3, *Average answer under 2.0 s* (level 10: 1.5 s). Middle C is a ledger line, so level 4 needs a round
-  with ledger lines. Button: *Read treble notes* / *Read bass notes*, which puts that one clef on the Read notes setup
-  (the rest as set up) and opens it.
+  flats. Checks: *A round over the whole staff at 90%* (the best accuracy of that clef's notes in such a round,
+  rounded down, §6.3) and, from level 3, *Average answer under 2.0 s* (level 10: 1.5 s). Middle C is a ledger line, so
+  level 4 needs a round with ledger lines. Button: *Read treble notes* / *Read bass notes*, which puts that one clef on
+  the Read notes setup (the rest as set up) and opens it.
 - **Scales** (the Scales hub's best stars): levels 1–5 one check per scale, *A major at ★★*; level 6 all 15 major
   scales at ★★; levels 7–9 the five minor keys up to 2♯ or 2♭ (A, E, D, B and G minor) in their natural, harmonic or
   melodic form at ★★, also one check per scale (*A harmonic minor at ★★*), as only those five count; level 10 all 60

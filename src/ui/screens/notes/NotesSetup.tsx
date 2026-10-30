@@ -11,6 +11,7 @@ import { Icon } from '../../components/Icon';
 import { useDocTitle } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
 import { keyPairName, keySignsText, majorName } from '../../lib/noteText';
+import { keySpoken } from '../../lib/scaleText';
 import { Link } from '../../router';
 import { useStore } from '../../store';
 import { useStartNotes } from './start';
@@ -32,6 +33,9 @@ export function NotesSetup(): JSX.Element {
   const key = keys[0];
   const keyName = mixed ? t('notes.setup.keysMix', { count: keys.length }) : keyPairName(key);
   const keySub = mixed ? t('notes.setup.keysMixSub') : keySignsText(key);
+  // The row's name says the key in words ("F sharp major"): a screen reader reads a sign as a symbol or skips it.
+  const keySaid = mixed ? keyName : t('notes.keyPair', { major: keySpoken(key, false), minor: keySpoken(key, true) });
+  const keySubSaid = mixed ? keySub : keySignsText(key, true);
   const clefsWord = s.clefs.length > 1 ? t('notes.setup.clefsBoth') : t(s.clefs[0] === 'treble' ? 'notes.setup.clefsTreble' : 'notes.setup.clefsBass');
   const pool = t('notes.setup.pool', { count: rangeSteps('treble', s.range).length, key: mixed ? t('notes.done.keysMix', { count: keys.length }) : majorName(key) });
 
@@ -80,7 +84,7 @@ export function NotesSetup(): JSX.Element {
 
             <div className="field">
               <div className="label">{t('notes.setup.key')}</div>
-              <Link to="/notes/key" query={carry} className="key-row" aria-label={t('notes.setup.keyAria', { name: keyName, sub: keySub })}>
+              <Link to="/notes/key" query={carry} className="key-row" aria-label={t('notes.setup.keyAria', { name: keySaid, sub: keySubSaid })}>
                 <span className="key-thumb">
                   <PitchStaff clef="treble" keyId={key} notes={[]} slots={0} room={1.5} />
                 </span>

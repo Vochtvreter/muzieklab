@@ -1,6 +1,6 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { generateExercise } from '../core/generator';
-import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteAnswer, type NoteSettings } from '../core/noteRound';
+import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteAnswer, type NoteSettings, type RoundNote } from '../core/noteRound';
 import { buildTimeline } from '../core/timeline';
 import type { JudgeResult, NoteResult } from '../core/types';
 import { cellPoints, materialLevel } from './cells';
@@ -18,7 +18,7 @@ import {
   rhythmSeconds,
   LISTEN_LEAD_IN_S,
 } from './stats';
-import { reviewOf } from './skills';
+import { levelChecks, reviewOf, skillContext } from './skills';
 import { defaultProgress, sanitizeProgress, shiftDay, type DayStats, type Progress } from './storage';
 
 const TODAY = '2026-10-25';
@@ -197,7 +197,7 @@ describe('recordNotes', () => {
     // Whole staff in G major (1 sharp): lines, spaces, the whole staff and keys with one sharp or flat.
     expect(readingLevels(settings, 'treble')).toEqual([1, 2, 3, 6]);
     const treble = notes.map((n, i) => ({ n, a: answers[i] })).filter((x) => x.n.clef === 'treble');
-    const acc = Math.round((treble.filter((x) => x.a.outcome === 'right').length / treble.length) * 100);
+    const acc = Math.floor((treble.filter((x) => x.a.outcome === 'right').length / treble.length) * 100 + 1e-9);
     const avg = Math.round(treble.reduce((s, x) => s + Math.min(15000, x.a.ms), 0) / treble.length);
     for (const level of [1, 2, 3, 6]) expect(p.stats.reading[`treble:${level}`]).toEqual([acc, avg]);
     expect(p.stats.reading['treble:4']).toBeUndefined();
@@ -206,6 +206,21 @@ describe('recordNotes', () => {
     const q = recordNotes(p, notes, right, settings, TODAY);
     expect(q.stats.reading['treble:1']).toEqual([100, avg]);
     readsBack(q);
+  });
+
+  it('keeps the accuracy in whole percent rounded down, so 89.5% does not reach the 90% check', () => {
+    const treble: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, clefs: ['treble'] };
+    const round = generateRound(treble, 3);
+    const many = (n: number): RoundNote[] => Array.from({ length: n }, (_, i) => round[i % round.length]);
+    const play = (right: number, n: number): Progress =>
+      recordNotes(defaultProgress(), many(n), many(n).map((_, i): NoteAnswer => ({ outcome: i < right ? 'right' : 'wrong', ms: 1000, given: null })), treble, TODAY);
+    const p = play(179, 200);
+    expect(p.stats.reading['treble:1']).toEqual([89, 1000]);
+    expect(levelChecks(skillContext(p, TODAY), 'treble', 1)[0]).toMatchObject({ done: false, now: { key: 'skills.now.percent', params: { value: 89 } } });
+    readsBack(p);
+    // A whole percent that floating point puts just under it (57 of 100 is 56.99999999999999) stays whole.
+    expect(play(57, 100).stats.reading['treble:1'][0]).toBe(57);
+    expect(levelChecks(skillContext(play(180, 200), TODAY), 'treble', 1)[0].done).toBe(true);
   });
 
   it('needs a few notes of a clef for its levels, and records nothing without answers', () => {
@@ -294,5 +309,14 @@ describe('cellTotals', () => {
     expect(cellAccuracy(t.ties)).toBe(83);
     expect(cellAccuracy(t.half)).toBeNull(); // 11 notes
     expect(cellAccuracy(t.quarter)).toBeNull();
+  });
+
+  it('rounds the accuracy down, so a cell at 84.6% does not reach the 85% check', () => {
+    expect(cellAccuracy([1015, 1200])).toBe(84);
+    expect(cellAccuracy([1020, 1200])).toBe(85);
+    expect(cellAccuracy([1164, 1200])).toBe(97);
+    const at = (half: [number, number]): Progress => ({ ...defaultProgress(), stats: { ...defaultProgress().stats, days: { [TODAY]: day({ half }) } } });
+    expect(levelChecks(skillContext(at([1015, 1200]), TODAY), 'rhythm', 1)[1]).toMatchObject({ done: false, now: { key: 'skills.now.percent', params: { value: 84 } } });
+    expect(levelChecks(skillContext(at([1020, 1200]), TODAY), 'rhythm', 1)[1].done).toBe(true);
   });
 });

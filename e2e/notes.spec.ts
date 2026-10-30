@@ -54,7 +54,7 @@ test('read notes: a G major round from Home to the summary, answered with the ke
   await page.getByRole('button', { name: /^G major or E minor/ }).click();
   await expect(page.getByText('The key signature makes every F into F♯')).toBeVisible();
   await page.getByRole('button', { name: 'Use G major' }).click();
-  await expect(page.getByRole('link', { name: /^Key: G major · E minor, 1 sharp: every F is F♯/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^Key: G major · E minor, 1 sharp: every F is F sharp/ })).toBeVisible();
 
   await page.getByRole('button', { name: 'Start · 10 notes' }).click();
   await expect(page.getByText('Note 1 of 10')).toBeVisible();
@@ -614,8 +614,8 @@ test('read notes setup: Sharps promises no extra signs in C♯ major, where ever
   await page.getByRole('button', { name: 'Sharps ♯' }).click();
   await expect(pool).toHaveText('11 staff positions per clef · C major · extra signs appear');
   await page.getByRole('link', { name: /^Key: C major/ }).click();
-  await page.getByRole('button', { name: /^C♯ major or A♯ minor/ }).click();
-  await page.getByRole('button', { name: 'Use C♯ major' }).click();
+  await page.getByRole('button', { name: /^C sharp major or A sharp minor/ }).click();
+  await page.getByRole('button', { name: 'Use C sharp major' }).click();
   await expect(pool).toHaveText('11 staff positions per clef · C♯ major');
   await page.getByRole('button', { name: 'Both ♯ ♭' }).click();
   await expect(pool).toHaveText('11 staff positions per clef · C♯ major · extra signs appear');

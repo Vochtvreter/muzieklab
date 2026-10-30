@@ -29,7 +29,7 @@ import {
   type Label,
   type SkillCta,
 } from './skills';
-import { cellAccuracy, cellNotes, cellTotals, minutesOf } from './stats';
+import { cellAccuracy, cellNotes, cellTotals, minutesOf, wholePercentOf } from './stats';
 import {
   CELL_IDS,
   mondayOf,
@@ -289,7 +289,7 @@ export interface CellView {
   id: CellId;
   /** Message key of its name (skills.cell.*). */
   name: string;
-  /** Rolling accuracy (whole %), or null under MIN_CELL_NOTES notes ("—"). */
+  /** Rolling accuracy (whole %, rounded down), or null under MIN_CELL_NOTES notes ("—"). */
   accuracy: number | null;
   /** Notes counted in the window. */
   notes: number;
@@ -364,7 +364,10 @@ export const SLOW_NOTES = 3;
 
 /** The Notes view: accuracy per clef, the slowest notes and the last round's key. */
 export interface NotesView {
-  /** Treble, then bass: accuracy over every round (whole %, or null before any note of that clef) and notes answered. */
+  /**
+   * Treble, then bass: accuracy over every round (whole %, rounded down; null before any note of that clef) and notes
+   * answered.
+   */
   clefs: { clef: Clef; accuracy: number | null; answered: number }[];
   /** The SLOW_NOTES slowest notes with SLOW_MIN_ANSWERS answers or more, slowest first. */
   slowest: SlowNote[];
@@ -377,7 +380,7 @@ export function notesView(p: Progress): NotesView {
   const s = p.stats;
   const clefs = (['treble', 'bass'] as const).map((clef) => {
     const c = s.clefs[clef];
-    return { clef, accuracy: c ? Math.round((c[0] / c[1]) * 100) : null, answered: c ? c[1] : 0 };
+    return { clef, accuracy: c ? wholePercentOf(c[0], c[1]) : null, answered: c ? c[1] : 0 };
   });
   const slowest = Object.entries(s.noteMs)
     .filter(([, [, n]]) => n >= SLOW_MIN_ANSWERS)

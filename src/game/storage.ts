@@ -115,7 +115,10 @@ export interface Stats {
   noteMs: Record<string, [number, number]>;
   /** The key and clef of the last Read notes round. */
   lastKey: { key: KeyId; clef: Clef } | null;
-  /** Read notes skill checks: per "clef:level" (level 1–10), [best accuracy %, best average answer ms (0 = none)]. */
+  /**
+   * Read notes skill checks: per "clef:level" (level 1–10), [best accuracy (whole %, rounded down; earlier versions
+   * saved it rounded to the nearest, and those values stay), best average answer ms (0 = none)].
+   */
   reading: Record<string, [number, number]>;
   /** Rhythm by ear (Echo): per material level "1"…"8", [Echo rounds at ★★ or more, best stars in an Echo round of 4+ bars]. */
   echo: Record<string, [number, number]>;

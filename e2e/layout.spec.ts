@@ -1632,7 +1632,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
       // The last row of keys is reachable above the sticky Use button once the list is scrolled to its end.
       await page.locator('.nkeys').evaluate((el) => el.scrollTo(0, el.scrollHeight));
-      await expectClickable(page.getByRole('button', { name: /^C♯ major or A♯ minor/ }), { scroll: false });
+      await expectClickable(page.getByRole('button', { name: /^C sharp major or A sharp minor/ }), { scroll: false });
       await expectClickable(page.getByRole('button', { name: /^Use / }));
       await expectNoSideScroll(page);
     });
