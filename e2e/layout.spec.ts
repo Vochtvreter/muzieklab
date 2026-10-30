@@ -4348,6 +4348,10 @@ test.describe('desktop Read notes at widths under 1180 px', () => {
       const head = page.locator('.nanswer-head');
       const modes = head.locator('.nmode');
       await expect(modes).toBeVisible();
+      // First, while the note's 5 s run, the natural G for G♭ (the G of A S D F G H J): the why of two lines under the
+      // timer's bar and the two ledger lines (a time-out would say less). The switch and the hint stay as they were.
+      await page.keyboard.press('g');
+      await expect(page.locator('.nfeedback')).toHaveText(language === 'nl' ? /^Dat was G♭ \(sol♭\)/ : /^That was G♭ \(sol♭\)/);
       const expectBeside = async (where: string): Promise<void> => {
         await page.evaluate(() => document.fonts.ready.then(() => undefined));
         for (const width of WIDTHS) {
@@ -4359,16 +4363,8 @@ test.describe('desktop Read notes at widths under 1180 px', () => {
         }
         await expectNoClippedLabels(page);
       };
-      // The name buttons' hint is the longest, in Dutch ("Typ de letter; druk eerst op = voor ♯, 0 voor ♮ of − voor ♭").
-      await modes.getByRole('button', { name: 'A B C' }).click();
-      await expect(page.locator('.name-grid')).toBeVisible();
-      await expectBeside('the name buttons');
-      await modes.getByRole('button', { name: 'Piano' }).click();
       await expect(page.locator('.piano')).toBeVisible();
       await expectBeside('the piano');
-      // The natural G for G♭ (the G of A S D F G H J): the why under the timer's bar and the two ledger lines.
-      await page.keyboard.press('g');
-      await expect(page.locator('.nfeedback')).toHaveClass(/is-wrong/);
       for (const width of WIDTHS) {
         await page.setViewportSize({ width, height: 800 });
         await test.step(`${width} × 800`, async () => {
@@ -4376,6 +4372,10 @@ test.describe('desktop Read notes at widths under 1180 px', () => {
           await expect(page.locator('.nanswer')).toBeInViewport({ ratio: 1 });
         });
       }
+      // The name buttons' hint is the longest, in Dutch ("Typ de letter; druk eerst op = voor ♯, 0 voor ♮ of − voor ♭").
+      await modes.getByRole('button', { name: 'A B C' }).click();
+      await expect(page.locator('.name-grid')).toBeVisible();
+      await expectBeside('the name buttons');
     });
   }
 });
@@ -4497,7 +4497,7 @@ test.describe('forced colors (a contrast theme)', () => {
       await page.emulateMedia({ colorScheme: scheme, forcedColors: 'active' });
       await page.clock.setFixedTime(PROGRESS_CLOCK);
       // The boards' sample player: C, G and F major at ★★★, D and B♭ at ★★, A and E♭ at ★; a streak, missed days, XP.
-      await seed(page, { progress: richProgress(), prefs: { ...PROGRESS_PREFS, seenHowTo: true, seenHold: true } });
+      await seed(page, { progress: richProgress(), prefs: { ...PROGRESS_PREFS, seenHowTo: true, seenHold: true, seenEchoHowTo: true } });
       /**
        * How each element is drawn, by its computed (forced) colours: its fill (none when it is the page's), its edge,
        * its ring and its text colour; null when there is none on the screen. A selector may end in ::before.
@@ -4603,18 +4603,27 @@ test.describe('forced colors (a contrast theme)', () => {
       await expectDistinct('the beat grid', ['.learn-grid-cell:not(.is-held)', '.learn-grid-cell.is-held']);
 
       // Read notes with a time per note: the time left under the staff and the round's progress beside the ✕; on Round
-      // done, the time chart's legend, whose dots are its bars' colours.
-      const timed: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, timer: 5, count: 10, playNotes: false };
-      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings: timed, seed: 7, focus: [] });
+      // done, the time chart's legend, whose dots are its bars' colours, and the bars by sign. In G major, seed 1, the
+      // first note is an F♯ from the key signature, answered F, the second one has no sign and is answered right.
+      const timed: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['G'], timer: 5, count: 10, playNotes: false };
+      const [fromKey, plain] = generateRound(timed, 1);
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings: timed, seed: 1, focus: [] });
       await page.goto('about:blank');
       await page.goto('./#/notes/play');
-      await page.getByRole('group', { name: 'Note names' }).getByRole('button').first().click();
-      await expect(page.locator('.nfeedback')).toHaveClass(/is-(right|wrong)/);
+      const names = page.getByRole('group', { name: 'Note names' });
+      await names.getByRole('button', { name: new RegExp(`^${letterOf(fromKey.step)}(,|$)`) }).click();
+      await expect(page.locator('.nfeedback')).toHaveClass(/is-wrong/);
       await expectDrawn('Read notes', ['.ntimer', '.ntimer > div', '.progress', '.progress > div']);
       await expectDistinct('Read notes', ['.ntimer', '.ntimer > div']);
       await expectDistinct('Read notes', ['.progress', '.progress > div']);
+      await page.getByRole('button', { name: /^Next note/ }).click();
+      await names.getByRole('button', { name: new RegExp(`^${letterOf(plain.step)}(,|$)`) }).click();
+      await expect(page.locator('.nfeedback')).toHaveClass(/is-right/);
       await page.getByRole('button', { name: 'Skip to summary' }).click();
       await expect(page.locator('.nchart')).toBeVisible();
+      await expect(page.locator('.nsign-bar')).toHaveCount(2);
+      await expectDrawn('the bars by sign', ['.nsign-bar', '.nsign-bar > div']);
+      await expectDistinct('the bars by sign', ['.nsign-bar', '.nsign-bar > div']);
       await expectDrawn("the time chart's legend", ['.nlegend-dot.is-right', '.nlegend-dot.is-hint', '.nlegend-dot.is-missed']);
       await expectDistinct("the time chart's legend", ['.nlegend-dot.is-right', '.nlegend-dot.is-hint', '.nlegend-dot.is-missed']);
       const bars = await page.locator('.nchart-bar').evaluateAll((els) => els.map((el) => getComputedStyle(el).fill));
@@ -4622,8 +4631,12 @@ test.describe('forced colors (a contrast theme)', () => {
       for (const fill of bars) expect(dots, "the bars' colours are the legend's").toContain(fill);
 
       // Results: Skip, so none of the three stars is earned; each is outlined, not filled in the text's colour as an
-      // earned one is. Play's progress bar, before.
+      // earned one is. Setup's difficulty and Play's progress bar, before.
       await page.goto('./#/setup');
+      await expect(page.locator('.difficulty-bars')).toBeAttached();
+      const level = ['.difficulty-bars span.is-on', '.difficulty-bars span:not(.is-on)'];
+      await expectDrawn("Setup's difficulty", level);
+      await expectDistinct("Setup's difficulty", level);
       await page.getByRole('button', { name: /^Start · / }).click();
       await expectDrawn('Play', ['.progress', '.progress > div']);
       await expectDistinct('Play', ['.progress', '.progress > div']);
@@ -4636,6 +4649,39 @@ test.describe('forced colors (a contrast theme)', () => {
         }),
       );
       expect(off, 'the stars not earned, outlined').toEqual([true, true, true]);
+
+      // Calibration: the pips of its 16 clicks.
+      await page.goto('./#/calibrate');
+      await expect(page.locator('.pips')).toBeAttached();
+      await expectDrawn('Calibration', ['.pips span']);
+
+      // Desktop: Home's Learning path card (units done, the current one, locked ones), the Path's Notes and rhythm bar,
+      // and Play's key and the hold bar in it.
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto('./#/');
+      await expect(page.locator('.path-card-bar')).toBeVisible();
+      const units = ['.path-card-seg--done', '.path-card-seg--current', '.path-card-seg--locked'];
+      await expectDrawn("Home's Learning path card", units);
+      await expectDistinct("Home's Learning path card", units);
+      await page.goto('./#/path');
+      await expect(page.locator('.track-card-bar')).toBeVisible();
+      await expectDrawn("the Path's bar", ['.track-card-bar', '.track-card-bar > span']);
+      await expectDistinct("the Path's bar", ['.track-card-bar', '.track-card-bar > span']);
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.locator('.keycap')).toBeVisible();
+      await expectDrawn("Play's key", ['.keycap', '.keycap-bar', '.keycap-bar > span']);
+      await expectDistinct("Play's key", ['.keycap-bar', '.keycap-bar > span']);
+
+      // Echo: the pips of the plays left, one used.
+      await page.goto('./#/setup');
+      await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }).click();
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await page.getByRole('button', { name: 'Play the rhythm' }).click();
+      await expect(page.locator('.echo-pips span:not(.is-on)')).toHaveCount(1);
+      const pips = ['.echo-pips span.is-on', '.echo-pips span:not(.is-on)'];
+      await expectDrawn('Echo', pips);
+      await expectDistinct('Echo', pips);
     });
   }
 });

@@ -2324,11 +2324,12 @@
  * colour, they would hide a played key's dot in some themes), and the Learn piano's marked keys a thick one in the
  * selection colour. A right answer takes the selection colours (out of forced colors, for its words), a wrong one a
  * thick dashed edge and its name struck through, so they no longer look like the buttons around them. A chosen key's
- * signature keeps the page's colour behind it, as on the keys around it. Read notes' time left and the Learn tab's
- * progress keep an edge and fill in the text colour, as every bar does; the time chart's legend keeps the colours of
- * the chart's bars, which the browser does not force. Learn's diagrams are drawn in the text colour too: 1.1's beats
- * on their time line (the beat just heard in the selection colour), 1.3's strong and medium beats filled and its weak
- * ones outlined, the beat grid's cells outlined (a held count's dashed), and a play button keeps its circle.
+ * signature keeps the page's colour behind it, as on the keys around it. Read notes' time left, Round done's bars by
+ * sign and the Learn tab's progress keep an edge and fill in the text colour, as every bar does; the time chart's
+ * legend keeps the colours of the chart's bars, which the browser does not force. Learn's diagrams are drawn in the
+ * text colour too: 1.1's beats on their time line (the beat just heard in the selection colour), 1.3's strong and
+ * medium beats filled and its weak ones outlined, the beat grid's cells outlined (a held count's dashed), and a play
+ * button keeps its circle.
  */
 @media (forced-colors: active) {
   .piano-black {
@@ -2359,11 +2360,13 @@
   .ntimer {
     outline: 1px solid CanvasText;
   }
+  .nsign-bar,
   .learn-progress-bar,
   .learn-accent-bar {
     border: 1px solid CanvasText;
   }
   .ntimer > div,
+  .nsign-bar > div,
   .learn-progress-bar > div,
   .learn-pulse-dot,
   .learn-pulse-track::before,

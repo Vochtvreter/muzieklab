@@ -2284,14 +2284,6 @@ button.lesson-stars:hover {
 .skip-link:disabled {
   visibility: hidden;
 }
-/*
- * Play on a phone does not scroll, and under 800 px tall Skip ends 0–2 px above the page's bottom edge, which cut off
- * the bottom of a ring drawn outside it: this one is drawn inside its 44 px box, clear of the word. Read notes' and
- * Scales' Skip (.nplay-skip) keep the room for theirs.
- */
-.play .skip-link:not(.nplay-skip):focus-visible {
-  outline-offset: -3px;
-}
 
 /*
  * Phone in landscape (short and wide): one column would push the pad off the screen, and Play cannot scroll.
@@ -2384,6 +2376,12 @@ button.lesson-stars:hover {
   .cal .pad-ring {
     height: min(150px, 100cqh - 16px);
     width: auto;
+  }
+  /* Play does not scroll, and here Skip ends 0–2 px above the page's bottom edge, which cut off the bottom of a ring
+     drawn outside it: this one is drawn inside its 44 px box, clear of the word. Read notes' and Scales' Skip
+     (.nplay-skip) keep the room for theirs. */
+  .play .skip-link:not(.nplay-skip):focus-visible {
+    outline-offset: -3px;
   }
 }
 @media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
@@ -5410,11 +5408,14 @@ button.lesson-stars:hover {
 /*
  * Forced colors (a Windows contrast theme, DESIGN.md §11): backgrounds turn the page's colour and shadows go, so what
  * is drawn only with them is drawn again in system colours. A switch gets an edge and a knob, in the selection colours
- * when it is on; a filled button keeps its shape with an edge; the current tab and Play's beat take the selection
- * colours (the chosen options are in base.css). The XP bar and an exercise's progress bar (Play, Read notes, Scales)
- * keep an edge and fill in the text colour, and a result's stars not earned, told apart only by their grey, are
- * outlined. What has words on the selection colour is taken out of forced colors, as there: the plate the system draws
- * behind words, in the page's colour, would hide them.
+ * when it is on; a filled button and desktop Play's key keep their shape with an edge; the current tab and Play's beat
+ * take the selection colours (the chosen options are in base.css). Every bar keeps an edge and fills in the text
+ * colour: the XP bar, an exercise's progress bar (Play, Read notes, Scales), the Path's Notes and rhythm bar, the hold
+ * bar in desktop Play's key (in the key's colours), Setup's difficulty and the pips of Calibration and Echo; the
+ * Learning path card's units on desktop Home are filled when done, in the selection colour when current, an edge when
+ * locked. A result's stars not earned, told apart only by their grey, are outlined. What has words on the selection
+ * colour is taken out of forced colors, as there: the plate the system draws behind words, in the page's colour, would
+ * hide them.
  */
 @media (forced-colors: active) {
   .switch {
@@ -5433,7 +5434,8 @@ button.lesson-stars:hover {
   }
   .btn--accent,
   .btn--ink,
-  .btn--on-fill {
+  .btn--on-fill,
+  .keycap {
     border: 2px solid ButtonText;
   }
   .nav-item.is-current .nav-pill,
@@ -5467,13 +5469,35 @@ button.lesson-stars:hover {
     background: Highlight;
   }
   .xp-bar,
-  .progress {
+  .progress,
+  .track-card-bar,
+  .path-card-seg,
+  .difficulty-bars span,
+  .pips span,
+  .echo-pips span {
     border: 1px solid CanvasText;
   }
   .xp-bar > div,
-  .progress > div {
+  .progress > div,
+  .track-card-bar > span,
+  .path-card-seg--done,
+  .difficulty-bars span.is-on,
+  .pips span.is-on,
+  .echo-pips span.is-on {
     forced-color-adjust: none;
     background: CanvasText;
+  }
+  .path-card-seg--current {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  /* Outside the hold bar's 5 px, which an edge inside would halve, in the colours of the key it is on. */
+  .keycap-bar {
+    outline: 1px solid ButtonText;
+  }
+  .keycap-bar > span {
+    forced-color-adjust: none;
+    background: ButtonText;
   }
   .score-stars-row > :not(.is-on) {
     forced-color-adjust: none;

@@ -1918,9 +1918,11 @@ ABRSM, Trinity, RCM and Kodály.
 
 **Narrow phones.** A rhythm example keeps two bars a row on every phone. When its counts would touch (two busy bars on
 a 320 px phone, or Dutch *en*, wider than *&*, at 375 and 390 px) or its notes would run into the bar line (the note
-tree's sixteenths at 320 px), the staff is drawn smaller, down to 0.75, as Play's staff is on a short screen. A held
-count shares the room between its neighbours by how wide their words are. Where everything fits, nothing changes. The
-tables and diagrams keep their words apart too, at every width and in Dutch:
+tree's sixteenths at 320 px), the staff is drawn smaller, down to 0.75, as Play's staff is on a short screen. Two
+counts that meet letter to letter (*trip let*) keep half a letter apart, or they read as one word (*triplet*): 7.1 is
+drawn smaller under 390 px (0.75 at 320 px); a bracket, a digit or *&* between two counts keeps them apart already. A
+held count shares the room between its neighbours by how wide their words are. Where everything fits, nothing changes.
+The tables and diagrams keep their words apart too, at every width and in Dutch:
 - A table row's name keeps its words whole (*Gepunteerde*); its value wraps instead (*2 + 1 = 3* over *tellen*).
 - 1.3's strong and weak beats: each beat is at least as wide as its word (*medium*, *halfzwaar*), and the meters share
   their columns, so the beats still line up from row to row.
@@ -2485,18 +2487,21 @@ without code changes:
 - High-contrast theme; big touch targets (≥ 48 px). In a Windows contrast theme (forced colors) the system paints
   every background in the page's colour and all text and borders in one colour, so nothing may be told by a fill or a
   colour alone: a chosen option (`aria-pressed`, a checked radio), the current tab, Play's beat and Read notes' right
-  answer take the system's selection colours, a switch has an edge and a knob, a filled button and a piano's black key
-  an edge, the Learn piano's marked keys a thick edge in the selection colour, and a wrong answer a dashed edge with its
-  name struck through. A star not earned is outlined (☆ in Scales, as a lesson's; a result's three get an outline), the
-  circle of fifths' levels an edge (★ dashed, ★★ double) or the text colour's fill (★★★), and so do its legend's dots.
-  On Progress and Skill levels a streak day, the current rank, the next level's part and this week's bar take the
-  selection colours, an earlier practice day a solid edge and a missed one a dashed edge, the skill map's bands a fill,
-  an edge or a dashed edge; every bar and meter keeps an edge and fills in the text colour: the XP bar, an exercise's
-  progress bar (Play, Read notes, Scales), Read notes' time per note and the Learn tab's progress too (before, these
-  disappeared). The legend under Round done's time chart keeps the colours of the chart's bars, which the browser does
-  not force. Learn's diagrams are drawn in the text colour: 1.1's beats on their time line (the beat just heard in the
-  selection colour), 1.3's strong and medium beats filled and its weak ones outlined, the beat grid's cells outlined (a
-  held count's dashed), and a play button keeps its circle as an edge (`base.css`, `app.css`, `notes.css`,
+  answer take the system's selection colours, a switch has an edge and a knob, a filled button (desktop Play's key too)
+  and a piano's black key an edge, the Learn piano's marked keys a thick edge in the selection colour, and a wrong
+  answer a dashed edge with its name struck through. A star not earned is outlined (☆ in Scales, as a lesson's; a
+  result's three get an outline), the circle of fifths' levels an edge (★ dashed, ★★ double) or the text colour's fill
+  (★★★), and so do its legend's dots. On Progress and Skill levels a streak day, the current rank, the next level's part
+  and this week's bar take the selection colours, an earlier practice day a solid edge and a missed one a dashed edge,
+  the skill map's bands a fill, an edge or a dashed edge; every bar and meter keeps an edge and fills in the text
+  colour: the XP bar, an exercise's progress bar (Play, Read notes, Scales), Read notes' time per note, Round done's
+  bars by sign, the Learn tab's progress, the Path's *Notes and rhythm* bar, the hold bar in desktop Play's key (in the
+  key's colours), Setup's difficulty and the pips of Calibration and Echo too (before, these disappeared). Desktop
+  Home's Learning path card fills a unit done in the text colour and the current one in the selection colour, and
+  outlines a locked one. The legend under Round done's time chart keeps the colours of the chart's bars, which the
+  browser does not force. Learn's diagrams are drawn in the text colour: 1.1's beats on their time line (the beat just
+  heard in the selection colour), 1.3's strong and medium beats filled and its weak ones outlined, the beat grid's cells
+  outlined (a held count's dashed), and a play button keeps its circle as an edge (`base.css`, `app.css`, `notes.css`,
   `scales.css`, `progress.css`, `skills.css`; layout tests check it in light and dark).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills without
