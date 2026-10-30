@@ -653,6 +653,8 @@ test('account: delete, keeping an anonymous copy; Cancel puts the choice back', 
   confirm = page.getByRole('alertdialog', { name: 'Delete your account?' });
   await expect(confirm.getByRole('button', { name: 'Keep anonymously' })).toHaveAttribute('aria-pressed', 'true');
   await expect(confirm.getByLabel('Why are you leaving? (optional)')).toHaveValue('');
+  // A note that shows nothing (a pasted zero-width space, a blank Braille pattern) is none.
+  await confirm.getByLabel('Why are you leaving? (optional)').fill('\u200b\u2800 ');
   await confirm.getByLabel('Password', { exact: true }).fill('right');
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(notice(page)).toHaveText('Your account was deleted. An anonymous copy of your progress is kept.');
@@ -1184,6 +1186,19 @@ test('admin one account: name and email are saved together; a taken email is sai
   await save.click();
   await expect(card.getByText("There's already an account with this email.")).toBeVisible();
   await expect(card.getByLabel('Email')).toBeFocused();
+  // The account's own email typed back is not taken: the error goes with the edit, and Save has nothing to save.
+  await card.getByLabel('Email').fill('sam@example.com');
+  await expect(card.getByText("There's already an account with this email.")).toBeHidden();
+  await expect(card.getByLabel('Email')).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(save).toBeDisabled();
+  // The same for the name: emptied and saved, then typed back.
+  await card.getByLabel('Name').fill('');
+  await save.click();
+  await expect(card.getByText('Type their name.')).toBeVisible();
+  await card.getByLabel('Name').fill('Sam Jansen');
+  await expect(card.getByText('Type their name.')).toBeHidden();
+  await expect(card.getByLabel('Name')).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(save).toBeDisabled();
   await card.getByLabel('Name').fill('Sam de Jong');
   await card.getByLabel('Email').fill('Sam.deJong@example.com');
   await save.click();
@@ -1484,6 +1499,15 @@ test('admin one account: a password link pressed at the bottom of the screen com
   expect(await page.locator('.page').evaluate((el) => el.scrollTop)).toBe(0);
 });
 
+test('admin: Deleted accounts: feedback that shows nothing (an older entry, kept as written) says No feedback.', async ({ page }) => {
+  const blank: Closure = { ...CLOSURES[1], feedback: '\u200b\u2800\u2060' };
+  await mockApi(page, { ...adminApi(), 'GET /admin/closures': { json: { closures: [blank], total: 1 } } });
+  await page.goto('./#/admin/deleted');
+  const row = page.getByRole('article', { name: 'October 20, 2026, Data deleted' });
+  await expect(row).toContainText('No feedback.');
+  await expect(row.locator('blockquote')).toHaveCount(0);
+});
+
 test('admin: Deleted accounts, from Accounts: each with its day, kind and feedback, filtered and downloaded', async ({ page }) => {
   await mockApi(page, adminApi());
   await page.goto('./#/admin');
@@ -1639,6 +1663,11 @@ test('account: a failed save is the form error, never the name field; an empty f
   await expect(name).toHaveAttribute('aria-invalid', 'true');
   expect(await name.getAttribute('aria-describedby')).toBe(await empty.getAttribute('id'));
   expect(api.callsTo('PATCH /me')).toHaveLength(1);
+  // The saved name typed back: the error goes with the edit, as Save (with nothing to save) cannot be pressed to clear it.
+  await name.fill('Sam Jansen');
+  await expect(empty).toBeHidden();
+  await expect(name).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
   // A tab in it (pasted from a spreadsheet): said at the field as well, and nothing is sent.
   await name.fill('Sam\tJansen');
   await page.getByRole('button', { name: 'Save', exact: true }).click();

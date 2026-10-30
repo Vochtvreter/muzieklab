@@ -263,7 +263,7 @@ run it sees the first one's change. The document is made when the API starts.
   _id: "3f9c1a7e5b2d4c6e8a0b1c2d3e4f5a6b",   // 16 random bytes, hex: not an ObjectId, whose first bytes are the second it was made
   day: ISODate("2026-10-24T00:00:00Z"),     // midnight UTC of the day it was deleted: no time of day
   kind: "archived",                         // "archived" | "removed" | "admin"
-  feedback: "Too hard after chapter 7.",    // what its owner wrote, or null; at most 1000 characters
+  feedback: "Too hard after chapter 7.",    // what its owner wrote (trimmed), or null; at most 1000 characters
   archive: {                                // archived only, else null
     joined: "2026-03",                      // the month the account was made
     data: { prefs: {…}, progress: {…} },    // the progress document's prefs and progress (§3.3), or null if none was saved
@@ -285,8 +285,9 @@ the progress and prefs.
 What makes it anonymous: a closure holds no name, email, password, device, role, premium or account id, and no moment
 that could match it to the audit log's `account.delete_self` entry (the random `_id` and the day only). That entry is
 the same for every kind, so the log does not say which closure an account left. Feedback is stored as written; the app
-asks people to leave out anything that says who they are. Closures are kept two years, as the audit log (a TTL index on
-`day`).
+asks people to leave out anything that says who they are. Feedback that shows nothing (only spaces, or a pasted
+zero-width space: `showsNothing`, as for a report's description, §3.9) is stored as null, as none is. Closures are kept
+two years, as the audit log (a TTL index on `day`).
 
 **What it does not do:** with only a handful of accounts, someone who knows who left on a given day (an admin sees
 who is gone from the accounts list, and the audit log keeps the deleted account's id with the times of its entries) can
@@ -784,9 +785,10 @@ Built in `src/ui/sync.ts`, with the rules in `src/game/merge.ts`:
 - **Signing out** saves the last change first, then asks whether this device keeps its progress (the default, except on
   such a link) or removes it (for a shared device). Remove is refused while the device's progress is not on the
   account (that save failed, found no API, or is still on its way after 5 s): it would be gone for good; Keep loses
-  nothing, as the account's next sign-in on the device adds it. Either way the device forgets the base: a save sends
-  the whole copy, so it may only ever be made on top of the account's own. A session that ended (a 401) signs out and
-  keeps the progress here.
+  nothing, as the account's next sign-in on the device adds it. When that save found no API, Keep cannot sign out
+  either (the session ends on the API, at `POST /auth/sign-out`), so the refusal says the API can't be reached instead.
+  Either way the device forgets the base: a save sends the whole copy, so it may only ever be made on top of the
+  account's own. A session that ended (a 401) signs out and keeps the progress here.
 - **Settings → Account** shows whether it is saved: saved, saving, not saved yet (no connection; it goes when the
   device is back online), or could not be saved, with Try again.
 

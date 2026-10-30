@@ -154,7 +154,7 @@ describe('Feedback tool: sending a report', () => {
     await markStart();
     const area = screen.getByPlaceholderText(DESC);
     const send = (): HTMLButtonElement => screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement;
-    for (const value of ['   ', '\u200b', ' \u2060\n\u3164 ', '\u2800\u00ad']) {
+    for (const value of ['   ', '\u200b', ' \u2060\n\u3164 ', '\u2800\u00ad', '\ufff9\ufffa\ufffb']) {
       fireEvent.change(area, { target: { value } });
       expect(send().disabled, JSON.stringify(value)).toBe(true);
       expect((screen.getByRole('button', { name: 'Copy' }) as HTMLButtonElement).disabled).toBe(true);

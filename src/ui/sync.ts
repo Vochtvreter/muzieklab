@@ -50,6 +50,13 @@ export interface SyncHost {
 /** Why a sync runs. Only 'change' skips asking the account when nothing changed here. */
 export type SyncReason = 'start' | 'change' | 'online' | 'visible' | 'retry';
 
+/**
+ * What a flush before signing out found: this device's progress is on the account (or there is none), so removing it
+ * loses nothing; it is not (the save failed, or is still on its way); or it is not because the API gave no answer, so
+ * signing out cannot be done either until it does (the session ends there).
+ */
+export type Flushed = 'saved' | 'unsaved' | 'unreachable';
+
 /** A copy that came from the API, checked: the shape SavedProgress says, else null. */
 function savedOf(v: unknown): SavedProgress | null {
   if (!v || typeof v !== 'object') return null;
@@ -77,6 +84,8 @@ export class ProgressSync {
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private pulledAt = -Infinity;
   private failures = 0;
+  /** The last run got no answer from the API (offline, or no API); false again once the next one starts. */
+  private unanswered = false;
   /** Reset progress was pressed: a run that started before drops what it learnt, so the reset goes first. */
   private resetAsked = false;
 
@@ -110,9 +119,9 @@ export class ProgressSync {
   /**
    * Before signing out: saves what is not saved yet, waiting FLUSH_MS at most. Resolves with whether this device's
    * progress is on the account now, so removing it from the device loses nothing: not when that save failed, found no
-   * API, or is still on its way.
+   * API ('unreachable'), or is still on its way (Flushed).
    */
-  async flush(ms = FLUSH_MS): Promise<boolean> {
+  async flush(ms = FLUSH_MS): Promise<Flushed> {
     clearTimeout(this.changeTimer);
     const done = async (): Promise<void> => {
       await this.request('change');
@@ -121,10 +130,11 @@ export class ProgressSync {
     };
     await Promise.race([done(), sleep(ms)]);
     const { progress } = this.local();
-    if (isEmptyProgress(progress)) return true;
+    if (isEmptyProgress(progress)) return 'saved';
     const me = this.host.me();
     const s = me && loadSync(me.id);
-    return !!s?.base && !s.pendingReset && sameValue(progress, s.base.progress);
+    if (s?.base && !s.pendingReset && sameValue(progress, s.base.progress)) return 'saved';
+    return !this.running && this.unanswered ? 'unreachable' : 'unsaved';
   }
 
   /** Settings → Reset progress while signed in: the account's progress is reset too, now or once it can be reached. */
@@ -177,6 +187,7 @@ export class ProgressSync {
   }
 
   private async run(reason: SyncReason): Promise<void> {
+    this.unanswered = false;
     const me = this.host.me();
     if (!me) return;
     const id = me.id;
@@ -281,7 +292,8 @@ export class ProgressSync {
   private added(local: Synced): void {
     if (isEmptyProgress(local.progress) || this.host.notice() === 'passwordReset' || this.host.elsewhere()) return;
     this.host.dispatch({ type: 'accountNotice', notice: 'progressAdded' });
-    announce(t('settings.noticeProgressAdded'));
+    // Worded when it is read out: the merge that came with it may have switched to the account's language.
+    announce(() => t('settings.noticeProgressAdded'));
   }
 
   private failed(e: unknown, id: string): void {
@@ -296,6 +308,7 @@ export class ProgressSync {
     if (!(e instanceof ApiError)) console.error(e);
     const s = loadSync(id);
     const dirty = !s || !s.base || s.pendingReset || !sameValue(this.local(), s.base);
+    this.unanswered = err.code === 'unavailable';
     this.status(err.code === 'unavailable' ? (dirty ? 'pending' : 'saved') : 'failed');
     clearTimeout(this.retryTimer);
     const wait = Math.min(RETRY_MAX_MS, RETRY_MS * 2 ** this.failures);

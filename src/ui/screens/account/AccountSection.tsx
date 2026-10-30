@@ -106,10 +106,11 @@ export function SignOut({ account, removeFirst = false, onSignedOut }: { account
     // What is not saved yet goes to the account first, so removing it from this device loses nothing. When it could not
     // be saved (a server error, no API, a save still on its way), Remove is refused. In Settings the line offers Keep,
     // which loses nothing either, as this account's next sign-in here adds the device's progress again. Not on a link:
-    // there the next sign-in is the link's account, which Keep would hand this one's progress to.
-    const saved = (await progressSync()?.flush()) ?? true;
-    if (!keep && !saved) {
-      setError(t(removeFirst ? 'settings.signOutNotSavedLink' : 'settings.signOutNotSaved'));
+    // there the next sign-in is the link's account, which Keep would hand this one's progress to. Nor when the API gave
+    // no answer: Keep cannot sign out then either (the session ends on the API), so the line says what Keep would.
+    const flushed = (await progressSync()?.flush()) ?? 'saved';
+    if (!keep && flushed !== 'saved') {
+      setError(t(removeFirst ? 'settings.signOutNotSavedLink' : flushed === 'unreachable' ? 'apiError.unavailable' : 'settings.signOutNotSaved'));
       return false;
     }
     try {

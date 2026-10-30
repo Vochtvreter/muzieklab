@@ -71,9 +71,9 @@ describe('PATCH /me', () => {
   it('refuses a name that shows nothing or turns the text around it, and keeps the joiners an emoji or a name needs', async () => {
     const t = await makeApp(mongo);
     const { cookie } = await annSignedIn(t);
-    // A zero-width space, a Hangul filler, word joiners and the blank Braille pattern show nothing; a tab; a
-    // right-to-left override and isolate.
-    for (const name of ['\u200B', ' \u3164 ', '\u2060\u2060', '\u2800', ' \u2800 ', 'Ann\tde Vries', 'Smoke \u202Enimda', 'Ann \u2067de Vries']) {
+    // A zero-width space, a Hangul filler, word joiners, the blank Braille pattern and the interlinear annotation
+    // characters show nothing; a tab; a right-to-left override and isolate.
+    for (const name of ['\u200B', ' \u3164 ', '\u2060\u2060', '\u2800', ' \u2800 ', '\uFFF9\uFFFA\uFFFB', 'Ann\tde Vries', 'Smoke \u202Enimda', 'Ann \u2067de Vries']) {
       const res = await t.call({ method: 'PATCH', url: '/api/v1/me', cookie, payload: { name } });
       expect(res.statusCode, JSON.stringify(name)).toBe(400);
       expect(res.json()).toMatchObject({ error: 'bad_request' });
@@ -352,6 +352,14 @@ describe('DELETE /me', () => {
     expect(await collections(t.db).closures.find().project({ _id: 0, day: 0 }).toArray()).toEqual([
       { kind: 'archived', feedback: null, archive: { joined: account.createdAt.toISOString().slice(0, 7), data: null } },
     ]);
+  });
+
+  it('keeps feedback that shows nothing (a pasted zero-width space, a Hangul filler) as none', async () => {
+    const t = await makeApp(mongo);
+    const { cookie } = await annSignedIn(t);
+    const res = await t.call({ method: 'DELETE', url: '/api/v1/me', cookie, payload: { password: PASSWORD, removeData: true, feedback: '\u200b\u2800\u2060 \u3164\n' } });
+    expect(res.statusCode).toBe(204);
+    expect(await collections(t.db).closures.find().project({ _id: 0, day: 0 }).toArray()).toEqual([{ kind: 'removed', feedback: null, archive: null }]);
   });
 
   it('refuses feedback over the limit, and a removeData that is not true or false, and deletes nothing', async () => {

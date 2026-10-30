@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '../../i18n';
-import { listenToAnnouncements } from '../lib/announce';
+import { listenToAnnouncements, spoken } from '../lib/announce';
 import { ConfirmAction, CopyField, ErrorRetry, FormDone, FormError, PasswordField, RowButton, StatusPill, SubmitButton, SwitchRow, TextField } from './Form';
 
 afterEach(() => {
@@ -271,7 +271,7 @@ describe('ConfirmAction', () => {
 describe('FormDone', () => {
   it('is read out once when it appears, by the app\'s live region, not as an inserted role="status"', () => {
     const said: string[] = [];
-    const stop = listenToAnnouncements((text) => said.push(text));
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
     const { rerender } = render(<FormDone>Saved.</FormDone>);
     expect(screen.getByText('Saved.')).toBeTruthy();
     expect(screen.queryByRole('status')).toBeNull();
@@ -289,7 +289,7 @@ describe('FormDone', () => {
 
   it('says nothing itself where the screen announces it (live={false})', () => {
     const said: string[] = [];
-    const stop = listenToAnnouncements((text) => said.push(text));
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
     render(<FormDone live={false}>The invite for Lies Bakker was canceled.</FormDone>);
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByText('The invite for Lies Bakker was canceled.')).toBeTruthy();

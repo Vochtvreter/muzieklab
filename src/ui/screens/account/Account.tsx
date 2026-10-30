@@ -10,6 +10,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { FEEDBACK_MAX, PASSWORD_MIN, type Me } from '../../../../shared/api';
+import { showsNothing } from '../../../../shared/feedback';
 import { api, downloadExport, EXPORT_FILE } from '../../../api/client';
 import { formatDay, t } from '../../../i18n';
 import { useAccount, type UseAccount } from '../../account';
@@ -143,6 +144,9 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
       <TextField label={t('account.name')} autoComplete="name" name="name" value={name} onChange={(v) => {
         setName(v);
         setSaved(false);
+        // The field's error goes with the edit: typed back to the saved name, Save cannot be pressed to clear it.
+        setEmpty(false);
+        setBadName(null);
       }} maxLength={NAME_MAX} inputRef={nameRef} error={empty ? t('account.nameEmpty') : badName} />
       <FormError error={fail?.message} />
       <div className="form-actions">
@@ -410,7 +414,8 @@ function DeleteAccount({ account, onDone }: Part & { onDone(): void }): JSX.Elem
           return false;
         }
         try {
-          await api.del<void>('/me', { password, removeData, feedback: feedback.trim() || undefined });
+          // Feedback that shows nothing (a pasted zero-width space) is none, as the API takes it too.
+          await api.del<void>('/me', { password, removeData, feedback: showsNothing(feedback) ? undefined : feedback.trim() });
           account.setSignedOut(removeData ? 'deleted' : 'deletedKept');
           onDone();
           return true;

@@ -6,7 +6,7 @@ import type { Me } from '../../../../shared/api';
 // Every announcement, as the screen reader would get it (the real Announcer still shows them).
 vi.mock('../../lib/announce', async (load) => {
   const real = await load<typeof import('../../lib/announce')>();
-  return { ...real, announce: vi.fn((text: string) => real.announce(text)) };
+  return { ...real, announce: vi.fn((text: Parameters<typeof real.announce>[0]) => real.announce(text)) };
 });
 
 import { App } from '../../../App';
@@ -14,7 +14,7 @@ import { setLocale } from '../../../i18n';
 import { ACCOUNT_KEY, PROGRESS_KEY } from '../../../game/storage';
 import { SYNC_KEY } from '../../../game/syncState';
 import { resetAccountCheck } from '../../account';
-import { announce } from '../../lib/announce';
+import { announce, spoken } from '../../lib/announce';
 import { CHECKING_MIN_MS } from './AccountSection';
 
 // Phone width for useBreakpoint; the app scrolls to the top on every route.
@@ -52,7 +52,7 @@ let me: Me;
 let saved: { rev: number; data: unknown; resetAt: string | null; updatedAt: string | null };
 /** PUT /progress answers with a server error. */
 let savesFail: boolean;
-const said = (): string[] => vi.mocked(announce).mock.calls.map((c) => c[0]);
+const said = (): string[] => vi.mocked(announce).mock.calls.map((c) => spoken(c[0]));
 
 beforeEach(() => {
   localStorage.clear();
@@ -189,6 +189,16 @@ describe('Settings → Account', () => {
     expect(said()).toContain('The progress on this device is on your account now too.');
   });
 
+  it("says so in the account's language when the first sign-in brings another one, as the line shows it", async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ xp: 120, practiceDays: ['2026-10-24'] }));
+    saved = { rev: 3, data: { prefs: { language: 'nl' }, progress: { xp: 40 } }, resetAt: null, updatedAt: '2026-10-25T10:00:00.000Z' };
+    render(<App />);
+    await screen.findByText('De voortgang op dit apparaat staat nu ook op je account.');
+    await waitFor(() => expect(document.getElementById('announcer')?.textContent).toBe('De voortgang op dit apparaat staat nu ook op je account.'));
+    expect(document.documentElement.lang).toBe('nl');
+  });
+
   it('signs out keeping this device’s progress, or removing it for a shared device', async () => {
     localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ xp: 120 }));
@@ -226,6 +236,31 @@ describe('Settings → Account', () => {
     fireEvent.click(within(confirm).getByRole('button', { name: 'Sign out' }));
     await screen.findByText('Signed out.');
     expect(JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? 'null')).toMatchObject({ xp: 120 });
+  });
+
+  it('Sign out with no answer from the API does not offer Keep, which cannot sign out then either: it says why', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ xp: 120 }));
+    // Offline once GET /me answered: the save and the sign-out get no answer.
+    const rest = vi.mocked(fetch).getMockImplementation() as (path: string, init?: RequestInit) => Promise<Response>;
+    vi.mocked(fetch).mockImplementation(((path: string, init?: RequestInit) =>
+      path.endsWith('/me') ? rest(path, init) : Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch);
+    render(<App />);
+    await screen.findByText("Not saved yet. Your progress is saved when you're back online.");
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    const confirm = screen.getByRole('alertdialog', { name: 'Sign out on this device?' });
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Sign out' }));
+    await within(confirm).findByText("Can't reach Muzieklab right now. Check your connection and try again.");
+    expect(within(confirm).queryByText(/Choose Keep/)).toBeNull();
+    expect(vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/sign-out'))).toHaveLength(0);
+    expect(JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? 'null')).toMatchObject({ xp: 120 });
+    // Keep says the same: the session ends only when the API answers.
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Keep' }));
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Sign out' }));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/sign-out'))).toHaveLength(1));
+    await within(confirm).findByText("Can't reach Muzieklab right now. Check your connection and try again.");
+    expect(localStorage.getItem(ACCOUNT_KEY)).not.toBeNull();
   });
 
   it("on someone else's invite link, a refused Remove does not offer Keep, which would hand the progress to the link's account", async () => {

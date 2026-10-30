@@ -240,17 +240,27 @@ function ProfileCard({ detail, account, outranked, onChange, fail }: CardProps):
       if (mounted.current) setBusy(false);
     }
   };
-  const edit = (set: (v: string) => void) => (v: string) => {
-    set(v);
+  // A field's error goes with its edit: typed back to the saved value, Save cannot be pressed to clear it. A form error
+  // (no answer, a server error) stays until the next press.
+  const editName = (v: string): void => {
+    setName(v);
     setSaved(false);
+    setEmpty((e) => ({ ...e, name: false }));
+    setBadName(null);
+  };
+  const editEmail = (v: string): void => {
+    setEmail(v);
+    setSaved(false);
+    setEmpty((e) => ({ ...e, email: false }));
+    setFailure((f) => (f?.field === 'email' ? null : f));
   };
 
   return (
     <Section id="profile" title={t('admin.profile')}>
       <form className="card-pad" noValidate onSubmit={onSubmit(() => void submit(), busy)}>
-        <TextField label={t('admin.name')} autoComplete="off" name="account-name" value={name} onChange={edit(setName)} maxLength={NAME_MAX} readOnly={!canEdit}
+        <TextField label={t('admin.name')} autoComplete="off" name="account-name" value={name} onChange={editName} maxLength={NAME_MAX} readOnly={!canEdit}
           inputRef={nameRef} error={empty.name ? t('admin.nameEmpty') : badName} />
-        <TextField label={t('admin.email')} type="email" autoComplete="off" inputMode="email" name="account-email" value={email} onChange={edit(setEmail)}
+        <TextField label={t('admin.email')} type="email" autoComplete="off" inputMode="email" name="account-email" value={email} onChange={editEmail}
           maxLength={EMAIL_MAX} readOnly={!canEdit} inputRef={emailRef} error={empty.email ? t('admin.emailEmpty') : fieldError(failure, 'email')} />
         <FormError error={formError(failure)} />
         {may && outranked && <p className="tfield-hint">{t('admin.outranked')}</p>}

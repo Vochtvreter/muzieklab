@@ -242,10 +242,12 @@ describe('POST /feedback', () => {
     for (const payload of [
       { ...report, description: '   ' },
       // Characters that show nothing (a paste): a zero-width space; a word joiner, a line break and a Hangul filler; a
-      // blank Braille pattern and a soft hyphen.
+      // blank Braille pattern and a soft hyphen; the interlinear annotation characters.
       { ...report, description: '\u200b' },
       { ...report, description: ' \u2060\n\u3164 ' },
       { ...report, description: '\u2800\u00ad' },
+      { ...report, description: '\ufff9' },
+      { ...report, description: ' \ufffa\ufffb\n' },
       // Longer than the app's field lets anyone type.
       { ...report, description: 'x'.repeat(FEEDBACK_DESCRIPTION_MAX + 1) },
       { ...report, kind: 'rant' },

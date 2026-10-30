@@ -69,9 +69,12 @@ const premium = {
   ],
 } as const;
 
-/** Regular-expression characters in `q` match themselves: an admin searches text, not patterns. */
+/**
+ * Regular-expression characters in `q` match themselves: an admin searches text, not patterns. So does a NUL (pasted),
+ * written as \x00: MongoDB cannot take one in a pattern as it is, and the search would fail with a 500.
+ */
 function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\0/g, '\\x00');
 }
 
 /** Premium's last day as sent: null for no end, or a real date (YYYY-MM-DD) that is not over yet anywhere. */

@@ -6,13 +6,23 @@
  * start, so its text changing is read; a role="status" that is inserted already holding its text is not read by every
  * screen reader.
  */
-type Listener = (text: string) => void;
+/**
+ * What is said: its text, or what gives the text when it is read out, a moment later. That one is in the language the
+ * app shows by then: a first sign-in's sync can switch to the account's language in the same tick as it announces.
+ */
+export type Announcement = string | (() => string);
+type Listener = (text: Announcement) => void;
 
 let listener: Listener | null = null;
 
 /** Says `text` politely (after what is being read). Without an Announcer on the page (unit tests), nothing happens. */
-export function announce(text: string): void {
+export function announce(text: Announcement): void {
   if (text) listener?.(text);
+}
+
+/** The words of an announcement, now. */
+export function spoken(text: Announcement): string {
+  return typeof text === 'function' ? text() : text;
 }
 
 /** The Announcer's hook-up: it shows each text that is announced. Returns the way to stop. */

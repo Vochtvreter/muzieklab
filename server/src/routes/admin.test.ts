@@ -87,6 +87,9 @@ describe('GET /admin/accounts', () => {
     expect(await list(`?q=${encodeURIComponent('.*')}`)).toEqual([]);
     expect(await list('?q=a.k.a.')).toEqual(['bob@example.com']);
     expect(await list(`?q=${encodeURIComponent('B+)')}`)).toEqual(['bob@example.com']);
+    // A NUL (pasted) matches itself too: MongoDB cannot take it in a pattern as it is.
+    expect(await list('?q=a%00b')).toEqual([]);
+    expect(await list('?q=%00')).toEqual([]);
     expect(await list('?status=blocked')).toEqual(['bob@example.com']);
     expect(await list('?q=an&status=invited')).toEqual(['cy@example.com']);
     const bad = await t.call({ method: 'GET', url: '/api/v1/admin/accounts?status=gone', cookie: admin.cookie });

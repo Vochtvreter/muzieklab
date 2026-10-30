@@ -10,6 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Closure, ClosureKind, ClosureListResponse } from '../../../../shared/api';
+import { showsNothing } from '../../../../shared/feedback';
 import { api, saveBlob } from '../../../api/client';
 import { readSynced } from '../../../game/merge';
 import { levelInfo } from '../../../game/xp';
@@ -163,6 +164,8 @@ function ClosuresFile({ closures, total }: { closures: Closure[]; total: number 
 /** One deleted account: the day and its kind, the feedback, and what an archived one's copy holds. */
 function ClosureRow({ closure }: { closure: Closure }): JSX.Element {
   const facts = closure.archive ? archiveFacts(closure.archive) : null;
+  // Feedback that shows nothing (a pasted zero-width space, in an entry the API kept as written then) is none too.
+  const feedback = closure.feedback && !showsNothing(closure.feedback) ? closure.feedback : null;
   return (
     <article className="closure-row" aria-label={t('closures.rowLabel', { day: formatDay(closure.day), kind: t('closureKind.' + closure.kind) })}>
       <div className="closure-row-head">
@@ -170,7 +173,7 @@ function ClosureRow({ closure }: { closure: Closure }): JSX.Element {
         <span className={'status-pill is-' + closure.kind}>{t('closureKind.' + closure.kind)}</span>
       </div>
       {closure.kind !== 'admin' &&
-        (closure.feedback ? <blockquote className="closure-feedback">{closure.feedback}</blockquote> : <p className="row-sub">{t('closures.noFeedback')}</p>)}
+        (feedback ? <blockquote className="closure-feedback">{feedback}</blockquote> : <p className="row-sub">{t('closures.noFeedback')}</p>)}
       {facts && <p className="row-sub">{facts}</p>}
     </article>
   );

@@ -820,12 +820,17 @@ describe('POST /auth/refresh', () => {
     const none = await refreshWith(t);
     expect(none.statusCode).toBe(401);
     expect(none.json()).toEqual({ error: 'unauthenticated', message: 'Not signed in' });
-    expect((await refreshWith(t, 'garbage')).statusCode).toBe(401);
+    expect(none.headers['set-cookie']).toEqual(cleared);
+    const garbage = await refreshWith(t, 'garbage');
+    expect(garbage.statusCode).toBe(401);
+    expect(garbage.headers['set-cookie']).toEqual(cleared);
     const unknown = await refreshWith(t, 'x'.repeat(43));
     expect(unknown.statusCode).toBe(401);
     expect(unknown.headers['set-cookie']).toEqual(cleared);
     // The session token is not a refresh token.
-    expect((await refreshWith(t, cookie)).statusCode).toBe(401);
+    const session = await refreshWith(t, cookie);
+    expect(session.statusCode).toBe(401);
+    expect(session.headers['set-cookie']).toEqual(cleared);
   });
 
   it('ends the session of an account blocked or deleted behind its back', async () => {

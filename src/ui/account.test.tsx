@@ -6,7 +6,7 @@ import { RENEWED_KEY } from '../api/client';
 import { ACCOUNT_KEY, PROGRESS_KEY } from '../game/storage';
 import { SYNC_KEY } from '../game/syncState';
 import { keepSignedIn, RECHECK_MS, RENEW_MS, resetAccountCheck, useAccount, type UseAccount } from './account';
-import { listenToAnnouncements } from './lib/announce';
+import { listenToAnnouncements, spoken } from './lib/announce';
 import { StoreProvider } from './store';
 import { progressSync, useProgressSync } from './sync';
 
@@ -267,7 +267,7 @@ describe('useAccount', () => {
 
   it('a request the session had ended for signs out with a line for Sign in: nothing was changed, sign in again', async () => {
     const said: string[] = [];
-    const stop = listenToAnnouncements((text) => said.push(text));
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
     fetchMock.mockResolvedValueOnce(json(200, ME));
     render(
       <StoreProvider>
@@ -393,7 +393,7 @@ describe('useAccount', () => {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ xp: 25, practiceDays: ['2026-10-24'], lessons: { '1.1': { stars: 3, bestAccuracy: 90 } } }));
     const api = syncApi(null);
     const said: string[] = [];
-    const stop = listenToAnnouncements((text) => said.push(text));
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
     render(
       <StoreProvider>
         <Synced />
