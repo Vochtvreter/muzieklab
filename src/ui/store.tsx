@@ -68,6 +68,7 @@ import {
   type Prefs,
   type Progress,
 } from '../game/storage';
+import { wholePercent } from './lib/format';
 import { parseHash } from './router';
 
 export interface Run {
@@ -329,8 +330,11 @@ export type Action =
   | { type: 'prefs'; patch: Partial<Prefs> }
   | { type: 'settings'; settings: Settings }
   | { type: 'start'; run: Run }
-  /** `echo`: how an Echo round was heard (every play to listen, and the replays among them); none for Tap. */
-  | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string; echo?: EchoPlays }
+  /**
+   * `echo`: how an Echo round was heard (every play to listen, and the replays among them); none for Tap. `playedTo`:
+   * where the music stopped, in seconds into the bars (Skip to results stops it early), for minutes practised.
+   */
+  | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string; echo?: EchoPlays; playedTo?: number }
   | { type: 'resetProgress' }
   | { type: 'noteSettings'; settings: NoteSettings }
   | { type: 'noteStart'; run: NoteRun }
@@ -390,7 +394,7 @@ export function reducer(state: AppState, action: Action): AppState {
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
       if (run.lessonId) progress = recordLessonResult(progress, run.lessonId, result.stars, result.accuracy);
       // The Progress tab's figures count real practice too.
-      if (practised) progress = recordRhythm(progress, run.exercise, result, action.today, state.prefs.leniency, action.echo);
+      if (practised) progress = recordRhythm(progress, run.exercise, result, action.today, state.prefs.leniency, action.echo, action.playedTo);
       let dailyBest = false;
       const day = run.daily;
       const firstDaily = !!day && practised && progress.daily?.day !== day;
@@ -415,7 +419,7 @@ export function reducer(state: AppState, action: Action): AppState {
       const met = evaluate(progress, action.today, roundAchievements(run.exercise, result, action.echo));
       progress = met.progress;
       const best: PersonalBest | null = dailyBest
-        ? { kind: 'daily', accuracy: Math.round(result.accuracy) }
+        ? { kind: 'daily', accuracy: wholePercent(result.accuracy) }
         : run.lessonId
           ? lessonBest('rhythm', run.lessonId, before?.bestAccuracy, result.accuracy)
           : null;
@@ -580,11 +584,11 @@ function evaluate(p: Progress, today: string, earned: AchievementId[] = []): { p
 
 /**
  * A lesson played before whose best accuracy this round beat: a new personal best (by its Learning path number). Beaten
- * as shown, in whole %: 87.45% after 87.4% is no new best.
+ * as shown, in whole % rounded down (wholePercent): 87.9% after 87.4% is no new best.
  */
 function lessonBest(track: TrackId, ref: string, was: number | undefined, accuracy: number): PersonalBest | null {
-  if (was === undefined || !(Math.round(accuracy) > Math.round(was))) return null;
-  return { kind: 'lesson', lesson: pathLessonOf(track, ref)?.id ?? progressKey(track, ref), accuracy: Math.round(accuracy) };
+  if (was === undefined || !(wholePercent(accuracy) > wholePercent(was))) return null;
+  return { kind: 'lesson', lesson: pathLessonOf(track, ref)?.id ?? progressKey(track, ref), accuracy: wholePercent(accuracy) };
 }
 
 /**

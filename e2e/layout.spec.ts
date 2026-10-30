@@ -590,10 +590,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     test('home: the daily challenge card once it is played, in English and Dutch: every word inside its column', async ({ page }) => {
       known(name, 'home-daily-done');
       await page.clock.setFixedTime(new Date('2026-10-27T10:00:00'));
-      const progress = { lessons: {}, practiceDays: ['2026-10-27'], daily: { day: '2026-10-27', tier: 1, stars: 2, accuracy: 91 } };
-      for (const [language, again] of [['en', 'Play again'], ['nl', 'Nog een keer']] as const) {
+      // 31 Perfect and 1 Great: 99.69% shows 99%, rounded down, as 100% is only the diamond's (§6.3).
+      const progress = { lessons: {}, practiceDays: ['2026-10-27'], daily: { day: '2026-10-27', tier: 1, stars: 4, accuracy: 99.6875 } };
+      for (const [language, again, done] of [['en', 'Play again', 'Done today · 99%'], ['nl', 'Nog een keer', 'Vandaag gedaan · 99%']] as const) {
         await seed(page, { prefs: { language }, progress });
         await page.goto('./');
+        await expect(page.locator('.daily-done')).toHaveText(done);
         // The longer label: at 320 px it left the text a column of 62 px (40 px in Dutch), narrower than its words.
         await expect(page.locator('.daily-btn')).toHaveText(again);
         await page.evaluate(() => document.fonts.ready.then(() => undefined));

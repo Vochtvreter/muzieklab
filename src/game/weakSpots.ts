@@ -38,6 +38,13 @@ export function weakCells(cells: readonly WeakSpotCell[]): CellId[] {
 const VALUE_OF: Partial<Record<CellId, NoteValue>> = { quarter: 'quarter', half: 'half', eighths: 'eighth', sixteenths: 'sixteenth' };
 
 /**
+ * Cells that a 1-bar exercise seldom or never has, so the preset plays 2 bars at least: no tie (the generator ties over
+ * a bar line, or in a quarter, half, quarter, which never ends one), no dotted half (the cadence turns it down), and
+ * the dotted quarter + eighth and a note after a rest in fewer than half of them; at 2 bars in most.
+ */
+const TWO_BARS: readonly CellId[] = ['ties', 'dottedHalf', 'dottedQE', 'rests'];
+
+/**
  * The rhythm setup as it is, when Start can play it. One that Start cannot (the player switched off every time
  * signature or note value, or kept none that fills a bar) gets the default time signature when it has none, then
  * quarter notes, which fill every one, when it still needs them: so a preset opens a setup where Start plays it.
@@ -52,8 +59,8 @@ export function playableSetup(settings: Settings): Settings {
 /**
  * The rhythm setup (playable: playableSetup) with what the weak cells need switched on: their note values; rests
  * (quarter, and eighth when eighths are on) with many rests; ties; dotted notes with a half (and three-four) for the
- * dotted half, with a quarter and an eighth for the dotted quarter + eighth. Arrays stay in their canonical order (as
- * sanitizeSettings keeps them). Null when no cell has enough notes yet.
+ * dotted half, with a quarter and an eighth for the dotted quarter + eighth; and 2 bars at least for those (TWO_BARS).
+ * Arrays stay in their canonical order (as sanitizeSettings keeps them). Null when no cell has enough notes yet.
  */
 export function weakSpotsSettings(setup: Settings, cells: readonly WeakSpotCell[]): Settings | null {
   const ids = weakCells(cells);
@@ -83,6 +90,7 @@ export function weakSpotsSettings(setup: Settings, cells: readonly WeakSpotCell[
     if (notes.has('eighth')) rests.add('eighth');
     next.restAmount = 'many';
   }
+  if (next.bars < 2 && ids.some((id) => TWO_BARS.includes(id))) next.bars = 2;
   return {
     ...next,
     notes: NOTE_VALUES.filter((v) => notes.has(v)),

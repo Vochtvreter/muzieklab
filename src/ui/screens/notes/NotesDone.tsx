@@ -29,7 +29,7 @@ import { Icon } from '../../components/Icon';
 import { AchievementBadges, LevelUpContent, OutcomeBadge } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
-import { andList, starsLabel } from '../../lib/format';
+import { andList, starsLabel, wholePercent } from '../../lib/format';
 import { useLearnReturn } from '../../lib/learnReturn';
 import { letterName, majorName, positionText, signWord, solfegeName, spokenName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
@@ -108,7 +108,7 @@ export function NotesDone(): JSX.Element | null {
             ))}
           </span>
         </div>
-        <div className="score-pct">{t('common.percent', { value: Math.round(r.accuracy) })}</div>
+        <div className="score-pct">{t('common.percent', { value: wholePercent(r.accuracy) })}</div>
         <div className="muted-text score-sub">
           {d.total === 0 ? t('notes.done.none') : t('notes.done.score', { right: r.right, total: r.total, avg: secs(d.avgMs) })}
           {r.hinted > 0 && ' · ' + t('notes.done.hinted', { count: r.hinted })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>

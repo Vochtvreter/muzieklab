@@ -4,7 +4,7 @@ import { introId, lessonIntros } from '../../game/intro';
 import { ALL_LESSONS } from '../../game/path';
 import { defaultProgress, type Progress } from '../../game/storage';
 import { PATH_UNITS } from '../../game/tracks';
-import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
+import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey, wholePercent } from './format';
 import { barFeatures, continueLesson, lessonOutcome, lessonPreview, newFeatures, noteLessonPreview, previewFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
 import { barAt, beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
@@ -46,6 +46,16 @@ describe('formatting', () => {
     expect(difficultyLevel(0)).toBe(1);
     expect(difficultyLevel(5)).toBe(3);
     expect(difficultyLevel(10)).toBe(5);
+  });
+  it('shows accuracy in whole percent rounded down, so a threshold the run did not reach never shows (§6.3)', () => {
+    // 31 Perfect and 1 Great: 99.69% is no diamond's 100%; 89.69% has two stars, not the 90% of three.
+    expect(wholePercent(99.6875)).toBe(99);
+    expect(wholePercent(100)).toBe(100);
+    expect(wholePercent(89.6875)).toBe(89);
+    expect(wholePercent(94.6875)).toBe(94);
+    expect(wholePercent(0)).toBe(0);
+    // 57 of 100 is 56.99999999999999 in floating point.
+    expect(wholePercent((57 / 100) * 100)).toBe(57);
   });
   it('lists meters in order', () => {
     expect(metersLabel(['4/4', '3/4'])).toBe('3/4 · 4/4');

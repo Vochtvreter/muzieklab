@@ -257,6 +257,15 @@ export async function seed(page: Page, data: { prefs?: object; progress?: object
 
 export const pad = (page: Page): Locator => page.getByRole('button', { name: 'Tap pad' });
 
+/** Presses Tab (or Shift+Tab) until `target` has the focus, as a player on the keyboard gets there. */
+export async function tabTo(page: Page, target: Locator, key: 'Tab' | 'Shift+Tab' = 'Tab'): Promise<void> {
+  for (let i = 0; i < 60; i++) {
+    if (await target.evaluate((el) => el === document.activeElement)) return;
+    await page.keyboard.press(key);
+  }
+  throw new Error('Tab does not reach ' + String(target));
+}
+
 /** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
 export const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
   metronome: 'on', countIn: 1, density: 'balanced', restAmount: 'few' };

@@ -2,7 +2,7 @@
  * Public engine API (implemented in the sibling modules). The UI imports only from here.
  */
 export { getMeter } from './meters';
-export { DEFAULT_SETTINGS } from './defaults';
+export { DEFAULT_SETTINGS, MAX_BARS, MAX_TEMPO } from './defaults';
 export { checkSettings } from './feasibility';
 export type { Feasibility } from './feasibility';
 export { generateExercise, normaliseSettings } from './generator';

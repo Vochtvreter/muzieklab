@@ -71,6 +71,20 @@ describe('judge', () => {
     expect(r.stars).toBe(3); // 91.7%
   });
 
+  it('a press made after Resume plays only the bars played again (`from`), not a note missed before the pause', () => {
+    // Eighths at 120 BPM (good window 100 ms): a count-in press 0.2 s before bar 2 (at 2 s) lies in the window of the
+    // last eighth of bar 1 (1.75 s).
+    const eighths = Array.from({ length: 8 }, (): [number, 'n'] => [24, 'n']);
+    const tl = buildTimeline(makeExercise('4/4', [eighths, eighths], {}, 120));
+    const resumed = judge(tl, [{ down: 1.8, up: 1.85, from: 2 }], { hold: false, leniency: 'normal' });
+    expect(resumed.notes[7].judgement).toBe('miss');
+    expect(resumed.extraTaps).toBe(1);
+    // Without a pause the same press plays that note.
+    expect(judge(tl, [{ down: 1.8, up: 1.85 }], { hold: false, leniency: 'normal' }).notes[7].judgement).toBe('great');
+    // A press for bar 2's downbeat made just before its bar line still plays it.
+    expect(judge(tl, [{ down: 1.97, up: 2.1, from: 2 }], { hold: false, leniency: 'normal' }).notes[8].judgement).toBe('perfect');
+  });
+
   it('judges releases (§6.2)', () => {
     const tl = quarters();
     const [n0, , n2] = tl.notes; // n0 is followed by a note, n2 by a rest

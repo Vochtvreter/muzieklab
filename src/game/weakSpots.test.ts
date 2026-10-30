@@ -1,5 +1,7 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { checkSettings } from '../core/feasibility';
+import { generateExercise } from '../core/generator';
+import { noteCells } from './cells';
 import { sanitizeSettings, CELL_IDS, type CellId } from './storage';
 import { playableSetup, weakCells, weakSpotsSettings, type WeakSpotCell } from './weakSpots';
 
@@ -44,6 +46,20 @@ describe('weakSpotsSettings', () => {
       expect(sanitizeSettings(JSON.parse(JSON.stringify(s)))).toEqual(s);
       expect(checkSettings(s).ok).toBe(true);
     }
+  });
+
+  it('plays 2 bars at least for the cells a 1-bar exercise seldom or never has: ties, the dotted cells and rests', () => {
+    const one = { ...base, bars: 1 };
+    for (const id of ['ties', 'dottedHalf', 'dottedQE', 'rests'] as const) {
+      const s = weakSpotsSettings(one, cells({ quarter: 95, [id]: 70 }))!;
+      expect(s.bars, id).toBe(2);
+      // And it practises that cell: more than half the exercises it starts have notes for it (at 1 bar: none to 44%).
+      const has = Array.from({ length: 20 }, (_, i) => generateExercise(s, i + 1)).filter((ex) => noteCells(ex).some((c) => c.includes(id)));
+      expect(has.length, id).toBeGreaterThan(10);
+    }
+    // The other cells keep the player's Bars, and more than 2 bars stay.
+    expect(weakSpotsSettings(one, cells({ quarter: 95, eighths: 70 }))!.bars).toBe(1);
+    expect(weakSpotsSettings({ ...base, bars: 4 }, cells({ ties: 70 }))!.bars).toBe(4);
   });
 
   it('is null without a cell with enough notes (the button is hidden)', () => {

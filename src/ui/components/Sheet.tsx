@@ -6,6 +6,7 @@
  * `low`: the dialog sits low, under the exercise's staff, so the rhythm can be read while it is open.
  */
 import { useEffect, useRef, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { forgetTab } from '../lib/focusModality';
 import { focusHeading, focusLost } from '../lib/screenFocus';
 
 interface SheetProps {
@@ -39,8 +40,12 @@ export function Sheet({ variant, closing, panelKey, labelledBy, modal = true, ma
     return () => {
       if (!focusLost()) return;
       const to = opener.current?.isConnected ? opener.current : returnTo.current?.();
-      if (to?.isConnected) to.focus({ preventScroll: true });
-      else focusHeading();
+      // Given back by the sheet, not reached with Tab: Space and Enter are the exercise's again (focusModality.ts), so
+      // the first Space after Resume is a tap, not Pause pressed again.
+      if (to?.isConnected) {
+        to.focus({ preventScroll: true });
+        forgetTab();
+      } else focusHeading();
     };
   }, []);
 

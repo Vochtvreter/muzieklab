@@ -20,6 +20,7 @@ import { LessonTiles, StaffBox } from '../components/Bits';
 import { DateTile, LevelContent, StreakPill, XpBar } from '../components/Reward';
 import { Sheet } from '../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering, useToday } from '../hooks';
+import { wholePercent } from '../lib/format';
 import { continueLesson, lessonNumber, lessonPreview, noteLessonPreview, unitStates } from '../lib/lessons';
 import { letterName, majorName, solfegeName } from '../lib/noteText';
 import { describeBars } from '../lib/notation';
@@ -146,7 +147,7 @@ export function Home(): JSX.Element {
     <div className="daily-text">
       <h2 id="daily-title">{t('home.dailyTitle')}</h2>
       <div className="muted-text">{t('home.dailyMeta', { bars: t('common.bars', { count: daily.bars }) })}</div>
-      {dailyDone && <div className="daily-done">{t('home.dailyDone', { accuracy: Math.round(dailyDone.accuracy) })}</div>}
+      {dailyDone && <div className="daily-done">{t('home.dailyDone', { accuracy: wholePercent(dailyDone.accuracy) })}</div>}
     </div>
   );
   // Outlined: Continue is the one filled button on Home. Its name starts with the words on it, so saying them presses it

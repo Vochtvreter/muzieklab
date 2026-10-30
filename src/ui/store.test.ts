@@ -587,6 +587,15 @@ describe('reducer: the Progress tab’s figures', () => {
     readsBack(next.progress);
   });
 
+  it('a round skipped to Results adds the seconds played, not the whole exercise', () => {
+    const long = generateExercise({ ...DEFAULT_SETTINGS, bars: 16, tempo: 40 }, 3);
+    const whole = reducer(withRun({ exercise: long }), finish()).progress.stats.days[TODAY].sec;
+    // 16 bars of 4/4 at 40 BPM, a bar of count-in and the lead-in.
+    expect(whole).toBe(Math.round(64 * 1.5 + 6 + 0.4));
+    // Skipped 3 s into the bars.
+    expect(reducer(withRun({ exercise: long }), finish({ playedTo: 3 })).progress.stats.days[TODAY].sec).toBe(Math.round(3 + 6 + 0.4));
+  });
+
   it('a run left to play out adds no figures', () => {
     const next = reducer(state(), finish({ result: result(['miss', 'miss']) }));
     expect(next.progress.stats).toEqual(defaultStats());
@@ -688,16 +697,16 @@ describe('reducer: achievements, skill levels and personal bests', () => {
 
   it('reports a new personal best on a lesson played before, by its Learning path number, and the daily’s', () => {
     const played = { ...defaultProgress(), lessons: { '1.1': { stars: 2 as const, bestAccuracy: 78 } } };
-    expect(reducer(withRun({ lessonId: '1.1' }, played), finish({ result: result(['perfect'], 84.4, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 84 });
+    expect(reducer(withRun({ lessonId: '1.1' }, played), finish({ result: result(['perfect'], 84.6, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 84 });
     expect(reducer(withRun({ lessonId: '1.1' }, played), finish({ result: result(['perfect'], 70, 1) })).last?.reward.best).toBeNull();
-    // Beaten as shown, in whole %: 87.45% after 87.4% is still 87%, no new best; 87.5% shows 88%.
+    // Beaten as shown, in whole % rounded down (§6.3): 87.9% after 87.4% is still 87%, no new best; 88% is.
     const close = { ...defaultProgress(), lessons: { '1.1': { stars: 2 as const, bestAccuracy: 87.4 } } };
-    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 87.45, 2) })).last?.reward.best).toBeNull();
-    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 87.5, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 88 });
+    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 87.9, 2) })).last?.reward.best).toBeNull();
+    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 88, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 88 });
     // The first play of a lesson is no personal best.
     expect(reducer(withRun({ lessonId: '1.1' }), finish({ result: result(['perfect'], 90, 3) })).last?.reward.best).toBeNull();
-    const daily = reducer(withRun({ daily: TODAY }), finish({ result: result(['perfect'], 88, 2) })).last?.reward;
-    expect(daily).toMatchObject({ dailyBest: true, best: { kind: 'daily', accuracy: 88 } });
+    const daily = reducer(withRun({ daily: TODAY }), finish({ result: result(['perfect'], 99.6875, 4) })).last?.reward;
+    expect(daily).toMatchObject({ dailyBest: true, best: { kind: 'daily', accuracy: 99 } });
     expect(reducer(state(), finish()).last?.reward).toMatchObject({ achievements: [], best: null });
   });
 

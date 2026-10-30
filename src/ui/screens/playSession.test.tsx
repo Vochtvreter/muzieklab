@@ -68,10 +68,11 @@ function setup(settings: Partial<Settings> = {}, runExtra: { needsGesture?: bool
   const view = exerciseView(ex)!;
   const run = { exercise: ex, lessonId: null, daily: null, ...runExtra };
   const prefs = { ...DEFAULT_PREFS, seenHowTo: true, seenHold: true };
-  const done: { result: JudgeResult | null } = { result: null };
+  const done: { result: JudgeResult | null; playedTo?: number } = { result: null };
   const hook = renderHook(() =>
-    usePlaySession(run, view, prefs, () => undefined, (r) => {
+    usePlaySession(run, view, prefs, () => undefined, (r, _taps, playedTo) => {
       done.result = r;
+      done.playedTo = playedTo;
     }),
   );
   act(() => hook.result.current.setPad(null));
@@ -162,6 +163,28 @@ describe('usePlaySession', () => {
     expect(done.result!.counts.miss).toBe(view.timeline.notes.length - 1);
   });
 
+  it('says where the music stopped: Skip to results before the end, past the last note after it', () => {
+    const skipped = setup();
+    const o = skipped.origin(0, 0);
+    at(o + 1.5 * skipped.view.barSeconds);
+    act(() => skipped.hook.result.current.skip());
+    expect(skipped.done.playedTo).toBeCloseTo(1.5 * skipped.view.barSeconds, 6);
+    // After a pause, still on the exercise's clock.
+    const resumed = setup();
+    let p = resumed.origin(0, 0);
+    at(p + 2.5 * resumed.view.barSeconds);
+    act(() => resumed.hook.result.current.openSheet('pause'));
+    const resumedAt = clock.heard;
+    act(() => resumed.hook.result.current.closeSheet());
+    p = resumed.origin(resumedAt, 2);
+    at(p + 3.25 * resumed.view.barSeconds);
+    act(() => resumed.hook.result.current.skip());
+    expect(resumed.done.playedTo).toBeCloseTo(3.25 * resumed.view.barSeconds, 6);
+    const ended = setup();
+    at(ended.origin(0, 0) + ended.view.timeline.totalSeconds + 2);
+    expect(ended.done.playedTo).toBeGreaterThan(ended.view.timeline.totalSeconds);
+  });
+
   it('judges misses on the heard clock: an on-time press is never shown as a miss first', () => {
     const { hook, view, origin } = setup();
     clock.latency = 0.25; // Bluetooth headphones
@@ -238,6 +261,41 @@ describe('usePlaySession', () => {
         expect(done.result!.counts.perfect, label).toBe(notes.length);
         expect(done.result!.holds, label).toEqual(hold ? { right: notes.length, short: 0, long: 0 } : { right: 0, short: 0, long: 0 });
       }
+    }
+  });
+
+  it('a press in the count-in after a resume does not play a note of the bar before, missed before the pause', () => {
+    // Eighths at 120 BPM: a press 0.2 s before the replayed bar's line is in the window of the last eighth before it.
+    for (const hold of [false, true]) {
+      const { hook, view, done, origin } = setup({ notes: ['eighth'], tempo: 120, hold });
+      let o = origin(0, 0);
+      const notes = view.timeline.notes;
+      const play = (n: (typeof notes)[number]): void => {
+        at(o + n.onset);
+        key('keydown');
+        at(o + n.end - 0.01);
+        key('keyup');
+      };
+      const lastOfBar1 = notes.filter((n) => n.bar === 1).at(-1)!;
+      notes.filter((n) => n.bar < 2 && n !== lastOfBar1).forEach(play);
+      at(o + 2.15 * view.barSeconds);
+      act(() => hook.result.current.openSheet('pause'));
+      const resumedAt = clock.heard;
+      act(() => hook.result.current.closeSheet()); // bar 3 is played again
+      o = origin(resumedAt, 2);
+      const downbeat = notes.find((n) => n.bar === 2)!;
+      at(o + downbeat.onset - 0.2);
+      key('keydown');
+      at(o + downbeat.onset - 0.15);
+      key('keyup');
+      expect(hook.result.current.extraTaps, `hold ${hold}: live`).toBe(1);
+      notes.filter((n) => n.bar >= 2).forEach(play);
+      at(clock.heard + 2);
+      expect(done.result, `hold ${hold}`).not.toBeNull();
+      const r = done.result!;
+      expect(r.notes[lastOfBar1.index].judgement, `hold ${hold}`).toBe('miss');
+      expect(r.counts.miss, `hold ${hold}`).toBe(1);
+      expect(r.extraTaps, `hold ${hold}`).toBe(1);
     }
   });
 

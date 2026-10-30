@@ -150,7 +150,10 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
   `keyup` = release. Key auto-repeat events are ignored. If several keys are down, the
   hold lasts until the last one is released. A key (or finger) going down while another is
   held starts a new press, so rolling two fingers over fast notes works; within 50 ms of the
-  held press it counts as the same press (a chord).
+  held press it counts as the same press (a chord). Space and Enter are taps also on a control that kept the focus
+  after a click (the metronome switch), or that a sheet gave it back to (Pause after *Resume*), but on a control the
+  player reached with Tab they press it, as in Read notes and Scales: *Skip to results*, Pause, **?** and Quit (Enter
+  only on the Quit link). The Tap pad is played with them however it got the focus.
 - Mobile: a large **tap pad** in the bottom half of the screen: `pointerdown` = press,
   `pointerup` / `pointercancel` = release. The pad captures the pointer
   (`setPointerCapture`), so sliding off the pad does not end the hold.
@@ -843,7 +846,10 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 
 ### 6.3 Scores
 
-- **Accuracy %** = points / max points (floored at 0).
+- **Accuracy %** = points / max points (floored at 0). It is shown in whole percent rounded down (Results, Home's
+  daily, the personal bests, Read notes' *Round done*), so a run never shows a threshold it did not reach: 31 Perfect
+  and a Great are 99.7%, shown as 99%, as 100% is only the diamond's; 89.7% (two stars) shows 89%, not 90%. The
+  stored accuracy keeps its fraction.
 - **Stars:** ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% · ★★★★ ≥ 95% with no Good and no Miss (no
   yellow or red noteheads).
 - **Three star slots are shown** (☆☆☆) on the results, the lesson tiles and the Path. The 4th star is a hidden
@@ -902,16 +908,19 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   3. Off track (misses + extra taps add up to a quarter or more of the notes): timing advice is beside the point when
      the player lost their place, so it names the misses, with the bar that had the most (*You missed 3 notes, most in
      bar 2. Read one beat ahead.*; one note: *You missed 1 note in bar 2.*) or, when bars tie, without a bar (*You
-     missed 8 notes. Read one beat ahead.*); or the extra taps.
+     missed 8 notes. Read one beat ahead.*); or the extra taps. Echo hides the notation while it is tapped back, so
+     there it ends *Count along as you listen, so you know where each note falls.* instead of reading ahead.
   4. The worst hold problem, e.g. "You let go of the dotted quarter in bar 2 too early".
   5. The tendency (only from 4+ hit notes). When the player drags steadily (every hit at least 20 ms late, SD
      ≤ 45 ms) on a run played before any calibration, it points to calibration instead of "press sooner": *Your taps
      came on average 60 ms late, about the same on every note. That is often the speaker or headphones: calibrate
      once and it is taken off every score.* Taps on both sides of the beat are the player, and so is rushing: *Wait
      for each note.*
-  6. Misses (the same tie rule), extra taps, unsteady, then praise. A perfect run that offers Next lesson says *Every
-     note perfect. On to the next lesson.* (a lesson fixes tempo and bars); free practice and the daily keep *Every
-     note perfect. Try a faster tempo or more bars.*
+  6. Misses (the same tie rule and Echo wording), extra taps, unsteady, then praise. A perfect run that offers Next
+     lesson says *Every note perfect. On to the next lesson.* (a lesson fixes tempo and bars); free practice and the
+     daily keep *Every note perfect. Try a faster tempo or more bars.*, asking only for what the setup still offers: at
+     its fastest tempo (200 BPM) *Try more bars.*, at its most bars (16) *Try a faster tempo.*, and at both *Every note
+     perfect, at the fastest tempo and the most bars. Try other note values, rests or extras.*
 - **Calibrate in the tip** (since 0.10.0): with the delay tip, or a dragging tip on a run played before any
   calibration (`prefs.calibratedAt` was null), the tip box shows a quiet **Calibrate** action (a ghost button with the
   metronome icon, titled *Measure the delay of your speaker or headphones*) under its text. It opens
@@ -1119,10 +1128,10 @@ How write and hear work is in §3.5, *Write it, hear it*.
   Perfect bar* badge (medal icon) beside the other badges on Results, Read notes' Round done or Scales' round done (no
   board; Scales' round done gained a badge row under the score for it). *50 perfect taps in a row* and the rest wait for
   the full achievements list (Later, §9).
-- **Personal bests** (since 0.19.0): a lesson played before whose best accuracy goes up, in whole percent (87.45% after
-  87.4% is not a new best), or the daily challenge's best (as Results' *New personal best* badge, §3.4), is a *New
-  personal best* row on the level-up sheet. Rhythm and note lessons count; Scales rounds do not. Bests per settings
-  combination and a history of them are still Later.
+- **Personal bests** (since 0.19.0): a lesson played before whose best accuracy goes up, in whole percent as shown
+  (rounded down, §6.3: 87.9% after 87.4% is not a new best), or the daily challenge's best (as Results' *New personal
+  best* badge, §3.4), is a *New personal best* row on the level-up sheet. Rhythm and note lessons count; Scales rounds
+  do not. Bests per settings combination and a history of them are still Later.
 
 ### 8.4 Skill tracking (Weak Spots)
 
@@ -1148,11 +1157,14 @@ built (since 0.19.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
 - **Practice weak spots** is a practice-setup preset (as §9 v1.5 planned), not a generator mode. It takes the rhythm
   setup as it is and switches on what the weak cells need: their note value (quarter, half, eighth, sixteenth); for
   Rests, quarter rests (and eighth rests when eighths are on) with *many* rests; for Ties, ties; for Dotted half, dotted
-  notes with halves and 3/4; for Dotted quarter + eighth, dotted notes with quarters and eighths. With no cell under 80%
-  it uses the two weakest open cells. It puts the result on the rhythm setup (the player's own setup changes, as a
-  Learn practice link does) and opens it, where Start plays it: a setup Start could not play (every time signature or
-  note value switched off, or none that fills a bar) first gets 4/4 when it has no time signature, then quarter notes
-  when it still needs them. It is hidden while no cell has 12 notes.
+  notes with halves and 3/4; for Dotted quarter + eighth, dotted notes with quarters and eighths. For Ties, both dotted
+  cells and Rests it also sets Bars to 2 at least: an exercise of 1 bar has no tie and no dotted half, and a dotted
+  quarter + eighth or a note after a rest in fewer than half of them, where 2 bars have them in most. With no cell
+  under 80% it uses the two weakest open cells. It puts the result on the rhythm setup (the player's own setup changes,
+  as a Learn practice link does, but Bars too: the link keeps the player's Bars and plays 2 for its run only) and
+  opens it, where Start plays it: a setup Start could not play (every time signature or note value switched off, or
+  none that fills a bar) first gets 4/4 when it has no time signature, then quarter notes when it still needs them. It
+  is hidden while no cell has 12 notes.
 - **Meters are not tracked separately.** A round has one meter, so a meter score would be the accuracy of whole rounds,
   not of the notes that are hard. The meters are taught by rhythm units (3/4 in unit 3, 2/4 in unit 5) that the
   Rhythm reading levels already check (§8.6), and every board's skill map draws cells only. A boost in the generator
@@ -1210,8 +1222,9 @@ cards below it, and is not remembered: every visit starts on Rhythm.
   for the others), so the line goes under their letters. The caption names the latest day's tendency
   (*Steady · −22 ms*) and how it started (*Was rushing (−52 ms). A little early is normal.*).
 - **Minutes this week:** every mode, a bar per day, Monday to Sunday, and the total. A rhythm round counts its played
-  length with the count-in (Echo also every time it was heard); Read notes the answer times, each at most 15 s; Scales
-  the time on its play screen, at most 90 s a scale. A day with any practice shows at least 1 minute.
+  length with the count-in (Echo also every time it was heard), and one ended with *Skip to results* (or Echo's *Done*)
+  only up to where the music stopped; Read notes the answer times, each at most 15 s; Scales the time on its play
+  screen, at most 90 s a scale. A day with any practice shows at least 1 minute.
 - **Skill map · rhythm cells:** the eight cells (§8.4) as tiles, 2 a row on phone and 4 on tablet and desktop, coloured
   by band, locked, or *—* under 12 notes; the legend (*90%+*, *80–89%*, *Under 80% · weak spot*) and **Practice weak
   spots** when a cell has enough notes.
@@ -2334,17 +2347,18 @@ without code changes:
   Tap pad, and the Tap pad, when the run ends, to Save or else Try again). Reset progress leaves only its line
   (*Progress was reset.*, read out), so it hands it to the About heading. A sheet that closes gives it back to the
   control that opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or the screen's
-  heading (the level-up sheet). Echo's Tap it back and Hear again swap the screen inside Play, so the new phase's
-  heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it to the one left. A screen
-  drawn in its other layout (a tablet turned, tablet and desktop; a window made wider or narrower) gives it to the same
-  control there, found by its name or by its place among the name buttons or a piano's keys, else to its heading (from
-  Play's Tap pad on a tablet, as the desktop layout's pad is no button). In Read notes and Scales a control that a step
-  disables or removes hands it on: an answer that ends the note or the scale (the last sign or key, the staff written on
-  and checked) to Next note or Next scale; Hint, Next note, Next scale and Start over to the answers (the first name
-  button, sign or piano key, or the next note's staff to write on). There Space and Enter stay the exercise's keys, as
-  after a click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5, §3.7), so the Enter after one on Next
-  note does not answer with the name button the focus went to. Echo's play button keeps it while the rhythm plays
-  (`aria-disabled`), then Tap it back takes it.
+  heading (the level-up sheet); there Space and Enter are the exercise's keys again until the next Tab (below), so the
+  first Space after *Resume* is a tap, not Pause pressed again. Echo's Tap it back and Hear again swap the screen inside
+  Play, so the new phase's heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it
+  to the one left. A screen drawn in its other layout (a tablet turned, tablet and desktop; a window made wider or
+  narrower) gives it to the same control there, found by its name or by its place among the name buttons or a piano's
+  keys, else to its heading (from Play's Tap pad on a tablet, as the desktop layout's pad is no button). In Read notes
+  and Scales a control that a step disables or removes hands it on: an answer that ends the note or the scale (the last
+  sign or key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and Start over
+  to the answers (the first name button, sign or piano key, or the next note's staff to write on). There Space and Enter
+  stay the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5, §3.7), so
+  the Enter after one on Next note does not answer with the name button the focus went to. Echo's play button keeps it
+  while the rhythm plays (`aria-disabled`), then Tap it back takes it.
 - High-contrast theme; big touch targets (≥ 48 px). In a Windows contrast theme (forced colors) the system paints
   every background in the page's colour and all text and borders in one colour, so nothing may be told by a fill or a
   colour alone: a chosen option (`aria-pressed`, a checked radio), the current tab, Play's beat and Read notes' right

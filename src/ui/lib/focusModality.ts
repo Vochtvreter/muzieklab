@@ -16,9 +16,9 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * The focus was handed on by a script (screenFocus.ts, useFocusHandOff): the Tab was to the control it came from, so
- * Space and Enter are the exercise's again, as after a click, and the next one does not press the control it went to.
- * The next Tab gives them back to the control.
+ * The focus was handed on by a script (screenFocus.ts, useFocusHandOff, a sheet giving it back as it closes): the Tab
+ * was to the control it came from, so Space and Enter are the exercise's again, as after a click, and the next one does
+ * not press the control it went to. The next Tab gives them back to the control.
  */
 export function forgetTab(): void {
   tabbed = false;

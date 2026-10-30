@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { LETTERS, letterOf } from '../src/core/pitch';
-import { announcer, pad, pathUpTo, QUARTERS, seed, SOL_DONE, VIEWPORTS } from './helpers';
+import { announcer, pad, pathUpTo, QUARTERS, seed, SOL_DONE, tabTo, tapLate, VIEWPORTS } from './helpers';
 
 /**
  * The main loop: Home → lesson 2.1 (rhythm: quarter notes, 60 BPM, 2 bars, one bar of count-in; after sol's unit) →
@@ -243,6 +243,29 @@ test("a phone's timing lane follows the bars being played, two rows at a time; R
   // Results shows the whole exercise, two bars a row (8 rows of 30 px).
   await expect(page).toHaveURL(/#\/results$/);
   await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toHaveAttribute('viewBox', /^0 0 [\d.]+ 240$/);
+});
+
+/**
+ * Minutes practised count what was played: a round ended with Skip to results counts up to where the music stopped,
+ * with its count-in. It counted the whole exercise, 102 s for 16 bars at 40 BPM.
+ */
+test('Skip to results adds only the seconds played to Minutes this week', async ({ page }) => {
+  test.setTimeout(40_000);
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 16, tempo: 40 } } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await tapLate(page, 2, 1500, 0);
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await expect(page).toHaveURL(/#\/results$/);
+  // A bar of count-in (6 s), the lead-in and about 3 s of bars.
+  const seconds = (): Promise<number> =>
+    page.evaluate(() => {
+      const days: Record<string, { sec: number }> = JSON.parse(localStorage.getItem('muzieklab.progress.v1') ?? '{}').stats?.days ?? {};
+      return Object.values(days).reduce((sum, d) => sum + d.sec, 0);
+    });
+  await expect.poll(seconds).toBeGreaterThan(5);
+  expect(await seconds()).toBeLessThan(15);
 });
 
 /**
@@ -904,6 +927,38 @@ test('a click on the backdrop of the Pause sheet leaves the focus in it, so Tab 
     await expect(resume, size).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(paused.getByRole('button', { name: 'Quit practice' }), size).toBeFocused();
+  }
+});
+
+/**
+ * While a rhythm runs, Space and Enter are taps, but on a control the player reached with Tab they press it, as in Read
+ * notes and Scales: they were taps there too, so Skip to results could not be reached from the keyboard, and Enter on
+ * Pause added an extra tap. A sheet that gives the focus back (Resume, to Pause) hands it on: Space is a tap again.
+ */
+test('rhythm play: Enter on Pause or Skip to results reached with Tab presses it, and Space after Resume is a tap', async ({ page }) => {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
+  for (const size of ['phone', 'tablet'] as const) {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await page.goto('./#/setup');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    await expect(page).toHaveURL(/#\/play$/);
+    // Back from the heading on a tablet: its Pause is in the header above it, and Tab past the end leaves the page.
+    const pause = page.getByRole('button', { name: 'Pause', exact: true });
+    await tabTo(page, pause, size === 'tablet' ? 'Shift+Tab' : 'Tab');
+    await page.keyboard.press('Enter');
+    const paused = page.getByRole('dialog', { name: 'Paused' });
+    await expect(paused, size).toBeVisible();
+    await expect(paused.getByRole('button', { name: /Resume/ }), size).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog'), size).toHaveCount(0);
+    await expect(pause, size).toBeFocused();
+    await page.keyboard.down(' ');
+    await expect(pad(page), size).toHaveClass(/is-held/);
+    await page.keyboard.up(' ');
+    await expect(page.getByRole('dialog'), size).toHaveCount(0);
+    await tabTo(page, page.getByRole('button', { name: 'Skip to results' }));
+    await page.keyboard.press('Enter');
+    await expect(page, size).toHaveURL(/#\/results$/);
   }
 });
 

@@ -92,6 +92,28 @@ describe('coachTip', () => {
     expect(coachTip(judge(tl, perfectTaps(tl), opts), tl, ex, { nextLesson: true })).toEqual({ key: 'tip.perfectLesson', params: {} });
   });
 
+  it('a clean run at the top tempo or the most bars asks only for what the setup still has (200 BPM, 16 bars)', () => {
+    const tip = (bars: number, tempo: number): string => {
+      const exN = makeExercise('4/4', Array.from({ length: bars }, (): [number, 'n'][] => [[48, 'n'], [48, 'n'], [48, 'n'], [48, 'n']]), {}, tempo);
+      const tlN = buildTimeline(exN);
+      return coachTip(judge(tlN, perfectTaps(tlN), { hold: false, leniency: 'normal' }), tlN, exN).key;
+    };
+    expect(tip(15, 199)).toBe('tip.perfect');
+    expect(tip(15, 200)).toBe('tip.perfectBars');
+    expect(tip(16, 199)).toBe('tip.perfectTempo');
+    expect(tip(16, 200)).toBe('tip.perfectTop');
+  });
+
+  it('Echo, tapped back with the notation hidden, names the misses without telling the player to read ahead', () => {
+    const echo = { ...ex, settings: { ...ex.settings, mode: 'echo' as const } };
+    const two = perfectTaps(tl).filter((_, i) => i !== 5 && i !== 6);
+    expect(coachTip(judge(tl, two, opts), tl, echo)).toEqual({ key: 'tip.missedEcho', params: { count: 2, bar: 2 } });
+    const spread = perfectTaps(tl).filter((_, i) => i !== 1 && i !== 5);
+    expect(coachTip(judge(tl, spread, opts), tl, echo)).toEqual({ key: 'tip.missedSpreadEcho', params: { count: 2 } });
+    // Off track too.
+    expect(coachTip(judge(tl, perfectTaps(tl).slice(0, 2), opts), tl, echo)).toEqual({ key: 'tip.missedEcho', params: { count: 5, bar: 2 } });
+  });
+
   it('no taps at all says so, not "read one beat ahead"', () => {
     expect(coachTip(judge(tl, [], opts), tl, ex, { taps: [] })).toEqual({ key: 'tip.noTaps', params: {} });
   });

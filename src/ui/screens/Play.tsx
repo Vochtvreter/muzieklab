@@ -124,10 +124,10 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
 
   const plays = echo?.plays;
   const onFinish = useCallback(
-    (result: JudgeResult, taps: Tap[]) => {
+    (result: JudgeResult, taps: Tap[], playedTo: number) => {
       // Echo: how it was heard (minutes practised; No replays needed counts any listen after the first, Hear again too).
       const heard = plays === undefined ? {} : { echo: { plays, replays: Math.max(0, plays - 1) } };
-      dispatch({ type: 'finish', result, taps, today: todayIso(), ...heard });
+      dispatch({ type: 'finish', result, taps, today: todayIso(), playedTo, ...heard });
     },
     [dispatch, plays],
   );

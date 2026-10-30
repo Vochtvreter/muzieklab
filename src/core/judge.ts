@@ -115,14 +115,14 @@ class Session {
     this.noteTap = timeline.notes.map(() => null);
   }
 
-  /** Greedy in time order: the nearest unmatched onset inside its own good window (§6.2). */
-  press(time: number): LivePress {
+  /** Greedy in time order: the nearest unmatched onset inside its own good window (§6.2), and not before `from` (Tap). */
+  press(time: number, from = -Infinity): LivePress {
     if (this.held !== null) this.release(time);
     this.now = Math.max(this.now, time);
     let best = -1;
     let bestDist = Infinity;
     this.timeline.notes.forEach((note, i) => {
-      if (this.noteTap[i] !== null) return;
+      if (this.noteTap[i] !== null || note.onset < from - 1e-6) return;
       const dist = Math.abs(time - note.onset);
       if (dist <= this.wins[i].good + 1e-9 && dist < bestDist) {
         best = i;
@@ -262,7 +262,7 @@ export function judge(timeline: Timeline, taps: Tap[], opts: JudgeOptions): Judg
   const session = new Session(timeline, opts);
   const sorted = taps.slice().sort((a, b) => a.down - b.down);
   sorted.forEach((tap, i) => {
-    session.press(tap.down);
+    session.press(tap.down, tap.from);
     const next = sorted[i + 1];
     if (tap.up !== null && (!next || tap.up <= next.down)) session.release(tap.up);
   });

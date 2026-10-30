@@ -20,7 +20,7 @@ import { AchievementBadges, CodeCopy, LevelUpContent, OutcomeBadge } from '../co
 import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
-import { starsLabel } from '../lib/format';
+import { starsLabel, wholePercent } from '../lib/format';
 import { calibrateQuery, useLearnReturn } from '../lib/learnReturn';
 import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
@@ -195,7 +195,7 @@ export function Results(): JSX.Element | null {
           )}
         </div>
         {diamond && <div className="score-bonus">{t('results.allPerfect')}</div>}
-        <div className="score-pct">{t('results.accuracy', { value: Math.round(result.accuracy) })}</div>
+        <div className="score-pct">{t('results.accuracy', { value: wholePercent(result.accuracy) })}</div>
         <div className="muted-text score-sub">
           {t('results.summary')} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
         </div>

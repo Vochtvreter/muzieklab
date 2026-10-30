@@ -1,6 +1,6 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
 import { useMemo, useState } from 'react';
-import { checkSettings, DEFAULT_SETTINGS, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, MAX_BARS, MAX_TEMPO, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
 import { ExerciseFrame } from '../components/AppShell';
@@ -170,9 +170,9 @@ export function Setup(): JSX.Element {
                     −
                   </button>
                   <span aria-live="polite">{s.bars}</span>
-                  <button type="button" aria-label={t('setup.moreBars')} aria-disabled={s.bars >= 16 || undefined}
+                  <button type="button" aria-label={t('setup.moreBars')} aria-disabled={s.bars >= MAX_BARS || undefined}
                     onClick={() => {
-                      if (s.bars < 16) update({ bars: Math.min(16, s.bars + 1) });
+                      if (s.bars < MAX_BARS) update({ bars: Math.min(MAX_BARS, s.bars + 1) });
                     }}>
                     +
                   </button>
@@ -183,7 +183,7 @@ export function Setup(): JSX.Element {
                   {t('setup.tempo')}
                   <span className="label-value">{t('setup.tempoValue', { bpm: s.tempo, word: t(tempoWordKey(s.tempo)) })}</span>
                 </label>
-                <input id="tempo" type="range" min={40} max={200} value={s.tempo} className="tempo-range"
+                <input id="tempo" type="range" min={40} max={MAX_TEMPO} value={s.tempo} className="tempo-range"
                   aria-valuetext={t('setup.tempoValue', { bpm: s.tempo, word: t(tempoWordKey(s.tempo)) })}
                   onChange={(e) => update({ tempo: Number(e.target.value) })} />
               </div>

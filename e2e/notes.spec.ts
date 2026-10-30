@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from '../src/core/defaults';
 import { generateExercise } from '../src/core/generator';
 import type { Settings } from '../src/core/types';
 import { exerciseHas } from '../src/game/intro';
-import { pad, pathUpTo, seed as seedStorage, VIEWPORTS } from './helpers';
+import { pad, pathUpTo, seed as seedStorage, tabTo, VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
 
@@ -40,15 +40,6 @@ function seedStartingWith(settings: NoteSettings, alters: number[]): number {
     const notes = generateRound(settings, seed);
     if (alters.every((a, i) => notes[i].alter === a)) return seed;
   }
-}
-
-/** Presses Tab until `target` has the focus, as a player on the keyboard gets there. */
-async function tabTo(page: Page, target: Locator): Promise<void> {
-  for (let i = 0; i < 60; i++) {
-    if (await target.evaluate((el) => el === document.activeElement)) return;
-    await page.keyboard.press('Tab');
-  }
-  throw new Error('Tab does not reach ' + String(target));
 }
 
 test('read notes: a G major round from Home to the summary, answered with the keyboard', async ({ page }) => {

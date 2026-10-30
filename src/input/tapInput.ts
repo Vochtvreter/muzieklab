@@ -15,6 +15,11 @@ export interface TapInputOptions {
    * after a click (the metronome switch, ?) would otherwise swallow every Space. Esc and ? still reach their handlers.
    */
   claimActivationKeys?: boolean;
+  /**
+   * With claimActivationKeys: whether this Space or Enter still belongs to the focused control, as on one the player
+   * reached with Tab (focusModality.ts keyForTabbedControl).
+   */
+  leaveToControl?: (e: KeyboardEvent) => boolean;
 }
 
 /** Keys that never count as a tap: modifiers, Tab (focus navigation), locks and browser/system keys. */
@@ -44,7 +49,7 @@ export function isTapKey(e: KeyboardEvent, pad: HTMLElement | null, opts: TapInp
   // Typing in a field is never a tap.
   if (target.closest(TEXT_INPUT)) return false;
   // Space/Enter activate a focused button (Pause, ?, Listen…): leave them to it. Other keys still tap.
-  if ((e.key === ' ' || e.key === 'Enter') && !opts.claimActivationKeys && target.closest(ACTIVATABLE)) return false;
+  if ((e.key === ' ' || e.key === 'Enter') && target.closest(ACTIVATABLE) && (!opts.claimActivationKeys || opts.leaveToControl?.(e))) return false;
   return true;
 }
 

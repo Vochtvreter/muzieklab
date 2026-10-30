@@ -82,18 +82,25 @@ export function markSeen(p: Progress, skill: SkillId, day: string): Progress {
 /** Whole minutes for a day's seconds; a day with any practice shows at least 1. */
 export const minutesOf = (sec: number): number => (sec > 0 ? Math.max(1, Math.round(sec / 60)) : 0);
 
-/** Seconds a rhythm exercise takes to play: the count-in (a bar at least, as Play counts in), the lead-in and the bars. */
-export function playedSeconds(exercise: Exercise): number {
+/**
+ * Seconds a rhythm exercise takes to play: the count-in (a bar at least, as Play counts in), the lead-in and the bars,
+ * up to `upTo` (seconds into the bars) when it stopped there: Skip to results, Echo's Done.
+ */
+export function playedSeconds(exercise: Exercise, upTo = Infinity): number {
   const timeline = buildTimeline(exercise);
   const bar = (exercise.meter.barTicks / PPQ) * timeline.beatSeconds;
-  return timeline.totalSeconds + Math.max(1, exercise.settings.countIn) * bar + PLAY_LEAD_IN_S;
+  const bars = upTo > 0 ? Math.min(timeline.totalSeconds, upTo) : 0;
+  return bars + Math.max(1, exercise.settings.countIn) * bar + PLAY_LEAD_IN_S;
 }
 
-/** Seconds a rhythm round took: played once, and for Echo each time it was played to listen (with its one-bar count-in). */
-export function rhythmSeconds(exercise: Exercise, plays = 0): number {
+/**
+ * Seconds a rhythm round took: played once (up to `upTo`, playedSeconds), and for Echo each time it was played to
+ * listen (with its one-bar count-in).
+ */
+export function rhythmSeconds(exercise: Exercise, plays = 0, upTo = Infinity): number {
   const timeline = buildTimeline(exercise);
   const bar = (exercise.meter.barTicks / PPQ) * timeline.beatSeconds;
-  return playedSeconds(exercise) + Math.max(0, plays) * (timeline.totalSeconds + bar + LISTEN_LEAD_IN_S);
+  return playedSeconds(exercise, upTo) + Math.max(0, plays) * (timeline.totalSeconds + bar + LISTEN_LEAD_IN_S);
 }
 
 function addCells(a: DayStats['cells'], b: DayStats['cells']): DayStats['cells'] {
@@ -112,15 +119,16 @@ const finite = (n: unknown): number => (typeof n === 'number' && Number.isFinite
 /**
  * A finished rhythm round (tap or Echo; free practice, a lesson or the daily challenge): its seconds, accuracy, timing
  * and cells on today's figures, Echo's material level, and the skill practised (rhythm reading, or rhythm by ear).
- * `echo`: how an Echo round was heard (its listening counts as minutes).
+ * `echo`: how an Echo round was heard (its listening counts as minutes). `playedTo`: where the music stopped, in
+ * seconds into the bars (a round skipped to Results counts only what was played).
  */
-export function recordRhythm(p: Progress, exercise: Exercise, result: JudgeResult, today: string, leniency: Leniency, echo?: EchoPlays | null): Progress {
+export function recordRhythm(p: Progress, exercise: Exercise, result: JudgeResult, today: string, leniency: Leniency, echo?: EchoPlays | null, playedTo = Infinity): Progress {
   const isEcho = exercise.settings.mode === 'echo';
   const cells = cellPoints(exercise, result, leniency);
   const hit = result.notes.filter((n) => n.judgement !== 'miss' && typeof n.offsetMs === 'number' && Number.isFinite(n.offsetMs));
   const off = hit.reduce((sum, n) => sum + Math.round(n.offsetMs as number), 0);
   let next = changeDay(p, today, (d) => ({
-    sec: d.sec + Math.round(rhythmSeconds(exercise, isEcho ? (echo?.plays ?? 0) : 0)),
+    sec: d.sec + Math.round(rhythmSeconds(exercise, isEcho ? (echo?.plays ?? 0) : 0, playedTo)),
     rounds: d.rounds + 1,
     acc: d.acc + Math.round(Math.max(0, Math.min(100, finite(result.accuracy)))),
     off: d.off + off,

@@ -1,3 +1,4 @@
+import { MAX_BARS, MAX_TEMPO } from './defaults';
 import type { Exercise, JudgeResult, NoteResult, Tap, Timeline } from './types';
 import { spellExercise } from './speller';
 import { valueKey } from './values';
@@ -71,8 +72,10 @@ function writtenValue(exercise: Exercise, index: number): string {
  * - tip.noTaps {}   tip.latency { ms, dir ('late' | 'early') }
  * - tip.cutShort / tip.heldLong { value (message key), bar (1-based), beat, liftBeat, liftPart (count.* key), count }
  * - tip.rushing / tip.dragging { ms }, or tip.draggingCalibrate when steadily late and uncalibrated
- * - tip.missed { count, bar }, or tip.missedSpread { count } when bars tie   tip.extraTaps { count }   tip.unsteady { ms }
- * - tip.perfect {}, or tip.perfectLesson {} before a next lesson   tip.good {}
+ * - tip.missed { count, bar }, or tip.missedSpread { count } when bars tie; tip.missedEcho / tip.missedSpreadEcho the
+ *   same for Echo, which hides the notation (no "read ahead")   tip.extraTaps { count }   tip.unsteady { ms }
+ * - tip.perfect {} (a faster tempo or more bars), tip.perfectBars {} at the top tempo, tip.perfectTempo {} at the most
+ *   bars, tip.perfectTop {} at both; or tip.perfectLesson {} before a next lesson   tip.good {}
  */
 export function coachTip(result: JudgeResult, timeline: Timeline, exercise: Exercise, context: CoachContext = {}): CoachTip {
   const n = result.notes.length;
@@ -86,7 +89,7 @@ export function coachTip(result: JudgeResult, timeline: Timeline, exercise: Exer
   // Counts only: a low accuracy from cut-short holds is a hold problem, and the hold tip below says so.
   const offTrack = n > 0 && result.counts.miss + result.extraTaps >= Math.max(1, n * OFF_TRACK_SHARE);
   if (offTrack) {
-    return result.counts.miss >= result.extraTaps ? missedTip(result, timeline) : { key: 'tip.extraTaps', params: { count: result.extraTaps } };
+    return result.counts.miss >= result.extraTaps ? missedTip(result, timeline, exercise) : { key: 'tip.extraTaps', params: { count: result.extraTaps } };
   }
   const holdIssues = result.notes.filter((r): r is NoteResult & { hold: 'short' | 'long' } => r.hold === 'short' || r.hold === 'long');
   if (holdIssues.length) {
@@ -119,21 +122,32 @@ export function coachTip(result: JudgeResult, timeline: Timeline, exercise: Exer
     const steadyLate = result.sdOffsetMs <= UNSTEADY_SD_MS && result.notes.every((r) => r.offsetMs === null || r.offsetMs >= LATENCY_FLOOR_MS);
     return { key: context.uncalibrated && steadyLate ? 'tip.draggingCalibrate' : 'tip.dragging', params: { ms } };
   }
-  if (result.counts.miss > 0) return missedTip(result, timeline);
+  if (result.counts.miss > 0) return missedTip(result, timeline, exercise);
   if (result.extraTaps > 0) return { key: 'tip.extraTaps', params: { count: result.extraTaps } };
   if (result.sdOffsetMs > UNSTEADY_SD_MS) return { key: 'tip.unsteady', params: { ms: Math.round(result.sdOffsetMs) } };
-  if (result.counts.perfect === result.notes.length) return { key: context.nextLesson ? 'tip.perfectLesson' : 'tip.perfect', params: {} };
+  if (result.counts.perfect === result.notes.length) return { key: context.nextLesson ? 'tip.perfectLesson' : perfectKey(exercise), params: {} };
   return { key: 'tip.good', params: {} };
 }
 
-/** tip.missed with the bar that had the most misses; tip.missedSpread when bars tie (the first of equals says nothing). */
-function missedTip(result: JudgeResult, timeline: Timeline): CoachTip {
+/** Praise for a perfect run that asks only for what the setup still has: a faster tempo, more bars, or neither. */
+function perfectKey(exercise: Exercise): string {
+  const fastest = exercise.tempo >= MAX_TEMPO;
+  const longest = exercise.bars.length >= MAX_BARS;
+  return fastest && longest ? 'tip.perfectTop' : fastest ? 'tip.perfectBars' : longest ? 'tip.perfectTempo' : 'tip.perfect';
+}
+
+/**
+ * tip.missed with the bar that had the most misses; tip.missedSpread when bars tie (the first of equals says nothing).
+ * Echo has its own two: tapped back from memory with the notation hidden, it has nothing to read ahead.
+ */
+function missedTip(result: JudgeResult, timeline: Timeline, exercise: Exercise): CoachTip {
   const perBar = new Map<number, number>();
   for (const r of result.notes) if (r.judgement === 'miss') perBar.set(timeline.notes[r.index].bar, (perBar.get(timeline.notes[r.index].bar) ?? 0) + 1);
   const most = Math.max(...perBar.values());
   const bars = [...perBar.entries()].filter(([, c]) => c === most);
-  if (bars.length > 1) return { key: 'tip.missedSpread', params: { count: result.counts.miss } };
-  return { key: 'tip.missed', params: { count: result.counts.miss, bar: bars[0][0] + 1 } };
+  const echo = exercise.settings.mode === 'echo';
+  if (bars.length > 1) return { key: echo ? 'tip.missedSpreadEcho' : 'tip.missedSpread', params: { count: result.counts.miss } };
+  return { key: echo ? 'tip.missedEcho' : 'tip.missed', params: { count: result.counts.miss, bar: bars[0][0] + 1 } };
 }
 
 /**

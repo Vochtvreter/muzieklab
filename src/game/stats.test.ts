@@ -64,6 +64,16 @@ describe('recordRhythm', () => {
     expect(playedSeconds({ ...tap, settings: { ...tap.settings, countIn: 0 } })).toBeCloseTo(playedSeconds(tap), 5);
   });
 
+  it('counts a round skipped to Results only up to where the music stopped, with the count-in', () => {
+    // Stopped 4 s into the bars: those 4 s, a bar of count-in and the lead-in.
+    expect(recordRhythm(defaultProgress(), tap, r, TODAY, 'normal', null, 4).stats.days[TODAY].sec).toBe(Math.round(4 + 4 * (60 / 90) + 0.4));
+    expect(rhythmSeconds(tap, 0, 4)).toBeCloseTo(4 + 4 * (60 / 90) + 0.4, 5);
+    // Played to the end, the clock runs on past the last note: the whole length, as before.
+    expect(recordRhythm(defaultProgress(), tap, r, TODAY, 'normal', null, 999).stats.days[TODAY].sec).toBe(Math.round(playedSeconds(tap)));
+    // Echo's Done: every listen, and the part tapped back.
+    expect(rhythmSeconds(echo, 1, 2) - rhythmSeconds(echo, 1)).toBeCloseTo(2 - 16 * (60 / 90), 5);
+  });
+
   it('adds up the rounds of a day', () => {
     const once = recordRhythm(defaultProgress(), tap, r, TODAY, 'normal');
     const twice = recordRhythm(once, tap, { ...r, accuracy: 60 }, TODAY, 'normal');

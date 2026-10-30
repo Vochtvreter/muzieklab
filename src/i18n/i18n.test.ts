@@ -81,6 +81,9 @@ describe('t()', () => {
     expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 3 } })).toBe('You missed 1 note in bar 3. Read one beat ahead.');
     expect(tipText({ key: 'tip.missed', params: { count: 2, bar: 3 } })).toBe('You missed 2 notes, most in bar 3. Read one beat ahead.');
     expect(tipText({ key: 'tip.missedSpread', params: { count: 8 } })).toBe('You missed 8 notes. Read one beat ahead.');
+    // Echo hides the notation: nothing to read ahead.
+    expect(tipText({ key: 'tip.missedEcho', params: { count: 2, bar: 3 } })).toBe('You missed 2 notes, most in bar 3. Count along as you listen, so you know where each note falls.');
+    expect(tipText({ key: 'tip.missedSpreadEcho', params: { count: 1 } })).toBe('You missed 1 note. Count along as you listen, so you know where each note falls.');
     expect(tipText({ key: 'tip.latency', params: { ms: 125, dir: 'late' } })).toMatch(/^Your taps came about 125 ms late every time\. /);
     // Early is a calibration that no longer fits, never the speaker: a device delay only makes taps late.
     expect(tipText({ key: 'tip.latency', params: { ms: 110, dir: 'early' } })).toBe(
@@ -300,6 +303,7 @@ describe('Dutch', () => {
     setLocale('nl');
     expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 1 } })).toBe('Je miste 1 noot in maat 1. Lees één tel vooruit.');
     expect(tipText({ key: 'tip.missed', params: { count: 3, bar: 2 } })).toBe('Je miste 3 noten, de meeste in maat 2. Lees één tel vooruit.');
+    expect(tipText({ key: 'tip.missedEcho', params: { count: 1, bar: 2 } })).toBe('Je miste 1 noot in maat 2. Tel mee terwijl je luistert, dan weet je waar elke noot valt.');
   });
 
   it('counts one minute and one check in the singular in Progress and Skill levels labels', () => {

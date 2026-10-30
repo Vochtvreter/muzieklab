@@ -24,6 +24,7 @@ import { PLAY_LEAD_IN_S as LEAD_IN_S } from '../../game/stats';
 import type { Prefs } from '../../game/storage';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import type { ExerciseView } from '../exerciseView';
+import { keyForTabbedControl } from '../lib/focusModality';
 import { barAt, beatAt, cursorAt, holdProgress, partialResult, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
 import type { Run } from '../store';
 
@@ -144,15 +145,16 @@ export interface PlaySession {
 }
 
 /**
- * `onSeen`: a sheet before the start was done with (How to play, the intro sheet); the prefs to save. `fresh`: a lesson
- * other than the one finished last, so Play waits on Ready (see firstSheet).
+ * `onSeen`: a sheet before the start was done with (How to play, the intro sheet); the prefs to save. `onFinish`: the
+ * result, the presses and where the music stopped (exercise seconds: before the end after Skip to results, past it
+ * when played to the end). `fresh`: a lesson other than the one finished last, so Play waits on Ready (see firstSheet).
  */
 export function usePlaySession(
   run: Run,
   view: ExerciseView,
   prefs: Prefs,
   onSeen: (patch: Partial<Prefs>) => void,
-  onFinish: (r: JudgeResult, taps: Tap[]) => void,
+  onFinish: (r: JudgeResult, taps: Tap[], playedTo: number) => void,
   fresh = false,
 ): PlaySession {
   const ex = run.exercise;
@@ -236,7 +238,7 @@ export function usePlaySession(
     }
     seg.current = null;
     setPhase('done');
-    finishRef.current(result, taps.current.map((tp) => ({ ...tp })));
+    finishRef.current(result, taps.current.map((tp) => ({ ...tp })), heldUntil);
   }, [view, barSec, opts.hold, opts.leniency]);
 
   const tick = useCallback(() => {
@@ -406,7 +408,9 @@ export function usePlaySession(
       ignoredPress.current = true;
       return;
     }
-    const tap: Tap = { down: tg, up: null };
+    // After a resume the whole run is judged again: a press of this segment, also one in its count-in, plays only the
+    // bars played again, as the live judge, which has only those, says.
+    const tap: Tap = s.fromBar > 0 ? { down: tg, up: null, from: s.fromBar * barSec } : { down: tg, up: null };
     taps.current.push(tap);
     const p = s.judge.press(ts);
     let note: TimedNote | null = null;
@@ -447,10 +451,11 @@ export function usePlaySession(
     };
   }, [run]);
 
-  // Tap input only while the exercise runs with no sheet open, so keys never double as taps in a dialog.
+  // Tap input only while the exercise runs with no sheet open, so keys never double as taps in a dialog. Space and
+  // Enter are taps on a control too, except on one the player reached with Tab (Skip to results, Pause, Quit).
   useEffect(() => {
     if (phase !== 'running' || sheet !== null) return;
-    return attachTapInput(pad, { down, up, pause: () => pause('pause'), help: () => pause('help') }, { claimActivationKeys: true });
+    return attachTapInput(pad, { down, up, pause: () => pause('pause'), help: () => pause('help') }, { claimActivationKeys: true, leaveToControl: keyForTabbedControl });
   }, [phase, sheet, pad, down, up, pause]);
 
   // Leaving the tab or the window pauses (the input module releases held keys too): keys would go elsewhere.
