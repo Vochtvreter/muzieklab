@@ -150,14 +150,15 @@ function Units({ view: v, progress: p, tiles, onPlay }: { view: PathView; progre
   // The current unit is open; any open unit can be opened instead, or closed.
   const [openUnit, setOpenUnit] = useState<number | null>(curUnit >= 0 ? track.units[curUnit].id : null);
   const list = useRef<HTMLOListElement>(null);
-  // Show the current unit (unit 7 is below the fold on a phone): the list scrolls, or on a short screen the page.
+  // Show the current unit (unit 7 is below the fold on a phone): the list scrolls, or on a short screen the page. Again
+  // when a phone turns on its side and the list becomes tiles: the shell keeps the page, and with it the old scroll.
   useEffect(() => {
     const box = list.current;
     const el = box?.querySelector('.unit--current');
     const scroller = box && box.scrollHeight > box.clientHeight ? box : box?.closest<HTMLElement>('.page');
     if (!el || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
     scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
-  }, []);
+  }, [tiles]);
   // What opens the locked units is said once, under the first of them; the others show a lock and their title.
   const firstLocked = states.indexOf('locked');
 

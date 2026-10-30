@@ -33,10 +33,11 @@ import type { KeyMark } from '../../components/NoteInputs';
 import { DegreeRow, keyNames, SCALE_GAP_KBD, SCALE_WHITE_KBD, ScalePiano, SignButtons, type DegreeCell } from '../../components/ScaleInputs';
 import { PHONE_LANDSCAPE, SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useMediaQuery } from '../../hooks';
 import { keyForTabbedControl } from '../../lib/focusModality';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { letterName, spokenName } from '../../lib/noteText';
 import { noteName, noteSpoken, scaleName, scaleSpoken, stepHow, stepLabel, stepsOf } from '../../lib/scaleText';
 import { useFocusHandOff } from '../../lib/screenFocus';
-import { leave, Link, navigate } from '../../router';
+import { leave, Link, navigate, openedFrom } from '../../router';
 import { todayIso, useStore, type ScaleRun } from '../../store';
 
 /** Notes per staff: a scale going up (8), then the way down on a staff of its own, from the top note. */
@@ -64,6 +65,8 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   // So is a phone browser on a small phone (375 × 553, DESIGN.md §9): the piano and its letters stay in view.
   const shorter = useMediaQuery(SHORTER_PHONE);
   useDocTitle(t('app.docTitle', { page: t('scales.play.docTitle') }));
+  // Started from Learn (?from=11.2): Round done keeps it, and Quit goes back (below).
+  const { back, carry } = useLearnReturn();
   const s = run.settings;
   const dir = s.direction;
 
@@ -113,8 +116,8 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   );
   // Go to Round done once the store holds this round's result (as Read notes and Play do), never before it.
   useEffect(() => {
-    if (state.scaleLast?.run === run) navigate('/scales/done', { replace: true });
-  }, [state.scaleLast, run]);
+    if (state.scaleLast?.run === run) navigate('/scales/done', { replace: true, query: carry });
+  }, [state.scaleLast, run, carry]);
 
   const next = useCallback(() => {
     if (!done) return;
@@ -162,7 +165,12 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     setWrong(null);
     setHinted(false);
   };
-  const quit = (): void => leave('/scales');
+  // Quit goes back to the Scales tab, or to the setup or the circle opened from Learn that the round was started from,
+  // which still return to Learn; else to the Learn section.
+  const opener = carry ? (['/scales/setup', '/scales'] as const).find((to) => openedFrom(to, carry)) : undefined;
+  const home = opener ?? back?.to ?? '/scales';
+  const homeQuery = opener ? carry : back?.query;
+  const quit = (): void => leave(home, homeQuery);
   const skip = (): void => finish(done ? [...played, { scale: sc, mistakes }] : played);
   const choices = useMemo(() => signChoices(sc, dir), [sc, dir]);
 
@@ -366,7 +374,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
   const header = (
     <ExerciseHeader tablet={tablet} eyebrow={t('scales.play.eyebrowLong', { rest: eyebrow })} line={t('scales.play.scaleOf', { n: idx + 1, total })}
       progress={{ label: t('scales.play.progress'), value: idx / total, max: total, now: idx }}>
-      <Link to="/scales" className="text-link-btn" aria-keyshortcuts={desktop ? 'Escape' : undefined} onClick={quitLink}>
+      <Link to={home} query={homeQuery} className="text-link-btn" aria-keyshortcuts={desktop ? 'Escape' : undefined} onClick={quitLink}>
         {t('scales.play.quit')} {kbd && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
       </Link>
     </ExerciseHeader>
@@ -471,7 +479,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
       <div className={'page play nplay splay no-scrollbar' + (dir === 'upDown' ? ' splay--updown' : '')}>
         <h1 className="sr-only">{t(piano ? 'scales.play.headingPiano' : 'scales.play.headingNames')}</h1>
         <div className="play-top">
-          <Link to="/scales" aria-label={t('scales.play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
+          <Link to={home} query={homeQuery} aria-label={t('scales.play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('scales.play.progress')} aria-valuemin={0} aria-valuemax={total} aria-valuenow={idx}>

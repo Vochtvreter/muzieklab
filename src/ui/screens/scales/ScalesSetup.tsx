@@ -22,7 +22,8 @@ export function ScalesSetup(): JSX.Element {
   const s = state.scaleSettings;
   const hubKey = state.scaleHub.key;
   const update = (patch: Partial<ScaleSettings>): void => dispatch({ type: 'scaleSettings', settings: { ...s, ...patch } });
-  // Opened from Learn chapter 11: Back returns there, also after a visit to the Key screen.
+  // Opened from Learn chapter 11: Back returns there, also after a visit to the Key screen, and the round Start begins
+  // keeps it.
   const { back, carry } = useLearnReturn();
 
   const keys = scaleRoundKeys(s);
@@ -161,7 +162,7 @@ export function ScalesSetup(): JSX.Element {
               <span className="muted-text">{t(count === 1 ? 'scales.setup.summaryOne' : s.keyMode === 'circle' ? 'scales.setup.summaryCircle' : 'scales.setup.summaryMany')}</span>
             </div>
 
-            <button type="button" className="btn btn--accent start-btn" onClick={() => start(s)}>
+            <button type="button" className="btn btn--accent start-btn" onClick={() => start(s, { query: carry })}>
               {t('scales.setup.start', { count })}
             </button>
           </div>

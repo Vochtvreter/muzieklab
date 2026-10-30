@@ -950,6 +950,58 @@ test("learn: the browser's Back to a chapter returns where the reader left it, a
   await expect(page.locator('a.learn-nav-link--next')).toBeInViewport({ ratio: 1 });
 });
 
+test("learn: the browser's Back after a jump to a section returns where the reader was, the chapter's top too", async ({ page }) => {
+  const chapter = page.locator('.page.learn-chapter');
+  const jump = page.getByRole('navigation', { name: 'Sections' });
+  // The sidebar on desktop, the chips on a tablet. Back to the chapter's own address once left the page at the section.
+  for (const size of ['desktop', 'tablet'] as const) {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await page.goto('./#/learn/8');
+    await jump.getByRole('link', { name: /^8\.3\s*\D/ }).click();
+    await expect(page).toHaveURL(/#\/learn\/8\?s=8\.3$/);
+    await expect(page.locator('#s8-3')).toBeFocused();
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/learn\/8$/);
+    await expect.poll(() => chapter.evaluate((el) => el.scrollTop), `${size}: the chapter's top`).toBe(0);
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  }
+  // Scrolled down to 8.2 by hand, then a jump to 8.5: Back opens 8.2, where the reader was, not the top or 8.5.
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.goto('./#/learn/8');
+  await page.locator('#s8-2').evaluate((el) => {
+    el.scrollIntoView({ block: 'start' });
+    el.closest('.page')!.scrollTop += 40;
+  });
+  await jump.getByRole('link', { name: /^8\.5\s*\D/ }).click();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.5$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/8\?s=8\.2$/);
+  await expect(page.getByRole('heading', { name: /^8\.2\s*\D/ })).toBeInViewport();
+  await page.goForward();
+  await expect(page.getByRole('heading', { name: /^8\.5\s*\D/ })).toBeInViewport();
+});
+
+test('learn: a phone turned on its side keeps the chapter where it was, its answers, and Stop on the example playing', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/learn/11?s=11.3');
+  const section = page.locator('#s11-3');
+  await section.locator('.learn-answer').first().click();
+  await expect(section.locator('.nfeedback')).toBeVisible();
+  // Past 700 px the shell has a header in place of the tab bar: the chapter was built again, at its top, with no answer.
+  for (const size of ['phone-landscape', 'phone'] as const) {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await expect(page.locator('.shell')).toHaveClass(size === 'phone' ? /shell--phone/ : /shell--tablet/);
+    await expect(section.locator('.nfeedback'), size).toBeVisible();
+    await expect(section, size).toBeInViewport();
+  }
+  // An example still sounding kept playing with no Stop to press.
+  await page.goto('./#/learn/2?s=2.2');
+  await page.getByRole('button', { name: 'Play: sixteenth note' }).click();
+  await expect(page.getByRole('button', { name: 'Stop: sixteenth note' })).toBeVisible();
+  await page.setViewportSize(VIEWPORTS['phone-landscape']);
+  await expect(page.getByRole('button', { name: 'Stop: sixteenth note' })).toBeVisible();
+});
+
 test('after Quit, one Back leaves the screen Quit returned to', async ({ page }) => {
   await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);
@@ -1048,6 +1100,87 @@ test('a Read notes setup opened from a chapter keeps the way back to it: Quit re
   await expect(page).toHaveURL(/#\/notes\?from=8$/);
   await page.goBack();
   await expect(page).toHaveURL(/#\/notes\/done\?from=8$/);
+});
+
+test('a rhythm setup opened from a chapter keeps the way back to it: Quit returns to it, and Results to the chapter', async ({ page }) => {
+  await seedStorage(page, { prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/learn/1');
+  const practice = page.getByRole('link', { name: /^Practice rhythm$/ });
+  await practice.click();
+  await expect(page).toHaveURL(/#\/setup\?from=1$/);
+  // Start once left ?from=1 behind: Quit went Home, and Results' back arrow too.
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page).toHaveURL(/#\/play\?from=1$/);
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await expect(page).toHaveURL(/#\/setup\?from=1$/);
+  await expect(page.getByRole('link', { name: 'Back to chapter 1' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/1\?s=check$/);
+
+  await practice.click();
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await expect(page).toHaveURL(/#\/results\?from=1$/);
+  await page.getByRole('link', { name: 'Back to chapter 1' }).click();
+  await expect(page).toHaveURL(/#\/learn\/1\?s=check$/);
+
+  // Echo's listening has a Quit of its own, which goes back to the setup too.
+  await practice.click();
+  await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }).click();
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page).toHaveURL(/#\/play\?from=1$/);
+  await page.getByRole('link', { name: 'Quit exercise' }).click();
+  await expect(page).toHaveURL(/#\/setup\?from=1$/);
+  await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Tap' }).click();
+
+  // A section's practice, then Results' Practice settings: the run that setup starts keeps the section.
+  await page.goto('./#/learn/1');
+  await page.getByRole('link', { name: 'Practice at a steady tempo →' }).click();
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await page.getByRole('link', { name: 'Practice settings' }).click();
+  await expect(page).toHaveURL(/#\/setup\?from=1\.1$/);
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page).toHaveURL(/#\/play\?from=1\.1$/);
+  await page.getByRole('button', { name: 'Skip to results' }).click();
+  await expect(page).toHaveURL(/#\/results\?from=1\.1$/);
+  await page.getByRole('link', { name: 'Back to chapter 1' }).click();
+  await expect(page).toHaveURL(/#\/learn\/1\?s=1\.1$/);
+});
+
+test('a Scales setup opened from a section keeps the way back to it: Quit returns to it, and Round done to the section', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/learn/11');
+  const link = page.getByRole('link', { name: 'Practice D major and B♭ major →' });
+  await link.click();
+  await expect(page).toHaveURL(/#\/scales\/setup\?from=11\.2$/);
+  // Start once left ?from=11.2 behind: Quit went to the Scales tab, and Round done's back arrow too.
+  await page.getByRole('button', { name: 'Start · 2 scales' }).click();
+  await expect(page).toHaveURL(/#\/scales\/play\?from=11\.2$/);
+  const quit = page.getByRole('link', { name: 'Quit', exact: true });
+  await expect(quit).toHaveAttribute('href', '#/scales/setup?from=11.2');
+  await quit.click();
+  await expect(page).toHaveURL(/#\/scales\/setup\?from=11\.2$/);
+  await expect(page.getByRole('link', { name: 'Back to chapter 11' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/11\?s=11\.2$/);
+
+  // Round done returns to the section; New round and Change setup keep it.
+  await link.click();
+  await page.getByRole('button', { name: 'Start · 2 scales' }).click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/scales\/done\?from=11\.2$/);
+  await page.getByRole('button', { name: 'New round' }).click();
+  await expect(page).toHaveURL(/#\/scales\/play\?from=11\.2$/);
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await page.getByRole('link', { name: 'Change setup' }).click();
+  await expect(page).toHaveURL(/#\/scales\/setup\?from=11\.2$/);
+  await page.getByRole('button', { name: 'Start · 2 scales' }).click();
+  await page.getByRole('button', { name: 'Skip to summary' }).click();
+  await expect(page.getByRole('link', { name: 'Back to chapter 11' })).toHaveAttribute('href', '#/learn/11?s=11.2');
+  await page.getByRole('link', { name: 'Back to chapter 11' }).click();
+  await expect(page).toHaveURL(/#\/learn\/11\?s=11\.2$/);
 });
 
 test("a finished screen's back arrow leaves it as Quit does, so Back does not open it again", async ({ page }) => {
@@ -1424,4 +1557,24 @@ test('learn: chapter 11 links to the Scales setup and the circle', async ({ page
   await page.goto('./#/learn/11');
   await page.getByRole('link', { name: 'Practice scales' }).click();
   await expect(page.getByRole('group', { name: 'Circle of fifths, major keys' })).toBeVisible();
+  // The circle opened from the chapter returns to its end, as every chapter's Practice button does (it went Home).
+  await expect(page).toHaveURL(/#\/scales\?from=11$/);
+  await page.getByRole('link', { name: 'Back to chapter 11' }).click();
+  await expect(page).toHaveURL(/#\/learn\/11\?s=check$/);
+  await expect(page.getByRole('link', { name: 'Practice scales' })).toBeInViewport();
+  // Its Options and Practice keep the way back: the round quits to the circle, still Back to chapter 11.
+  await page.getByRole('link', { name: 'Practice scales' }).click();
+  await page.getByRole('link', { name: 'Options' }).click();
+  await expect(page).toHaveURL(/#\/scales\/setup\?from=11$/);
+  await expect(page.getByRole('link', { name: 'Back to chapter 11' })).toBeVisible();
+  await page.goBack();
+  await page.getByRole('button', { name: /^Practice C major/ }).click();
+  await expect(page).toHaveURL(/#\/scales\/play\?from=11$/);
+  await page.getByRole('link', { name: 'Quit', exact: true }).click();
+  await expect(page).toHaveURL(/#\/scales\?from=11$/);
+  await expect(page.getByRole('link', { name: 'Back to chapter 11' })).toBeVisible();
+  // Opened from Home, its back arrow still goes Home.
+  await page.goto('./#/');
+  await page.getByRole('link', { name: /^Scales/ }).click();
+  await expect(page.getByRole('link', { name: 'Back to Home' })).toHaveAttribute('href', '#/');
 });

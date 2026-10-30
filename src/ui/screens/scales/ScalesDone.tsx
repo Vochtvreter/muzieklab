@@ -1,7 +1,8 @@
 /**
  * Scales · round done (DESIGN.md §3.7 Round done): scales without a mistake out of all, every scale with its mistakes
  * and stars (scored on the first try; one with mistakes is marked as having come back), how far the circle is filled,
- * and Change setup / New round. The back arrow goes to the Scales hub.
+ * and Change setup / New round. The back arrow goes to the Scales hub, or to the Learn section or chapter the round was
+ * started from (?from=11.2), which New round and Change setup keep.
  */
 import { useEffect, useState } from 'react';
 import { CIRCLE, doneCounts, majorLevel, minorLevel, type KeyId, type ScaleStars } from '../../../core/api';
@@ -13,6 +14,7 @@ import { AchievementBadges, LevelUpContent } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
 import { andList } from '../../lib/format';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { circleLabel, keyName, keySpoken, scaleName } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore, type ScaleLast } from '../../store';
@@ -24,6 +26,7 @@ export function ScalesDone(): JSX.Element | null {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const start = useStartScales();
+  const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('scales.done.docTitle') }));
   const last = state.scaleLast;
   useEffect(() => {
@@ -53,7 +56,7 @@ export function ScalesDone(): JSX.Element | null {
     dir: t(s.direction === 'up' ? 'scales.setup.upWord' : 'scales.setup.upDownWord'),
     input: t('scales.setup.inputWord.' + s.input),
   });
-  const again = (): void => start(s, { replace: true });
+  const again = (): void => start(s, { replace: true, query: carry });
   const change = (): void => dispatch({ type: 'scaleSettings', settings: s });
   const minor = !s.types.includes('major');
   // Achievements the round earned without a level (a 7-day streak): badges under the score; with a level, the level-up
@@ -118,7 +121,7 @@ export function ScalesDone(): JSX.Element | null {
   const actions = (
     <div className="results-actions">
       <div className="results-main">
-        <Link to="/scales/setup" className="btn btn--outline" onClick={change}>
+        <Link to="/scales/setup" query={carry} className="btn btn--outline" onClick={change}>
           {t('scales.done.change')}
         </Link>
         <button type="button" className="btn btn--accent" onClick={again}>
@@ -136,7 +139,8 @@ export function ScalesDone(): JSX.Element | null {
       <div className="page results sdone no-scrollbar">
         <div className="screen-head">
           {/* Leaves as Quit does, so the browser's Back does not open the finished round again. */}
-          <Link to="/scales" leaves aria-label={t('scales.done.back')} className="icon-btn icon-btn--edge-sm">
+          <Link to={back?.to ?? '/scales'} query={back?.query} leaves aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('scales.done.back')}
+            className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">

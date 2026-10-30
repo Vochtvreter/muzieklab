@@ -392,6 +392,36 @@ test('after quitting, Back does not walk into the exercise again', async ({ page
   await expect(page.getByRole('button', { name: 'Continue lesson' })).toBeVisible();
 });
 
+test("Pause's Practice settings goes back to the setup's place: Back does not walk into the exercise again", async ({ page }) => {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  const settings = async (): Promise<void> => {
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Paused' }).getByRole('button', { name: 'Practice settings' }).click();
+  };
+  // It added the setup again after Play: Back opened the abandoned exercise on its Ready sheet, then the setup again.
+  await page.goto('./');
+  await page.getByRole('link', { name: /^Rhythm/ }).click();
+  await expect(page).toHaveURL(/#\/setup$/);
+  await page.getByRole('button', { name: /^Start · / }).click();
+  await expect(page).toHaveURL(/#\/play$/);
+  await settings();
+  await expect(page).toHaveURL(/#\/setup$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Free practice' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/(#\/)?$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeAttached();
+
+  // From a Learn practice link, Play gives its place to the setup: Back returns to the section.
+  await page.goto('./#/learn/5');
+  await page.getByRole('link', { name: 'Practice ties →' }).click();
+  await expect(page).toHaveURL(/#\/play\?from=5\.1$/);
+  await settings();
+  await expect(page).toHaveURL(/#\/setup\?from=5\.1$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\/5\?s=5\.1$/);
+});
+
 test('a rhythm lesson quits to the Path, as a note lesson does, and its Results lead back there (DESIGN.md §8.2)', async ({ page }) => {
   await seed(page, { progress: { lessons: SOL_DONE }, prefs: { seenHowTo: true, seenHold: true } });
   await page.setViewportSize(VIEWPORTS.phone);

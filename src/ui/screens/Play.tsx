@@ -21,13 +21,13 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { exerciseView, type ExerciseView } from '../exerciseView';
 import { SHORTER_PHONE, useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering, useMediaQuery, useReducedMotion } from '../hooks';
-import { useLearnReturn } from '../lib/learnReturn';
+import { useLearnReturn, type LearnReturn } from '../lib/learnReturn';
 import { barAt, liveAccuracy, windowStart } from '../lib/playMath';
 import { describeBars } from '../lib/notation';
 import { metersLabel } from '../lib/format';
 import { focusHeading, focusLost } from '../lib/screenFocus';
 import { guardFollowUpTap } from '../lib/tapGuard';
-import { leave, Link, navigate } from '../router';
+import { leave, Link, navigate, openedFrom, type Route } from '../router';
 import { runSetup, todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
@@ -52,6 +52,18 @@ export function Play(): JSX.Element | null {
   return <PlayRun run={run} view={view} />;
 }
 
+/**
+ * Where Quit goes. A run started from a Learn section (?from=1.1) returns there, and Results and the setup keep it; one
+ * started from a setup opened from Learn (?from=1, a chapter's Practice button) goes back to that setup, which still
+ * returns to the chapter, as on Read notes. Otherwise Home. A lesson quits to the Path, as a note lesson does
+ * (DESIGN.md §8.2), also when Home's Continue started it.
+ */
+function playExit(run: Run, back: LearnReturn | null, carry: string | undefined): { to: Route; query?: string } {
+  if (run.lessonId) return { to: '/path' };
+  if (carry && openedFrom('/setup', carry)) return { to: '/setup', query: carry };
+  return { to: back?.to ?? '/', query: back?.query };
+}
+
 /** Where the run comes from: "Lesson 2.3", "Daily challenge", "Free practice". */
 function runWhere(run: Run): string {
   if (run.lessonId) return t('play.lesson', { id: pathLessonOf('rhythm', run.lessonId)?.id ?? run.lessonId });
@@ -68,6 +80,7 @@ function EchoPlay({ run, view }: { run: Run; view: ExerciseView }): JSX.Element 
   const onPlayed = useCallback(() => setPlays((n) => n + 1), []);
   const onCancelled = useCallback(() => setPlays((n) => Math.max(0, n - 1)), []);
   const where = echoWhere(runWhere(run));
+  const { back, carry } = useLearnReturn();
   // A fresh run object for each attempt: Play starts it straight away (the tap on Tap it back is the gesture). On a
   // phone the tap-back card's Hear again comes in where Tap it back was: a double tap's second tap must not press it.
   const tapBack = (): void => {
@@ -90,7 +103,7 @@ function EchoPlay({ run, view }: { run: Run; view: ExerciseView }): JSX.Element 
   if (tapping) return <PlayRun run={run} view={view} echo={{ playsLeft: ECHO_PLAYS - plays, plays, onHearAgain: hearAgain }} />;
   return (
     <EchoListen run={run} view={view} where={where} playsLeft={ECHO_PLAYS - plays} autoPlay={autoPlay} onPlayed={onPlayed} onCancelled={onCancelled}
-      onTapBack={tapBack} />
+      onTapBack={tapBack} exit={playExit(run, back, carry)} />
   );
 }
 
@@ -115,11 +128,9 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const shorter = useMediaQuery(SHORTER_PHONE);
   const ex = run.exercise;
   const lesson = run.lessonId ? findLesson(run.lessonId) : null;
-  // Started from a Learn section (?from=1.1): Quit returns there, and Results and the setup keep it. A lesson quits to
-  // the Path, as a note lesson does (DESIGN.md §8.2), also when Home's Continue started it.
+  // Started from Learn (?from=1.1): Results and the setup keep it, and Quit goes back (playExit).
   const { back, carry } = useLearnReturn();
-  const exit = run.lessonId ? '/path' : (back?.to ?? '/');
-  const exitQuery = run.lessonId ? undefined : back?.query;
+  const exit = playExit(run, back, carry);
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
 
   const plays = echo?.plays;
@@ -263,11 +274,12 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const fbClass = 'judgement' + (s.feedback ? ' tone-' + s.feedback.tone : '');
   const fbText = s.phase === 'running' && s.feedback ? t(s.feedback.key) : echo && s.phase === 'running' ? t('play.echo.yourTurnCue') : ' ';
 
-  // Quit returns to Home (the Path for a lesson, or the Learn section), so that Back neither walks into the exercise
-  // again nor lands on that screen a second time (router.leave).
+  // Quit returns to Home (the Path for a lesson, the Learn section, or the setup opened from Learn), so that Back
+  // neither walks into the exercise again nor lands on that screen a second time (router.leave). Practice settings
+  // leaves for the setup the same way.
   const quit = (): void => {
     s.stop();
-    leave(exit, exitQuery);
+    leave(exit.to, exit.query);
   };
   const quitLink = (e: MouseEvent): void => {
     e.preventDefault();
@@ -276,7 +288,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   const toSettings = (): void => {
     s.stop();
     dispatch({ type: 'settings', settings: runSetup(run) });
-    navigate('/setup', { query: carry });
+    leave('/setup', carry);
   };
 
   const { shown: sheetShown, closing } = useLingering(s.sheet, 240);
@@ -338,7 +350,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
         <Icon name="pause" size={16} />
         {t('play.pause')} {keys && <kbd className="kbd kbd--bare">{t('pause.esc')}</kbd>}
       </button>
-      <Link to={exit} query={exitQuery} className="text-link-btn" onClick={quitLink}>
+      <Link to={exit.to} query={exit.query} className="text-link-btn" onClick={quitLink}>
         {t('play.quitShort')}
       </Link>
     </ExerciseHeader>
@@ -394,7 +406,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
       <div className="page play">
         <h1 className="sr-only">{t('play.heading')}</h1>
         <div className="play-top">
-          <Link to={exit} query={exitQuery} aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
+          <Link to={exit.to} query={exit.query} aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quitLink}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('play.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>

@@ -2,7 +2,8 @@
  * Scales hub (DESIGN.md §3.7): the circle of fifths with a Major / Minor switch, how many scales have two stars, and
  * the selected key: its notes, stars, *Options* and *Practice*, plus *Go round the circle*. A Home page: the tab bar
  * with Home current on phone, the top header on tablet and desktop, where the circle and the selected key sit side by
- * side (App design canvas, Tablet and Desktop · Scales).
+ * side (App design canvas, Tablet and Desktop · Scales). Opened from Learn chapter 11's Practice button (?from=11),
+ * its back arrow returns to the chapter, and the setup and the rounds it opens keep that.
  */
 import {
   CIRCLE,
@@ -25,6 +26,7 @@ import { CircleOfFifths, type Ring } from '../../components/CircleOfFifths';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { keySignsAria, letterName } from '../../lib/noteText';
 import { keyName, noteName, noteSpoken } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
@@ -48,6 +50,7 @@ export function ScalesHub(): JSX.Element {
   const bp = useBreakpoint();
   const kbd = useKeyboardHints(bp);
   const start = useStartScales();
+  const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('scales.title') }));
   const { tab, key } = state.scaleHub;
   const minor = tab === 'minor';
@@ -58,10 +61,10 @@ export function ScalesHub(): JSX.Element {
   const types: ScaleType[] = minor ? (s.types.some((x) => x !== 'major') ? s.types.filter((x) => x !== 'major') : [...MINOR_TYPES]) : ['major'];
   const preset = (patch: Partial<ScaleSettings>): ScaleSettings => ({ ...s, keyMode: 'one', keys: [key], types, ...patch });
   const options = (): void => dispatch({ type: 'scaleSettings', settings: preset({}) });
-  const practise = (): void => start(preset({}));
+  const practise = (): void => start(preset({}), { query: carry });
   const roundTheCircle = (): void => {
     dispatch({ type: 'scaleSettings', settings: preset({ keyMode: 'circle' }) });
-    navigate('/scales/setup');
+    navigate('/scales/setup', { query: carry });
   };
 
   const counts = doneCounts(stars);
@@ -112,7 +115,7 @@ export function ScalesHub(): JSX.Element {
   );
   const buttons = (
     <div className="hub-buttons">
-      <Link to="/scales/setup" className="btn btn--outline" onClick={options}>
+      <Link to="/scales/setup" query={carry} className="btn btn--outline" onClick={options}>
         {t('scales.hub.options')}
       </Link>
       <button type="button" className="btn btn--accent" onClick={practise}>
@@ -132,7 +135,8 @@ export function ScalesHub(): JSX.Element {
   );
   const head = (
     <div className="screen-head screen-head--link hub-head">
-      <Link to="/" aria-label={t('scales.hub.back')} className="icon-btn icon-btn--edge">
+      <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('scales.hub.back')}
+        className="icon-btn icon-btn--edge">
         <Icon name="back" />
       </Link>
       <h1 className="screen-title hub-title">{t('scales.title')}</h1>

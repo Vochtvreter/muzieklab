@@ -131,6 +131,21 @@ describe('Learn: a practice link opened in a new tab', () => {
   });
 });
 
+describe("Learn: a chapter's Practice button", () => {
+  it('opens the circle from chapter 11, whose back arrow returns to the chapter; from Home it goes Home', () => {
+    open('#/learn/11');
+    expect(screen.getByRole('link', { name: 'Practice scales' }).getAttribute('href')).toBe('#/scales?from=11');
+    cleanup();
+    open('#/scales?from=11');
+    expect(screen.getByRole('link', { name: 'Back to chapter 11' }).getAttribute('href')).toBe('#/learn/11?s=check');
+    expect(screen.getByRole('link', { name: 'Options' }).getAttribute('href')).toBe('#/scales/setup?from=11');
+    cleanup();
+    open('#/scales');
+    expect(screen.getByRole('link', { name: 'Back to Home' }).getAttribute('href')).toBe('#/');
+    expect(screen.getByRole('link', { name: 'Options' }).getAttribute('href')).toBe('#/scales/setup');
+  });
+});
+
 describe("Learn: a rhythm section's practice", () => {
   // newSeed's first seed, so a start that keeps it is one that did not look further.
   const seed = 12345;

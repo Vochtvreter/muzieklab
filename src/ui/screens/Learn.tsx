@@ -19,7 +19,8 @@ import { CHAPTERS, findChapter, PLANNED_CHAPTERS, parseNoteName, practiceShows, 
 import { stopLearnSound } from '../learn/Listen';
 import { announce } from '../lib/announce';
 import { letterName, spokenName } from '../lib/noteText';
-import { hashQuery, Link, navigate, parseHash, useHash, type Route } from '../router';
+import { focusHeading } from '../lib/screenFocus';
+import { hashQuery, Link, navigate, useHash, type Route } from '../router';
 import { todayIso, useStore } from '../store';
 import { useStartNotes } from './notes/start';
 import { useStartPractice } from './start';
@@ -42,14 +43,14 @@ const jumpTo = (id: string) => (): void => {
 /**
  * Where the reader is in a chapter (`page`, its scroller): for a link in the chapter's column, the section (or the
  * quick check, 'check') it is in or comes after, so the chapter's end is the quick check; for one around it (the
- * sidebar, the tab bar), the section at the top of the view: the last one whose top, less the margin jumpTo leaves
- * above it (its own scroll margin and the page's scroll padding), is at or above the top of the view, so jumpTo opens
- * the same view again and the place never moves on.
+ * sidebar, the tab bar), or no link, the section at the top of the view: the last one whose top, less the margin
+ * jumpTo leaves above it (its own scroll margin and the page's scroll padding), is at or above the top of the view, so
+ * jumpTo opens the same view again and the place never moves on.
  * Scrolled to the end, where the last sections cannot reach the top, it is the quick check, which jumpTo scrolls to the
  * end again. Null before the first section.
  */
-function placeOf(page: HTMLElement, link: Element, ids: string[]): string | null {
-  const inColumn = !!link.closest('.learn-main');
+function placeOf(page: HTMLElement, link: Element | null, ids: string[]): string | null {
+  const inColumn = link?.closest('.learn-main') ? link : null;
   const top = page.getBoundingClientRect().top + (parseFloat(getComputedStyle(page).scrollPaddingTop) || 0);
   const end = page.scrollTop > 0 && page.scrollTop + page.clientHeight >= page.scrollHeight - 1;
   const atTop = (el: Element): boolean => end || el.getBoundingClientRect().top - (parseFloat(getComputedStyle(el).scrollMarginTop) || 0) <= top + 1;
@@ -57,7 +58,7 @@ function placeOf(page: HTMLElement, link: Element, ids: string[]): string | null
   for (const id of [...ids, 'check']) {
     const el = document.getElementById(anchor(id));
     if (!el) continue;
-    if (inColumn ? el.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING : atTop(el)) place = id;
+    if (inColumn ? el.compareDocumentPosition(inColumn) & Node.DOCUMENT_POSITION_FOLLOWING : atTop(el)) place = id;
   }
   return place;
 }
@@ -354,10 +355,18 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
 
   // #/learn/10?s=10.2 opens at that section, and scrolls there again on the next frame: on tablet and desktop the
   // examples' staves are drawn after this, once their width is known, and at the chapter's end, where the page scrolls
-  // no further, they would leave it short of the end (elsewhere scroll anchoring keeps the section in place).
+  // no further, they would leave it short of the end (elsewhere scroll anchoring keeps the section in place). The
+  // browser's Back from a section jumped to, to the chapter's own address, opens its top again, where the reader was,
+  // and the heading takes the focus from the section.
   const target = hashQuery(hash).get('s');
+  const pageRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!target) return;
+    if (!target) {
+      const page = pageRef.current;
+      if (page) page.scrollTop = 0;
+      if (page?.contains(document.activeElement)) focusHeading();
+      return;
+    }
     jumpTo(target)();
     const frame = requestAnimationFrame(() => document.getElementById(anchor(target))?.scrollIntoView({ block: 'start' }));
     return () => cancelAnimationFrame(frame);
@@ -368,13 +377,14 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
   // built afresh on the way back, in its own scroller, so the browser cannot restore the place itself. In the capture
   // phase, before the link's own click opens the next screen, which keeps this address as where it came from (leave()).
   // Only the address changes (no hashchange), so the chapter never renders with the new ?s= and jumps on its way out.
-  const pageRef = useRef<HTMLDivElement>(null);
+  // So does a jump to a section (the sidebar, the chips): Back then returns to where the reader was before it, the
+  // chapter's top when that was above the first section, and not to the section jumped to.
   useEffect(() => {
     const onClick = (e: globalThis.MouseEvent): void => {
       const link = e.target instanceof Element ? e.target.closest('a') : null;
       const href = link?.getAttribute('href') ?? '';
       if (!link || !pageRef.current || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      if (!href.startsWith('#/') || (link.target && link.target !== '_self') || parseHash(href) === route) return;
+      if (!href.startsWith('#/') || (link.target && link.target !== '_self')) return;
       const place = placeOf(pageRef.current, link, sectionIds(chapter));
       const here = '#' + route + (place ? '?s=' + place : '');
       if (window.location.hash !== here) window.history.replaceState(window.history.state, '', here);
@@ -382,6 +392,42 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);
   }, [chapter, route]);
+
+  // A phone turned on its side takes the tablet layout (and back), in the same scroller (AppShell), so the answers and
+  // an example playing stay; but the text reflows, and the browser does not keep the place through that. The section
+  // at the top of the view, and how far into it, is noted as the reader scrolls, and a new width scrolls back there. A
+  // scroll the new width makes itself (the page got shorter) is not the reader's.
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page || typeof ResizeObserver === 'undefined') return;
+    const ids = sectionIds(chapter);
+    let width = page.clientWidth;
+    let at: { id: string; into: number } | null = null;
+    // Measured as jumpTo puts a section at the top: its scroll margin above it, under the page's scroll padding.
+    const margin = (el: Element): number => parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    const top = (): number => page.getBoundingClientRect().top + (parseFloat(getComputedStyle(page).scrollPaddingTop) || 0);
+    const note = (): void => {
+      if (page.clientWidth !== width) return;
+      const id = placeOf(page, null, ids);
+      const el = id ? document.getElementById(anchor(id)) : null;
+      // At the end the quick check may sit below the top: the end it is, as jumpTo scrolls there.
+      at = id && el ? { id, into: Math.max(0, (top() - el.getBoundingClientRect().top + margin(el)) / el.offsetHeight) } : null;
+    };
+    const keep = new ResizeObserver(() => {
+      if (page.clientWidth === width) return;
+      width = page.clientWidth;
+      const el = at ? document.getElementById(anchor(at.id)) : null;
+      if (!at || !el) return;
+      el.scrollIntoView({ block: 'start' });
+      page.scrollTop += at.into * el.offsetHeight;
+    });
+    page.addEventListener('scroll', note, { passive: true });
+    keep.observe(page);
+    return () => {
+      page.removeEventListener('scroll', note);
+      keep.disconnect();
+    };
+  }, [chapter]);
 
   // On a short screen the sidebar scrolls on its own, and it is built afresh for each chapter: it starts with the open
   // chapter in view (its title, and its sections as far as they fit), the last ones of the list too. Its own scroll
@@ -485,8 +531,7 @@ export function LearnChapter({ chapter }: { chapter: Chapter }): JSX.Element {
           )}
 
           <div className="learn-end">
-            <Link to={chapter.practice === 'notes' ? '/notes' : chapter.practice === 'scales' ? '/scales' : '/setup'} query={chapter.practice === 'scales' ? undefined : 'from=' + chapter.n}
-              className="btn btn--accent">
+            <Link to={chapter.practice === 'notes' ? '/notes' : chapter.practice === 'scales' ? '/scales' : '/setup'} query={'from=' + chapter.n} className="btn btn--accent">
               {t(chapter.practice === 'notes' ? 'learn.practice' : chapter.practice === 'scales' ? 'learn.practiceScales' : 'learn.practiceRhythm')}
             </Link>
             <Link to="/learn" className="ghost-btn learn-all">

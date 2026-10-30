@@ -27,8 +27,8 @@ export function Setup(): JSX.Element {
   const start = useStartPractice();
   const [previewSeed, setPreviewSeed] = useState(() => newSeed());
   const [more, setMore] = useState(false);
-  // Opened from a Learn section: Back returns there.
-  const { back } = useLearnReturn();
+  // Opened from a Learn section or a chapter's Practice button: Back returns there, and the run Start begins keeps it.
+  const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('setup.title') }));
 
   const s: Settings = practiceSettings(state, state.settings);
@@ -258,7 +258,7 @@ export function Setup(): JSX.Element {
                 {t(blockedKey)}
               </button>
             ) : (
-              <button type="button" className="btn btn--accent start-btn" onClick={() => start(s)}>
+              <button type="button" className="btn btn--accent start-btn" onClick={() => start(s, { query: carry })}>
                 {t('setup.start', { bars: t('common.bars', { count: s.bars }) })}
               </button>
             )}

@@ -18,7 +18,7 @@ import { useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLin
 import { metersLabel } from '../lib/format';
 import { beatAt, type BeatState } from '../lib/playMath';
 import { focusLost } from '../lib/screenFocus';
-import { leave, Link } from '../router';
+import { leave, Link, type Route } from '../router';
 import { useStore, type Run } from '../store';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
 import { STOPPED_AUDIO } from './playSession';
@@ -58,10 +58,12 @@ interface ListenProps {
   /** A listen cut off before its end (the app left, the audio stopped): it is not counted. */
   onCancelled(): void;
   onTapBack(): void;
+  /** Where Quit goes, as on Play: Home, or back to Learn or the setup opened from it. */
+  exit: { to: Route; query?: string };
 }
 
 /** Listen: a big play button, the plays left, the beat counter and the (not yet active) pad. */
-export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, onCancelled, onTapBack }: ListenProps): JSX.Element {
+export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, onCancelled, onTapBack, exit }: ListenProps): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
@@ -171,7 +173,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     e.preventDefault();
     stopLoop();
     engine().stop();
-    leave('/');
+    leave(exit.to, exit.query);
   };
   const closeHelp = (): void => {
     setHelp(null);
@@ -247,7 +249,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
           aria-label={t(keys ? 'play.helpShortcut' : 'play.help')} title={t(keys ? 'play.helpTitle' : 'play.help')} onClick={() => setHelp('help')}>
           <Icon name="help" size={20} strokeWidth={1.8} />
         </button>
-        <Link to="/" className="text-link-btn" onClick={quit}>
+        <Link to={exit.to} query={exit.query} className="text-link-btn" onClick={quit}>
           {t('play.quitShort')}
         </Link>
       </ExerciseHeader>
@@ -290,7 +292,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
       <div className="page play echo">
         <h1 className="sr-only">{t('play.echo.listenTitle')}</h1>
         <div className="play-top">
-          <Link to="/" aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quit}>
+          <Link to={exit.to} query={exit.query} aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quit}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('play.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={heard ? 10 : 5}>

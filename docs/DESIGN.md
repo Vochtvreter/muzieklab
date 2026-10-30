@@ -406,7 +406,8 @@ Learn and practice major and minor scales in all 15 keys.
   the circle* (all 15 in circle order).
 - **Where the hub sits:** it is a Home page, opened from Home's Scales tile, so it keeps the
   app's navigation with Home current (§9): the tab bar on phone, with a back arrow as on a
-  Learn chapter; the top header on tablet and desktop. Tablet and desktop put the circle and
+  Learn chapter; the top header on tablet and desktop. Opened from Learn chapter 11's Practice button, its back arrow
+  returns to the chapter (*Back to chapter 11*, §9.1). Tablet and desktop put the circle and
   the selected key side by side: the key signature, the stars per form (one rating for major,
   natural / harmonic / melodic for minor), the scale's notes and *Options* / *Practice*.
 - **Starts on C major** (since 0.8.0): no sharps or flats and only white keys, where method books start; G, one sharp,
@@ -461,7 +462,7 @@ Learn and practice major and minor scales in all 15 keys.
 - **Round done** lists each scale with its mistakes and stars (a scale with mistakes is
   marked *Came back at the end of the round*) and how far the circle is filled, with
   *Change setup* and *New round* (the same setup: shuffled again, or round the circle in circle order again). Its back
-  arrow goes to the Scales hub.
+  arrow goes to the Scales hub, or to the Learn section or chapter the round was started from (§9.1).
 - **Layout:** setup, play, spell and round done are exercise screens (no tab bar or header):
   the phone layout, in the 640 px column on tablet. On desktop, play and spell use the wide
   exercise layout of Read notes: the exercise header (title, scale *n* of *m*, progress,
@@ -1612,7 +1613,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   v1.5). The active item has the soft slate pill and `aria-current="page"`. Tablet keeps the icon
   with each word and puts the items on the right; desktop puts them right after the brand, as words
   only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile, a
-  Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow.
+  Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow. A phone turned on its
+  side (844 px) gets the header around the same page: a Learn chapter is not built again, so it keeps its place and
+  answers (§9.1).
   Since 0.19.0 there are five items, **Home · Path · Learn · Progress · Settings**: Progress is the 4th, with a
   three-bar icon (MVP canvas, Home & shell page, the *Home · 5-item tab bar* boards), *Voortgang* in Dutch. The phone's
   tab bar has five equal columns (the pill still fits at 320 px, in Dutch too). On a narrow tablet (700–820 px) the
@@ -1870,25 +1873,37 @@ tables and diagrams keep their words apart too, at every width and in Dutch:
   instead of adding the section again, so one Back after them leaves the chapter. Every exercise's Quit, and the back
   arrow of Results and Round done, does this when it returns to the screen it was opened from: Read notes to its setup,
   Scales to the Scales tab, Play to Home, a lesson to the Path. Otherwise the finished screen gives its place in the
-  history to where the arrow goes, so Back never opens it again. A Read notes setup opened from a chapter (`?from=8`,
-  its Practice button or Round done's *Change setup*) passes it on to the round its Start starts: Quit goes back to that
-  setup, still *Back to chapter 8*, and Round done's back arrow to the chapter.
+  history to where the arrow goes, so Back never opens it again. Pause's *Practice settings* leaves Play for the setup
+  the same way: back to the setup Play was opened from, else in Play's place. A setup opened from a chapter or a
+  section (`?from=8`: its Practice button, Results' *Practice settings* or Round done's *Change setup*), for Read
+  notes, rhythm and Scales alike, passes it on to the round its Start starts: Quit goes back to that setup, still *Back
+  to chapter 8*, and the back arrow of Results or Round done to the chapter. So does the Scales tab opened from chapter
+  11's Practice button (`?from=11`): its back arrow returns to the chapter's end, and *Options*, *Practice* and *Go
+  round the circle* keep it; a round started there quits to the Scales tab, still *Back to chapter 11*.
 - A practice link opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift) starts the same practice
   there: its address, `#/learn/practice?s=8.3`, sets up the section's practice in its own place. A plain click starts
   it in the same tab. No tap led to the new tab, so the browser does not let it make sound yet: a rhythm practice
   opened this way waits on the Ready sheet and its *Start*, as after a reload (§3.1).
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
-- Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.
+- Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup (chapter 11's
+  the Scales tab, its circle of fifths).
 
 **The browser's Back to a chapter** opens it where the reader left it, not at its top (the chapter is built afresh in
 its own scroller, so the browser cannot keep the place). Every link that leaves a chapter first sets the chapter's own
 place in the history to where the reader is (`?s=`), as the practice links do: for a link in the chapter, the section
 it is in, and for those at its end (previous / next, the Practice button, *Back to all chapters*) the quick check
 (`?s=check`); for the sidebar or the tab bar, the section at the top of the view, or the quick check when the chapter
-is scrolled to its end, where its last sections cannot reach the top. A screen opened from the chapter's Practice
+is scrolled to its end, where its last sections cannot reach the top. A jump to a section (the sidebar, the tablet's
+chips) sets the place the same way first, so Back returns to where the reader was before it, or to the chapter's top
+when that was above the first section, with the focus on the title. A screen opened from the chapter's Practice
 button returns to its end too (its back arrow, Quit). Back to the Learn tab opens the chapter that was open there;
 otherwise the tab opens the first one not done.
+
+**A phone turned on its side** is tablet-wide and gets the top header in place of the tab bar (§9), but the chapter
+stays as it was: its quick-check answers, an example still playing with its *Stop*, and the reader's place, the
+section at the top of the view and how far into it, which the new width scrolls back to (the text reflows, and the
+browser does not keep the place through that).
 
 **Hearing the examples** (since 0.10.0). Examples that show music can be heard. A small round slate play button sits
 with the example: a 36 px accent circle in a 44 px touch target, with an on-fill icon and the label *Play* / *Stop*.
