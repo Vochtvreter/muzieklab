@@ -52,6 +52,12 @@ describe('buildIssue', () => {
     expect(buildIssue(area).body).toContain('- **Marked:** an area around button “Start”');
   });
 
+  it('takes a title or description that shows nothing (a zero-width space) as none', () => {
+    const d = buildIssue(report({ title: '\u200b', description: '\u200b\u2060', kind: 'bug' }));
+    expect(d.title).toBe('Bug: button “Start” on /setup');
+    expect(d.body).toContain('### What should change\n\n_No description._\n');
+  });
+
   it('keeps backticks in a selector from breaking its code span', () => {
     const d = buildIssue(report({ target: { ...report().target, selector: 'a`b' } }));
     expect(d.body).toContain("`a'b`");

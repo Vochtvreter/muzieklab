@@ -5,7 +5,7 @@
  * Dates are ISO 8601 strings. Every error is an ApiErrorBody with a stable `error` code the app translates.
  */
 
-import type { FeedbackReport, FeedbackStatus } from './feedback.js';
+import { showsNothing, type FeedbackReport, type FeedbackStatus } from './feedback.js';
 
 // --- roles, permissions, entitlements (BACKEND-PLAN.md §4) ------------------------------------------------------
 
@@ -497,19 +497,17 @@ export const PASSWORD_MAX = 128;
 // Name rules, the same on both sides: an account's name and a custom role's (BACKEND-PLAN.md §3.1, §3.8).
 
 /**
- * What shows nothing: spaces, and characters such as the zero-width space, the word joiner, the Hangul filler and the
- * blank Braille pattern (U+2800, which draws no ink).
- */
-const NAME_INVISIBLE = /[\s\p{Default_Ignorable_Code_Point}\u2800]/gu;
-/**
  * Control characters (a tab pasted from a spreadsheet), and bidi embeddings, overrides and isolates, which turn the
  * text after them around: a name could read as another word in a list or in an invite's message. The joiners an emoji
  * or a Persian name needs are not among them.
  */
 const NAME_REFUSED = /[\p{Cc}\u202A-\u202E\u2066-\u2069]/u;
 
-/** Whether a name shows nothing, so is as good as empty: only spaces, or characters that show nothing. */
-export const nameShowsNothing = (name: string): boolean => !name.replace(NAME_INVISIBLE, '');
+/**
+ * Whether a name shows nothing, so is as good as empty: only spaces, or characters that show nothing (the zero-width
+ * space…), as a feedback report's description (feedback.ts, showsNothing).
+ */
+export const nameShowsNothing: (name: string) => boolean = showsNothing;
 /** Whether a name holds a control or bidi character, which the API refuses in it (NAME_REFUSED). */
 export const nameHasRefusedCharacters = (name: string): boolean => NAME_REFUSED.test(name);
 

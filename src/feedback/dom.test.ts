@@ -97,6 +97,29 @@ describe('partAt', () => {
     // Outside any control or picture, the element itself.
     expect(at(document.querySelector('p')!)).toBe('text “Below”');
   });
+
+  it('marks the field a tap on its label is for, named by that label, as the keyboard picks it', () => {
+    document.body.innerHTML = `
+      <div class="tfield"><label for="pw" class="tfield-label">New password</label><input id="pw" type="password"></div>
+      <div><label for="language"><b>Language</b></label><select id="language"><option>English</option></select></div>
+      <div><label for="gone">Gone</label><input id="gone" style="visibility: hidden"></div>`;
+    const at = (el: Element): string => {
+      const up: Element[] = [];
+      for (let n: Element | null = el; n && n !== document.body; n = n.parentElement) up.push(n);
+      document.elementsFromPoint = () => [...up, document.body, document.documentElement];
+      return describeElement(partAt(0, 0)!);
+    };
+    // jsdom lays nothing out and has no checkVisibility: every element gets a box.
+    const rects = vi.spyOn(Element.prototype, 'getClientRects').mockReturnValue([new DOMRect(0, 0, 10, 10)] as unknown as DOMRectList);
+    try {
+      expect(at(document.querySelector('label[for="pw"]')!)).toBe('field “New password”');
+      expect(at(document.querySelector('label[for="language"] b')!)).toBe('list “Language”');
+      // A field that is not shown: its label, which is what can be seen there.
+      expect(at(document.querySelector('label[for="gone"]')!)).toBe('label “Gone”');
+    } finally {
+      rects.mockRestore();
+    }
+  });
 });
 
 describe('targetFor', () => {

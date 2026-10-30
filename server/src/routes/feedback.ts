@@ -6,6 +6,7 @@ import {
   FEEDBACK_KINDS,
   FEEDBACK_NOTE_MAX,
   FEEDBACK_STATUSES,
+  showsNothing,
   type FeedbackDetail,
   type FeedbackListResponse,
   type FeedbackMode,
@@ -127,7 +128,9 @@ export const feedbackRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (ap
     async (request): Promise<FeedbackSaved> => {
       const actor = signedIn(request).account;
       const { kind, title, description, target, context } = request.body;
-      if (!description.trim()) throw new ApiError('bad_request', 'Say what should change');
+      // Only spaces, or characters that show nothing (a zero-width space pasted in), say nothing: the admin would read an
+      // empty report.
+      if (showsNothing(description)) throw new ApiError('bad_request', 'Say what should change');
       // The settings are the one part of the report the schema leaves open, and they are stored as they come: no key may
       // be one of MongoDB's operators, as in synced progress.
       const problem = storableProblem(context.prefs);

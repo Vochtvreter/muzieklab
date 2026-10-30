@@ -96,11 +96,11 @@
 /*
  * A portrait phone, where the staff card runs to the 16 px gutter: the card stops before the tab (44 px less the
  * gutter, and a gap), so no note, rest or bar line of the staff, nor the current note's column, lies under it. The
- * staves draw themselves in the room they are given. As long as the tool is on, also while marking, so the staff does
- * not move under the finger.
+ * staves draw themselves in the room they are given. Calibrate's card too, level with the tab: its count and delay are
+ * read while tapping. As long as the tool is on, also while marking, so the staff does not move under the finger.
  */
 @media (max-width: 699.98px) and (orientation: portrait) {
-  .frame:has(~ .fb-root) :is(.play-staff, .nplay-staff) {
+  .frame:has(~ .fb-root) :is(.play-staff, .nplay-staff, .cal-card) {
     margin-right: calc(32px + env(safe-area-inset-right, 0px));
   }
 }
@@ -115,11 +115,13 @@
   user-select: none;
   -webkit-user-select: none;
 }
+/* Centred by its margins, not a transform: the m-in motion it comes in with sets a transform of its own. */
 .fb-bar {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
   width: min(560px, calc(100% - 24px));
   display: flex;
   align-items: center;

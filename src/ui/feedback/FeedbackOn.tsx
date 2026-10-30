@@ -5,9 +5,9 @@
  * to review in Settings → Account → Feedback (feedback.review). Nothing goes to GitHub from here: an admin picks what
  * does. FeedbackTool.tsx loads it.
  */
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import pkg from '../../../package.json';
-import { buildIssue, FEEDBACK_DESCRIPTION_MAX, FEEDBACK_KINDS, type FeedbackKind, type FeedbackReport, type FeedbackSaved, type FeedbackTarget, type Rect } from '../../../shared/feedback';
+import { buildIssue, FEEDBACK_DESCRIPTION_MAX, FEEDBACK_KINDS, showsNothing, type FeedbackKind, type FeedbackReport, type FeedbackSaved, type FeedbackTarget, type Rect } from '../../../shared/feedback';
 import { api, type ApiError } from '../../api/client';
 import { boxFrom, captureContext, describeElement, markableParts, partAt, targetFor, TOOL_ATTR } from '../../feedback/dom';
 import { getLocale, hasMessage, t } from '../../i18n';
@@ -63,9 +63,14 @@ interface Draft {
 }
 const EMPTY: Draft = { kind: 'change', title: '', description: '' };
 
-/** `onHide`: the account turns the button off on this device (Settings → Account turns it on again). */
-export function FeedbackOn({ onHide }: { onHide(): void }): JSX.Element {
+/**
+ * `onHide`: the account turns the button off on this device (Settings → Account turns it on again). `onOpen`: whether
+ * the tool is open (marking, or the sheet), so FeedbackTool keeps it until it is closed.
+ */
+export function FeedbackOn({ onHide, onOpen }: { onHide(): void; onOpen?(open: boolean): void }): JSX.Element {
   const [step, setStep] = useState<Step>('idle');
+  // Before the browser draws: closed once the account has gone, the tool goes without showing its button again.
+  useLayoutEffect(() => onOpen?.(step !== 'idle'), [step]);
   const [marked, setMarked] = useState<Marked | null>(null);
   // Each mark gets a fresh form (the screen captured again, nothing sent yet); what was typed stays through Mark again,
   // and only a new report (the Feedback button, Mark another) starts empty.
@@ -318,7 +323,8 @@ function FeedbackForm({ target, name, draft, onDraft, onClose, onLeave, onRemark
     captureContext({ version: pkg.version, route, themeSetting: state.prefs.theme, locale: getLocale(), prefs: state.prefs }),
   );
   const report: FeedbackReport = { kind, title, description, target, context };
-  const ready = description.trim().length > 0;
+  // Only spaces, or a zero-width space pasted in, say nothing: the API refuses that.
+  const ready = !showsNothing(description);
   const mounted = useMounted();
   const issue = buildIssue(report);
   const markdown = `# ${issue.title}\n\n${issue.body}`;

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Me } from '../../../shared/api';
 import { ACCOUNT_KEY } from '../../game/storage';
@@ -85,6 +85,47 @@ describe('Feedback tool: feedback mode', () => {
     open();
     await new Promise((r) => setTimeout(r, 50));
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: FAB })).toBeNull();
+  });
+});
+
+describe('Feedback tool: the session ends while the sheet is open', () => {
+  it('Send says so in the sheet and keeps what was typed; the tool goes once it is closed', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(TESTER));
+    me = { ...TESTER, feedbackMode: true };
+    // A new password on another device: the report and the renewal both say the session ended.
+    fetchMock.mockImplementation((path: string) =>
+      Promise.resolve(path === '/api/v1/me' ? json(200, me) : json(401, { error: 'unauthenticated', message: '' })),
+    );
+    render(
+      <StoreProvider>
+        <main className="frame">
+          <button type="button" className="start-btn">
+            Start
+          </button>
+        </main>
+        <FeedbackTool />
+      </StoreProvider>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: FAB }, { timeout: 5000 }));
+    const start = screen.getByRole('button', { name: 'Start' });
+    document.elementsFromPoint = () => [start];
+    const layer = screen.getByRole('dialog', { name: /^Click the part you mean/ });
+    fireEvent.pointerDown(layer, { clientX: 40, clientY: 40, pointerType: 'mouse' });
+    fireEvent.pointerUp(layer, { clientX: 40, clientY: 40, pointerType: 'mouse' });
+    fireEvent.click(layer, { clientX: 40, clientY: 40 });
+    const form = await screen.findByRole('dialog', { name: 'Feedback' });
+    const desc = within(form).getByPlaceholderText('What is wrong here, and what you expect instead') as HTMLTextAreaElement;
+    fireEvent.change(desc, { target: { value: 'Start is cut off.' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe("You're signed out. Sign in again to go on."));
+    expect(screen.getByRole('dialog', { name: 'Feedback' })).toBe(form);
+    expect(desc.value).toBe('Start is cut off.');
+    expect(fetchMock.mock.calls.some((c) => String(c[0]) === '/api/v1/auth/refresh')).toBe(true);
+    // Signed out meanwhile: closed, the tool and its button go.
+    fireEvent.click(within(form).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Feedback' })).toBeNull());
     expect(screen.queryByRole('button', { name: FAB })).toBeNull();
   });
 });

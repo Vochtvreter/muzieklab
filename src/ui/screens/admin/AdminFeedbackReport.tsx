@@ -15,7 +15,7 @@
  * Needs `feedback.review`. A report deleted meanwhile says so, with the way back to the list.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { buildIssue, FEEDBACK_NOTE_MAX, FEEDBACK_STATUSES, type FeedbackDetail, type FeedbackReport, type FeedbackStatus, type FeedbackUpdateRequest } from '../../../../shared/feedback';
+import { buildIssue, FEEDBACK_NOTE_MAX, FEEDBACK_STATUSES, showsNothing, type FeedbackDetail, type FeedbackReport, type FeedbackStatus, type FeedbackUpdateRequest } from '../../../../shared/feedback';
 import { api } from '../../../api/client';
 import { formatDateTime, formatLongDate, hasMessage, LOCALES, t } from '../../../i18n';
 import { useAccount } from '../../account';
@@ -150,7 +150,7 @@ function ReportCard({ detail }: { detail: FeedbackDetail }): JSX.Element {
       <Facts rows={[{ label: t('feedbackReview.kind'), value: kindName(detail.kind) }]} />
       <div className="report-text">
         <b>{t('feedbackReview.description')}</b>
-        {text.trim() ? <p className="report-quote">{text}</p> : <p className="row-sub">{t('feedbackReview.noDescription')}</p>}
+        {showsNothing(text) ? <p className="row-sub">{t('feedbackReview.noDescription')}</p> : <p className="report-quote">{text}</p>}
       </div>
     </Section>
   );

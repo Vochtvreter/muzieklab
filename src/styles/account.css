@@ -335,6 +335,10 @@
   flex-direction: column;
   gap: 6px;
 }
+/* Reviewed by a name with no space: it breaks inside the card. */
+.review-choice .tfield-hint {
+  overflow-wrap: anywhere;
+}
 /* A confirm that loses nothing (Sign out everywhere): the question in ink, not the danger red. */
 .reset-text.is-plain b {
   color: var(--ink);
@@ -862,11 +866,13 @@
   font-size: 15px;
   font-weight: 700;
 }
+/* A word too long for the card (a name with no space) breaks inside it. */
 .fact-row dd {
   margin: 0;
   font-size: 14px;
   color: var(--muted);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 /* A long value (a feedback report's marked text, its selector, the browser): under its label, read from the left. */
 .fact-row--long dd {

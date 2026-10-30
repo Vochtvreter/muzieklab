@@ -124,12 +124,14 @@ const WHOLE = 'a[href], button, summary, label, [role="button"], [role="switch"]
 /**
  * The part a tap, a click or a drawn box's centre marks at a point: the control or picture the element there is in, the
  * outermost one, as the arrow keys pick it (markableParts), else that element. A tap on a tab's icon marks the tab, and
- * one on a word of a button the button, so the report names and lights what was meant.
+ * one on a word of a button the button, so the report names and lights what was meant. A field's label (beside its
+ * field, not around it) marks the field it is for, which the arrow keys pick and name by that label.
  */
 export function partAt(x: number, y: number, doc: Document = document): Element | null {
   let part = elementAt(x, y, doc);
   for (let up = part?.closest(WHOLE); up; up = up.parentElement?.closest(WHOLE)) part = up;
-  return part;
+  const field = part?.tagName === 'LABEL' ? (part as HTMLLabelElement).control : null;
+  return field && shows(field) ? field : part;
 }
 
 /**

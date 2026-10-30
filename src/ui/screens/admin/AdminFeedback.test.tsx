@@ -381,6 +381,16 @@ describe('Admin: one feedback report', () => {
     expect(within(screen.getByRole('group', { name: 'Status' })).getByRole('button', { name: 'Accepted' }).getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('a title or description that shows nothing (a zero-width space) reads as none', async () => {
+    const blank: FeedbackReport = { ...B_REPORT, title: '\u200b', description: '\u200b\u2060' };
+    const stored = detailOf({ ...B, title: blank.title, description: blank.description }, blank);
+    const api = feedbackApi();
+    answer = (path, init) => (path === '/api/v1/admin/feedback/' + ID_B ? json(200, stored) : api(path, init));
+    inStore(<AdminFeedbackReport id={ID_B} />);
+    await screen.findByRole('heading', { level: 1, name: 'Bug on #/settings' });
+    expect(screen.getByRole('region', { name: 'Report' }).textContent).toContain('No description.');
+  });
+
   it('saves the status at once and the note with Save, and says who reviewed it', async () => {
     answer = feedbackApi();
     inStore(<AdminFeedbackReport id={ID_A} />);

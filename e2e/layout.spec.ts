@@ -109,12 +109,13 @@ async function expectWordsInRow(row: Locator): Promise<void> {
 }
 
 /**
- * A feedback report's facts (the label, and its value beside or under it) and its description stay inside their cards:
- * a long value (the selector, the browser, a word with no spaces) wraps instead of running out of the card or being cut.
+ * A feedback report's facts (the label, and its value beside or under it), its description and who reviewed it stay
+ * inside their cards: a long value (the selector, the browser, a word with no spaces) wraps instead of running out of
+ * the card or being cut.
  */
 async function expectFactsInCards(page: Page): Promise<void> {
   const out = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('.facts dt, .facts dd, .report-quote')]
+    [...document.querySelectorAll<HTMLElement>('.facts dt, .facts dd, .report-quote, .review-choice .tfield-hint')]
       .filter((el) => el.offsetParent !== null)
       .flatMap((el) => {
         const card = el.closest('.set-card')?.getBoundingClientRect();
@@ -3584,6 +3585,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('admin one feedback report: a long one-word name, of who sent it and who reviewed it, wraps inside its card', async ({ page }) => {
+        // As long as a name may be (80 characters), in the widest letter, with no space to break at.
+        const long = { id: ME_MEMBER.id, name: 'W'.repeat(80) };
+        const report = { ...FEEDBACK[3], author: long, reviewer: long };
+        await mockApi(page, { ...ADMIN, ...feedbackServer([report]).routes });
+        await page.goto('./#/admin/feedback/' + report.id);
+        await expect(page.getByRole('region', { name: 'Sent', exact: true })).toContainText(long.name);
+        await expect(page.getByRole('region', { name: 'Review', exact: true })).toContainText('Reviewed by ' + long.name);
+        await expectFactsInCards(page);
+        await expectNoSideScroll(page);
+      });
+
       test('admin feedback: no access, a list that does not come, no reports yet, and a report that is gone', async ({ page }) => {
         known(name, 'admin-feedback-states');
         const api = await mockApi(page, { ...MEMBER, ...feedbackServer().routes });
@@ -4335,6 +4348,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Got it' }).click();
       await clearOf(page.locator(':is(.play-staff, .tplay-staff, .dplay-staff) svg'));
       await clearOf(page.getByRole('button', { name: /^(Tap pad|Pause)$/ }));
+      // Calibrate: the count and the delay, read while tapping, the pips and the pad.
+      await page.goto('./#/calibrate');
+      await clearOf(page.locator('.cal-stats > .cal-stat, .pips, .cal .pad'));
       // A form on its own: the account's own new-password link.
       await page.goto('./#/reset/' + TOKEN);
       await expect(page.getByLabel('New password')).toBeVisible();
@@ -4497,6 +4513,31 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('dialog', { name: 'Feedback' }).locator('.fb-marked')).toContainText(`“${hidden!.name}”`);
     });
 
+    test('the hint bar comes in centred and on screen: it only fades in and drops 4 px', async ({ page }) => {
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await page.getByRole('button', { name: FAB }).click();
+      await expect(page.locator('.fb-bar')).toBeVisible();
+      // Its way in, held at each moment: where the bar is then.
+      const frames = await page.evaluate(() => {
+        const bar = document.querySelector('.fb-bar')!;
+        const [motion] = bar.getAnimations();
+        motion.pause();
+        return [0, 50, 110, 220].map((t) => {
+          motion.currentTime = t;
+          const r = bar.getBoundingClientRect();
+          return { t, centre: r.left + r.width / 2, left: r.left, right: r.right, width: window.innerWidth };
+        });
+      });
+      for (const f of frames) {
+        expect(Math.abs(f.centre - f.width / 2), `centred at ${f.t} ms`).toBeLessThanOrEqual(1);
+        expect(f.left, `on screen at ${f.t} ms`).toBeGreaterThanOrEqual(0);
+        expect(f.right, `on screen at ${f.t} ms`).toBeLessThanOrEqual(f.width);
+      }
+    });
+
     test('the box with its scroll offset finds Start again, sticky as it is, on the page scrolled to its top', async ({ page }) => {
       const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
       await seedAccount(page, ME_ADMIN);
@@ -4605,6 +4646,12 @@ test.describe('feedback: the keyboard, and the marked part’s name', () => {
     await page.goto('./#/account');
     const field = page.getByLabel('New password');
     await field.fill('pw-secret-e2e');
+    // A click on the field's label marks the field, with the field's box.
+    expect(await markAt(page.locator('label.tfield-label', { hasText: /^New password$/ }))).toBe('field “New password”');
+    const [spot, box] = await Promise.all([page.locator('.fb-spot').boundingBox(), field.boundingBox()]);
+    expect(spot!.width).toBeCloseTo(box!.width, 0);
+    expect(spot!.height).toBeCloseTo(box!.height, 0);
+    await close();
     expect(await markAt(field)).toBe('field “New password”');
     await form.getByLabel('What should change?').fill('The rules are hard to read.');
     await form.getByRole('button', { name: 'Send', exact: true }).click();
@@ -4733,6 +4780,23 @@ test.describe('feedback: when saving fails, Review it, and hiding the button', (
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await toggle.click();
     await expect(fab).toBeVisible();
+  });
+
+  test('a session that ended meanwhile (a new password on another device): the form says so and keeps what was typed', async ({ page }) => {
+    await mockApi(page, { ...ADMIN, ...feedbackServer().routes, 'POST /feedback': apiError('unauthenticated', 401), 'POST /auth/refresh': apiError('unauthenticated', 401) });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/');
+    const form = await markStart(page);
+    await form.getByLabel('What should change?').fill('Start lesson does nothing on the first tap.');
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(form.getByRole('alert')).toHaveText("You're signed out. Sign in again to go on.");
+    await expect(form.getByLabel('What should change?')).toHaveValue('Start lesson does nothing on the first tap.');
+    await expect(form.getByRole('button', { name: 'Bug' })).toHaveAttribute('aria-pressed', 'true');
+    await expectNoOverlap(form.getByRole('alert'), form.getByRole('button', { name: 'Send', exact: true }));
+    // Closed, the tool goes: nobody is signed in any more.
+    await page.keyboard.press('Escape');
+    await expect(form).toHaveCount(0);
+    await expect(page.getByRole('button', { name: FAB })).toHaveCount(0);
   });
 
   test('an admin goes from the saved report to it: Review it closes the tool and opens the report', async ({ page }) => {

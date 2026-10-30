@@ -150,6 +150,19 @@ describe('Feedback tool: sending a report', () => {
     expect(sent()).toHaveLength(2);
   });
 
+  it('a description that shows nothing (spaces, or a zero-width space pasted in) is none: Send and Copy wait for one', async () => {
+    await markStart();
+    const area = screen.getByPlaceholderText(DESC);
+    const send = (): HTMLButtonElement => screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement;
+    for (const value of ['   ', '\u200b', ' \u2060\n\u3164 ', '\u2800\u00ad']) {
+      fireEvent.change(area, { target: { value } });
+      expect(send().disabled, JSON.stringify(value)).toBe(true);
+      expect((screen.getByRole('button', { name: 'Copy' }) as HTMLButtonElement).disabled).toBe(true);
+    }
+    fireEvent.change(area, { target: { value: '\u200bStart is cut off.' } });
+    expect(send().disabled).toBe(false);
+  });
+
   it('the description takes no more than the API stores', async () => {
     await markStart();
     const area = screen.getByPlaceholderText('What is wrong here, and what you expect instead') as HTMLTextAreaElement;

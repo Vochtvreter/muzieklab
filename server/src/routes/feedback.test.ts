@@ -241,6 +241,11 @@ describe('POST /feedback', () => {
     const prefs = (value: unknown) => ({ ...report, context: { ...report.context, prefs: value } });
     for (const payload of [
       { ...report, description: '   ' },
+      // Characters that show nothing (a paste): a zero-width space; a word joiner, a line break and a Hangul filler; a
+      // blank Braille pattern and a soft hyphen.
+      { ...report, description: '\u200b' },
+      { ...report, description: ' \u2060\n\u3164 ' },
+      { ...report, description: '\u2800\u00ad' },
       // Longer than the app's field lets anyone type.
       { ...report, description: 'x'.repeat(FEEDBACK_DESCRIPTION_MAX + 1) },
       { ...report, kind: 'rant' },
@@ -261,6 +266,7 @@ describe('POST /feedback', () => {
     // Dots and dollars inside keys and values are only text.
     expect((await send(t, admin.cookie, prefs({ 'a.b': '$1', price$: 2 }))).statusCode).toBe(200);
     expect((await send(t, admin.cookie, { ...report, description: 'x'.repeat(FEEDBACK_DESCRIPTION_MAX) })).statusCode).toBe(200);
+    expect((await send(t, admin.cookie, { ...report, description: '\u200bStart is hidden.' })).statusCode).toBe(200);
   });
 
   it(`takes at most ${FEEDBACK_PER_HOUR} reports an hour from one account`, async () => {

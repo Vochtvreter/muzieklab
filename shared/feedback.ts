@@ -71,6 +71,17 @@ export interface FeedbackContext {
 /** The longest description the API stores (counted as code points; a text field's maxLength counts no fewer). */
 export const FEEDBACK_DESCRIPTION_MAX = 5000;
 
+/**
+ * What shows nothing: spaces and line breaks, and characters such as the zero-width space, the word joiner, the Hangul
+ * filler and the blank Braille pattern (U+2800, which draws no ink).
+ */
+const INVISIBLE = /[\s\p{Default_Ignorable_Code_Point}\u2800]/gu;
+/**
+ * Whether a text shows nothing, so is as good as empty: a description of only spaces or a pasted zero-width space says
+ * nothing, and a title like that is no title. Names keep to the same rule (api.ts, nameShowsNothing).
+ */
+export const showsNothing = (text: string): boolean => !text.replace(INVISIBLE, '');
+
 export interface FeedbackReport {
   kind: FeedbackKind;
   title: string;
@@ -148,14 +159,14 @@ export function reportData(r: FeedbackReport, lean = 0): object {
 export function buildIssue(r: FeedbackReport, lean = 0): IssueDraft {
   const { target: tg, context: cx } = r;
   const box = round(tg.rect);
-  const title = clip(r.title, 120) || `${KIND_WORD[r.kind]}: ${clip(tg.label, 60)} on ${cx.route}`;
+  const title = showsNothing(r.title) ? `${KIND_WORD[r.kind]}: ${clip(tg.label, 60)} on ${cx.route}` : clip(r.title, 120);
   const shown = `${cx.viewport.width} × ${cx.viewport.height}`;
   const lines = [
     `**${KIND_WORD[r.kind]}** · reported in the app (v${cx.version})`,
     '',
     '### What should change',
     '',
-    r.description.trim() || '_No description._',
+    showsNothing(r.description) ? '_No description._' : r.description.trim(),
     '',
     '### Where',
     '',

@@ -4601,11 +4601,13 @@ button.lesson-stars:hover {
 .cal-stat--right {
   text-align: right;
 }
+/* One line, "7 of 16", also where the card is narrower (beside the feedback tool's tab, feedback.css). */
 .cal-count {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 26px;
   line-height: 1.1;
+  white-space: nowrap;
 }
 .cal-count span {
   font-size: 15px;

@@ -9,7 +9,7 @@
  * the app would never learn that an admin turned it on. The tool itself (FeedbackOn.tsx) is a chunk of its own, kept
  * out of the main bundle that every player's first load waits for.
  */
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useAccount } from '../account';
 import { useStore } from '../store';
 
@@ -17,16 +17,22 @@ const FeedbackOn = lazy(() => import('./FeedbackOn').then((m) => ({ default: m.F
 
 export function FeedbackTool(): JSX.Element | null {
   const { state } = useStore();
-  return state.account.me && state.prefs.feedbackButton ? <SignedIn /> : null;
+  // Open (marking, or the sheet), the tool stays until it is closed, also when the account goes meanwhile: a session
+  // that ended on another device signs out on Send, and the sheet then says why, with what was typed still in it.
+  const [open, setOpen] = useState(false);
+  return (state.account.me && state.prefs.feedbackButton) || open ? <SignedIn open={open} onOpen={setOpen} /> : null;
 }
 
-function SignedIn(): JSX.Element | null {
+function SignedIn({ open, onOpen }: { open: boolean; onOpen(open: boolean): void }): JSX.Element | null {
   const account = useAccount();
   const { dispatch } = useStore();
-  if (!account.me?.feedbackMode || !account.can('feedback.give')) return null;
+  if (!open && (!account.me?.feedbackMode || !account.can('feedback.give'))) return null;
   return (
     <Suspense fallback={null}>
-      <FeedbackOn onHide={() => dispatch({ type: 'prefs', patch: { feedbackButton: false } })} />
+      <FeedbackOn onOpen={onOpen} onHide={() => {
+        onOpen(false);
+        dispatch({ type: 'prefs', patch: { feedbackButton: false } });
+      }} />
     </Suspense>
   );
 }

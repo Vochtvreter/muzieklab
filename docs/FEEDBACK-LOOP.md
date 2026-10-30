@@ -90,12 +90,14 @@ there too, which opens the reports.
    phone in landscape has it on the left edge, as its answers are on the right.
 2. Press it, then tap or click the part you mean, or drag to draw a box. With a mouse, the element a click would mark is
    outlined. With the keyboard, the arrow keys pick the screen's parts in turn, the hint bar names the one picked, and
-   Enter marks it. A tap or click marks the same parts: one on a control's icon or a word in it marks the control. The
+   Enter marks it. A tap or click marks the same parts: one on a control's icon or a word in it marks the control, and
+   one on a field's label the field. The
    hint bar sits at the top; tap it to move it to the bottom (and back) when it is over what you mean. Press Esc or
    Cancel to stop. To mark something further down the page, scroll first, then press Feedback.
    However the tool closes (Esc, Cancel, or the sheet's X or Close), the focus goes back to the Feedback button.
 3. A sheet opens (a dialog on desktop, beside the marked spot). The spot stays lit and the rest of the screen dims.
-   Choose **Bug**, **Change** or **Idea**, then say what should change (at most 5000 characters). A title is
+   Choose **Bug**, **Change** or **Idea**, then say what should change (at most 5000 characters; only spaces or
+   characters that show nothing, such as a zero-width space, are not enough). A title is
    optional; without one, the review screens name the report by its kind and screen (*Bug on #/settings*), and its
    issue by the kind, the spot and the screen. **Mark again** marks another spot for the same report and keeps what is
    typed; Esc or Cancel then goes back to the form as it was.
@@ -106,7 +108,8 @@ there too, which opens the reports.
    - **Copy** puts the report on the clipboard in Markdown: the GitHub issue it would become. It says *Copied* for 2 s,
      or until the report changes. Where the clipboard is not allowed, the Markdown shows in a field to copy by hand.
    - When sending fails (no connection, the server busy, too many reports in an hour), the sheet says why and keeps
-     the form as it is, so Send tries again.
+     the form as it is, so Send tries again. When the session ended meanwhile (a new password set on another device),
+     the app signs out and the sheet says so, still with what was typed; it goes once it is closed.
 
 Nothing goes to GitHub from the app or the API yet, so no GitHub token is needed anywhere (DEPLOY.md). The report is
 stored with the account that sent it, so whoever reviews it sees who that was, and the audit log records it
