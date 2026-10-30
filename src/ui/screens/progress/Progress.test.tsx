@@ -57,6 +57,14 @@ const view = (name: string, group = 'Show progress for'): void => {
 };
 const heading = (name: string): HTMLElement => screen.getByRole('heading', { level: 2, name });
 const headings = (): string[] => screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent ?? '');
+/** An element's words as shown (without what is there for screen readers only), and as a screen reader hears them. */
+const without = (el: Element, selector: string): string => {
+  const copy = el.cloneNode(true) as Element;
+  copy.querySelectorAll(selector).forEach((x) => x.remove());
+  return copy.textContent ?? '';
+};
+const seen = (el: Element): string => without(el, '.sr-only');
+const heard = (el: Element): string => without(el, '[aria-hidden="true"]');
 
 beforeEach(() => {
   localStorage.clear();
@@ -123,7 +131,7 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     expect(headings()).toEqual(['Accuracy per clef', 'Slowest notes', 'Key']);
     screen.getByRole('img', { name: 'Note reading accuracy: treble clef 88% and bass clef 74%.' });
     const slow = within(heading('Slowest notes').closest('section')!).getAllByRole('listitem');
-    expect(slow.map((li) => li.textContent)).toEqual(['𝄞Etop space · treble3.1 s', '𝄞F♯top line · treble2.6 s', '𝄢Csecond space · bass2.4 s']);
+    expect(slow.map(seen)).toEqual(['𝄞Etop space · treble3.1 s', '𝄞F♯top line · treble2.6 s', '𝄢Csecond space · bass2.4 s']);
     expect(screen.getByText('G major · E minor')).toBeTruthy();
     expect(screen.getByText('1 sharp: every F is F♯')).toBeTruthy();
     expect(screen.getByText('last round · treble')).toBeTruthy();
@@ -136,10 +144,32 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     const majors = within(heading('Major scales').closest('section')!).getAllByRole('listitem');
     expect(majors).toHaveLength(15);
     expect(majors[0].getAttribute('aria-label')).toBe('C major: 3 of 3 stars');
-    expect(majors[9].getAttribute('aria-label')).toBe('B♭ major: 2 of 3 stars');
+    expect(majors[9].getAttribute('aria-label')).toBe('B flat major: 2 of 3 stars');
     const rows = within(screen.getByRole('table')).getAllByRole('row');
     expect(rows.map((r) => r.querySelector('th')?.textContent)).toEqual(['Key', 'A minor', 'E minor', 'D minor', 'B minor']);
     expect(screen.getByRole('link', { name: 'Open the circle of fifths' }).getAttribute('href')).toBe('#/scales');
+  });
+
+  // As on the Scales hub: a screen reader reads a sign as a symbol or skips it, and F♯ major would then sound like F
+  // major. The screen shows the signs.
+  it('names keys and notes with a sign in words for screen readers: F sharp major, F sharp minor', () => {
+    const p = richProgress();
+    p.stats.lastKey = { key: 'F#', clef: 'treble' };
+    p.scales.stars['F#-natural'] = 1;
+    show(p);
+    view('Notes');
+    screen.getByRole('img', { name: 'Key signature of F sharp major: 6 sharps' });
+    expect(screen.getByText('F♯ major · D♯ minor')).toBeTruthy();
+    // The slowest notes as the last round's key spells them.
+    const slow = within(heading('Slowest notes').closest('section')!).getAllByRole('listitem');
+    expect(slow.map(seen)).toEqual(['𝄞E♯top space · treble3.1 s', '𝄞F♯top line · treble2.6 s', '𝄢C♯second space · bass2.4 s']);
+    expect(slow.map(heard)).toEqual(['E sharptop space · treble3.1 s', 'F sharptop line · treble2.6 s', 'C sharpsecond space · bass2.4 s']);
+
+    view('Scales');
+    const majors = within(heading('Major scales').closest('section')!).getAllByRole('listitem');
+    expect(majors[6].getAttribute('aria-label')).toBe('F sharp major: 0 of 3 stars');
+    const row = screen.getByRole('rowheader', { name: 'F sharp minor' });
+    expect(row.textContent).toBe('F♯ minor');
   });
 
   it('Practice weak spots puts the weak cells on the rhythm setup and opens it', () => {
@@ -308,6 +338,10 @@ describe('Progress tab in Dutch', () => {
     view('Noten', 'Voortgang tonen voor');
     expect(screen.getByText('bovenste tussenruimte · viool')).toBeTruthy();
     expect(screen.getByText('3,1 s')).toBeTruthy();
+    // Keys as said in Dutch, as on the Scales hub: bes majeur, not B♭ majeur.
+    view('Toonladders', 'Voortgang tonen voor');
+    const majors = within(heading('Majeurtoonladders').closest('section')!).getAllByRole('listitem');
+    expect(majors[9].getAttribute('aria-label')).toBe('bes majeur: 2 van 3 sterren');
   });
 
   it('says a practised day without a rhythm round had no rhythm round, not that it was not practised', () => {

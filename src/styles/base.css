@@ -268,7 +268,7 @@ input[type='range'] {
  * chosen takes the system's selection colours, as in the player's other apps; like reduced motion above, the player's
  * setting goes over each control's own colours. It is taken out of forced colors, or the plate the system draws behind
  * each word, in the page's colour, would hide its words; they all take the selection's text colour (a key's minor name
- * sets its own). The rest of what forced colors hide is in app.css, notes.css and scales.css.
+ * sets its own). The rest of what forced colors hide is in app.css, notes.css, scales.css, progress.css and skills.css.
  */
 @media (forced-colors: active) {
   [aria-pressed='true'],

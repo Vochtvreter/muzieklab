@@ -1,7 +1,7 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { DEFAULT_NOTE_SETTINGS } from '../core/noteRound';
 import { ALL_SCALES, scaleId } from '../core/scale';
-import { hasMessage, setLocale, t } from '../i18n';
+import { hasMessage, setLocale, t, translateParams } from '../i18n';
 import { CHAPTERS } from '../ui/learn/chapters';
 import {
   ctaOf,
@@ -153,18 +153,38 @@ describe('scales', () => {
     expect(passSkills(p, TODAY).added).toEqual(['scales:1']);
   });
 
-  it('counts all 15 majors, five minors of each form, then all 60 at ★★★', () => {
+  it('counts all 15 majors, checks each of the five minors of each form, then all 60 at ★★★', () => {
     const majors = Object.fromEntries(ALL_SCALES.filter((s) => s.type === 'major').map((s) => [scaleId(s), 2]));
     const p = stars({ ...majors, 'A-natural': 2, 'E-natural': 2, 'D-natural': 3, 'B-natural': 2, 'G-natural': 2, 'A-harmonic': 2 });
     expect(checks(p, 'scales', 6)).toEqual([
       { label: { key: 'skills.check.scaleCount', params: { count: 15, type: 'scales.typeLower.major' } }, done: true, now: { key: 'skills.now.count', params: { done: 15, total: 15 } }, w: 1 },
     ]);
-    expect(checks(p, 'scales', 7)[0].done).toBe(true);
-    expect(checks(p, 'scales', 8)[0]).toMatchObject({ done: false, now: { params: { done: 1, total: 5 } }, w: 0.2 });
+    expect(checks(p, 'scales', 7).map((c) => c.done)).toEqual([true, true, true, true, true]);
+    const eight = checks(p, 'scales', 8);
+    expect(eight.map((c) => [c.done, c.w])).toEqual([[true, 1], [false, 0], [false, 0], [false, 0], [false, 0]]);
+    expect(eight[0]).toMatchObject({ label: { key: 'skills.check.scale', params: { scale: 'scales.name.harmonic', tonic: 'A' } }, now: { key: 'skills.now.stars', params: { count: 2 } } });
     expect(passSkills(p, TODAY).added).toEqual(['scales:1', 'scales:2', 'scales:3', 'scales:4', 'scales:5', 'scales:6', 'scales:7']);
     const all = stars(Object.fromEntries(ALL_SCALES.map((s) => [scaleId(s), 3])));
     expect(checks(all, 'scales', 10)[0]).toMatchObject({ label: { key: 'skills.check.allScales', params: { count: 60 } }, done: true });
     expect(passSkills(all, TODAY).added).toHaveLength(10);
+  });
+
+  // Only A, E, D, B and G minor count for levels 7–9 (DESIGN.md §8.6): each check names its scale, so five other
+  // harmonic minors at ★★★ no longer read as "5 harmonic minor scales at ★★" beside "now 0 of 5".
+  it("levels 7–9 name the minor scale each check counts, in the player's language", () => {
+    const p = stars({ 'C-harmonic': 3, 'F-harmonic': 3, 'Bb-harmonic': 3, 'Eb-harmonic': 3, 'F#-harmonic': 3 });
+    const text = (c: Check): string => t(c.label.key, translateParams(c.label.params));
+    expect(checks(p, 'scales', 7).map(text)).toEqual(['A natural minor at ★★', 'E natural minor at ★★', 'D natural minor at ★★', 'B natural minor at ★★', 'G natural minor at ★★']);
+    const eight = checks(p, 'scales', 8);
+    expect(eight.map(text)).toEqual(['A harmonic minor at ★★', 'E harmonic minor at ★★', 'D harmonic minor at ★★', 'B harmonic minor at ★★', 'G harmonic minor at ★★']);
+    expect(eight.some((c) => c.done)).toBe(false);
+    expect(text(checks(p, 'scales', 9)[4])).toBe('G melodic minor at ★★');
+    setLocale('nl');
+    try {
+      expect(text(eight[0])).toBe('A harmonisch mineur op ★★');
+    } finally {
+      setLocale('en');
+    }
   });
 });
 

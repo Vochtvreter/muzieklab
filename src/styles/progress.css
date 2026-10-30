@@ -706,7 +706,9 @@
   margin: 0;
   padding: 0;
 }
+/* Positioned, as .prog-rank: the note's spoken name (.sr-only) sits inside the page's scroll box. */
 .prog-slow-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -968,5 +970,74 @@
   }
   .prog-badge-icon {
     width: 40px;
+  }
+}
+
+/*
+ * Forced colors (a Windows contrast theme, DESIGN.md §11; see app.css): the system takes away fills and shadows, and
+ * the calendar, the legends' swatches, the bars and the skill map's bands are drawn with nothing else, so they are
+ * drawn again in system colours. A streak day, the streak's dot and the current rank take the selection colours; an
+ * earlier practice day has a solid edge, a missed day a dashed one, a day still to come grey numbers. A bar keeps an
+ * edge and fills in the text colour. The bands: 90% and up filled in the text colour, 80–89% a solid edge, under 80% a
+ * dashed one, locked a dotted grey one; an earned achievement's circle and a ★★ scale's tile a solid edge. What has
+ * words on a fill is taken out of forced colors, as in app.css.
+ */
+@media (forced-colors: active) {
+  .prog-cal-day.is-streak,
+  .prog-swatch.is-streak,
+  .prog-streak-dot,
+  .prog-rank.is-current {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .prog-cal-day.is-now {
+    outline-color: CanvasText;
+  }
+  .prog-cal-day.is-practised,
+  .prog-swatch.is-practised {
+    border: 2px solid CanvasText;
+  }
+  .prog-cal-day.is-missed,
+  .prog-swatch.is-missed {
+    border: 1px dashed CanvasText;
+  }
+  .prog-cal-day.is-future {
+    color: GrayText;
+  }
+  .prog-xp,
+  .prog-meter,
+  .prog-track {
+    border: 1px solid CanvasText;
+  }
+  .prog-xp > div,
+  .prog-meter > span,
+  .prog-track > div {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .prog-cell.is-high,
+  .prog-swatch.is-high {
+    forced-color-adjust: none;
+    background: CanvasText;
+    color: Canvas;
+  }
+  .prog-cell.is-mid,
+  .prog-swatch.is-mid {
+    border: 2px solid CanvasText;
+  }
+  .prog-cell.is-weak,
+  .prog-swatch.is-weak {
+    border: 2px dashed CanvasText;
+  }
+  .prog-cell.is-locked {
+    border: 1px dotted GrayText;
+  }
+  .prog-badge-icon {
+    border: 1px dashed GrayText;
+  }
+  .prog-badge.is-earned .prog-badge-icon,
+  .prog-major.is-2 {
+    border: 2px solid CanvasText;
   }
 }

@@ -19,13 +19,13 @@ window.matchMedia = (query: string) =>
 
 const TODAY = '2026-10-15';
 
-/** Plays a round of these keys (G major) without a mistake on TODAY, then shows Round done. */
-function Round({ keys = ['G'], types = ['major'] }: { keys?: KeyId[]; types?: ScaleType[] }): JSX.Element | null {
+/** Plays a round of these keys (G major) with `mistakes` in each scale (none) on TODAY, then shows Round done. */
+function Round({ keys = ['G'], types = ['major'], mistakes = 0 }: { keys?: KeyId[]; types?: ScaleType[]; mistakes?: number }): JSX.Element | null {
   const { state, dispatch } = useStore();
   useEffect(() => {
     const run = makeScaleRun({ ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys, types }, 5);
     dispatch({ type: 'scaleStart', run });
-    dispatch({ type: 'scaleFinish', played: run.scales.map((scale) => ({ scale, mistakes: 0 })), today: TODAY, seconds: 30 });
+    dispatch({ type: 'scaleFinish', played: run.scales.map((scale) => ({ scale, mistakes })), today: TODAY, seconds: 30 });
   }, []);
   return state.scaleLast ? <ScalesDone /> : null;
 }
@@ -86,5 +86,19 @@ describe('Round done: the circle card', () => {
       </StoreProvider>,
     );
     expect(screen.getByText(/reached ★★ this round/).textContent).toContain('G♯ minor and A♭ minor reached ★★ this round.');
+  });
+});
+
+// The stars a scale did not earn are outlined, as a lesson's are (★★☆), not told only by their grey: a contrast theme
+// paints every star in one colour (DESIGN.md §11), and two stars would read as three.
+describe('Round done: the stars of each scale', () => {
+  it('outlines the stars not earned', () => {
+    render(
+      <StoreProvider>
+        <Round keys={['G', 'D']} mistakes={1} />
+      </StoreProvider>,
+    );
+    const stars = within(screen.getByRole('list', { name: 'Scales in this round' })).getAllByRole('img', { name: '2 of 3 stars' });
+    expect(stars.map((s) => s.textContent)).toEqual(['★★☆', '★★☆']);
   });
 });

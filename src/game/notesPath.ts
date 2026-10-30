@@ -163,7 +163,7 @@ export const KEYS_UNITS: NoteUnit[] = [
     { clefs: BOTH, input: 'piano' }, // On the piano
     { keys: ['F', 'Bb', 'Eb'], clefs: BOTH, input: 'mixed', count: 30 }, // Unit review
   ]),
-  unit('keys', 6, 'Mix', { ...KEYS_BASE, clefs: BOTH, mixKeys: true }, [
+  unit('keys', 6, 'path.keys.u6.glyph', { ...KEYS_BASE, clefs: BOTH, mixKeys: true }, [
     { keys: ['C', 'G', 'F'] }, // C, G and F
     { keys: ['C', 'G', 'D', 'F', 'Bb'] }, // Up to two signs
     { keys: ['C', 'G', 'D', 'A', 'F', 'Bb', 'Eb'], count: 30 }, // Up to three signs

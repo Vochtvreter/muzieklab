@@ -59,9 +59,10 @@ export function PathScreen(): JSX.Element {
     </div>
   );
   const units = <Units view={v} progress={p} tiles={bp !== 'phone'} onPlay={(id) => play(id)} />;
+  // Once the path is done it plays the last lesson again, and says so, as Home's Play again does.
   const action = v.start && (
     <button type="button" className="btn btn--accent path-start" onClick={() => play(v.start!.id)}>
-      {t('path.start', { id: v.start.id })}
+      {t(v.next ? 'path.start' : 'path.replay', { id: v.start.id })}
     </button>
   );
 
@@ -167,9 +168,10 @@ function Units({ view: v, progress: p, tiles, onPlay }: { view: PathView; progre
       {track.units.map((u, i) => {
         const st = states[i];
         const isOpen = st !== 'locked' && openUnit === u.id;
-        // "3/4", "1♯", "Mix" in the display face; two signs ("♯♭", "𝄞𝄢") a size smaller.
-        const isText = /[0-9A-Za-z]/.test(u.glyph);
-        const isPair = !isText && [...u.glyph].length === 2;
+        // "3/4", "1♯", "Mix" in the display face; two signs ("♯♭", "𝄞𝄢") a size smaller. A word is a message key.
+        const glyph = tx(u.glyph);
+        const isText = /[0-9A-Za-z]/.test(glyph);
+        const isPair = !isText && [...glyph].length === 2;
         const title = t('path.unitTitle', { id: u.id, title: tx(u.titleKey) });
         const score = { stars: unitStarsIn(p, track, u.id), max: u.lessons.length * SHOWN_STARS };
         const panel = `unit-${u.id}`;
@@ -177,7 +179,7 @@ function Units({ view: v, progress: p, tiles, onPlay }: { view: PathView; progre
           <li key={u.id} className={'unit unit--' + st}>
             <div className="unit-rail">
               <div aria-hidden="true" className={'unit-node unit-node--' + st + (isText ? ' unit-node--text' : isPair ? ' unit-node--pair' : '')}>
-                {u.glyph}
+                {glyph}
               </div>
               <div className={'unit-spine' + (i === track.units.length - 1 ? ' is-last' : st === 'done' ? ' is-done' : '')} />
             </div>

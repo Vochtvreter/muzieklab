@@ -400,6 +400,10 @@ Learn and practice major and minor scales in all 15 keys.
   spelling, so it still holds the relative minor (*C♭* over *a♭*, not *g♯*). The ScaleHub boards always draw the first.
   A key on the faint ring switches the ring and keeps the focus: the keys come in one order on both tabs, the major
   ring first, so a keyboard or screen-reader user stays on the key just chosen.
+  Every key, on both rings, takes taps 44 px across (§11), round its circle where that is drawn smaller, as on a phone
+  (the phone board's keys are 50 / 40 px on the outer ring, 42 / 32 px on the inner one). Neighbours on the inner ring
+  are only 12.7% of the circle apart, so on a phone under 390 px wide its keys take taps as far as the next key: 43 px
+  at 375, 36 px at 320.
   A second spelling (*C♭* under *B*) is smaller than the name and, on the ring in front, drawn at 90%, which keeps it
   4.5:1 or more on every fill (§11; at 80% a ★★ key's was 4.2:1 in dark). On the faint ring it is `--muted` as the name
   is, not fainter, which took it under 4.5:1 on the page and on the disc. The ScaleHub boards draw it on both rings at
@@ -1070,8 +1074,10 @@ How write and hear work is in §3.5, *Write it, hear it*.
   name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars, on a second line
   where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again with
   a tap on its stars, a 44 px area from the unit's title row down (the row keeps its own 44 px and opens the unit). The
-  current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already says it. A note unit's
-  node shows its note (*sol*), a rhythm unit's its glyph.
+  current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already says it. Once the whole
+  path is done, Start plays the last lesson again and says so (*Play lesson 26.5 again*, nl *Speel les 26.5 nog een
+  keer*), as Home's card says *Play again*. A note unit's node shows its note (*sol*), a rhythm unit's its glyph; a word
+  there (*Mix*) comes from the catalog.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
   said once, under the first locked unit: *Opens with 2 stars on every unit N lesson* (since 0.10.0; before, every
   locked unit repeated it).
@@ -1317,7 +1323,8 @@ checked after a sync).
   (the rest as set up) and opens it.
 - **Scales** (the Scales hub's best stars): levels 1–5 one check per scale, *A major at ★★*; level 6 all 15 major
   scales at ★★; levels 7–9 the five minor keys up to 2♯ or 2♭ (A, E, D, B and G minor) in their natural, harmonic or
-  melodic form at ★★; level 10 all 60 scales at ★★★. Button: *Practice scales* (the Scales hub).
+  melodic form at ★★, also one check per scale (*A harmonic minor at ★★*), as only those five count; level 10 all 60
+  scales at ★★★. Button: *Practice scales* (the Scales hub).
 - **Theory:** the Learn chapters (§9.1), measured with **sections read** until Test yourself (§3.6) exists. One check
   per section, *Read 5.2 Dotted notes*. Button: *Continue chapter 5*, the first chapter from the next level on with a
   section not read (*Open Learn* once all are read). A section added to a chapter becomes a check of its level; a
@@ -2416,7 +2423,12 @@ without code changes:
   colour alone: a chosen option (`aria-pressed`, a checked radio), the current tab, Play's beat and Read notes' right
   answer take the system's selection colours, a switch has an edge and a knob, a filled button and a piano's black key
   an edge, the Learn piano's marked keys a thick edge in the selection colour, and a wrong answer a dashed edge with its
-  name struck through (`base.css`, `app.css`, `notes.css`, `scales.css`; a layout test checks it in light and dark).
+  name struck through. A star not earned is outlined (☆ in Scales, as a lesson's; a result's three get an outline), the
+  circle of fifths' levels an edge (★ dashed, ★★ double) or the text colour's fill (★★★), and so do its legend's dots.
+  On Progress and Skill levels a streak day, the current rank, the next level's part and this week's bar take the
+  selection colours, an earlier practice day a solid edge and a missed one a dashed edge, the skill map's bands a fill,
+  an edge or a dashed edge; every bar and meter (the XP bar too) keeps an edge and fills in the text colour (`base.css`,
+  `app.css`, `notes.css`, `scales.css`, `progress.css`, `skills.css`; layout tests check it in light and dark).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
   larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills without
   text, dots, borders and bars. A green fill with text on it is `--good-ink` too: Read notes' right black piano key,

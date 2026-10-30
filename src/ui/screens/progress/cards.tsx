@@ -6,15 +6,15 @@
  */
 import type { ReactNode } from 'react';
 import { staffOffset, type Clef, type Step } from '../../../core/api';
-import type { AchievementView, CalendarView, CellView, NotesView, ProgressHeader, ScalesView, SkillsView } from '../../../game/progressView';
+import type { AchievementView, CalendarView, CellView, NotesView, ProgressHeader, ScalesView, SkillsView, SlowNote } from '../../../game/progressView';
 import type { CellId } from '../../../game/storage';
 import { t } from '../../../i18n';
 import { PitchStaff } from '../../../render/PitchStaff';
 import { Icon } from '../../components/Icon';
 import { ACHIEVEMENT_ICONS } from '../../lib/achievementIcons';
 import { andList, rich, starsLabel, starsText } from '../../lib/format';
-import { keyPairName, keySignsAria, keySignsText, letterName, majorName, solfegeName } from '../../lib/noteText';
-import { circleLabel, keyName } from '../../lib/scaleText';
+import { keyPairName, keySignsAria, keySignsText, letterName, solfegeName, spokenName } from '../../lib/noteText';
+import { circleLabel, keyName, keySpoken } from '../../lib/scaleText';
 import { Link } from '../../router';
 import { shortDate, weekday } from './text';
 
@@ -350,6 +350,13 @@ function placeText(clef: Clef, step: Step): string {
 /** Bars of the slowest notes fill at this many seconds. */
 const SLOW_FULL_S = 3.2;
 
+/**
+ * A note's name for screen readers, which read a sign as a symbol or skip it: "F sharp", with do re mi "fa, F sharp"
+ * (as Read notes' round done says it).
+ */
+const noteSaid = (n: SlowNote, solfege: boolean): string =>
+  solfege ? `${solfegeName(n.letter, 0)}, ${spokenName(n.letter, n.alter)}` : spokenName(n.letter, n.alter);
+
 /** The three notes answered slowest on average (three answers or more), with where each sits. */
 export function SlowCard({ notes, solfege }: { notes: NotesView; solfege: boolean }): JSX.Element {
   const played = notes.clefs.some((c) => c.answered > 0);
@@ -363,7 +370,8 @@ export function SlowCard({ notes, solfege }: { notes: NotesView; solfege: boolea
                 {CLEF_GLYPH[n.clef]}
               </span>
               <span className="prog-slow-text">
-                <b>{(solfege ? solfegeName : letterName)(n.letter, n.alter)}</b>
+                <b aria-hidden="true">{(solfege ? solfegeName : letterName)(n.letter, n.alter)}</b>
+                <span className="sr-only">{noteSaid(n, solfege)}</span>
                 <span>{t('progress.slow.where', { pos: placeText(n.clef, n.step), clef: t('progress.clef.' + n.clef) })}</span>
               </span>
               <span className="prog-meter prog-meter--slow" aria-hidden="true">
@@ -388,7 +396,7 @@ export function KeyCard({ lastKey }: { lastKey: NotesView['lastKey'] }): JSX.Ele
         <div className="prog-key">
           <span className="prog-key-staff">
             <PitchStaff clef={lastKey.clef} keyId={lastKey.key} notes={[]} slots={0} room={1.5}
-              label={t('progress.key.label', { major: majorName(lastKey.key), signs: keySignsAria(lastKey.key) })} />
+              label={t('progress.key.label', { major: keySpoken(lastKey.key, false), signs: keySignsAria(lastKey.key) })} />
           </span>
           <span className="prog-key-text">
             <b>{keyPairName(lastKey.key)}</b>
@@ -419,7 +427,7 @@ export function MajorsCard({ scales }: { scales: ScalesView }): JSX.Element {
       </div>
       <ul className="prog-majors">
         {scales.majors.map((m) => (
-          <li key={m.key} aria-label={t('progress.majors.tile', { name: keyName(m.key, false), stars: starsLabel(m.stars) })}
+          <li key={m.key} aria-label={t('progress.majors.tile', { name: keySpoken(m.key, false), stars: starsLabel(m.stars) })}
             className={'prog-major is-' + Math.min(2, m.stars)}>
             <span aria-hidden="true" className="prog-major-name">
               {circleLabel(m.key, false)}
@@ -456,7 +464,9 @@ export function MinorsCard({ scales }: { scales: ScalesView }): JSX.Element {
           <tbody>
             {scales.minors.map((m) => (
               <tr key={m.key}>
-                <th scope="row">{keyName(m.key, true)}</th>
+                <th scope="row" aria-label={keySpoken(m.key, true)}>
+                  {keyName(m.key, true)}
+                </th>
                 {MINOR_FORMS.map((f) => (
                   <td key={f} aria-label={starsLabel(m[f])} className={m[f] > 0 ? 'is-on' : undefined}>
                     {starsText(m[f])}

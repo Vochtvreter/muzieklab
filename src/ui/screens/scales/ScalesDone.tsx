@@ -103,10 +103,11 @@ export function ScalesDone(): JSX.Element | null {
                   </span>
                 )}
               </div>
+              {/* Outlined as well as grey, as on the hub: a contrast theme paints every star in one colour. */}
               <span role="img" aria-label={t('scales.starsAria', { count: x.stars })} className="sdone-stars">
                 <span aria-hidden="true">{'★'.repeat(x.stars)}</span>
                 <span aria-hidden="true" className="scale-stars-off">
-                  {'★'.repeat(3 - x.stars)}
+                  {'☆'.repeat(3 - x.stars)}
                 </span>
               </span>
             </div>

@@ -433,6 +433,46 @@ async function expectSigUncovered(page: Page): Promise<void> {
 }
 
 /**
+ * Every key of the circle, on both rings, takes taps 44 px across and down through its middle (DESIGN.md §11), or,
+ * where its ring has no room for that (the inner ring on a phone under 390 px wide), as far as the next key; and its
+ * middle is its own. Counted px by px, as expectHitHeight does.
+ */
+async function expectCircleTargets(page: Page): Promise<void> {
+  await page.evaluate(() => Promise.all([document.fonts.ready, ...document.getAnimations().map((a) => a.finished)]).then(() => undefined));
+  const short = await page.locator('.circle').evaluate((circle) => {
+    const out: string[] = [];
+    for (const ring of ['major', 'minor']) {
+      const keys = [...circle.querySelectorAll<HTMLElement>('.circle-key--' + ring)];
+      keys.forEach((key, i) => {
+        key.scrollIntoView({ block: 'center', inline: 'center' });
+        const mid = (el: Element): { x: number; y: number } => {
+          const r = el.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        };
+        const c = mid(key);
+        const next = mid(keys[(i + 1) % keys.length]);
+        const need = Math.min(44, Math.floor(Math.hypot(next.x - c.x, next.y - c.y)));
+        const on = (x: number, y: number): boolean => {
+          const top = document.elementFromPoint(x, y);
+          return !!top && (top === key || key.contains(top));
+        };
+        let across = 0;
+        let down = 0;
+        for (let d = -40; d < 40; d++) {
+          if (on(c.x + d + 0.5, c.y)) across++;
+          if (on(c.x, c.y + d + 0.5)) down++;
+        }
+        const name = key.getAttribute('aria-label')!.split(':')[0];
+        if (!on(c.x, c.y)) out.push(`${ring} ${name}: its middle is another's`);
+        else if (Math.min(across, down) < need - 1) out.push(`${ring} ${name}: ${Math.min(across, down)} px of ${need}`);
+      });
+    }
+    return out;
+  });
+  expect(short, 'circle keys that take taps over too small an area').toEqual([]);
+}
+
+/**
  * The computer keys that answer a scale up and down: the piano's (A S D … on the white keys, W E R … on the black) or
  * the signs' (− 0 = X).
  */
@@ -612,6 +652,42 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
       await expect(page.getByText(/\/ 100 XP/)).toHaveCount(0);
       await expectNoSideScroll(page);
+    });
+
+    test("home: the level sheet's rank ladder has a › between ranks, never at the start of a line or on the current rank's pill", async ({ page }) => {
+      test.skip(desktopLayout, 'desktop has the level card instead of the chip and its sheet');
+      for (const language of ['en', 'nl'] as const) {
+        // Level 8, Groove: the current rank in the middle of a ladder that wraps on a phone.
+        await seed(page, { progress: { xp: 1780 }, prefs: { language } });
+        await page.goto('about:blank');
+        await page.goto('./');
+        await page.locator('.level-chip').click();
+        const ranks = page.getByRole('dialog').locator('.ranks');
+        await expect(ranks.locator('[aria-current="step"]')).toHaveText('Groove');
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const wrong = await ranks.evaluate((ol) => {
+          const out: string[] = [];
+          const items = [...ol.children] as HTMLElement[];
+          items.forEach((li, i) => {
+            // Nothing but its words in a rank's box (the pill of the current one): a › drawn in it before them starts
+            // the line it wraps to, and sits on the pill.
+            const s = getComputedStyle(li);
+            const box = li.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(li);
+            const words = range.getBoundingClientRect();
+            const before = words.left - box.left - parseFloat(s.paddingLeft);
+            const after = box.right - parseFloat(s.paddingRight) - words.right;
+            if (before > 1 || after > 1) out.push(`${li.textContent}: ${Math.round(before)} px before its words, ${Math.round(after)} px after them`);
+            const sep = getComputedStyle(li, '::after').content;
+            if (i < items.length - 1 && !sep.includes('›')) out.push(`${li.textContent}: no › after it`);
+          });
+          return out;
+        });
+        expect(wrong, `${language}: the ladder's ranks`).toEqual([]);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
     });
 
     test('home: the daily challenge card once it is played, in English and Dutch: every word inside its column', async ({ page }) => {
@@ -846,6 +922,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/path');
       await expectClickable(page.getByRole('button', { name: /^Start lesson/ }));
       await expectNoSideScroll(page);
+    });
+
+    test('path: all done, its button plays the last lesson again and says so, as Home does, in English and Dutch', async ({ page }) => {
+      known(name, 'path-done');
+      for (const [language, again, done] of [
+        ['en', 'Play lesson 26.5 again', 'All done · 260 / 390 ★'],
+        ['nl', 'Speel les 26.5 nog een keer', 'Alles klaar · 260 / 390 ★'],
+      ] as const) {
+        await seed(page, { progress: { lessons: pathUpTo('26.5') }, prefs: { language } });
+        await page.goto('about:blank');
+        await page.goto('./#/path');
+        await expect(page.locator('.track-info').getByText(done)).toBeVisible();
+        await expectClickable(page.getByRole('button', { name: again }));
+        await expect(page.getByRole('button', { name: /^(Start lesson|Begin les)/ })).toHaveCount(0);
+        // The last unit's node: its word from the catalog (Mix is Dutch too), not its message key.
+        await expect(page.locator('.units > li').last().locator('.unit-node')).toHaveText('Mix');
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
     });
 
     test('path: one path, a unit open with its lessons by name, notes and rhythm taking turns', async ({ page }) => {
@@ -1899,9 +1994,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (wide) await expectNoOverlap(page.locator('.hub-circle-col'), page.locator('.hub-sel'));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectCircleTargets(page);
       // Minor: the inner ring comes to the front; tapping the selected bottom key again switches its spelling.
       await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Minor' }).click();
       const minor = page.getByRole('group', { name: 'Circle of fifths, minor keys' });
+      await expectCircleTargets(page);
       await minor.getByRole('button', { name: /^B flat minor/ }).click();
       await minor.getByRole('button', { name: /^B flat minor/ }).click();
       await expect(page.getByRole('button', { name: 'Practice A♯ minor' })).toBeVisible();
@@ -4188,6 +4285,112 @@ test.describe('forced colors (a contrast theme)', () => {
       await page.getByRole('button', { name: 'Start · 1 scale' }).click();
       await expect(page.locator('.spiano .piano-black').first()).toBeVisible();
       await expect.poll(lost, 'the Scales piano').toEqual([]);
+    });
+
+    test(`${scheme}: the stars not earned, the circle's levels, Progress's calendar, bars and meters, and the XP bar still show`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, forcedColors: 'active' });
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      // The boards' sample player: C, G and F major at ★★★, D and B♭ at ★★, A and E♭ at ★; a streak, missed days, XP.
+      await seed(page, { progress: richProgress(), prefs: { ...PROGRESS_PREFS, seenHowTo: true, seenHold: true } });
+      /**
+       * How each element is drawn, by its computed (forced) colours: its fill (none when it is the page's), its edge,
+       * its ring and its text colour; null when there is none on the screen.
+       */
+      const looks = (selectors: string[]): Promise<(string | null)[]> =>
+        page.evaluate((sels) => {
+          const ground = getComputedStyle(document.body).backgroundColor;
+          return sels.map((sel) => {
+            const el = document.querySelector(sel);
+            if (!el) return null;
+            const s = getComputedStyle(el);
+            const fill = s.backgroundColor === ground || /^rgba\(.*, 0\)$|transparent/.test(s.backgroundColor) ? 'none' : s.backgroundColor;
+            const edge = s.borderTopStyle === 'none' || parseFloat(s.borderTopWidth) === 0 ? 'none' : `${s.borderTopStyle} ${s.borderTopWidth} ${s.borderTopColor}`;
+            const ring = s.outlineStyle === 'none' ? 'none' : `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor}`;
+            return `fill ${fill}, edge ${edge}, ring ${ring}, text ${s.color}`;
+          });
+        }, selectors);
+      /** Each is on the screen and drawn: a fill, an edge or a ring. */
+      const expectDrawn = async (where: string, selectors: string[]): Promise<void> => {
+        const all = await looks(selectors);
+        selectors.forEach((sel, i) => {
+          expect(all[i], `${where}: ${sel} is on the screen`).not.toBeNull();
+          expect(all[i], `${where}: ${sel} is drawn`).not.toMatch(/^fill none, edge none, ring none/);
+        });
+      };
+      /** Each is on the screen, and no two look the same. */
+      const expectDistinct = async (where: string, selectors: string[]): Promise<void> => {
+        const all = await looks(selectors);
+        selectors.forEach((sel, i) => expect(all[i], `${where}: ${sel} is on the screen`).not.toBeNull());
+        for (let i = 0; i < selectors.length; i++) {
+          for (let j = i + 1; j < selectors.length; j++) expect(all[i], `${where}: ${selectors[i]} looks like ${selectors[j]}`).not.toBe(all[j]);
+        }
+      };
+
+      // The Scales hub: each level of the circle (none, ★, ★★, ★★★) and its legend's dots; the selected key's stars.
+      await page.goto('./#/scales');
+      const circle = page.getByRole('group', { name: 'Circle of fifths, major keys' });
+      await circle.getByRole('button', { name: /^D major/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice D major' })).toBeVisible();
+      const key = (level: number): string => `.circle-key--major.is-l${level}:not(.is-sel)`;
+      await expectDistinct('the circle', [key(0), key(1), key(2), key(3)]);
+      await expectDrawn("the circle's legend", ['.hub-dot.is-l1', '.hub-dot.is-l2', '.hub-dot.is-l3']);
+      await expectDistinct("the circle's legend", ['.hub-dot.is-l1', '.hub-dot.is-l2', '.hub-dot.is-l3']);
+      // D major's two stars of three: the third is drawn outlined, not as a star in another colour.
+      await expect(page.getByRole('img', { name: '2 of 3 stars' }).first()).toHaveText('★★☆');
+
+      // Progress: the streak calendar's days and its legend, the XP bar and the skill map's bands.
+      await page.goto('./#/progress');
+      await expect(page.locator('.prog-cal')).toBeVisible();
+      const day = (state: string): string => `.prog-cal-day.is-${state}:not(.is-now)`;
+      await expectDistinct('the calendar', [day('streak'), day('practised'), day('missed'), day('future')]);
+      const swatch = (state: string): string => `.prog-streak .prog-swatch.is-${state}`;
+      await expectDrawn("the calendar's legend", [swatch('streak'), swatch('practised'), swatch('missed'), swatch('now'), '.prog-streak-dot']);
+      await expectDistinct("the calendar's legend", [swatch('streak'), swatch('practised'), swatch('missed')]);
+      await expectDrawn('the XP bar', ['.prog-xp', '.prog-xp > div']);
+      await expectDistinct('the XP bar', ['.prog-xp', '.prog-xp > div']);
+      await expectDistinct('the skill map', ['.prog-cell.is-high', '.prog-cell.is-mid', '.prog-cell.is-weak', '.prog-cell.is-locked']);
+      await expectDrawn("the skill map's legend", ['.prog-map-legend .prog-swatch.is-high', '.prog-map-legend .prog-swatch.is-mid', '.prog-map-legend .prog-swatch.is-weak']);
+      await expectDistinct("the skill map's legend", ['.prog-map-legend .prog-swatch.is-high', '.prog-map-legend .prog-swatch.is-mid', '.prog-map-legend .prog-swatch.is-weak']);
+      await expectDistinct('the achievements', ['.prog-badge.is-earned .prog-badge-icon', '.prog-badge:not(.is-earned) .prog-badge-icon']);
+      await page.getByRole('group', { name: 'Show progress for' }).getByRole('button', { name: 'Notes' }).click();
+      await expectDrawn('accuracy per clef', ['.prog-clef .prog-meter', '.prog-clef .prog-meter > span']);
+      await expectDistinct('accuracy per clef', ['.prog-clef .prog-meter', '.prog-clef .prog-meter > span']);
+      await page.getByRole('group', { name: 'Show progress for' }).getByRole('button', { name: 'Scales' }).click();
+      await expectDrawn('the major scales', ['.prog-track', '.prog-track > div']);
+      await expectDistinct('the major scales', ['.prog-track', '.prog-track > div', '.prog-major.is-2', '.prog-major.is-0']);
+
+      // Skill levels: each skill's ten segments (passed, the next one's part, still to come) and the legend.
+      await page.goto('./#/progress/skills');
+      await expect(page.locator('.skill-seg').first()).toBeVisible();
+      await expectDrawn('the level meters', ['.skill-seg', '.skill-seg-fill:not(.is-part)', '.skill-seg-fill.is-part', '.skill-swatch:not(.is-part)', '.skill-swatch.is-part']);
+      await expectDistinct('the level meters', ['.skill-seg-fill:not(.is-part)', '.skill-seg-fill.is-part']);
+      await expectDistinct("the meters' legend", ['.skill-swatch:not(.is-part)', '.skill-swatch.is-part']);
+      // One skill: its meter, the checks' marks and bars, the 12 weeks' bars, and its ladder.
+      await page.goto('./#/progress/skills/treble');
+      await expect(page.locator('.skill-hist')).toBeVisible();
+      await expectDrawn('Treble clef', ['.skill-bar', '.skill-check-mark', '.skill-check-bar', '.skill-check-bar > span', '.skill-hist > span:not(.is-now)', '.skill-hist > span.is-now']);
+      await expectDistinct("Treble clef's weeks", ['.skill-hist > span:not(.is-now)', '.skill-hist > span.is-now']);
+      await expectDistinct("Treble clef's levels", ['.skill-ladder li.is-passed .skill-ladder-n', '.skill-ladder li.is-next .skill-ladder-n', '.skill-ladder li.is-later .skill-ladder-n']);
+
+      // Home's level sheet: the XP bar.
+      await page.goto('./#/');
+      await page.locator('.level-chip').click();
+      await expectDrawn("the level sheet's XP bar", ['.xp-bar', '.xp-bar > div']);
+      await expectDistinct("the level sheet's XP bar", ['.xp-bar', '.xp-bar > div']);
+
+      // Results: Skip, so none of the three stars is earned; each is outlined, not filled in the text's colour as an
+      // earned one is.
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await expect(page.getByRole('img', { name: '0 of 3 stars' })).toBeVisible();
+      const off = await page.locator('.score-stars-row > span').evaluateAll((stars) =>
+        stars.map((star) => {
+          const s = getComputedStyle(star);
+          return s.color !== getComputedStyle(document.body).color && parseFloat(s.webkitTextStrokeWidth) > 0;
+        }),
+      );
+      expect(off, 'the stars not earned, outlined').toEqual([true, true, true]);
     });
   }
 });

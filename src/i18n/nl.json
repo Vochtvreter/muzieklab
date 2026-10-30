@@ -115,6 +115,7 @@
     "next": "Volgende: les {lesson} · {title} · {bpm} BPM",
     "unlocks": "Gaat open met 2 sterren op elke les van blok {unit}",
     "start": "Begin les {id}",
+    "replay": "Speel les {id} nog een keer",
     "playLesson": "Speel les {id} · {title}: {stars}",
     "lockedLesson": "Les {id}, op slot",
     "u1": {
@@ -334,6 +335,7 @@
       },
       "u6": {
         "title": "Toonsoorten door elkaar",
+        "glyph": "Mix",
         "l1": "C, G en F",
         "l2": "Tot twee voortekens",
         "l3": "Tot drie voortekens",
@@ -2875,6 +2877,7 @@
       "read": "{pct}% in een ronde {what}",
       "speed": "Gemiddeld antwoord onder {seconds, number, ::.0} s",
       "major": "{tonic} majeur op ★★",
+      "scale": "{scale} op ★★",
       "scaleCount": "{count} toonladders {type} op ★★",
       "allScales": "Alle {count} toonladders op ★★★",
       "section": "Lees {id} {title}"

@@ -168,6 +168,24 @@
 .circle-key:active:not(:disabled) {
   transform: translate(-50%, -50%) scale(0.97);
 }
+/*
+ * A 44 px touch target (DESIGN.md §11) round a key drawn smaller, as on a phone. Neighbours on the outer ring are 21%
+ * of the circle apart, on the inner ring 12.7%: there, under a 390 px phone, it is only as wide as the gap to the next
+ * key, so a tap between two keys still goes to the nearer one.
+ */
+.circle-key::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, min(44px, 21cqw));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.circle-key--minor::after {
+  width: max(100%, min(44px, 12.7cqw));
+}
 .circle-key-name {
   font-weight: 700;
   font-size: 4.2cqw;
@@ -1257,9 +1275,26 @@
 }
 /*
  * Forced colors (see app.css): the degree being answered keeps its edge, a played key its dot, and a wrong sign is
- * marked as Read notes' wrong answers are.
+ * marked as Read notes' wrong answers are. The circle's keys, filled by their stars, and its legend's dots take an edge
+ * for ★ (dashed) and ★★ (double) and the text colour's fill for ★★★, out of forced colors for the name on it; the
+ * selected key keeps the selection colours (base.css).
  */
 @media (forced-colors: active) {
+  .circle-key.is-l1,
+  .hub-dot.is-l1 {
+    border: 2px dashed CanvasText;
+  }
+  .circle-key.is-l2,
+  .hub-dot.is-l2 {
+    border: 4px double CanvasText;
+  }
+  .circle-key.is-l3,
+  .hub-dot.is-l3 {
+    forced-color-adjust: none;
+    background: CanvasText;
+    color: Canvas;
+    border-color: CanvasText;
+  }
   .degree.is-current {
     outline: 2px solid Highlight;
     outline-offset: -2px;

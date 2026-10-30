@@ -107,8 +107,20 @@ export async function expectNoClippedLabels(page: Page): Promise<void> {
     // A line that clips; text for screen readers only (.sr-only, a box of 1 px) is not shown at all.
     const clips = (el: Element): boolean => el.clientWidth > 1 && getComputedStyle(el).overflowX !== 'visible';
     // A link that is not a button may draw past its own box (a word with a 44 px tap area around it): only the lines
-    // inside it that clip count.
-    const box = (el: Element): boolean => !el.matches('a:not(.btn)') && cut(el);
+    // inside it that clip count. A button with a tap area round it (an absolute ::after, as the circle of fifths' keys
+    // have) reaches past its box with it: there its words, measured on their own, must stay inside the box.
+    const tapArea = (el: Element): boolean => {
+      const after = getComputedStyle(el, '::after');
+      return after.content !== 'none' && after.position === 'absolute';
+    };
+    const spills = (el: Element): boolean => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const w = range.getBoundingClientRect();
+      const b = el.getBoundingClientRect();
+      return w.width > 0 && (w.left < b.left - 1 || w.right > b.right + 1);
+    };
+    const box = (el: Element): boolean => !el.matches('a:not(.btn)') && (tapArea(el) ? spills(el) : cut(el));
     return [...document.querySelectorAll<HTMLElement>('button, .seg-btn, a, select')]
       .filter((el) => el.offsetParent !== null && words(el))
       .filter((el) => box(el) || [...el.querySelectorAll('*')].some((x) => clips(x) && words(x) && cut(x)))

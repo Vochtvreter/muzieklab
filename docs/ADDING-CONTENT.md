@@ -132,11 +132,13 @@ its row of DESIGN.md §9.1 and `LEARN-CHAPTERS.md` §5.
 
 Note units (DESIGN.md §8.2) work the same way, in `src/game/notesPath.ts`:
 
-1. **Data:** add a `unit('notes' | 'keys', n, glyph, base, lessons)` to `NOTES_UNITS` or `KEYS_UNITS`. The base and
-   each lesson are Read notes settings (clefs, keys, mix keys, input, range, extra signs, count, timer, and the
-   `tasks` read, write and hear, the positions it draws from `only` and the one it stresses `stress`); a lesson's
-   preset is laid over its unit's base, and the Read notes defaults fill the rest. First notes units come from
-   `FIRST_NOTES` (`pitchUnit`): a new note there is one entry, with its name and staff position.
+1. **Data:** add a `unit('notes' | 'keys', n, glyph, base, lessons)` to `NOTES_UNITS` or `KEYS_UNITS`. The glyph is
+   what the unit's node on the Path shows: signs or a short figure as written (`'1♯'`, `'3♭'`), or for a word a
+   message key (`'path.keys.u6.glyph'`, *Mix*), so it is translated. The base and each lesson are Read notes settings
+   (clefs, keys, mix keys, input, range, extra signs, count, timer, and the `tasks` read, write and hear, the positions
+   it draws from `only` and the one it stresses `stress`); a lesson's preset is laid over its unit's base, and the Read
+   notes defaults fill the rest. First notes units come from `FIRST_NOTES` (`pitchUnit`): a new note there is one
+   entry, with its name and staff position.
 2. **Text:** `path.notes.u{n}.title` and `l1` … `l5` (or `path.keys.…`, `path.pitch.…`) in `en.json`.
 3. **Place it:** add it to `ORDER` in `src/game/tracks.ts`.
 4. **Run `npm test`.** `src/game/notesPath.test.ts` checks the numbering, the texts, that every preset is valid and

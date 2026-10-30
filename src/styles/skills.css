@@ -610,3 +610,47 @@
   color: var(--muted);
   font-weight: 500;
 }
+
+/*
+ * Forced colors (see progress.css): a level meter's segments and the bars keep an edge and fill in the text colour,
+ * the next level's part (and this week's bar) in the selection colour; a check not met has an edge, a met one the text
+ * colour's fill under its tick. All levels: the next one's number takes the selection colours, a passed one an edge,
+ * one to come a dashed grey edge.
+ */
+@media (forced-colors: active) {
+  .skill-seg,
+  .skill-bar,
+  .skill-check-bar {
+    border: 1px solid CanvasText;
+  }
+  .skill-seg-fill,
+  .skill-swatch,
+  .skill-bar > div,
+  .skill-check-bar > span,
+  .skill-hist > span {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .skill-seg-fill.is-part,
+  .skill-swatch.is-part,
+  .skill-hist > span.is-now {
+    background: Highlight;
+  }
+  .skill-check-mark,
+  .skill-ladder li.is-passed .skill-ladder-n {
+    border: 2px solid CanvasText;
+  }
+  .skill-checks li.is-done .skill-check-mark {
+    forced-color-adjust: none;
+    background: CanvasText;
+    color: Canvas;
+  }
+  .skill-ladder li.is-next .skill-ladder-n {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .skill-ladder li.is-later .skill-ladder-n {
+    border: 1px dashed GrayText;
+  }
+}

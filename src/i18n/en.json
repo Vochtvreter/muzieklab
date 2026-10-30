@@ -115,6 +115,7 @@
     "next": "Next: lesson {lesson} · {title} · {bpm} BPM",
     "unlocks": "Opens with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
+    "replay": "Play lesson {id} again",
     "playLesson": "Play lesson {id} · {title}: {stars}",
     "lockedLesson": "Lesson {id}, locked",
     "u1": {
@@ -334,6 +335,7 @@
       },
       "u6": {
         "title": "Mix the keys",
+        "glyph": "Mix",
         "l1": "C, G and F",
         "l2": "Up to two signs",
         "l3": "Up to three signs",
@@ -2875,6 +2877,7 @@
       "read": "A round {what} at {pct}%",
       "speed": "Average answer under {seconds, number, ::.0} s",
       "major": "{tonic} major at ★★",
+      "scale": "{scale} at ★★",
       "scaleCount": "{count} {type} scales at ★★",
       "allScales": "All {count} scales at ★★★",
       "section": "Read {id} {title}"

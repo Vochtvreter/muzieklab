@@ -25,7 +25,7 @@ export interface TrackLesson {
 export interface TrackUnit<L extends TrackLesson = TrackLesson> {
   id: number;
   titleKey: string;
-  /** Noto Music glyph, or short text such as "3/4" (drawn in the display face). */
+  /** Noto Music glyph, short text such as "3/4" or "1♯" (drawn in the display face), or a message key for a word. */
   glyph: string;
   lessons: L[];
 }

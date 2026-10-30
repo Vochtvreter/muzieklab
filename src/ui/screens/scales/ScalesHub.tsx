@@ -33,13 +33,16 @@ import { Link, navigate } from '../../router';
 import { useStore } from '../../store';
 import { useStartScales } from './start';
 
-/** "★★☆" with its spoken form. */
+/**
+ * "★★☆" with its spoken form. The stars not earned are outlined as well as grey: a contrast theme paints every star in
+ * one colour (DESIGN.md §11).
+ */
 function Stars({ n, className }: { n: number; className?: string }): JSX.Element {
   return (
     <span role="img" aria-label={t('scales.starsAria', { count: n })} className={'scale-stars' + (className ? ' ' + className : '')}>
       <span aria-hidden="true">{'★'.repeat(n)}</span>
       <span aria-hidden="true" className="scale-stars-off">
-        {'★'.repeat(3 - n)}
+        {'☆'.repeat(3 - n)}
       </span>
     </span>
   );
