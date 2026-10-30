@@ -117,9 +117,9 @@ export class ProgressSync {
   }
 
   /**
-   * Before signing out: saves what is not saved yet, waiting FLUSH_MS at most. Resolves with whether this device's
-   * progress is on the account now, so removing it from the device loses nothing: not when that save failed, found no
-   * API ('unreachable'), or is still on its way (Flushed).
+   * Before signing out: saves what is not saved yet, waiting FLUSH_MS at most. Resolves 'saved' when this device's
+   * progress is on the account now (or it has none), so removing it from the device loses nothing; 'unreachable' when
+   * that save got no answer from the API; else 'unsaved' (it failed, or is still on its way).
    */
   async flush(ms = FLUSH_MS): Promise<Flushed> {
     clearTimeout(this.changeTimer);

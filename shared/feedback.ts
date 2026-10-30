@@ -73,8 +73,8 @@ export const FEEDBACK_DESCRIPTION_MAX = 5000;
 
 /**
  * What shows nothing: spaces and line breaks, and characters such as the zero-width space, the word joiner, the Hangul
- * filler and the blank Braille pattern (U+2800, which draws no ink). The interlinear annotation characters
- * (U+FFF9\u2013U+FFFB) draw nothing either, though Unicode leaves them out of Default_Ignorable_Code_Point.
+ * filler and the blank Braille pattern (U+2800, which draws no ink). The interlinear annotation characters (U+FFF9 to
+ * U+FFFB) draw nothing either, though Unicode leaves them out of Default_Ignorable_Code_Point.
  */
 const INVISIBLE = /[\s\p{Default_Ignorable_Code_Point}\u2800\ufff9-\ufffb]/gu;
 /**
