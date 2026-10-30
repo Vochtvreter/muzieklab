@@ -74,9 +74,9 @@ describe('Round done: the circle card', () => {
         <Round keys={['F#', 'Gb', 'Db', 'C#']} />
       </StoreProvider>,
     );
-    expect(screen.getByText(/reached ★★ this round/).textContent).toContain('F♯ major, G♭ major, D♭ major and C♯ major reached ★★ this round.');
+    expect(screen.getByText(/reached ★★ this round/).textContent).toContain('F♯\u00a0major, G♭\u00a0major, D♭\u00a0major and C♯\u00a0major reached ★★ this round.');
     // Said in words to a screen reader.
-    expect(screen.getByRole('img', { name: /New this round: F sharp major, G flat major, D flat major and C sharp major\.$/ })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /New this round: F sharp\u00a0major, G flat\u00a0major, D flat\u00a0major and C sharp\u00a0major\.$/ })).toBeTruthy();
     unmount();
     localStorage.clear();
 
@@ -85,7 +85,7 @@ describe('Round done: the circle card', () => {
         <Round keys={['B', 'Cb']} types={['natural']} />
       </StoreProvider>,
     );
-    expect(screen.getByText(/reached ★★ this round/).textContent).toContain('G♯ minor and A♭ minor reached ★★ this round.');
+    expect(screen.getByText(/reached ★★ this round/).textContent).toContain('G♯\u00a0minor and A♭\u00a0minor reached ★★ this round.');
   });
 });
 

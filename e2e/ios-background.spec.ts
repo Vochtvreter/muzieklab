@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { calibrateAlong, pad, QUARTERS, seed, SOL_DONE, VIEWPORTS } from './helpers';
+import { announcer, calibrateAlong, pad, QUARTERS, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
  * iOS, back from the background (most often as a Home Screen app): the AudioContext the page had can stay
@@ -125,7 +125,9 @@ test('a clock that freezes without the page being hidden pauses with a note, and
   await expect(page.getByRole('img', { name: /Count-in, beat/ })).toBeAttached({ timeout: 3000 });
   await page.evaluate(() => (window as unknown as { breakAudio(mode: string): void }).breakAudio('frozen'));
   await expect(page.getByRole('dialog', { name: 'Paused' })).toBeVisible({ timeout: 3000 });
-  await expect(page.getByText('The sound was interrupted.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Paused' }).getByText('The sound was interrupted.', { exact: false })).toBeVisible();
+  // Read out too, as the sheet comes up with the focus on Resume.
+  await expect(announcer(page)).toHaveText('The sound was interrupted. Resume to carry on from this bar.');
   await page.getByRole('button', { name: /Resume/ }).click();
   await playToResults(page);
 });
@@ -184,12 +186,17 @@ for (const cut of ['background', 'frozen', 'suspended', 'never started'] as cons
     if (cut === 'background') await background(page, 'interrupted');
     else if (cut === 'frozen') await page.evaluate(() => (window as unknown as { breakAudio(mode: string): void }).breakAudio('frozen'));
     else if (cut === 'suspended') await page.evaluate(() => (window as unknown as { suspendAudio(): Promise<unknown> }).suspendAudio());
-    await expect(page.getByRole('status')).toHaveText('The clicks were interrupted. Try again to measure from the first click.', { timeout: 3000 });
+    // Read out too: the card is put in with its text, which a status of its own is not read for by every screen reader.
+    const result = page.locator('.cal-result');
+    await expect(result).toHaveText('The clicks were interrupted. Try again to measure from the first click.', { timeout: 3000 });
+    await expect(announcer(page)).toHaveText('The clicks were interrupted. Try again to measure from the first click.');
+    await expect(page.getByRole('status')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
     if (cut === 'never started') await page.evaluate(() => (window as unknown as { stickAudio(on: boolean): void }).stickAudio(false));
     await page.getByRole('button', { name: 'Try again' }).click();
     await calibrateAlong(page);
-    await expect(page.getByRole('status')).toContainText('Measured over 16 taps');
+    await expect(result).toContainText('Measured over 16 taps');
+    await expect(announcer(page)).toHaveText(/^Measured over 16 taps\. Your taps /);
     await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
   });
 }

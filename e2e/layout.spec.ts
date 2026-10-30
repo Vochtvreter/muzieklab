@@ -1917,7 +1917,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/notes/play');
       const [first] = generateRound(settings, seed);
       await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${letterOf(first.step)}(,|$)`) }).click();
-      await expect(page.locator('.nfeedback')).toHaveText(/^Right (line|space), but C♯ major has/);
+      await expect(page.locator('.nfeedback')).toHaveText(/^Right (line|space), but C♯\u00a0major has/);
       await page.getByRole('button', { name: 'Skip to summary' }).click();
       await expect(page.getByText('F♯, C♯, G♯, D♯, A♯, E♯ and B♯ from the key signature', { exact: true })).toBeVisible();
       // "0 / 1" stays whole beside the label, which wraps on a phone.

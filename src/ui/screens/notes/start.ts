@@ -1,7 +1,7 @@
 /** Starting a Read notes round: draw it (weak spots and focus notes boosted), store it, go to its Play screen. */
 import { useCallback } from 'react';
 import type { NoteSettings } from '../../../core/api';
-import { noteLessonSettings, type NoteTrackId } from '../../../game/notesPath';
+import { noteLessonSeed, noteLessonSettings, type NoteTrackId } from '../../../game/notesPath';
 import { pathLessonOpen } from '../../../game/tracks';
 import { unlockAudio } from '../../audio';
 import { newSeed } from '../../lib/format';
@@ -42,7 +42,9 @@ export function useStartNoteLesson(): (track: NoteTrackId, lessonId: string, opt
       if (!preset || !pathLessonOpen(progress, track, lessonId)) return;
       const settings = { ...preset, playNotes };
       if (playNotes || preset.tasks.includes('hear')) unlockAudio();
-      dispatch({ type: 'noteStart', run: makeNoteRun(settings, newSeed(), progress.notes.weak, [], { track, id: lessonId }) });
+      // A round that shows the sign a Keys lesson is about (B♭ in "B flat in the key"); the run keeps its seed.
+      const weak = progress.notes.weak;
+      dispatch({ type: 'noteStart', run: makeNoteRun(settings, noteLessonSeed(settings, newSeed(), weak), weak, [], { track, id: lessonId }) });
       guardFollowUpTap();
       navigate('/notes/play', opts);
     },

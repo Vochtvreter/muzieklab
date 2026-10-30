@@ -56,6 +56,7 @@ import {
   type NameSystem,
 } from '../../lib/noteText';
 import { useFocusHandOff } from '../../lib/screenFocus';
+import { guardFollowUpTap } from '../../lib/tapGuard';
 import { leave, Link, navigate, openedFrom } from '../../router';
 import { todayIso, useStore, type NoteRun } from '../../store';
 
@@ -535,9 +536,14 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
         {t('notes.play.hint')}
       </button>
       {writing ? (
-        // Writing: Check takes the note where it sits; then it is Next note as after any answer.
+        // Writing: Check takes the note where it sits; then it is Next note as after any answer, in its place, so a
+        // double tap's second tap (a double click's second click) must not press it and skip the why of a wrong note.
         <button type="button" className={'btn ' + (ghost !== null ? 'btn--accent' : 'btn--blocked')} disabled={ghost === null}
-          onClick={() => ghost !== null && answer({ kind: 'place', step: ghost })}>
+          onClick={() => {
+            if (ghost === null) return;
+            guardFollowUpTap();
+            answer({ kind: 'place', step: ghost });
+          }}>
           {t('notes.play.check')}
           {keys && <kbd className="kbd kbd--bare">↵</kbd>}
         </button>

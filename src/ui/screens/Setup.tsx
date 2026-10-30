@@ -1,5 +1,5 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { checkSettings, DEFAULT_SETTINGS, MAX_BARS, MAX_TEMPO, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
@@ -8,6 +8,7 @@ import { StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { exerciseView } from '../exerciseView';
 import { useDocTitle } from '../hooks';
+import { announce } from '../lib/announce';
 import { difficultyLevel, newSeed, tempoWordKey } from '../lib/format';
 import { describeBars } from '../lib/notation';
 import { useLearnReturn } from '../lib/learnReturn';
@@ -48,6 +49,16 @@ export function Setup(): JSX.Element {
   }, [JSON.stringify(s)]);
   const hints = setupHints(s, feas);
   const blockedKey = startBlockedKey(s, feas);
+  // A change that brings a hint (the last note value off, which turns Start off) has it read out through the app's one
+  // live region (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen
+  // reader. The hints a setup opens with are read with the page.
+  const hintText = hints.map((h) => h.text).join(' ');
+  const hintsBefore = useRef(hintText);
+  useEffect(() => {
+    if (hintsBefore.current === hintText) return;
+    hintsBefore.current = hintText;
+    announce(hintText);
+  }, [hintText]);
 
   const preview = useMemo(() => {
     if (!feas.ok) return null;
@@ -109,7 +120,7 @@ export function Setup(): JSX.Element {
                 })}
               </div>
               {hints.length > 0 && (
-                <div className="hint-box m-in" role="status">
+                <div className="hint-box m-in">
                   {hints.map((h) => (
                     <span key={h.id} id={h.id}>
                       {h.text}

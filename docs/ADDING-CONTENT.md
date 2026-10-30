@@ -138,11 +138,13 @@ Note units (DESIGN.md §8.2) work the same way, in `src/game/notesPath.ts`:
    (clefs, keys, mix keys, input, range, extra signs, count, timer, and the `tasks` read, write and hear, the positions
    it draws from `only` and the one it stresses `stress`); a lesson's preset is laid over its unit's base, and the Read
    notes defaults fill the rest. First notes units come from `FIRST_NOTES` (`pitchUnit`): a new note there is one
-   entry, with its name and staff position.
+   entry, with its name and staff position. A lesson with a key signature or extra signs needs nothing more for its
+   sign: every round, and Home's preview, is picked to show it (`noteLessonSeed`, `noteLessonMisses`).
 2. **Text:** `path.notes.u{n}.title` and `l1` … `l5` (or `path.keys.…`, `path.pitch.…`) in `en.json`.
 3. **Place it:** add it to `ORDER` in `src/game/tracks.ts`.
 4. **Run `npm test`.** `src/game/notesPath.test.ts` checks the numbering, the texts, that every preset is valid and
-   can be played, and the order of the units; `src/game/tracks.test.ts` the path order.
+   can be played, that every Keys round asks for its sign, and the order of the units; `src/game/tracks.test.ts` the
+   path order.
 
 ## Skill levels and achievements
 

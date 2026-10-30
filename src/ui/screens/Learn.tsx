@@ -20,6 +20,7 @@ import { stopLearnSound } from '../learn/Listen';
 import { announce } from '../lib/announce';
 import { letterName, spokenName } from '../lib/noteText';
 import { focusHeading } from '../lib/screenFocus';
+import { guardFollowUpTap } from '../lib/tapGuard';
 import { hashQuery, Link, navigate, openedFrom, parseHash, useHash, type Route } from '../router';
 import { todayIso, useStore } from '../store';
 import { useStartNotes } from './notes/start';
@@ -32,9 +33,12 @@ const anchor = (id: string): string => 's' + id.replace('.', '-');
 /**
  * Scrolls to a section and gives it focus, so Tab goes on from there and not from the link left behind (the hash route
  * names no element, so the browser does not move focus itself). A jump link to the section already in the address
- * does not change the hash; it jumps anyway.
+ * does not change the hash; it jumps anyway. The route stays the same, so App.tsx does not guard the jump as it does a
+ * new screen: a double click's second click, or a double tap's second tap, would press what the jump put under it
+ * (on a tablet, 10.3's chip leaves its quick check's answer E♭ there).
  */
 const jumpTo = (id: string) => (): void => {
+  guardFollowUpTap();
   const el = document.getElementById(anchor(id));
   el?.scrollIntoView({ block: 'start' });
   el?.focus({ preventScroll: true });

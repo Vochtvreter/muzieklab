@@ -11,8 +11,8 @@ describe('note and key names', () => {
   });
 
   it('names keys and their signatures', () => {
-    expect(keyPairName('G')).toBe('G major · E minor');
-    expect(keyPairName('Eb')).toBe('E♭ major · C minor');
+    expect(keyPairName('G')).toBe('G\u00a0major · E\u00a0minor');
+    expect(keyPairName('Eb')).toBe('E♭\u00a0major · C\u00a0minor');
     expect(keySignsText('C')).toBe('No sharps or flats');
     expect(keySignsText('G')).toBe('1 sharp: every F is F♯');
     expect(keySignsText('Bb')).toBe('2 flats: B♭, E♭');
@@ -61,7 +61,7 @@ describe('feedback', () => {
 
   it('says why a wrong answer was wrong (the canvas wording)', () => {
     expect(feedbackText(fSharp, { kind: 'name', letter: 'F', alter: 0 }, false, 'letters')).toBe(
-      'Right line, but G major has F♯ in the key signature: it is F♯ (fa♯).',
+      'Right line, but G\u00a0major has F♯ in the key signature: it is F♯ (fa♯).',
     );
     expect(feedbackText(fSharp, { kind: 'name', letter: 'E', alter: 0 }, false, 'solfege')).toBe('That was fa♯ (F♯): the top line, sharp from the key signature.');
     expect(feedbackText(fSharp, { kind: 'piano', pc: 5 }, false, 'letters')).toBe(

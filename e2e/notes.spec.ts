@@ -596,7 +596,7 @@ test('read notes: in C♯ major, misses that forgot the key signature get the By
   for (const [i, n] of generateRound(settings, seed).slice(0, 2).entries()) {
     await expect(page.getByText(`Note ${i + 1} of 10`)).toBeVisible();
     await page.keyboard.press(letterOf(n.step).toLowerCase());
-    await expect(page.locator('.nfeedback')).toHaveText(/^Right (line|space), but C♯ major has .♯ in the key signature/);
+    await expect(page.locator('.nfeedback')).toHaveText(/^Right (line|space), but C♯\u00a0major has .♯ in the key signature/);
     await page.keyboard.press('Enter');
   }
   await expect(page.getByText('Note 3 of 10')).toBeVisible();

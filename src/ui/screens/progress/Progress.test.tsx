@@ -153,10 +153,10 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     screen.getByRole('img', { name: '5 of 15 major scales with two stars or more' });
     const majors = within(heading('Major scales').closest('section')!).getAllByRole('listitem');
     expect(majors).toHaveLength(15);
-    expect(majors[0].getAttribute('aria-label')).toBe('C major: 3 of 3 stars');
-    expect(majors[9].getAttribute('aria-label')).toBe('B flat major: 2 of 3 stars');
+    expect(majors[0].getAttribute('aria-label')).toBe('C\u00a0major: 3 of 3 stars');
+    expect(majors[9].getAttribute('aria-label')).toBe('B flat\u00a0major: 2 of 3 stars');
     const rows = within(screen.getByRole('table')).getAllByRole('row');
-    expect(rows.map((r) => r.querySelector('th')?.textContent)).toEqual(['Key', 'A minor', 'E minor', 'D minor', 'B minor']);
+    expect(rows.map((r) => r.querySelector('th')?.textContent)).toEqual(['Key', 'A\u00a0minor', 'E\u00a0minor', 'D\u00a0minor', 'B\u00a0minor']);
     expect(screen.getByRole('link', { name: 'Open the circle of fifths' }).getAttribute('href')).toBe('#/scales?from=progress');
   });
 
@@ -168,7 +168,7 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     p.scales.stars['F#-natural'] = 1;
     show(p);
     view('Notes');
-    screen.getByRole('img', { name: 'Key signature of F sharp major: 6 sharps' });
+    screen.getByRole('img', { name: 'Key signature of F sharp\u00a0major: 6 sharps' });
     expect(screen.getByText('F♯ major · D♯ minor')).toBeTruthy();
     // The card's lines too, which come straight after the staff's name: as written, and in words.
     const key = heading('Key').closest('section')!;
@@ -182,9 +182,9 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
 
     view('Scales');
     const majors = within(heading('Major scales').closest('section')!).getAllByRole('listitem');
-    expect(majors[6].getAttribute('aria-label')).toBe('F sharp major: 0 of 3 stars');
-    const row = screen.getByRole('rowheader', { name: 'F sharp minor' });
-    expect(row.textContent).toBe('F♯ minor');
+    expect(majors[6].getAttribute('aria-label')).toBe('F sharp\u00a0major: 0 of 3 stars');
+    const row = screen.getByRole('rowheader', { name: 'F sharp\u00a0minor' });
+    expect(row.textContent).toBe('F♯\u00a0minor');
   });
 
   it('Practice weak spots puts the weak cells on the rhythm setup and opens it', () => {
@@ -277,7 +277,7 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     expect(screen.getByRole('link', { name: 'Read notes' })).toBeTruthy();
     view('Scales');
     expect(screen.getByText('No minor scale started yet.')).toBeTruthy();
-    expect(screen.getByRole('listitem', { name: 'C major: 0 of 3 stars' })).toBeTruthy();
+    expect(screen.getByRole('listitem', { name: 'C\u00a0major: 0 of 3 stars' })).toBeTruthy();
   });
 });
 
@@ -422,7 +422,7 @@ describe('Progress tab in Dutch', () => {
     // Keys as said in Dutch, as on the Scales hub: bes majeur, not B♭ majeur.
     view('Toonladders', 'Voortgang tonen voor');
     const majors = within(heading('Majeurtoonladders').closest('section')!).getAllByRole('listitem');
-    expect(majors[9].getAttribute('aria-label')).toBe('bes majeur: 2 van 3 sterren');
+    expect(majors[9].getAttribute('aria-label')).toBe('bes\u00a0majeur: 2 van 3 sterren');
   });
 
   it('says a practised day without a rhythm round had no rhythm round, not that it was not practised', () => {

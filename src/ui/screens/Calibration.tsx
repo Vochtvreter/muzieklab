@@ -13,6 +13,7 @@ import { ExerciseFrame } from '../components/AppShell';
 import { TapPad } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { useDocTitle } from '../hooks';
+import { announce } from '../lib/announce';
 import { signed, signedMs } from '../lib/format';
 import { calibrateBackQuery } from '../lib/learnReturn';
 import { focusLost } from '../lib/screenFocus';
@@ -208,6 +209,21 @@ export function Calibration(): JSX.Element {
   const lastLabel = phase === 'idle' ? t('calibrate.pressToStart') : n ? t('calibrate.lastTap', { offset: signedMs(offsets[n - 1]) }) : t('calibrate.tapEach');
   const fmt = (v: number): string => signedMs(v);
   const resultKey = median === null || median === 0 ? 'calibrate.resultZero' : median > 0 ? 'calibrate.resultLate' : 'calibrate.resultEarly';
+  const measured = !interrupted && enough && median !== null;
+  const resultText =
+    phase !== 'done'
+      ? ''
+      : measured
+        ? t(resultKey, { count: n, ms: signed(Math.abs(median)).replace(/^[+−]/, '') })
+        : interrupted
+          ? t('calibrate.interrupted')
+          : t('calibrate.tooFew', { count: n });
+  // The result is read out when the run ends (the focus stays where it was, or goes to Save), through the app's one
+  // live region (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen
+  // reader. Its sentence says the delay too.
+  useEffect(() => {
+    if (resultText) announce(resultText);
+  }, [resultText]);
 
   return (
     <ExerciseFrame className="frame--cal">
@@ -277,12 +293,12 @@ export function Calibration(): JSX.Element {
             <TapPad ref={setPad} progress={n / CLICKS} held={false} />
             <span className="muted-text cal-anykey">{t('calibrate.anyKey')}</span>
           </>
-        ) : !interrupted && enough && median !== null ? (
+        ) : measured ? (
           <>
-            <div className="card cal-result m-in" role="status">
+            <div className="card cal-result m-in">
               <span className="label">{t('calibrate.delay')}</span>
               <span className="cal-result-n">{fmt(median)}</span>
-              <span className="cal-result-text">{t(resultKey, { count: n, ms: signed(Math.abs(median)).replace(/^[+−]/, '') })}</span>
+              <span className="cal-result-text">{resultText}</span>
             </div>
             <div ref={actions} className="cal-actions m-in">
               <button type="button" className="btn btn--accent" onClick={save}>
@@ -295,8 +311,8 @@ export function Calibration(): JSX.Element {
           </>
         ) : (
           <>
-            <div className="card cal-result m-in" role="status">
-              <span className="cal-result-text">{interrupted ? t('calibrate.interrupted') : t('calibrate.tooFew', { count: n })}</span>
+            <div className="card cal-result m-in">
+              <span className="cal-result-text">{resultText}</span>
             </div>
             <div ref={actions} className="cal-actions m-in">
               <button type="button" className="btn btn--accent" onClick={again}>

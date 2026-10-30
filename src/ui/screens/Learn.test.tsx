@@ -10,12 +10,14 @@ import { resetAccountCheck } from '../account';
 import { PlayButton } from '../learn/Listen';
 import { restoreRun, RUN_KEY, runSetup } from '../store';
 
-// Phone width for useBreakpoint; the app scrolls to the top on every route, and a chapter to the section it opens at.
+// Phone width for useBreakpoint (a test may set another); the app scrolls to the top on every route, and a chapter to
+// the section it opens at.
+let width = 390;
 window.matchMedia = (query: string) =>
   ({
     get matches() {
       const min = /min-width: (\d+)px/.exec(query);
-      return min ? 390 >= Number(min[1]) : false;
+      return min ? width >= Number(min[1]) : false;
     },
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
@@ -41,6 +43,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   setLocale('en');
+  width = 390;
 });
 
 describe('Learn: the quick check', () => {
@@ -73,6 +76,33 @@ describe('Learn: the quick check', () => {
     fireEvent.click(within(check).getByRole('button', { name: 'A sixteenth (¼ beat)' }));
     expect(within(check).queryByRole('status')).toBeNull();
     await waitFor(() => expect(said()).toMatch(/^Right\. Each flag halves the note/));
+  });
+});
+
+describe("Learn: a tablet's section chips", () => {
+  /** A press of a mouse button on `el` and its click, `detail` the click's count within a double click (1, then 2). */
+  const click = (el: Element, detail: number): void => {
+    el.dispatchEvent(Object.assign(new MouseEvent('pointerdown', { bubbles: true, cancelable: true }), { pointerType: 'mouse' }));
+    fireEvent.mouseDown(el, { detail });
+    fireEvent.mouseUp(el, { detail });
+    fireEvent.click(el, { detail });
+  };
+
+  it("jump to a section, and a double click's second click does not answer the quick check the jump put under it", () => {
+    width = 834;
+    open('#/learn/10');
+    const chip = within(document.querySelector('.learn-chips') as HTMLElement).getByRole('link', { name: /^10\.3 / });
+    click(chip, 1);
+    expect(window.location.hash).toBe('#/learn/10?s=10.3');
+    // The jump scrolls 10.3 to the top, which puts its answer E♭ where the chip was.
+    const answer = within(section('10.3')).getByRole('button', { name: 'E flat' });
+    click(answer, 2);
+    expect(answer.getAttribute('aria-pressed')).toBe('false');
+    expect(section('10.3').querySelector('.nfeedback')).toBeNull();
+    expect(localStorage.getItem(PROGRESS_KEY) ?? '').not.toContain('10.3');
+    // A click of its own, after it, answers.
+    click(answer, 1);
+    expect(answer.getAttribute('aria-pressed')).toBe('true');
   });
 });
 

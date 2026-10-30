@@ -39,6 +39,10 @@ if (typeof window !== 'undefined') {
   window.addEventListener('pointerdown', (e) => {
     downAt = e.timeStamp;
     downTouch = e.pointerType === 'touch';
+    // A disabled control (Read notes' Next note before the first answer) gets no mousedown, so the guard below does not
+    // see its press, and the press drops the focus to the page. Its pointerdown has no click count (detail 0), but while
+    // a double click is under way the press is refused all the same: on a disabled control it can do nothing else.
+    if (!downTouch && startedCount > 0 && e.target instanceof Element && e.target.closest(':disabled')) e.preventDefault();
   }, true);
   // A touch that turned into a scroll: no click comes of it.
   window.addEventListener('pointercancel', () => {

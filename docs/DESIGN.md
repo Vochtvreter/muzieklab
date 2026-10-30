@@ -1080,6 +1080,11 @@ How write and hear work is in §3.5, *Write it, hear it*.
   (`src/game/notesPath.ts`: clefs, keys, mix keys, answer with, range, extra signs, notes, timer, and since 0.11.0 the
   tasks, the notes it draws from and the note it stresses). The preset is the whole setup: the player's own setup is
   left as it is.
+- Every round of a Keys lesson asks for the sign it is about: per key the round uses that has a key signature, a note
+  the signature changes (the B♭ of *B flat in the key*: the treble staff has one B in its 11 places, and a third of
+  that lesson's rounds had none), and with extra signs a note a sign raises, and with both kinds one a sign lowers too
+  (*Flats too*). The start tries other seeds until the round has them (`noteLessonSeed` in `src/game/notesPath.ts`, up
+  to 100 seeds), as a rhythm lesson does for what it brings, and keeps that seed, so a reload draws the same round.
 - `src/game/tracks.ts` puts the units in path order and numbers them 1, 2, 3, …; that number is what the player sees
   everywhere (*Lesson 4.2*, *Unit 4 of 26*, Results, Round done, the Learn chapter headers). The rules are those of
   `src/game/track.ts`: two stars open the next lesson, and two stars on every lesson of a unit open the next unit.
@@ -1112,8 +1117,9 @@ How write and hear work is in §3.5, *Write it, hear it*.
 - Home's Continue card follows the Learning path (since 0.11.0): a rhythm lesson shows a bar of its rhythm, a First
   notes lesson the notes learned so far with their names (the new one highlighted), and a later note lesson a few
   notes of its round, on the staff they are read on: those of the round's first clef and key, as Play starts a new
-  staff for a new one (4 on a phone, 4 to 6 on a tablet or desktop). A screen reader hears that clef and key (*A few
-  notes from the lesson: bass clef, E♭ major*). The daily challenge follows the highest open rhythm unit (§3.4).
+  staff for a new one (4 on a phone, 4 to 6 on a tablet or desktop), from a round whose first four notes show the
+  sign a Keys lesson is about, so a phone and a wider screen start alike. A screen reader hears that clef and key (*A
+  few notes from the lesson: bass clef, E♭ major*). The daily challenge follows the highest open rhythm unit (§3.4).
 - Not yet: free practice cannot write or hear notes. The Progress tab (since 0.19.0, §8.5) counts every kind of
   practice: its accuracy, timing and skill map count rhythm rounds (free practice, lessons, the daily, Echo), its Notes
   view every Read notes round (free practice and note lessons), and its minutes every mode. The skill levels (§8.6)
@@ -2269,8 +2275,11 @@ both work.
   busy or far away: Settings' one-line notices, the accounts list's line after Cancel invite or Delete account, the
   feedback list's after Delete report, Block and Unblock, the count after a search, a filter or Try again, the outcome
   of Try again on the note for no answer and on the sync line, every form's done line (*Name saved.*, *Saved.*, *New
-  link ready. Send it yourself.*) and Settings' *Progress was reset.*, and what a Learn quick check's answer means.
-  Those lines are plain text, not a `role="status"` of their own, so nothing is read twice.
+  link ready. Send it yourself.*) and Settings' *Progress was reset.*, what a Learn quick check's answer means, the
+  Practice setup's hint a change brings (*Turn on at least one note value to play*, as Start turns off; the hints the
+  setup opens with are read with the page), Calibrate's result (its sentence, with the delay) and the Pause sheet's
+  *The sound was interrupted. …*. Those lines are plain text, not a `role="status"` of their own, so nothing is read
+  twice: a status put in already holding its text is not read by every screen reader.
 
 **Destructive confirm** (`ConfirmAction`) is Settings' Reset progress pattern.
 - The row button (red words and icon) turns, in place, into the question in bold, one line on what happens, any field
@@ -2313,11 +2322,14 @@ what to do. For accounts:
   starts once: a touch tap that comes down within 450 ms of the tap that started is dropped, so it does not press what
   the exercise screen has there (Skip to results, an answer, a piano key; `ui/lib/tapGuard.ts`). So is the second click
   of a mouse double click, for as long as the system counts it as one (its double-click time, which can be longer), and
-  its press does not take the focus there either; a click of its own is meant. The same goes for the buttons on Play's
-  sheets that start or resume the run (How to play's Got it, the intro's and Ready's Start, Resume, Restart exercise),
-  whose sheet is gone in 240 ms, for Echo's Tap it back (Hear again is under it), and for every tap that opens another
-  screen (`App.tsx`): See summary and See the round open Round done, with New round or Change setup under the finger,
-  and Change setup, Options or a Key screen's Use open a setup, with its Start or a switch there.
+  its press does not take the focus there either, also on a disabled control (Read notes' Next note before the first
+  answer); a click of its own is meant. The same goes for the buttons on Play's sheets that start or resume the run
+  (How to play's Got it, the intro's and Ready's Start, Resume, Restart exercise), whose sheet is gone in 240 ms, for
+  Echo's Tap it back (Hear again is under it), for Read notes' Check (Next note takes its place, and a wrong note's why
+  waits there), for a Learn chapter's jump to a section (a tablet's chips, the desktop sidebar: the jump puts a quick
+  check's answer under the pointer), and for every tap that opens another screen (`App.tsx`): See summary and See the
+  round open Round done, with New round or Change setup under the finger, and Change setup, Options or a Key screen's
+  Use open a setup, with its Start or a switch there.
 - Feedback by **colour + shape/icon** (colour-blind safe), sound optional. A missed note gets a × on the staff as
   well as the red (since 0.10.0; §9).
 - Full keyboard support; `prefers-reduced-motion` respected; light & dark theme.
@@ -2450,8 +2462,10 @@ without code changes:
 - Layout must survive longer translations (Dutch and German text is often noticeably
   longer than English): no fixed-width text boxes; labels may wrap. A count stays on the line of the word it counts
   (a no-break space in the message): Progress's *6 skills*, Read notes' *3 keys* and *11 staff positions* (its setup
-  summary, Key row and Round done's line). A chip too narrow for both is the exception: Read notes' *+2 ledger lines*
-  takes two lines inside its chip on a 320 px phone (*+2* over *hulplijnen* in Dutch) rather than run out of it.
+  summary, Key row and Round done's line). A key's name stays on one line too (*F♯ major*, Dutch *G♭ majeur*:
+  `notes.major` and `notes.minor`), as it ends the setup's summary and Round done's line. A chip too narrow for both
+  is the exception: Read notes' *+2 ledger lines* takes two lines inside its chip on a 320 px phone (*+2* over
+  *hulplijnen* in Dutch) rather than run out of it.
 - Notation images carry no baked-in words. Counting under notes is drawn from the
   locale's syllables at render time.
 - Theory content (Learn pages) is stored as structured, translatable content, with its

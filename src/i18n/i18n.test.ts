@@ -3,7 +3,9 @@ import en from './en.json';
 import { formatMessage } from './format';
 import { formatDecimal, getLocale, hasMessage, isLocale, LOCALES, resolveLocale, setLocale, t, tipText, translateParams, tx } from './index';
 import { andList, orList } from '../ui/lib/format';
-import { majorName, spokenName } from '../ui/lib/noteText';
+import { KEY_IDS } from '../core/pitch';
+import { majorName, minorName, spokenName } from '../ui/lib/noteText';
+import { keyName, keySpoken } from '../ui/lib/scaleText';
 
 describe('formatMessage', () => {
   it('fills variables and leaves plain text alone', () => {
@@ -248,6 +250,21 @@ describe('locales', () => {
     setLocale('en');
   });
 
+  it('keeps a key name on one line, in every language ("F♯" above "major" once)', () => {
+    for (const { code } of LOCALES) {
+      setLocale(code);
+      // The setup's summary ends with the key, and so does Round done's line under its title: narrow lines that wrap.
+      const names = KEY_IDS.flatMap((id) => [majorName(id), minorName(id), keyName(id, false), keyName(id, true)]);
+      expect(names.filter((s) => / /.test(s)), code).toEqual([]);
+    }
+    setLocale('en');
+    expect(majorName('F#')).toBe('F♯ major');
+    expect(keySpoken('Gb', true)).toBe('E flat minor');
+    setLocale('nl');
+    expect(majorName('Gb')).toBe('G♭ majeur');
+    setLocale('en');
+  });
+
   for (const [path, catalog] of Object.entries(catalogs)) {
     const code = path.slice(2, -'.json'.length);
     if (code === 'en') continue;
@@ -345,7 +362,7 @@ describe('Dutch', () => {
     expect(spokenName('E', -1)).toBe('es');
     expect(spokenName('A', -1)).toBe('as');
     expect(spokenName('C', 0)).toBe('C');
-    expect(majorName('G')).toBe('G majeur');
+    expect(majorName('G')).toBe('G majeur');
   });
 
   it('names keys majeur and mineur, as the key buttons do, never groot or klein', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Judgement, type NotatedSymbol, PPQ, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Judgement, letterOf, type NotatedSymbol, PPQ, type RoundNote, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
 import { introId, lessonIntros } from '../../game/intro';
 import { ALL_LESSONS } from '../../game/path';
 import { defaultProgress, type Progress } from '../../game/storage';
@@ -423,8 +423,19 @@ describe('note lesson preview', () => {
 
   it('is the first notes of the round, the same every visit', () => {
     const lesson = lessons.find((l) => l.id === '18.2')!;
-    expect(noteLessonPreview(lesson, 4)!.notes).toEqual(noteLessonPreview(lesson, 6)!.notes.slice(0, 4));
+    for (const l of lessons) expect(noteLessonPreview(l, 4)!.notes, l.id).toEqual(noteLessonPreview(l, 6)!.notes.slice(0, 4));
     expect(noteLessonPreview(lesson, 4)!.clef).toBe('bass');
     expect(noteLessonPreview(PATH_UNITS[0].lessons[0], 4)).toBeNull();
+  });
+
+  it("shows the sign a Keys lesson is about in a phone's four notes: B♭ in 23.1, a sharp and a flat in 21.2", () => {
+    const shown = (id: string): RoundNote[] => noteLessonPreview(lessons.find((l) => l.id === id)!, 4)!.notes;
+    // The phone's Continue card for 23.1 (B flat in the key) drew E5 C5 F5 D4.
+    expect(shown('23.1').some((n) => letterOf(n.step) === 'B' && n.alter === -1)).toBe(true);
+    expect(shown('22.1').some((n) => letterOf(n.step) === 'F' && n.alter === 1)).toBe(true);
+    expect(shown('21.2').some((n) => n.sign === -1) && shown('21.2').some((n) => n.sign === 1)).toBe(true);
+    for (const lesson of lessons.filter((l) => l.track === 'keys')) {
+      expect(shown(lesson.id).some((n) => n.alter !== 0 || n.sign !== null), lesson.id).toBe(true);
+    }
   });
 });

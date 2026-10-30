@@ -8,8 +8,9 @@
  *   two and three signs, then mixed keys.
  * Titles are message keys: path.{track}.u{unit}.title and path.{track}.u{unit}.l{lesson}.
  */
-import { DEFAULT_NOTE_SETTINGS, type NoteSettings } from '../core/noteRound';
-import type { Step } from '../core/pitch';
+import { DEFAULT_NOTE_SETTINGS, generateRound, roundExtras, roundHasSigns, type NoteSettings, type RoundNote, type WeakSpots } from '../core/noteRound';
+import { KEYS, keyAlter, letterOf, type Step } from '../core/pitch';
+import { Rng } from '../core/rng';
 import type { Track, TrackLesson, TrackUnit } from './track';
 
 export interface NoteLesson extends TrackLesson {
@@ -191,4 +192,49 @@ export function noteLessonSettings(track: NoteTrackId, lessonId: string): NoteSe
     return { ...s, clefs: [...s.clefs], keys: [...s.keys], tasks: [...s.tasks], only: [...s.only], stress: [...s.stress] };
   }
   return null;
+}
+
+/**
+ * How many of the things a lesson is about some notes of its round lack (0: none), so a lesson named after a sign asks
+ * for it: for each key they use that has a signature, a note it changes (the treble staff has one B in its 11 places,
+ * and a third of 23.1's rounds had no B♭); with extra signs, a note a sign raises, and with both kinds one a sign lowers
+ * too (21.2 Flats too); and, in a lesson with signs, a sign at all (Home's preview of 26.2 could start in C major).
+ */
+export function noteLessonMisses(s: NoteSettings, notes: RoundNote[]): number {
+  const change = (n: RoundNote): number => n.alter - keyAlter(n.key, letterOf(n.step));
+  let misses = 0;
+  for (const key of new Set(notes.map((n) => n.key))) {
+    if (KEYS[key].fifths !== 0 && !notes.some((n) => n.key === key && n.sign === null && n.alter !== 0)) misses++;
+  }
+  const extras = roundExtras(s);
+  if (extras !== 'none' && !notes.some((n) => change(n) > 0)) misses++;
+  if (extras === 'both' && !notes.some((n) => change(n) < 0)) misses++;
+  if (roundHasSigns(s) && !notes.some((n) => n.alter !== 0 || n.sign !== null)) misses++;
+  return misses;
+}
+
+/**
+ * Seeds a lesson start tries for a round that shows what the lesson is about. A round is drawn in microseconds, and
+ * weak spots elsewhere on the staff make 23.1's one B rarer still.
+ */
+const SHOW_TRIES = 100;
+
+/**
+ * The seed of a lesson's round, chosen so the round shows all the lesson is about (noteLessonMisses), as a rhythm
+ * lesson's exercise shows what it introduces (makeLessonRun in ui/store.tsx): from `seed`, other seeds are tried until
+ * one does, else the one that comes closest is kept. The run keeps the seed, so a reload draws the same round again.
+ */
+export function noteLessonSeed(s: NoteSettings, seed: number, weak: WeakSpots = {}): number {
+  const seeds = new Rng(seed);
+  let best = seed;
+  let misses = noteLessonMisses(s, generateRound(s, seed, weak));
+  for (let i = 1; i < SHOW_TRIES && misses > 0; i++) {
+    const next = seeds.int(0x7fffffff);
+    const m = noteLessonMisses(s, generateRound(s, next, weak));
+    if (m < misses) {
+      best = next;
+      misses = m;
+    }
+  }
+  return best;
 }

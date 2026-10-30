@@ -799,6 +799,13 @@ test('hearing a note after a reload: nothing sounds until a tap, then Hear it pl
   await expect(page.locator('.nfeedback')).toHaveText('Listen: first sol, then the note. Which one is it?');
 });
 
+/** A round that writes G (sol), ten times, restored from the session as a reload on Play does. */
+async function writeRound(page: Page): Promise<void> {
+  await seed(page, { prefs: { noteNames: 'letters', seenHowTo: true } });
+  const settings = { ...DEFAULT_NOTE_SETTINGS, tasks: ['write'], only: [32], count: 10, playNotes: false };
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 1, focus: [] });
+}
+
 /**
  * A double tap on a Start button (two taps 120 ms apart, a touch screen): the first starts the exercise and the screen
  * changes at once; the second must not press what the new screen has at that spot (Skip to results, an answer, a piano
@@ -883,6 +890,19 @@ test.describe('a double tap on Start', () => {
     await expect(page).toHaveURL(/#\/notes\/play$/);
     await expect(page.getByRole('button', { name: /^Next note/ })).toBeDisabled();
     expect(await page.evaluate(() => localStorage.getItem('muzieklab.progress.v1') ?? '')).not.toContain('pitch:1.1');
+  });
+
+  test('writing a note on a phone: Check shows why it is wrong, and Next note under the finger is not pressed', async ({ page }) => {
+    await writeRound(page);
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/notes/play');
+    // The first press puts the note on the middle line: B, not the G asked for.
+    await page.getByRole('button', { name: 'Higher' }).tap();
+    await page.waitForTimeout(500);
+    await doubleTap(page, page.getByRole('button', { name: /^Check/ }));
+    await expect(page.locator('.nfeedback')).toHaveText(/^You wrote B \(si\), on the middle line; G \(sol\) goes on/);
+    await expect(page.getByRole('button', { name: /^Next note/ })).toBeEnabled();
+    await expect(page.locator('.nplay-count')).toHaveText('1 / 10');
   });
 
   test('scales on a phone: the piano key under the finger is not pressed', async ({ page }) => {
@@ -996,6 +1016,30 @@ test.describe('a double click on Start', () => {
       await expect(page.getByRole('button', { name: 'Skip to results' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Skip to results' })).not.toBeFocused();
       await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+    });
+  }
+
+  // Next note is disabled until the first answer, and Chromium sends a disabled button no mousedown, only the pointer
+  // events: its press dropped the focus to the page.
+  test('read notes on a phone: the disabled Next note under the pointer does not take the focus from the heading', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.phone);
+    await page.goto('./#/notes');
+    await doubleClick(page, page.getByRole('button', { name: /^Start · / }));
+    await expect(page).toHaveURL(/#\/notes\/play$/);
+    await expect(page.getByRole('button', { name: /^Next note/ })).toBeDisabled();
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  });
+
+  for (const gap of [110, 600]) {
+    test(`writing a note on desktop, ${gap} ms apart: Check shows why it is wrong, and Next note under the pointer is not pressed`, async ({ page }) => {
+      await writeRound(page);
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await page.goto('./#/notes/play');
+      await page.getByRole('button', { name: 'Higher' }).click();
+      await page.waitForTimeout(600);
+      await doubleClick(page, page.getByRole('button', { name: /^Check/ }), gap);
+      await expect(page.locator('.nfeedback')).toHaveText(/^You wrote B \(si\), on the middle line; G \(sol\) goes on/);
+      await expect(page.getByRole('button', { name: /^Next note/ })).toBeEnabled();
     });
   }
 

@@ -1,7 +1,7 @@
 /** How the Learning path looks for a given progress: unit states, the lesson tiles and Home's previews. Pure. */
 import { generateRound, staffPage, type Clef, type KeyId, type NotatedBar, type RoundNote, type Settings } from '../../core/api';
 import { barFigures, introId, lessonIntros } from '../../game/intro';
-import { noteLessonSettings } from '../../game/notesPath';
+import { noteLessonMisses, noteLessonSettings } from '../../game/notesPath';
 import { ALL_LESSONS, findLesson, lessonSettings } from '../../game/path';
 import { starsOf, unitStatesIn, type LessonOutcome } from '../../game/track';
 import { findPathLesson, LEARNING_PATH, PATH_UNITS, pathNext, pathOutcome, type PathLesson, type PathUnit } from '../../game/tracks';
@@ -124,16 +124,29 @@ function makeLessonPreview(lessonId: string): { run: Run; bar: number } | null {
   return best && { run: best.run, bar: best.bar };
 }
 
+/** Seeds tried for a note lesson's preview that shows its sign: 21.2's first four notes have a sharp and a flat in 1 round in 7. */
+const NOTE_PREVIEW_TRIES = 60;
+/** The fewest notes a preview shows (a phone's), which pick its round. */
+const NOTE_PREVIEW_MIN = 4;
+
 /**
  * The Home preview of a Read notes or Keys lesson: the first notes of a round (the same every visit), up to `count`,
  * on the staff they are read on. Only the round's first clef and key, as Play draws a new staff for a new one (18.2
- * starts in bass clef, 26.3 in E♭ major). Null for other lessons.
+ * starts in bass clef, 26.3 in E♭ major). The round is the first of a few fixed seeds whose first four notes show what
+ * the lesson is about (noteLessonMisses: the B♭ of B flat in the key), so a phone and a wider screen start alike.
+ * Null for other lessons.
  */
 export function noteLessonPreview(lesson: PathLesson, count: number): { clef: Clef; key: KeyId; notes: RoundNote[] } | null {
   if (lesson.track !== 'notes' && lesson.track !== 'keys') return null;
   const settings = noteLessonSettings(lesson.track, lesson.ref);
   if (!settings) return null;
-  const round = generateRound(settings, seedFromString(lesson.key));
+  let best: { round: RoundNote[]; misses: number } | null = null;
+  for (let i = 0; i < NOTE_PREVIEW_TRIES && best?.misses !== 0; i++) {
+    const round = generateRound(settings, seedFromString(i === 0 ? lesson.key : lesson.key + '#' + i));
+    const misses = noteLessonMisses(settings, round.slice(0, staffPage(round, 0, NOTE_PREVIEW_MIN).to));
+    if (!best || misses < best.misses) best = { round, misses };
+  }
+  const round = best!.round;
   return { clef: round[0].clef, key: round[0].key, notes: round.slice(0, staffPage(round, 0, count).to) };
 }
 

@@ -110,6 +110,21 @@ describe('guardFollowUpTap', () => {
     expect(mousedown(2)).toBe(true);
   });
 
+  it('refuses the press of a disabled control under the second click, which gets no mousedown, and only then', () => {
+    const { start } = screen();
+    document.body.insertAdjacentHTML('beforeend', '<button id="next" disabled><span>Next note</span></button>');
+    const next = document.getElementById('next')!;
+    // Chromium sends a disabled button only its pointer events, with no click count: a pointerdown, then a pointerup.
+    const pointerdown = (el: HTMLElement): boolean =>
+      el.dispatchEvent(Object.assign(new MouseEvent('pointerdown', { bubbles: true, cancelable: true }), { pointerType: 'mouse' }));
+    now = 90_000;
+    press(start, 'mouse', 90_000, 1);
+    expect(pointerdown(next.querySelector('span')!)).toBe(false);
+    // Once a click of its own has ended that double click, a press there is the browser's again.
+    press(document.body, 'mouse', 91_000, 1);
+    expect(pointerdown(next)).toBe(true);
+  });
+
   it('a touch that gave no click does not hold back a later key: a scroll, a long press', () => {
     const { start, skip, skipped } = screen();
     now = 40_000;

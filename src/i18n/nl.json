@@ -1298,8 +1298,8 @@
       "treble": "vioolsleutel",
       "bass": "bassleutel"
     },
-    "major": "{tonic} majeur",
-    "minor": "{tonic} mineur",
+    "major": "{tonic} majeur",
+    "minor": "{tonic} mineur",
     "keyPair": "{major} · {minor}",
     "keyNone": "Geen kruisen of mollen",
     "keySharps": "{count, plural, one {1 kruis: elke {letter} is een {name}} other {# kruisen: {names}}}",

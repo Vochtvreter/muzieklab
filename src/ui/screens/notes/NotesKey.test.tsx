@@ -48,65 +48,65 @@ describe('Read notes Key screen for screen readers', () => {
     const keys = within(screen.getByRole('group', { name: 'Keys' })).getAllByRole('button');
     expect(keys).toHaveLength(15);
     for (const b of keys) expect(b.getAttribute('aria-label')).not.toMatch(SIGNS);
-    const fs = screen.getByRole('button', { name: 'F sharp major or D sharp minor, 6 sharps' });
+    const fs = screen.getByRole('button', { name: 'F sharp\u00a0major or D sharp\u00a0minor, 6 sharps' });
     // The button still shows the names as written.
-    expect(fs.textContent).toBe('F♯ majorD♯ minor');
-    screen.getByRole('button', { name: 'G flat major or E flat minor, 6 flats' });
-    screen.getByRole('button', { name: 'C major or A minor, no sharps or flats' });
+    expect(fs.textContent).toBe('F♯\u00a0majorD♯\u00a0minor');
+    screen.getByRole('button', { name: 'G flat\u00a0major or E flat\u00a0minor, 6 flats' });
+    screen.getByRole('button', { name: 'C\u00a0major or A\u00a0minor, no sharps or flats' });
   });
 
   it('says the chosen key and its signature in words, and shows them as written', () => {
     show(<NotesKey />);
-    fireEvent.click(screen.getByRole('button', { name: 'F sharp major or D sharp minor, 6 sharps' }));
+    fireEvent.click(screen.getByRole('button', { name: 'F sharp\u00a0major or D sharp\u00a0minor, 6 sharps' }));
     const summary = document.querySelector('.key-summary')!;
     expect(summary.getAttribute('aria-live')).toBe('polite');
     expect(heard(summary)).toBe(
-      'F sharp major or D sharp minor. The key signature makes every F, C, G, D, A, E into F sharp, C sharp, G sharp, D sharp, A sharp, E sharp, in every octave, without a sign next to the note.',
+      'F sharp\u00a0major or D sharp\u00a0minor. The key signature makes every F, C, G, D, A, E into F sharp, C sharp, G sharp, D sharp, A sharp, E sharp, in every octave, without a sign next to the note.',
     );
-    expect(seen(summary)).toBe('F♯ major or D♯ minor. The key signature makes every F, C, G, D, A, E into F♯, C♯, G♯, D♯, A♯, E♯, in every octave, without a sign next to the note.');
-    const use = screen.getByRole('button', { name: 'Use F sharp major' });
-    expect(use.textContent).toBe('Use F♯ major');
+    expect(seen(summary)).toBe('F♯\u00a0major or D♯\u00a0minor. The key signature makes every F, C, G, D, A, E into F♯, C♯, G♯, D♯, A♯, E♯, in every octave, without a sign next to the note.');
+    const use = screen.getByRole('button', { name: 'Use F sharp\u00a0major' });
+    expect(use.textContent).toBe('Use F♯\u00a0major');
   });
 
   it('speaks Dutch key names as Scales does', () => {
     setLocale('nl');
     show(<NotesKey />);
     for (const b of within(screen.getByRole('group', { name: 'Toonsoorten' })).getAllByRole('button')) expect(b.getAttribute('aria-label')).not.toMatch(SIGNS);
-    fireEvent.click(screen.getByRole('button', { name: 'fis majeur of dis mineur, 6 kruisen' }));
-    screen.getByRole('button', { name: 'Kies fis majeur' });
-    fireEvent.click(screen.getByRole('button', { name: 'bes majeur of G mineur, 2 mollen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'fis\u00a0majeur of dis\u00a0mineur, 6 kruisen' }));
+    screen.getByRole('button', { name: 'Kies fis\u00a0majeur' });
+    fireEvent.click(screen.getByRole('button', { name: 'bes\u00a0majeur of G\u00a0mineur, 2 mollen' }));
     expect(heard(document.querySelector('.key-summary')!)).toBe(
-      'bes majeur of G mineur. Door de voortekening wordt elke B, E een bes, es, in elk octaaf, zonder teken voor de noot.',
+      'bes\u00a0majeur of G\u00a0mineur. Door de voortekening wordt elke B, E een bes, es, in elk octaaf, zonder teken voor de noot.',
     );
-    screen.getByRole('button', { name: 'Kies bes majeur' });
+    screen.getByRole('button', { name: 'Kies bes\u00a0majeur' });
   });
 });
 
 describe('Read notes setup for screen readers', () => {
   it('names the key in words on its row', () => {
     show(<NotesSetup />, 'F#');
-    const row = screen.getByRole('link', { name: 'Key: F sharp major · D sharp minor, 6 sharps: F sharp, C sharp, G sharp, D sharp, A sharp, E sharp. Change key' });
-    expect(row.textContent).toBe('F♯ major · D♯ minor6 sharps: F♯, C♯, G♯, D♯, A♯, E♯');
+    const row = screen.getByRole('link', { name: 'Key: F sharp\u00a0major · D sharp\u00a0minor, 6 sharps: F sharp, C sharp, G sharp, D sharp, A sharp, E sharp. Change key' });
+    expect(row.textContent).toBe('F♯\u00a0major · D♯\u00a0minor6 sharps: F♯, C♯, G♯, D♯, A♯, E♯');
   });
 
   it('in Dutch too', () => {
     setLocale('nl');
     show(<NotesSetup />, 'F');
-    screen.getByRole('link', { name: 'Toonsoort: F majeur · D mineur, 1 mol: elke B is een bes. Toonsoort wijzigen' });
+    screen.getByRole('link', { name: 'Toonsoort: F\u00a0majeur · D\u00a0mineur, 1 mol: elke B is een bes. Toonsoort wijzigen' });
   });
 
   it("says the summary's key in words, and shows it as written", () => {
     show(<NotesSetup />, 'C#', 'sharps');
     const line = document.querySelector('.nsetup-summary-text > span')!;
     // Sharps in C♯ major adds no extra signs, so the line does not promise them.
-    expect(seen(line)).toBe('11\u00a0staff positions per clef · C♯ major');
-    expect(heard(line)).toBe('11\u00a0staff positions per clef · C sharp major');
+    expect(seen(line)).toBe('11\u00a0staff positions per clef · C♯\u00a0major');
+    expect(heard(line)).toBe('11\u00a0staff positions per clef · C sharp\u00a0major');
     cleanup();
     show(<NotesSetup />, 'Gb', 'both');
-    expect(heard(document.querySelector('.nsetup-summary-text > span')!)).toBe('11\u00a0staff positions per clef · G flat major · extra signs appear');
+    expect(heard(document.querySelector('.nsetup-summary-text > span')!)).toBe('11\u00a0staff positions per clef · G flat\u00a0major · extra signs appear');
     cleanup();
     setLocale('nl');
     show(<NotesSetup />, 'F#', 'both');
-    expect(heard(document.querySelector('.nsetup-summary-text > span')!)).toBe('11\u00a0plekken op de balk per sleutel · fis majeur · met extra tekens');
+    expect(heard(document.querySelector('.nsetup-summary-text > span')!)).toBe('11\u00a0plekken op de balk per sleutel · fis\u00a0majeur · met extra tekens');
   });
 });
