@@ -106,6 +106,18 @@ describe('exerciseHas', () => {
     expect(exerciseHas(dq, ['dotted:half'])).toBe(false);
   });
 
+  it("finds the skill map's cells, which Practice weak spots asks for: a dotted half tied on counts for ties, and is no half", () => {
+    const threeFour = (bars: Bar[]): Exercise => ({ ...generateExercise({ ...DEFAULT_SETTINGS, meters: ['3/4'], dotted: true, ties: true, bars: bars.length }, 1), bars });
+    const tied = threeFour([{ events: [note(0, 3 * q)] }, { events: [note(0, q, { tieFromPrev: true }), note(q, 2 * q)] }]);
+    expect(exerciseHas(tied, ['dotted:half', 'ties', 'note:half'])).toBe(true);
+    expect(exerciseHas(tied, ['cell:ties', 'cell:half'])).toBe(true);
+    expect(exerciseHas(tied, ['cell:dottedHalf'])).toBe(false);
+    const dotted = threeFour([{ events: [note(0, 3 * q)] }, { events: [rest(0, q), note(q, 2 * q)] }]);
+    expect(exerciseHas(dotted, ['cell:dottedHalf', 'cell:rests', 'cell:half'])).toBe(true);
+    expect(exerciseHas(threeFour([{ events: [note(0, 3 * q)] }, { events: [note(0, 3 * q)] }]), ['cell:half'])).toBe(false);
+    expect(SHOW_IDS).toEqual(expect.arrayContaining(['cell:dottedHalf', 'cell:dottedQE', 'cell:rests']));
+  });
+
   it('finds an eighth and two sixteenths only where they fill one beat (8.3)', () => {
     const fig = ['figure:eighth-sixteenths'];
     // Beat 2: "2 & a".

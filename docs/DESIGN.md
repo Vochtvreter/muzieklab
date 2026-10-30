@@ -1193,19 +1193,24 @@ built (since 0.19.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
   Rests, quarter rests (and eighth rests when eighths are on) with *many* rests; for Ties, ties; for Dotted half, dotted
   notes with halves and 3/4; for Dotted quarter + eighth, dotted notes with quarters and eighths. For Ties, both dotted
   cells and Rests it also sets Bars to 2 at least: an exercise of 1 bar has no tie and no dotted half, and a dotted
-  quarter + eighth or a note after a rest in fewer than half of them. With no cell under 80% it uses the two weakest
-  open cells. It puts the result on the rhythm setup (the player's own setup changes, as a Learn practice link does,
-  but Bars too: the link keeps the player's Bars and plays 2 for its run only) and opens it, where Start plays it: a
-  setup Start could not play (every time signature or note value switched off, or none that fills a bar) first gets
-  4/4 when it has no time signature, then quarter notes when it still needs them. It is hidden while no cell has 12
-  notes.
-- **Its Start looks for the weak cells**: an exercise with a note of each (a tie, a dotted half, a dotted quarter, a
-  rest, or the cell's note value), trying other seeds as a Learn practice link does (up to 200), and its Retry and
-  Next do too. The settings alone left it to chance: the generator takes any dotted value for its dotted note and an
-  off-beat eighth for its syncopation, so with eighths on only about 1 exercise of 2 bars in 6 had a dotted half and 1
-  in 3 a tie. Only the run the preset starts looks for them: a change on the setup by hand, or a later Start, plays
-  the setup as it comes. With sixteenths on a dotted half is in about 1 exercise of 2 bars in 150 (1 in 25 with rests
-  on, 1 in 10 from 3 bars), so there some starts find none and keep an exercise without it.
+  quarter + eighth or a note after a rest in fewer than half of them, and more for several (*Bars for several weak
+  cells*, below). With no cell under 80% it uses the two weakest open cells. It puts the result on the rhythm setup (the
+  player's own setup changes, as a Learn practice link does, but Bars too: the link keeps the player's Bars and plays 2
+  for its run only) and opens it, where Start plays it: a setup Start could not play (every time signature or note value
+  switched off, or none that fills a bar) first gets 4/4 when it has no time signature, then quarter notes when it still
+  needs them. It is hidden while no cell has 12 notes.
+- **Its Start looks for the weak cells**: an exercise with a note that counts for each of them on the skill map (a
+  dotted half tied on counts for Ties, not for Dotted half, and a dotted half is no half), trying other seeds as a
+  Learn practice link does (up to 200), and its Retry and Next do too. The settings alone left it to chance: the
+  generator takes any dotted value for its dotted note and an off-beat eighth for its syncopation, so with eighths on
+  only about 1 exercise of 2 bars in 6 had a dotted half and 1 in 3 a tie. Only the run the preset starts looks for
+  them: a change on the setup by hand, or a later Start, plays the setup as it comes.
+- **Bars for several weak cells**: so that the start finds them all within a few tries, the preset adds a bar for each
+  of Ties, the dotted cells and Rests after the first (2 bars had ties and a dotted half together in 2 starts of 5, and
+  all four in none), one for a dotted half with eighths or sixteenths on (in 2 bars 1 exercise in 6 has one with
+  eighths, 1 in 300 with sixteenths; in 3 bars 1 in 3 and 1 in 10), and one for both dotted cells, which an exercise
+  seldom has together (1 in 35 of 3 bars, 1 in 5 of 5). So a dotted half with eighths plays 3 bars, ties and a dotted
+  half with eighths 4, both dotted cells 5, and all four 7, or the player's Bars when more.
 - **Meters are not tracked separately.** A round has one meter, so a meter score would be the accuracy of whole rounds,
   not of the notes that are hard. The meters are taught by rhythm units (3/4 in unit 3, 2/4 in unit 5) that the
   Rhythm reading levels already check (§8.6), and every board's skill map draws cells only. A boost in the generator
@@ -1440,7 +1445,10 @@ Built in v0.2 (dark theme was already in the MVP):
   The beat counter is the one Settings picks in both phases (the pendulum with the analog look). A listen cut off
   before its end (the app sent to the background, the tab hidden, the audio suspended or interrupted) stops and does
   not count, as the tapping pauses then. So does one whose audio has still not started 0.8 s after the press (Play's
-  grace for it), or whose clock stands still: before, it played in silence and used up a play.
+  grace for it), or whose clock stands still: before, it played in silence and used up a play. When the audio stopped
+  or never started, the listen card's title says so until the next press, as Play's Pause sheet does: *The sound was
+  interrupted. Press play to try again.* (nl *Het geluid werd onderbroken. Druk op afspelen om het opnieuw te
+  proberen.*). Leaving the app, the player's own doing, keeps *Listen to the rhythm*.
 
 **v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Two things
 change in the app:

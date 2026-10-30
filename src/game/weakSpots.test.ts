@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { checkSettings } from '../core/feasibility';
 import { generateExercise } from '../core/generator';
+import type { Settings } from '../core/types';
 import { noteCells } from './cells';
 import { SHOW_IDS } from './intro';
 import { sanitizeSettings, CELL_IDS, type CellId } from './storage';
@@ -64,6 +65,24 @@ describe('weakSpotsSettings', () => {
     expect(weakSpotsSettings({ ...base, bars: 4 }, cells({ ties: 70 }))!.bars).toBe(4);
   });
 
+  it('plays more bars for several of those cells, and for a dotted half with eighths or sixteenths on', () => {
+    const one = { ...base, bars: 1 };
+    const bars = (acc: Partial<Record<CellId, number>>, setup: Settings = one): number => weakSpotsSettings(setup, cells({ quarter: 95, ...acc }))!.bars;
+    // A bar more for each other one.
+    expect(bars({ ties: 70, rests: 70 })).toBe(3);
+    expect(bars({ ties: 70, rests: 70, dottedQE: 70 })).toBe(4);
+    // A dotted half in busier bars: with eighths 1 exercise of 2 bars in 6 has one, with sixteenths 1 in 300.
+    expect(bars({ dottedHalf: 70 })).toBe(2);
+    expect(bars({ dottedHalf: 70 }, { ...one, notes: ['half', 'quarter', 'eighth'] })).toBe(3);
+    expect(bars({ dottedHalf: 70, sixteenths: 70 })).toBe(3);
+    expect(bars({ ties: 70, dottedHalf: 70 }, { ...one, notes: ['half', 'quarter', 'eighth'] })).toBe(4);
+    // Both dotted cells, which an exercise seldom has together (the dotted quarter brings eighths), and all four.
+    expect(bars({ dottedHalf: 70, dottedQE: 70 })).toBe(5);
+    expect(bars({ ties: 70, dottedHalf: 70, dottedQE: 70, rests: 70 })).toBe(7);
+    // Never fewer than the player's.
+    expect(bars({ ties: 70, rests: 70 }, { ...base, bars: 8 })).toBe(8);
+  });
+
   it('is null without a cell with enough notes (the button is hidden)', () => {
     expect(weakSpotsSettings(base, cells({}))).toBeNull();
   });
@@ -80,9 +99,9 @@ describe('weakSpotsSettings', () => {
 
 describe('weakSpotsShows', () => {
   it('asks the start for a note of each weak cell, as a Learn practice link asks for what its section teaches', () => {
-    expect(weakSpotsShows(cells({ quarter: 95, ties: 70, dottedHalf: 60 }))).toEqual(['ties', 'dotted:half']);
+    expect(weakSpotsShows(cells({ quarter: 95, ties: 70, dottedHalf: 60 }))).toEqual(['cell:ties', 'cell:dottedHalf']);
     const all = weakSpotsShows(cells(Object.fromEntries(CELL_IDS.map((id) => [id, 60]))));
-    expect(all).toEqual(['note:quarter', 'note:half', 'note:eighth', 'rest', 'ties', 'dotted:half', 'dotted:quarter', 'note:sixteenth']);
+    expect(all).toEqual(CELL_IDS.map((id) => 'cell:' + id));
     // Ids the start's seed search knows, which a run restored after a reload keeps.
     for (const id of all) expect(SHOW_IDS).toContain(id);
     expect(weakSpotsShows(cells({}))).toEqual([]);

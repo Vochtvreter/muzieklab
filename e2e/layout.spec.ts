@@ -914,6 +914,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.getByRole('img', { name: 'Beats 1 to 4' })).toBeVisible();
         if (tabletLayout) expect((await pad(page).boundingBox())!.height, 'the pad fills the tablet').toBeGreaterThan(300);
       }
+      // Audio that never starts: the listen is given back within a second, and its title says why (two lines on a
+      // phone), with the card and the pad still in view (ios-background.spec.ts checks the listen itself).
+      await page.evaluate(() => Object.defineProperty(AudioContext.prototype, 'state', { configurable: true, get: () => 'suspended' }));
+      await page.getByRole('button', { name: 'Play the rhythm' }).click();
+      await expect(page.getByRole('heading', { name: 'The sound was interrupted. Press play to try again.' })).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText('2 plays left')).toBeVisible();
+      await expectNotSqueezed(page.locator('.echo-card'));
+      await expectNoClippedLabels(page);
+      if (!desktopLayout) {
+        await expect(pad(page)).toBeInViewport({ ratio: 1 });
+        await expectFits(page);
+      }
       await expectNoSideScroll(page);
     });
 

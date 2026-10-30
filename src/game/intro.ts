@@ -5,6 +5,7 @@
  */
 import { spellExercise } from '../core/speller';
 import { METER_IDS, NOTE_VALUES, PPQ, type Exercise, type MeterId, type NotatedBar, type NotatedSymbol, type NoteValue, type Settings } from '../core/types';
+import { CELL_UNIT, noteCells } from './cells';
 import { ALL_LESSONS, lessonSettings } from './path';
 
 export type Intro = { kind: 'meter'; meter: MeterId } | { kind: 'note' | 'rest'; value: NoteValue } | { kind: 'dotted' | 'ties' | 'triplets' };
@@ -92,9 +93,15 @@ const FIGURES: Record<string, Figure> = {
 
 /**
  * Every id exerciseHas knows, for validating a stored run's `shows`: the intro ids, 'rest' (any rest, as 'dotted' is
- * any dotted value), each dotted value and the figures.
+ * any dotted value), each dotted value, the figures and the skill map's cells ('cell:dottedHalf').
  */
-export const SHOW_IDS: readonly string[] = [...INTRO_IDS, 'rest', ...NOTE_VALUES.map((v) => 'dotted:' + v), ...Object.keys(FIGURES)];
+export const SHOW_IDS: readonly string[] = [
+  ...INTRO_IDS,
+  'rest',
+  ...NOTE_VALUES.map((v) => 'dotted:' + v),
+  ...Object.keys(FIGURES),
+  ...Object.keys(CELL_UNIT).map((id) => 'cell:' + id),
+];
 
 /** The figures a bar shows (FIGURES): 'figure:eighth-sixteenths' where an eighth and two sixteenths fill a beat. */
 export function barFigures(bar: NotatedBar): string[] {
@@ -106,11 +113,14 @@ export function barFigures(bar: NotatedBar): string[] {
 /**
  * The intro ids of what an exercise's staff shows: its time signature, note and rest values, dots, ties, triplets;
  * and each dotted value and figure, as a lesson's `preview` names them (path.ts: 'dotted:quarter',
- * 'figure:eighth-sixteenths'), and 'rest' for any rest (a Learn section's practice `shows`, chapters.ts).
+ * 'figure:eighth-sixteenths'), and 'rest' for any rest (a Learn section's practice `shows`, chapters.ts). And each
+ * skill-map cell its notes count for ('cell:dottedHalf', game/cells.ts), which Practice weak spots asks for: a dotted
+ * half tied on counts for ties, not for the dotted half, and a dotted half is no half.
  */
 function shownIds(exercise: Exercise): Set<string> {
   const ids = new Set<string>(['meter:' + exercise.meter.id]);
-  for (const bar of spellExercise(exercise)) {
+  const bars = spellExercise(exercise);
+  for (const bar of bars) {
     for (const s of bar.symbols) {
       // A whole-bar rest is drawn as the whole rest; a triplet's notes count as the triplet, not as eighths.
       ids.add(s.tuplet ? 'triplets' : s.kind + ':' + s.value);
@@ -120,12 +130,13 @@ function shownIds(exercise: Exercise): Set<string> {
     }
     for (const id of barFigures(bar)) ids.add(id);
   }
+  for (const id of noteCells(exercise, bars).flat()) ids.add('cell:' + id);
   return ids;
 }
 
 /**
  * Whether an exercise's staff shows every symbol given (SHOW_IDS: intro ids, 'dotted:quarter',
- * 'figure:eighth-sixteenths', 'rest'), e.g. all its lesson is about.
+ * 'figure:eighth-sixteenths', 'rest', 'cell:ties'), e.g. all its lesson is about.
  */
 export function exerciseHas(exercise: Exercise, ids: readonly string[]): boolean {
   if (ids.length === 0) return true;

@@ -497,6 +497,7 @@
       "replay": "Speel het ritme opnieuw",
       "listenTitle": "Luister naar het ritme",
       "playing": "Speelt…",
+      "interrupted": "Het geluid werd onderbroken. Druk op afspelen om het opnieuw te proberen.",
       "meta": "{bars} · {meter} · {bpm} BPM",
       "playsLeft": "{count, plural, =0 {Niet meer te horen} one {Nog # keer te horen} other {Nog # keer te horen}}",
       "start": "Tik het na",

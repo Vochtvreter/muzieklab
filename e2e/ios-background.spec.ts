@@ -136,6 +136,7 @@ test('echo: leaving the app while the rhythm plays, or audio that stops or never
   await page.goto('./#/setup');
   await page.getByRole('button', { name: /^Start · / }).click();
   const play = page.getByRole('button', { name: 'Play the rhythm' });
+  const said = page.getByRole('heading', { name: 'The sound was interrupted. Press play to try again.' });
   // To the background and back while it plays (iOS interrupts the audio then), the audio suspended while in view, and
   // audio that never starts: a listen in silence once used up a play and went on to Tap it back.
   for (const cut of ['background', 'suspended', 'never started'] as const) {
@@ -150,14 +151,20 @@ test('echo: leaving the app while the rhythm plays, or audio that stops or never
     else if (cut === 'suspended') await page.evaluate(() => (window as unknown as { suspendAudio(): Promise<unknown> }).suspendAudio());
     // Stopped and not counted, also once the rhythm would have ended: both plays left, and nothing to tap back yet.
     await expect(page.getByText('2 plays left'), cut).toBeVisible({ timeout: 3000 });
+    // Audio that stopped under it, or never started, says so (it played back to "2 plays left" with no word why);
+    // leaving the app was the player's own doing.
+    if (cut === 'background') await expect(said, cut).toHaveCount(0);
+    else await expect(said, cut).toBeVisible();
     await page.waitForTimeout(7000);
     await expect(page.getByText('2 plays left'), cut).toBeVisible();
     await expect(page.getByRole('button', { name: 'Tap it back' }), cut).toHaveCount(0);
     await expect(play, cut).toBeEnabled();
   }
   await page.evaluate(() => (window as unknown as { stickAudio(on: boolean): void }).stickAudio(false));
-  // Heard to the end, it counts.
+  // Heard to the end, it counts; the next press takes the note away.
   await play.click();
+  await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
+  await expect(said).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Tap it back' })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('1 play left')).toBeVisible();
 });

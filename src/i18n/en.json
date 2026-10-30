@@ -497,6 +497,7 @@
       "replay": "Replay the rhythm",
       "listenTitle": "Listen to the rhythm",
       "playing": "Playing…",
+      "interrupted": "The sound was interrupted. Press play to try again.",
       "meta": "{bars} · {meter} · {bpm} BPM",
       "playsLeft": "{count, plural, =0 {No plays left} one {# play left} other {# plays left}}",
       "start": "Tap it back",

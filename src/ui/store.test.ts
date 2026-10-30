@@ -261,8 +261,8 @@ describe('reducer: the free-practice setup', () => {
   });
 
   it("keeps what Practice weak spots asks its Start to show, until the setup is changed by hand or started", () => {
-    const preset = reducer(state(), { type: 'settings', settings: { ...DEFAULT_SETTINGS, dotted: true, bars: 2 }, shows: ['dotted:half'] });
-    expect(preset.setupShows).toEqual(['dotted:half']);
+    const preset = reducer(state(), { type: 'settings', settings: { ...DEFAULT_SETTINGS, dotted: true, bars: 2 }, shows: ['cell:dottedHalf'] });
+    expect(preset.setupShows).toEqual(['cell:dottedHalf']);
     expect(reducer(preset, { type: 'settings', settings: { ...preset.settings, tempo: 90 } }).setupShows).toBeUndefined();
     expect(reducer(preset, { type: 'start', run: makeRun(preset.settings, 1, null)! }).setupShows).toBeUndefined();
   });
@@ -548,40 +548,40 @@ describe('makeRunShowing', () => {
     }
   });
 
-  it("Practice weak spots' start has the weak cell, also with eighths and sixteenths on, where 2 bars seldom do", () => {
-    const weak = (id: CellId) => CELL_IDS.map((c) => ({ id: c, accuracy: c === id ? 60 : c === 'quarter' ? 95 : null, locked: false }));
-    const has = (run: { exercise: Parameters<typeof noteCells>[0] }, id: CellId): boolean => noteCells(run.exercise).some((c) => c.includes(id));
+  it("Practice weak spots' start has a note of each weak cell, also several, and with eighths and sixteenths on", () => {
+    const weak = (ids: CellId[]) => CELL_IDS.map((c) => ({ id: c, accuracy: ids.includes(c) ? 60 : c === 'quarter' ? 95 : null, locked: false }));
+    const has = (run: { exercise: Parameters<typeof noteCells>[0] }, ids: CellId[]): boolean => {
+      const cells = noteCells(run.exercise);
+      return ids.every((id) => cells.some((c) => c.includes(id)));
+    };
     const bases: NoteValue[][] = [['half', 'quarter'], ['quarter', 'eighth'], ['half', 'quarter', 'eighth'], ['half', 'quarter', 'eighth', 'sixteenth']];
+    // Each cell a 1-bar exercise seldom has, and several of them: 2 bars once had ties and a dotted half together in 2
+    // starts of 5, and all four in none. The preset gives them more bars (weakSpotsSettings), and the start looks for
+    // the cells themselves: a dotted half tied on counts for ties.
+    const weakSets: CellId[][] = [['ties'], ['dottedHalf'], ['dottedQE'], ['rests'], ['ties', 'dottedHalf'], ['dottedHalf', 'dottedQE'], ['ties', 'dottedHalf', 'dottedQE', 'rests']];
     for (const notes of bases) {
-      const setup = { ...DEFAULT_SETTINGS, notes, rests: [], bars: 1 };
-      for (const id of ['ties', 'dottedHalf', 'dottedQE', 'rests'] as const) {
-        const settings = weakSpotsSettings(setup, weak(id))!;
-        const shows = weakSpotsShows(weak(id));
-        const at = `${id}, ${notes.join('+')}`;
-        const found = seeds.slice(0, 20).filter((seed) => {
+      for (const ids of weakSets) {
+        const settings = weakSpotsSettings({ ...DEFAULT_SETTINGS, notes, rests: [], bars: 1 }, weak(ids))!;
+        const shows = weakSpotsShows(weak(ids));
+        const at = `${ids.join('+')}, ${notes.join('+')}`;
+        for (const seed of seeds.slice(0, 20)) {
           const run = makeRunShowing(settings, seed, shows)!;
-          // The preset's own settings and Bars (2), and Next looks for the cell again.
+          // The preset's own settings and Bars, and Next looks for the cells again.
           expect(run.exercise.settings, at).toEqual(settings);
           expect(run.shows, at).toEqual(shows);
-          return has(run, id);
-        });
-        // But a dotted half with sixteenths: in 2 bars about 1 exercise in 150 has one (1 in 25 with rests on), so
-        // where none of the 200 seeds a start tries has one it keeps an exercise without (DESIGN.md §8.4). From 3
-        // bars, 1 in 10 has one.
-        const gap = id === 'dottedHalf' && notes.includes('sixteenth');
-        if (gap) expect(found.length, at).toBeGreaterThan(10);
-        else expect(found.length, at).toBe(20);
+          expect(has(run, ids), `${at}, seed ${seed}`).toBe(true);
+        }
       }
     }
     // Without the search most of them had none: the generator counts a dotted quarter as its dotted note, and an
     // off-beat eighth as its syncopation.
     const plain = (notes: NoteValue[], id: CellId): number => {
-      const settings = weakSpotsSettings({ ...DEFAULT_SETTINGS, notes, rests: [], bars: 1 }, weak(id))!;
-      return seeds.filter((seed) => !has(makeRun(settings, seed, null)!, id)).length;
+      const settings = weakSpotsSettings({ ...DEFAULT_SETTINGS, notes, rests: [], bars: 1 }, weak([id]))!;
+      return seeds.filter((seed) => !has(makeRun(settings, seed, null)!, [id])).length;
     };
     expect(plain(['half', 'quarter', 'eighth'], 'dottedHalf')).toBeGreaterThan(seeds.length / 2);
     expect(plain(['quarter', 'eighth'], 'ties')).toBeGreaterThan(seeds.length / 2);
-  });
+  }, 60_000);
 
   it('keeps the first seed when there is nothing to show', () => {
     for (const seed of seeds.slice(0, 20)) expect(makeRunShowing(DEFAULT_SETTINGS, seed, [])).toEqual(makeRun(DEFAULT_SETTINGS, seed, null));

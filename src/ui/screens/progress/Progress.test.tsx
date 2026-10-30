@@ -227,29 +227,30 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
       vi.unstubAllGlobals();
     });
 
-    it('Start plays an exercise with the weak cell, also with eighths on, where 2 bars seldom have a dotted half', async () => {
+    it('Start plays an exercise with the weak cell, also with eighths on, where most exercises have no dotted half', async () => {
       await start();
       const run = stored();
-      expect(run.settings).toMatchObject({ dotted: true, bars: 2, notes: ['half', 'quarter', 'eighth'], meters: ['3/4', '4/4'] });
+      // 3 bars: with eighths on, 1 exercise of 2 bars in 6 has a dotted half (1 in 3 of 3 bars).
+      expect(run.settings).toMatchObject({ dotted: true, bars: 3, notes: ['half', 'quarter', 'eighth'], meters: ['3/4', '4/4'] });
       // The start seed's exercise has none: the start looks further, as a Learn practice link does, and Next will too.
       expect(dottedHalf(run.settings, seed)).toBe(false);
       expect(dottedHalf(run.settings, run.seed)).toBe(true);
-      expect(run.shows).toEqual(['dotted:half']);
+      expect(run.shows).toEqual(['cell:dottedHalf']);
     });
 
     it('only the run it starts: the setup changed by hand, or started again, plays as it comes', async () => {
       fireEvent.click(await screen.findByRole('button', { name: 'More bars' }));
       await start();
-      expect(stored()).toMatchObject({ seed, settings: { bars: 3, dotted: true } });
+      expect(stored()).toMatchObject({ seed, settings: { bars: 4, dotted: true } });
       expect(stored().shows).toBeUndefined();
       // The preset again and its run, then the setup it left started once more.
       window.location.hash = '#/progress';
       fireEvent.click(await screen.findByRole('link', { name: 'Practice weak spots' }));
       await start();
-      expect(stored().shows).toEqual(['dotted:half']);
+      expect(stored().shows).toEqual(['cell:dottedHalf']);
       window.location.hash = '#/setup';
       await start();
-      expect(stored()).toMatchObject({ seed, settings: { bars: 3, dotted: true } });
+      expect(stored()).toMatchObject({ seed, settings: { bars: 4, dotted: true } });
       expect(stored().shows).toBeUndefined();
     });
   });

@@ -82,6 +82,8 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
   const raf = useRef<number | null>(null);
   /** A listen is playing that has not ended or been cut off: it is given back once only. */
   const listening = useRef(false);
+  /** The last listen was cut off because the audio stopped or never started: the title says so until the next press. */
+  const [stopped, setStopped] = useState(false);
 
   const stopLoop = (): void => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -89,16 +91,21 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     timer.current = raf.current = null;
   };
 
-  // A listen cut off before its end stops, and is given back: it is not counted.
-  const cut = useCallback((): void => {
-    if (!listening.current) return;
-    listening.current = false;
-    stopLoop();
-    engine().stop();
-    setBeat(IDLE_BEAT);
-    setPlaying(false);
-    onCancelled();
-  }, [onCancelled]);
+  // A listen cut off before its end stops, and is given back: it is not counted. `audio`: the sound stopped (or never
+  // started) under it, which the title then says, as Play's Pause sheet does; leaving the app was the player's doing.
+  const cut = useCallback(
+    (audio: boolean): void => {
+      if (!listening.current) return;
+      listening.current = false;
+      stopLoop();
+      engine().stop();
+      setBeat(IDLE_BEAT);
+      setPlaying(false);
+      setStopped(audio);
+      onCancelled();
+    },
+    [onCancelled],
+  );
 
   // The play button keeps the focus while it plays (aria-disabled, not disabled, which would drop it to the page). Once
   // it has played, Tap it back, which comes in under it, takes the focus from it: the player's turn.
@@ -121,6 +128,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     const started = eng.start({ timeline: view.timeline, meter: ex.meter, tempo: ex.tempo, countInBars: 1, metronome: ex.settings.metronome, playRhythm: true, leadIn: LEAD_IN_S });
     const startedAt = performance.now();
     listening.current = true;
+    setStopped(false);
     onPlayed();
     setPlaying(true);
     const beatSec = view.timeline.beatSeconds;
@@ -128,7 +136,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
       // Audio stopped from the start (a context that never started, one the browser would not resume) says so with no
       // state change, nor does a clock that froze: so it is checked here, with Play's grace to start (playSession.ts).
       if (STOPPED_AUDIO.has(eng.audioState()) && performance.now() - startedAt > AUDIO_START_GRACE_MS) {
-        cut();
+        cut(true);
         return;
       }
       const tg = eng.heardNow() - started.exerciseStart;
@@ -153,11 +161,11 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
   useEffect(() => {
     if (!playing) return;
     const onVis = (): void => {
-      if (document.visibilityState === 'hidden') cut();
+      if (document.visibilityState === 'hidden') cut(false);
     };
     document.addEventListener('visibilitychange', onVis);
     const off = engine().onStateChange((s) => {
-      if (STOPPED_AUDIO.has(s)) cut();
+      if (STOPPED_AUDIO.has(s)) cut(true);
     });
     return () => {
       document.removeEventListener('visibilitychange', onVis);
@@ -227,7 +235,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
         <Icon name="play" size={34} />
       </button>
       <h2 id="echo-listen-title" className="echo-title" aria-live="polite">
-        {playing ? t('play.echo.playing') : t('play.echo.listenTitle')}
+        {playing ? t('play.echo.playing') : stopped ? t('play.echo.interrupted') : t('play.echo.listenTitle')}
       </h2>
       <span className="muted-text">{t('play.echo.meta', { bars, meter: metersLabel([ex.meter.id]), bpm: ex.tempo })}</span>
       <PlaysLeft left={playsLeft} />
