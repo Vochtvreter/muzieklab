@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_NOTE_SETTINGS, type KeyId } from '../../../core/api';
+import { DEFAULT_NOTE_SETTINGS, type Extras, type KeyId } from '../../../core/api';
 import { defaultProgress, PROGRESS_KEY } from '../../../game/storage';
 import { setLocale } from '../../../i18n';
 import { StoreProvider } from '../../store';
@@ -29,9 +29,9 @@ const seen = (el: Element): string => without(el, '.sr-only');
 const heard = (el: Element): string => without(el, '[aria-hidden="true"]');
 const SIGNS = /[♯♭]/;
 
-/** A screen with the Read notes setup in `key`. */
-function show(screenEl: JSX.Element, key: KeyId = 'C'): void {
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify({ ...defaultProgress(), notes: { settings: { ...DEFAULT_NOTE_SETTINGS, keys: [key] }, weak: {} } }));
+/** A screen with the Read notes setup in `key` (and `extras`, the extra signs). */
+function show(screenEl: JSX.Element, key: KeyId = 'C', extras: Extras = 'none'): void {
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify({ ...defaultProgress(), notes: { settings: { ...DEFAULT_NOTE_SETTINGS, keys: [key], extras }, weak: {} } }));
   render(<StoreProvider>{screenEl}</StoreProvider>);
 }
 
@@ -93,5 +93,20 @@ describe('Read notes setup for screen readers', () => {
     setLocale('nl');
     show(<NotesSetup />, 'F');
     screen.getByRole('link', { name: 'Toonsoort: F majeur · D mineur, 1 mol: elke B is een bes. Toonsoort wijzigen' });
+  });
+
+  it("says the summary's key in words, and shows it as written", () => {
+    show(<NotesSetup />, 'C#', 'sharps');
+    const line = document.querySelector('.nsetup-summary-text > span')!;
+    // Sharps in C♯ major adds no extra signs, so the line does not promise them.
+    expect(seen(line)).toBe('11\u00a0staff positions per clef · C♯ major');
+    expect(heard(line)).toBe('11\u00a0staff positions per clef · C sharp major');
+    cleanup();
+    show(<NotesSetup />, 'Gb', 'both');
+    expect(heard(document.querySelector('.nsetup-summary-text > span')!)).toBe('11\u00a0staff positions per clef · G flat major · extra signs appear');
+    cleanup();
+    setLocale('nl');
+    show(<NotesSetup />, 'F#', 'both');
+    expect(heard(document.querySelector('.nsetup-summary-text > span')!)).toBe('11\u00a0plekken op de balk per sleutel · fis majeur · met extra tekens');
   });
 });

@@ -356,7 +356,8 @@ notes read the same.
   *Change* too).
 - A screen reader hears the keys in words, as the Scales hub says them (§3.7): each key (*F sharp major or D sharp
   minor, 6 sharps*; Dutch *fis majeur of dis mineur, 6 kruisen*), the summary read out when the key changes, *Use F
-  sharp major*, and the setup's Key row. The screen still writes them with their signs (*F♯ major*).
+  sharp major*, and on the setup the Key row and the summary's *11 staff positions per clef · F sharp major*. The
+  screen still writes them with their signs (*F♯ major*).
 
 **Settings** (Read notes setup screen)
 

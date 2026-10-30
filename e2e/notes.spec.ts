@@ -610,15 +610,19 @@ test('read notes: in C♯ major, misses that forgot the key signature get the By
 test('read notes setup: Sharps promises no extra signs in C♯ major, where every letter is sharp already', async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.phone);
   await page.goto('./#/notes');
-  const pool = page.locator('.nsetup-summary-text > span');
+  // The line as shown, and in words for screen readers.
+  const pool = page.locator('.nsetup-summary-text > span > [aria-hidden="true"]');
+  const said = page.locator('.nsetup-summary-text .sr-only');
   await page.getByRole('button', { name: 'Sharps ♯' }).click();
   await expect(pool).toHaveText('11 staff positions per clef · C major · extra signs appear');
   await page.getByRole('link', { name: /^Key: C major/ }).click();
   await page.getByRole('button', { name: /^C sharp major or A sharp minor/ }).click();
   await page.getByRole('button', { name: 'Use C sharp major' }).click();
   await expect(pool).toHaveText('11 staff positions per clef · C♯ major');
+  await expect(said).toHaveText('11 staff positions per clef · C sharp major');
   await page.getByRole('button', { name: 'Both ♯ ♭' }).click();
   await expect(pool).toHaveText('11 staff positions per clef · C♯ major · extra signs appear');
+  await expect(said).toHaveText('11 staff positions per clef · C sharp major · extra signs appear');
 });
 
 test('learn: the Key screen links to key signatures; the quick check answers', async ({ page }) => {

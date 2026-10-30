@@ -142,7 +142,9 @@
   line-height: 17.5px;
   min-height: 35px;
 }
+/* Positioned, so the .sr-only words of the summary (the key said in words) sit inside the page's scroll box. */
 .nsetup-summary {
+  position: relative;
   flex: none;
   background: var(--paper);
   border-radius: 18px;

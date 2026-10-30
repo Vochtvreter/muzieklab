@@ -37,7 +37,12 @@ export function NotesSetup(): JSX.Element {
   const keySaid = mixed ? keyName : t('notes.keyPair', { major: keySpoken(key, false), minor: keySpoken(key, true) });
   const keySubSaid = mixed ? keySub : keySignsText(key, true);
   const clefsWord = s.clefs.length > 1 ? t('notes.setup.clefsBoth') : t(s.clefs[0] === 'treble' ? 'notes.setup.clefsTreble' : 'notes.setup.clefsBass');
-  const pool = t('notes.setup.pool', { count: rangeSteps('treble', s.range).length, key: mixed ? t('notes.done.keysMix', { count: keys.length }) : majorName(key) });
+  // The summary's second line as written ("… · C♯ major"), and in words for screen readers ("… · C sharp major").
+  const poolOf = (major: string): string => {
+    const pool = t('notes.setup.pool', { count: rangeSteps('treble', s.range).length, key: mixed ? t('notes.done.keysMix', { count: keys.length }) : major });
+    // Sharps in C♯ major adds none: every letter is sharp already.
+    return roundExtras(s) === 'none' ? pool : t('notes.setup.poolExtras', { pool });
+  };
 
   return (
     <ExerciseFrame className="frame--setup" wide>
@@ -182,8 +187,10 @@ export function NotesSetup(): JSX.Element {
               </span>
               <span className="nsetup-summary-text">
                 <b>{t('notes.setup.summary', { clefs: clefsWord, input: t('notes.setup.inputWord.' + s.input) })}</b>
-                {/* Sharps in C♯ major adds none: every letter is sharp already. */}
-                <span>{roundExtras(s) === 'none' ? pool : t('notes.setup.poolExtras', { pool })}</span>
+                <span>
+                  <span aria-hidden="true">{poolOf(majorName(key))}</span>
+                  <span className="sr-only">{poolOf(keySpoken(key, false))}</span>
+                </span>
               </span>
             </div>
 

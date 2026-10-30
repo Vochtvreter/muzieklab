@@ -2,6 +2,7 @@
 import { createElement, Fragment, type ReactNode } from 'react';
 import { t, translateParams, type MessageParams } from '../../i18n';
 import { DIAMOND, MAX_STARS, SHOWN_STARS, type MeterId } from '../../core/api';
+import { wholePercentOf } from '../../game/stats';
 
 /**
  * A text from the game logic (a Label of game/skills.ts and game/progressView.ts: a message key and its params): string
@@ -45,12 +46,10 @@ export function difficultyLevel(difficulty: number): number {
 
 /**
  * A run's accuracy as a whole percent, rounded down, so it never shows a threshold the run did not reach (§6.3): 99.69%
- * is 99%, as 100% is only the diamond's, and 89.7% (two stars) is 89%, not three stars' 90%. The 1e-9 keeps a whole
- * percent that floating point puts just under it (57 of 100 is 56.99999999999999).
+ * is 99%, as 100% is only the diamond's, and 89.7% (two stars) is 89%, not three stars' 90%. The rule, with its 1e-9
+ * for floating point, is wholePercentOf's (game/stats.ts), which the skill checks and Progress use too.
  */
-export function wholePercent(accuracy: number): number {
-  return Math.max(0, Math.min(100, Math.floor(accuracy + 1e-9)));
-}
+export const wholePercent = (accuracy: number): number => wholePercentOf(accuracy, 100);
 
 /** Signed whole number with a typographic minus: "+38", "−12", "0". */
 export function signed(n: number): string {

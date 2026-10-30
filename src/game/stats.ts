@@ -153,9 +153,9 @@ export function recordEcho(p: Progress, exercise: Exercise, result: Pick<JudgeRe
 }
 
 /**
- * `part` of `whole` as a whole percent, rounded down, as Results shows a run's accuracy (§6.3): a skill check, a band or
- * a weak spot is met only by the real value, so 89.5% is 89%, not the notes check's 90%. The 1e-9 keeps a whole percent
- * that floating point puts just under it (57 of 100 is 56.99999999999999).
+ * `part` of `whole` as a whole percent, rounded down (§6.3): a skill check, a band or a weak spot is met only by the real
+ * value, so 89.5% is 89%, not the notes check's 90%. The 1e-9 keeps a whole percent that floating point puts just under
+ * it (57 of 100 is 56.99999999999999). The one place of this rule: Results' wholePercent (ui/lib/format.ts) uses it too.
  */
 export const wholePercentOf = (part: number, whole: number): number => Math.max(0, Math.min(100, Math.floor((part / whole) * 100 + 1e-9)));
 
