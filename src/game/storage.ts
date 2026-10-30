@@ -129,6 +129,7 @@ export interface Stats {
 export interface Progress {
   lessons: Record<string, LessonProgress>; // key: lesson id, e.g. "7.3"
   practiceDays: string[]; // ISO dates (yyyy-mm-dd) with at least one finished exercise
+  /** The free-practice (rhythm) setup as last edited or started; null before either. */
   lastSettings: Settings | null;
   /** Total XP earned (levels follow from it, game/xp.ts). */
   xp: number;

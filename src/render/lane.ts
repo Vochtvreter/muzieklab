@@ -25,6 +25,11 @@ export interface LaneInput {
    */
   fromBar?: number;
   rowsShown?: number;
+  /**
+   * Live Play, also while it has no playhead (`now` null in the count-in and while paused): a press that matched no
+   * note may still match one, so it is never Results' extra tap.
+   */
+  live?: boolean;
 }
 
 /** `extra`: a press that matched no note (results only), so it never looks like a hit. */
@@ -124,7 +129,9 @@ export function layoutLane(input: LaneInput): LaneLayout {
 
   const holdUntil = (tap: Tap): number => {
     if (tap.up !== null) return input.now != null ? Math.min(tap.up, input.now) : tap.up;
-    return input.now ?? timeline.totalSeconds; // still held: grows to the playhead
+    // Still held: grows to the playhead. Before there is one (a press just before beat 1, in the count-in), a mark at
+    // the press.
+    return input.now ?? tap.down;
   };
 
   const tapOnly = input.hold === false;
@@ -169,7 +176,7 @@ export function layoutLane(input: LaneInput): LaneLayout {
 
   // Taps not (yet) judged against a note: drawn where they happened. Live: neutral, they may still match a note.
   // On results they never will: extra taps, outlined in the miss colour.
-  const extraTone: HoldTone = input.result && input.now == null ? 'extra' : 'live';
+  const extraTone: HoldTone = input.result && !input.live && input.now == null ? 'extra' : 'live';
   for (const tap of input.taps) {
     if (judgedDowns.has(tap.down)) continue;
     if (input.now != null && tap.down > input.now) continue;

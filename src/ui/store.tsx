@@ -319,6 +319,12 @@ export interface AppState {
   progress: Progress;
   /** Free-practice settings as edited on the setup screen. */
   settings: Settings;
+  /**
+   * What the setup's next Start must show (ids of game/intro.ts, makeRunShowing): Practice weak spots' weak cells, put
+   * there with its preset (weakSpotsShows). A change by hand, or Start, drops it: only the run the preset starts looks
+   * for them, and its Retry and Next, which keep Run.shows.
+   */
+  setupShows?: string[];
   run: Run | null;
   last: LastResult | null;
   /** Read notes: the setup, the round being played and the last finished round. */
@@ -335,7 +341,8 @@ export interface AppState {
 
 export type Action =
   | { type: 'prefs'; patch: Partial<Prefs> }
-  | { type: 'settings'; settings: Settings }
+  /** `shows`: what the setup's next Start must show (AppState.setupShows). */
+  | { type: 'settings'; settings: Settings; shows?: string[] }
   | { type: 'start'; run: Run }
   /**
    * `echo`: how an Echo round was heard (every play to listen, and the replays among them); none for Tap. `playedTo`:
@@ -383,11 +390,12 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'prefs':
       return { ...state, prefs: { ...state.prefs, ...action.patch } };
     case 'settings':
-      return { ...state, settings: action.settings };
+      // Saved with the progress as it is edited, as the Read notes and Scales setups are, so a reload keeps it.
+      return { ...state, settings: action.settings, setupShows: action.shows, progress: { ...state.progress, lastSettings: action.settings } };
     case 'start': {
       const free = !action.run.lessonId && !action.run.daily;
       const progress = free ? { ...state.progress, lastSettings: runSetup(action.run) } : state.progress;
-      return { ...state, run: action.run, progress };
+      return { ...state, run: action.run, progress, setupShows: undefined };
     }
     case 'finish': {
       const run = state.run;
@@ -407,7 +415,8 @@ export function reducer(state: AppState, action: Action): AppState {
       const firstDaily = !!day && practised && progress.daily?.day !== day;
       if (day && practised) {
         const prev = progress.daily?.day === day ? progress.daily : null;
-        dailyBest = result.accuracy > progress.dailyBest;
+        // Beaten as shown, in whole % rounded down, as a lesson's best (lessonBest); the best kept keeps its fraction.
+        dailyBest = wholePercent(result.accuracy) > wholePercent(progress.dailyBest);
         progress = {
           ...progress,
           // The tier is fixed by the day's first play (dailyTier): the one this run was started at.
@@ -489,6 +498,7 @@ export function reducer(state: AppState, action: Action): AppState {
         progress: defaultProgress(),
         // The free-practice setup comes from the progress (lastSettings), so it goes back to the defaults too.
         settings: practiceSettings({ prefs: state.prefs, progress: defaultProgress() }, DEFAULT_SETTINGS),
+        setupShows: undefined,
         last: null,
         noteLast: null,
         noteSettings: { ...DEFAULT_NOTE_SETTINGS },
@@ -633,6 +643,7 @@ function followSetups(state: AppState, next: AppState): AppState {
   const { prefs, progress } = next;
   if (!sameValue(was.lastSettings, progress.lastSettings)) {
     next.settings = practiceSettings({ prefs, progress }, progress.lastSettings ?? DEFAULT_SETTINGS);
+    next.setupShows = undefined;
   }
   if (!sameValue(was.notes.settings, progress.notes.settings)) next.noteSettings = progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS };
   if (!sameValue(was.scales.settings, progress.scales.settings)) {

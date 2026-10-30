@@ -120,11 +120,15 @@ const finite = (n: unknown): number => (typeof n === 'number' && Number.isFinite
  * A finished rhythm round (tap or Echo; free practice, a lesson or the daily challenge): its seconds, accuracy, timing
  * and cells on today's figures, Echo's material level, and the skill practised (rhythm reading, or rhythm by ear).
  * `echo`: how an Echo round was heard (its listening counts as minutes). `playedTo`: where the music stopped, in
- * seconds into the bars (a round skipped to Results counts only what was played).
+ * seconds into the bars (a round skipped to Results counts only what was played: its seconds, and its cells).
  */
 export function recordRhythm(p: Progress, exercise: Exercise, result: JudgeResult, today: string, leniency: Leniency, echo?: EchoPlays | null, playedTo = Infinity): Progress {
   const isEcho = exercise.settings.mode === 'echo';
-  const cells = cellPoints(exercise, result, leniency);
+  // The notes the music reached: Results counts the ones after a Skip to results as missed, but the skill map learns
+  // only from what was played, as Read notes' weak spots learn from the notes answered.
+  const { notes } = buildTimeline(exercise);
+  const reached = result.notes.filter((n) => n.judgement !== 'miss' || (notes[n.index]?.onset ?? Infinity) < playedTo);
+  const cells = cellPoints(exercise, { notes: reached }, leniency);
   const hit = result.notes.filter((n) => n.judgement !== 'miss' && typeof n.offsetMs === 'number' && Number.isFinite(n.offsetMs));
   const off = hit.reduce((sum, n) => sum + Math.round(n.offsetMs as number), 0);
   let next = changeDay(p, today, (d) => ({

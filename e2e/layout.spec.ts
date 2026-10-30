@@ -1137,7 +1137,15 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/calibrate');
       await expectClickable(pad(page), { scroll: false });
       await expectTouchHeight(pad(page));
-      await expect(page.getByRole('img', { name: /taps? measured/ })).toBeInViewport();
+      const plot = page.getByRole('img', { name: /taps? measured/ });
+      await expect(plot).toBeInViewport();
+      // The early and late labels in the plot's top corners end above the highest a dot stacks, 16 px down (plotDots):
+      // a stack of taps past ±100 ms at the axis' end ran over them.
+      const top = (await plot.boundingBox())!.y;
+      for (const side of await page.locator('.cal-side').all()) {
+        const box = (await side.boundingBox())!;
+        expect(box.y + box.height - top, (await side.textContent()) ?? '').toBeLessThanOrEqual(16);
+      }
       await expectFits(page);
       await expectNoSideScroll(page);
     });
@@ -2972,7 +2980,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
       // Every row of the timing lane in view: in a phone's landscape column the staff card scrolls inside itself, and the
       // pendulum's row pushed the lane's lower row, the one played last, out of it.
-      await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
+      await expect(page.getByRole('img', { name: 'When each note starts compared with when you tapped' })).toBeInViewport({ ratio: 1 });
       await expectFits(page);
       if (tabletLayout && portraitLayout) await expectShortTabletFits(page);
       await expectNoSideScroll(page);
@@ -2989,7 +2997,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)')).toHaveAttribute('viewBox', /^0 0 [\d.]+ 178$/);
       if (desktopLayout) await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
       else await expectClickable(pad(page), { scroll: false });
-      await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
+      await expect(page.getByRole('img', { name: 'When each note starts compared with when you tapped' })).toBeInViewport({ ratio: 1 });
       await expectFits(page);
       if (tabletLayout && portraitLayout) await expectShortTabletFits(page);
       await expectNoSideScroll(page);

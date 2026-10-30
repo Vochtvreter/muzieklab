@@ -75,6 +75,22 @@ describe('recordRhythm', () => {
     expect(rhythmSeconds(echo, 1, 2) - rhythmSeconds(echo, 1)).toBeCloseTo(2 - 16 * (60 / 90), 5);
   });
 
+  it('counts the cells of a round skipped to Results only up to where the music stopped: the rest was never played', () => {
+    // 16 bars of quarters at 60 BPM, a note a second: the first 4 tapped Perfect, then Skip to results 4 s in. Results
+    // counts the other 60 as missed, and the skill map once did too: Quarter 6%, a weak spot.
+    const quarters = generateExercise({ ...DEFAULT_SETTINGS, hold: false, notes: ['quarter'], rests: [], bars: 16, tempo: 60 }, 1);
+    const skipped = result(quarters, (i) => (i < 4 ? ['perfect', 0] : ['miss', null]), 6.25, 0);
+    const cells = (playedTo?: number): DayStats['cells'] => recordRhythm(defaultProgress(), quarters, skipped, TODAY, 'normal', null, playedTo).stats.days[TODAY].cells;
+    expect(cells(4)).toEqual({ quarter: [400, 400] });
+    // A note the music played without a tap is still a miss.
+    expect(cells(5.5)).toEqual({ quarter: [400, 600] });
+    // Played to the end, every note counts.
+    expect(cells()).toEqual({ quarter: [400, 6400] });
+    expect(cells(999)).toEqual({ quarter: [400, 6400] });
+    // Results' accuracy stays the round's, the unplayed notes missed (§8.5).
+    expect(recordRhythm(defaultProgress(), quarters, skipped, TODAY, 'normal', null, 4).stats.days[TODAY].acc).toBe(6);
+  });
+
   it('adds up the rounds of a day', () => {
     const once = recordRhythm(defaultProgress(), tap, r, TODAY, 'normal');
     const twice = recordRhythm(once, tap, { ...r, accuracy: 60 }, TODAY, 'normal');

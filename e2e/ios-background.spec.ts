@@ -130,26 +130,32 @@ test('a clock that freezes without the page being hidden pauses with a note, and
   await playToResults(page);
 });
 
-test('echo: leaving the app while the rhythm plays gives that listen back', async ({ page }) => {
-  test.setTimeout(60_000);
+test('echo: leaving the app while the rhythm plays, or audio that stops or never starts, gives that listen back', async ({ page }) => {
+  test.setTimeout(80_000);
   await seed(page, { prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, mode: 'echo', bars: 2 } } });
   await page.goto('./#/setup');
   await page.getByRole('button', { name: /^Start · / }).click();
   const play = page.getByRole('button', { name: 'Play the rhythm' });
-  // To the background and back while it plays (iOS interrupts the audio then), and the audio suspended while in view.
-  for (const cut of ['background', 'suspended'] as const) {
+  // To the background and back while it plays (iOS interrupts the audio then), the audio suspended while in view, and
+  // audio that never starts: a listen in silence once used up a play and went on to Tap it back.
+  for (const cut of ['background', 'suspended', 'never started'] as const) {
+    if (cut === 'never started') await page.evaluate(() => (window as unknown as { stickAudio(on: boolean): void }).stickAudio(true));
     await play.click();
-    await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
-    await expect(page.getByText('1 play left')).toBeVisible();
+    // Audio that never starts is given up within a second (Play's grace for it to start), too soon to look at.
+    if (cut !== 'never started') {
+      await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
+      await expect(page.getByText('1 play left')).toBeVisible();
+    }
     if (cut === 'background') await background(page, 'interrupted');
-    else await page.evaluate(() => (window as unknown as { suspendAudio(): Promise<unknown> }).suspendAudio());
+    else if (cut === 'suspended') await page.evaluate(() => (window as unknown as { suspendAudio(): Promise<unknown> }).suspendAudio());
     // Stopped and not counted, also once the rhythm would have ended: both plays left, and nothing to tap back yet.
-    await expect(page.getByText('2 plays left'), cut).toBeVisible();
+    await expect(page.getByText('2 plays left'), cut).toBeVisible({ timeout: 3000 });
     await page.waitForTimeout(7000);
     await expect(page.getByText('2 plays left'), cut).toBeVisible();
     await expect(page.getByRole('button', { name: 'Tap it back' }), cut).toHaveCount(0);
     await expect(play, cut).toBeEnabled();
   }
+  await page.evaluate(() => (window as unknown as { stickAudio(on: boolean): void }).stickAudio(false));
   // Heard to the end, it counts.
   await play.click();
   await expect(page.getByRole('button', { name: 'Tap it back' })).toBeVisible({ timeout: 15_000 });

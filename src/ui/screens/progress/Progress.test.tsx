@@ -2,12 +2,17 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyProgress, PROGRESS_CLOCK, PROGRESS_PREFS, richProgress } from '../../../../e2e/progressFixture';
+import { App } from '../../../App';
+import { DEFAULT_SETTINGS } from '../../../core/defaults';
+import { generateExercise } from '../../../core/generator';
+import { noteCells } from '../../../game/cells';
 import { syncedOf } from '../../../game/merge';
-import { DEFAULT_PREFS, PREFS_KEY, PROGRESS_KEY, type Progress } from '../../../game/storage';
+import { defaultProgress, defaultStats, DEFAULT_PREFS, PREFS_KEY, PROGRESS_KEY, type Progress } from '../../../game/storage';
 import type { Settings } from '../../../core/types';
 import { setLocale, t } from '../../../i18n';
+import { resetAccountCheck } from '../../account';
 import { signedMs } from '../../lib/format';
-import { StoreProvider, useStore } from '../../store';
+import { RUN_KEY, StoreProvider, useStore } from '../../store';
 import { ProgressScreen } from './Progress';
 
 // The screen's width for useBreakpoint: phone unless a test sets it (the hook keeps one MediaQueryList per query).
@@ -20,7 +25,11 @@ window.matchMedia = (query: string) =>
     },
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
   }) as unknown as MediaQueryList;
+window.scrollTo = () => undefined;
+Element.prototype.scrollIntoView = () => undefined;
 
 /** The rhythm setup the store holds, read after the screen changed it; and the store's dispatch. */
 let settings: Settings | null = null;
@@ -181,6 +190,68 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     // Ties (78%) and dotted quarter + eighth (72%) are the weak spots.
     expect(settings).toMatchObject({ ties: true, dotted: true });
     expect(settings!.notes).toEqual(expect.arrayContaining(['quarter', 'eighth']));
+  });
+
+  describe('started from the setup it opens', () => {
+    // newSeed's seed for Start. Its exercise of these settings has no dotted half.
+    const seed = 12345;
+    const stored = (): { settings: Settings; seed: number; shows?: string[] } => JSON.parse(sessionStorage.getItem(RUN_KEY) ?? 'null');
+    const dottedHalf = (settings: Settings, at: number): boolean => noteCells(generateExercise(settings, at)).some((c) => c.includes('dottedHalf'));
+    /** Only the dotted half under 80%, on a setup of 1 bar with eighths, which the path teaches before it (unit 4). */
+    const weakDottedHalf = (): Progress => ({
+      ...defaultProgress(),
+      practiceDays: ['2026-10-15'],
+      lastSettings: { ...DEFAULT_SETTINGS, notes: ['half', 'quarter', 'eighth'], bars: 1 },
+      stats: { ...defaultStats(), days: { '2026-10-15': { sec: 600, rounds: 2, acc: 160, off: -20, hits: 30, cells: { quarter: [1900, 2000], half: [1900, 2000], dottedHalf: [1000, 2000] } } } },
+    });
+    const start = async (): Promise<void> => {
+      fireEvent.click(await screen.findByRole('button', { name: /^Start · / }));
+      await screen.findByRole('link', { name: 'Quit exercise' });
+    };
+    beforeEach(() => {
+      sessionStorage.clear();
+      resetAccountCheck();
+      vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
+      vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation(<T extends ArrayBufferView | null>(a: T): T => {
+        (a as unknown as Uint32Array)[0] = seed * 2;
+        return a;
+      });
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(weakDottedHalf()));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ ...PROGRESS_PREFS, seenHowTo: true, seenHold: true }));
+      window.location.hash = '#/progress';
+      render(<App />);
+      fireEvent.click(screen.getByRole('link', { name: 'Practice weak spots' }));
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+    });
+
+    it('Start plays an exercise with the weak cell, also with eighths on, where 2 bars seldom have a dotted half', async () => {
+      await start();
+      const run = stored();
+      expect(run.settings).toMatchObject({ dotted: true, bars: 2, notes: ['half', 'quarter', 'eighth'], meters: ['3/4', '4/4'] });
+      // The start seed's exercise has none: the start looks further, as a Learn practice link does, and Next will too.
+      expect(dottedHalf(run.settings, seed)).toBe(false);
+      expect(dottedHalf(run.settings, run.seed)).toBe(true);
+      expect(run.shows).toEqual(['dotted:half']);
+    });
+
+    it('only the run it starts: the setup changed by hand, or started again, plays as it comes', async () => {
+      fireEvent.click(await screen.findByRole('button', { name: 'More bars' }));
+      await start();
+      expect(stored()).toMatchObject({ seed, settings: { bars: 3, dotted: true } });
+      expect(stored().shows).toBeUndefined();
+      // The preset again and its run, then the setup it left started once more.
+      window.location.hash = '#/progress';
+      fireEvent.click(await screen.findByRole('link', { name: 'Practice weak spots' }));
+      await start();
+      expect(stored().shows).toEqual(['dotted:half']);
+      window.location.hash = '#/setup';
+      await start();
+      expect(stored()).toMatchObject({ seed, settings: { bars: 3, dotted: true } });
+      expect(stored().shows).toBeUndefined();
+    });
   });
 
   it('a new player: every card says what is still to come, and there are no weak spots to practise', () => {

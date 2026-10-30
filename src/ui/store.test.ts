@@ -1,9 +1,11 @@
-import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type ScaleSettings } from '../core/api';
+import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type NoteValue, type ScaleSettings } from '../core/api';
+import { noteCells } from '../game/cells';
 import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings } from '../game/notesPath';
 import { ALL_LESSONS, lessonSettings } from '../game/path';
 import { PATH_UNITS } from '../game/tracks';
-import { defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type DayStats, type Prefs, type Progress } from '../game/storage';
+import { CELL_IDS, defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type CellId, type DayStats, type Prefs, type Progress } from '../game/storage';
+import { weakSpotsSettings, weakSpotsShows } from '../game/weakSpots';
 import { CHAPTERS, practiceShows } from './learn/chapters';
 import type { Me } from '../../shared/api';
 import {
@@ -248,6 +250,21 @@ describe('reducer: reset progress', () => {
     expect(reset.settings).toEqual({ ...DEFAULT_SETTINGS, hold: false });
     expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdEarly: 'hold' } }, { type: 'resetProgress' }).settings.hold).toBe(true);
     expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdMode: 'tap', holdEarly: 'hold' } }, { type: 'resetProgress' }).settings.hold).toBe(false);
+  });
+});
+
+describe('reducer: the free-practice setup', () => {
+  it('is saved with the progress as it is edited, as the Read notes and Scales setups are, so a reload keeps it', () => {
+    const edited = reducer(state(), { type: 'settings', settings: { ...DEFAULT_SETTINGS, meters: ['3/4'], bars: 6 } });
+    expect(edited.progress.lastSettings).toEqual({ ...DEFAULT_SETTINGS, meters: ['3/4'], bars: 6 });
+    expect(sanitizeProgress(JSON.parse(JSON.stringify(edited.progress)))).toEqual(edited.progress);
+  });
+
+  it("keeps what Practice weak spots asks its Start to show, until the setup is changed by hand or started", () => {
+    const preset = reducer(state(), { type: 'settings', settings: { ...DEFAULT_SETTINGS, dotted: true, bars: 2 }, shows: ['dotted:half'] });
+    expect(preset.setupShows).toEqual(['dotted:half']);
+    expect(reducer(preset, { type: 'settings', settings: { ...preset.settings, tempo: 90 } }).setupShows).toBeUndefined();
+    expect(reducer(preset, { type: 'start', run: makeRun(preset.settings, 1, null)! }).setupShows).toBeUndefined();
   });
 });
 
@@ -531,6 +548,41 @@ describe('makeRunShowing', () => {
     }
   });
 
+  it("Practice weak spots' start has the weak cell, also with eighths and sixteenths on, where 2 bars seldom do", () => {
+    const weak = (id: CellId) => CELL_IDS.map((c) => ({ id: c, accuracy: c === id ? 60 : c === 'quarter' ? 95 : null, locked: false }));
+    const has = (run: { exercise: Parameters<typeof noteCells>[0] }, id: CellId): boolean => noteCells(run.exercise).some((c) => c.includes(id));
+    const bases: NoteValue[][] = [['half', 'quarter'], ['quarter', 'eighth'], ['half', 'quarter', 'eighth'], ['half', 'quarter', 'eighth', 'sixteenth']];
+    for (const notes of bases) {
+      const setup = { ...DEFAULT_SETTINGS, notes, rests: [], bars: 1 };
+      for (const id of ['ties', 'dottedHalf', 'dottedQE', 'rests'] as const) {
+        const settings = weakSpotsSettings(setup, weak(id))!;
+        const shows = weakSpotsShows(weak(id));
+        const at = `${id}, ${notes.join('+')}`;
+        const found = seeds.slice(0, 20).filter((seed) => {
+          const run = makeRunShowing(settings, seed, shows)!;
+          // The preset's own settings and Bars (2), and Next looks for the cell again.
+          expect(run.exercise.settings, at).toEqual(settings);
+          expect(run.shows, at).toEqual(shows);
+          return has(run, id);
+        });
+        // But a dotted half with sixteenths: in 2 bars about 1 exercise in 150 has one (1 in 25 with rests on), so
+        // where none of the 200 seeds a start tries has one it keeps an exercise without (DESIGN.md §8.4). From 3
+        // bars, 1 in 10 has one.
+        const gap = id === 'dottedHalf' && notes.includes('sixteenth');
+        if (gap) expect(found.length, at).toBeGreaterThan(10);
+        else expect(found.length, at).toBe(20);
+      }
+    }
+    // Without the search most of them had none: the generator counts a dotted quarter as its dotted note, and an
+    // off-beat eighth as its syncopation.
+    const plain = (notes: NoteValue[], id: CellId): number => {
+      const settings = weakSpotsSettings({ ...DEFAULT_SETTINGS, notes, rests: [], bars: 1 }, weak(id))!;
+      return seeds.filter((seed) => !has(makeRun(settings, seed, null)!, id)).length;
+    };
+    expect(plain(['half', 'quarter', 'eighth'], 'dottedHalf')).toBeGreaterThan(seeds.length / 2);
+    expect(plain(['quarter', 'eighth'], 'ties')).toBeGreaterThan(seeds.length / 2);
+  });
+
   it('keeps the first seed when there is nothing to show', () => {
     for (const seed of seeds.slice(0, 20)) expect(makeRunShowing(DEFAULT_SETTINGS, seed, [])).toEqual(makeRun(DEFAULT_SETTINGS, seed, null));
   });
@@ -745,6 +797,16 @@ describe('reducer: achievements, skill levels and personal bests', () => {
     const daily = reducer(withRun({ daily: TODAY }), finish({ result: result(['perfect'], 99.6875, 4) })).last?.reward;
     expect(daily).toMatchObject({ dailyBest: true, best: { kind: 'daily', accuracy: 99 } });
     expect(reducer(state(), finish()).last?.reward).toMatchObject({ achievements: [], best: null });
+  });
+
+  it('the daily’s best is beaten as shown too, in whole % rounded down: 97.7% after 97.3% is no new best', () => {
+    const close = { ...defaultProgress(), dailyBest: 97.27 };
+    const same = reducer(withRun({ daily: TODAY }, close), finish({ result: result(['perfect'], 97.73, 3) }));
+    expect(same.last?.reward).toMatchObject({ dailyBest: false, best: null });
+    // The best kept keeps its fraction (§6.3).
+    expect(same.progress.dailyBest).toBe(97.73);
+    const better = reducer(withRun({ daily: TODAY }, close), finish({ result: result(['perfect'], 98, 3) }));
+    expect(better.last?.reward).toMatchObject({ dailyBest: true, best: { kind: 'daily', accuracy: 98 } });
   });
 
   it('a note lesson played before reports its personal best too', () => {

@@ -16,7 +16,7 @@ import { useDocTitle } from '../hooks';
 import { signed, signedMs } from '../lib/format';
 import { calibrateBackQuery } from '../lib/learnReturn';
 import { focusLost } from '../lib/screenFocus';
-import { hashQuery, Link, navigate, useHash } from '../router';
+import { hashQuery, leave, Link, useHash } from '../router';
 import { useStore } from '../store';
 import { AUDIO_START_GRACE_MS, STOPPED_AUDIO } from './playSession';
 
@@ -45,7 +45,21 @@ export function matchedTaps(taps: number[], clicks: number[], window = MATCH_S):
   return out;
 }
 
-const pct = (v: number): string => ((Math.max(-100, Math.min(100, v)) + 100) / 2).toFixed(2) + '%';
+/** The plot's axis runs from −100 to +100 ms: an offset past it is drawn at its end. */
+const clampMs = (v: number): number => Math.max(-100, Math.min(100, v));
+const pct = (v: number): string => ((clampMs(v) + 100) / 2).toFixed(2) + '%';
+
+/**
+ * Where each tap's dot goes on the plot: across by its offset, and up the stack of the dots before it within 5 ms of
+ * where it is drawn, so taps past ±100 ms stack at the end of the axis. Five high at most (top 16 px), under the early
+ * and late labels in the plot's top corners (app.css, .cal-side): a steady late tapper's stack ran over the label.
+ */
+export function plotDots(offsets: readonly number[]): { left: string; top: number }[] {
+  return offsets.map((v, i) => {
+    const level = offsets.slice(0, i).filter((w) => Math.abs(clampMs(w) - clampMs(v)) < 5).length;
+    return { left: pct(v), top: 56 - Math.min(level, 4) * 10 };
+  });
+}
 
 export function Calibration(): JSX.Element {
   const { state, dispatch } = useStore();
@@ -182,13 +196,13 @@ export function Calibration(): JSX.Element {
     if (median === null) return;
     dispatch({ type: 'prefs', patch: { calibrationMs: median, calibratedAt: localDateIso() } });
     engine().setCalibrationOffsetMs(median);
-    navigate(backTo, { query: backQuery });
+    // Done once saved: back to the Settings or Results it was opened from, so Back does not open Calibrate again.
+    leave(backTo, backQuery);
   };
 
-  const dots = offsets.map((v, i) => {
-    const level = offsets.slice(0, i).filter((w) => Math.abs(w - v) < 5).length;
+  const dots = plotDots(offsets).map((at, i) => {
     const last = i === n - 1 && phase === 'measuring';
-    return <span key={i} className={'cal-dot m-in' + (last ? ' is-last' : '')} style={{ left: pct(v), top: 56 - Math.min(level, 5) * 10 }} />;
+    return <span key={i} className={'cal-dot m-in' + (last ? ' is-last' : '')} style={at} />;
   });
 
   const lastLabel = phase === 'idle' ? t('calibrate.pressToStart') : n ? t('calibrate.lastTap', { offset: signedMs(offsets[n - 1]) }) : t('calibrate.tapEach');
@@ -199,7 +213,9 @@ export function Calibration(): JSX.Element {
     <ExerciseFrame className="frame--cal">
       <div className="page cal no-scrollbar">
         <div className="screen-head">
-          <Link to={backTo} query={backQuery} aria-label={t(fromResults ? 'calibrate.backResults' : 'calibrate.back')} className="icon-btn icon-btn--edge">
+          {/* Back to Results leaves Calibrate, as Save does, so after Results' own arrow the browser's Back does not
+              open Calibrate or the finished run again. */}
+          <Link to={backTo} query={backQuery} leaves={fromResults} aria-label={t(fromResults ? 'calibrate.backResults' : 'calibrate.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <h1 className="screen-title">{t('calibrate.title')}</h1>

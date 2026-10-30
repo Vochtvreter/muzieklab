@@ -74,7 +74,8 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    draws the current beat as an outlined slate ring, with the digit in slate, instead of the filled circle. On desktop
    the stat card's label reads COUNT-IN and the active digit is hollow. From beat 1 everything looks as before. The
    analog metronome is unchanged, and the aria labels stay *Count-in, beat x of y*. The timing lane draws no playhead
-   until beat 1. The count-in after a pause already shows the bar it leads into, the one Resume plays again, in the
+   until beat 1, and a press held just before it is a short mark at the bar's start until then (it was drawn across
+   the whole lane). The count-in after a pause already shows the bar it leads into, the one Resume plays again, in the
    staff and lane windows, the progress and the Pause sheet's *Bar x of y*, although its clock is still in the bar
    before.
 3. **Play** — a cursor sweeps across the notation in time. The player presses on every
@@ -90,7 +91,10 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    bar; Results shows the whole exercise. A phone shows two rows (eight bars) at a time, from the row being played, as
    the staff shows a window of its bars. At the end it keeps the last two rows, so the last row is played on the lower
    one (bars 9–16 from bar 9 of 16, bars 5–12 from bar 5 of 12). With every row, 12 or 16 bars took three or four rows
-   and pushed the pad and *Skip to results* off a short phone.
+   and pushed the pad and *Skip to results* off a short phone. Its accessible name says what it compares: *Note
+   lengths compared with how long each note was held*, or in tap only *When each note starts compared with when you
+   tapped* (nl *De lengte van elke noot naast hoe lang je hem vasthield*, *Het begin van elke noot naast wanneer je
+   tikte*), on Play and Results.
    A combo counter grows on consecutive notes that were both started well and held right.
    A missed note also gets a small × under it, so a miss is shape as well as colour (§9).
    The pad itself only says what it is, a quarter-note symbol and **Tap** (nl *Tik*; since 0.10.0, before
@@ -510,7 +514,8 @@ A quick theory check on any **chapters the player chooses**, opened from the Lea
 ## 4. Exercise settings
 
 All settings are shown on one *Practice setup* screen, with a live preview bar that
-regenerates as you change things, plus a difficulty meter.
+regenerates as you change things, plus a difficulty meter. The setup is saved with the progress as it is changed, as
+the Read notes and Scales setups are, so a reload or the app opened again keeps it (it was saved only on Start).
 
 | Setting | Options | Default |
 |---|---|---|
@@ -794,7 +799,9 @@ codes are reproducible across devices.
   starts with *Measured over N taps*. The stored value is still the median offset. The Dutch start prompt is *TIK OM
   TE BEGINNEN*; it must fit on one line on a 320 px phone.
 - Calibrate opens from Settings, and from a coaching tip on Results (§6.4) as `#/calibrate?from=results`: then its
-  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. When Results goes back
+  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. Save goes back to
+  the Settings or Results entry it was opened from (as Sign in does), and so does *Back to results*, so the browser's
+  Back does not open Calibrate again, nor the finished run after Results' own arrow. When Results goes back
   to a Learn section (`?from=7.3`), Calibrate carries it as `&learn=7.3` and returns to `#/results?from=7.3`, so the
   way back to the section stays. Opened any other way, or after a reload (the store then has no last run to show),
   they return to Settings (*Back to settings*).
@@ -1152,9 +1159,9 @@ How write and hear work is in §3.5, *Write it, hear it*.
   Perfect bar* badge (medal icon) beside the other badges on Results, Read notes' Round done or Scales' round done (no
   board; Scales' round done gained a badge row under the score for it). *50 perfect taps in a row* and the rest wait for
   the full achievements list (Later, §9).
-- **Personal bests** (since 0.19.0): a lesson played before whose best accuracy goes up, in whole percent as shown
-  (rounded down, §6.3: 87.9% after 87.4% is not a new best), or the daily challenge's best (as Results' *New personal
-  best* badge, §3.4), is a *New personal best* row on the level-up sheet. Rhythm and note lessons count; Scales rounds
+- **Personal bests** (since 0.19.0): a lesson played before whose best accuracy goes up, or the daily challenge's best
+  (as Results' *New personal best* badge, §3.4), each in whole percent as shown (rounded down, §6.3: 87.9% after 87.4%
+  is not a new best), is a *New personal best* row on the level-up sheet. Rhythm and note lessons count; Scales rounds
   do not. Bests per settings combination and a history of them are still Later.
 
 ### 8.4 Skill tracking (Weak Spots)
@@ -1168,7 +1175,9 @@ built (since 0.19.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
   half for *Dotted half*; a dotted quarter, and the eighth right after it, for *Dotted quarter + eighth*; else a
   quarter, half, eighth or sixteenth for its own cell (the dotted eighth of a sixteenth figure counts for
   *Sixteenths*). Whole notes and triplets count for none. The first note after a rest also counts for *Rests*. A note
-  adds the points the accuracy gives it (§6.3) to its cells, out of a Perfect's.
+  adds the points the accuracy gives it (§6.3) to its cells, out of a Perfect's. A round ended early (*Skip to
+  results*, Echo's *Done*) counts only the notes up to where the music stopped: Results counts the rest as missed, but
+  they were never played (as Read notes' weak spots learn from the notes answered).
 - **Rolling accuracy.** The points are kept per local day (`progress.stats.days`, the newest 42 days), and a cell's
   accuracy is its points earned over points possible across the last 42 days, as a whole percent rounded down (§6.3:
   89.6% is in the 80–89% band). It shows from 12 notes in that window (*—* before). A per-day sum instead of a moving
@@ -1184,12 +1193,19 @@ built (since 0.19.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
   Rests, quarter rests (and eighth rests when eighths are on) with *many* rests; for Ties, ties; for Dotted half, dotted
   notes with halves and 3/4; for Dotted quarter + eighth, dotted notes with quarters and eighths. For Ties, both dotted
   cells and Rests it also sets Bars to 2 at least: an exercise of 1 bar has no tie and no dotted half, and a dotted
-  quarter + eighth or a note after a rest in fewer than half of them, where 2 bars have them in most. With no cell
-  under 80% it uses the two weakest open cells. It puts the result on the rhythm setup (the player's own setup changes,
-  as a Learn practice link does, but Bars too: the link keeps the player's Bars and plays 2 for its run only) and
-  opens it, where Start plays it: a setup Start could not play (every time signature or note value switched off, or
-  none that fills a bar) first gets 4/4 when it has no time signature, then quarter notes when it still needs them. It
-  is hidden while no cell has 12 notes.
+  quarter + eighth or a note after a rest in fewer than half of them. With no cell under 80% it uses the two weakest
+  open cells. It puts the result on the rhythm setup (the player's own setup changes, as a Learn practice link does,
+  but Bars too: the link keeps the player's Bars and plays 2 for its run only) and opens it, where Start plays it: a
+  setup Start could not play (every time signature or note value switched off, or none that fills a bar) first gets
+  4/4 when it has no time signature, then quarter notes when it still needs them. It is hidden while no cell has 12
+  notes.
+- **Its Start looks for the weak cells**: an exercise with a note of each (a tie, a dotted half, a dotted quarter, a
+  rest, or the cell's note value), trying other seeds as a Learn practice link does (up to 200), and its Retry and
+  Next do too. The settings alone left it to chance: the generator takes any dotted value for its dotted note and an
+  off-beat eighth for its syncopation, so with eighths on only about 1 exercise of 2 bars in 6 had a dotted half and 1
+  in 3 a tie. Only the run the preset starts looks for them: a change on the setup by hand, or a later Start, plays
+  the setup as it comes. With sixteenths on a dotted half is in about 1 exercise of 2 bars in 150 (1 in 25 with rests
+  on, 1 in 10 from 3 bars), so there some starts find none and keep an exercise without it.
 - **Meters are not tracked separately.** A round has one meter, so a meter score would be the accuracy of whole rounds,
   not of the notes that are hard. The meters are taught by rhythm units (3/4 in unit 3, 2/4 in unit 5) that the
   Rhythm reading levels already check (§8.6), and every board's skill map draws cells only. A boost in the generator
@@ -1423,7 +1439,8 @@ Built in v0.2 (dark theme was already in the MVP):
   Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
   The beat counter is the one Settings picks in both phases (the pendulum with the analog look). A listen cut off
   before its end (the app sent to the background, the tab hidden, the audio suspended or interrupted) stops and does
-  not count, as the tapping pauses then.
+  not count, as the tapping pauses then. So does one whose audio has still not started 0.8 s after the press (Play's
+  grace for it), or whose clock stands still: before, it played in silence and used up a play.
 
 **v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Two things
 change in the app:

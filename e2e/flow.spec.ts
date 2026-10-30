@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
 import { LETTERS, letterOf } from '../src/core/pitch';
-import { announcer, pad, pathUpTo, QUARTERS, seed, SOL_DONE, tabTo, tapLate, VIEWPORTS } from './helpers';
+import { announcer, calibrateAlong, pad, pathUpTo, QUARTERS, seed, SOL_DONE, tabTo, tapLate, VIEWPORTS } from './helpers';
 
 /**
  * The main loop: Home → lesson 2.1 (rhythm: quarter notes, 60 BPM, 2 bars, one bar of count-in; after sol's unit) →
@@ -227,7 +227,8 @@ test("a phone's timing lane follows the bars being played, two rows at a time; R
   await page.goto('./#/setup');
   await page.getByRole('button', { name: /^Start · / }).click();
   const head = page.locator('.lane-head');
-  const lane = page.getByRole('img', { name: 'Note lengths compared with how long each note was held' });
+  // Tap only: the lane compares when each note starts with the taps.
+  const lane = page.getByRole('img', { name: 'When each note starts compared with when you tapped' });
   await expect(head).toContainText('bars 1–8');
   for (const bars of ['bars 5–12', 'bars 9–16']) {
     await expect(head).toContainText(bars, { timeout: 8000 });
@@ -242,7 +243,28 @@ test("a phone's timing lane follows the bars being played, two rows at a time; R
   await page.getByRole('button', { name: 'Skip to results' }).click();
   // Results shows the whole exercise, two bars a row (8 rows of 30 px).
   await expect(page).toHaveURL(/#\/results$/);
-  await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toHaveAttribute('viewBox', /^0 0 [\d.]+ 240$/);
+  await expect(page.getByRole('img', { name: 'When each note starts compared with when you tapped' })).toHaveAttribute('viewBox', /^0 0 [\d.]+ 240$/);
+});
+
+/**
+ * The free-practice setup is saved as it is edited, as the Read notes and Scales setups are: a reload, or the phone
+ * closing the app, keeps it. It was saved only on Start.
+ */
+test('setup: changes are kept after a reload, also before Start', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/setup');
+  const meter = (m: string): Locator => page.getByRole('button', { name: m, exact: true });
+  const bars = page.getByRole('group', { name: 'Bars', exact: true }).locator('[aria-live]');
+  await meter('3/4').click();
+  await meter('4/4').click();
+  await page.getByRole('button', { name: 'More bars' }).click();
+  await page.getByRole('button', { name: 'More bars' }).click();
+  await expect(bars).toHaveText('6');
+  await page.reload();
+  await expect(meter('3/4')).toHaveAttribute('aria-pressed', 'true');
+  await expect(meter('4/4')).toHaveAttribute('aria-pressed', 'false');
+  await expect(bars).toHaveText('6');
+  await expect(page.getByRole('button', { name: /^Start · / })).toHaveText(/^Start · 6/);
 });
 
 /**
@@ -301,7 +323,7 @@ async function watchCountIn(page: Page): Promise<() => Promise<string[]>> {
       const line = document.querySelector('.play-info .mono-line, .dplay-head .mono-line')?.textContent?.split(' · ')[0];
       const staff = /Bar (\d+):/.exec(document.querySelector('.play-staff [role=img], .dplay-staff [role=img]')?.getAttribute('aria-label') ?? '')?.[1];
       const lane = document.querySelector('.lane-head span:last-child')?.textContent;
-      const playheads = document.querySelectorAll('svg[aria-label="Note lengths compared with how long each note was held"] line[stroke-width="2.5"]').length;
+      const playheads = document.querySelectorAll('svg[aria-label="When each note starts compared with when you tapped"] line[stroke-width="2.5"]').length;
       const progress = document.querySelector('.play-top [role=progressbar], .dplay-head [role=progressbar]')?.getAttribute('aria-valuenow');
       return `${line} · staff ${staff} · ${lane} · playheads ${playheads} · ${progress} %`;
     };
@@ -1166,6 +1188,56 @@ test('echo: the play button keeps the focus while the rhythm plays, and Tap it b
       await expect(tapBack, size).toBeFocused();
     }
     await expect(page.getByText('No plays left'), size).toBeVisible();
+  }
+});
+
+/**
+ * Calibrate is done once saved: Save goes back to the Settings or Results it was opened from. It opened them again on
+ * top, so Back opened Calibrate again, and from Results then the finished run.
+ */
+test('calibrate: Save goes back to Settings, so Back leaves Settings', async ({ page }) => {
+  test.setTimeout(40_000);
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/');
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('link', { name: /^Calibrate/ }).click();
+  await expect(page).toHaveURL(/#\/calibrate$/);
+  await pad(page).focus();
+  await calibrateAlong(page);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/$/);
+});
+
+test('calibrate from Results: Save and the back arrow return to that Results, and Back from there leaves it', async ({ page }) => {
+  test.setTimeout(60_000);
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: QUARTERS } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  for (const way of ['back arrow', 'save'] as const) {
+    await page.goto('./#/setup');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    // Every tap 130 ms late: Results' tip offers Calibrate.
+    await tapLate(page, 4, 500, 130);
+    await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('link', { name: 'Calibrate' }).click();
+    await expect(page).toHaveURL(/#\/calibrate\?from=results$/);
+    if (way === 'save') {
+      await pad(page).focus();
+      await calibrateAlong(page);
+      await page.getByRole('button', { name: 'Save' }).click();
+    } else {
+      await page.getByRole('link', { name: 'Back to results' }).click();
+    }
+    await expect(page, way).toHaveURL(/#\/results$/);
+    await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible();
+    // Back from Results, or after its own arrow, goes to the setup: not into Calibrate, nor the finished run.
+    if (way === 'back arrow') {
+      await page.getByRole('link', { name: 'Back to home' }).click();
+      await expect(page).toHaveURL(/#\/$/);
+    }
+    await page.goBack();
+    await expect(page, way).toHaveURL(/#\/setup$/);
   }
 });
 

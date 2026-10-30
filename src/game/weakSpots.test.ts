@@ -2,8 +2,9 @@ import { DEFAULT_SETTINGS } from '../core/defaults';
 import { checkSettings } from '../core/feasibility';
 import { generateExercise } from '../core/generator';
 import { noteCells } from './cells';
+import { SHOW_IDS } from './intro';
 import { sanitizeSettings, CELL_IDS, type CellId } from './storage';
-import { playableSetup, weakCells, weakSpotsSettings, type WeakSpotCell } from './weakSpots';
+import { playableSetup, weakCells, weakSpotsSettings, weakSpotsShows, type WeakSpotCell } from './weakSpots';
 
 /** The eight cells with these accuracies (null: not enough notes) and locks. */
 function cells(acc: Partial<Record<CellId, number | null>>, locked: CellId[] = []): WeakSpotCell[] {
@@ -53,7 +54,8 @@ describe('weakSpotsSettings', () => {
     for (const id of ['ties', 'dottedHalf', 'dottedQE', 'rests'] as const) {
       const s = weakSpotsSettings(one, cells({ quarter: 95, [id]: 70 }))!;
       expect(s.bars, id).toBe(2);
-      // And it practises that cell: more than half the exercises it starts have notes for it (at 1 bar: none to 44%).
+      // Room for that cell: with these notes more than half the exercises of 2 bars have notes for it (at 1 bar: none
+      // to 44%). With eighths on far fewer do, so the start looks for one (weakSpotsShows).
       const has = Array.from({ length: 20 }, (_, i) => generateExercise(s, i + 1)).filter((ex) => noteCells(ex).some((c) => c.includes(id)));
       expect(has.length, id).toBeGreaterThan(10);
     }
@@ -73,6 +75,17 @@ describe('weakSpotsSettings', () => {
     const whole = { ...base, notes: ['whole' as const], meters: ['2/4' as const, '3/4' as const] };
     expect(weakSpotsSettings(whole, cells({ ties: 70 }))).toEqual({ ...whole, notes: ['whole', 'quarter'], ties: true });
     expect(playableSetup(base)).toBe(base);
+  });
+});
+
+describe('weakSpotsShows', () => {
+  it('asks the start for a note of each weak cell, as a Learn practice link asks for what its section teaches', () => {
+    expect(weakSpotsShows(cells({ quarter: 95, ties: 70, dottedHalf: 60 }))).toEqual(['ties', 'dotted:half']);
+    const all = weakSpotsShows(cells(Object.fromEntries(CELL_IDS.map((id) => [id, 60]))));
+    expect(all).toEqual(['note:quarter', 'note:half', 'note:eighth', 'rest', 'ties', 'dotted:half', 'dotted:quarter', 'note:sixteenth']);
+    // Ids the start's seed search knows, which a run restored after a reload keeps.
+    for (const id of all) expect(SHOW_IDS).toContain(id);
+    expect(weakSpotsShows(cells({}))).toEqual([]);
   });
 });
 

@@ -21,7 +21,7 @@ import { focusLost } from '../lib/screenFocus';
 import { leave, Link, type Route } from '../router';
 import { useStore, type Run } from '../store';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
-import { STOPPED_AUDIO } from './playSession';
+import { AUDIO_START_GRACE_MS, STOPPED_AUDIO } from './playSession';
 import { HowToContent } from './PlaySheets';
 
 /** How often the rhythm can be heard (the first listen included). */
@@ -80,12 +80,25 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
   const [help, setHelp] = useState<'help' | null>(state.prefs.seenEchoHowTo ? null : 'help');
   const timer = useRef<number | null>(null);
   const raf = useRef<number | null>(null);
+  /** A listen is playing that has not ended or been cut off: it is given back once only. */
+  const listening = useRef(false);
 
   const stopLoop = (): void => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     if (raf.current !== null) cancelAnimationFrame(raf.current);
     timer.current = raf.current = null;
   };
+
+  // A listen cut off before its end stops, and is given back: it is not counted.
+  const cut = useCallback((): void => {
+    if (!listening.current) return;
+    listening.current = false;
+    stopLoop();
+    engine().stop();
+    setBeat(IDLE_BEAT);
+    setPlaying(false);
+    onCancelled();
+  }, [onCancelled]);
 
   // The play button keeps the focus while it plays (aria-disabled, not disabled, which would drop it to the page). Once
   // it has played, Tap it back, which comes in under it, takes the focus from it: the player's turn.
@@ -106,10 +119,18 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     applyAudioPrefs(state.prefs, eng);
     stopLoop();
     const started = eng.start({ timeline: view.timeline, meter: ex.meter, tempo: ex.tempo, countInBars: 1, metronome: ex.settings.metronome, playRhythm: true, leadIn: LEAD_IN_S });
+    const startedAt = performance.now();
+    listening.current = true;
     onPlayed();
     setPlaying(true);
     const beatSec = view.timeline.beatSeconds;
     const tick = (): void => {
+      // Audio stopped from the start (a context that never started, one the browser would not resume) says so with no
+      // state change, nor does a clock that froze: so it is checked here, with Play's grace to start (playSession.ts).
+      if (STOPPED_AUDIO.has(eng.audioState()) && performance.now() - startedAt > AUDIO_START_GRACE_MS) {
+        cut();
+        return;
+      }
       const tg = eng.heardNow() - started.exerciseStart;
       const now = beatAt(tg, beatSec, ex.meter.beatsPerBar, ex.meter.beatsPerBar, view.timeline.totalSeconds);
       // A new state only when the beat changes, not every frame; the analog metronome swings with every frame.
@@ -119,39 +140,30 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     };
     raf.current = requestAnimationFrame(tick);
     timer.current = window.setTimeout(() => {
+      listening.current = false;
       stopLoop();
       setBeat(IDLE_BEAT);
       setPlaying(false);
       setHeard(true);
     }, Math.max(0, started.end - eng.now() + 0.25) * 1000);
-  }, [playing, playsLeft, state.prefs, view, ex, onPlayed]);
+  }, [playing, playsLeft, state.prefs, view, ex, onPlayed, cut]);
 
   // Leaving the app or the tab, or the audio stopping under it (an iOS call or Siri, the browser suspended it), cuts
   // the rhythm off: the listen stops and is given back, as the tapping pauses then (playSession.ts).
   useEffect(() => {
     if (!playing) return;
-    let cut = false;
-    const stop = (): void => {
-      if (cut) return;
-      cut = true;
-      stopLoop();
-      engine().stop();
-      setBeat(IDLE_BEAT);
-      setPlaying(false);
-      onCancelled();
-    };
     const onVis = (): void => {
-      if (document.visibilityState === 'hidden') stop();
+      if (document.visibilityState === 'hidden') cut();
     };
     document.addEventListener('visibilitychange', onVis);
     const off = engine().onStateChange((s) => {
-      if (STOPPED_AUDIO.has(s)) stop();
+      if (STOPPED_AUDIO.has(s)) cut();
     });
     return () => {
       document.removeEventListener('visibilitychange', onVis);
       off();
     };
-  }, [playing, onCancelled]);
+  }, [playing, cut]);
 
   // Hear again from the tap phase: play straight away (the tap there was the gesture).
   const autoPlayed = useRef(false);

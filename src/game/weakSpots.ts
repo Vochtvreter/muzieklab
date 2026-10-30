@@ -1,7 +1,7 @@
 /**
  * Practice weak spots (DESIGN.md §9 v1.5, the Progress tab's skill map): a practice-setup preset that switches on what
- * the weak cells need, on top of the rhythm setup as it is. The screen puts it on the setup (dispatch 'settings') and
- * opens /setup, where Start plays it. Pure.
+ * the weak cells need, on top of the rhythm setup as it is. The screen puts it on the setup (dispatch 'settings', with
+ * what its Start must show: weakSpotsShows) and opens /setup, where Start plays it. Pure.
  */
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { checkSettings } from '../core/feasibility';
@@ -40,9 +40,25 @@ const VALUE_OF: Partial<Record<CellId, NoteValue>> = { quarter: 'quarter', half:
 /**
  * Cells that a 1-bar exercise seldom or never has, so the preset plays 2 bars at least: no tie (the generator ties over
  * a bar line, or in a quarter, half, quarter, which never ends one), no dotted half (the cadence turns it down), and
- * the dotted quarter + eighth and a note after a rest in fewer than half of them; at 2 bars in most.
+ * the dotted quarter + eighth and a note after a rest in fewer than half of them. Even 2 bars often lack one, most of
+ * all with eighths on, so Start also looks for it (weakSpotsShows).
  */
 const TWO_BARS: readonly CellId[] = ['ties', 'dottedHalf', 'dottedQE', 'rests'];
+
+/**
+ * What shows a note of each cell on the staff (ids of game/intro.ts, exerciseHas): a dotted quarter counts for the
+ * dotted quarter + eighth, and the first note after a rest for rests (game/cells.ts).
+ */
+const SHOW_OF: Record<CellId, string> = {
+  quarter: 'note:quarter',
+  half: 'note:half',
+  eighths: 'note:eighth',
+  rests: 'rest',
+  ties: 'ties',
+  dottedHalf: 'dotted:half',
+  dottedQE: 'dotted:quarter',
+  sixteenths: 'note:sixteenth',
+};
 
 /**
  * The rhythm setup as it is, when Start can play it. One that Start cannot (the player switched off every time
@@ -97,4 +113,14 @@ export function weakSpotsSettings(setup: Settings, cells: readonly WeakSpotCell[
     rests: NOTE_VALUES.filter((v) => rests.has(v)),
     meters: METER_IDS.filter((m) => meters.has(m)),
   };
+}
+
+/**
+ * What the run the preset starts must show: a note of each weak cell (weakCells), which the start looks for over other
+ * seeds as a Learn practice link does (makeRunShowing in ui/store.tsx). The preset alone leaves it to chance: the
+ * generator takes a dotted quarter for its dotted note and an off-beat eighth for its syncopation, so with eighths on
+ * most exercises of 2 bars had no dotted half, and many no tie.
+ */
+export function weakSpotsShows(cells: readonly WeakSpotCell[]): string[] {
+  return weakCells(cells).map((id) => SHOW_OF[id]);
 }

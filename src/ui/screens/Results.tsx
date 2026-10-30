@@ -255,8 +255,7 @@ export function Results(): JSX.Element | null {
             {result.extraTaps > 0 && ' · ' + t('results.extraLegend')}
           </span>
         </div>
-        <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={perRow} taps={last.taps} result={result} label={t('results.laneLabel')}
-          hold={ex.settings.hold} />
+        <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={perRow} taps={last.taps} result={result} hold={ex.settings.hold} />
       </div>
 
       {tip && (

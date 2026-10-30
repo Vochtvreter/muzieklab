@@ -258,7 +258,7 @@ export function Setup(): JSX.Element {
                 {t(blockedKey)}
               </button>
             ) : (
-              <button type="button" className="btn btn--accent start-btn" onClick={() => start(s, { query: carry })}>
+              <button type="button" className="btn btn--accent start-btn" onClick={() => start(s, { query: carry, shows: state.setupShows })}>
                 {t('setup.start', { bars: t('common.bars', { count: s.bars }) })}
               </button>
             )}

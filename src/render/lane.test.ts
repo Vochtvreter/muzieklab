@@ -63,6 +63,23 @@ describe('layoutLane', () => {
     expect(tones).not.toContain('live');
   });
 
+  it('live with no playhead yet (the count-in, a pause): a press still held is a short mark, and one that matched no note no extra', () => {
+    // Held from 0.12 s before the first beat, judged Good against it while the count-in still runs: it was drawn to the
+    // end of the exercise, across the whole lane, until beat 1.
+    const early = { down: -0.12, up: null };
+    const good = { index: 0, judgement: 'good' as const, offsetMs: -120, hold: null, releaseOffsetMs: null, tap: early };
+    const result = { ...demoPlay(timeline, null).result, notes: [good] };
+    const live = { ...base, width: 342, barsPerRow: 4, rowHeight: 26, live: true, now: null };
+    const [mark, ...more] = of(layoutLane({ ...live, taps: [early], result }).shapes, 'hold');
+    expect(more).toEqual([]);
+    expect(mark.w).toBeLessThanOrEqual(4);
+    // One that matches no note yet (0.2 s early) shows nothing before beat 1; neither it nor a press while paused is
+    // outlined as Results' extra tap: it may still match a note.
+    const none = { ...result, notes: [] };
+    expect(of(layoutLane({ ...live, taps: [{ down: -0.2, up: null }], result: none }).shapes, 'hold')).toEqual([]);
+    expect(of(layoutLane({ ...live, taps: [{ down: 1.0, up: 1.1 }], result: none }).shapes, 'hold').map((h) => h.tone)).toEqual(['live']);
+  });
+
   it('tap only: presses are short marks where they landed, not holds', () => {
     const taps = [{ down: 0, up: 1.5 }];
     const l = layoutLane({ ...base, barsPerRow: 4, taps, now: 2, rowHeight: 26, hold: false });

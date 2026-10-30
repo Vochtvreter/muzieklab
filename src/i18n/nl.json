@@ -663,7 +663,8 @@
     "calibrate": "Kalibreren",
     "calibrateTitle": "Meet de vertraging van je speaker of koptelefoon",
     "calibrated": "Gekalibreerd. Je volgende oefening houdt er rekening mee.",
-    "laneLabel": "De lengte van elke noot naast hoe lang je hem vasthield"
+    "laneLabel": "De lengte van elke noot naast hoe lang je hem vasthield",
+    "laneLabelTap": "Het begin van elke noot naast wanneer je tikte"
   },
   "settings": {
     "title": "Instellingen",

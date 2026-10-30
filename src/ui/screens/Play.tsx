@@ -246,7 +246,7 @@ function PlayRun({ run, view, echo }: { run: Run; view: ExerciseView; echo?: Ech
   // No playhead before the music's first beat: in the count-in after a pause the clock would put it in the bar before.
   const lane = (
     <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={LANE_PER_ROW} fromBar={laneFrom} rowsShown={laneRows} taps={s.taps} live
-      result={s.liveResult} now={s.phase === 'running' && !countIn && s.frame.tg >= 0 ? s.frame.tg : null} label={t('results.laneLabel')} hold={ex.settings.hold} />
+      result={s.liveResult} now={s.phase === 'running' && !countIn && s.frame.tg >= 0 ? s.frame.tg : null} hold={ex.settings.hold} />
   );
   const laneHead = (
     <div className="lane-head">
