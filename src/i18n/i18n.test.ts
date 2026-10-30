@@ -357,6 +357,15 @@ describe('Dutch', () => {
     ).toEqual([]);
   });
 
+  it('names the tabs as the tab bar does (Start, Leerpad, Leren, Voortgang, Instellingen), never in English', () => {
+    // What's new 0.19.1 once said "het voorbeeld van een les op Home".
+    expect(
+      [...flatten(catalogs['./nl.json']).entries()]
+        .filter(([, msg]) => /\b(?:Home|Path|Learn|Progress|Settings)\b/.test(msg))
+        .map(([key]) => key),
+    ).toEqual([]);
+  });
+
   it('puts the right article before a sign word: het kruis and het herstellingsteken, but de mol', () => {
     setLocale('nl');
     const wrong: string[] = [];
