@@ -1288,8 +1288,9 @@ cards below it, and is not remembered: every visit starts on Rhythm.
 - **Major scales:** the 15 major scales round the circle of fifths with their best stars; *9 of 15* with ★★ or more.
 - **Minor scales:** the minor keys started, with the best stars of each form (natural, harmonic, melodic), and **Open
   the circle of fifths** (the Scales hub). Each form's column is as wide as its head, with 2 px of room on each side;
-  on a card under 280 px wide (a 320 px phone) the heads are 11 px, so in Dutch *Natuurlijk Harmonisch Melodisch*
-  stay apart and *A♯ mineur* stays on one line.
+  where the card is less than 280 px wide inside its padding (a 320 px phone, whose card is 280 px with 248 px inside;
+  every other size has 303 px or more) the heads are 11 px, so in Dutch *Natuurlijk Harmonisch Melodisch* stay apart
+  and *A♯ mineur* stays on one line.
 
 **The way back.** A screen opened from a button here keeps where it came from (`?from=progress`), as one opened from
 Learn does (§9.1): the rhythm setup from *Practice weak spots*, the Read notes setup from *Read notes* and the Scales
@@ -2154,8 +2155,10 @@ server.
     bar and the sheet say the part's role in the app's language (*knop “Start”*); the report keeps it in English, as the
     issue it becomes. *Mark again* keeps the kind, title and description typed, and Cancel or
     Esc then goes back to the form with the spot it had.
-  - *Copy* turns into a check and *Copied* for 2 s, and back to *Copy* as soon as the report changes. Where copying is
-    not allowed, the Markdown shows in a copy field under the note, to copy by hand.
+  - *Copy* turns into a check and *Copied* for 2 s, and back to *Copy* as soon as the report changes. The button is never
+    narrower than the longer of the two (*Gekopieerd* in Dutch on a 320 px phone) and keeps its width, so neither it
+    nor Send moves on a copy. Where copying is not allowed, the Markdown shows in a copy field under the note, to copy by
+    hand.
   - Sent, the sheet says *Saved for review* over *An admin reads it in Settings → Account → Feedback, and picks what
     goes on to GitHub.*, with **Review it** (outlined) for an account that also has `feedback.review`: it opens the
     report (`#/admin/feedback/<id>`) and closes the tool. Then *Mark another* and *Close*.

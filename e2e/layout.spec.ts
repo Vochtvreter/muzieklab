@@ -3620,7 +3620,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectWordsInRow(confirm, '.reset-text');
         await confirm.getByRole('button', { name: 'Cancel invite' }).click();
         await expect(page.locator('.acct-card--status')).toHaveText(`The invite for ${long} was canceled.`);
-        await expectWordsInRow(page.locator('.acct-card--status'), '.form-done > span');
+        await expectWordsInRow(page.locator('.page'), '.acct-card--status');
         await expectNoSideScroll(page);
       });
 
@@ -4657,9 +4657,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('in Dutch: Kopiëren beside Versturen keeps its icon whole, and so does its check on Gekopieerd', async ({ page, context }) => {
+    test('in Dutch: Kopiëren beside Versturen keeps its icon whole and inside the button, and so does its check on Gekopieerd, which moves neither button', async ({ page, context }) => {
       // The longest labels of the two buttons: on a narrow phone the copy icon was squeezed to a sliver, and the check
-      // was gone.
+      // was gone; with the icon whole, icon and word ran past the button's padding onto its border.
       await context.grantPermissions(['clipboard-read', 'clipboard-write']);
       await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
       await seedAccount(page, ME_ADMIN);
@@ -4669,12 +4669,35 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.mouse.click(VIEWPORTS[name].width / 2, VIEWPORTS[name].height / 2);
       const form = page.getByRole('dialog', { name: 'Feedback' });
       await form.getByLabel('Wat moet er anders?').fill('Zeg ook in milliseconden wat elke speelruimte doet.');
-      const icon = (label: string): Promise<number> =>
-        form.getByRole('button', { name: label, exact: true }).locator('svg').evaluate((svg) => svg.getBoundingClientRect().width);
+      await form.evaluate(() => document.fonts.ready.then(() => undefined));
+      const button = (label: string): Locator => form.getByRole('button', { name: label, exact: true });
+      const icon = (label: string): Promise<number> => button(label).locator('svg').evaluate((svg) => svg.getBoundingClientRect().width);
+      /** How far the icon and the word reach past the button's padding on either side (0 or less: inside it). */
+      const out = (label: string): Promise<number> =>
+        button(label).evaluate((b) => {
+          const cs = getComputedStyle(b);
+          const r = b.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(b);
+          const c = range.getBoundingClientRect();
+          return Math.max(
+            r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth) - c.left,
+            c.right - (r.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth)),
+          );
+        });
+      /** Where the button sits across the row, and how wide it is. */
+      const place = async (label: string): Promise<number[]> => {
+        const b = (await button(label).boundingBox())!;
+        return [b.x, b.width];
+      };
       expect(await icon('Kopiëren'), 'the copy icon').toBeCloseTo(18, 0);
-      await form.getByRole('button', { name: 'Kopiëren', exact: true }).click();
-      await expect(form.getByRole('button', { name: 'Gekopieerd', exact: true })).toBeVisible();
+      expect(await out('Kopiëren'), 'the copy icon and Kopiëren inside the button').toBeLessThanOrEqual(0.5);
+      const before = [await place('Kopiëren'), await place('Versturen')];
+      await button('Kopiëren').click();
+      await expect(button('Gekopieerd')).toBeVisible();
       expect(await icon('Gekopieerd'), 'the check').toBeCloseTo(18, 0);
+      expect(await out('Gekopieerd'), 'the check and Gekopieerd inside the button').toBeLessThanOrEqual(0.5);
+      expect([await place('Gekopieerd'), await place('Versturen')], 'Copy and Send stay where they were').toEqual(before);
       await expectNoClippedLabels(page);
     });
 

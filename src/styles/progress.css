@@ -849,7 +849,8 @@
 }
 /* The forms' heads keep a little room on each side: each column is only as wide as its word, and in Dutch on a 320 px
    phone "Natuurlijk Harmonisch Melodisch" ran together. There, smaller words make that room without the key names
-   ("A♯ mineur") taking two lines. */
+   ("A♯ mineur") taking two lines. The query measures the card inside its padding: 248 px on that phone, whose card is
+   280 px wide, and 303 px or more at every other size. */
 .prog-minors thead th + th {
   padding: 0 2px 4px;
 }

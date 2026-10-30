@@ -444,6 +444,12 @@ function FeedbackForm({ target, name, draft, onDraft, onClose, onLeave, onRemark
         </div>
       )}
       <div className="fb-actions" ref={actionsRef}>
+        {/* The label not shown, unseen under Copy, holds its room: the button keeps its width as Copy turns Copied and
+            back, so neither it nor Send moves under the finger. */}
+        <span className="btn btn--outline fb-copy-room" aria-hidden="true">
+          <Icon name={copied ? 'copy' : 'check'} size={18} />
+          {t(copied ? 'feedback.copy' : 'feedback.copied')}
+        </span>
         <button type="button" className="btn btn--outline" disabled={!ready} onClick={copy}>
           <Icon name={copied ? 'check' : 'copy'} size={18} />
           {t(copied ? 'feedback.copied' : 'feedback.copy')}

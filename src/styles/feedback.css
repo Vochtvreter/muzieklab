@@ -257,6 +257,14 @@ textarea.fb-input:focus-visible {
   grid-template-columns: minmax(min-content, 1fr) minmax(0, 1.4fr);
   gap: 10px;
 }
+/* Copy's other label, hidden in Copy's cell: the column fits the longer of the two, so a copy moves neither button. */
+.fb-copy-room,
+.fb-copy-room + .btn {
+  grid-area: 1 / 1;
+}
+.fb-copy-room {
+  visibility: hidden;
+}
 .fb-actions .btn {
   min-height: 52px;
 }
