@@ -240,7 +240,7 @@ export function useAccount(): UseAccount {
   // forms (and what was typed) instead of switching to the offline layout, which only GET /me decides. After a 401 the
   // screen gives way to Sign in before it can show its error, so Sign in says that nothing was changed, and it is read
   // out: landing there signed out after Delete account would read as done. (The feedback tool stays open until it is
-  // closed, and shows its error.)
+  // closed, and shows its error, with Sign in in place of Send.)
   const handleError = useCallback((e: unknown): ApiError => {
     const err = asApiError(e);
     if (err.code === 'unauthenticated') setSignedOut('sessionEnded');

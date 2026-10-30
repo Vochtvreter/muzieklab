@@ -2101,10 +2101,10 @@ server.
   - When sending fails, why shows above the buttons as an alert (*Can't reach Muzieklab right now…*, or *Too many
     tries. Try again in 12 minutes.* after 30 reports in an hour), and the form stays as it was, so Send tries again.
     A session that ended meanwhile (a new password on another device) signs out, and the sheet says *You're signed
-    out. Sign in again to go on.* with what was typed still in it, to copy; the tool goes once it is closed, and Sign in
-    then says nothing was changed.
+    out. Sign in again to go on.* with what was typed still in it, to copy. **Sign in** takes the place of Send (and
+    the focus): it closes the tool and opens Sign in, which says nothing was changed. Closed instead, the tool goes.
   - Closing the tool (Cancel or Esc while marking; the X, Esc or *Close* on the sheet) puts the focus back on the
-    Feedback button. *Review it* leaves it to the report's screen.
+    Feedback button. *Review it* and *Sign in* leave it to the screen they open.
   - Built from the sheet, button and field styles of the existing screens.
 - **Feedback reports** (0.17.0; no board yet): the screens *Feedback* and one report, for an account with
   `feedback.review`, are in the table below. They are built from *Deleted accounts* and *One account*. A report is not

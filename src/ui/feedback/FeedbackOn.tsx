@@ -19,6 +19,7 @@ import { Sheet } from '../components/Sheet';
 import { useBreakpoint, useLingering, useMediaQuery, useMounted } from '../hooks';
 import { announce } from '../lib/announce';
 import { errorMessage } from '../lib/apiErrors';
+import { focusLost } from '../lib/screenFocus';
 import { Link, useRoute, type Route } from '../router';
 import { useStore } from '../store';
 
@@ -300,7 +301,7 @@ function FeedbackForm({ target, name, draft, onDraft, onClose, onLeave, onRemark
   draft: Draft;
   onDraft(patch: Partial<Draft>): void;
   onClose(): void;
-  /** Closes the tool for another screen (Review it), which takes the focus itself. */
+  /** Closes the tool for another screen (Review it, Sign in), which takes the focus itself. */
   onLeave(): void;
   /** Mark again: another spot for this report. */
   onRemark(): void;
@@ -325,6 +326,14 @@ function FeedbackForm({ target, name, draft, onDraft, onClose, onLeave, onRemark
   const report: FeedbackReport = { kind, title, description, target, context };
   // Only spaces, or a zero-width space pasted in, say nothing: the API refuses that.
   const ready = !showsNothing(description);
+  // The session ended meanwhile (a new password on another device) and Send signed out: Send could only fail again, so
+  // Sign in takes its place.
+  const signedOut = error?.code === 'unauthenticated' && !account.me;
+  const actionsRef = useRef<HTMLDivElement>(null);
+  // Send took the focus with it: it goes on to Sign in, so it stays in the sheet.
+  useEffect(() => {
+    if (signedOut && focusLost()) actionsRef.current?.querySelector<HTMLElement>('a[href]')?.focus({ preventScroll: true });
+  }, [signedOut]);
   const mounted = useMounted();
   const issue = buildIssue(report);
   const markdown = `# ${issue.title}\n\n${issue.body}`;
@@ -434,12 +443,21 @@ function FeedbackForm({ target, name, draft, onDraft, onClose, onLeave, onRemark
           <p>{errorMessage(error)}</p>
         </div>
       )}
-      <div className="fb-actions">
+      <div className="fb-actions" ref={actionsRef}>
         <button type="button" className="btn btn--outline" disabled={!ready} onClick={copy}>
           <Icon name={copied ? 'check' : 'copy'} size={18} />
           {t(copied ? 'feedback.copied' : 'feedback.copy')}
         </button>
-        {!ready ? (
+        {signedOut ? (
+          // The tool closes, as Sign in replaces the screen, and Sign in says nothing was changed: also over Settings,
+          // which put that away as the refusal came.
+          <Link to="/signin" className="btn btn--accent" onClick={() => {
+            account.setNotice('sessionEnded');
+            onLeave();
+          }}>
+            {t('signIn.title')}
+          </Link>
+        ) : !ready ? (
           <button type="button" className="btn btn--blocked" disabled>
             {t('feedback.send')}
           </button>

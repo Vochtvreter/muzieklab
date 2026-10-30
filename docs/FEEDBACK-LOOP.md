@@ -109,7 +109,8 @@ there too, which opens the reports.
      or until the report changes. Where the clipboard is not allowed, the Markdown shows in a field to copy by hand.
    - When sending fails (no connection, the server busy, too many reports in an hour), the sheet says why and keeps
      the form as it is, so Send tries again. When the session ended meanwhile (a new password set on another device),
-     the app signs out and the sheet says so, still with what was typed; it goes once it is closed.
+     the app signs out and the sheet says so, still with what was typed, and **Sign in** takes the place of Send. It
+     opens Sign in, which says nothing was changed; closed instead, the tool goes.
 
 Nothing goes to GitHub from the app or the API yet, so no GitHub token is needed anywhere (DEPLOY.md). The report is
 stored with the account that sent it, so whoever reviews it sees who that was, and the audit log records it

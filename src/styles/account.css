@@ -866,7 +866,7 @@
   font-size: 15px;
   font-weight: 700;
 }
-/* A word too long for the card (a name with no space) breaks inside it. */
+/* A word too long for the card (a name with no space, a selector, the browser) breaks inside it. */
 .fact-row dd {
   margin: 0;
   font-size: 14px;
@@ -878,11 +878,9 @@
 .fact-row--long dd {
   flex-basis: 100%;
   text-align: left;
-  overflow-wrap: anywhere;
 }
 /* Code (a route, a selector, a version): in the mono face. */
 .fact-row .fact-mono {
   font-family: var(--font-mono);
   font-size: 13px;
-  overflow-wrap: anywhere;
 }

@@ -4782,21 +4782,52 @@ test.describe('feedback: when saving fails, Review it, and hiding the button', (
     await expect(fab).toBeVisible();
   });
 
-  test('a session that ended meanwhile (a new password on another device): the form says so and keeps what was typed', async ({ page }) => {
+  test('a session that ended meanwhile (a new password on another device): the form says so and keeps what was typed, and Sign in says nothing was changed', async ({ page }) => {
     await mockApi(page, { ...ADMIN, ...feedbackServer().routes, 'POST /feedback': apiError('unauthenticated', 401), 'POST /auth/refresh': apiError('unauthenticated', 401) });
     await seedAccount(page, ME_ADMIN);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    /** Send is refused: the sheet says why, keeps what was typed, and has Sign in, with the focus, in place of Send. */
+    const sendSignedOut = async (text: string): Promise<void> => {
+      await form.getByLabel('What should change?').fill(text);
+      await form.getByRole('button', { name: 'Send', exact: true }).click();
+      await expect(form.getByRole('alert')).toHaveText("You're signed out. Sign in again to go on.");
+      await expect(form.getByLabel('What should change?')).toHaveValue(text);
+      await expect(form.getByRole('button', { name: 'Send', exact: true })).toHaveCount(0);
+      await expect(form.getByRole('link', { name: 'Sign in' })).toBeFocused();
+      await expectNoOverlap(form.getByRole('alert'), form.getByRole('link', { name: 'Sign in' }));
+    };
+    /** Sign in closes the tool, and Sign in says nothing was changed. */
+    const followSignIn = async (): Promise<void> => {
+      await form.getByRole('link', { name: 'Sign in' }).click();
+      await expect(page).toHaveURL(/#\/signin$/);
+      await expect(page.locator('.hint-box')).toHaveText('You were signed out, so nothing was changed. Sign in again to go on.');
+      await expect(form).toHaveCount(0);
+      await expect(page.getByRole('button', { name: FAB })).toHaveCount(0);
+    };
+
     await page.goto('./#/');
-    const form = await markStart(page);
-    await form.getByLabel('What should change?').fill('Start lesson does nothing on the first tap.');
-    await form.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(form.getByRole('alert')).toHaveText("You're signed out. Sign in again to go on.");
-    await expect(form.getByLabel('What should change?')).toHaveValue('Start lesson does nothing on the first tap.');
+    await markStart(page);
+    await sendSignedOut('Start lesson does nothing on the first tap.');
     await expect(form.getByRole('button', { name: 'Bug' })).toHaveAttribute('aria-pressed', 'true');
-    await expectNoOverlap(form.getByRole('alert'), form.getByRole('button', { name: 'Send', exact: true }));
-    // Closed, the tool goes: nobody is signed in any more.
+    // Closed instead, the tool goes: nobody is signed in any more.
     await page.keyboard.press('Escape');
     await expect(form).toHaveCount(0);
     await expect(page.getByRole('button', { name: FAB })).toHaveCount(0);
+
+    // Signed in again (the reload seeds the account), on Home: Sign in from the sheet.
+    await page.reload();
+    await markStart(page);
+    await sendSignedOut('Start lesson does nothing on the first tap.');
+    await followSignIn();
+
+    // And over Settings, which puts Sign in's line away as soon as the refusal comes.
+    await page.goto('./#/settings');
+    await page.reload();
+    await page.getByRole('button', { name: FAB }).click();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await sendSignedOut('The account row says nothing about the session.');
+    await followSignIn();
   });
 
   test('an admin goes from the saved report to it: Review it closes the tool and opens the report', async ({ page }) => {

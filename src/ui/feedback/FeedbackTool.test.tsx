@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Me } from '../../../shared/api';
 import { ACCOUNT_KEY } from '../../game/storage';
 import { resetAccountCheck } from '../account';
-import { StoreProvider } from '../store';
+import { StoreProvider, useStore } from '../store';
 import { FeedbackTool } from './FeedbackTool';
 
 // Phone width for useBreakpoint; a mouse, and the light theme.
@@ -90,10 +90,20 @@ describe('Feedback tool: feedback mode', () => {
 });
 
 describe('Feedback tool: the session ends while the sheet is open', () => {
-  it('Send says so in the sheet and keeps what was typed; the tool goes once it is closed', async () => {
+  /** What Sign in will say, and a way to put it away, as Settings does once the refusal comes. */
+  function Notice(): JSX.Element {
+    const { state, dispatch } = useStore();
+    return (
+      <button type="button" data-notice={state.account.notice ?? ''} onClick={() => dispatch({ type: 'accountNotice', notice: null })}>
+        Put the notice away
+      </button>
+    );
+  }
+
+  /** A report sent after a new password on another device: the report and the renewal both say the session ended. */
+  async function sendSignedOut(): Promise<{ form: HTMLElement; desc: HTMLTextAreaElement }> {
     localStorage.setItem(ACCOUNT_KEY, JSON.stringify(TESTER));
     me = { ...TESTER, feedbackMode: true };
-    // A new password on another device: the report and the renewal both say the session ended.
     fetchMock.mockImplementation((path: string) =>
       Promise.resolve(path === '/api/v1/me' ? json(200, me) : json(401, { error: 'unauthenticated', message: '' })),
     );
@@ -103,6 +113,7 @@ describe('Feedback tool: the session ends while the sheet is open', () => {
           <button type="button" className="start-btn">
             Start
           </button>
+          <Notice />
         </main>
         <FeedbackTool />
       </StoreProvider>,
@@ -117,14 +128,41 @@ describe('Feedback tool: the session ends while the sheet is open', () => {
     const form = await screen.findByRole('dialog', { name: 'Feedback' });
     const desc = within(form).getByPlaceholderText('What is wrong here, and what you expect instead') as HTMLTextAreaElement;
     fireEvent.change(desc, { target: { value: 'Start is cut off.' } });
-    fireEvent.click(within(form).getByRole('button', { name: 'Send' }));
-
+    const send = within(form).getByRole('button', { name: 'Send' });
+    send.focus();
+    fireEvent.click(send);
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe("You're signed out. Sign in again to go on."));
+    return { form, desc };
+  }
+
+  afterEach(() => window.history.replaceState(null, '', window.location.pathname));
+
+  it('Send says so in the sheet and keeps what was typed, with Sign in for Send; the tool goes once it is closed', async () => {
+    const { form, desc } = await sendSignedOut();
     expect(screen.getByRole('dialog', { name: 'Feedback' })).toBe(form);
     expect(desc.value).toBe('Start is cut off.');
     expect(fetchMock.mock.calls.some((c) => String(c[0]) === '/api/v1/auth/refresh')).toBe(true);
+    // Send could only fail again: Sign in takes its place, and the focus Send had.
+    expect(within(form).queryByRole('button', { name: 'Send' })).toBeNull();
+    const signIn = within(form).getByRole('link', { name: 'Sign in' });
+    expect(signIn.getAttribute('href')).toBe('#/signin');
+    expect(document.activeElement).toBe(signIn);
+    expect(within(form).getByRole('button', { name: 'Copy' }).hasAttribute('disabled')).toBe(false);
     // Signed out meanwhile: closed, the tool and its button go.
     fireEvent.click(within(form).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Feedback' })).toBeNull());
+    expect(screen.queryByRole('button', { name: FAB })).toBeNull();
+  });
+
+  it('Sign in closes the tool and opens Sign in, which says nothing was changed, also once Settings put that away', async () => {
+    const { form } = await sendSignedOut();
+    const notice = screen.getByRole('button', { name: 'Put the notice away' });
+    expect(notice.dataset.notice).toBe('sessionEnded');
+    fireEvent.click(notice);
+    expect(notice.dataset.notice).toBe('');
+    fireEvent.click(within(form).getByRole('link', { name: 'Sign in' }));
+    expect(window.location.hash).toBe('#/signin');
+    expect(notice.dataset.notice).toBe('sessionEnded');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Feedback' })).toBeNull());
     expect(screen.queryByRole('button', { name: FAB })).toBeNull();
   });
