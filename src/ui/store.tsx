@@ -146,6 +146,8 @@ export interface NoteRun {
   notes: RoundNote[];
   /** The path lesson this round is, or null for free practice. */
   lesson: NoteLessonRef | null;
+  /** No tap led here (restored after a reload): a first note to hear waits for one (Hear it) before it sounds. */
+  needsGesture?: boolean;
 }
 
 /** The current Read notes round, per tab, so a reload on its Play screen starts the same round again. */
@@ -176,7 +178,7 @@ export function restoreNoteRun(weak: Record<string, number>): NoteRun | null {
     const l = v.lesson;
     const lesson =
       l && isNoteTrack(l.track) && typeof l.id === 'string' && noteLessonSettings(l.track, l.id) ? { track: l.track, id: l.id } : null;
-    return makeNoteRun(settings, v.seed, weak, focus, lesson);
+    return { ...makeNoteRun(settings, v.seed, weak, focus, lesson), needsGesture: true };
   } catch {
     return null;
   }

@@ -43,8 +43,8 @@ const played = new WeakSet<Run>();
  * froze while it says 'running' (iOS, back from the background).
  */
 export const STOPPED_AUDIO = new Set(['suspended', 'interrupted', 'stalled']);
-/** How long the context may take to start running before Play treats it as stopped (ms). */
-const AUDIO_START_GRACE_MS = 800;
+/** How long the context may take to start running before Play (and Calibrate) treats it as stopped (ms). */
+export const AUDIO_START_GRACE_MS = 800;
 
 export interface Frame {
   tg: number;

@@ -753,6 +753,17 @@
   gap: 12px;
   align-content: start;
 }
+/*
+ * Read notes: the two cards hold the widest score on one line, "50 / 50" of 50 notes (as wide as "10 / 10": 7
+ * characters of 26 px mono), and an average of 10 s or more. At the board's 240 px the score broke after the slash
+ * from the 10th note on.
+ */
+.nplay-desk .nstats {
+  flex-basis: 304px;
+}
+.nstat-big {
+  white-space: nowrap;
+}
 .nstat-wide {
   grid-column: 1 / -1;
 }

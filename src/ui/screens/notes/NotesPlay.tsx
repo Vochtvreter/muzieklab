@@ -111,6 +111,9 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const [left, setLeft] = useState(timer * 1000);
   /** Where the note being written sits now (null: not put on the staff yet). */
   const [ghost, setGhost] = useState<Step | null>(null);
+  // No tap led here (a reload): the browser may not let the audio start, and sol and the note would wait in a silent
+  // context and sound at the next tap, over what it plays. Until a tap (Hear it, an answer, Next note) nothing sounds.
+  const [waiting, setWaiting] = useState(!!run.needsGesture);
   const shownAt = useRef(performance.now());
   const note = notes[i];
   const task = note.task;
@@ -144,11 +147,12 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   // A note to hear: sol, then the note. It always sounds (Hear the notes only turns the other sounds off).
   const hearIt = useCallback(() => {
     if (!note) return;
+    setWaiting(false);
     unlockAudio();
     engine().pitches([noteMidi({ ...note, step: HEAR_REFERENCE, alter: 0 }), noteMidi(note)], HEAR_GAP);
   }, [note]);
   useEffect(() => {
-    if (note?.task === 'hear') hearIt();
+    if (note?.task === 'hear' && !waiting) hearIt();
   }, [i]);
 
   const finish = useCallback(
@@ -170,6 +174,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     if (!done) return;
     if (i + 1 >= total) return finish(answers);
     holdFocus();
+    setWaiting(false);
     // Mixed rounds: names and piano take turns every 5 notes (the player can still switch any time). With the note, so
     // the focus handed on goes to the answers it is shown with.
     if (notes[i + 1].input !== notes[i].input) setMode(notes[i + 1].input === 'piano' ? 'piano' : state.prefs.noteNames);
@@ -187,6 +192,8 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
     (g: Given | null) => {
       if (done || !note) return;
       holdFocus();
+      // Time running out is no tap: before the first one (after a reload), the right note stays silent too.
+      if (g !== null) setWaiting(false);
       const ms = g === null ? timer * 1000 : Math.round(performance.now() - shownAt.current);
       const right = g !== null && isRight(note, g);
       const outcome: NoteAnswer['outcome'] = g === null ? 'timeout' : right ? (hinted ? 'hinted' : 'right') : 'wrong';
@@ -196,9 +203,9 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
       // The key pressed sounds at once; then the note on the staff, unless that key was it (a wrong answer hears the right one).
       const midi = noteMidi(note);
       if (g?.kind === 'piano') sound(right ? [midi] : [pianoKeyMidi(note, g.pc), midi], CORRECTION_GAP);
-      else sound([midi]);
+      else if (g !== null || !waiting) sound([midi]);
     },
-    [done, note, hinted, i, timer, sound, holdFocus],
+    [done, note, hinted, i, timer, sound, holdFocus, waiting],
   );
   // A piano key: the answer, or after it just its sound, to compare with the right note.
   const pressKey = useCallback(
@@ -372,7 +379,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   } else if (task === 'write') {
     feedback = t(ghost === null ? 'notes.play.idleWrite' : 'notes.play.idleWriteCheck');
   } else if (task === 'hear') {
-    feedback = t('notes.play.idleHear');
+    feedback = t(waiting ? 'notes.play.idleHearTap' : 'notes.play.idleHear');
   } else if (i > 0 && notes[i - 1].key !== note.key) {
     feedback = t('notes.play.newKey', { key: majorName(note.key), signs: keySignsText(note.key) });
     tone = 'news';
@@ -457,7 +464,7 @@ function Round({ run }: { run: NoteRun }): JSX.Element {
   const hearButton = task === 'hear' && (
     <button type="button" className="btn btn--outline nhear-btn" onClick={hearIt}>
       <Icon name="speaker" size={18} />
-      {t('notes.play.hearAgain')}
+      {t(waiting ? 'notes.play.hear' : 'notes.play.hearAgain')}
     </button>
   );
   const timerBar = timer > 0 && (

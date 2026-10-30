@@ -8,7 +8,7 @@ import { CHAPTERS } from '../src/ui/learn/chapters';
 import type { Me } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
 import {
-  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectFocusRing, expectHitHeight, expectNoClippedLabels, expectNoOverlap,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, calibrateAlong, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectFocusRing, expectHitHeight, expectNoClippedLabels, expectNoOverlap,
   expectNoPageScroll, expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectStavesFit, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi,
   pad, pathUpTo,
   QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
@@ -386,34 +386,6 @@ async function seedRun(page: Page, settings: object, runSeed: number, prefs: obj
 }
 
 /**
- * Calibrates on the keyboard: the first press starts the 16 clicks (90 BPM, the first 1 s later), then one press on each
- * click. As in tapLate, each key event carries its own time stamp.
- */
-async function calibrateAlong(page: Page): Promise<void> {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        const key = (type: string, at: number): void => {
-          const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
-          Object.defineProperty(ev, 'timeStamp', { value: at });
-          window.dispatchEvent(ev);
-        };
-        const t0 = performance.now();
-        key('keydown', t0);
-        key('keyup', t0 + 80);
-        const clicks = Array.from({ length: 16 }, (_, k) => t0 + 1000 + (k * 60_000) / 90);
-        for (const at of clicks) {
-          window.setTimeout(() => {
-            key('keydown', at);
-            key('keyup', at + 80);
-          }, at + 80 - performance.now());
-        }
-        window.setTimeout(resolve, clicks[15] + 200 - performance.now());
-      }),
-  );
-}
-
-/**
  * Each key's names on the Key screen fit beside its key signature (DESIGN.md §11): the bold major name and the minor
  * name under it end inside their box, before the button's padding ("C♭ majeur" once ran into the border at 320 px).
  */
@@ -468,7 +440,7 @@ function upDownKeys(s: Scale, input: string): string[] {
  * window 800 px tall or more, and a phone in landscape shows the feedback whole in its left column, from the top (only
  * Skip to summary may need a scroll there).
  */
-async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, input: string, words: { hint: string; next: RegExp }): Promise<void> {
+async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, input: string, words: { hint: string; next: RegExp; skip: string }): Promise<void> {
   const { width, height } = VIEWPORTS[name];
   const portrait = width < 1100 && height > width;
   const landscape = width < 1100 && height < width;
@@ -479,9 +451,11 @@ async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, inp
   const hint = page.getByRole('button', { name: words.hint, exact: true });
   const check = async (): Promise<void> => {
     if (portrait || desk) await expectFits(page);
+    // A phone on its side fits too, with the feedback and Skip to summary in its left column.
     if (landscape) {
-      await page.locator('.splay').evaluate((el) => el.scrollTo(0, 0));
+      await expectFits(page);
       await expect(feedback, 'the feedback is in view').toBeInViewport({ ratio: 1 });
+      await expectSkipWhole(page, words.skip);
     }
     if (input !== 'piano') await expectClickable(hint, inPlace);
   };
@@ -510,6 +484,33 @@ async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, inp
   await expectClickable(page.getByRole('button', { name: words.next }), inPlace);
 }
 
+/**
+ * Skip to summary is whole on the screen without scrolling, with room under it for its focus ring (3 px, 2 px away): in
+ * a phone's landscape column Scales ran past the screen and cut it, and Tab scrolled it flush with the edge.
+ */
+async function expectSkipWhole(page: Page, label = 'Skip to summary'): Promise<void> {
+  const skip = page.getByRole('button', { name: label });
+  await expectClickable(skip, { scroll: false });
+  const room = await skip.evaluate((el) => el.closest('.page')!.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom);
+  expect(room, 'room under Skip to summary for its focus ring').toBeGreaterThanOrEqual(5);
+}
+
+/**
+ * Tablet Play with 16 bars on a tablet on its side in Safari, under its bars: a 9.7" iPad (1024 × 694) and a 10.2" one
+ * (1080 × 736) get the tablet layout, under 760 px tall. Two staff rows, a timing lane of four and the pad fit, with Skip
+ * to results in view; it was under the window's edge, where nothing scrolls (DESIGN.md §9).
+ */
+async function expectShortTabletFits(page: Page): Promise<void> {
+  for (const size of [{ width: 1080, height: 736 }, { width: 1024, height: 694 }]) {
+    await page.setViewportSize(size);
+    await expect(page.locator('.tplay-staff')).toBeInViewport({ ratio: 1 });
+    await expectClickable(pad(page), { scroll: false });
+    await expectTouchHeight(pad(page));
+    await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+    await expectFits(page);
+  }
+}
+
 /** Every screen's main action can be reached and tapped, at every supported size, with no sideways scroll. */
 for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
   test.describe(name, () => {
@@ -519,8 +520,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     const tabletLayout = VIEWPORTS[name].width >= 700 && !desktopLayout;
     /**
      * Phone and tablet in portrait, a phone browser's short screen too: Read notes and Scales fit, so their controls are
-     * checked where they are, without scrolling (DESIGN.md §9). A phone in landscape lays them out in two columns whose
-     * left one may scroll; desktop has its own layout.
+     * checked where they are, without scrolling (DESIGN.md §9). A phone in landscape lays them out in two columns, which
+     * the tests that need it check on their own (`name === 'phone-landscape'`); desktop has its own layout.
      */
     const portraitLayout = !desktopLayout && VIEWPORTS[name].height > VIEWPORTS[name].width;
     const inPlace = { scroll: !portraitLayout };
@@ -1721,6 +1722,35 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('read notes: the score stays on one line once ten notes are answered', async ({ page }) => {
+      known(name, 'notes-score');
+      // "10 / 10" is as wide as the widest score, 50 notes' "50 / 50". On desktop's Correct card it broke after the
+      // slash from the tenth note on ("9 /" over "12").
+      const settings = { ...DEFAULT_NOTE_SETTINGS, playNotes: false };
+      const seed = 4242;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      for (const [i, n] of generateRound(settings, seed).slice(0, 10).entries()) {
+        await expect(page.getByRole('img', { name: new RegExp(`Note ${i + 1} of 20 is highlighted`) })).toBeVisible();
+        await page.keyboard.press(letterOf(n.step).toLowerCase());
+        await expect(page.getByRole('img', { name: `${i + 1} of ${i + 1} correct` })).toBeAttached();
+      }
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      // The score's lines, and how far it runs past its card's padding (desktop: the stat card; else the line it is on).
+      const fit = await page.locator(desktopLayout ? '.nstats .nstat-big' : '.nplay-score-n').first().evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const rects = [...range.getClientRects()];
+        const card = el.closest('.card') ?? el.parentElement!;
+        const right = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).paddingRight);
+        return { text: el.textContent, lines: new Set(rects.map((r) => Math.round(r.top))).size, over: Math.max(...rects.map((r) => r.right)) - right };
+      });
+      expect(fit.text).toBe('10 / 10');
+      expect(fit.lines, 'the score on one line').toBe(1);
+      expect(fit.over, 'the score inside its card').toBeLessThanOrEqual(0.5);
+      await expectNoSideScroll(page);
+    });
+
     test('read notes: round done by sign, each count on one line beside a long label', async ({ page }) => {
       known(name, 'notes-done-sign');
       // C♯ major: every note is in the key signature's group, whose label names all seven sharps, and a note answered
@@ -1900,6 +1930,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
       await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
       if (portraitLayout) await expectFits(page);
+      // A phone on its side: the staff, the degrees, the feedback and Skip to summary fit its left column.
+      if (name === 'phone-landscape') {
+        await expectFits(page);
+        await expectSkipWhole(page);
+      }
       // Tablet (Read notes' NoteTablet pattern): the exercise header, the degrees in the staff card, a tall piano.
       if (tabletLayout && portraitLayout) {
         await expect(page.locator('.dplay-head--tablet .brand')).toBeVisible();
@@ -1946,6 +1981,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.locator('.nfeedback')).toHaveText(/^G major: done, no mistakes/);
       await expectClickable(page.getByRole('button', { name: /^Hear the scale/ }));
       await expectClickable(page.getByRole('button', { name: /^See the round/ }));
+      if (name === 'phone-landscape') {
+        await expectFits(page);
+        await expectSkipWhole(page);
+      }
       await expectNoSideScroll(page);
       await page.getByRole('button', { name: /^See the round/ }).click();
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
@@ -2019,8 +2058,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.splay-staff-svg .vf-stavenote')).toHaveCount(8);
         await expectStavesFit(page);
         expect(await size(), 'the staff when done').toEqual(first);
-        // The staff taller by the room for its signs, the screen still fits.
-        if (portraitLayout) await expectFits(page);
+        // The staff taller by the room for its signs, the screen still fits, on a phone on its side too.
+        if (portraitLayout || name === 'phone-landscape') await expectFits(page);
+        if (name === 'phone-landscape') await expectSkipWhole(page);
       }
     });
 
@@ -2058,8 +2098,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         }
         await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
         if (portraitLayout || deskFits) await expectFits(page);
+        if (name === 'phone-landscape') await expectSkipWhole(page);
         // Each line the feedback says on the way, from why the first note is wrong to the done line, stays in view.
-        await answerUpAndDown(page, name, { key: round.keys[0], type: round.types[0] } as Scale, round.input, { hint: 'Hint', next: /^Next scale/ });
+        await answerUpAndDown(page, name, { key: round.keys[0], type: round.types[0] } as Scale, round.input, { hint: 'Hint', next: /^Next scale/, skip: 'Skip to summary' });
         await expectNoSideScroll(page);
       }
     });
@@ -2089,6 +2130,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('group', { name: 'Sign for F' }).getByRole('button', { name: /^F sharp/ }).click();
       await page.getByRole('group', { name: 'Sign for G' }).getByRole('button').nth(2).click();
       await expect(page.locator('.nfeedback')).toHaveText(/^Not G♯\. From F♯, go up a half step/);
+      // A why of two lines in a phone's landscape column: the screen still fits, with Skip to summary whole under it.
+      if (portraitLayout || name === 'phone-landscape') await expectFits(page);
+      if (name === 'phone-landscape') await expectSkipWhole(page);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -2643,6 +2687,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         expect((await pad(page).boundingBox())!.height).toBeGreaterThan(150);
         await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
         await expectFits(page);
+        await expectShortTabletFits(page);
       }
       if (desktopLayout) {
         // A 1366 × 768 laptop's window (1366 × 657 under Chrome's bars): the spacing tightens once more, and the pad and
@@ -2791,6 +2836,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // pendulum's row pushed the lane's lower row, the one played last, out of it.
       await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
       await expectFits(page);
+      if (tabletLayout && portraitLayout) await expectShortTabletFits(page);
       await expectNoSideScroll(page);
     });
 
@@ -2807,6 +2853,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       else await expectClickable(pad(page), { scroll: false });
       await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
       await expectFits(page);
+      if (tabletLayout && portraitLayout) await expectShortTabletFits(page);
       await expectNoSideScroll(page);
     });
 
@@ -3647,7 +3694,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.reload();
         await page.getByRole('button', { name: 'Start · 1 ladder' }).click();
         await expect(page.getByText('G♯ harmonisch mineur', { exact: true })).toBeVisible();
-        await answerUpAndDown(page, name, { key: 'B', type: 'harmonic' }, input, { hint: 'Tip', next: /^Volgende ladder/ });
+        await answerUpAndDown(page, name, { key: 'B', type: 'harmonic' }, input, { hint: 'Tip', next: /^Volgende ladder/, skip: 'Naar de samenvatting' });
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       }

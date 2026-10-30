@@ -1077,13 +1077,26 @@
   .splay .ssign {
     height: 64px;
   }
+  /*
+   * The left column fits the screen, with Skip to summary whole (and room for its focus ring) under a why or a done line
+   * of two lines: its rows are 8 px apart, as Play's here (.splay's 12 px gap, above, overrode that), and the staff card
+   * and the feedback are as compact as Read notes' (notes.css).
+   */
+  .splay {
+    row-gap: 8px;
+  }
+  .splay .splay-staff {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .splay .nfeedback {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
   /* Up and down: its two degree rows and the gaps as on the shortest phones, so the feedback stays in view under them. */
   .splay--updown {
-    row-gap: 6px;
-  }
-  .splay--updown .splay-staff {
-    padding-top: 6px;
-    padding-bottom: 6px;
+    row-gap: 4px;
   }
   .splay--updown .splay-degrees {
     gap: 4px;

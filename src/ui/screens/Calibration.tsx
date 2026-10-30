@@ -18,6 +18,7 @@ import { calibrateBackQuery } from '../lib/learnReturn';
 import { focusLost } from '../lib/screenFocus';
 import { hashQuery, Link, navigate, useHash } from '../router';
 import { useStore } from '../store';
+import { AUDIO_START_GRACE_MS, STOPPED_AUDIO } from './playSession';
 
 const CLICKS = 16;
 const BPM = 90;
@@ -56,8 +57,11 @@ export function Calibration(): JSX.Element {
   const backQuery = fromResults ? calibrateBackQuery(query) : undefined;
   const [phase, setPhase] = useState<Phase>('idle');
   const [taps, setTaps] = useState<number[]>([]);
+  // The run was cut off (the audio stopped, the app was left): its taps measure nothing, so it ends with Try again.
+  const [interrupted, setInterrupted] = useState(false);
   const clicks = useRef<number[]>([]);
   const rawTaps = useRef<number[]>([]);
+  const startedAt = useRef(0);
   const [pad, setPad] = useState<HTMLButtonElement | null>(null);
   // Set by Try again, whose button the pad replaces: the pad takes the focus, which would otherwise fall to the page.
   const focusPad = useRef(false);
@@ -76,12 +80,19 @@ export function Calibration(): JSX.Element {
     rawTaps.current = [];
     setTaps([]);
     clicks.current = eng.clicks(CLICKS, BPM, 1);
+    startedAt.current = performance.now();
     setPhase('measuring');
   };
 
   const finish = (): void => {
     focusResult.current = !!pad && pad === document.activeElement;
     setPhase('done');
+  };
+
+  const interrupt = (): void => {
+    engine().stop();
+    setInterrupted(true);
+    finish();
   };
 
   // Input: the first press starts the clicks; later presses are measured.
@@ -115,14 +126,31 @@ export function Calibration(): JSX.Element {
     if (focusLost()) actions.current?.querySelector('button')?.focus();
   }, [phase]);
 
-  // Done once the last click has passed.
+  // Done once the last click has passed. A stopped context freezes the clock that says so, and the clicks with it: an
+  // iOS call or Siri, the browser suspending it, a context that never started. Leaving the app stops the run too, as it
+  // pauses Play (playSession.ts).
   useEffect(() => {
     if (phase !== 'measuring') return;
     const id = window.setInterval(() => {
+      if (STOPPED_AUDIO.has(engine().audioState()) && performance.now() - startedAt.current > AUDIO_START_GRACE_MS) {
+        interrupt();
+        return;
+      }
       const last = clicks.current[clicks.current.length - 1] ?? 0;
       if (engine().now() > last + 0.6) finish();
     }, 100);
-    return () => window.clearInterval(id);
+    const onVis = (): void => {
+      if (document.visibilityState === 'hidden') interrupt();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    const off = engine().onStateChange((s) => {
+      if (STOPPED_AUDIO.has(s)) interrupt();
+    });
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+      off();
+    };
   }, [phase, pad]);
 
   // Leaving without saving restores the stored offset.
@@ -145,6 +173,7 @@ export function Calibration(): JSX.Element {
     engine().stop();
     rawTaps.current = [];
     setTaps([]);
+    setInterrupted(false);
     focusPad.current = true;
     setPhase('idle');
   };
@@ -232,7 +261,7 @@ export function Calibration(): JSX.Element {
             <TapPad ref={setPad} progress={n / CLICKS} held={false} />
             <span className="muted-text cal-anykey">{t('calibrate.anyKey')}</span>
           </>
-        ) : enough && median !== null ? (
+        ) : !interrupted && enough && median !== null ? (
           <>
             <div className="card cal-result m-in" role="status">
               <span className="label">{t('calibrate.delay')}</span>
@@ -251,7 +280,7 @@ export function Calibration(): JSX.Element {
         ) : (
           <>
             <div className="card cal-result m-in" role="status">
-              <span className="cal-result-text">{t('calibrate.tooFew', { count: n })}</span>
+              <span className="cal-result-text">{interrupted ? t('calibrate.interrupted') : t('calibrate.tooFew', { count: n })}</span>
             </div>
             <div ref={actions} className="cal-actions m-in">
               <button type="button" className="btn btn--accent" onClick={again}>

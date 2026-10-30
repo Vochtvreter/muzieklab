@@ -235,6 +235,19 @@ describe('locales', () => {
     setLocale('en');
   });
 
+  it('keeps a count on the line of the word after it in Read notes, in every language ("3" above "toonsoorten" once)', () => {
+    for (const { code } of LOCALES) {
+      setLocale(code);
+      // The setup's summary and Key row, and Round done's line under its title: narrow lines that wrap.
+      const keys = [1, 3].map((count) => t('notes.done.keysMix', { count }));
+      const texts = [...keys, ...[1, 3].map((count) => t('notes.setup.keysMix', { count })), ...keys.map((key) => t('notes.setup.pool', { count: 11, key }))];
+      expect(texts.filter((s) => /\d [\p{L}]/u.test(s)), code).toEqual([]);
+    }
+    setLocale('nl');
+    expect(t('notes.setup.pool', { count: 11, key: t('notes.done.keysMix', { count: 3 }) })).toBe('11 plekken op de balk per sleutel · 3 toonsoorten');
+    setLocale('en');
+  });
+
   for (const [path, catalog] of Object.entries(catalogs)) {
     const code = path.slice(2, -'.json'.length);
     if (code === 'en') continue;

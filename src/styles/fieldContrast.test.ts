@@ -206,6 +206,20 @@ describe('the total beside a score', () => {
   }
 });
 
+// Setup's empty preview ("Nothing to preview yet", 13 px) says why the card is empty: text the player reads, 4.5:1 or
+// more on its card, in light and dark. It was --faint, 3.1:1 in light and 3.6:1 in dark.
+describe("Setup's empty preview", () => {
+  const app = css('app.css');
+  const ink = tokenOf(declared(app, '.preview-none', 'color'));
+  const card = tokenOf(declared(app, '.preview-card', 'background'));
+  for (const [name, t] of themes) {
+    it(`${name}: 4.5:1 or more on its card`, () => {
+      expect(ink).toMatch(/^--[\w-]+$/);
+      expect(contrast(t[ink], t[card])).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});
+
 // Play's judgement words (GOOD · LATE, MISS: 16 px bold, not large text) sit on the page (--ground) on a phone, on the
 // pad's card (--accent-soft) on desktop, and on a card (--paper) elsewhere (Scales' mistakes, a save that failed): each
 // tone's words are 4.5:1 or more on all three (WCAG 1.4.3), in light and in dark.

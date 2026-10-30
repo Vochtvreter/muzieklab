@@ -1983,7 +1983,8 @@ button.lesson-stars:hover {
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  color: var(--faint);
+  /* Text the player reads, not a disabled control: --faint was 3.1:1 on the card (fieldContrast.test.ts). */
+  color: var(--muted);
   margin: 0;
 }
 .start-btn {
@@ -2857,6 +2858,35 @@ button.lesson-stars:hover {
   }
   .tplay-main .pad {
     min-height: 96px;
+  }
+}
+/*
+ * A tablet on its side in Safari, under its bars (1024 × 694 on a 9.7" iPad, 1080 × 736 on a 10.2"): tighter still, so
+ * 16 bars, two staff rows and a timing lane of four, fit with the pad and Skip to results. The page keeps its 12 px at
+ * the bottom, which Skip's -10 px margin reaches into.
+ */
+@media (max-height: 759.98px) {
+  .dplay-head--tablet {
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    padding-bottom: 8px;
+  }
+  .tplay-main {
+    padding-top: 10px;
+    gap: 8px;
+  }
+  .tplay-staff {
+    padding: 10px 24px 8px;
+  }
+  .tplay-staff--echo {
+    padding: 0;
+  }
+  .tplay-count,
+  .tplay-combo {
+    padding: 4px 24px;
+  }
+  /* As low as on the shortest phones (DESIGN.md §9): with the pendulum and a triplet's 3 the pad gives up that much. */
+  .tplay-main .pad {
+    min-height: 72px;
   }
 }
 

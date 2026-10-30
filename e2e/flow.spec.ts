@@ -744,6 +744,39 @@ test('hearing a note: sol, then the note, named from the notes learned so far', 
   await expect(page.getByRole('img', { name: /Note 1 of 10 is highlighted/ })).toBeVisible();
 });
 
+test('hearing a note after a reload: nothing sounds until a tap, then Hear it plays sol and the note', async ({ page }) => {
+  // Every tone that starts (two oscillators a piano tone), not the silent sound that unlocks the audio.
+  await page.addInitScript(() => {
+    const w = window as unknown as { tones: number };
+    w.tones = 0;
+    const start = OscillatorNode.prototype.start;
+    OscillatorNode.prototype.start = function (this: OscillatorNode, ...args: [number?]) {
+      w.tones++;
+      return start.apply(this, args);
+    };
+  });
+  const tones = (): Promise<number> => page.evaluate(() => (window as unknown as { tones: number }).tones);
+  await seed(page, { progress: { lessons: pathUpTo('3.2') }, prefs: { seenHowTo: true, seenHold: true, noteNames: 'solfege' } });
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/path');
+  await page.getByRole('button', { name: 'Start lesson 3.3' }).click();
+  // Started with a tap: sol and the note sound at once.
+  await expect(page.getByRole('button', { name: 'Hear it again' })).toBeVisible();
+  await expect.poll(tones).toBe(4);
+  // A reload (a phone bringing back a discarded tab) comes back to the same note with no tap, when a browser does not
+  // let the audio start: the tones would go into a silent context and come out together at the next tap. It waits.
+  await page.reload();
+  const hear = page.getByRole('button', { name: 'Hear it', exact: true });
+  await expect(hear).toBeVisible();
+  await expect(page.locator('.nfeedback')).toHaveText('Tap Hear it: first sol, then the note. Which one is it?');
+  await page.waitForTimeout(1000);
+  expect(await tones(), 'tones before a tap').toBe(0);
+  await hear.click();
+  await expect.poll(tones).toBe(4);
+  await expect(page.getByRole('button', { name: 'Hear it again' })).toBeVisible();
+  await expect(page.locator('.nfeedback')).toHaveText('Listen: first sol, then the note. Which one is it?');
+});
+
 /**
  * A double tap on a Start button (two taps 120 ms apart, a touch screen): the first starts the exercise and the screen
  * changes at once; the second must not press what the new screen has at that spot (Skip to results, an answer, a piano

@@ -6,7 +6,10 @@ import { PATH_UNITS } from '../game/tracks';
 import { defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type DayStats, type Prefs, type Progress } from '../game/storage';
 import { CHAPTERS, practiceShows } from './learn/chapters';
 import type { Me } from '../../shared/api';
-import { makeLessonRun, makeNoteRun, makeRun, makeRunShowing, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, runSetup, type Action, type AppState } from './store';
+import {
+  makeLessonRun, makeNoteRun, makeRun, makeRunShowing, makeScaleRun, NOTE_RUN_KEY, practiceHold, practiceHoldPatch, practiceSettings, reducer, restoreNoteRun, runSettings, runSetup, type Action,
+  type AppState,
+} from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -176,6 +179,19 @@ describe('reducer: Read notes', () => {
     expect(s.progress.notes.settings?.keys).toEqual(['G']);
     const r = reducer(reducer(s, { type: 'learnRead', ids: ['8.2', '8.1'], today: '2026-10-22' }), { type: 'learnRead', ids: ['8.1'], today: '2026-10-22' });
     expect(r.progress.learnRead).toEqual(['8.1', '8.2']);
+  });
+
+  it('a round brought back after a reload is the same round, waiting for a tap before it sounds (a note to hear)', () => {
+    const settings = noteLessonSettings('pitch', '3.3')!;
+    const lessonRun = makeNoteRun(settings, 11, {}, [], { track: 'pitch', id: '3.3' });
+    expect(lessonRun.needsGesture).toBeUndefined();
+    const saved: Record<string, string> = { [NOTE_RUN_KEY]: JSON.stringify({ settings, seed: 11, focus: [], lesson: lessonRun.lesson }) };
+    vi.stubGlobal('sessionStorage', { getItem: (k: string) => saved[k] ?? null });
+    const back = restoreNoteRun({});
+    vi.unstubAllGlobals();
+    expect(back?.notes).toEqual(lessonRun.notes);
+    expect(back?.notes[0].task).toBe('hear');
+    expect(back?.needsGesture).toBe(true);
   });
 });
 

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pad, QUARTERS, seed, SOL_DONE, VIEWPORTS } from './helpers';
+import { calibrateAlong, pad, QUARTERS, seed, SOL_DONE, VIEWPORTS } from './helpers';
 
 /**
  * iOS, back from the background (most often as a Home Screen app): the AudioContext the page had can stay
@@ -35,6 +35,14 @@ test.beforeEach(async ({ page }) => {
     window.AudioContext = Fake;
     (window as unknown as { breakAudio(mode: string): void }).breakAudio = (mode) => {
       for (const c of made) c.broken = { mode, t: c.currentTime };
+    };
+    // A context that never starts: it says 'suspended' and its clock stands still, though resume() resolves.
+    let stuck = false;
+    const real = { state: Object.getOwnPropertyDescriptor(Fake.prototype, 'state')!.get!, time: Object.getOwnPropertyDescriptor(Fake.prototype, 'currentTime')!.get! };
+    Object.defineProperty(Fake.prototype, 'state', { get(this: Fake) { return stuck ? 'suspended' : real.state.call(this); } });
+    Object.defineProperty(Fake.prototype, 'currentTime', { get(this: Fake) { return stuck ? 0 : real.time.call(this); } });
+    (window as unknown as { stickAudio(on: boolean): void }).stickAudio = (on) => {
+      stuck = on;
     };
     // What a browser does to a page in the background, or Chromium to a tab: the context says 'suspended'.
     (window as unknown as { suspendAudio(): Promise<unknown> }).suspendAudio = () => Promise.all(made.map((c) => c.suspend().catch(() => undefined)));
@@ -141,3 +149,28 @@ test('echo: leaving the app while the rhythm plays gives that listen back', asyn
   await expect(page.getByRole('button', { name: 'Tap it back' })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('1 play left')).toBeVisible();
 });
+
+// Calibrate's clicks run on the audio clock: stopped, they never reach the 16th, and the run hung on "TAP ON EACH CLICK"
+// with the pad doing nothing. It ends with a note instead, and Try again measures from the start.
+for (const cut of ['background', 'frozen', 'suspended', 'never started'] as const) {
+  test(`calibrate: audio that stops mid-run (${cut}) ends it with a note, and Try again measures again`, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto('./#/calibrate');
+    if (cut === 'never started') await page.evaluate(() => (window as unknown as { stickAudio(on: boolean): void }).stickAudio(true));
+    await pad(page).click();
+    // A context that never starts ends the run within a second, so only the others are seen measuring first.
+    if (cut !== 'never started') await expect(page.getByText('TAP ON EACH CLICK')).toBeVisible();
+    // A click or two in.
+    await page.waitForTimeout(1500);
+    if (cut === 'background') await background(page, 'interrupted');
+    else if (cut === 'frozen') await page.evaluate(() => (window as unknown as { breakAudio(mode: string): void }).breakAudio('frozen'));
+    else if (cut === 'suspended') await page.evaluate(() => (window as unknown as { suspendAudio(): Promise<unknown> }).suspendAudio());
+    await expect(page.getByRole('status')).toHaveText('The clicks were interrupted. Try again to measure from the first click.', { timeout: 3000 });
+    await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
+    if (cut === 'never started') await page.evaluate(() => (window as unknown as { stickAudio(on: boolean): void }).stickAudio(false));
+    await page.getByRole('button', { name: 'Try again' }).click();
+    await calibrateAlong(page);
+    await expect(page.getByRole('status')).toContainText('Measured over 16 taps');
+    await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
+  });
+}

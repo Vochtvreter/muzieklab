@@ -257,6 +257,34 @@ export async function seed(page: Page, data: { prefs?: object; progress?: object
 
 export const pad = (page: Page): Locator => page.getByRole('button', { name: 'Tap pad' });
 
+/**
+ * Calibrates on the keyboard: the first press starts the 16 clicks (90 BPM, the first 1 s later), then one press on each
+ * click. As in tapLate, each key event carries its own time stamp.
+ */
+export async function calibrateAlong(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const key = (type: string, at: number): void => {
+          const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
+          Object.defineProperty(ev, 'timeStamp', { value: at });
+          window.dispatchEvent(ev);
+        };
+        const t0 = performance.now();
+        key('keydown', t0);
+        key('keyup', t0 + 80);
+        const clicks = Array.from({ length: 16 }, (_, k) => t0 + 1000 + (k * 60_000) / 90);
+        for (const at of clicks) {
+          window.setTimeout(() => {
+            key('keydown', at);
+            key('keyup', at + 80);
+          }, at + 80 - performance.now());
+        }
+        window.setTimeout(resolve, clicks[15] + 200 - performance.now());
+      }),
+  );
+}
+
 /** Presses Tab (or Shift+Tab) until `target` has the focus, as a player on the keyboard gets there. */
 export async function tabTo(page: Page, target: Locator, key: 'Tab' | 'Shift+Tab' = 'Tab'): Promise<void> {
   for (let i = 0; i < 60; i++) {

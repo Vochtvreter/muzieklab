@@ -311,7 +311,11 @@ lesson presets do not set it). Audio is unlocked from the Start tap and from eve
   still wrong (the lesson teaches the place), and the feedback says so, as in Scales: *Right note, wrong octave: write
   the lower sol (G), on the 2nd line.* The hint is the reading hint (the nearest landmark and the way from it).
 - **Hear it**: sol (G4) sounds, then the note, 0.9 s apart; the slot stays empty until the note is named, and *Hear
-  it again* plays both again. The note always sounds, also with *Hear the notes* off. Answers are the name buttons (or
+  it again* plays both again. The note always sounds, also with *Hear the notes* off. After a reload no tap led to the
+  round, so the browser may not let the audio start, and tones played then would wait in a silent context and come out
+  together at the next tap: nothing sounds until a tap. A first note to hear waits on its button, *Hear it*, and the
+  feedback says *Tap Hear it: first sol, then the note. Which one is it?*; any answer or Next note counts as the tap
+  too, and a time per note that runs out does not (the right note stays silent). Answers are the name buttons (or
   the piano), and the feedback places the note from sol: *Right: mi (E), 2 steps below sol.* The hint says only that:
   *Hint: it is 2 steps below sol.*
 
@@ -786,6 +790,10 @@ codes are reproducible across devices.
   to a Learn section (`?from=7.3`), Calibrate carries it as `&learn=7.3` and returns to `#/results?from=7.3`, so the
   way back to the section stays. Opened any other way, or after a reload (the store then has no last run to show),
   they return to Settings (*Back to settings*).
+- The clicks run on the audio clock, so a run whose audio stops (an iOS call or Siri, the browser suspending it, a
+  context that never starts, as Play checks it) or that the player leaves (the app hidden) ends at once: *The clicks
+  were interrupted. Try again to measure from the first click.*, with Try again and no Save. Before, the clock stood
+  still and the run never ended, with the pad doing nothing.
 
 ### 6.2 Matching taps to notes
 
@@ -1558,10 +1566,14 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   iPhone mini), and a layout test now resizes them through those heights. 390 × 844, tablets and phone landscape do
   not change. The analog beat counter, Read notes' ranges with ledger lines and Scales' Up & down, which take more
   height, have steps of their own. Up & down has one in phone landscape too: its degree rows are 32 px high and 4 px
-  apart, the gaps 6 px and the staff card 6 px above and below, so the feedback stays in view in the left column. So
-  does Read notes: in phone landscape its staff card has 8 px above and below (6 px with a time per note, the timer
-  bar 4 px under the staff) and the feedback is 40 px high in 14 px text, so a round that writes (the staff drawn
-  bigger) or hears (Hear it again in the card) leaves Skip to summary whole under a why of two lines. Play's timing
+  apart, the gaps 4 px and its staff drawn at 1, so the feedback stays in view in the left column. A scale going one
+  way has its rows 8 px apart there (as Play's), and either way the staff card has 4 px above and below and the
+  feedback is 40 px high in 14 px text, so at 844 × 390 Skip to summary stays whole under a why or a done line of two
+  lines, beside a B♭ scale's staff too, with room for its focus ring (before, the page scrolled and cut it). So does
+  Read notes: in phone landscape its staff card has 8 px above and below (6 px with a time per note, the timer bar 4 px
+  under the staff) and the feedback is 40 px high in 14 px text, so a round that writes (the staff drawn bigger) or
+  hears (Hear it again in the card) leaves Skip to summary whole under a why of two lines. A phone 375 px tall on its
+  side (667 × 375, 812 × 375) still scrolls both by up to about 25 px. Play's timing
   lane takes at most two rows on a phone (§3.1), so the 16 bars Setup allows fit as 8 do. The pianos give up height
   at any height of a phone in portrait, only as much as is missing, so a taller phone keeps the board's piano (a range
   with ledger lines needs it up to about 820 px tall): down to 100 px for the Read notes piano (200 px on the board)
@@ -1605,7 +1617,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   tall their page's padding (20 px at the top, 16 px at the bottom) and gap (16 px), the staff card's padding
   (14 × 40 px) and the answer card's (18 × 24 px, 12 px between its rows) tighten and the piano is 160 px high (210 px
   on the board). The key labels' row and Hint and Next note, which the NoteDesktop board does not draw, then fit under
-  a staff with two ledger lines and a why of two lines. On a shorter laptop window their page scrolls.
+  a staff with two ledger lines and a why of two lines. On a shorter laptop window their page scrolls. Read notes'
+  stats column is 304 px wide (240 px on the board, which draws only *2 / 3*), so the Correct card holds the widest
+  score, *50 / 50*, on one line, and Avg time an average of 10 s or more: at 240 px the score broke after the slash
+  from the 10th note on. The answer card beside it is 64 px narrower.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
@@ -1680,6 +1695,12 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     scale; Skip to summary.
   - A shorter tablet window tightens the gaps (Play under 900 px tall, Read notes and Scales under 1100 px); under
     960 px Read notes' and Scales' keys keep their height and the page scrolls, as the desktop layout does on a laptop.
+    Play tightens once more under 760 px tall, a tablet on its side in Safari (1024 × 694 on a 9.7" iPad, 1080 × 736
+    on a 10.2"): the header 8 px above and below, the page 10 px at the top and 8 px between its parts, the staff card
+    10 × 24 px (8 px at the bottom), the Count and Combo cards 4 px above and below, and the pad down to 72 px, so 16
+    bars (two staff rows and a timing lane of four) fit with Skip to results, with the pendulum and a triplet's 3 too.
+    Under about 685 px (1024 × 660, Safari with its tab bar) 16 bars still run about 25 px over, and 12 bars under
+    about 650 px; that would take a smaller staff or lower lane rows.
 - Large screens show the same content and data as mobile, laid out side by side. They add no
   extra features.
 
@@ -2345,7 +2366,10 @@ without code changes:
   counting syllables ("1 & 2 &" differs per language and teaching method; Dutch counts "1 en 2 en"), rank names.
 - Format numbers, dates and BPM with `Intl` for the active locale.
 - Layout must survive longer translations (Dutch and German text is often noticeably
-  longer than English): no fixed-width text boxes; labels may wrap.
+  longer than English): no fixed-width text boxes; labels may wrap. A count stays on the line of the word it counts
+  (a no-break space in the message): Progress's *6 skills*, Read notes' *3 keys* and *11 staff positions* (its setup
+  summary, Key row and Round done's line). A chip too narrow for both is the exception: Read notes' *+2 ledger lines*
+  takes two lines inside its chip on a 320 px phone (*+2* over *hulplijnen* in Dutch) rather than run out of it.
 - Notation images carry no baked-in words. Counting under notes is drawn from the
   locale's syllables at render time.
 - Theory content (Learn pages) is stored as structured, translatable content, with its
@@ -2390,7 +2414,8 @@ without code changes:
   whose name is white in light (4.3:1 on `--good`). Gold and red text use `--gold-ink` and `--miss-ink` the same way:
   Play's GOOD · LATE and MISS are 4.5:1 or more on the page, on desktop's pad card (Accent soft) and on paper
   (`src/styles/fieldContrast.test.ts`). The total after a score (Read notes' "2 / 3", Scales' "1 / 1" on Round done) is
-  `--muted`: `--faint` is 2.7:1 on the page in light.
+  `--muted`: `--faint` is 2.7:1 on the page in light. So is Setup's *Nothing to preview yet* on its card, where
+  `--faint` was 3.1:1 (3.6:1 in dark).
 
 ---
 
