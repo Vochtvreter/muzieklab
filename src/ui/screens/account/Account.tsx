@@ -129,7 +129,10 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
       account.setMe(next);
       if (mounted.current) setSaved(true);
     } catch (e) {
-      if (mounted.current) setFail(failureOf(account.handleError(e)));
+      // A 401 signs out also once the screen is gone (the progress sync found the session ended first): Sign in then
+      // says nothing was changed.
+      const f = failureOf(account.handleError(e));
+      if (mounted.current) setFail(f);
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -205,8 +208,8 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
       setSaved(true);
       refocusOpener();
     } catch (e) {
-      if (!mounted.current) return;
       const f = failureOf(account.handleError(e));
+      if (!mounted.current) return;
       setFail(f);
       if (f.field === 'email') emailRef.current?.focus();
       else if (f.field === 'currentPassword') passwordRef.current?.focus();
@@ -296,8 +299,8 @@ function PasswordForm({ me, account }: Part & { me: Me }): JSX.Element {
       setNext('');
       setDone(true);
     } catch (e) {
-      if (!mounted.current) return;
       const f = failureOf(account.handleError(e));
+      if (!mounted.current) return;
       setFail(f);
       if (f.field === 'currentPassword') currentRef.current?.focus();
       else if (f.field === 'password') nextRef.current?.focus();
@@ -357,7 +360,8 @@ function Download({ account }: Part): JSX.Element {
       await downloadExport();
       if (mounted.current) setDone(true);
     } catch (e) {
-      if (mounted.current) setError(errorMessage(account.handleError(e)));
+      const message = errorMessage(account.handleError(e));
+      if (mounted.current) setError(message);
     } finally {
       if (mounted.current) setBusy(false);
     }

@@ -71,8 +71,9 @@ function InviteForm({ account, focus, onCreated }: { account: UseAccount; focus:
       const res = await api.post<InviteCreated>('/admin/invites', { email: email.trim(), name: name.trim(), roles });
       if (mounted.current) onCreated(res);
     } catch (e) {
-      if (!mounted.current) return;
+      // A 401 signs out also once the screen is gone (the progress sync found the session ended first).
       const f = failureOf(account.handleError(e));
+      if (!mounted.current) return;
       setFail(f);
       setBusy(false);
       if (f.field === 'email') emailRef.current?.focus();

@@ -43,6 +43,14 @@ async function expectEvenChipRows(page: Page, where = '', group = 'Status'): Pro
 const INVITE_LINK = { email: 'lies@example.com', name: 'Lies Bakker', expiresAt: '2026-10-29T10:00:00.000Z' };
 
 /**
+ * Admins name and describe custom roles: a one-word name of 80 characters (the most it may be) and a one-word
+ * description, each wider than the words of the row or note that shows them, at every size.
+ */
+const LONG_ROLE: RoleInfo = { id: 'coordinators', name: 'Muziekschoolleerkrachtencoördinatorenvergaderingsvoorzittersplaatsvervangerschap',
+  description: 'Leerkrachtencoördinatorenvergaderingsvoorzittersplaatsvervangersbevoegdhedenoverzichtsbeheerderstoegangsrechtenbeheer',
+  permissions: ['accounts.read'], builtIn: false, accounts: 1 };
+
+/**
  * Known layout bugs from the MVP QA, fixed in the follow-up layout PR. `test.fail` keeps CI green while they are open
  * and turns red the moment one starts passing, so the entry gets removed with its fix.
  */
@@ -95,7 +103,8 @@ async function failedSecondLink(page: Page, button: string, alert: string): Prom
 
 /**
  * A row link's words stay in their column, left of the chevron (a switch row's, `.toggle-row-text`, left of its
- * switch): a long name or email with no break point wraps instead of running under the chevron and out of the card.
+ * switch; a note's, `.row-note`, in its card): a long name or email with no break point wraps instead of running under
+ * the chevron and out of the card.
  */
 async function expectWordsInRow(row: Locator, column = '.row-link-text'): Promise<void> {
   await row.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -3406,20 +3415,26 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
       test('admin one account and invite with a long one-word role: its name and description wrap left of the switch', async ({ page }) => {
         known(name, 'admin-long-role');
-        // Admins name and describe custom roles: a one-word name of 80 characters (the most it may be) and a one-word
-        // description, each wider than the row's words at every size.
-        const role: RoleInfo = { id: 'coordinators', name: 'Muziekschoolleerkrachtencoördinatorenvergaderingsvoorzittersplaatsvervangerschap',
-          description: 'Leerkrachtencoördinatorenvergaderingsvoorzittersplaatsvervangersbevoegdhedenoverzichtsbeheerderstoegangsrechtenbeheer',
-          permissions: ['accounts.read'], builtIn: false, accounts: 1 };
-        const sam = { ...ACCOUNTS[1], roles: [role.id] };
-        await mockApi(page, { ...adminApi(ACCOUNTS.map((a) => (a.id === sam.id ? sam : a))), 'GET /admin/roles': { json: { roles: [role] } } });
+        const sam = { ...ACCOUNTS[1], roles: [LONG_ROLE.id] };
+        await mockApi(page, { ...adminApi(ACCOUNTS.map((a) => (a.id === sam.id ? sam : a))), 'GET /admin/roles': { json: { roles: [LONG_ROLE] } } });
         for (const hash of ['#/admin/account/' + sam.id, '#/admin/invite']) {
           await page.goto('./' + hash);
-          const row = page.getByRole('switch', { name: role.name });
+          const row = page.getByRole('switch', { name: LONG_ROLE.name });
           await expect(row).toBeVisible();
           await expectWordsInRow(row, '.toggle-row-text');
           await expectNoSideScroll(page);
         }
+      });
+
+      test('own account with a long one-word role: the roles line under Profile wraps in its card', async ({ page }) => {
+        known(name, 'account-long-role');
+        // The member who has the role sees the name an admin gave it.
+        await mockApi(page, signedInAs({ ...ME_MEMBER, roles: [LONG_ROLE.id], roleNames: { [LONG_ROLE.id]: LONG_ROLE.name } }));
+        await page.goto('./#/account');
+        const profile = page.getByRole('region', { name: 'Profile' });
+        await expect(profile.locator('.row-note')).toContainText(LONG_ROLE.name);
+        await expectWordsInRow(profile, '.row-note');
+        await expectNoSideScroll(page);
       });
 
       test('admin one account: a second password link that fails, with the earlier one dimmed in its place', async ({ page }) => {

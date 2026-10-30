@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { PERMISSIONS, type AccountDetail, type AdminUpdateRequest, type Closure, type InviteRequest, type Me, type RoleInfo, type SaveProgressRequest } from '../shared/api';
 import {
   ACCOUNTS, accountDetail, adminApi, announcer, apiError, CLOSURES, expectClickable, feedbackServer, INVITE_LINK_CREATED, ME_ADMIN, ME_MEMBER, MEMBER, mockApi,
@@ -731,6 +731,52 @@ test('delete account after the session ended, as the progress sync finds it ende
   expect(refusedSyncs).toBe(1);
   expect(api.callsTo('POST /auth/refresh')).toHaveLength(1);
 });
+
+// The other way round: the sync's 401 is handled first, so the screen gives way to Sign in while the action's request is
+// still out, and its refusal comes once Sign in is there.
+for (const [what, route, ready, press] of [
+  ['delete account', 'DELETE /me', async (page: Page) => {
+    await page.getByRole('button', { name: /^Delete account/ }).click();
+    await page.getByRole('alertdialog', { name: 'Delete your account?' }).getByLabel('Password', { exact: true }).fill('my password here');
+  }, (page: Page) => page.getByRole('alertdialog', { name: 'Delete your account?' }).getByRole('button', { name: 'Delete', exact: true })],
+  ['save name', 'PATCH /me', async (page: Page) => {
+    await page.getByLabel('Name').fill('Sam de Vries');
+  }, (page: Page) => page.getByRole('button', { name: 'Save', exact: true })],
+] as const) {
+  test(`${what} as the progress sync finds the session ended first: Sign in, there already, says nothing was changed`, async ({ page }) => {
+    const api = await mockApi(page, MEMBER);
+    await page.goto('./#/account');
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('muzieklab.sync.v1'))).not.toBeNull();
+    await ready(page);
+    // The session ended elsewhere. The sync's request (the device back online) gets a 401, and its renewal is refused
+    // once the action's request is out; that one is refused once Sign in is there.
+    let sent = (): void => undefined;
+    const actionSent = new Promise<void>((done) => (sent = done));
+    let answer = (): void => undefined;
+    const signInShown = new Promise<void>((done) => (answer = done));
+    api.set({
+      'GET /progress': apiError('unauthenticated', 401),
+      'POST /auth/refresh': async () => {
+        await actionSent;
+        return apiError('unauthenticated', 401);
+      },
+      [route]: async () => {
+        sent();
+        await signInShown;
+        return apiError('unauthenticated', 401);
+      },
+    });
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect.poll(() => api.callsTo('POST /auth/refresh').length).toBe(1);
+    await press(page).click();
+    await expect(page).toHaveURL(/#\/signin$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+    answer();
+    await expect(page.getByRole('main').locator('.hint-box')).toHaveText('You were signed out, so nothing was changed. Sign in again to go on.');
+    await expect(announcer(page)).toHaveText('You were signed out, so nothing was changed. Sign in again to go on.');
+    expect(api.callsTo(route)).toHaveLength(1);
+  });
+}
 
 test('account: one Back after Delete account, Sign out everywhere or Sign in leaves Settings, for the screen before it', async ({ page }) => {
   const api = await mockApi(page, { ...MEMBER, 'DELETE /me': { status: 204 } });

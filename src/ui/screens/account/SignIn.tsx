@@ -26,11 +26,14 @@ export function SignIn(): JSX.Element {
   // Set while this form signs in, so the redirect below does not race the form's own navigation.
   const submitting = useRef(false);
   // The screen whose request was refused is gone (Delete account's confirm said "you're signed out"): why the person is
-  // here, for this visit only. It was read out when it happened.
-  const [ended] = useState(() => account.notice === 'sessionEnded');
+  // here, for this visit only. It was read out when it happened. Also when that refusal comes after Sign in is here: the
+  // progress sync found the session ended first, and the screen gave way to this one while its own request was out.
+  const [ended, setEnded] = useState(() => account.notice === 'sessionEnded');
   const { notice, setNotice } = account;
   useEffect(() => {
-    if (notice === 'sessionEnded') setNotice(null);
+    if (notice !== 'sessionEnded') return;
+    setEnded(true);
+    setNotice(null);
   }, [notice, setNotice]);
 
   useEffect(() => {

@@ -141,7 +141,8 @@ function ClosuresFile({ closures, total }: { closures: Closure[]; total: number 
       const res = await api.get<ClosureListResponse>('/admin/closures?all=true');
       if (mounted.current) save(res.closures);
     } catch (e) {
-      if (mounted.current) setError(errorMessage(handleError(e)));
+      const message = errorMessage(handleError(e));
+      if (mounted.current) setError(message);
     } finally {
       if (mounted.current) setBusy(false);
     }

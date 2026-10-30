@@ -213,12 +213,14 @@
 .info-row .ghost-btn {
   margin: 0 -10px 0 -14px;
 }
-/* A muted note or a done message as a card row (Settings → Account). */
+/* A muted note or a done message as a card row (Settings → Account). The roles in it can be an admin's words: a long
+   word with no break point wraps rather than running out of the card. */
 .row-note {
   padding: 10px 16px 12px;
   font-size: 12.5px;
   line-height: 1.35;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .row-status {
   padding: 10px 16px;

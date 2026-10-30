@@ -205,7 +205,8 @@ export interface UseAccount {
   /**
    * For a failed request on any account or admin screen: a 401 means the session ended (signed out from now on; the
    * account screens then go to Sign in, which says nothing was changed: the `sessionEnded` notice). Returns the error
-   * as an ApiError, for errorMessage / failureOf.
+   * as an ApiError, for errorMessage / failureOf. Also once the screen is gone: the progress sync may have found the
+   * session ended first, and Sign in, there already, shows the line when this says so.
    */
   handleError(e: unknown): ApiError;
 }

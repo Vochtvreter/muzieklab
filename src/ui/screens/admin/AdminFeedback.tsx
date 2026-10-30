@@ -209,7 +209,9 @@ function ModeCard(): JSX.Element | null {
       // The account as the app keeps it: its own Feedback button comes or goes at once.
       setMe({ ...me, feedbackMode: res.on });
     } catch (e) {
-      if (mounted.current) setError(errorMessage(handleError(e)));
+      // A 401 signs out also once the screen is gone (the progress sync found the session ended first).
+      const message = errorMessage(handleError(e));
+      if (mounted.current) setError(message);
     } finally {
       if (mounted.current) setPending(null);
     }
