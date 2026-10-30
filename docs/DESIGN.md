@@ -1359,6 +1359,9 @@ as Settings' sub-pages, with Progress current; on a phone at least 700 px tall t
 72%*), and the skill's button; **Level · 12 weeks**: a bar per week for the level at its end (this week: today), with
 *+1 in 30 days* or *No change in 30 days*; and **All levels**: the ten, passed, next (*1 of 3*) or later (*Later* for
 a level that comes later). With all ten passed the next card reads *Level 10 · Every level passed* (no board).
+A level's name or a check that writes a sign (*A and E♭ major*, *E♭ major at ★★*) is said in words to a screen reader
+(*A and E flat major*, Dutch *A en es majeur*; `skills.levelSpoken`), here and in the list's rows, as the Scales hub
+says its keys (§3.7).
 
 ---
 

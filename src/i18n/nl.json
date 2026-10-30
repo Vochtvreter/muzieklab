@@ -2827,6 +2827,19 @@
         "10": "Toonsoorten en toonladders"
       }
     },
+    "levelSpoken": {
+      "notes": {
+        "6": "Toonsoorten met 1 kruis of 1 mol",
+        "7": "Tot 3 kruisen of 3 mollen",
+        "9": "Tot 5 kruisen of 5 mollen"
+      },
+      "scales": {
+        "3": "D en bes majeur",
+        "4": "A en es majeur",
+        "5": "E en as majeur",
+        "7": "Natuurlijk mineur, tot 2 kruisen of 2 mollen"
+      }
+    },
     "material": {
       "1": "kwartnoten en halve noten",
       "2": "rusten",

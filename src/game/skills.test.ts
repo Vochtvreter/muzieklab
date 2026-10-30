@@ -1,7 +1,7 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { DEFAULT_NOTE_SETTINGS } from '../core/noteRound';
 import { ALL_SCALES, scaleId } from '../core/scale';
-import { hasMessage, setLocale, t, translateParams } from '../i18n';
+import { hasMessage, LOCALES, setLocale, t, translateParams } from '../i18n';
 import { CHAPTERS } from '../ui/learn/chapters';
 import {
   ctaOf,
@@ -150,6 +150,8 @@ describe('scales', () => {
     ]);
     expect(two.map((c) => [c.done, c.w])).toEqual([[true, 1], [false, 0.5]]);
     expect(checks(p, 'scales', 3).map((c) => c.label.params.tonic)).toEqual(['D', 'B♭']);
+    // The tonic as a note too, so a screen reader can be given it in words (B flat).
+    expect(checks(p, 'scales', 3).map((c) => c.tonic)).toEqual([{ letter: 'D', alter: 0 }, { letter: 'B', alter: -1 }]);
     expect(passSkills(p, TODAY).added).toEqual(['scales:1']);
   });
 
@@ -162,7 +164,7 @@ describe('scales', () => {
     expect(checks(p, 'scales', 7).map((c) => c.done)).toEqual([true, true, true, true, true]);
     const eight = checks(p, 'scales', 8);
     expect(eight.map((c) => [c.done, c.w])).toEqual([[true, 1], [false, 0], [false, 0], [false, 0], [false, 0]]);
-    expect(eight[0]).toMatchObject({ label: { key: 'skills.check.scale', params: { scale: 'scales.name.harmonic', tonic: 'A' } }, now: { key: 'skills.now.stars', params: { count: 2 } } });
+    expect(eight[0]).toMatchObject({ label: { key: 'skills.check.scale', params: { scale: 'scales.name.harmonic', tonic: 'A' } }, tonic: { letter: 'A', alter: 0 }, now: { key: 'skills.now.stars', params: { count: 2 } } });
     expect(passSkills(p, TODAY).added).toEqual(['scales:1', 'scales:2', 'scales:3', 'scales:4', 'scales:5', 'scales:6', 'scales:7']);
     const all = stars(Object.fromEntries(ALL_SCALES.map((s) => [scaleId(s), 3])));
     expect(checks(all, 'scales', 10)[0]).toMatchObject({ label: { key: 'skills.check.allScales', params: { count: 60 } }, done: true });
@@ -314,5 +316,25 @@ describe('texts', () => {
     known(focusOf(p).label);
     known(focusOf(progress({ skills: passed({ rhythm: 1 }) })).label);
     for (const k of ['skills.chip.review', 'skills.chip.gain', 'skills.review.title', 'skills.review.text', 'skills.later', 'skills.title']) expect(hasMessage(k), k).toBe(true);
+  });
+
+  // A screen reader reads ♯ and ♭ as a symbol or skips them: Skill levels says these names in words (skills.levelSpoken).
+  it('has a level name in words for every one that writes a sign, and for no other, in every language', () => {
+    try {
+      for (const { code } of LOCALES) {
+        setLocale(code);
+        for (const skill of SKILLS) {
+          for (let n = 1; n <= 10; n++) {
+            const name = levelName(skill, n);
+            const spoken = name.replace(/^skills\.level\./, 'skills.levelSpoken.');
+            const sign = /[♯♭𝄪𝄫]/u.test(t(name));
+            expect(spoken !== name && hasMessage(spoken), `${code} ${name}`).toBe(sign);
+            if (sign) expect(t(spoken), `${code} ${spoken}`).not.toMatch(/[♯♭𝄪𝄫]/u);
+          }
+        }
+      }
+    } finally {
+      setLocale('en');
+    }
   });
 });

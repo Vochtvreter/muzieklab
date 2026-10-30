@@ -429,7 +429,9 @@
   border-radius: 12px;
   font-size: 14px;
 }
+/* Positioned, as .skill-checks li: a level name's .sr-only words (one with a sign) sit inside the page's scroll box. */
 .skill-next-name {
+  position: relative;
   font-family: var(--font-display);
   font-weight: 500;
   font-size: 18px;
@@ -577,7 +579,9 @@
   font-weight: 600;
   font-size: 13px;
 }
+/* Positioned, as .skill-next-name. */
 .skill-ladder-name {
+  position: relative;
   flex: 1;
   min-width: 0;
   font-size: 14.5px;

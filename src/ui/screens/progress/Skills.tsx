@@ -5,14 +5,14 @@
  * while the rest scrolls under it. Tablet and desktop have no board: the same content in the 640 px column under the
  * top header, as Settings' sub-pages, with Progress current in the header.
  *
- * Also the pieces the one-skill screen (SkillDetail) shares: the way back, the skill's icon tile, the level meter and
- * the skill's button.
+ * Also the pieces the one-skill screen (SkillDetail) shares: the way back, the skill's icon tile, the level meter, a
+ * level's name and the skill's button.
  */
 import type { MouseEvent } from 'react';
 import { skillsView, type SkillView } from '../../../game/progressView';
 import { echoPreset, notesPreset, REVIEW_DAYS, SKILL_LEVELS, type SkillCta } from '../../../game/skills';
 import type { SkillId } from '../../../game/storage';
-import { t, translateParams } from '../../../i18n';
+import { hasMessage, t, translateParams } from '../../../i18n';
 import { AppShell } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle, useToday } from '../../hooks';
@@ -95,13 +95,36 @@ export function SkillCtaLink({ cta, review }: { cta: SkillCta; review?: boolean 
   );
 }
 
+/**
+ * A level's name as said, for screen readers: a name that writes a sign ("D and B♭ major"), which a reader says as a
+ * symbol or skips, has its words in skills.levelSpoken ("D and B flat major", Dutch "D en bes majeur"); any other name
+ * is said as it is written.
+ */
+export function levelSpoken(name: string): string {
+  const said = name.replace(/^skills\.level\./, 'skills.levelSpoken.');
+  return t(said !== name && hasMessage(said) ? said : name);
+}
+
+/** A level's name (a message key): as written, and in words for screen readers where it writes a sign (levelSpoken). */
+export function LevelName({ name }: { name: string }): JSX.Element {
+  const shown = t(name);
+  const said = levelSpoken(name);
+  if (said === shown) return <>{shown}</>;
+  return (
+    <>
+      <span aria-hidden="true">{shown}</span>
+      <span className="sr-only">{said}</span>
+    </>
+  );
+}
+
 /** "Rhythm reading: level 6 of 10. 1 of 3 checks for level 7, Dotted notes. +1 this month." */
 function rowLabel(s: SkillView): string {
   const next = s.next;
   const parts = [t('skills.list.rowLevel', { name: t(s.name), level: s.level, max: SKILL_LEVELS })];
   if (!next) parts.push(t('skills.list.rowDone'));
-  else if (next.later) parts.push(t('skills.list.rowLater', { n: next.n, next: t(next.name) }));
-  else parts.push(t('skills.list.rowChecks', { done: next.done, total: next.total, n: next.n, next: t(next.name) }));
+  else if (next.later) parts.push(t('skills.list.rowLater', { n: next.n, next: levelSpoken(next.name) }));
+  else parts.push(t('skills.list.rowChecks', { done: next.done, total: next.total, n: next.n, next: levelSpoken(next.name) }));
   if (s.chip) parts.push(labelText(s.chip.label) + '.');
   return parts.join(' ');
 }

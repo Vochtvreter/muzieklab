@@ -2827,6 +2827,19 @@
         "10": "Keys and scales"
       }
     },
+    "levelSpoken": {
+      "notes": {
+        "6": "Keys with 1 sharp or 1 flat",
+        "7": "Up to 3 sharps or 3 flats",
+        "9": "Up to 5 sharps or 5 flats"
+      },
+      "scales": {
+        "3": "D and B flat major",
+        "4": "A and E flat major",
+        "5": "E and A flat major",
+        "7": "Natural minor, up to 2 sharps or 2 flats"
+      }
+    },
     "material": {
       "1": "quarter and half notes",
       "2": "rests",

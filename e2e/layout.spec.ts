@@ -2699,6 +2699,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(row);
         await expectTouchHeight(row);
       }
+      // A level's name with a sign is said in words, as the Scales hub says its keys; the row shows the sign.
+      const scales = page.getByRole('link', { name: /^Scales: level 3 of 10\. .*, A and E flat major\./ });
+      await expect(scales).toBeVisible();
+      await expect(scales).toContainText('next: A and E♭ major');
       const focus = page.getByRole('region', { name: 'Focus next' });
       await expect(focus.getByText(/is your lowest skill/)).toHaveText('Bass clef is your lowest skill: level 3, 2 levels behind treble clef.');
       await expectClickable(focus.getByRole('link', { name: 'Read bass notes' }));

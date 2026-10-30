@@ -63,6 +63,14 @@ const open = (hash: string, progress: Progress | null = boardProgress()): void =
 const stored = (): Progress => JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? '{}') as Progress;
 /** The main navigation: the tab bar on phone, the top header on tablet and desktop. */
 const mainNav = (): HTMLElement => (width >= 700 ? within(screen.getByRole('banner')) : screen).getByRole('navigation', { name: 'Main' });
+/** An element's words as shown (without what is there for screen readers only), and as a screen reader hears them. */
+const without = (el: Element, selector: string): string => {
+  const copy = el.cloneNode(true) as Element;
+  copy.querySelectorAll(selector).forEach((x) => x.remove());
+  return copy.textContent ?? '';
+};
+const seen = (el: Element): string => without(el, '.sr-only');
+const heard = (el: Element): string => without(el, '[aria-hidden="true"]');
 
 beforeEach(() => {
   localStorage.clear();
@@ -132,6 +140,22 @@ describe('Skill levels', () => {
     expect(screen.queryAllByRole('link', { name: /0 of 1 checks/ })).toHaveLength(0);
     // Rhythm reading comes first in the skills' order: its button opens the Learning path.
     expect(screen.getByRole('link', { name: 'Continue unit 2' }).getAttribute('href')).toBe('#/path');
+  });
+
+  // A screen reader reads a sign as a symbol or skips it, and "A and E♭ major" would then sound like "A and E major":
+  // a level's name with a sign is said in words, as the Scales hub says its keys. The row shows the sign.
+  it("says a next level's name with a sign in words for screen readers: A and E flat major", () => {
+    open('#/progress/skills');
+    const rows = within(screen.getByRole('region', { name: 'Your skills' })).getAllByRole('link');
+    expect(rows[2].getAttribute('aria-label')).toBe('Treble clef: level 5 of 10. 0 of 2 checks for level 6, Keys with 1 sharp or 1 flat. +1 this month.');
+    expect(rows[2].textContent).toContain('next: Keys with 1♯ or 1♭');
+    expect(rows[4].getAttribute('aria-label')).toBe('Scales: level 3 of 10. 0 of 2 checks for level 4, A and E flat major. +1 this month.');
+    expect(rows[4].textContent).toContain('next: A and E♭ major');
+    cleanup();
+    localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ language: 'nl' }));
+    open('#/progress/skills');
+    expect(screen.getByRole('link', { name: 'Toonladders: niveau 3 van 10. 0 van 2 voorwaarden voor niveau 4, A en es majeur. +1 deze maand.' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /^Vioolsleutel: .*, Toonsoorten met 1 kruis of 1 mol\. / })).toBeTruthy();
   });
 
   it('in Dutch', () => {
@@ -254,6 +278,29 @@ describe('One skill', () => {
     open('#/progress/skills/treble', null);
     expect(screen.getByRole('img', { name: 'Niveau 0 van 10, en 0 van 1 voorwaarde voor niveau 1' })).toBeTruthy();
     expect(screen.getByRole('img', { name: '0 van 1 voorwaarde gehaald' })).toBeTruthy();
+  });
+
+  // As on the list: a name or check with a sign shows it, and a screen reader hears it in words.
+  it('scales: says the level names and checks with a sign in words for screen readers, in English and in Dutch', () => {
+    open('#/progress/skills/scales');
+    const next = screen.getByRole('region', { name: 'Next · level 4' });
+    const name = next.querySelector('.skill-next-name')!;
+    expect([seen(name), heard(name)]).toEqual(['A and E♭ major', 'A and E flat major']);
+    const checks = within(next).getAllByRole('listitem');
+    expect(checks.map(seen)).toEqual(['A major at ★★now 1 star', 'E♭ major at ★★now 1 star']);
+    expect(checks.map(heard)).toEqual(['A major at ★★now 1 star', 'E flat major at ★★now 1 star']);
+    // A check without a sign is said as shown, with nothing added.
+    expect(checks[0].querySelector('.sr-only')).toBeNull();
+    const levels = within(screen.getByRole('region', { name: 'All levels' })).getAllByRole('listitem');
+    expect(levels.map(seen).slice(2, 7)).toEqual(['3D and B♭ majorPassed', '4A and E♭ major0 of 2', '5E and A♭ major', '6All 15 major scales', '7Natural minor, up to 2♯ or 2♭']);
+    expect(levels.map(heard).slice(2, 7)).toEqual(['3D and B flat majorPassed', '4A and E flat major0 of 2', '5E and A flat major', '6All 15 major scales', '7Natural minor, up to 2 sharps or 2 flats']);
+    expect(levels[0].querySelector('.sr-only')).toBeNull();
+    cleanup();
+    localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ language: 'nl' }));
+    open('#/progress/skills/scales');
+    const nl = screen.getByRole('region', { name: 'Volgende · niveau 4' });
+    expect(heard(nl.querySelector('.skill-next-name')!)).toBe('A en es majeur');
+    expect(within(nl).getAllByRole('listitem').map(heard)).toEqual(['A majeur op ★★nu 1 ster', 'es majeur op ★★nu 1 ster']);
   });
 
   it('every level passed', () => {
