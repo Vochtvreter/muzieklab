@@ -130,7 +130,9 @@ export function recordRhythm(p: Progress, exercise: Exercise, result: JudgeResul
   let next = changeDay(p, today, (d) => ({
     sec: d.sec + Math.round(rhythmSeconds(exercise, isEcho ? (echo?.plays ?? 0) : 0, playedTo)),
     rounds: d.rounds + 1,
-    acc: d.acc + Math.round(Math.max(0, Math.min(100, finite(result.accuracy)))),
+    // In whole percent rounded down, as Results shows it (§6.3): a day of 99.69% rounds is no 100% on Progress. The
+    // 1e-9 keeps a whole percent that floating point puts just under it.
+    acc: d.acc + Math.floor(Math.max(0, Math.min(100, finite(result.accuracy))) + 1e-9),
     off: d.off + off,
     hits: d.hits + hit.length,
     cells: addCells(d.cells, cells),

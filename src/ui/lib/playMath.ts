@@ -1,6 +1,7 @@
 /** Pure helpers for the Play screen: segments after a pause, staff windows, beats, live score. */
 import { EXTRA_TAP_POINTS, noteWindows, POINTS } from '../../core/api';
 import type { Judgement, JudgeResult, Leniency, LivePress, NoteResult, Tap, Timeline, TimedNote } from '../../core/api';
+import { wholePercent } from './format';
 
 /**
  * The part of a timeline from bar `fromBar` on, re-based so that bar `fromBar` starts at 0 s / tick 0 and
@@ -128,13 +129,14 @@ export function cursorAt(notes: TimedNote[], t: number, totalSeconds: number, lo
 }
 
 /**
- * "So far" accuracy while playing, from the starts judged up to now (holds are added in the final result).
+ * "So far" accuracy while playing, from the starts judged up to now (holds are added in the final result), in whole
+ * percent rounded down as Results shows it (§6.3): 31 Perfect and a Great read 99%, not 100%.
  * null before anything was judged or tapped: there is no score yet (shown as a dash, not 100%).
  */
 export function liveAccuracy(judged: Judgement[], extraTaps: number): number | null {
   if (judged.length === 0) return extraTaps > 0 ? 0 : null;
   const pts = judged.reduce((s, j) => s + POINTS[j], 0) + extraTaps * EXTRA_TAP_POINTS;
-  return Math.max(0, Math.round(pts / judged.length));
+  return wholePercent(pts / judged.length);
 }
 
 /** Judgement line above the pad: message key + colour role. */

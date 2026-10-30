@@ -87,7 +87,8 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     screen.getByRole('img', {
       name: 'Practice calendar, Sep 14 to Oct 18. Practised 28 of 32 days; missed Sep 16, Sep 20, Sep 25 and Oct 3; streak from Oct 4 to today, Oct 15.',
     });
-    screen.getByRole('img', { name: 'Rhythm accuracy per day from Oct 2 to Oct 15, rising from 76% to 88% on Oct 14, 80% today; no rhythm rounds on Oct 3. Average 83%.' });
+    // The average is rounded down (§6.3): 82%, where the boards still read 83%.
+    screen.getByRole('img', { name: 'Rhythm accuracy per day from Oct 2 to Oct 15, rising from 76% to 88% on Oct 14, 80% today; no rhythm rounds on Oct 3. Average 82%.' });
     screen.getByRole('img', { name: 'Minutes practised this week: Monday 14, Tuesday 9, Wednesday 17 and today Thursday 11; 51 minutes in total.' });
     screen.getByRole('img', {
       name: 'Average timing offset per day from Oct 2 to Oct 15: from minus 52 ms, rushing, to minus 22 ms today, inside the steady band from minus 40 to plus 30 ms.',

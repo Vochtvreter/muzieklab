@@ -91,7 +91,8 @@ describe('the 14-day charts and the week’s minutes', () => {
     const a = accuracyView(p, TODAY);
     expect(a.days.map((d) => d.value)).toEqual(acc);
     expect(a.days[0].date).toBe('2026-10-02');
-    expect(a.mean).toBe(83);
+    // 82.54%, rounded down as Results is (§6.3).
+    expect(a.mean).toBe(82);
     expect(a.first).toEqual({ date: '2026-10-02', value: 76 });
     expect(a.peak).toEqual({ date: '2026-10-14', value: 88 });
     expect(a.today).toBe(80);
@@ -103,6 +104,12 @@ describe('the 14-day charts and the week’s minutes', () => {
     expect(t.days.map((d) => d.value)).toEqual(ms);
     expect(t).toMatchObject({ latest: { date: TODAY, value: -22 }, tendency: 'steady', first: { date: '2026-10-02', value: -52 }, firstTendency: 'rushing' });
     expect([-41, -40, 30, 31].map(tendencyOf)).toEqual(['rushing', 'steady', 'steady', 'dragging']);
+  });
+
+  it('shows 100% only for a day of flawless rounds', () => {
+    // A flawless round and one of 31 Perfect and a Great (99.69%, stored as 99): 99.5% that day, shown as 99%.
+    const q = progress({}, { days: { [shiftDay(TODAY, -1)]: day({ rounds: 1, acc: 100 }), [TODAY]: day({ rounds: 2, acc: 100 + 99 }) } });
+    expect(accuracyView(q, TODAY)).toMatchObject({ today: 99, mean: 99, peak: { date: shiftDay(TODAY, -1), value: 100 } });
   });
 
   it('counts a day without rhythm rounds as no value, also when it has minutes', () => {

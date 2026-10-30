@@ -32,7 +32,8 @@ describe('the Progress seed', () => {
     expect(v.calendar).toMatchObject({ first: '2026-09-14', last: '2026-10-18', practised: 28, elapsed: 32, streakStart: '2026-10-04' });
     expect(v.calendar.missed).toEqual(['2026-09-16', '2026-09-20', '2026-09-25', '2026-10-03']);
     expect(v.accuracy.days.map((d) => d.value)).toEqual([76, null, 79, 81, 78, 83, 84, 82, 85, 86, 84, 87, 88, 80]);
-    expect(v.accuracy).toMatchObject({ mean: 83, today: 80, peak: { date: '2026-10-14', value: 88 } });
+    // 82.54%, rounded down (§6.3). The boards still read 83%, rounded to the nearest as before.
+    expect(v.accuracy).toMatchObject({ mean: 82, today: 80, peak: { date: '2026-10-14', value: 88 } });
     expect(v.timing.days.map((d) => d.value)).toEqual([-52, null, -49, -46, -44, -41, -38, -37, -33, -31, -29, -26, -24, -22]);
     expect(v.timing).toMatchObject({ tendency: 'steady', firstTendency: 'rushing' });
     expect(v.minutes.days.map((d) => d.minutes)).toEqual([14, 9, 17, 11, null, null, null]);

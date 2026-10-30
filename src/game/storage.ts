@@ -85,7 +85,10 @@ export const ACHIEVEMENT_IDS: readonly AchievementId[] = ['streak7', 'perfectBar
 export interface DayStats {
   /** Seconds practised that day, all modes. */
   sec: number;
-  /** Rhythm rounds finished (tap and Echo: free practice, lessons and the daily challenge), and their accuracies' sum (whole %). */
+  /**
+   * Rhythm rounds finished (tap and Echo: free practice, lessons and the daily challenge), and their accuracies' sum
+   * (each in whole %, rounded down, §6.3).
+   */
   rounds: number;
   acc: number;
   /** Timing: the sum of the hit notes' signed offsets (each rounded to whole ms; negative = early), and how many. */

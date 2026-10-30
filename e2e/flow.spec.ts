@@ -269,6 +269,28 @@ test('Skip to results adds only the seconds played to Minutes this week', async 
 });
 
 /**
+ * Results shows the accuracy rounded down, so a threshold the run did not reach never shows (DESIGN.md §6.3): four
+ * quarters on the beat and an extra tap are (400 − 25) / 400 = 93.75%, shown as 93%. Rounded to the nearest, it was 94%.
+ */
+for (const name of ['phone', 'desktop'] as const) {
+  test(`Results shows the accuracy rounded down (${name})`, async ({ page }) => {
+    await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: QUARTERS } });
+    await page.setViewportSize(VIEWPORTS[name]);
+    await page.goto('./#/setup');
+    await page.getByRole('button', { name: /^Start · / }).click();
+    // One bar at 120 BPM, a press on each beat and one 250 ms after beat 2: outside every window (120 ms at most).
+    await tapLate(page, 4, 500, 0, [750]);
+    await expect(page.getByRole('heading', { name: 'Exercise done' })).toBeVisible();
+    const cells = await page.locator('.counts > div').evaluateAll((divs) =>
+      divs.map((d) => [d.querySelector('.count-label')?.textContent ?? '', Number(d.querySelector('.count-n')?.textContent)] as const),
+    );
+    expect(Object.fromEntries(cells)).toEqual({ Perfect: 4, Great: 0, Good: 0, Miss: 0, Extra: 1 });
+    await expect(page.locator('.score-pct')).toHaveText('93%');
+    await expect(page.getByRole('img', { name: '3 of 3 stars' })).toBeVisible();
+  });
+}
+
+/**
  * Records what Play shows on every change from now to the first beat after a count-in: the header line, the staff's
  * first bar, the timing lane's bars and playheads, and the progress, on a phone or on desktop.
  */

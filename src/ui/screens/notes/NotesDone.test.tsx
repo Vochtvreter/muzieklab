@@ -23,12 +23,12 @@ const answers: NoteAnswer[] = run.notes.map((n) => {
   return { outcome: 'wrong', ms: 1200, given: { kind: 'name', letter, alter: 0 } };
 });
 
-/** Plays the round with every note wrong, then shows Round done. */
-function Round(): JSX.Element | null {
+/** Plays the round with these answers (every note wrong unless given), then shows Round done. */
+function Round({ given = answers }: { given?: NoteAnswer[] }): JSX.Element | null {
   const { state, dispatch } = useStore();
   useEffect(() => {
     dispatch({ type: 'noteStart', run });
-    dispatch({ type: 'noteFinish', answers, today: '2026-10-29' });
+    dispatch({ type: 'noteFinish', answers: given, today: '2026-10-29' });
   }, []);
   return state.noteLast ? <NotesDone /> : null;
 }
@@ -47,5 +47,22 @@ describe('Round done: Needs practice', () => {
       </StoreProvider>,
     );
     expect(within(screen.getByRole('list', { name: 'Missed' })).getAllByRole('listitem')).toHaveLength(missed.length);
+  });
+});
+
+describe('Round done: the score', () => {
+  it('shows the accuracy rounded down, so 94.7% is not the 95% of three stars (§6.3)', () => {
+    // Free practice skipped to the summary after 19 notes, 18 of them right: 94.74%, two stars.
+    const given = run.notes
+      .slice(0, 19)
+      .map((n, i): NoteAnswer => (i === 0 ? answers[0] : { outcome: 'right', ms: 1200, given: { kind: 'name', letter: letterOf(n.step), alter: n.alter } }));
+    expect(scoreRound(run.notes, given)).toMatchObject({ right: 18, total: 19, stars: 2 });
+    render(
+      <StoreProvider>
+        <Round given={given} />
+      </StoreProvider>,
+    );
+    expect(document.querySelector('.score-pct')?.textContent).toBe('94%');
+    screen.getByRole('img', { name: '2 of 3 stars' });
   });
 });

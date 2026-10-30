@@ -846,10 +846,11 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 
 ### 6.3 Scores
 
-- **Accuracy %** = points / max points (floored at 0). It is shown in whole percent rounded down (Results, Home's
-  daily, the personal bests, Read notes' *Round done*), so a run never shows a threshold it did not reach: 31 Perfect
-  and a Great are 99.7%, shown as 99%, as 100% is only the diamond's; 89.7% (two stars) shows 89%, not 90%. The
-  stored accuracy keeps its fraction.
+- **Accuracy %** = points / max points (floored at 0). It is shown in whole percent rounded down (Results, Play's *So
+  far*, Home's daily, the personal bests, Read notes' *Round done*, Progress' *Accuracy · 14 days*), so a run never
+  shows a threshold it did not reach: 31 Perfect and a Great are 99.7%, shown as 99%, as 100% is only the diamond's;
+  89.7% (two stars) shows 89%, not 90%. The stored accuracy keeps its fraction; the day's figures for Progress (§8.5)
+  add each round in whole percent, rounded down too.
 - **Stars:** ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% · ★★★★ ≥ 95% with no Good and no Miss (no
   yellow or red noteheads).
 - **Three star slots are shown** (☆☆☆) on the results, the lesson tiles and the Path. The 4th star is a hidden
@@ -1211,9 +1212,10 @@ cards below it, and is not remembered: every visit starts on Rhythm.
   ink on the gold in both themes), earlier practice days a gold tint, missed days plain, today outlined, later days
   empty; a legend, and *Practised 28 of 32 days* over the calendar's days so far.
 - **Accuracy · 14 days:** rhythm rounds only (tap and Echo): each day the mean of its rounds' accuracy, a line with a
-  gap and a tick for a day without one, the latest value at the end and the average beside the title. The scale is
-  60–100%, and drops to 20% or 0% when a day is under 60%. Its label names those days *no rhythm rounds on Oct 3*: a day
-  of only Read notes or Scales is still a practice day, in the streak and in Minutes.
+  gap and a tick for a day without one, the latest value at the end and the average beside the title. Both are rounded
+  down (§6.3), so 100% means every round was flawless. The scale is 60–100%, and drops to 20% or 0% when a day is under
+  60%. Its label names those days *no rhythm rounds on Oct 3*: a day of only Read notes or Scales is still a practice
+  day, in the streak and in Minutes.
 - **Timing tendency:** each day the mean offset of the hit notes, against the steady band from −40 to +30 ms (the
   tendency's thresholds, §6.3; the range widens past −70 and +50 ms when needed). A wider range puts the band's lines
   closer together: a line keeps its label (*+30*, *0*, *−40*) only 11 px or more from the others, 0 first, and *steady*

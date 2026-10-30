@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type NotatedSymbol, PPQ, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Judgement, type NotatedSymbol, PPQ, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
 import { introId, lessonIntros } from '../../game/intro';
 import { ALL_LESSONS } from '../../game/path';
 import { defaultProgress, type Progress } from '../../game/storage';
@@ -221,6 +221,10 @@ describe('play maths', () => {
     expect(liveAccuracy([], 2)).toBe(0);
     expect(liveAccuracy(['perfect', 'great', 'good', 'miss'], 0)).toBe(65);
     expect(liveAccuracy(['perfect'], 1)).toBe(75);
+    // Rounded down as Results shows it: 31 Perfect and a Great (99.69%) are 99%, and 28 Perfect, a Good and 3 Misses
+    // (89.69%, two stars) 89%, not three stars' 90%.
+    expect(liveAccuracy([...Array<Judgement>(31).fill('perfect'), 'great'], 0)).toBe(99);
+    expect(liveAccuracy([...Array<Judgement>(28).fill('perfect'), 'good', 'miss', 'miss', 'miss'], 0)).toBe(89);
     expect(pressFeedback({ index: 0, judgement: 'good', offsetMs: 90 })).toEqual({ key: 'judge.goodLate', tone: 'gold' });
     expect(pressFeedback({ index: 0, judgement: 'good', offsetMs: -90 }).key).toBe('judge.goodEarly');
     expect(pressFeedback({ index: null, judgement: 'extra', offsetMs: null }).key).toBe('judge.extra');

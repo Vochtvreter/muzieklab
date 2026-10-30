@@ -272,12 +272,13 @@ export const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['qu
 
 /**
  * Plays along on the keyboard, every beat `lateMs` after it, from the first counted beat on Play: on the beat with 0, a
- * steady late tapper (Bluetooth headphones) with more. Each key event carries its own time stamp, so a timer that fires
- * late does not move a tap.
+ * steady late tapper (Bluetooth headphones) with more. `extras` adds presses at those times (ms after the first beat),
+ * such as an extra tap between two beats. Each key event carries its own time stamp, so a timer that fires late does
+ * not move a tap.
  */
-export async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number): Promise<void> {
+export async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number, extras: number[] = []): Promise<void> {
   await page.evaluate(
-    ({ beats, beatMs, lateMs }) =>
+    ({ beats, beatMs, lateMs, extras }) =>
       new Promise<void>((resolve) => {
         const key = (type: string, at: number): void => {
           const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
@@ -287,18 +288,20 @@ export async function tapLate(page: Page, beats: number, beatMs: number, lateMs:
         const look = (): void => {
           if (!document.querySelector('[role="img"][aria-label^="Counting beat 1 "]')) return void requestAnimationFrame(look);
           const t0 = performance.now();
-          for (let k = 0; k < beats; k++) {
-            const at = t0 + k * beatMs + lateMs;
+          const times = [...Array.from({ length: beats }, (_, k) => k * beatMs + lateMs), ...extras];
+          for (const time of times) {
+            const at = t0 + time;
             window.setTimeout(() => {
               key('keydown', at);
               key('keyup', at + 80);
             }, at + 80 - performance.now());
           }
-          window.setTimeout(resolve, beats * beatMs + lateMs);
+          // Done a beat after the last press.
+          window.setTimeout(resolve, Math.max(...times) + beatMs);
         };
         look();
       }),
-    { beats, beatMs, lateMs },
+    { beats, beatMs, lateMs, extras },
   );
 }
 

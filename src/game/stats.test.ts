@@ -46,7 +46,8 @@ describe('recordRhythm', () => {
     expect(p.stats.days[TODAY]).toEqual({
       sec: Math.round(playedSeconds(tap)),
       rounds: 1,
-      acc: 84,
+      // 83.6%, rounded down as Results shows it (§6.3).
+      acc: 83,
       off: hits.reduce((s, n) => s + Math.round(n.offsetMs!), 0),
       hits: hits.length,
       cells: cellPoints(tap, r, 'normal'),
@@ -79,7 +80,7 @@ describe('recordRhythm', () => {
     const twice = recordRhythm(once, tap, { ...r, accuracy: 60 }, TODAY, 'normal');
     const d = twice.stats.days[TODAY];
     expect(d.rounds).toBe(2);
-    expect(d.acc).toBe(84 + 60);
+    expect(d.acc).toBe(83 + 60);
     expect(d.sec).toBe(2 * once.stats.days[TODAY].sec);
     expect(d.cells.quarter?.[1]).toBe(2 * once.stats.days[TODAY].cells.quarter![1]);
     readsBack(twice);
@@ -95,6 +96,13 @@ describe('recordRhythm', () => {
     expect(p.stats.seen).toEqual({ ear: TODAY });
     expect(p.stats.echo).toEqual({ [String(materialLevel(echo))]: [1, 4] });
     readsBack(p);
+  });
+
+  it('counts a round’s accuracy rounded down, so only a flawless round adds 100', () => {
+    // 31 Perfect and a Great: 99.69%, shown as 99% on Results. 57 of 100 is 56.99999999999999 in floating point.
+    expect(recordRhythm(defaultProgress(), tap, { ...r, accuracy: 99.6875 }, TODAY, 'normal').stats.days[TODAY].acc).toBe(99);
+    expect(recordRhythm(defaultProgress(), tap, { ...r, accuracy: (57 / 100) * 100 }, TODAY, 'normal').stats.days[TODAY].acc).toBe(57);
+    expect(recordRhythm(defaultProgress(), tap, { ...r, accuracy: 100 }, TODAY, 'normal').stats.days[TODAY].acc).toBe(100);
   });
 
   it('tolerates a partial result (no offsets, no stars)', () => {

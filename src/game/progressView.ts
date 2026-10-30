@@ -193,9 +193,9 @@ const lastOf = (days: DayPoint[]): DayPoint | null => [...days].reverse().find((
 
 /** Rhythm accuracy (tap and Echo) per day, from each day's rounds. */
 export interface AccuracyView {
-  /** CHART_DAYS days, the last one today: the day's mean accuracy (whole %), or null. */
+  /** CHART_DAYS days, the last one today: the day's mean accuracy (whole %, rounded down), or null. */
   days: DayPoint[];
-  /** The mean over the days with a value (whole %), or null when none has. */
+  /** The mean over the days with a value (whole %, rounded down), or null when none has. */
   mean: number | null;
   /** The first day with a value, and the highest (on a tie, the latest of them). */
   first: DayPoint | null;
@@ -206,14 +206,17 @@ export interface AccuracyView {
   gaps: string[];
 }
 
-/** Accuracy · 14 days: rhythm rounds only (tap and Echo). */
+/**
+ * Accuracy · 14 days: rhythm rounds only (tap and Echo). Rounded down as Results is (§6.3), so 100% means that every
+ * round of the day, or of the days, was flawless. The sums are whole numbers, so there is no float error to absorb.
+ */
 export function accuracyView(p: Progress, today: string): AccuracyView {
-  const days = chartDays(p, today).map(({ date, d }): DayPoint => ({ date, value: d && d.rounds > 0 ? Math.round(d.acc / d.rounds) : null }));
+  const days = chartDays(p, today).map(({ date, d }): DayPoint => ({ date, value: d && d.rounds > 0 ? Math.floor(d.acc / d.rounds) : null }));
   const values = days.filter((x): x is { date: string; value: number } => x.value !== null);
   const peak = values.reduce<DayPoint | null>((best, x) => (best === null || x.value >= (best.value as number) ? x : best), null);
   return {
     days,
-    mean: values.length ? Math.round(values.reduce((s, x) => s + x.value, 0) / values.length) : null,
+    mean: values.length ? Math.floor(values.reduce((s, x) => s + x.value, 0) / values.length) : null,
     first: firstOf(days),
     peak,
     today: days[days.length - 1].value,
