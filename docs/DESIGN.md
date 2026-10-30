@@ -1573,11 +1573,13 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   Read notes: in phone landscape its staff card has 8 px above and below (6 px with a time per note, the timer bar 4 px
   under the staff) and the feedback is 40 px high in 14 px text, so a round that writes (the staff drawn bigger) or
   hears (Hear it again in the card) leaves Skip to summary whole under a why of two lines. A phone 375 px tall on its
-  side (667 × 375, 812 × 375) still scrolls both by up to about 25 px. Play's timing
-  lane takes at most two rows on a phone (§3.1), so the 16 bars Setup allows fit as 8 do. The pianos give up height
-  at any height of a phone in portrait, only as much as is missing, so a taller phone keeps the board's piano (a range
-  with ledger lines needs it up to about 820 px tall): down to 100 px for the Read notes piano (200 px on the board)
-  and 140 px for the Scales piano (210 px).
+  side (667 × 375, 812 × 375) still scrolls both a little, Scales by up to about 15 px and Read notes by up to about
+  25 px, and one 360 px tall (740 × 360) by about 15 to 30 px. Scales' last row there holds Skip to summary, with the
+  page's 6 px of padding under it, so Tab scrolls the column on to that padding and Skip's focus ring shows whole (the
+  scroll ended flush with Skip, which cut the ring). Play's timing lane takes at most two rows on a phone (§3.1), so the
+  16 bars Setup allows fit as 8 do. The pianos give up height at any height of a phone in portrait, only as much as is
+  missing, so a taller phone keeps the board's piano (a range with ledger lines needs it up to about 820 px tall): down
+  to 100 px for the Read notes piano (200 px on the board) and 140 px for the Scales piano (210 px).
   - Under 800 px tall (390 × 664, 375 × 667, 430 × 739): the gaps tighten to 10 px, and so do the page padding (10 px
     at the top, 12 px at the bottom) and the staff card's. Then the pad gives up height, down to 112 px (214 px on the
     board). The pad is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only

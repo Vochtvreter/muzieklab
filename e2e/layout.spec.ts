@@ -11,7 +11,7 @@ import {
   ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, calibrateAlong, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectFocusRing, expectHitHeight, expectNoClippedLabels, expectNoOverlap,
   expectNoPageScroll, expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectStavesFit, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi,
   pad, pathUpTo,
-  QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
+  QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tabTo, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
 import { emptyProgress, PROGRESS_CLOCK, PROGRESS_PREFS, richProgress } from './progressFixture';
 
@@ -437,8 +437,8 @@ function upDownKeys(s: Scale, input: string): string[] {
  * A Scales round of one scale up and down, just started, answered to the end: the first note wrong, a Hint, the second
  * note wrong (a why of two lines on a phone), then the rest, and the done line with all 15 notes. Each time the
  * feedback changes, a portrait phone or tablet fits with the answer buttons in view (DESIGN.md §9), so does a desktop
- * window 800 px tall or more, and a phone in landscape shows the feedback whole in its left column, from the top (only
- * Skip to summary may need a scroll there).
+ * window 800 px tall or more, and a phone in landscape fits too, with the feedback and Skip to summary whole in its left
+ * column and room under Skip for its focus ring.
  */
 async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, input: string, words: { hint: string; next: RegExp; skip: string }): Promise<void> {
   const { width, height } = VIEWPORTS[name];
@@ -493,6 +493,22 @@ async function expectSkipWhole(page: Page, label = 'Skip to summary'): Promise<v
   await expectClickable(skip, { scroll: false });
   const room = await skip.evaluate((el) => el.closest('.page')!.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom);
   expect(room, 'room under Skip to summary for its focus ring').toBeGreaterThanOrEqual(5);
+}
+
+/**
+ * A phone 360 px tall on its side (740 × 360) still scrolls Scales' left column a little (DESIGN.md §9): Tab to Skip to
+ * summary scrolls it to its end, with room under Skip for its focus ring. The scroll ended flush with Skip's bottom
+ * edge, which cut the ring's lower 5 px. The test's own size again after.
+ */
+async function expectSkipRingOnShorterPhone(page: Page, label = 'Skip to summary'): Promise<void> {
+  const size = page.viewportSize()!;
+  await page.setViewportSize({ width: 740, height: 360 });
+  const skip = page.getByRole('button', { name: label });
+  await tabTo(page, skip);
+  const room = await skip.evaluate((el) => Math.min(el.closest('.page')!.getBoundingClientRect().bottom, window.innerHeight) - el.getBoundingClientRect().bottom);
+  expect(room, 'room under Skip to summary for its focus ring at 740 × 360').toBeGreaterThanOrEqual(5);
+  await skip.blur();
+  await page.setViewportSize(size);
 }
 
 /**
@@ -1930,10 +1946,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
       await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
       if (portraitLayout) await expectFits(page);
-      // A phone on its side: the staff, the degrees, the feedback and Skip to summary fit its left column.
+      // A phone on its side: the staff, the degrees, the feedback and Skip to summary fit its left column, and where a
+      // shorter one scrolls it, Tab leaves room under Skip for its focus ring.
       if (name === 'phone-landscape') {
         await expectFits(page);
         await expectSkipWhole(page);
+        await expectSkipRingOnShorterPhone(page);
       }
       // Tablet (Read notes' NoteTablet pattern): the exercise header, the degrees in the staff card, a tall piano.
       if (tabletLayout && portraitLayout) {
@@ -2060,7 +2078,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         expect(await size(), 'the staff when done').toEqual(first);
         // The staff taller by the room for its signs, the screen still fits, on a phone on its side too.
         if (portraitLayout || name === 'phone-landscape') await expectFits(page);
-        if (name === 'phone-landscape') await expectSkipWhole(page);
+        if (name === 'phone-landscape') {
+          await expectSkipWhole(page);
+          await expectSkipRingOnShorterPhone(page);
+        }
       }
     });
 
@@ -2098,7 +2119,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         }
         await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
         if (portraitLayout || deskFits) await expectFits(page);
-        if (name === 'phone-landscape') await expectSkipWhole(page);
+        if (name === 'phone-landscape') {
+          await expectSkipWhole(page);
+          await expectSkipRingOnShorterPhone(page);
+        }
         // Each line the feedback says on the way, from why the first note is wrong to the done line, stays in view.
         await answerUpAndDown(page, name, { key: round.keys[0], type: round.types[0] } as Scale, round.input, { hint: 'Hint', next: /^Next scale/, skip: 'Skip to summary' });
         await expectNoSideScroll(page);
@@ -2132,7 +2156,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.locator('.nfeedback')).toHaveText(/^Not G♯\. From F♯, go up a half step/);
       // A why of two lines in a phone's landscape column: the screen still fits, with Skip to summary whole under it.
       if (portraitLayout || name === 'phone-landscape') await expectFits(page);
-      if (name === 'phone-landscape') await expectSkipWhole(page);
+      if (name === 'phone-landscape') {
+        await expectSkipWhole(page);
+        await expectSkipRingOnShorterPhone(page);
+      }
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });

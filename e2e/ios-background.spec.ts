@@ -13,11 +13,17 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const Real = window.AudioContext;
     const made: Fake[] = [];
+    let stuck = false;
     class Fake extends Real {
       broken: { mode: string; t: number } | null = null;
       constructor(opts?: AudioContextOptions) {
         super(opts);
         made.push(this);
+        // A stuck context (stickAudio, below) fires no statechange, like one that never starts: this listener comes
+        // before the engine's and stops the real context's.
+        this.addEventListener('statechange', (e) => {
+          if (stuck) e.stopImmediatePropagation();
+        });
       }
       get currentTime(): number {
         return this.broken ? this.broken.t : super.currentTime;
@@ -36,8 +42,8 @@ test.beforeEach(async ({ page }) => {
     (window as unknown as { breakAudio(mode: string): void }).breakAudio = (mode) => {
       for (const c of made) c.broken = { mode, t: c.currentTime };
     };
-    // A context that never starts: it says 'suspended' and its clock stands still, though resume() resolves.
-    let stuck = false;
+    // A context that never starts: it says 'suspended' and its clock stands still, though resume() resolves, and it
+    // fires no statechange (above), so only Calibrate's own check of the state can end the run.
     const real = { state: Object.getOwnPropertyDescriptor(Fake.prototype, 'state')!.get!, time: Object.getOwnPropertyDescriptor(Fake.prototype, 'currentTime')!.get! };
     Object.defineProperty(Fake.prototype, 'state', { get(this: Fake) { return stuck ? 'suspended' : real.state.call(this); } });
     Object.defineProperty(Fake.prototype, 'currentTime', { get(this: Fake) { return stuck ? 0 : real.time.call(this); } });

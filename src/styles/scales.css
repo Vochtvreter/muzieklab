@@ -1027,12 +1027,18 @@
     display: none;
   }
 }
-/* Phone in landscape: the staff and the degrees on the left; the piano or the signs on the right. */
+/*
+ * Phone in landscape: the staff and the degrees on the left; the piano or the signs on the right. The last row holds
+ * Skip to summary (1fr, not minmax(0, 1fr)), so a column that scrolls (a phone 360 or 375 px tall) scrolls on to the
+ * page's padding under Skip, 6 px, the room its focus ring needs when Tab reaches it (DESIGN.md §9, Scrolling): Skip
+ * overflowed its row, and the scroll ended flush with its bottom edge, which cut the ring.
+ */
 @media (orientation: landscape) and (max-height: 560px) {
   .splay {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto 1fr;
     overflow-y: auto;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
   }
   .splay .play-info {
     grid-column: 1;
