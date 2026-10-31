@@ -5491,6 +5491,23 @@ button.lesson-stars:hover {
     forced-color-adjust: none;
     background: Highlight;
   }
+  /* Calibrate's timing plot is drawn with fills alone: its axis and ticks in the text colour, the taps and their median
+     in the selection colour, and the last tap in the text colour, as it is in ink. */
+  .cal-axis,
+  .cal-tick {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .cal-median-line,
+  .cal-dot {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .cal-dot.is-last {
+    background: CanvasText;
+    border-color: Canvas;
+    box-shadow: 0 0 0 1.5px CanvasText;
+  }
   /* Outside the hold bar's 5 px, which an edge inside would halve, in the colours of the key it is on. */
   .keycap-bar {
     outline: 1px solid ButtonText;

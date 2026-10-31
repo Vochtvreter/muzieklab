@@ -2498,8 +2498,10 @@ without code changes:
   bars by sign, the Learn tab's progress, the Path's *Notes and rhythm* bar, the hold bar in desktop Play's key (in the
   key's colours), Setup's difficulty and the pips of Calibration and Echo too (before, these disappeared). Desktop
   Home's Learning path card fills a unit done in the text colour and the current one in the selection colour, and
-  outlines a locked one. The legend under Round done's time chart keeps the colours of the chart's bars, which the
-  browser does not force. Learn's diagrams are drawn in the text colour: 1.1's beats on their time line (the beat just
+  outlines a locked one. Calibration's timing plot draws its axis and ticks in the text colour, the taps and the line
+  at their median in the selection colour, and the tap just made in the text colour, as it is in ink (before, the plot
+  showed nothing). The legend under Round done's time chart keeps the colours of the chart's bars, which the browser
+  does not force. Learn's diagrams are drawn in the text colour: 1.1's beats on their time line (the beat just
   heard in the selection colour), 1.3's strong and medium beats filled and its weak ones outlined, the beat grid's cells
   outlined (a held count's dashed), and a play button keeps its circle as an edge (`base.css`, `app.css`, `notes.css`,
   `scales.css`, `progress.css`, `skills.css`; layout tests check it in light and dark).

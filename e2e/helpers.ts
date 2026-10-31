@@ -271,11 +271,11 @@ export const pad = (page: Page): Locator => page.getByRole('button', { name: 'Ta
 
 /**
  * Calibrates on the keyboard: the first press starts the 16 clicks (90 BPM, the first 1 s later), then one press on each
- * click. As in tapLate, each key event carries its own time stamp.
+ * of the first `taps` clicks (all of them by default). As in tapLate, each key event carries its own time stamp.
  */
-export async function calibrateAlong(page: Page): Promise<void> {
+export async function calibrateAlong(page: Page, taps = 16): Promise<void> {
   await page.evaluate(
-    () =>
+    (taps) =>
       new Promise<void>((resolve) => {
         const key = (type: string, at: number): void => {
           const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
@@ -285,15 +285,16 @@ export async function calibrateAlong(page: Page): Promise<void> {
         const t0 = performance.now();
         key('keydown', t0);
         key('keyup', t0 + 80);
-        const clicks = Array.from({ length: 16 }, (_, k) => t0 + 1000 + (k * 60_000) / 90);
+        const clicks = Array.from({ length: taps }, (_, k) => t0 + 1000 + (k * 60_000) / 90);
         for (const at of clicks) {
           window.setTimeout(() => {
             key('keydown', at);
             key('keyup', at + 80);
           }, at + 80 - performance.now());
         }
-        window.setTimeout(resolve, clicks[15] + 200 - performance.now());
+        window.setTimeout(resolve, clicks[taps - 1] + 200 - performance.now());
       }),
+    taps,
   );
 }
 

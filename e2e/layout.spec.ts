@@ -4381,6 +4381,49 @@ test.describe('desktop Read notes at widths under 1180 px', () => {
 });
 
 /**
+ * In forced colors, whether each element is drawn and whether two look the same, by its computed (forced) colours: its
+ * fill (none when it is the page's), its edge, its ring and its text colour. A selector may end in ::before.
+ */
+function forcedLooks(page: Page): {
+  expectDrawn(where: string, selectors: string[]): Promise<void>;
+  expectDistinct(where: string, selectors: string[]): Promise<void>;
+} {
+  /** How each element is drawn; null when there is none on the screen. */
+  const looks = (selectors: string[]): Promise<(string | null)[]> =>
+    page.evaluate((sels) => {
+      const ground = getComputedStyle(document.body).backgroundColor;
+      return sels.map((sel) => {
+        const [box, pseudo] = sel.split(/(?=::before$)/);
+        const el = document.querySelector(box);
+        if (!el) return null;
+        const s = getComputedStyle(el, pseudo ?? null);
+        const fill = s.backgroundColor === ground || /^rgba\(.*, 0\)$|transparent/.test(s.backgroundColor) ? 'none' : s.backgroundColor;
+        const edge = s.borderTopStyle === 'none' || parseFloat(s.borderTopWidth) === 0 ? 'none' : `${s.borderTopStyle} ${s.borderTopWidth} ${s.borderTopColor}`;
+        const ring = s.outlineStyle === 'none' ? 'none' : `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor}`;
+        return `fill ${fill}, edge ${edge}, ring ${ring}, text ${s.color}`;
+      });
+    }, selectors);
+  return {
+    /** Each is on the screen and drawn: a fill, an edge or a ring. */
+    async expectDrawn(where, selectors) {
+      const all = await looks(selectors);
+      selectors.forEach((sel, i) => {
+        expect(all[i], `${where}: ${sel} is on the screen`).not.toBeNull();
+        expect(all[i], `${where}: ${sel} is drawn`).not.toMatch(/^fill none, edge none, ring none/);
+      });
+    },
+    /** Each is on the screen, and no two look the same. */
+    async expectDistinct(where, selectors) {
+      const all = await looks(selectors);
+      selectors.forEach((sel, i) => expect(all[i], `${where}: ${sel} is on the screen`).not.toBeNull());
+      for (let i = 0; i < selectors.length; i++) {
+        for (let j = i + 1; j < selectors.length; j++) expect(all[i], `${where}: ${selectors[i]} looks like ${selectors[j]}`).not.toBe(all[j]);
+      }
+    },
+  };
+}
+
+/**
  * Forced colors (a Windows contrast theme) paint every background in the page's colour and all text and borders in one
  * colour (DESIGN.md §11). A state shown only by a fill or a colour then disappears; each must still show: the chosen
  * option of every group beside one that is not chosen, a switch's knob and edge, a filled button's shape, Play's beat,
@@ -4498,40 +4541,7 @@ test.describe('forced colors (a contrast theme)', () => {
       await page.clock.setFixedTime(PROGRESS_CLOCK);
       // The boards' sample player: C, G and F major at ★★★, D and B♭ at ★★, A and E♭ at ★; a streak, missed days, XP.
       await seed(page, { progress: richProgress(), prefs: { ...PROGRESS_PREFS, seenHowTo: true, seenHold: true, seenEchoHowTo: true } });
-      /**
-       * How each element is drawn, by its computed (forced) colours: its fill (none when it is the page's), its edge,
-       * its ring and its text colour; null when there is none on the screen. A selector may end in ::before.
-       */
-      const looks = (selectors: string[]): Promise<(string | null)[]> =>
-        page.evaluate((sels) => {
-          const ground = getComputedStyle(document.body).backgroundColor;
-          return sels.map((sel) => {
-            const [box, pseudo] = sel.split(/(?=::before$)/);
-            const el = document.querySelector(box);
-            if (!el) return null;
-            const s = getComputedStyle(el, pseudo ?? null);
-            const fill = s.backgroundColor === ground || /^rgba\(.*, 0\)$|transparent/.test(s.backgroundColor) ? 'none' : s.backgroundColor;
-            const edge = s.borderTopStyle === 'none' || parseFloat(s.borderTopWidth) === 0 ? 'none' : `${s.borderTopStyle} ${s.borderTopWidth} ${s.borderTopColor}`;
-            const ring = s.outlineStyle === 'none' ? 'none' : `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor}`;
-            return `fill ${fill}, edge ${edge}, ring ${ring}, text ${s.color}`;
-          });
-        }, selectors);
-      /** Each is on the screen and drawn: a fill, an edge or a ring. */
-      const expectDrawn = async (where: string, selectors: string[]): Promise<void> => {
-        const all = await looks(selectors);
-        selectors.forEach((sel, i) => {
-          expect(all[i], `${where}: ${sel} is on the screen`).not.toBeNull();
-          expect(all[i], `${where}: ${sel} is drawn`).not.toMatch(/^fill none, edge none, ring none/);
-        });
-      };
-      /** Each is on the screen, and no two look the same. */
-      const expectDistinct = async (where: string, selectors: string[]): Promise<void> => {
-        const all = await looks(selectors);
-        selectors.forEach((sel, i) => expect(all[i], `${where}: ${sel} is on the screen`).not.toBeNull());
-        for (let i = 0; i < selectors.length; i++) {
-          for (let j = i + 1; j < selectors.length; j++) expect(all[i], `${where}: ${selectors[i]} looks like ${selectors[j]}`).not.toBe(all[j]);
-        }
-      };
+      const { expectDrawn, expectDistinct } = forcedLooks(page);
 
       // The Scales hub: each level of the circle (none, ★, ★★, ★★★) and its legend's dots; the selected key's stars.
       await page.goto('./#/scales');
@@ -4650,11 +4660,6 @@ test.describe('forced colors (a contrast theme)', () => {
       );
       expect(off, 'the stars not earned, outlined').toEqual([true, true, true]);
 
-      // Calibration: the pips of its 16 clicks.
-      await page.goto('./#/calibrate');
-      await expect(page.locator('.pips')).toBeAttached();
-      await expectDrawn('Calibration', ['.pips span']);
-
       // Desktop: Home's Learning path card (units done, the current one, locked ones), the Path's Notes and rhythm bar,
       // and Play's key and the hold bar in it.
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -4682,6 +4687,24 @@ test.describe('forced colors (a contrast theme)', () => {
       const pips = ['.echo-pips span.is-on', '.echo-pips span:not(.is-on)'];
       await expectDrawn('Echo', pips);
       await expectDistinct('Echo', pips);
+    });
+
+    // Not in the test above: its fixed clock moves the taps' time stamps off the audio clock's clicks.
+    test(`${scheme}: Calibrate's pips and timing plot still show`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, forcedColors: 'active' });
+      const { expectDrawn, expectDistinct } = forcedLooks(page);
+      await page.goto('./#/calibrate');
+      await expect(page.locator('.pips')).toBeAttached();
+      await expectDrawn('Calibrate', ['.pips span', '.cal-axis', '.cal-tick--end', '.cal-tick:not(.cal-tick--end):not(.cal-tick--zero)', '.cal-tick--zero']);
+      // Four taps in, still measuring: the pips counted, the line at the median, and the taps' dots, the last one in the
+      // text colour (it is in ink).
+      await pad(page).focus();
+      await calibrateAlong(page, 4);
+      await expect(page.locator('.cal-dot')).toHaveCount(4);
+      await expect(page.locator('.cal-dot.is-last')).toHaveCount(1);
+      await expectDrawn("Calibrate's taps", ['.pips span.is-on', '.cal-median-line', '.cal-dot:not(.is-last)', '.cal-dot.is-last']);
+      await expectDistinct("Calibrate's pips", ['.pips span.is-on', '.pips span:not(.is-on)']);
+      await expectDistinct("Calibrate's dots", ['.cal-dot:not(.is-last)', '.cal-dot.is-last']);
     });
   }
 });
