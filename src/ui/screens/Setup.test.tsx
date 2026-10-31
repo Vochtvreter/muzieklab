@@ -58,4 +58,15 @@ describe('Practice setup: its hints', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Half note' }));
     await waitFor(() => expect(said()).toBe('Turn on at least one note value to play'));
   });
+
+  it('are read as sentences of their own when a change brings two, as each is a line of its own', async () => {
+    // Whole and half notes in 2/4, 3/4 and 4/4: with the half note off, 2/4 and 3/4 cannot be filled.
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ lessons: {}, practiceDays: [], lastSettings: { ...DEFAULT_SETTINGS, notes: ['whole', 'half'], rests: [], meters: ['2/4', '3/4', '4/4'] } }));
+    window.location.hash = '#/setup';
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Half note' }));
+    const lines = [...document.querySelectorAll('.hint-box > span')].map((el) => el.textContent ?? '');
+    expect(lines.map((line) => line.slice(0, 9))).toEqual(['2/4 needs', '3/4 needs']);
+    await waitFor(() => expect(said()).toBe(lines.join('. ')));
+  });
 });

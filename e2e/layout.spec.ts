@@ -1281,7 +1281,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(field).toHaveValue(/^T44-Q-R-1B-120-/);
       await expect(field).toBeFocused();
       expect(await field.evaluate((el: HTMLInputElement) => el.selectionEnd! - el.selectionStart!)).toBe((await field.inputValue()).length);
-      await expect(page.getByRole('status').filter({ hasText: /^Selected\./ })).toBeVisible();
+      // The line under it is plain text, read out through the app's one live region as the focus lands on the code.
+      await expect(page.locator('.code-shown').getByText(/^Selected\./)).toBeVisible();
+      await expect(announcer(page)).toHaveText(/^Selected\./);
+      await expect(page.getByRole('status')).toHaveCount(0);
       await expectClickable(field);
       // On a line under Copy code: in the side panel on tablet and desktop, at the bottom on a phone, the buttons in view.
       if (VIEWPORTS[name].width >= 700) await expect(page.locator('.wide-side').getByRole('textbox', { name: 'Exercise code' })).toBeVisible();

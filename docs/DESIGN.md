@@ -2277,9 +2277,11 @@ both work.
   of Try again on the note for no answer and on the sync line, every form's done line (*Name saved.*, *Saved.*, *New
   link ready. Send it yourself.*) and Settings' *Progress was reset.*, what a Learn quick check's answer means, the
   Practice setup's hint a change brings (*Turn on at least one note value to play*, as Start turns off; the hints the
-  setup opens with are read with the page), Calibrate's result (its sentence, with the delay) and the Pause sheet's
-  *The sound was interrupted. …*. Those lines are plain text, not a `role="status"` of their own, so nothing is read
-  twice: a status put in already holding its text is not read by every screen reader.
+  setup opens with are read with the page; two of them as two sentences), Calibrate's result (its sentence, with the
+  delay), the Pause sheet's *The sound was interrupted. …*, and the Copy field's and Results' Copy code's *Selected.
+  Copy it with your device's copy command.* as the focus goes to the selected text. Those lines are plain text, not a
+  `role="status"` of their own, so nothing is read twice: a status put in already holding its text is not read by
+  every screen reader.
 
 **Destructive confirm** (`ConfirmAction`) is Settings' Reset progress pattern.
 - The row button (red words and icon) turns, in place, into the question in bold, one line on what happens, any field

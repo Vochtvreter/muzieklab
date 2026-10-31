@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { levelStart } from '../../game/xp';
 import { setLocale } from '../../i18n';
+import { listenToAnnouncements } from '../lib/announce';
 import { AchievementBadges, CodeCopy, LevelContent, LevelUpContent } from './Reward';
 
 afterEach(() => {
@@ -154,6 +155,8 @@ describe('CodeCopy (Results)', () => {
     for (const block of [refused, () => vi.stubGlobal('navigator', { ...navigator, clipboard: undefined })]) {
       block();
       document.execCommand = vi.fn(() => false);
+      const said: string[] = [];
+      const stop = listenToAnnouncements((text) => said.push(text));
       render(<CodeCopy code={code} className="ghost-btn" />);
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
@@ -163,7 +166,17 @@ describe('CodeCopy (Results)', () => {
       expect(field.readOnly).toBe(true);
       expect(document.activeElement).toBe(field);
       expect(field.selectionEnd! - field.selectionStart!).toBe(code.length);
-      expect(screen.getByRole('status').textContent).toMatch(/^Selected/);
+      // The line under it is read out through the app's live region, not as a status inserted with its text.
+      expect(screen.getByText("Selected. Copy it with your device's copy command.")).toBeTruthy();
+      expect(screen.queryByRole('status')).toBeNull();
+      expect(said).toEqual(["Selected. Copy it with your device's copy command."]);
+      // Copy code again: the code is selected again, and the line is not said a second time.
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
+      });
+      expect(document.activeElement).toBe(field);
+      expect(said).toHaveLength(1);
+      stop();
       cleanup();
     }
   });

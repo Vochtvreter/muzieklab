@@ -51,8 +51,9 @@ export function Setup(): JSX.Element {
   const blockedKey = startBlockedKey(s, feas);
   // A change that brings a hint (the last note value off, which turns Start off) has it read out through the app's one
   // live region (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen
-  // reader. The hints a setup opens with are read with the page.
-  const hintText = hints.map((h) => h.text).join(' ');
+  // reader. The hints a setup opens with are read with the page. Each is a line of its own on screen, so a sentence
+  // break between them ("… eighth note. 3/4 needs …").
+  const hintText = hints.map((h) => h.text).join('. ');
   const hintsBefore = useRef(hintText);
   useEffect(() => {
     if (hintsBefore.current === hintText) return;

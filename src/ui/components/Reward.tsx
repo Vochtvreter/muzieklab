@@ -8,6 +8,7 @@ import { UNLOCK_STARS, type LessonOutcome } from '../../game/track';
 import { levelInfo, rankOf, RANKS, type LevelInfo } from '../../game/xp';
 import { dateParts, t } from '../../i18n';
 import { useReducedMotion } from '../hooks';
+import { announce } from '../lib/announce';
 import { rich } from '../lib/format';
 import { Link } from '../router';
 import type { PersonalBest } from '../store';
@@ -151,8 +152,12 @@ export function CodeCopy({ code, className }: { code: string; className: string 
     field.current?.focus();
     field.current?.setSelectionRange(0, code.length);
   };
+  // The focus goes to the code, and the line under it is read out through the app's one live region
+  // (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen reader.
   useEffect(() => {
-    if (state === 'selected') select();
+    if (state !== 'selected') return;
+    select();
+    announce(t('form.selected'));
   }, [state]);
   const fallback = (): void => {
     if (copyBySelection(code)) setState('copied');
@@ -174,7 +179,7 @@ export function CodeCopy({ code, className }: { code: string; className: string 
       {state === 'selected' && (
         <span className="code-shown m-in">
           <input ref={field} className="tfield-input copy-value" value={code} readOnly aria-label={t('results.code')} onFocus={(e) => e.currentTarget.select()} />
-          <span className="tfield-hint" role="status">
+          <span className="tfield-hint">
             {t('form.selected')}
           </span>
         </span>

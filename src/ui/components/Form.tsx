@@ -296,6 +296,12 @@ export function CopyField({ label, value, multiline, copyLabel, hint, id: given 
     return () => window.clearTimeout(timer);
   }, [state]);
   useEffect(() => setState('idle'), [value]);
+  // "Selected. Copy it …" is read out as the focus lands on the selected text, through the app's one live region
+  // (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen reader, and the
+  // field's description is its own hint.
+  useEffect(() => {
+    if (state === 'selected') announce(t('form.selected'));
+  }, [state]);
 
   // A message is shown whole: the text area grows to its text, again when the width changes or the font arrives.
   useLayoutEffect(() => {
@@ -363,7 +369,7 @@ export function CopyField({ label, value, multiline, copyLabel, hint, id: given 
         </button>
       </div>
       {state === 'selected' && (
-        <span className="tfield-hint m-in" role="status">
+        <span className="tfield-hint m-in">
           {t('form.selected')}
         </span>
       )}

@@ -147,16 +147,22 @@ describe('CopyField', () => {
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy();
   });
 
-  it('selects the text when there is no clipboard', () => {
+  it("selects the text when there is no clipboard, and says to copy it through the app's live region", () => {
     vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
     document.execCommand = vi.fn(() => false);
+    const said: string[] = [];
+    const stop = listenToAnnouncements((text) => said.push(text));
     render(<CopyField label="Message" value={'Hi Lies,\nopen this link.'} multiline />);
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     const area = screen.getByLabelText('Message') as HTMLTextAreaElement;
     expect(area.tagName).toBe('TEXTAREA');
     expect(document.activeElement).toBe(area);
     expect(area.selectionEnd - area.selectionStart).toBe(area.value.length);
-    expect(screen.getByRole('status').textContent).toMatch(/^Selected/);
+    // The line under it, not a status inserted with its text: the focus is on the text area, which it does not describe.
+    expect(screen.getByText("Selected. Copy it with your device's copy command.")).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(said).toEqual(["Selected. Copy it with your device's copy command."]);
+    stop();
   });
 });
 

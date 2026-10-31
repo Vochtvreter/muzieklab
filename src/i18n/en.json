@@ -1298,8 +1298,8 @@
       "treble": "treble clef",
       "bass": "bass clef"
     },
-    "major": "{tonic} major",
-    "minor": "{tonic} minor",
+    "major": "{tonic}\u00a0major",
+    "minor": "{tonic}\u00a0minor",
     "keyPair": "{major} · {minor}",
     "keyNone": "No sharps or flats",
     "keySharps": "{count, plural, one {1 sharp: every {letter} is {name}} other {# sharps: {names}}}",
