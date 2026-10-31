@@ -1102,12 +1102,12 @@ How write and hear work is in §3.5, *Write it, hear it*.
   with rhythm progress: sol).
 - Every open unit is a button that opens and closes it (the current unit is open). An open unit shows its lessons by
   name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars, on a second line
-  where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again with
-  a tap on its stars, a 44 px area from the unit's title row down (the row keeps its own 44 px and opens the unit). The
-  current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already says it. Once the whole
-  path is done, Start plays the last lesson again and says so (*Play lesson 26.5 again*, nl *Speel les 26.5 nog een
-  keer*), as Home's card says *Play again*. A note unit's node shows its note (*sol*), a rhythm unit's its glyph; a word
-  there (*Mix*) comes from the catalog.
+  where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again with a
+  tap on its stars, a 44 px area from the unit's title row down (the row keeps its own 44 px and opens the unit),
+  whatever font the device draws ★ with: the stars are 15 px tall. The current unit has no *Next: lesson …* line under
+  it (since 0.10.0): its Start button already says it. Once the whole path is done, Start plays the last lesson again
+  and says so (*Play lesson 26.5 again*, nl *Speel les 26.5 nog een keer*), as Home's card says *Play again*. A note
+  unit's node shows its note (*sol*), a rhythm unit's its glyph; a word there (*Mix*) comes from the catalog.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
   said once, under the first locked unit: *Opens with 2 stars on every unit N lesson* (since 0.10.0; before, every
   locked unit repeated it). The title row is faded (0.6), the hint is not: it is text the player reads, 4.5:1 on the
@@ -1696,10 +1696,12 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   a staff with two ledger lines and a why of two lines. On a shorter laptop window their page scrolls. Read notes'
   stats column is 304 px wide (240 px on the board, which draws only *2 / 3*), so the Correct card holds the widest
   score, *50 / 50*, on one line, and Avg time an average of 10 s or more: at 240 px the score broke after the slash
-  from the 10th note on. The answer card beside it is 64 px narrower, so under about 1130 px wide its *do re mi · A B C
-  · Piano* switch (330 px on the board) narrows beside a long keyboard hint, to about 300 px at 1100 px, and the hint
-  stays on its row: on a line of its own (up to 1110 px on the piano, 1130 px with the Dutch name buttons) it made the
-  card a line taller, and two ledger lines with a timer scrolled the page.
+  from the 10th note on. Its cards' sides are 14 px (18 px on the board), so the score keeps a few px to spare in a
+  browser that draws each letter a whole pixel wide (112 px there, 109 px elsewhere). The answer card beside it is 64 px
+  narrower, so under about 1130 px wide its *do re mi · A B C · Piano* switch (330 px on the board) narrows beside a
+  long keyboard hint, to about 300 px at 1100 px, and the hint stays on its row: on a line of its own (up to 1110 px on
+  the piano, 1130 px with the Dutch name buttons) it made the card a line taller, and two ledger lines with a timer
+  scrolled the page.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
@@ -1934,9 +1936,11 @@ ABRSM, Trinity, RCM and Kodály.
 a 320 px phone, or Dutch *en*, wider than *&*, at 375 and 390 px) or its notes would run into the bar line (the note
 tree's sixteenths at 320 px), the staff is drawn smaller, down to 0.75, as Play's staff is on a short screen. Two
 counts that meet letter to letter (*trip let*) keep half a letter apart, or they read as one word (*triplet*): 7.1 is
-drawn smaller under 390 px (0.75 at 320 px); a bracket, a digit or *&* between two counts keeps them apart already. A
-held count shares the room between its neighbours by how wide their words are. Where everything fits, nothing changes.
-The tables and diagrams keep their words apart too, at every width and in Dutch:
+drawn smaller under 390 px (0.75 at 320 px); a bracket, a digit or *&* between two counts keeps them apart already.
+Each count is drawn exactly as wide as the room the staff keeps for it (its `textLength`), also in a browser that draws
+each letter a whole pixel wide at the size the staff is shown (*trip* and *let* touched at 380 px there). A held count
+shares the room between its neighbours by how wide their words are. Where everything fits, nothing changes. The tables
+and diagrams keep their words apart too, at every width and in Dutch:
 - A table row's name keeps its words whole (*Gepunteerde*); its value wraps instead (*2 + 1 = 3* over *tellen*).
 - 1.3's strong and weak beats: each beat is at least as wide as its word (*medium*, *halfzwaar*), and the meters share
   their columns, so the beats still line up from row to row.

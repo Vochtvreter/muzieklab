@@ -332,4 +332,14 @@ describe('drawStaff', () => {
     const xs = texts.slice(0, 5).map((t) => Number(t.getAttribute('x')));
     expect(xs).toEqual([...xs].sort((a, b) => a - b));
   });
+
+  it('draws each count as wide as the staff leaves room for it, 7.8 a letter, whatever widths the browser gives letters', () => {
+    // Chromium 141 draws each letter a whole pixel wide at the size the staff is shown: at 380 px Learn 7.1's "trip" and
+    // "let" were 3 px wider than the room kept for them, and stood 1.9 px apart.
+    const meter = getMeter('4/4');
+    const { svg } = draw({ bars: parseBars(meter, ['[8t 8t 8t] q [8t 8t 8t] q']), meter, width: 303, counts: { text: plainSyllable, held: DARK.staff }, shrinkToFit: true });
+    const texts = [...svg.querySelectorAll('.staff-counts text')];
+    expect(texts.map((t) => t.textContent)).toContain('trip');
+    expect(texts.map((t) => [t.textContent, t.getAttribute('textLength')])).toEqual(texts.map((t) => [t.textContent, (t.textContent!.length * 7.8).toFixed(1)]));
+  });
 });

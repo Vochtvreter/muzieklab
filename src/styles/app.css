@@ -1530,9 +1530,12 @@ button.lesson-item:active:not(:disabled) {
 .unit-stars .has-stars {
   color: var(--reward-star);
 }
-/* Each lesson's stars: a button (play it again) once unlocked. The 44 px hit area overlaps its neighbours' gaps. */
+/* Each lesson's stars: a button (play it again) once unlocked. The 44 px hit area overlaps its neighbours' gaps. They
+   are 15 px tall whatever font draws them: ★ is not in Figtree, and the font a device draws it with set their height
+   (14 px with DejaVu Sans, 15 px with Inter), which left a hit area of 43 px. */
 .lesson-stars {
   position: relative;
+  height: 15px;
   border: 0;
   background: transparent;
   padding: 0;

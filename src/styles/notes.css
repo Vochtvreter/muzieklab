@@ -773,10 +773,14 @@
 /*
  * Read notes: the two cards hold the widest score on one line, "50 / 50" of 50 notes (as wide as "10 / 10": 7
  * characters of 26 px mono), and an average of 10 s or more. At the board's 240 px the score broke after the slash
- * from the 10th note on.
+ * from the 10th note on. The cards' sides are 14 px (18 px on the board): a browser that draws each letter a whole
+ * pixel wide makes the score 112 px (Chromium 141; 109 px in others), which ran 2 px past 18 px sides.
  */
 .nplay-desk .nstats {
   flex-basis: 304px;
+}
+.nplay-desk .nstats .stat {
+  padding-inline: 14px;
 }
 .nstat-big {
   white-space: nowrap;

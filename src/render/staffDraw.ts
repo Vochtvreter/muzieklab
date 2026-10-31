@@ -411,6 +411,9 @@ function addCounts(svg: SVGSVGElement, counts: { x: number; y: number; text: str
     el.setAttribute('x', c.x.toFixed(1));
     el.setAttribute('y', c.y.toFixed(1));
     el.setAttribute('text-anchor', 'middle');
+    // Exactly as wide as the room kept for it (COUNT_CHAR_W a letter): a browser that draws each letter a whole pixel
+    // wide at the size the staff is shown made words up to half a pixel a letter wider, and "trip" ran into "let".
+    el.setAttribute('textLength', (c.text.length * COUNT_CHAR_W).toFixed(1));
     el.setAttribute('fill', c.held ? held : ink);
     el.textContent = c.text;
     g.appendChild(el);
