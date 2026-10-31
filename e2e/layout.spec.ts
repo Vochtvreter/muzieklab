@@ -444,6 +444,29 @@ async function expectSigUncovered(page: Page): Promise<void> {
 }
 
 /**
+ * A piano's keys come low to high in the page, as they are drawn, so Tab and a screen reader go along the keyboard: the
+ * black keys came after all the white ones. A pressed white key (scaled a little) stays under the black keys beside it.
+ */
+async function expectPitchOrder(keys: Locator): Promise<void> {
+  const mids = await keys.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => r.left + r.width / 2));
+  for (let i = 1; i < mids.length; i++) expect(mids[i], `key ${i + 1} is right of key ${i}`).toBeGreaterThan(mids[i - 1]);
+  const covered = await keys.evaluateAll((els) => {
+    const out: string[] = [];
+    for (const black of els.filter((el) => el.classList.contains('piano-black'))) {
+      const white = black.nextElementSibling;
+      if (!white) continue;
+      white.setAttribute('style', 'transform: scale(0.97); transition: none');
+      const r = black.getBoundingClientRect();
+      const top = document.elementFromPoint(r.right - 3, r.top + r.height / 2);
+      if (top !== black && !black.contains(top)) out.push(black.getAttribute('aria-label') ?? '');
+      white.removeAttribute('style');
+    }
+    return out;
+  });
+  expect(covered, 'black keys a pressed white key covers').toEqual([]);
+}
+
+/**
  * Every key of the circle, on both rings, takes taps 44 px across and down through its middle (DESIGN.md §11), or,
  * where its ring has no room for that (the inner ring on a phone under 390 px wide), as far as the next key; and its
  * middle is its own. Counted px by px, as expectHitHeight does.
@@ -1705,6 +1728,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
       await expect(keys).toHaveCount(12);
+      await expectPitchOrder(keys);
       for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i), inPlace);
       await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
@@ -2037,24 +2061,28 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Minor' }).click();
       const minor = page.getByRole('group', { name: 'Circle of fifths, minor keys' });
       await expectCircleTargets(page);
+      // A phone's one row of stars for a minor key counts its forms with two stars, as the circle fills it.
+      if (!wide) await expect(page.getByRole('region', { name: 'Selected key' }).getByRole('img')).toHaveAccessibleName('No form with 2 stars yet');
       await minor.getByRole('button', { name: /^B flat minor/ }).click();
       await minor.getByRole('button', { name: /^B flat minor/ }).click();
-      await expect(page.getByRole('button', { name: 'Practice A♯ minor' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Practice A sharp minor' })).toBeVisible();
+      // A key with a sign is said in words (A sharp minor), in text for screen readers only that stays inside the page.
+      await expectNoPageScroll(page);
       // Seven sharps, seven flats and six sharps read whole between the inner ring's keys, and so do C♯ major's seven
       // sharps between the faint minor keys.
       await expectSigUncovered(page);
       await minor.getByRole('button', { name: /^G sharp minor/ }).click();
       await minor.getByRole('button', { name: /^G sharp minor/ }).click();
-      await expect(page.getByRole('button', { name: 'Practice A♭ minor' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Practice A flat minor' })).toBeVisible();
       await expectSigUncovered(page);
       await minor.getByRole('button', { name: /^D sharp minor/ }).click();
-      await expect(page.getByRole('button', { name: 'Practice D♯ minor' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Practice D sharp minor' })).toBeVisible();
       await expectSigUncovered(page);
       await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Major' }).click();
       const major = page.getByRole('group', { name: 'Circle of fifths, major keys' });
       await major.getByRole('button', { name: /^D flat major/ }).click();
       await major.getByRole('button', { name: /^D flat major/ }).click();
-      await expect(page.getByRole('button', { name: 'Practice C♯ major' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Practice C sharp major' })).toBeVisible();
       await expectSigUncovered(page);
       await expectNoSideScroll(page);
     });
@@ -2085,6 +2113,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: /^Start · / }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
       await expect(keys).toHaveCount(15);
+      await expectPitchOrder(keys);
       // The whole piano with its letters in view without scrolling, in a phone browser too (DESIGN.md §9).
       for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i), inPlace);
       await expect(page.locator('.spiano .piano-label')).toHaveText(['G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A']);

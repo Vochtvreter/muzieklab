@@ -123,6 +123,17 @@ describe("Learn: the examples' play buttons", () => {
   });
 });
 
+describe("Learn: the piano diagram", () => {
+  // In the order they are drawn, low to high, for Tab and a screen reader: the white keys came first, then the black.
+  it('has its keys in pitch order, C to B', () => {
+    open('#/learn/9?s=9.1');
+    const piano = section('9.1').querySelector('.piano--diagram')!;
+    expect([...piano.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual([
+      'C', 'C sharp or D flat', 'D', 'D sharp or E flat', 'E', 'F', 'F sharp or G flat', 'G', 'G sharp or A flat', 'A', 'A sharp or B flat', 'B',
+    ]);
+  });
+});
+
 describe('Learn: a practice link opened in a new tab', () => {
   it('is not taken over by a Ctrl or Cmd click: the browser opens it in a new tab', () => {
     open('#/learn/4');

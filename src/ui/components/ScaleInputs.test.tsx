@@ -46,16 +46,23 @@ describe('DegreeRow', () => {
 });
 
 describe('ScalePiano', () => {
-  it('names the two keys of a note in the window low and high', () => {
+  // In the order they are drawn and played, low to high: Tab and a screen reader went through the white keys first and
+  // then the black ones, so F♯ major's first note was the tenth stop.
+  it('names the two keys of a note in the window low and high, in pitch order', () => {
     const { container } = render(<ScalePiano scale={{ key: 'G', type: 'major' }} marks={{}} played={[]} onPick={() => undefined} />);
     expect(labels(container.querySelectorAll('button'))).toEqual([
-      'G, low', 'A, low', 'B', 'C', 'D', 'E', 'F', 'G, high', 'A, high',
-      'G sharp or A flat, low', 'A sharp or B flat', 'C sharp or D flat', 'D sharp or E flat', 'F sharp or G flat', 'G sharp or A flat, high',
+      'G, low', 'G sharp or A flat, low', 'A, low', 'A sharp or B flat', 'B', 'C', 'C sharp or D flat', 'D', 'D sharp or E flat', 'E', 'F',
+      'F sharp or G flat', 'G, high', 'G sharp or A flat, high', 'A, high',
     ]);
+  });
+
+  it('starts on the white key below a black tonic, then the tonic', () => {
+    const { container } = render(<ScalePiano scale={{ key: 'F#', type: 'major' }} marks={{}} played={[]} onPick={() => undefined} />);
+    expect(labels(container.querySelectorAll('button')).slice(0, 3)).toEqual(['F, low', 'F sharp or G flat, low', 'G, low']);
   });
 
   it('adds the computer key after it on desktop', () => {
     const { container } = render(<ScalePiano scale={{ key: 'G', type: 'major' }} marks={{}} played={[]} onPick={() => undefined} kbd />);
-    expect(labels(container.querySelectorAll('button')).slice(0, 3)).toEqual(['G, low, key A', 'A, low, key S', 'B, key D']);
+    expect(labels(container.querySelectorAll('button')).slice(0, 4)).toEqual(['G, low, key A', 'G sharp or A flat, low, key W', 'A, low, key S', 'A sharp or B flat, key E']);
   });
 });

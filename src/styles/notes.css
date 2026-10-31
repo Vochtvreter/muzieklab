@@ -564,10 +564,15 @@
   padding: 8px 18px;
 }
 
-/* One octave: 7 white keys in a grid, 5 black keys placed on the boundaries after C, D, F, G and A. */
+/*
+ * One octave: 7 white keys in a grid, 5 black keys placed on the boundaries after C, D, F, G and A. Each black key comes
+ * after the white key it follows (pitch order, for Tab), so it is lifted over the next one: a pressed white key is
+ * scaled (base.css), which paints it with the placed keys, in that order. Isolated, so the lift stays in the piano.
+ */
 .piano {
   --black-w: 32px;
   position: relative;
+  isolation: isolate;
   height: 200px;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -592,6 +597,7 @@
 }
 .piano-black {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: calc(var(--after) * (100% + 3px) / 7 - var(--black-w) / 2 - 1.5px);
   width: var(--black-w);

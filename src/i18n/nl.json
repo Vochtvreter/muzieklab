@@ -1586,6 +1586,7 @@
       "circleMinor": "Kwintencirkel, mineurtoonsoorten",
       "majorAria": "{name}: {level, plural, =0 {nog geen sterren} one {1 ster} other {# sterren}}",
       "minorAria": "{name}: {level, plural, =0 {nog geen vorm met 2 sterren} one {1 vorm met 2 sterren} other {# vormen met 2 sterren}}",
+      "formsAria": "{count, plural, =0 {Nog geen vorm met 2 sterren} one {1 van 3 vormen met 2 sterren} other {# van 3 vormen met 2 sterren}}",
       "alsoAria": " (of {other})",
       "sigAria": "Voortekening: {signs}",
       "noSigns": "geen ♯ of ♭",

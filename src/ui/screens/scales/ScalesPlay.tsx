@@ -27,6 +27,7 @@ import { t } from '../../../i18n';
 import { PitchStaff, type PitchNote } from '../../../render/PitchStaff';
 import { engine, unlockAudio } from '../../audio';
 import { ExerciseFrame } from '../../components/AppShell';
+import { Said } from '../../components/Bits';
 import { ExerciseHeader } from '../../components/ExerciseHeader';
 import { Icon } from '../../components/Icon';
 import type { KeyMark } from '../../components/NoteInputs';
@@ -294,7 +295,8 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     <SignButtons letter={curLetter} choices={choices} wrong={wrong?.kind === 'sign' ? wrong.alter : null} onPick={(alter) => answer({ kind: 'sign', alter })} disabled={done} kbd={kbd} />
   );
   // The done line ends with the scale's notes. Up and down on the shortest phones leaves them to the degree rows, which
-  // show all 15 (scales.css). Screen readers get the line said, in a live region of its own beside it.
+  // show all 15 (scales.css). Screen readers get the line said, in a live region of its own beside it; after a wrong
+  // answer it ends with the mistakes so far, so the same wrong answer again is a new line, read out again.
   const feedbackBox = (
     <>
       <div className={'nfeedback m-ease' + (tone ? ' is-' + tone : '')} aria-hidden="true">
@@ -309,7 +311,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
         </span>
       </div>
       <span className="sr-only" aria-live="polite">
-        {line(true) + (done ? ' ' + notes.map(noteSpoken).join(', ') : '')}
+        {line(true) + (done ? ' ' + notes.map(noteSpoken).join(', ') : wrong ? ' ' + t('scales.play.mistakesAria', { count: mistakes }) + '.' : '')}
       </span>
     </>
   );
@@ -356,6 +358,8 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
     input: t(piano ? 'scales.setup.inputWord.piano' : 'scales.setup.inputWord.names'),
   });
   const again = sc.again && <span className="splay-again">{t('scales.play.again')}</span>;
+  // Shown with its signs, said in words (it also names the desktop's answer card).
+  const title = <Said shown={scaleName(sc)} said={scaleSpoken(sc)} />;
   const mistakesBox = (
     <div className="splay-mistakes" role="img" aria-label={t('scales.play.mistakesAria', { count: mistakes })}>
       <div className={'splay-mistakes-n ' + (mistakes ? 'tone-miss' : 'tone-good')} aria-hidden="true">
@@ -386,7 +390,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
       <div className="play-info-left">
         <span className="eyebrow">{eyebrow}</span>
         <span className="splay-title">
-          {scaleName(sc)} {again}
+          {title} {again}
         </span>
       </div>
       {mistakesBox}
@@ -440,7 +444,7 @@ function Round({ run }: { run: ScaleRun }): JSX.Element {
             <section className="card nanswer sanswer" aria-labelledby="scale-title">
               <div className="nanswer-head">
                 <h2 id="scale-title" className="splay-title">
-                  {scaleName(sc)} {again}
+                  {title} {again}
                 </h2>
                 {kbd && <span className="muted-text">{t(piano ? 'scales.play.kbdPiano' : 'scales.play.kbdNames')}</span>}
               </div>

@@ -2,7 +2,7 @@
  * Draws the content blocks of a Learn section (chapters.ts): text, tips, lists, staves, the piano and side-by-side pairs.
  * Rhythms, the pulse, the note tree, playable staves and the piano can be heard (Listen.tsx).
  */
-import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { BLACK_KEYS, LETTERS, PPQ, getMeter, letterOf, pitchClass, type ScaleAlter, type Letter, type Meter, type MeterId, type NotatedSymbol, type NoteValue } from '../../core/api';
 import { countBar, countText, type CountMark } from '../../render/counting';
 import { PitchStaff, type PitchNote } from '../../render/PitchStaff';
@@ -449,25 +449,29 @@ function NoteTree(): JSX.Element {
 
 /**
  * One piano octave from middle C, labelled with letters: a tapped key sounds. `marked` white keys are tinted, and the
- * play button plays them in order.
+ * play button plays them in order. Each black key comes after the white key it follows: low to high, as drawn.
  */
 function PianoDiagram({ alt, marked }: { alt: string; marked: string[] }): JSX.Element {
   const { tap } = useLearnSound();
   const key = (pc: number) => (): void => tap(notesSound([PIANO_C + pc]));
   const piano = (
     <div className="piano piano--diagram" role="group" aria-label={alt}>
-      {LETTERS.map((L: Letter) => (
-        <button key={L} type="button" className={'piano-white' + (marked.includes(L) ? ' is-marked' : '')} aria-label={spokenName(L, 0)}
-          onClick={key(pitchClass(L, 0))}>
-          <span className="piano-label" aria-hidden="true">
-            {letterName(L, 0)}
-          </span>
-        </button>
-      ))}
-      {BLACK_KEYS.map((b) => (
-        <button key={b.pc} type="button" className="piano-black" aria-label={t('notes.play.blackKey', { sharp: spokenName(b.sharp, 1), flat: spokenName(b.flat, -1) })}
-          style={{ '--after': b.after } as CSSProperties} onClick={key(b.pc)} />
-      ))}
+      {LETTERS.map((L: Letter, i) => {
+        const b = BLACK_KEYS.find((x) => x.after === i + 1);
+        return (
+          <Fragment key={L}>
+            <button type="button" className={'piano-white' + (marked.includes(L) ? ' is-marked' : '')} aria-label={spokenName(L, 0)} onClick={key(pitchClass(L, 0))}>
+              <span className="piano-label" aria-hidden="true">
+                {letterName(L, 0)}
+              </span>
+            </button>
+            {b && (
+              <button type="button" className="piano-black" aria-label={t('notes.play.blackKey', { sharp: spokenName(b.sharp, 1), flat: spokenName(b.flat, -1) })}
+                style={{ '--after': b.after } as CSSProperties} onClick={key(b.pc)} />
+            )}
+          </Fragment>
+        );
+      })}
     </div>
   );
   return marked.length ? <Heard sound={notesSound(markedMidis(marked))} name={alt}>{piano}</Heard> : piano;

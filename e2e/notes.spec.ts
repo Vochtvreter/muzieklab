@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from '../src/core/defaults';
 import { generateExercise } from '../src/core/generator';
 import type { Settings } from '../src/core/types';
 import { exerciseHas } from '../src/game/intro';
-import { pad, pathUpTo, seed as seedStorage, tabTo, VIEWPORTS } from './helpers';
+import { expectNoPageScroll, pad, pathUpTo, seed as seedStorage, tabTo, VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
 
@@ -1525,10 +1525,10 @@ test('scales: the right note in the wrong octave says so, and the two keys of a 
   const piano = page.getByRole('group', { name: 'Piano keyboard from C to D' });
   const key = (name: string): Locator => piano.getByRole('button', { name, exact: true });
   const feedback = page.locator('.nfeedback');
-  // C D E F G A B C D, with C♯ twice: a screen reader hears which is which.
+  // C to D, with C and C♯ twice: a screen reader hears which is which, low to high as the keys are drawn.
   expect(await piano.getByRole('button').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))).toEqual([
-    'C, low', 'D, low', 'E', 'F', 'G', 'A', 'B', 'C, high', 'D, high',
-    'C sharp or D flat, low', 'D sharp or E flat', 'F sharp or G flat', 'G sharp or A flat', 'A sharp or B flat', 'C sharp or D flat, high',
+    'C, low', 'C sharp or D flat, low', 'D, low', 'D sharp or E flat', 'E', 'F', 'F sharp or G flat', 'G', 'G sharp or A flat', 'A',
+    'A sharp or B flat', 'B', 'C, high', 'C sharp or D flat, high', 'D, high',
   ]);
   // The upper C first, then the upper D: the right notes an octave too high, each a mistake.
   await key('C, high').click();
@@ -1574,13 +1574,19 @@ test('scales: a screen reader hears the notes said (F double sharp), on the staf
   await page.keyboard.press('-');
   await expect(feedback).toHaveText(/^Not A♭\. From G♯, go up a whole step/);
   await expect(feedback).toHaveAttribute('aria-hidden', 'true');
-  await expect(said).toHaveText('Not A flat. From G sharp, go up a whole step (skip one key).');
+  await expect(said).toHaveText('Not A flat. From G sharp, go up a whole step (skip one key). 1 mistake.');
+  // The same wrong sign again is said again: the count makes it a new line (the same words are not read twice).
+  await page.keyboard.press('-');
+  await expect(said).toHaveText('Not A flat. From G sharp, go up a whole step (skip one key). 2 mistakes.');
+  await expect(feedback).toHaveText('Not A♭. From G♯, go up a whole step (skip one key).');
   for (const k of ['=', '0', '=', '=', '0', 'x']) await page.keyboard.press(k);
   await expect(page.getByRole('listitem', { name: 'Degree 7: F double sharp' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Treble staff, G sharp harmonic minor: G sharp, A sharp, B, C sharp, D sharp, E, F double sharp' })).toBeVisible();
+  // The scale's name too, over the staff.
+  expect(await page.locator('.splay-title').ariaSnapshot()).toBe('- text: G sharp harmonic minor');
   await page.keyboard.press('=');
-  await expect(feedback).toHaveText('G♯ harmonic minor: done with 1 mistake. G♯ A♯ B C♯ D♯ E F𝄪 G♯');
-  await expect(said).toHaveText('G sharp harmonic minor: done with 1 mistake. G sharp, A sharp, B, C sharp, D sharp, E, F double sharp, G sharp');
+  await expect(feedback).toHaveText('G♯ harmonic minor: done with 2 mistakes. G♯ A♯ B C♯ D♯ E F𝄪 G♯');
+  await expect(said).toHaveText('G sharp harmonic minor: done with 2 mistakes. G sharp, A sharp, B, C sharp, D sharp, E, F double sharp, G sharp');
 
   // The hub, on G♯ minor: its notes, and its key on the circle.
   await page.goto('./#/scales');
@@ -1588,6 +1594,84 @@ test('scales: a screen reader hears the notes said (F double sharp), on the staf
   await expect(page.getByRole('list', { name: 'Notes: G sharp, A sharp, B, C sharp, D sharp, E, F sharp, G sharp' })).toBeVisible();
   await expect(page.getByRole('listitem', { name: 'F sharp', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'G sharp minor: no form with 2 stars yet (or A flat minor)' })).toHaveAttribute('aria-pressed', 'true');
+  // And the selected key's name, its relative key and Practice.
+  const panel = page.getByRole('region', { name: 'Selected key' });
+  await expect(panel.getByRole('button', { name: 'Practice G sharp minor' })).toBeVisible();
+  expect(await panel.ariaSnapshot()).not.toMatch(/[♯♭]/);
+  await expect(panel.locator('.hub-panel-title b')).toHaveText('G♯ minorG sharp minor');
+});
+
+test('scales on the piano: the same wrong key twice is said twice, with the mistakes', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await startScale(page, { keys: ['C'], input: 'piano' });
+  const said = page.locator('.nfeedback + [aria-live]');
+  // C, then F twice.
+  await page.keyboard.press('a');
+  await page.keyboard.press('f');
+  await expect(said).toHaveText('Not F. From C, go up a whole step (skip one key). 1 mistake.');
+  await page.keyboard.press('f');
+  await expect(said).toHaveText('Not F. From C, go up a whole step (skip one key). 2 mistakes.');
+  await expect(page.locator('.sstats .nstat-big')).toHaveText('2');
+});
+
+// A screen reader reads a sign as a symbol or skips it (F♯ major would be "F major"): the setup, the round and Round
+// done show a key with its signs and say it in words, as the hub's circle does.
+for (const size of ['phone', 'desktop'] as const) {
+  test(`scales: the setup, the round and Round done say F sharp major and D sharp harmonic minor in words (${size})`, async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS[size]);
+    await seedStorage(page, {
+      prefs: { seenHowTo: true, seenHold: true },
+      progress: { scales: { settings: { keyMode: 'one', keys: ['F#'], types: ['major', 'harmonic'], input: 'names', direction: 'up', write: 'signs', showSteps: true, playNotes: false }, stars: {} } },
+    });
+    await page.goto('./#/scales/setup');
+    const keys = page.getByRole('group', { name: 'Keys' });
+    await expect(keys.getByRole('button', { name: 'F sharp major' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(keys.getByRole('button', { name: 'F sharp major' })).toHaveText('F♯ majorF sharp major');
+    const hint = await page.locator('.ssetup-keys + .input-hint').ariaSnapshot();
+    expect(hint).toContain('The key you picked on the circle: F sharp major, and D sharp minor for minor scales.');
+    expect(hint).not.toMatch(/[♯♭]/);
+    const summary = await page.locator('.ssetup-summary').ariaSnapshot();
+    expect(summary).toContain('Major, Harmonic minor · F sharp major / D sharp minor · up');
+    expect(summary).not.toMatch(/[♯♭]/);
+    await expectNoPageScroll(page);
+    await expect(page.locator('.ssetup-summary b [aria-hidden="true"]')).toHaveText('Major, Harmonic minor · F♯ major / D♯ minor · up');
+    await page.getByRole('button', { name: 'Start · 2 scales' }).click();
+    // The answer card is named by its scale on desktop; the title over the staff on a phone.
+    const title = page.locator('.splay-title');
+    for (let n = 0; n < 2; n++) {
+      const major = ((await title.textContent()) ?? '').startsWith('F');
+      const name = major ? 'F sharp major' : 'D sharp harmonic minor';
+      if (size === 'desktop') await expect(page.getByRole('region', { name })).toBeVisible();
+      expect(await title.ariaSnapshot()).toBe(size === 'desktop' ? `- heading "${name}" [level=2]` : `- text: ${name}`);
+      for (const k of major ? '===0====' : '=====0x=') await page.keyboard.press(k);
+      await page.keyboard.press('Enter');
+    }
+    await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+    await expectNoPageScroll(page);
+    const list = page.getByRole('list', { name: 'Scales in this round' });
+    expect(await list.ariaSnapshot()).not.toMatch(/[♯♭]/);
+    await expect(list).toContainText('D♯ harmonic minor');
+    await expect(list.getByRole('listitem').filter({ hasText: 'D sharp harmonic minor' })).toHaveCount(1);
+    // The circle's image names the keys new this round in words (its drawn labels are its own); the line beside it
+    // shows them with their signs.
+    await expect(page.getByRole('img', { name: /New this round: F sharp major\.$/ })).toBeVisible();
+    expect(await page.locator('.cprog-text').ariaSnapshot()).not.toMatch(/[♯♭]/);
+    await expect(page.locator('.cprog-text')).toContainText('F♯ major reached ★★ this round.');
+  });
+}
+
+test('scales: the key picked on the circle comes back after a reload, also once the setup goes round the circle', async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.phone);
+  await page.goto('./#/scales');
+  await page.getByRole('button', { name: /^Go round the circle/ }).click();
+  await expect(page.getByRole('group', { name: 'Keys' }).getByRole('button', { name: 'All 15' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('link', { name: 'Back to Scales' }).click();
+  const circle = page.getByRole('group', { name: 'Circle of fifths, major keys' });
+  await circle.getByRole('button', { name: /^F sharp major/ }).click();
+  await expect(circle.getByRole('button', { name: /^F sharp major/ })).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(circle.getByRole('button', { name: /^F sharp major/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Practice F sharp major' })).toBeVisible();
 });
 
 test('scales: going round the circle keeps the circle order, and the setup says so', async ({ page }) => {

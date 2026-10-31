@@ -23,24 +23,25 @@ import {
 import { t } from '../../../i18n';
 import { PitchStaff } from '../../../render/PitchStaff';
 import { AppShell } from '../../components/AppShell';
+import { Said } from '../../components/Bits';
 import { CircleOfFifths, type Ring } from '../../components/CircleOfFifths';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
 import { keySignsAria, letterName } from '../../lib/noteText';
-import { keyName, noteName, noteSpoken } from '../../lib/scaleText';
+import { keyName, keySpoken, noteName, noteSpoken } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore } from '../../store';
 import { useStartScales } from './start';
 
 /**
- * "★★☆" with its spoken form. The stars not earned are outlined as well as grey: a contrast theme paints every star in
- * one colour (DESIGN.md §11).
+ * "★★☆" with its spoken form (or `label`). The stars not earned are outlined as well as grey: a contrast theme paints
+ * every star in one colour (DESIGN.md §11).
  */
-function Stars({ n, className }: { n: number; className?: string }): JSX.Element {
+function Stars({ n, className, label }: { n: number; className?: string; label?: string }): JSX.Element {
   return (
-    <span role="img" aria-label={t('scales.starsAria', { count: n })} className={'scale-stars' + (className ? ' ' + className : '')}>
+    <span role="img" aria-label={label ?? t('scales.starsAria', { count: n })} className={'scale-stars' + (className ? ' ' + className : '')}>
       <span aria-hidden="true">{'★'.repeat(n)}</span>
       <span aria-hidden="true" className="scale-stars-off">
         {'☆'.repeat(3 - n)}
@@ -75,15 +76,18 @@ export function ScalesHub(): JSX.Element {
 
   const counts = doneCounts(stars);
   const others = CIRCLE[circlePosition(key)].filter((x) => x !== key);
-  const title = keyName(key, minor);
-  const sub =
-    t(minor ? 'scales.hub.relMajor' : 'scales.hub.relMinor', { name: keyName(key, !minor) }) +
-    (others.length ? t(kbd ? 'scales.hub.clickAgain' : 'scales.hub.tapAgain', { name: keyName(others[0], minor) }) : '');
+  // The key's name, its relative key and Practice show the signs and are said in words, as the circle's keys and the
+  // notes are: a screen reader reads a sign as a symbol or skips it.
+  const subOf = (name: typeof keyName): string =>
+    t(minor ? 'scales.hub.relMajor' : 'scales.hub.relMinor', { name: name(key, !minor) }) +
+    (others.length ? t(kbd ? 'scales.hub.clickAgain' : 'scales.hub.tapAgain', { name: name(others[0], minor) }) : '');
+  const title = <Said shown={keyName(key, minor)} said={keySpoken(key, minor)} />;
+  const sub = <Said shown={subOf(keyName)} said={subOf(keySpoken)} />;
+  const practiceLabel = <Said shown={t('scales.hub.practice', { name: keyName(key, minor) })} said={t('scales.hub.practice', { name: keySpoken(key, minor) })} />;
   const notes = scaleNotes({ key, type: minor ? 'natural' : 'major' });
   const signs = keySigns(key);
   const level = minor ? minorLevel(stars, key) : majorLevel(stars, key);
   const formStars = (type: ScaleType): number => stars[scaleId({ key, type })] ?? 0;
-  const practiceLabel = t('scales.hub.practice', { name: title });
 
   const switcher = (
     <Segmented<Ring> label={t('scales.hub.ring')} value={tab} className="hub-switch" onChange={(v) => pick(key, v)}
@@ -167,7 +171,8 @@ export function ScalesHub(): JSX.Element {
                 <b>{title}</b>
                 <span>{sub}</span>
               </span>
-              <Stars n={level} />
+              {/* For a minor key, how many of its forms have two stars, as the circle fills it: not a rating. */}
+              <Stars n={level} label={minor ? t('scales.hub.formsAria', { count: level }) : undefined} />
             </div>
             {noteChips}
             {buttons}
@@ -187,7 +192,12 @@ export function ScalesHub(): JSX.Element {
       </div>
       <span className="hub-sig-foot">
         <b>{sigCount}</b>
-        {signs.length > 0 && <span className="mono-accent">{signs.map((x) => letterName(x.letter, x.alter)).join(' ')}</span>}
+        {/* The staff above says them in words. */}
+        {signs.length > 0 && (
+          <span className="mono-accent" aria-hidden="true">
+            {signs.map((x) => letterName(x.letter, x.alter)).join(' ')}
+          </span>
+        )}
       </span>
     </div>
   );

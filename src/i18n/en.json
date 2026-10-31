@@ -1586,6 +1586,7 @@
       "circleMinor": "Circle of fifths, minor keys",
       "majorAria": "{name}: {level, plural, =0 {no stars yet} one {1 star} other {# stars}}",
       "minorAria": "{name}: {level, plural, =0 {no form with 2 stars yet} one {1 form with 2 stars} other {# forms with 2 stars}}",
+      "formsAria": "{count, plural, =0 {No form with 2 stars yet} one {1 of 3 forms with 2 stars} other {# of 3 forms with 2 stars}}",
       "alsoAria": " (or {other})",
       "sigAria": "Key signature: {signs}",
       "noSigns": "no ♯ or ♭",

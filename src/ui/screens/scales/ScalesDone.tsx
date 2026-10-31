@@ -9,13 +9,14 @@ import { CIRCLE, doneCounts, majorLevel, minorLevel, type KeyId, type ScaleStars
 import { levelInfo } from '../../../game/xp';
 import { t } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
+import { Said } from '../../components/Bits';
 import { Icon } from '../../components/Icon';
 import { AchievementBadges, LevelUpContent } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
 import { andList } from '../../lib/format';
 import { useLearnReturn } from '../../lib/learnReturn';
-import { circleLabel, keyName, keySpoken, scaleName } from '../../lib/scaleText';
+import { circleLabel, keyName, keySpoken, scaleName, scaleSpoken } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore, type ScaleLast } from '../../store';
 import { useStartScales } from './start';
@@ -93,7 +94,10 @@ export function ScalesDone(): JSX.Element | null {
             <div key={i} role="listitem" className="sdone-row">
               <div className="sdone-row-text">
                 <div className="sdone-row-head">
-                  <b>{scaleName(x.scale)}</b>
+                  {/* Shown with its signs, said in words: a screen reader reads a sign as a symbol or skips it. */}
+                  <b>
+                    <Said shown={scaleName(x.scale)} said={scaleSpoken(x.scale)} />
+                  </b>
                   <span className={x.mistakes ? 'tone-miss' : 'tone-good'}>{t('scales.done.mistakes', { count: x.mistakes })}</span>
                 </div>
                 {x.cameBack && (
@@ -240,9 +244,10 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
           {n1}
           <span className="cprog-total"> / {total}</span>
         </div>
+        {/* The keys new this round, with their signs: the circle's description has just said them in words. */}
         <div className="muted-text">
           {t(minor ? 'scales.done.minorCount' : 'scales.done.majorCount')}{' '}
-          {names.length > 0 ? t('scales.done.reached', { names: andList(names), count: names.length }) : t('scales.done.nothingNew')}
+          {names.length > 0 ? <span aria-hidden="true">{t('scales.done.reached', { names: andList(names), count: names.length })}</span> : t('scales.done.nothingNew')}
         </div>
       </div>
     </div>

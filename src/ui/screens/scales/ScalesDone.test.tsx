@@ -87,6 +87,41 @@ describe('Round done: the circle card', () => {
     );
     expect(screen.getByText(/reached ★★ this round/).textContent).toContain('G♯\u00a0minor and A♭\u00a0minor reached ★★ this round.');
   });
+
+  // A screen reader reads a sign as a symbol or skips it: the line under the circle gave the keys with their signs, right
+  // after the circle's description had said them in words.
+  it('leaves the keys new this round to the circle\'s description, which says them in words', () => {
+    render(
+      <StoreProvider>
+        <Round keys={['F#']} />
+      </StoreProvider>,
+    );
+    expect(screen.getByText(/reached ★★ this round/).closest('[aria-hidden="true"]')).toBeTruthy();
+    expect(screen.getByRole('img', { name: /New this round: F sharp\u00a0major\.$/ })).toBeTruthy();
+  });
+});
+
+// Each scale shows its signs (D♯ harmonic minor) and is said in words, as the hub's circle and Round done's circle say
+// the keys.
+describe('Round done: the scales of the round', () => {
+  it('says each scale in words', () => {
+    render(
+      <StoreProvider>
+        <Round keys={['F#']} types={['major', 'harmonic']} />
+      </StoreProvider>,
+    );
+    const rows = within(screen.getByRole('list', { name: 'Scales in this round' })).getAllByRole('listitem');
+    const heard = (el: Element): string => {
+      const copy = el.cloneNode(true) as Element;
+      copy.querySelectorAll('[aria-hidden="true"]').forEach((x) => x.remove());
+      copy.querySelectorAll('[aria-label]').forEach((x) => x.replaceWith(x.getAttribute('aria-label') + ' '));
+      return copy.textContent ?? '';
+    };
+    const names = rows.map((r) => heard(r.querySelector('.sdone-row-head b')!)).sort();
+    expect(names).toEqual(['D sharp harmonic minor', 'F sharp major']);
+    for (const r of rows) expect(heard(r)).not.toMatch(/[♯♭]/);
+    expect(rows.map((r) => r.querySelector('.sdone-row-head b')!.querySelector('[aria-hidden="true"]')?.textContent).sort()).toEqual(['D♯ harmonic minor', 'F♯ major']);
+  });
 });
 
 // The stars a scale did not earn are outlined, as a lesson's are (★★☆), not told only by their grey: a contrast theme

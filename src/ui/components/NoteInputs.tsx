@@ -3,7 +3,7 @@
  * A–G with the do re mi name in small type), and the one-octave piano (7 white, 5 black keys, optional labels).
  * Desktop shows each control's computer key.
  */
-import type { CSSProperties, KeyboardEvent } from 'react';
+import { Fragment, type CSSProperties, type KeyboardEvent } from 'react';
 import { BLACK_KEYS, LETTERS, WHITE_KEYS, type Alter, type Letter } from '../../core/api';
 import { t } from '../../i18n';
 import { letterName, signGlyph, signKey, signWord, solfegeName, spokenName, type NameSystem } from '../lib/noteText';
@@ -112,36 +112,44 @@ interface PianoProps {
 
 const WHITE_PC: Record<Letter, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
-/** One octave, C to B. Black keys answer sharps and flats; both their names are on the key. */
+/**
+ * One octave, C to B. Black keys answer sharps and flats; both their names are on the key. Each comes after the white
+ * key it follows, so Tab and a screen reader go along the keyboard, low to high, as it is drawn.
+ */
 export function Piano({ labels, marks, onPick, disabled, kbd }: PianoProps): JSX.Element {
   const name = (L: Letter, a: Alter): string => (labels === 'solfege' ? solfegeName(L, a) : letterName(L, a));
+  const blackKey = (i: number): JSX.Element => {
+    const b = BLACK_KEYS[i];
+    const aria = t('notes.play.blackKey', { sharp: spokenName(b.sharp, 1), flat: spokenName(b.flat, -1) });
+    return (
+      <button type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key: BLACK_KBD[i] }) : aria}
+        className={'piano-black' + (marks[b.pc] ? ' is-' + marks[b.pc] : '')} style={{ '--after': b.after } as CSSProperties} onClick={() => onPick(b.pc)}>
+        {labels !== 'off' && (
+          <span className="piano-label">
+            {name(b.sharp, 1)}
+            <br />
+            {name(b.flat, -1)}
+          </span>
+        )}
+        {kbd && <kbd className="kbd kbd--cap kbd--dark">{BLACK_KBD[i]}</kbd>}
+      </button>
+    );
+  };
   return (
     <div className={'piano' + (kbd ? ' piano--kbd' : '')} role="group" aria-label={t('notes.play.piano')}>
       {WHITE_KEYS.map((L, i) => {
         const pc = WHITE_PC[L];
         const aria = `${spokenName(L, 0)}, ${solfegeName(L, 0)}`;
+        const black = BLACK_KEYS.findIndex((b) => b.after === i + 1);
         return (
-          <button key={L} type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key: WHITE_KBD[i] }) : aria}
-            className={'piano-white' + (marks[pc] ? ' is-' + marks[pc] : '')} onClick={() => onPick(pc)}>
-            {labels !== 'off' && <span className="piano-label">{name(L, 0)}</span>}
-            {kbd && <kbd className="kbd kbd--cap">{WHITE_KBD[i]}</kbd>}
-          </button>
-        );
-      })}
-      {BLACK_KEYS.map((b, i) => {
-        const aria = t('notes.play.blackKey', { sharp: spokenName(b.sharp, 1), flat: spokenName(b.flat, -1) });
-        return (
-          <button key={b.pc} type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key: BLACK_KBD[i] }) : aria}
-            className={'piano-black' + (marks[b.pc] ? ' is-' + marks[b.pc] : '')} style={{ '--after': b.after } as CSSProperties} onClick={() => onPick(b.pc)}>
-            {labels !== 'off' && (
-              <span className="piano-label">
-                {name(b.sharp, 1)}
-                <br />
-                {name(b.flat, -1)}
-              </span>
-            )}
-            {kbd && <kbd className="kbd kbd--cap kbd--dark">{BLACK_KBD[i]}</kbd>}
-          </button>
+          <Fragment key={L}>
+            <button type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key: WHITE_KBD[i] }) : aria}
+              className={'piano-white' + (marks[pc] ? ' is-' + marks[pc] : '')} onClick={() => onPick(pc)}>
+              {labels !== 'off' && <span className="piano-label">{name(L, 0)}</span>}
+              {kbd && <kbd className="kbd kbd--cap">{WHITE_KBD[i]}</kbd>}
+            </button>
+            {black >= 0 && blackKey(black)}
+          </Fragment>
         );
       })}
     </div>

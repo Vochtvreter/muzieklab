@@ -10,6 +10,7 @@ import {
   generateExercise,
   generateRound,
   generateScaleRound,
+  KEY_IDS,
   noteRoundXp,
   sanitizeNoteSettings,
   sanitizeScaleSettings,
@@ -284,6 +285,32 @@ export interface ScaleHub {
 }
 
 /**
+ * The key last picked on the Scales hub, on this device: a reload, or the app opened again, comes back to it. One key
+ * and round the circle keep it in the setup's keys (the scaleHub action), as the setup's keys chosen on the Key screen
+ * cannot: those are the round's. It stays out of the progress, so the account's copy and its sync are as before.
+ */
+export const SCALE_HUB_KEY = 'muzieklab.scaleHub.v1';
+
+function saveScaleHubKey(key: KeyId): void {
+  try {
+    localStorage.setItem(SCALE_HUB_KEY, key);
+  } catch {
+    /* storage blocked: a reload opens the hub on the setup's first key, as before */
+  }
+}
+
+/** The hub's key for this setup: the setup's first key, or with keys chosen the one last picked on this device. */
+function scaleHubKey(s: ScaleSettings): KeyId {
+  if (s.keyMode !== 'pick') return s.keys[0];
+  try {
+    const stored = localStorage.getItem(SCALE_HUB_KEY);
+    return (KEY_IDS as readonly unknown[]).includes(stored) ? (stored as KeyId) : s.keys[0];
+  } catch {
+    return s.keys[0];
+  }
+}
+
+/**
  * A one-line message Settings → Account shows after an account change that ends on Settings (signed out, the account
  * deleted, a new password set from a link…). It stays until Settings is left. `sessionEnded` is Sign in's instead: a
  * request was refused because the session had ended (account.ts, handleError).
@@ -550,9 +577,11 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'scaleSettings':
       return { ...state, scaleSettings: action.settings, progress: { ...state.progress, scales: { ...state.progress.scales, settings: action.settings } } };
     case 'scaleHub': {
-      // With one key, the setup follows the key picked on the circle.
+      // With one key, the setup follows the key picked on the circle. So does round the circle, which plays all 15
+      // whatever its keys: a reload comes back to it. Keys chosen on the Key screen are the round's and stay; the key
+      // picked is kept on this device then (SCALE_HUB_KEY).
       const s = state.scaleSettings;
-      const settings = s.keyMode === 'one' && s.keys[0] !== action.hub.key ? { ...s, keys: [action.hub.key] } : s;
+      const settings = s.keyMode !== 'pick' && s.keys[0] !== action.hub.key ? { ...s, keys: [action.hub.key] } : s;
       const progress = settings === s ? state.progress : { ...state.progress, scales: { ...state.progress.scales, settings } };
       return { ...state, scaleHub: action.hub, scaleSettings: settings, progress };
     }
@@ -782,7 +811,7 @@ function initialState(): AppState {
     noteRun: route === '/notes/play' ? restoreNoteRun(progress.notes.weak) : null,
     noteLast: null,
     scaleSettings,
-    scaleHub: { tab: 'major', key: scaleSettings.keys[0] },
+    scaleHub: { tab: 'major', key: scaleHubKey(scaleSettings) },
     scaleRun: route === '/scales/play' ? restoreScaleRun() : null,
     scaleLast: null,
     account: { me: loadAccount(), api: 'unknown', notice: null, sync: 'idle', elsewhere: false },
@@ -826,6 +855,8 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
     if (first.current) return;
     saveScaleRun(state.scaleRun);
   }, [state.scaleRun]);
+  // Also the key a load starts on (the setup's first key), so it is the one kept when the setup goes on to keys chosen.
+  useEffect(() => saveScaleHubKey(state.scaleHub.key), [state.scaleHub.key]);
   // Saved unless storage holds it already, as it does an account taken up from another tab. Compared with what is
   // stored, so a sign-out here after one taken up from another tab (nobody both times) still forgets the account.
   useEffect(() => {

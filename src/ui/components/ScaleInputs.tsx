@@ -3,7 +3,7 @@
  * that starts on the tonic (its white keys always show their letters), and the sign buttons for spelling (♭ ♮ ♯, and 𝄪 where a scale needs it). Desktop shows each
  * control's computer key.
  */
-import type { CSSProperties } from 'react';
+import { Fragment, type CSSProperties } from 'react';
 import { pianoWindow, type Letter, type Scale, type ScaleAlter, type StepName } from '../../core/api';
 import { t } from '../../i18n';
 import { letterName, signGlyph, signKey, signWord, spokenName } from '../lib/noteText';
@@ -97,29 +97,35 @@ export function ScalePiano({ scale, marks, played, onPick, disabled, kbd }: Pian
   const all = [...w.whites, ...w.blacks.map((b) => b.midi)];
   const octave = (midi: number, name: string): string =>
     all.includes(midi + 12) ? t('scales.play.keyLow', { name }) : all.includes(midi - 12) ? t('scales.play.keyHigh', { name }) : name;
+  const blackKey = (b: { midi: number; after: number }): JSX.Element => {
+    const key = SCALE_GAP_KBD[b.after - 1];
+    const aria = octave(b.midi, keyNames(b.midi, true));
+    return (
+      <button type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key }) : aria}
+        className={'piano-black' + (marks[b.midi] ? ' is-' + marks[b.midi] : '')} style={{ '--after': b.after } as CSSProperties} onClick={() => onPick(b.midi)}>
+        <span aria-hidden="true" className={'spiano-dot' + (played.includes(b.midi) ? ' is-on' : '')} />
+        {kbd && <kbd className="kbd kbd--cap kbd--dark">{key}</kbd>}
+      </button>
+    );
+  };
+  // Low to high, each black key after the white key it follows, so Tab and a screen reader go along the keyboard as it
+  // is drawn and played (the black keys are placed over their gap by --after, notes.css).
   return (
     <div className={'piano spiano' + (kbd ? ' piano--kbd' : '')} role="group" aria-label={t('scales.play.piano', { from: letterName(first, 0), to: letterName(last, 0) })}>
       {w.whites.map((m, i) => {
         const L = WHITE_LETTER[pc(m)];
         const aria = octave(m, spokenName(L, 0));
+        const black = w.blacks.find((b) => b.after === i + 1);
         return (
-          <button key={m} type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key: SCALE_WHITE_KBD[i] }) : aria}
-            className={'piano-white' + (marks[m] ? ' is-' + marks[m] : '')} onClick={() => onPick(m)}>
-            <span aria-hidden="true" className={'spiano-dot' + (played.includes(m) ? ' is-on' : '')} />
-            <span className="piano-label">{letterName(L, 0)}</span>
-            {kbd && <kbd className="kbd kbd--cap">{SCALE_WHITE_KBD[i]}</kbd>}
-          </button>
-        );
-      })}
-      {w.blacks.map((b) => {
-        const key = SCALE_GAP_KBD[b.after - 1];
-        const aria = octave(b.midi, keyNames(b.midi, true));
-        return (
-          <button key={b.midi} type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key }) : aria}
-            className={'piano-black' + (marks[b.midi] ? ' is-' + marks[b.midi] : '')} style={{ '--after': b.after } as CSSProperties} onClick={() => onPick(b.midi)}>
-            <span aria-hidden="true" className={'spiano-dot' + (played.includes(b.midi) ? ' is-on' : '')} />
-            {kbd && <kbd className="kbd kbd--cap kbd--dark">{key}</kbd>}
-          </button>
+          <Fragment key={m}>
+            <button type="button" disabled={disabled} aria-label={kbd ? t('notes.play.withKey', { name: aria, key: SCALE_WHITE_KBD[i] }) : aria}
+              className={'piano-white' + (marks[m] ? ' is-' + marks[m] : '')} onClick={() => onPick(m)}>
+              <span aria-hidden="true" className={'spiano-dot' + (played.includes(m) ? ' is-on' : '')} />
+              <span className="piano-label">{letterName(L, 0)}</span>
+              {kbd && <kbd className="kbd kbd--cap">{SCALE_WHITE_KBD[i]}</kbd>}
+            </button>
+            {black && blackKey(black)}
+          </Fragment>
         );
       })}
     </div>

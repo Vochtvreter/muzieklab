@@ -240,6 +240,13 @@ describe('reducer: scales', () => {
     expect(picked.scaleSettings.keys).toEqual(['G', 'D', 'A']);
     expect(picked.scaleHub).toEqual({ tab: 'major', key: 'F' });
   });
+
+  it('round the circle too, which plays all 15 whatever its keys: a reload comes back to the key picked', () => {
+    const circle: ScaleSettings = { ...DEFAULT_SCALE_SETTINGS, keyMode: 'circle', keys: ['C'] };
+    const next = reducer({ ...state(), scaleSettings: circle }, { type: 'scaleHub', hub: { tab: 'major', key: 'F#' } });
+    expect(next.scaleSettings).toEqual({ ...circle, keys: ['F#'] });
+    expect(next.progress.scales.settings).toEqual({ ...circle, keys: ['F#'] });
+  });
 });
 
 describe('reducer: reset progress', () => {

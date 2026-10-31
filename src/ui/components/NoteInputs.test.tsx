@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Alter } from '../../core/api';
-import { SignRow } from './NoteInputs';
+import { Piano, SignRow } from './NoteInputs';
 
 afterEach(cleanup);
 
@@ -53,5 +53,16 @@ describe('SignRow', () => {
     const e = fireEvent.keyDown(radio('natural'), { key: 'c' });
     expect(e).toBe(true);
     expect(checked()).toEqual(['natural']);
+  });
+});
+
+describe('Piano', () => {
+  // In the order they are drawn, low to high, for Tab and a screen reader: the white keys came first, then the black.
+  it('has its keys in pitch order, C to B', () => {
+    const { container } = render(<Piano labels="letters" marks={{}} onPick={() => undefined} />);
+    expect([...container.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual([
+      'C, do', 'C sharp or D flat', 'D, re', 'D sharp or E flat', 'E, mi', 'F, fa', 'F sharp or G flat', 'G, sol', 'G sharp or A flat', 'A, la',
+      'A sharp or B flat', 'B, si',
+    ]);
   });
 });

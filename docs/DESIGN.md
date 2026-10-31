@@ -419,7 +419,8 @@ Learn and practice major and minor scales in all 15 keys.
   The centre shows the selected key signature; six or seven signs take two balanced lines (*F♯ C♯ G♯* over
   *D♯ A♯ E♯ B♯*), so none runs under the inner ring's keys beside it. Under the circle: the scale's notes (each
   letter once, sharps and flats tinted), stars, *Options* and *Practice*, plus *Go round
-  the circle* (all 15 in circle order).
+  the circle* (all 15 in circle order). On a phone a minor key's stars are, as its fill, how many of its forms have ★★
+  or more, and are said so (*2 of 3 forms with 2 stars*, *No form with 2 stars yet*), not as a rating.
 - **Where the hub sits:** it is a Home page, opened from Home's Scales tile, so it keeps the
   app's navigation with Home current (§9): the tab bar on phone, with a back arrow as on a
   Learn chapter; the top header on tablet and desktop. Opened from Learn chapter 11's Practice button, Learn is
@@ -429,7 +430,9 @@ Learn and practice major and minor scales in all 15 keys.
   the selected key side by side: the key signature, the stars per form (one rating for major,
   natural / harmonic / melodic for minor), the scale's notes and *Options* / *Practice*.
 - **Starts on C major** (since 0.8.0): no sharps or flats and only white keys, where method books start; G, one sharp,
-  is the next step round the circle.
+  is the next step round the circle. After that it opens on the key last picked, after a reload too: with the setup on
+  one key or round the circle (which plays all 15 whatever its key) that key is the setup's; with keys chosen, which are
+  the round's, the device keeps it on its own (`muzieklab.scaleHub.v1`), out of the progress and its sync.
 - **Settings:** keys (the selected key · all 15 · choose, using the Key screen from Read
   notes) · scales (major, natural minor, harmonic minor, melodic minor; each shows its
   step pattern) · answer with (piano · names · mixed) · direction (up · up and down) ·
@@ -453,8 +456,13 @@ Learn and practice major and minor scales in all 15 keys.
   *low* or *high* after its name to a screen reader (*C, low*), and each degree box reads its note once answered, else
   *now* or *not yet* (after the given letter when spelling: *F, now*). Notes show their signs (*F𝄪*) but are named as
   they are said (*F double sharp*, Dutch *fisis*), which a screen reader would read as a symbol or skip: in the degree
-  boxes, the staff's description, the feedback line, the hub's notes and circle keys (*G sharp minor*) and Round done's
-  circle, as in Learn (§9.1). *Hear it so far* and *Start over* appear once
+  boxes, the staff's description, the feedback line, the hub's notes and circle keys (*G sharp minor*), the hub's
+  selected key with its relative key and *Practice*, the setup's key, hint and summary, the scale's name over the staff
+  (on desktop it names the answer card) and Round done's scales and circle, as in Learn (§9.1). The key signature's
+  letters under the hub's small staff and Round done's line of keys new this round are left to the staff's and the
+  circle's descriptions, which say them. After a wrong answer the feedback's words for a screen reader end with the
+  mistakes so far (*… go up a whole step (skip one key). 2 mistakes.*), so the same wrong key or sign again is read out
+  again. *Hear it so far* and *Start over* appear once
   the first note is played (since 0.10.0; before that they would do nothing). They are hidden but keep their place,
   so nothing moves when they come. When the scale is done, *Hear it so far* reads *Hear the scale*. This holds for
   play and spell, on phone and tablet (the row under the feedback) and on desktop (the side panel). Computer keys
@@ -2476,7 +2484,9 @@ without code changes:
 - `lang` attribute set from the active locale, and on each language's name in Settings → Language, which is in that
   language (*Nederlands*); right-to-left support is not planned.
 - Screen-reader labels for controls; notation itself gets a text alternative
-  ("quarter, quarter, half").
+  ("quarter, quarter, half"). A piano's keys come in the page low to high, each black key after the white key it
+  follows, so Tab and a screen reader go along the keyboard as it is drawn and played (Read notes, Scales, Learn's
+  piano); the black keys are lifted over the white ones, so a pressed white key, scaled a little, stays under them.
 - Focus is never left on the page when the control that had it goes away (`ui/lib/screenFocus.ts`). A new screen puts it
   on its heading, so a screen reader hears it (*Exercise done* when a run ends), unless the screen took it itself (a
   field, a sheet); the first screen is left to the page load. So does a screen redrawn in a language picked elsewhere,
