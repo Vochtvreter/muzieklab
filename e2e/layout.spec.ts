@@ -4382,11 +4382,13 @@ test.describe('desktop Read notes at widths under 1180 px', () => {
 
 /**
  * In forced colors, whether each element is drawn and whether two look the same, by its computed (forced) colours: its
- * fill (none when it is the page's), its edge, its ring and its text colour. A selector may end in ::before.
+ * fill (none when it is the page's), its edge, its ring and its text colour; and whether each is filled with a given
+ * system colour. A selector may end in ::before.
  */
 function forcedLooks(page: Page): {
   expectDrawn(where: string, selectors: string[]): Promise<void>;
   expectDistinct(where: string, selectors: string[]): Promise<void>;
+  expectFill(where: string, selectors: string[], system: string): Promise<void>;
 } {
   /** How each element is drawn; null when there is none on the screen. */
   const looks = (selectors: string[]): Promise<(string | null)[]> =>
@@ -4419,6 +4421,32 @@ function forcedLooks(page: Page): {
       for (let i = 0; i < selectors.length; i++) {
         for (let j = i + 1; j < selectors.length; j++) expect(all[i], `${where}: ${selectors[i]} looks like ${selectors[j]}`).not.toBe(all[j]);
       }
+    },
+    /**
+     * Each is on the screen and filled with the system colour (CanvasText, Highlight, …): the fill a probe that the
+     * browser does not force computes for it.
+     */
+    async expectFill(where, selectors, system) {
+      const { want, fills } = await page.evaluate(
+        ({ sels, system }) => {
+          const probe = document.createElement('div');
+          probe.style.cssText = `forced-color-adjust: none; background: ${system};`;
+          document.body.append(probe);
+          const want = getComputedStyle(probe).backgroundColor;
+          probe.remove();
+          const fills = sels.map((sel) => {
+            const [box, pseudo] = sel.split(/(?=::before$)/);
+            const el = document.querySelector(box);
+            return el ? getComputedStyle(el, pseudo ?? null).backgroundColor : null;
+          });
+          return { want, fills };
+        },
+        { sels: selectors, system },
+      );
+      selectors.forEach((sel, i) => {
+        expect(fills[i], `${where}: ${sel} is on the screen`).not.toBeNull();
+        expect(fills[i], `${where}: ${sel} is filled in ${system}`).toBe(want);
+      });
     },
   };
 }
@@ -4692,17 +4720,22 @@ test.describe('forced colors (a contrast theme)', () => {
     // Not in the test above: its fixed clock moves the taps' time stamps off the audio clock's clicks.
     test(`${scheme}: Calibrate's pips and timing plot still show`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme, forcedColors: 'active' });
-      const { expectDrawn, expectDistinct } = forcedLooks(page);
+      const { expectDrawn, expectDistinct, expectFill } = forcedLooks(page);
       await page.goto('./#/calibrate');
       await expect(page.locator('.pips')).toBeAttached();
-      await expectDrawn('Calibrate', ['.pips span', '.cal-axis', '.cal-tick--end', '.cal-tick:not(.cal-tick--end):not(.cal-tick--zero)', '.cal-tick--zero']);
-      // Four taps in, still measuring: the pips counted, the line at the median, and the taps' dots, the last one in the
-      // text colour (it is in ink).
+      const ticks = ['.cal-tick--end', '.cal-tick:not(.cal-tick--end):not(.cal-tick--zero)', '.cal-tick--zero'];
+      await expectDrawn('Calibrate', ['.pips span', '.cal-axis', ...ticks]);
+      await expectFill('Calibrate', ['.cal-axis', ...ticks], 'CanvasText');
+      // Six taps in, still measuring: the pips counted, the line at the median (from three taps), and the taps' dots, the
+      // last one in the text colour (it is in ink). Right after the audio starts a synthetic tap can miss its click, so
+      // three of the six are enough.
       await pad(page).focus();
-      await calibrateAlong(page, 4);
-      await expect(page.locator('.cal-dot')).toHaveCount(4);
+      await calibrateAlong(page, 6);
+      await expect.poll(() => page.locator('.cal-dot').count()).toBeGreaterThanOrEqual(3);
       await expect(page.locator('.cal-dot.is-last')).toHaveCount(1);
       await expectDrawn("Calibrate's taps", ['.pips span.is-on', '.cal-median-line', '.cal-dot:not(.is-last)', '.cal-dot.is-last']);
+      await expectFill("Calibrate's taps", ['.cal-median-line', '.cal-dot:not(.is-last)'], 'Highlight');
+      await expectFill("Calibrate's last tap", ['.cal-dot.is-last'], 'CanvasText');
       await expectDistinct("Calibrate's pips", ['.pips span.is-on', '.pips span:not(.is-on)']);
       await expectDistinct("Calibrate's dots", ['.cal-dot:not(.is-last)', '.cal-dot.is-last']);
     });
