@@ -56,9 +56,12 @@ export async function expectFits(page: Page): Promise<void> {
   expect(over, 'the screen scrolls').toBeLessThanOrEqual(1);
 }
 
-/** A touch target at least 44 px tall (DESIGN.md §9, visual design tokens). */
+/**
+ * A touch target at least 44 px tall (DESIGN.md §9, visual design tokens). A hundredth of a pixel is float error: a
+ * control measured while it slides in (a confirm's m-in) sits at a fractional offset and reads 43.99994.
+ */
 export async function expectTouchHeight(el: Locator): Promise<void> {
-  expect((await el.boundingBox())!.height, 'shorter than 44 px').toBeGreaterThanOrEqual(44);
+  expect((await el.boundingBox())!.height, 'shorter than 44 px').toBeGreaterThanOrEqual(44 - 0.01);
 }
 
 /**
