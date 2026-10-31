@@ -91,7 +91,8 @@ describe('the 14-day charts and the week’s minutes', () => {
     const a = accuracyView(p, TODAY);
     expect(a.days.map((d) => d.value)).toEqual(acc);
     expect(a.days[0].date).toBe('2026-10-02');
-    expect(a.mean).toBe(83);
+    // 82.54%, rounded down as Results is (§6.3).
+    expect(a.mean).toBe(82);
     expect(a.first).toEqual({ date: '2026-10-02', value: 76 });
     expect(a.peak).toEqual({ date: '2026-10-14', value: 88 });
     expect(a.today).toBe(80);
@@ -103,6 +104,12 @@ describe('the 14-day charts and the week’s minutes', () => {
     expect(t.days.map((d) => d.value)).toEqual(ms);
     expect(t).toMatchObject({ latest: { date: TODAY, value: -22 }, tendency: 'steady', first: { date: '2026-10-02', value: -52 }, firstTendency: 'rushing' });
     expect([-41, -40, 30, 31].map(tendencyOf)).toEqual(['rushing', 'steady', 'steady', 'dragging']);
+  });
+
+  it('shows 100% only for a day of flawless rounds', () => {
+    // A flawless round and one of 31 Perfect and a Great (99.69%, stored as 99): 99.5% that day, shown as 99%.
+    const q = progress({}, { days: { [shiftDay(TODAY, -1)]: day({ rounds: 1, acc: 100 }), [TODAY]: day({ rounds: 2, acc: 100 + 99 }) } });
+    expect(accuracyView(q, TODAY)).toMatchObject({ today: 99, mean: 99, peak: { date: shiftDay(TODAY, -1), value: 100 } });
   });
 
   it('counts a day without rhythm rounds as no value, also when it has minutes', () => {
@@ -141,6 +148,15 @@ describe('skillMap', () => {
     ]);
     expect(map[5].notes).toBe(11);
     expect(map[7]).toMatchObject({ name: 'skills.cell.sixteenths', notes: 0, unlockUnit: pathUnitOf('rhythm', 8) });
+  });
+
+  it('bands a cell by its accuracy rounded down: 89.6% is no 90%, 79.6% is a weak spot', () => {
+    const cells = { quarter: [1075, 1200], half: [955, 1200] } as DayStats['cells'];
+    const map = skillMap(progress({ lessons: pathTo(13) }, { days: { [TODAY]: day({ cells }) } }), TODAY);
+    expect(map.slice(0, 2).map((c) => [c.id, c.accuracy, c.band, c.weak])).toEqual([
+      ['quarter', 89, 'mid', false],
+      ['half', 79, 'weak', true],
+    ]);
   });
 
   it('locks a cell until its rhythm unit is open, unless it was played', () => {
@@ -188,6 +204,8 @@ describe('achievements, notes and scales', () => {
       { id: 'bass:21', clef: 'bass', step: 21, letter: 'C', alter: 0, seconds: 2.4, answers: 3 },
     ]);
     expect(n.lastKey).toEqual({ key: 'G', clef: 'treble' });
+    // Rounded down, as Read notes' Round done shows a round: 179 of 200 (89.5%) is 89%.
+    expect(notesView(progress({}, { clefs: { treble: [179, 200], bass: [57, 100] } })).clefs.map((c) => c.accuracy)).toEqual([89, 57]);
     expect(notesView(progress())).toEqual({ clefs: [{ clef: 'treble', accuracy: null, answered: 0 }, { clef: 'bass', accuracy: null, answered: 0 }], slowest: [], lastKey: null });
   });
 

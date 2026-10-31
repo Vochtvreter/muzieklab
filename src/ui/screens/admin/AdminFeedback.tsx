@@ -11,7 +11,7 @@
  * (Not the feedback someone leaves when deleting their account: that is in Accounts → Deleted accounts.)
  */
 import { useEffect, useRef, useState } from 'react';
-import { FEEDBACK_STATUSES, type FeedbackListResponse, type FeedbackMode, type FeedbackStatus, type FeedbackSummary } from '../../../../shared/feedback';
+import { FEEDBACK_STATUSES, showsNothing, type FeedbackListResponse, type FeedbackMode, type FeedbackStatus, type FeedbackSummary } from '../../../../shared/feedback';
 import { api } from '../../../api/client';
 import { formatLongDate, t } from '../../../i18n';
 import { useAccount } from '../../account';
@@ -58,11 +58,11 @@ type List =
 type Counts = Record<FeedbackStatus, number> | 'unknown';
 
 /**
- * A report's title as written, or, when its author left it empty, one made up in the app's language from its kind and
- * screen: "Bug on #/settings".
+ * A report's title as written, or, when its author left it empty (or it shows nothing, as a zero-width space), one made
+ * up in the app's language from its kind and screen: "Bug on #/settings".
  */
 export function reportTitle(r: Pick<FeedbackSummary, 'title' | 'kind' | 'route'>): string {
-  return r.title.trim() || t('feedbackReview.untitled', { kind: kindName(r.kind), route: '#' + r.route });
+  return showsNothing(r.title) ? t('feedbackReview.untitled', { kind: kindName(r.kind), route: '#' + r.route }) : r.title.trim();
 }
 
 /** Bug, Change or Idea, as the feedback tool names them. */
@@ -209,7 +209,9 @@ function ModeCard(): JSX.Element | null {
       // The account as the app keeps it: its own Feedback button comes or goes at once.
       setMe({ ...me, feedbackMode: res.on });
     } catch (e) {
-      if (mounted.current) setError(errorMessage(handleError(e)));
+      // A 401 signs out also once the screen is gone (the progress sync found the session ended first).
+      const message = errorMessage(handleError(e));
+      if (mounted.current) setError(message);
     } finally {
       if (mounted.current) setPending(null);
     }

@@ -85,7 +85,10 @@ export const ACHIEVEMENT_IDS: readonly AchievementId[] = ['streak7', 'perfectBar
 export interface DayStats {
   /** Seconds practised that day, all modes. */
   sec: number;
-  /** Rhythm rounds finished (tap and Echo: free practice, lessons and the daily challenge), and their accuracies' sum (whole %). */
+  /**
+   * Rhythm rounds finished (tap and Echo: free practice, lessons and the daily challenge), and their accuracies' sum
+   * (each in whole %, rounded down, §6.3).
+   */
   rounds: number;
   acc: number;
   /** Timing: the sum of the hit notes' signed offsets (each rounded to whole ms; negative = early), and how many. */
@@ -112,7 +115,10 @@ export interface Stats {
   noteMs: Record<string, [number, number]>;
   /** The key and clef of the last Read notes round. */
   lastKey: { key: KeyId; clef: Clef } | null;
-  /** Read notes skill checks: per "clef:level" (level 1–10), [best accuracy %, best average answer ms (0 = none)]. */
+  /**
+   * Read notes skill checks: per "clef:level" (level 1–10), [best accuracy (whole %, rounded down; earlier versions
+   * saved it rounded to the nearest, and those values stay), best average answer ms (0 = none)].
+   */
   reading: Record<string, [number, number]>;
   /** Rhythm by ear (Echo): per material level "1"…"8", [Echo rounds at ★★ or more, best stars in an Echo round of 4+ bars]. */
   echo: Record<string, [number, number]>;
@@ -123,6 +129,7 @@ export interface Stats {
 export interface Progress {
   lessons: Record<string, LessonProgress>; // key: lesson id, e.g. "7.3"
   practiceDays: string[]; // ISO dates (yyyy-mm-dd) with at least one finished exercise
+  /** The free-practice (rhythm) setup as last edited or started; null before either. */
   lastSettings: Settings | null;
   /** Total XP earned (levels follow from it, game/xp.ts). */
   xp: number;
@@ -237,6 +244,12 @@ function subset<T extends string>(v: unknown, options: readonly T[]): T[] | null
   return options.filter((o) => v.includes(o));
 }
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** A stored day that is a real one (2026-13-45 is not, and would be shown as Feb 14), else null. */
+function calendarDay(v: unknown): string | null {
+  if (typeof v !== 'string' || !ISO_DATE.test(v)) return null;
+  const [y, m, d] = v.split('-').map(Number);
+  return localDateIso(new Date(y, m - 1, d)) === v ? v : null;
+}
 
 function readJson(key: string): unknown {
   try {
@@ -271,7 +284,8 @@ export function sanitizePrefs(raw: unknown): Prefs {
     tapSoundOn: bool(raw.tapSoundOn, d.tapSoundOn),
     leniency: oneOf(raw.leniency, ['strict', 'normal', 'relaxed'] as const, d.leniency),
     calibrationMs: num(raw.calibrationMs, d.calibrationMs, -500, 500),
-    calibratedAt: typeof raw.calibratedAt === 'string' ? raw.calibratedAt : null,
+    // Settings shows its day: text that is not one (storage edited or broken) would be shown as it is.
+    calibratedAt: calendarDay(raw.calibratedAt),
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
     seenHold: bool(raw.seenHold, d.seenHold),
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),

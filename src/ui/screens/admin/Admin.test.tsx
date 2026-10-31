@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PERMISSIONS, type AccountDetail, type AccountSummary, type Me } from '../../../../shared/api';
+import { PERMISSIONS, type AccountDetail, type AccountSummary, type AdminUpdateRequest, type Me } from '../../../../shared/api';
 import { setLocale } from '../../../i18n';
 import { resetAccountCheck } from '../../account';
 import { Announcer } from '../../components/Announcer';
+import { sortRoles } from '../../lib/admin';
 import { StoreProvider } from '../../store';
 import { AdminAccount } from './AdminAccount';
 import { AdminAccounts, SEARCH_DELAY_MS } from './AdminAccounts';
@@ -177,6 +178,36 @@ describe('Admin: one account', () => {
     expect(screen.queryByRole('button', { name: 'Delete account' })).toBeNull();
   });
 
+  it('Block, then Unblock: each time the other one takes the focus from the pressed button, which is gone', async () => {
+    let account = detail({ ...LIES, status: 'active', roles: [] });
+    answer = (path, init) => {
+      if (path === '/api/v1/me') return json(200, ADMIN);
+      if (init?.method === 'PATCH') account = { ...account, ...(JSON.parse(String(init.body)) as Pick<AccountDetail, 'status'>) };
+      return json(200, account);
+    };
+    inStore(<AdminAccount id={LIES.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Block/ }));
+    const block = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Block' });
+    block.focus();
+    fireEvent.click(block);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Unblock/ })));
+    fireEvent.click(document.activeElement!);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Block/ })));
+    expect(account.status).toBe('active');
+  });
+
+  it('Try again after a failed load: the account takes its place, and the heading the focus', async () => {
+    let fail = true;
+    answer = (path) => (path === '/api/v1/me' ? json(200, ADMIN) : fail ? json(500, { error: 'internal', message: '' }) : json(200, detail(LIES)));
+    inStore(<AdminAccount id={LIES.id} />);
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    fail = false;
+    retry.focus();
+    fireEvent.click(retry);
+    await screen.findByRole('heading', { level: 1, name: 'Lies Bakker' });
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+  });
+
   it('an invite: its link end, New invite link and Cancel invite (with Keep invite)', async () => {
     answer = (path) => (path === '/api/v1/me' ? json(200, ADMIN) : json(200, { ...detail(LIES), inviteExpiresAt: '2026-10-29T12:00:00.000Z' }));
     inStore(<AdminAccount id={LIES.id} />);
@@ -188,6 +219,94 @@ describe('Admin: one account', () => {
     expect(within(confirm).getByRole('button', { name: 'Keep invite' })).toBeTruthy();
     expect(within(confirm).getByRole('button', { name: 'Cancel invite' })).toBeTruthy();
   });
+
+  /**
+   * Lies as the API keeps her while the screen is open. PATCH changes her as the server does: roles as a whole set, or
+   * one role at a time against the roles she has then; a new email cancels the links made for the old one.
+   */
+  let lies: AccountDetail;
+  const patches: AdminUpdateRequest[] = [];
+  const keepLies = (start: AccountDetail): void => {
+    lies = start;
+    patches.length = 0;
+    answer = (path, init) => {
+      if (path === '/api/v1/me') return json(200, ADMIN);
+      if (path.endsWith('-link')) {
+        const expiresAt = '2026-10-30T12:00:00.000Z';
+        if (lies.status === 'invited') lies = { ...lies, inviteExpiresAt: expiresAt };
+        return json(200, { link: `https://vivanova.app/#/${lies.status === 'invited' ? 'invite' : 'reset'}/abc123`, expiresAt });
+      }
+      if (init?.method === 'PATCH') {
+        const body = JSON.parse(String(init.body)) as AdminUpdateRequest;
+        patches.push(body);
+        const { name = lies.name, email = lies.email, addRoles = [], removeRoles = [] } = body;
+        const roles = body.roles ?? [...lies.roles.filter((r) => !removeRoles.includes(r)), ...addRoles];
+        lies = { ...lies, name, email, roles: sortRoles(roles), ...(body.email ? { inviteExpiresAt: null } : {}) };
+      }
+      return json(200, lies);
+    };
+  };
+  const profile = () => within(screen.getByRole('region', { name: 'Name and email' }));
+  const save = async (field: 'Name' | 'Email', value: string): Promise<void> => {
+    fireEvent.change(profile().getByLabelText(field), { target: { value } });
+    fireEvent.click(profile().getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(profile().getByText('Saved.')).toBeTruthy());
+  };
+
+  it.each([
+    ['an invite link', 'invited', /^New invite link/, 'Invite link'],
+    ['a new password link', 'active', /^New password link/, 'New password link'],
+  ] as const)('%s on screen goes when the email changes (it no longer works); a new name keeps it', async (_, status, button, field) => {
+    keepLies({ ...detail({ ...LIES, status }), inviteExpiresAt: status === 'invited' ? '2026-10-29T12:00:00.000Z' : null });
+    inStore(<AdminAccount id={LIES.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: button }));
+    await waitFor(() => expect(screen.getByLabelText(field)).toBeTruthy());
+    await save('Name', 'Lies B.');
+    expect(screen.getByLabelText(field)).toBeTruthy();
+    expect(screen.getByText('New link ready. Send it yourself.')).toBeTruthy();
+
+    await save('Email', 'lies.b@example.com');
+    expect(screen.queryByLabelText(field)).toBeNull();
+    expect(screen.queryByText('New link ready. Send it yourself.')).toBeNull();
+    expect(screen.getByRole('button', { name: button })).toBeTruthy();
+    if (status === 'invited') expect(screen.getByRole('region', { name: 'Details' }).textContent).toContain('No working link. Make a new one below.');
+  });
+
+  it('a role switch changes only its own role: a role another admin changed meanwhile stays as they left it', async () => {
+    keepLies(detail({ ...LIES, status: 'active', roles: [] }));
+    inStore(<AdminAccount id={LIES.id} />);
+    const editor = await screen.findByRole('switch', { name: 'Editor' });
+    // Another admin makes Lies a teacher; this screen still shows no roles.
+    lies = { ...lies, roles: ['teacher'] };
+    fireEvent.click(editor);
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Teacher' }).getAttribute('aria-checked')).toBe('true'));
+    expect(patches).toEqual([{ addRoles: ['editor'] }]);
+    expect(lies.roles).toEqual(['editor', 'teacher']);
+    expect(screen.getByRole('switch', { name: 'Editor' }).getAttribute('aria-checked')).toBe('true');
+
+    // And the other way: they take Editor away again; switching Teacher off here gives Editor back to nobody.
+    lies = { ...lies, roles: ['teacher'] };
+    fireEvent.click(screen.getByRole('switch', { name: 'Teacher' }));
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Teacher' }).getAttribute('aria-checked')).toBe('false'));
+    expect(patches.at(-1)).toEqual({ removeRoles: ['teacher'] });
+    expect(lies.roles).toEqual([]);
+  });
+
+  it('a name with a tab (pasted from a spreadsheet) is said at the field, and nothing is sent', async () => {
+    keepLies(detail(LIES));
+    inStore(<AdminAccount id={LIES.id} />);
+    await screen.findByRole('heading', { level: 1, name: 'Lies Bakker' });
+    const name = profile().getByLabelText('Name');
+    fireEvent.change(name, { target: { value: 'Lies\tde Boer' } });
+    fireEvent.click(profile().getByRole('button', { name: 'Save' }));
+    expect(await profile().findByText('Remove the tabs and other hidden characters.')).toBeTruthy();
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(name);
+    expect(patches).toEqual([]);
+    // Around the name it is only space, which is trimmed.
+    await save('Name', 'Lies de Boer\t');
+    expect(patches).toEqual([{ name: 'Lies de Boer' }]);
+  });
 });
 
 describe('Admin: Invite someone', () => {
@@ -196,5 +315,30 @@ describe('Admin: Invite someone', () => {
     inStore(<AdminInvite />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Create invite' })).toBeTruthy());
     expect(screen.queryByRole('switch')).toBeNull();
+  });
+
+  it('a name with a tab (pasted from a spreadsheet) is said at the field, and nothing is sent', async () => {
+    answer = (path) => (path === '/api/v1/me' ? json(200, ADMIN) : json(404, { error: 'not_found', message: '' }));
+    inStore(<AdminInvite />);
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'lies@example.com' } });
+    const name = screen.getByLabelText('Name');
+    fireEvent.change(name, { target: { value: 'Lies\tBakker' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create invite' }));
+    expect(await screen.findByText('Remove the tabs and other hidden characters.')).toBeTruthy();
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(name);
+    expect(paths()).not.toContain('/api/v1/admin/invites');
+  });
+
+  it('a name that shows nothing (a zero-width space) is an empty one: nothing is sent', async () => {
+    answer = (path) => (path === '/api/v1/me' ? json(200, ADMIN) : json(404, { error: 'not_found', message: '' }));
+    inStore(<AdminInvite />);
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'lies@example.com' } });
+    const name = screen.getByLabelText('Name');
+    fireEvent.change(name, { target: { value: '\u200B' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create invite' }));
+    expect(await screen.findByText('Type their name.')).toBeTruthy();
+    expect(document.activeElement).toBe(name);
+    expect(paths()).not.toContain('/api/v1/admin/invites');
   });
 });

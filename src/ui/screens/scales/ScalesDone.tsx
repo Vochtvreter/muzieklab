@@ -1,18 +1,22 @@
 /**
  * Scales · round done (DESIGN.md §3.7 Round done): scales without a mistake out of all, every scale with its mistakes
  * and stars (scored on the first try; one with mistakes is marked as having come back), how far the circle is filled,
- * and Change setup / New round. The back arrow goes to the Scales hub.
+ * and Change setup / New round. The back arrow goes to the Scales hub, or to the Learn section or chapter the round was
+ * started from (?from=11.2), which New round and Change setup keep.
  */
 import { useEffect, useState } from 'react';
 import { CIRCLE, doneCounts, majorLevel, minorLevel, type KeyId, type ScaleStars } from '../../../core/api';
 import { levelInfo } from '../../../game/xp';
 import { t } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
+import { Said } from '../../components/Bits';
 import { Icon } from '../../components/Icon';
 import { AchievementBadges, LevelUpContent } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
-import { circleLabel, keyName, scaleName } from '../../lib/scaleText';
+import { andList } from '../../lib/format';
+import { useLearnReturn } from '../../lib/learnReturn';
+import { circleLabel, keyName, keySpoken, scaleName, scaleSpoken } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore, type ScaleLast } from '../../store';
 import { useStartScales } from './start';
@@ -23,6 +27,7 @@ export function ScalesDone(): JSX.Element | null {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const start = useStartScales();
+  const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('scales.done.docTitle') }));
   const last = state.scaleLast;
   useEffect(() => {
@@ -52,7 +57,7 @@ export function ScalesDone(): JSX.Element | null {
     dir: t(s.direction === 'up' ? 'scales.setup.upWord' : 'scales.setup.upDownWord'),
     input: t('scales.setup.inputWord.' + s.input),
   });
-  const again = (): void => start(s, { replace: true });
+  const again = (): void => start(s, { replace: true, query: carry });
   const change = (): void => dispatch({ type: 'scaleSettings', settings: s });
   const minor = !s.types.includes('major');
   // Achievements the round earned without a level (a 7-day streak): badges under the score; with a level, the level-up
@@ -89,7 +94,10 @@ export function ScalesDone(): JSX.Element | null {
             <div key={i} role="listitem" className="sdone-row">
               <div className="sdone-row-text">
                 <div className="sdone-row-head">
-                  <b>{scaleName(x.scale)}</b>
+                  {/* Shown with its signs, said in words: a screen reader reads a sign as a symbol or skips it. */}
+                  <b>
+                    <Said shown={scaleName(x.scale)} said={scaleSpoken(x.scale)} />
+                  </b>
                   <span className={x.mistakes ? 'tone-miss' : 'tone-good'}>{t('scales.done.mistakes', { count: x.mistakes })}</span>
                 </div>
                 {x.cameBack && (
@@ -99,10 +107,11 @@ export function ScalesDone(): JSX.Element | null {
                   </span>
                 )}
               </div>
+              {/* Outlined as well as grey, as on the hub: a contrast theme paints every star in one colour. */}
               <span role="img" aria-label={t('scales.starsAria', { count: x.stars })} className="sdone-stars">
                 <span aria-hidden="true">{'★'.repeat(x.stars)}</span>
                 <span aria-hidden="true" className="scale-stars-off">
-                  {'★'.repeat(3 - x.stars)}
+                  {'☆'.repeat(3 - x.stars)}
                 </span>
               </span>
             </div>
@@ -117,7 +126,7 @@ export function ScalesDone(): JSX.Element | null {
   const actions = (
     <div className="results-actions">
       <div className="results-main">
-        <Link to="/scales/setup" className="btn btn--outline" onClick={change}>
+        <Link to="/scales/setup" query={carry} className="btn btn--outline" onClick={change}>
           {t('scales.done.change')}
         </Link>
         <button type="button" className="btn btn--accent" onClick={again}>
@@ -134,7 +143,9 @@ export function ScalesDone(): JSX.Element | null {
     <ExerciseFrame className="frame--results" wide>
       <div className="page results sdone no-scrollbar">
         <div className="screen-head">
-          <Link to="/scales" aria-label={t('scales.done.back')} className="icon-btn icon-btn--edge-sm">
+          {/* Leaves as Quit does, so the browser's Back does not open the finished round again. */}
+          <Link to={back?.to ?? '/scales'} query={back?.query} leaves aria-label={back?.label ?? t('scales.done.back')}
+            className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">
@@ -179,14 +190,14 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
   const n0 = countOf(before);
   const n1 = countOf(after);
   const total = minor ? 45 : 15;
-  const fresh: KeyId[] = [];
+  // Every key new this round, in circle order: a position of two spellings has one dot, but both may be new.
+  const fresh = CIRCLE.flat().filter((k) => filled(after, k) && !was(k));
   const C = 88;
   const R = 67;
   const dots = CIRCLE.map((keys, pos) => {
     const key = keys.find((k) => filled(after, k) && !was(k)) ?? keys.find((k) => filled(after, k)) ?? keys[0];
     const on = filled(after, key);
     const isNew = on && !was(key);
-    if (isNew) fresh.push(key);
     const a = (pos * Math.PI) / 6;
     const x = C + R * Math.sin(a);
     const y = C - R * Math.cos(a);
@@ -207,10 +218,12 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
     );
   });
   const names = fresh.map((k) => keyName(k, minor));
+  // The circle's description names them as said ("C sharp major"): a screen reader reads a sign as a symbol or skips it.
+  const said = fresh.map((k) => keySpoken(k, minor));
   return (
     <div className="card cprog">
       <svg viewBox="0 0 176 176" className="cprog-svg" role="img"
-        aria-label={t(minor ? 'scales.done.circleMinorAria' : 'scales.done.circleMajorAria', { count: n1, total, fresh: names.join(', ') || t('scales.done.noneNew') })}>
+        aria-label={t(minor ? 'scales.done.circleMinorAria' : 'scales.done.circleMajorAria', { count: n1, total, fresh: andList(said) || t('scales.done.noneNew') })}>
         <circle cx={C} cy={C} r={R} className="cprog-ring" />
         {dots}
         <text x={C} y={C + 3} textAnchor="middle" className="cprog-count">
@@ -225,15 +238,16 @@ function CircleProgress({ before, after, minor }: { before: ScaleStars; after: S
         <div className="cprog-n" aria-hidden="true">
           {n0 !== n1 && (
             <>
-              <span className="tone-faint">{n0}</span> <span className="tone-faint cprog-arrow">→</span>{' '}
+              <span className="tone-muted">{n0}</span> <span className="tone-muted cprog-arrow">→</span>{' '}
             </>
           )}
           {n1}
           <span className="cprog-total"> / {total}</span>
         </div>
+        {/* The keys new this round, with their signs: the circle's description has just said them in words. */}
         <div className="muted-text">
           {t(minor ? 'scales.done.minorCount' : 'scales.done.majorCount')}{' '}
-          {names.length > 0 ? t('scales.done.reached', { names: names.join(', '), count: names.length }) : t('scales.done.nothingNew')}
+          {names.length > 0 ? <span aria-hidden="true">{t('scales.done.reached', { names: andList(names), count: names.length })}</span> : t('scales.done.nothingNew')}
         </div>
       </div>
     </div>

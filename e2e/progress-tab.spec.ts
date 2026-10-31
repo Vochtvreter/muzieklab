@@ -39,14 +39,14 @@ test('a free practice round shows on Progress the same day: its minutes, its acc
   await nav.getByRole('link', { name: 'Progress', exact: true }).click();
   await expect(page).toHaveURL(/#\/progress$/);
   const today = await todayShort(page);
-  // A few seconds of practice count as a minute, today's bar.
+  // A few seconds of practice count as a minute, today's bar: "1 minute" in the label.
   const minutes = page.getByRole('region', { name: 'Minutes this week' });
-  await expect(minutes.getByRole('img', { name: /today [A-Za-z]+ 1; 1 minutes in total\.$/ })).toBeVisible();
+  await expect(minutes.getByRole('img', { name: /today [A-Za-z]+ 1; 1 minute in total\.$/ })).toBeVisible();
   await expect(minutes.getByText('Today', { exact: true })).toBeVisible();
   await expect(page.getByText('No practice this week yet.')).toHaveCount(0);
-  // The accuracy line has today's point (and only that: no practice on the 13 days before).
+  // The accuracy line has today's point (and only that: no rhythm rounds on the 13 days before).
   const accuracy = page.getByRole('region', { name: 'Accuracy · 14 days' }).getByRole('img');
-  await expect(accuracy).toHaveAccessibleName(new RegExp(`^Rhythm accuracy per day from .+ to ${today}, (\\d+)% today; no practice on 13 days\\. Average \\1%\\.$`));
+  await expect(accuracy).toHaveAccessibleName(new RegExp(`^Rhythm accuracy per day from .+ to ${today}, (\\d+)% today; no rhythm rounds on 13 days\\. Average \\1%\\.$`));
   await expect(page.getByRole('region', { name: 'Timing tendency' }).getByRole('img', { name: /^Average timing offset per day/ })).toBeVisible();
   // The calendar marks today as the first day of a streak.
   await expect(page.locator('.prog-head .streak-pill')).toHaveText('1-day streak');

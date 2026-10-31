@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import en from './en.json';
 import { formatMessage } from './format';
-import { getLocale, hasMessage, isLocale, LOCALES, resolveLocale, setLocale, t, tipText, translateParams, tx } from './index';
-import { orList } from '../ui/lib/format';
-import { majorName, spokenName } from '../ui/lib/noteText';
+import { formatDecimal, getLocale, hasMessage, isLocale, LOCALES, resolveLocale, setLocale, t, tipText, translateParams, tx } from './index';
+import { andList, orList } from '../ui/lib/format';
+import { KEY_IDS } from '../core/pitch';
+import { majorName, minorName, spokenName } from '../ui/lib/noteText';
+import { keyName, keySpoken } from '../ui/lib/scaleText';
 
 describe('formatMessage', () => {
   it('fills variables and leaves plain text alone', () => {
@@ -77,13 +79,49 @@ describe('t()', () => {
     expect(tip).toBe('You let go of the dotted quarter note in bar 2 too early. Hold it through “2” until just before the “&”.');
     const onBeat = tipText({ key: 'tip.heldLong', params: { value: 'value.half', bar: 1, beat: 1, liftBeat: 3, liftPart: 'count.beat', count: 1 } });
     expect(onBeat).toBe('You held the half note in bar 1 too long. Lift on “3”.');
-    expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 3 } })).toBe('You missed 1 note, most in bar 3. Read one beat ahead.');
+    // One missed note is in its bar, not "most in" it.
+    expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 3 } })).toBe('You missed 1 note in bar 3. Read one beat ahead.');
+    expect(tipText({ key: 'tip.missed', params: { count: 2, bar: 3 } })).toBe('You missed 2 notes, most in bar 3. Read one beat ahead.');
     expect(tipText({ key: 'tip.missedSpread', params: { count: 8 } })).toBe('You missed 8 notes. Read one beat ahead.');
+    // Echo hides the notation: nothing to read ahead.
+    expect(tipText({ key: 'tip.missedEcho', params: { count: 2, bar: 3 } })).toBe('You missed 2 notes, most in bar 3. Count along as you listen, so you know where each note falls.');
+    expect(tipText({ key: 'tip.missedSpreadEcho', params: { count: 1 } })).toBe('You missed 1 note. Count along as you listen, so you know where each note falls.');
     expect(tipText({ key: 'tip.latency', params: { ms: 125, dir: 'late' } })).toMatch(/^Your taps came about 125 ms late every time\. /);
     // Early is a calibration that no longer fits, never the speaker: a device delay only makes taps late.
     expect(tipText({ key: 'tip.latency', params: { ms: 110, dir: 'early' } })).toBe(
       'Your taps came about 110 ms early every time. If you calibrated with other headphones or another speaker, calibrate again.',
     );
+  });
+
+  it('writes Read notes times with one decimal, and the chart of one note in the singular', () => {
+    expect(formatDecimal(1.7)).toBe('1.7');
+    expect(formatDecimal(3)).toBe('3.0');
+    expect(formatDecimal(1234.56)).toBe('1234.6');
+    expect(t('notes.done.chartLabel', { count: 1, avg: formatDecimal(2.2), missed: 1 })).toBe('Answer time for 1 note. Average 2.2 seconds. 1 note missed.');
+    expect(t('notes.done.chartLabel', { count: 12, avg: formatDecimal(2.2), missed: 0 })).toBe(
+      'Answer time for each of the 12 notes. Average 2.2 seconds. No notes missed.',
+    );
+  });
+
+  it('counts one minute and one check in the singular in Progress and Skill levels labels', () => {
+    // One short round gives a new player a total of 1 minute; Treble clef, Bass clef and Scales start with one check.
+    expect(t('progress.minutes.label', { days: 'today Thursday 1', total: 1 })).toBe('Minutes practised this week: today Thursday 1; 1 minute in total.');
+    expect(t('progress.minutes.label', { days: 'today Thursday 51', total: 51 })).toBe('Minutes practised this week: today Thursday 51; 51 minutes in total.');
+    expect(t('skills.list.rowChecks', { done: 0, total: 1, n: 1, next: 'Lines: E G B D F' })).toBe('0 of 1 check for level 1, Lines: E G B D F.');
+    expect(t('skills.list.rowChecks', { done: 1, total: 3, n: 7, next: 'Dotted notes' })).toBe('1 of 3 checks for level 7, Dotted notes.');
+    expect(t('skills.detail.meter', { level: 0, max: 10, done: 0, total: 1, n: 1 })).toBe('Level 0 of 10, and 0 of 1 check for level 1');
+    expect(t('skills.detail.checksDone', { done: 0, total: 1 })).toBe('0 of 1 check done');
+    expect(t('skills.detail.checksDone', { done: 1, total: 3 })).toBe('1 of 3 checks done');
+  });
+
+  it('counts the scales of Round done for one scale too, and lists the new ones with "and"', () => {
+    expect(t('scales.done.cleanAria', { clean: 1, total: 1 })).toBe('1 of 1 scale without a mistake');
+    expect(t('scales.done.cleanAria', { clean: 0, total: 1 })).toBe('0 of 1 scale without a mistake');
+    expect(t('scales.done.cleanAria', { clean: 2, total: 3 })).toBe('2 of 3 scales without a mistake');
+    expect(andList(['C major'])).toBe('C major');
+    expect(andList(['C major', 'G major', 'D major'])).toBe('C major, G major and D major');
+    expect(t('scales.done.reached', { names: 'C major', count: 1 })).toBe('C major reached ★★ this round.');
+    expect(t('scales.done.reached', { names: andList(['C major', 'G major']), count: 2 })).toBe('C major and G major reached ★★ this round.');
   });
 
   it('has every value and rest key the engine can produce', () => {
@@ -97,7 +135,15 @@ describe('t()', () => {
       expect(hasMessage('rest.dotted' + c)).toBe(true);
     }
     expect(hasMessage('value.tripletEighth')).toBe(true);
+    // A rest inside a triplet is a triplet's third too, not a plain half-beat rest.
+    expect(hasMessage('rest.tripletEighth')).toBe(true);
     for (const k of ['beat', 'e', 'and', 'a', 'trip', 'let']) expect(hasMessage('count.' + k)).toBe(true);
+  });
+
+  it('says no taps, not "Only 0 taps", when calibration measured none', () => {
+    expect(t('calibrate.tooFew', { count: 0 })).toBe('No taps landed near a click. Try again and tap on every click.');
+    expect(t('calibrate.tooFew', { count: 1 })).toBe('Only 1 tap landed near a click. Try again and tap on every click.');
+    expect(t('calibrate.tooFew', { count: 5 })).toBe('Only 5 taps landed near a click. Try again and tap on every click.');
   });
 
   it('has unit and lesson titles for the whole MVP path', () => {
@@ -162,6 +208,63 @@ describe('locales', () => {
     expect(LOCALES.find((l) => l.code === 'nl')?.name).toBe('Nederlands');
   });
 
+  it("names the daily challenge's button by the words on it first, in every language (WCAG 2.5.3, Label in Name)", () => {
+    for (const { code } of LOCALES) {
+      setLocale(code);
+      for (const [label, words] of [['home.dailyPlayLabel', 'home.dailyPlay'], ['home.dailyAgainLabel', 'home.dailyAgain']]) {
+        expect(t(label, { date: '27' }).toLowerCase(), `${code} ${label}`).toMatch(new RegExp('^' + t(words).toLowerCase() + '\\b'));
+      }
+    }
+    setLocale('en');
+  });
+
+  it('keeps a count on the line of the word after it in the Progress tab, in every language ("160" above "BPM" once)', () => {
+    const ids = Object.keys((en as { achievements: Record<string, unknown> }).achievements);
+    for (const { code } of LOCALES) {
+      setLocale(code);
+      // A no-break space after every number: a narrow badge or link wraps between the parts, never after a number.
+      const texts = [
+        ...[0, 1, 2].flatMap((due) => [1, 6].map((count) => t('progress.skillsSub', { total: 25, max: 60, count, due }))),
+        ...ids.map((id) => t(`achievements.${id}.name`)),
+      ];
+      expect(texts.filter((s) => /\d [\p{L}]/u.test(s)), code).toEqual([]);
+    }
+    setLocale('en');
+    expect(t('progress.skillsSub', { total: 25, max: 60, count: 6, due: 1 })).toBe('25 of 60 levels · 6 skills · 1 review due');
+    expect(t('achievements.tempo160.name')).toBe('Played at 160 BPM');
+    setLocale('nl');
+    expect(t('progress.skillsSub', { total: 25, max: 60, count: 6, due: 1 })).toBe('25 van 60 niveaus · 6 vaardigheden · 1 te herhalen');
+    setLocale('en');
+  });
+
+  it('keeps a count on the line of the word after it in Read notes, in every language ("3" above "toonsoorten" once)', () => {
+    for (const { code } of LOCALES) {
+      setLocale(code);
+      // The setup's summary and Key row, and Round done's line under its title: narrow lines that wrap.
+      const keys = [1, 3].map((count) => t('notes.done.keysMix', { count }));
+      const texts = [...keys, ...[1, 3].map((count) => t('notes.setup.keysMix', { count })), ...keys.map((key) => t('notes.setup.pool', { count: 11, key }))];
+      expect(texts.filter((s) => /\d [\p{L}]/u.test(s)), code).toEqual([]);
+    }
+    setLocale('nl');
+    expect(t('notes.setup.pool', { count: 11, key: t('notes.done.keysMix', { count: 3 }) })).toBe('11 plekken op de balk per sleutel · 3 toonsoorten');
+    setLocale('en');
+  });
+
+  it('keeps a key name on one line, in every language ("F♯" above "major" once)', () => {
+    for (const { code } of LOCALES) {
+      setLocale(code);
+      // The setup's summary ends with the key, and so does Round done's line under its title: narrow lines that wrap.
+      const names = KEY_IDS.flatMap((id) => [majorName(id), minorName(id), keyName(id, false), keyName(id, true)]);
+      expect(names.filter((s) => / /.test(s)), code).toEqual([]);
+    }
+    setLocale('en');
+    expect(majorName('F#')).toBe('F♯ major');
+    expect(keySpoken('Gb', true)).toBe('E flat minor');
+    setLocale('nl');
+    expect(majorName('Gb')).toBe('G♭ majeur');
+    setLocale('en');
+  });
+
   for (const [path, catalog] of Object.entries(catalogs)) {
     const code = path.slice(2, -'.json'.length);
     if (code === 'en') continue;
@@ -207,6 +310,51 @@ describe('Dutch', () => {
     expect(orList(['value.quarter', 'rest.quarter', 'value.dottedHalf'])).toBe('kwartnoot, kwartrust of gepunteerde halve');
   });
 
+  it('writes Read notes times with a decimal comma, and the chart of one note in the singular', () => {
+    setLocale('nl');
+    expect(formatDecimal(1.7)).toBe('1,7');
+    expect(formatDecimal(3)).toBe('3,0');
+    expect(formatDecimal(1234.56)).toBe('1234,6');
+    expect(t('notes.done.avg', { value: formatDecimal(2.25) })).toBe('gem. 2,3 s');
+    expect(t('notes.done.chartLabel', { count: 1, avg: formatDecimal(2.2), missed: 1 })).toBe('Antwoordtijd voor 1 noot. Gemiddeld 2,2 seconden. 1 noot gemist.');
+    expect(t('notes.done.chartLabel', { count: 12, avg: formatDecimal(2.2), missed: 0 })).toBe(
+      'Antwoordtijd voor elk van de 12 noten. Gemiddeld 2,2 seconden. Geen noten gemist.',
+    );
+  });
+
+  it('says no taps, not "Maar 0 tikken", when calibration measured none', () => {
+    setLocale('nl');
+    expect(t('calibrate.tooFew', { count: 0 })).toBe('Er viel geen tik dicht bij een klik. Probeer het opnieuw en tik op elke klik.');
+    expect(t('calibrate.tooFew', { count: 1 })).toBe('Maar 1 tik viel dicht bij een klik. Probeer het opnieuw en tik op elke klik.');
+    expect(t('calibrate.tooFew', { count: 3 })).toBe('Maar 3 tikken vielen dicht bij een klik. Probeer het opnieuw en tik op elke klik.');
+  });
+
+  it('names the bar of one missed note without "de meeste"', () => {
+    setLocale('nl');
+    expect(tipText({ key: 'tip.missed', params: { count: 1, bar: 1 } })).toBe('Je miste 1 noot in maat 1. Lees één tel vooruit.');
+    expect(tipText({ key: 'tip.missed', params: { count: 3, bar: 2 } })).toBe('Je miste 3 noten, de meeste in maat 2. Lees één tel vooruit.');
+    expect(tipText({ key: 'tip.missedEcho', params: { count: 1, bar: 2 } })).toBe('Je miste 1 noot in maat 2. Tel mee terwijl je luistert, dan weet je waar elke noot valt.');
+  });
+
+  it('counts one minute and one check in the singular in Progress and Skill levels labels', () => {
+    setLocale('nl');
+    expect(t('progress.minutes.label', { days: 'vandaag donderdag 1', total: 1 })).toBe('Minuten geoefend deze week: vandaag donderdag 1; 1 minuut in totaal.');
+    expect(t('progress.minutes.label', { days: 'vandaag donderdag 51', total: 51 })).toBe('Minuten geoefend deze week: vandaag donderdag 51; 51 minuten in totaal.');
+    expect(t('skills.list.rowChecks', { done: 0, total: 1, n: 1, next: 'Lijnen: E G B D F' })).toBe('0 van 1 voorwaarde voor niveau 1, Lijnen: E G B D F.');
+    expect(t('skills.detail.meter', { level: 0, max: 10, done: 0, total: 1, n: 1 })).toBe('Niveau 0 van 10, en 0 van 1 voorwaarde voor niveau 1');
+    expect(t('skills.detail.checksDone', { done: 0, total: 1 })).toBe('0 van 1 voorwaarde gehaald');
+    expect(t('skills.detail.checksDone', { done: 1, total: 3 })).toBe('1 van 3 voorwaarden gehaald');
+  });
+
+  it('counts the scales of Round done for one scale too, and has a plural verb for the new ones', () => {
+    setLocale('nl');
+    expect(t('scales.done.cleanAria', { clean: 1, total: 1 })).toBe('1 van 1 ladder zonder fout');
+    expect(t('scales.done.cleanAria', { clean: 2, total: 3 })).toBe('2 van 3 ladders zonder fout');
+    expect(andList(['C majeur', 'G majeur', 'D majeur'])).toBe('C majeur, G majeur en D majeur');
+    expect(t('scales.done.reached', { names: 'C majeur', count: 1 })).toBe('C majeur haalde deze ronde ★★.');
+    expect(t('scales.done.reached', { names: andList(['C majeur', 'G majeur']), count: 2 })).toBe('C majeur en G majeur haalden deze ronde ★★.');
+  });
+
   it('names sharps and flats the Dutch way for screen readers', () => {
     setLocale('nl');
     expect(spokenName('F', 1)).toBe('fis');
@@ -214,7 +362,38 @@ describe('Dutch', () => {
     expect(spokenName('E', -1)).toBe('es');
     expect(spokenName('A', -1)).toBe('as');
     expect(spokenName('C', 0)).toBe('C');
-    expect(majorName('G')).toBe('G majeur');
+    expect(majorName('G')).toBe('G majeur');
+  });
+
+  it('names keys majeur and mineur, as the key buttons do, never groot or klein', () => {
+    // What's new 0.19.1 once said "C♯ en C♭ groot".
+    expect(
+      [...flatten(catalogs['./nl.json']).entries()]
+        .filter(([, msg]) => /\b[A-G][♯♭]?(?:,? (?:en )?[A-G][♯♭]?)* (?:groot|klein)\b/.test(msg))
+        .map(([key]) => key),
+    ).toEqual([]);
+  });
+
+  it('names the tabs as the tab bar does (Start, Leerpad, Leren, Voortgang, Instellingen), never in English', () => {
+    // What's new 0.19.1 once said "het voorbeeld van een les op Home".
+    expect(
+      [...flatten(catalogs['./nl.json']).entries()]
+        .filter(([, msg]) => /\b(?:Home|Path|Learn|Progress|Settings)\b/.test(msg))
+        .map(([key]) => key),
+    ).toEqual([]);
+  });
+
+  it('puts the right article before a sign word: het kruis and het herstellingsteken, but de mol', () => {
+    setLocale('nl');
+    const wrong: string[] = [];
+    for (const [key, msg] of flatten(catalogs['./nl.json'])) {
+      if (!msg.includes('{signWord')) continue;
+      for (const sign of ['flat', 'natural', 'sharp', 'doubleFlat', 'doubleSharp']) {
+        const text = t(key, { signWord: t('notes.signWord.' + sign) });
+        if (/\b(de (kruis|herstellingsteken|dubbelkruis)|het (mol|dubbelmol))\b/.test(text)) wrong.push(`${key}: ${text}`);
+      }
+    }
+    expect(wrong).toEqual([]);
   });
 
   it('counts “1 en 2 en” in coaching tips', () => {
@@ -259,6 +438,27 @@ describe('Dutch', () => {
     }
     expect(t('apiError.link_invalid')).toBe('Deze link werkt niet meer. Vraag degene die je heeft uitgenodigd om een nieuwe link.');
     expect(t('admin.selfSub')).toBe('Je wachtwoord wijzigen of je account verwijderen doe je in Account.');
+  });
+
+  it("says the deleted accounts' file holds every entry, not only the ones shown above it", () => {
+    setLocale('nl');
+    // The file has every entry whatever the filter, and beyond the newest 500 the list shows
+    // (AdminClosures, ClosuresFile).
+    expect(t('closures.downloadSub')).toBe('Alle verwijderde accounts, met de anonieme voortgang, als JSON.');
+  });
+
+  it('says Change setup one way on every Round done, with no English word in it', () => {
+    setLocale('nl');
+    expect(t('scales.done.change')).toBe(t('notes.done.change'));
+    expect([...flatten(catalogs['./nl.json']).entries()].filter(([, msg]) => /\bsetup\b/i.test(msg)).map(([key]) => key)).toEqual([]);
+  });
+
+  it('says Skip to summary one way in a Read notes round and a Scales round', () => {
+    setLocale('nl');
+    // Both lead to Ronde klaar. Read notes once said "Naar het overzicht", the word for the Scales tab's circle.
+    expect(t('notes.play.skip')).toBe('Naar de samenvatting');
+    expect(t('scales.play.skip')).toBe(t('notes.play.skip'));
+    expect(t('notes.play.finish')).toBe(t('notes.play.skip'));
   });
 
   it('falls back to English for a key a catalog lacks', () => {

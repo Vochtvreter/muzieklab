@@ -2,7 +2,9 @@
  * Scales hub (DESIGN.md §3.7): the circle of fifths with a Major / Minor switch, how many scales have two stars, and
  * the selected key: its notes, stars, *Options* and *Practice*, plus *Go round the circle*. A Home page: the tab bar
  * with Home current on phone, the top header on tablet and desktop, where the circle and the selected key sit side by
- * side (App design canvas, Tablet and Desktop · Scales).
+ * side (App design canvas, Tablet and Desktop · Scales). Opened from Learn chapter 11's Practice button (?from=11),
+ * Learn is current, its back arrow returns to the chapter, and the setup and the rounds it opens keep that; opened from
+ * Progress (?from=progress, or a Skill levels screen's), the same with Progress.
  */
 import {
   CIRCLE,
@@ -21,23 +23,28 @@ import {
 import { t } from '../../../i18n';
 import { PitchStaff } from '../../../render/PitchStaff';
 import { AppShell } from '../../components/AppShell';
+import { Said } from '../../components/Bits';
 import { CircleOfFifths, type Ring } from '../../components/CircleOfFifths';
 import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle, useKeyboardHints } from '../../hooks';
+import { useLearnReturn } from '../../lib/learnReturn';
 import { keySignsAria, letterName } from '../../lib/noteText';
-import { keyName, noteName } from '../../lib/scaleText';
+import { keyName, keySpoken, noteName, noteSpoken } from '../../lib/scaleText';
 import { Link, navigate } from '../../router';
 import { useStore } from '../../store';
 import { useStartScales } from './start';
 
-/** "★★☆" with its spoken form. */
-function Stars({ n, className }: { n: number; className?: string }): JSX.Element {
+/**
+ * "★★☆" with its spoken form (or `label`). The stars not earned are outlined as well as grey: a contrast theme paints
+ * every star in one colour (DESIGN.md §11).
+ */
+function Stars({ n, className, label }: { n: number; className?: string; label?: string }): JSX.Element {
   return (
-    <span role="img" aria-label={t('scales.starsAria', { count: n })} className={'scale-stars' + (className ? ' ' + className : '')}>
+    <span role="img" aria-label={label ?? t('scales.starsAria', { count: n })} className={'scale-stars' + (className ? ' ' + className : '')}>
       <span aria-hidden="true">{'★'.repeat(n)}</span>
       <span aria-hidden="true" className="scale-stars-off">
-        {'★'.repeat(3 - n)}
+        {'☆'.repeat(3 - n)}
       </span>
     </span>
   );
@@ -48,6 +55,9 @@ export function ScalesHub(): JSX.Element {
   const bp = useBreakpoint();
   const kbd = useKeyboardHints(bp);
   const start = useStartScales();
+  const { back, carry } = useLearnReturn();
+  // The tab it was opened from is current (DESIGN.md §9): Home, Learn from chapter 11, or Progress.
+  const fromTab = back?.tab ?? '/';
   useDocTitle(t('app.docTitle', { page: t('scales.title') }));
   const { tab, key } = state.scaleHub;
   const minor = tab === 'minor';
@@ -58,23 +68,26 @@ export function ScalesHub(): JSX.Element {
   const types: ScaleType[] = minor ? (s.types.some((x) => x !== 'major') ? s.types.filter((x) => x !== 'major') : [...MINOR_TYPES]) : ['major'];
   const preset = (patch: Partial<ScaleSettings>): ScaleSettings => ({ ...s, keyMode: 'one', keys: [key], types, ...patch });
   const options = (): void => dispatch({ type: 'scaleSettings', settings: preset({}) });
-  const practise = (): void => start(preset({}));
+  const practise = (): void => start(preset({}), { query: carry });
   const roundTheCircle = (): void => {
     dispatch({ type: 'scaleSettings', settings: preset({ keyMode: 'circle' }) });
-    navigate('/scales/setup');
+    navigate('/scales/setup', { query: carry });
   };
 
   const counts = doneCounts(stars);
   const others = CIRCLE[circlePosition(key)].filter((x) => x !== key);
-  const title = keyName(key, minor);
-  const sub =
-    t(minor ? 'scales.hub.relMajor' : 'scales.hub.relMinor', { name: keyName(key, !minor) }) +
-    (others.length ? t(kbd ? 'scales.hub.clickAgain' : 'scales.hub.tapAgain', { name: keyName(others[0], minor) }) : '');
+  // The key's name, its relative key and Practice show the signs and are said in words, as the circle's keys and the
+  // notes are: a screen reader reads a sign as a symbol or skips it.
+  const subOf = (name: typeof keyName): string =>
+    t(minor ? 'scales.hub.relMajor' : 'scales.hub.relMinor', { name: name(key, !minor) }) +
+    (others.length ? t(kbd ? 'scales.hub.clickAgain' : 'scales.hub.tapAgain', { name: name(others[0], minor) }) : '');
+  const title = <Said shown={keyName(key, minor)} said={keySpoken(key, minor)} />;
+  const sub = <Said shown={subOf(keyName)} said={subOf(keySpoken)} />;
+  const practiceLabel = <Said shown={t('scales.hub.practice', { name: keyName(key, minor) })} said={t('scales.hub.practice', { name: keySpoken(key, minor) })} />;
   const notes = scaleNotes({ key, type: minor ? 'natural' : 'major' });
   const signs = keySigns(key);
   const level = minor ? minorLevel(stars, key) : majorLevel(stars, key);
   const formStars = (type: ScaleType): number => stars[scaleId({ key, type })] ?? 0;
-  const practiceLabel = t('scales.hub.practice', { name: title });
 
   const switcher = (
     <Segmented<Ring> label={t('scales.hub.ring')} value={tab} className="hub-switch" onChange={(v) => pick(key, v)}
@@ -100,18 +113,19 @@ export function ScalesHub(): JSX.Element {
     </div>
   );
   const circle = <CircleOfFifths tab={tab} selected={key} stars={stars} onPick={pick} />;
+  // Shown with their signs, said in words: a screen reader reads a sign as a symbol or skips it.
   const noteChips = (
-    <div className="hub-notes" role="list" aria-label={t('scales.hub.notesAria', { notes: notes.map(noteName).join(' ') })}>
+    <div className="hub-notes" role="list" aria-label={t('scales.hub.notesAria', { notes: notes.map(noteSpoken).join(', ') })}>
       {notes.map((n, i) => (
-        <span key={i} role="listitem" className={'hub-note' + (n.alter !== 0 ? ' is-sign' : '')}>
-          {noteName(n)}
+        <span key={i} role="listitem" aria-label={noteSpoken(n)} className={'hub-note' + (n.alter !== 0 ? ' is-sign' : '')}>
+          <span aria-hidden="true">{noteName(n)}</span>
         </span>
       ))}
     </div>
   );
   const buttons = (
     <div className="hub-buttons">
-      <Link to="/scales/setup" className="btn btn--outline" onClick={options}>
+      <Link to="/scales/setup" query={carry} className="btn btn--outline" onClick={options}>
         {t('scales.hub.options')}
       </Link>
       <button type="button" className="btn btn--accent" onClick={practise}>
@@ -130,8 +144,9 @@ export function ScalesHub(): JSX.Element {
     </button>
   );
   const head = (
-    <div className="screen-head hub-head">
-      <Link to="/" aria-label={t('scales.hub.back')} className="icon-btn icon-btn--edge">
+    <div className="screen-head screen-head--link hub-head">
+      <Link to={back?.to ?? '/'} query={back?.query} aria-label={back?.label ?? t('scales.hub.back')}
+        className="icon-btn icon-btn--edge">
         <Icon name="back" />
       </Link>
       <h1 className="screen-title hub-title">{t('scales.title')}</h1>
@@ -144,7 +159,7 @@ export function ScalesHub(): JSX.Element {
 
   if (bp === 'phone') {
     return (
-      <AppShell bp={bp} active="/">
+      <AppShell bp={bp} active={fromTab}>
         <div className="page hub no-scrollbar">
           {head}
           {switcher}
@@ -156,7 +171,8 @@ export function ScalesHub(): JSX.Element {
                 <b>{title}</b>
                 <span>{sub}</span>
               </span>
-              <Stars n={level} />
+              {/* For a minor key, how many of its forms have two stars, as the circle fills it: not a rating. */}
+              <Stars n={level} label={minor ? t('scales.hub.formsAria', { count: level }) : undefined} />
             </div>
             {noteChips}
             {buttons}
@@ -176,7 +192,12 @@ export function ScalesHub(): JSX.Element {
       </div>
       <span className="hub-sig-foot">
         <b>{sigCount}</b>
-        {signs.length > 0 && <span className="mono-accent">{signs.map((x) => letterName(x.letter, x.alter)).join(' ')}</span>}
+        {/* The staff above says them in words. */}
+        {signs.length > 0 && (
+          <span className="mono-accent" aria-hidden="true">
+            {signs.map((x) => letterName(x.letter, x.alter)).join(' ')}
+          </span>
+        )}
       </span>
     </div>
   );
@@ -221,7 +242,7 @@ export function ScalesHub(): JSX.Element {
   );
 
   return (
-    <AppShell bp={bp} active="/" wide fill>
+    <AppShell bp={bp} active={fromTab} wide fill>
       <div className={'page hub hub--wide hub--' + bp + ' no-scrollbar'}>
         {head}
         {bp === 'tablet' ? (

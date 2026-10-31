@@ -1,7 +1,7 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { DEFAULT_NOTE_SETTINGS } from '../core/noteRound';
 import { ALL_SCALES, scaleId } from '../core/scale';
-import { hasMessage, setLocale, t } from '../i18n';
+import { hasMessage, LOCALES, setLocale, t, translateParams } from '../i18n';
 import { CHAPTERS } from '../ui/learn/chapters';
 import {
   ctaOf,
@@ -150,21 +150,43 @@ describe('scales', () => {
     ]);
     expect(two.map((c) => [c.done, c.w])).toEqual([[true, 1], [false, 0.5]]);
     expect(checks(p, 'scales', 3).map((c) => c.label.params.tonic)).toEqual(['D', 'B♭']);
+    // The tonic as a note too, so a screen reader can be given it in words (B flat).
+    expect(checks(p, 'scales', 3).map((c) => c.tonic)).toEqual([{ letter: 'D', alter: 0 }, { letter: 'B', alter: -1 }]);
     expect(passSkills(p, TODAY).added).toEqual(['scales:1']);
   });
 
-  it('counts all 15 majors, five minors of each form, then all 60 at ★★★', () => {
+  it('counts all 15 majors, checks each of the five minors of each form, then all 60 at ★★★', () => {
     const majors = Object.fromEntries(ALL_SCALES.filter((s) => s.type === 'major').map((s) => [scaleId(s), 2]));
     const p = stars({ ...majors, 'A-natural': 2, 'E-natural': 2, 'D-natural': 3, 'B-natural': 2, 'G-natural': 2, 'A-harmonic': 2 });
     expect(checks(p, 'scales', 6)).toEqual([
       { label: { key: 'skills.check.scaleCount', params: { count: 15, type: 'scales.typeLower.major' } }, done: true, now: { key: 'skills.now.count', params: { done: 15, total: 15 } }, w: 1 },
     ]);
-    expect(checks(p, 'scales', 7)[0].done).toBe(true);
-    expect(checks(p, 'scales', 8)[0]).toMatchObject({ done: false, now: { params: { done: 1, total: 5 } }, w: 0.2 });
+    expect(checks(p, 'scales', 7).map((c) => c.done)).toEqual([true, true, true, true, true]);
+    const eight = checks(p, 'scales', 8);
+    expect(eight.map((c) => [c.done, c.w])).toEqual([[true, 1], [false, 0], [false, 0], [false, 0], [false, 0]]);
+    expect(eight[0]).toMatchObject({ label: { key: 'skills.check.scale', params: { scale: 'scales.name.harmonic', tonic: 'A' } }, tonic: { letter: 'A', alter: 0 }, now: { key: 'skills.now.stars', params: { count: 2 } } });
     expect(passSkills(p, TODAY).added).toEqual(['scales:1', 'scales:2', 'scales:3', 'scales:4', 'scales:5', 'scales:6', 'scales:7']);
     const all = stars(Object.fromEntries(ALL_SCALES.map((s) => [scaleId(s), 3])));
     expect(checks(all, 'scales', 10)[0]).toMatchObject({ label: { key: 'skills.check.allScales', params: { count: 60 } }, done: true });
     expect(passSkills(all, TODAY).added).toHaveLength(10);
+  });
+
+  // Only A, E, D, B and G minor count for levels 7–9 (DESIGN.md §8.6): each check names its scale, so five other
+  // harmonic minors at ★★★ no longer read as "5 harmonic minor scales at ★★" beside "now 0 of 5".
+  it("levels 7–9 name the minor scale each check counts, in the player's language", () => {
+    const p = stars({ 'C-harmonic': 3, 'F-harmonic': 3, 'Bb-harmonic': 3, 'Eb-harmonic': 3, 'F#-harmonic': 3 });
+    const text = (c: Check): string => t(c.label.key, translateParams(c.label.params));
+    expect(checks(p, 'scales', 7).map(text)).toEqual(['A natural minor at ★★', 'E natural minor at ★★', 'D natural minor at ★★', 'B natural minor at ★★', 'G natural minor at ★★']);
+    const eight = checks(p, 'scales', 8);
+    expect(eight.map(text)).toEqual(['A harmonic minor at ★★', 'E harmonic minor at ★★', 'D harmonic minor at ★★', 'B harmonic minor at ★★', 'G harmonic minor at ★★']);
+    expect(eight.some((c) => c.done)).toBe(false);
+    expect(text(checks(p, 'scales', 9)[4])).toBe('G melodic minor at ★★');
+    setLocale('nl');
+    try {
+      expect(text(eight[0])).toBe('A harmonisch mineur op ★★');
+    } finally {
+      setLocale('en');
+    }
   });
 });
 
@@ -294,5 +316,25 @@ describe('texts', () => {
     known(focusOf(p).label);
     known(focusOf(progress({ skills: passed({ rhythm: 1 }) })).label);
     for (const k of ['skills.chip.review', 'skills.chip.gain', 'skills.review.title', 'skills.review.text', 'skills.later', 'skills.title']) expect(hasMessage(k), k).toBe(true);
+  });
+
+  // A screen reader reads ♯ and ♭ as a symbol or skips them: Skill levels says these names in words (skills.levelSpoken).
+  it('has a level name in words for every one that writes a sign, and for no other, in every language', () => {
+    try {
+      for (const { code } of LOCALES) {
+        setLocale(code);
+        for (const skill of SKILLS) {
+          for (let n = 1; n <= 10; n++) {
+            const name = levelName(skill, n);
+            const spoken = name.replace(/^skills\.level\./, 'skills.levelSpoken.');
+            const sign = /[♯♭𝄪𝄫]/u.test(t(name));
+            expect(spoken !== name && hasMessage(spoken), `${code} ${name}`).toBe(sign);
+            if (sign) expect(t(spoken), `${code} ${spoken}`).not.toMatch(/[♯♭𝄪𝄫]/u);
+          }
+        }
+      }
+    } finally {
+      setLocale('en');
+    }
   });
 });

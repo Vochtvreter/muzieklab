@@ -2,7 +2,7 @@
 import { scaleRoundKeys } from '../../../core/api';
 import { t } from '../../../i18n';
 import { useLearnReturn } from '../../lib/learnReturn';
-import { navigate } from '../../router';
+import { leave } from '../../router';
 import { useStore } from '../../store';
 import { KeyScreen } from '../notes/NotesKey';
 
@@ -20,7 +20,8 @@ export function ScalesKey(): JSX.Element {
           dispatch({ type: 'scaleSettings', settings: { ...s, keyMode: 'one', keys: chosen.slice(0, 1) } });
           dispatch({ type: 'scaleHub', hub: { ...state.scaleHub, key: chosen[0] } });
         }
-        navigate('/scales/setup', { replace: true, query: carry });
+        // Back to the setup's own place in the history: one Back from there leaves it.
+        leave('/scales/setup', carry);
       }} />
   );
 }

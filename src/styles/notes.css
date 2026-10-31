@@ -7,9 +7,6 @@
   width: 100%;
   min-width: 0;
 }
-.tone-faint {
-  color: var(--faint);
-}
 
 /* ---------- Pick-one chips (Range, Extra signs, Time per note): a tinted highlight slides over the chips ---------- */
 .seg--chips {
@@ -32,6 +29,10 @@
   background: var(--paper);
   color: var(--ink);
   font-size: 13.5px;
+  /* A label too long for a third of a 320 px phone ("+2 ledger lines") wraps inside its chip instead of running out. */
+  white-space: normal;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 .seg--chips .seg-btn.is-on {
   border-color: var(--accent);
@@ -141,7 +142,9 @@
   line-height: 17.5px;
   min-height: 35px;
 }
+/* Positioned, so the .sr-only words of the summary (the key said in words) sit inside the page's scroll box. */
 .nsetup-summary {
+  position: relative;
   flex: none;
   background: var(--paper);
   border-radius: 18px;
@@ -241,11 +244,17 @@
   font-size: 12px;
   color: var(--muted);
 }
-/* The smallest phones: key names in longer languages ("D♭ majeur") still fit next to the key signature. */
+/*
+ * The smallest phones: key names in longer languages ("C♭ majeur") still fit next to the key signature, which is drawn
+ * a little narrower (fitted to its width, so seven signs stay whole).
+ */
 @media (max-width: 359.98px) {
   .key-btn {
     gap: 4px;
     padding-right: 4px;
+  }
+  .key-btn .key-thumb {
+    width: 66px;
   }
   .key-btn-text b {
     font-size: 13px;
@@ -254,7 +263,9 @@
     font-size: 11.5px;
   }
 }
+/* Positioned, so the .sr-only words of the summary (the key said in words) sit inside the page's scroll box. */
 .key-summary {
+  position: relative;
   background: var(--paper);
   border-radius: 14px;
   padding: 10px 12px;
@@ -291,7 +302,9 @@
   font-size: 15px;
   font-weight: 700;
 }
+/* The count keeps its width and stays on one line beside a long eyebrow (a lesson in a key): the eyebrow wraps. */
 .nplay-score {
+  flex: none;
   text-align: right;
 }
 .nplay-score-n {
@@ -299,6 +312,7 @@
   font-weight: 600;
   font-size: 20px;
   line-height: 1;
+  white-space: nowrap;
 }
 .nplay-staff {
   flex: none;
@@ -365,8 +379,9 @@
   font-size: 13px;
   color: var(--muted);
 }
+/* The board's 228 px, wider for a longer label ("Geen namen"): the line beside it wraps instead. */
 .nlabels .seg {
-  width: 228px;
+  min-width: 228px;
   flex: none;
 }
 
@@ -487,6 +502,11 @@
   font-size: 11px;
   opacity: 0.6;
 }
+/* On a marked button the mark's ink on its soft fill has no contrast to spare: the small name is not faded there. */
+.name-btn.is-right .name-sub,
+.name-btn.is-wrong .name-sub {
+  opacity: 1;
+}
 /* A lesson's own notes (fewer than seven): the buttons share the row, centred, and do not grow into bars. */
 .name-grid--few {
   width: 100%;
@@ -544,10 +564,15 @@
   padding: 8px 18px;
 }
 
-/* One octave: 7 white keys in a grid, 5 black keys placed on the boundaries after C, D, F, G and A. */
+/*
+ * One octave: 7 white keys in a grid, 5 black keys placed on the boundaries after C, D, F, G and A. Each black key comes
+ * after the white key it follows (pitch order, for Tab), so it is lifted over the next one: a pressed white key is
+ * scaled (base.css), which paints it with the placed keys, in that order. Isolated, so the lift stays in the piano.
+ */
 .piano {
   --black-w: 32px;
   position: relative;
+  isolation: isolate;
   height: 200px;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -572,6 +597,7 @@
 }
 .piano-black {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: calc(var(--after) * (100% + 3px) / 7 - var(--black-w) / 2 - 1.5px);
   width: var(--black-w);
@@ -601,13 +627,17 @@
   background: var(--miss-soft);
   color: var(--miss-ink);
 }
+/*
+ * The right key is filled with the green for text, --good-ink: white on --good is only 4.3:1. The fills turn light in
+ * dark, so the label takes the ink for a filled accent, white in light and dark in dark.
+ */
 .piano-black.is-right {
-  background: var(--good);
-  color: #ffffff;
+  background: var(--good-ink);
+  color: var(--on-fill);
 }
 .piano-black.is-wrong {
   background: var(--miss);
-  color: #ffffff;
+  color: var(--on-fill);
 }
 .piano--kbd {
   --black-w: 52px;
@@ -682,8 +712,15 @@
   align-items: center;
   gap: 10px;
 }
+/*
+ * Read notes' switch is 330 px (the board's), less beside a long keyboard hint: from 1100 px wide the answer card beside
+ * the 304 px stats column has too little room for both (the Dutch name buttons' hint is 337 px), and the hint dropped
+ * onto a line of its own, so two ledger lines and a why of two lines no longer fitted the window. The row breaks by the
+ * 260 px the switch starts from, so the switch narrows before the hint goes under it.
+ */
 .nanswer-head .nmode {
-  width: 330px;
+  flex: 1 1 260px;
+  max-width: 330px;
   background: var(--ground);
 }
 .nanswer-head .muted-text {
@@ -733,6 +770,21 @@
   gap: 12px;
   align-content: start;
 }
+/*
+ * Read notes: the two cards hold the widest score on one line, "50 / 50" of 50 notes (as wide as "10 / 10": 7
+ * characters of 26 px mono), and an average of 10 s or more. At the board's 240 px the score broke after the slash
+ * from the 10th note on. The cards' sides are 14 px (18 px on the board): a browser that draws each letter a whole
+ * pixel wide makes the score 112 px (Chromium 141; 109 px in others), which ran 2 px past 18 px sides.
+ */
+.nplay-desk .nstats {
+  flex-basis: 304px;
+}
+.nplay-desk .nstats .stat {
+  padding-inline: 14px;
+}
+.nstat-big {
+  white-space: nowrap;
+}
 .nstat-wide {
   grid-column: 1 / -1;
 }
@@ -745,6 +797,30 @@
   grid-column: 1 / -1;
   justify-self: center;
   margin: 0;
+}
+/*
+ * A desktop window under 960 px tall (a 1280 × 800 laptop, a 1180 × 820 tablet on its side): at the board's spacing,
+ * with its 210 px piano, the key labels' row and Hint and Next note under the answers did not fit, nor a staff with
+ * ledger lines, and the page scrolled them out of the window. The spacing tightens and the piano is lower (160 px), so
+ * two ledger lines and a why of two lines fit; under 800 px tall (a 1280 × 720 laptop) the page still scrolls (DESIGN.md
+ * §9). Scales' desktop layout has the same cards, and the same need with Up & down.
+ */
+@media (min-width: 1100px) and (max-height: 959.98px) {
+  .nplay-main {
+    padding-top: 20px;
+    padding-bottom: 16px;
+    gap: 16px;
+  }
+  .nplay-staff--desk {
+    padding: 14px 40px;
+  }
+  .nanswer {
+    padding: 18px 24px;
+    gap: 12px;
+  }
+  .nanswer .piano {
+    height: 160px;
+  }
 }
 
 /*
@@ -988,12 +1064,17 @@
 }
 .nchips-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
+/* Beside the first row of chips, as they wrap to as many rows as there are notes: centred on the height of a chip of
+   notes on the staff (43 px), on one line or two; beside a taller chip (room for ledger lines), in its top part. */
 .nchips-label {
   flex: none;
+  display: flex;
+  align-items: center;
   width: 52px;
+  min-height: 43px;
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);
@@ -1019,6 +1100,10 @@
   border-color: var(--miss);
   color: var(--miss);
 }
+.nchip--hinted {
+  border-color: var(--gold);
+  color: var(--gold-ink);
+}
 /* The note on a small staff in its clef (VexFlow at 0.5: clef and one whole note). */
 .nchip-staff {
   flex: none;
@@ -1038,6 +1123,11 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 13px;
+}
+/* The count stays whole ("0 / 10"); a long label beside it (C♯ major's seven sharps) wraps instead. */
+.nsign-head > .mono-muted {
+  flex: none;
+  white-space: nowrap;
 }
 .nsign-bar {
   height: 8px;
@@ -1087,14 +1177,16 @@
   border-radius: 99px;
   background: var(--accent);
 }
+/* Nothing clips the card: the row fills it, and its focus ring is drawn outside it. */
 .chapter-card {
   background: var(--paper);
   border-radius: 16px;
-  overflow: hidden;
 }
 .chapter-row {
   width: 100%;
   border: 0;
+  /* The focus ring follows the card's corners. */
+  border-radius: inherit;
   background: transparent;
   color: var(--ink);
   padding: 10px 12px;
@@ -1138,12 +1230,10 @@
 .chapter-text b {
   font-size: 15px;
 }
+/* The subtitle wraps: a longer translation (Dutch) is read in full, not cut off with "…" (DESIGN.md §11). */
 .chapter-text span {
   font-size: 12.5px;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .chapter-pill {
   flex: none;
@@ -1162,10 +1252,11 @@
   background: var(--accent-soft);
   color: var(--accent-ink);
 }
+/* 5 px above the first section, so the accordion's inner box (overflow: hidden) does not cut off its focus ring. */
 .chapter-sections {
   display: flex;
   flex-direction: column;
-  padding: 0 12px 6px 60px;
+  padding: 5px 12px 6px 60px;
 }
 .chapter-section {
   min-height: 44px;
@@ -1204,8 +1295,16 @@
   flex-direction: column;
 }
 .learn-crumb {
+  position: relative;
+  display: inline-block;
   color: inherit;
   text-decoration: none;
+}
+/* The link is a word in the 12 px eyebrow: a 44 px tap around it, in the room above and below the line. */
+.learn-crumb::after {
+  content: '';
+  position: absolute;
+  inset: -15px -8px;
 }
 .learn-crumb:hover {
   color: var(--accent-ink);
@@ -1252,6 +1351,12 @@
 .learn-chip:hover {
   color: var(--ink);
   border-color: var(--accent);
+}
+/* The chips stand in for the sidebar on tablet: on a touch screen (a phone on its side) they get its 44 px rows. */
+@media (pointer: coarse) {
+  .learn-chip {
+    min-height: 44px;
+  }
 }
 .learn-section {
   scroll-margin-top: 16px;
@@ -1328,6 +1433,12 @@
   gap: 8px;
   font-size: 13px;
 }
+/* A step pattern or a row of letters reads as one thing ("W H W W W W" and "H" below reads as another pattern): it
+   stays on one line, and the title beside it wraps instead. */
+.learn-example-head .mono-accent,
+.learn-sig .mono-accent {
+  white-space: nowrap;
+}
 .learn-aid {
   font-size: 13px;
   color: var(--muted);
@@ -1362,10 +1473,12 @@
   flex-direction: column;
   gap: 10px;
 }
+/* A key signature and its letters; on a 320 px phone "F C G D A E B" goes under the staff, where it fits. */
 .learn-sig {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 4px 12px;
 }
 .learn-sig .pitch-staff {
   width: 150px;
@@ -1524,12 +1637,15 @@
   color: var(--miss-ink);
   background: var(--miss-soft);
 }
-/* Rows of name, text and value: tempo words, the rests, dotted values. */
+/* Rows of name, text and value: tempo words, the rests, dotted values. The strong and weak beats (a grid, below) sit on
+   the same ground. */
 .learn-table,
 .learn-accents {
   background: var(--ground);
   border-radius: 14px;
   padding: 4px 14px;
+}
+.learn-table {
   display: flex;
   flex-direction: column;
 }
@@ -1553,7 +1669,8 @@
 }
 .learn-table-text {
   flex: 1;
-  min-width: 0;
+  /* No narrower than its longest word ("Gepunteerde" on a 320 px phone): the value wraps instead of lying under it. */
+  min-width: min-content;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -1566,21 +1683,35 @@
   color: var(--muted);
 }
 .learn-table-value {
-  flex: none;
+  flex: 0 1 auto;
   font-size: 13px;
   text-align: right;
 }
-/* Strong, medium and weak beats (chapter 1.3): the height of a bar shows the weight. */
-.learn-accent-row {
+/*
+ * Strong, medium and weak beats (chapter 1.3): the height of a bar shows the weight. The meters share their columns
+ * (subgrid), so the beats line up from row to row, and a column is at least as wide as its word: on a 320 px phone a
+ * quarter of the row is narrower than "medium" (Dutch "halfzwaar"). The 42 px column and 8 px gap put the beats where
+ * they were; a browser without subgrid gives each row its own columns, as before.
+ */
+.learn-accents {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 42px repeat(4, minmax(min-content, 1fr));
+  column-gap: 8px;
+}
+.learn-accent-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 10px 0;
 }
 .learn-accent-beats {
+  grid-column: 2 / -1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: subgrid;
   gap: 8px;
   align-items: end;
 }
@@ -1748,6 +1879,13 @@
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--rule);
 }
+/* Phones under 360 px: a row's name goes over its cells, so the 12 columns get the width (Dutch "(en)" over three). */
+@media (max-width: 359.98px) {
+  .learn-grid-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
 /* The note tree (chapter 2.2). */
 .learn-tree {
   display: flex;
@@ -1784,6 +1922,11 @@
 }
 .learn-nav-link b {
   font-size: 14px;
+  /* A word longer than the card ("herstellingstekens" on a 320 px phone) breaks instead of running into its padding;
+     shorter ones keep whole ("mollen", not "mol-len"). */
+  overflow-wrap: break-word;
+  hyphens: auto;
+  hyphenate-limit-chars: 12 4 4;
 }
 .learn-nav-link:hover b {
   color: var(--accent-ink);
@@ -1854,7 +1997,7 @@
     grid-template-rows: repeat(var(--rows), auto);
     grid-auto-flow: column;
     column-gap: 28px;
-    padding: 0 16px 8px 74px;
+    padding: 5px 16px 8px 74px;
   }
 
   .learn-chapter--wide {
@@ -1916,6 +2059,8 @@
   /* Under the top header a short screen (1280 × 720) is lower than the list: it scrolls on its own. */
   max-height: 100%;
   overflow-y: auto;
+  /* Room for the focus ring of a section link that Tab scrolls to the list's top or bottom edge. */
+  scroll-padding: 6px 0;
   scrollbar-width: thin;
   display: flex;
   flex-direction: column;
@@ -1973,6 +2118,10 @@
 .learn-side-other:hover {
   color: var(--accent-ink);
 }
+/* The sidebar scrolls on its own, so it would cut off a ring outside the full-width link: this one is drawn inside. */
+.learn-side-other:focus-visible {
+  outline-offset: -3px;
+}
 .learn-side-other .learn-side-n {
   color: var(--muted);
 }
@@ -1998,9 +2147,6 @@
   .nlabels {
     flex-direction: column;
     align-items: stretch;
-  }
-  .nlabels .seg {
-    width: auto;
   }
   .piano {
     --black-w: 26px;
@@ -2029,26 +2175,41 @@
   flex-shrink: 0;
 }
 /*
- * A phone browser (DESIGN.md §9, see Play in app.css): the page's gaps tighten, and the piano gives up height so Hint
- * and Next note stay in view. On the shortest screens the staff is drawn smaller (NotesPlay), and the feedback, the name
- * buttons and the actions are lower.
+ * A phone in portrait: the piano gives up height so Hint and Next note stay in view. Only what is missing, so a tall
+ * phone keeps the board's piano; at any height, as a range with ledger lines does not fit a phone up to about 820 px
+ * tall at the board's spacing. Down to 100 px: a why of three lines under two ledger lines needs it just above the
+ * shortest step (660 px), and the black keys are still 61 px, with the white keys' labels below them.
  */
-@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (orientation: portrait) {
+  .nplay .ninputs {
+    flex-shrink: 1;
+    min-height: 0;
+  }
+  .nplay .piano {
+    min-height: 100px;
+  }
+}
+/*
+ * A phone browser (DESIGN.md §9, see Play in app.css): the page's gaps tighten. On the shortest screens the staff is
+ * drawn smaller (NotesPlay), and the feedback, the name buttons and the actions are lower.
+ */
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
   .nplay-staff {
     padding: 10px 12px;
   }
   .nplay .ninputs {
-    flex-shrink: 1;
-    min-height: 0;
     gap: 8px;
   }
-  .nplay .piano {
-    min-height: 120px;
-  }
 }
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .nplay-staff {
     padding: 8px 12px;
+  }
+  /* The timer's bar sits closer under the staff, so a why of three lines still leaves Hint and Next note in view. */
+  .nplay-staff--timer {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    gap: 4px;
   }
   .nfeedback {
     min-height: 40px;
@@ -2058,24 +2219,53 @@
   .nplay .name-btn {
     height: 56px;
   }
+  /* Low enough for two ledger lines with a timer on a 320 px phone; the black keys stay a touch target. */
   .nplay .piano {
-    min-height: 80px;
+    min-height: 64px;
+  }
+  .nplay .piano-black {
+    min-height: 44px;
+  }
+  /* The white keys' labels sit lower, below the black keys at that floor (the Scales piano keeps its own). */
+  .nplay .piano-white {
+    padding-bottom: 4px;
   }
   .nplay .nactions .btn {
     min-height: 44px;
   }
 }
-/* From 360 px wide the piano labels fit beside "Any octave counts" again, which leaves the piano 24 px more. */
-@media (min-width: 360px) and (max-width: 389.98px) and (max-height: 599.98px) and (orientation: portrait) {
+/*
+ * From 360 px wide the piano labels fit beside "Any octave counts" again, which leaves the piano 23 px more on a phone
+ * browser's short screen (375 × 667 as well as 375 × 553).
+ */
+@media (min-width: 360px) and (max-width: 389.98px) and (max-height: 799.98px) and (orientation: portrait) {
   .nlabels {
     flex-direction: row;
     align-items: center;
     font-size: 12px;
   }
-  .nlabels .seg {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 228px;
+  /* Less room beside each label, so "Geen namen" fits beside "Elk octaaf telt" at 360 px. */
+  .nlabels .seg-btn {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}
+/*
+ * A 320 px phone under 660 px tall: "Any octave counts" would take a line of its own above the key labels, the line
+ * that the why of a wrong key in a lesson in a key needs (three lines there). It is left out; screen readers still read
+ * it (the .sr-only pattern, base.css).
+ */
+@media (max-width: 359.98px) and (max-height: 659.98px) and (orientation: portrait) {
+  .nplay .nlabels > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 /* Phone in landscape: question, staff and feedback on the left; the answer controls on the right. */
@@ -2099,6 +2289,24 @@
     grid-column: 1;
     grid-row: 4;
   }
+  /*
+   * Read notes' staff card and feedback are as compact as on the shortest portrait phones: a round that writes draws
+   * the staff bigger (lesson 1.4 with its timer bar too) and a hear round adds Hear it again, and with a why of two
+   * lines the column ran past the screen and cut Skip to summary. Scales keeps its own (scales.css).
+   */
+  .nplay:not(.splay) .nplay-staff {
+    padding: 8px 12px;
+  }
+  .nplay:not(.splay) .nplay-staff--timer {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    gap: 4px;
+  }
+  .nplay:not(.splay) .nfeedback {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
   .nplay .skip-link.nplay-skip {
     display: flex;
     align-items: center;
@@ -2119,5 +2327,81 @@
   }
   .nplay .piano {
     height: 150px;
+  }
+}
+/*
+ * Forced colors (see app.css): a piano's black keys, drawn only with their fill, get an edge (filled in the text
+ * colour, they would hide a played key's dot in some themes), and the Learn piano's marked keys a thick one in the
+ * selection colour. A right answer takes the selection colours (out of forced colors, for its words), a wrong one a
+ * thick dashed edge and its name struck through, so they no longer look like the buttons around them. A chosen key's
+ * signature keeps the page's colour behind it, as on the keys around it. Read notes' time left, Round done's bars by
+ * sign and the Learn tab's progress keep an edge and fill in the text colour, as every bar does; the time chart's
+ * legend keeps the colours of the chart's bars, which the browser does not force. Learn's diagrams are drawn in the
+ * text colour too: 1.1's beats on their time line (the beat just heard in the selection colour), 1.3's strong and
+ * medium beats filled and its weak ones outlined, the beat grid's cells outlined (a held count's dashed), and a play
+ * button keeps its circle.
+ */
+@media (forced-colors: active) {
+  .piano-black {
+    border: 2px solid CanvasText;
+  }
+  .piano-white.is-marked {
+    border: 3px solid Highlight;
+  }
+  .name-btn.is-right,
+  .piano-white.is-right,
+  .piano-black.is-right {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .name-btn.is-wrong,
+  .piano-white.is-wrong,
+  .piano-black.is-wrong {
+    border: 3px dashed CanvasText;
+    text-decoration: line-through;
+  }
+  .key-btn[aria-pressed='true'] .key-thumb {
+    background: Canvas;
+    border-radius: 8px;
+  }
+  /* Outside the time bar's 4 px, which an edge inside would halve. */
+  .ntimer {
+    outline: 1px solid CanvasText;
+  }
+  .nsign-bar,
+  .learn-progress-bar,
+  .learn-accent-bar {
+    border: 1px solid CanvasText;
+  }
+  .ntimer > div,
+  .nsign-bar > div,
+  .learn-progress-bar > div,
+  .learn-pulse-dot,
+  .learn-pulse-track::before,
+  .learn-accent.is-strong .learn-accent-bar,
+  .learn-accent.is-medium .learn-accent-bar {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .learn-pulse-dot.is-on {
+    background: Highlight;
+  }
+  .learn-accent.is-medium .learn-accent-bar {
+    opacity: 1;
+  }
+  .nlegend-dot {
+    forced-color-adjust: none;
+  }
+  .learn-play-dot {
+    border: 2px solid ButtonText;
+  }
+  .learn-grid-cell {
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+  .learn-grid-cell.is-held {
+    outline-style: dashed;
   }
 }

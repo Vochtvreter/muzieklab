@@ -82,18 +82,25 @@ export function markSeen(p: Progress, skill: SkillId, day: string): Progress {
 /** Whole minutes for a day's seconds; a day with any practice shows at least 1. */
 export const minutesOf = (sec: number): number => (sec > 0 ? Math.max(1, Math.round(sec / 60)) : 0);
 
-/** Seconds a rhythm exercise takes to play: the count-in (a bar at least, as Play counts in), the lead-in and the bars. */
-export function playedSeconds(exercise: Exercise): number {
+/**
+ * Seconds a rhythm exercise takes to play: the count-in (a bar at least, as Play counts in), the lead-in and the bars,
+ * up to `upTo` (seconds into the bars) when it stopped there: Skip to results, Echo's Done.
+ */
+export function playedSeconds(exercise: Exercise, upTo = Infinity): number {
   const timeline = buildTimeline(exercise);
   const bar = (exercise.meter.barTicks / PPQ) * timeline.beatSeconds;
-  return timeline.totalSeconds + Math.max(1, exercise.settings.countIn) * bar + PLAY_LEAD_IN_S;
+  const bars = upTo > 0 ? Math.min(timeline.totalSeconds, upTo) : 0;
+  return bars + Math.max(1, exercise.settings.countIn) * bar + PLAY_LEAD_IN_S;
 }
 
-/** Seconds a rhythm round took: played once, and for Echo each time it was played to listen (with its one-bar count-in). */
-export function rhythmSeconds(exercise: Exercise, plays = 0): number {
+/**
+ * Seconds a rhythm round took: played once (up to `upTo`, playedSeconds), and for Echo each time it was played to
+ * listen (with its one-bar count-in).
+ */
+export function rhythmSeconds(exercise: Exercise, plays = 0, upTo = Infinity): number {
   const timeline = buildTimeline(exercise);
   const bar = (exercise.meter.barTicks / PPQ) * timeline.beatSeconds;
-  return playedSeconds(exercise) + Math.max(0, plays) * (timeline.totalSeconds + bar + LISTEN_LEAD_IN_S);
+  return playedSeconds(exercise, upTo) + Math.max(0, plays) * (timeline.totalSeconds + bar + LISTEN_LEAD_IN_S);
 }
 
 function addCells(a: DayStats['cells'], b: DayStats['cells']): DayStats['cells'] {
@@ -112,17 +119,24 @@ const finite = (n: unknown): number => (typeof n === 'number' && Number.isFinite
 /**
  * A finished rhythm round (tap or Echo; free practice, a lesson or the daily challenge): its seconds, accuracy, timing
  * and cells on today's figures, Echo's material level, and the skill practised (rhythm reading, or rhythm by ear).
- * `echo`: how an Echo round was heard (its listening counts as minutes).
+ * `echo`: how an Echo round was heard (its listening counts as minutes). `playedTo`: where the music stopped, in
+ * seconds into the bars (a round skipped to Results counts only what was played: its seconds, and its cells).
  */
-export function recordRhythm(p: Progress, exercise: Exercise, result: JudgeResult, today: string, leniency: Leniency, echo?: EchoPlays | null): Progress {
+export function recordRhythm(p: Progress, exercise: Exercise, result: JudgeResult, today: string, leniency: Leniency, echo?: EchoPlays | null, playedTo = Infinity): Progress {
   const isEcho = exercise.settings.mode === 'echo';
-  const cells = cellPoints(exercise, result, leniency);
+  // The notes the music reached: Results counts the ones after a Skip to results as missed, but the skill map learns
+  // only from what was played, as Read notes' weak spots learn from the notes answered.
+  const { notes } = buildTimeline(exercise);
+  const reached = result.notes.filter((n) => n.judgement !== 'miss' || (notes[n.index]?.onset ?? Infinity) < playedTo);
+  const cells = cellPoints(exercise, { notes: reached }, leniency);
   const hit = result.notes.filter((n) => n.judgement !== 'miss' && typeof n.offsetMs === 'number' && Number.isFinite(n.offsetMs));
   const off = hit.reduce((sum, n) => sum + Math.round(n.offsetMs as number), 0);
   let next = changeDay(p, today, (d) => ({
-    sec: d.sec + Math.round(rhythmSeconds(exercise, isEcho ? (echo?.plays ?? 0) : 0)),
+    sec: d.sec + Math.round(rhythmSeconds(exercise, isEcho ? (echo?.plays ?? 0) : 0, playedTo)),
     rounds: d.rounds + 1,
-    acc: d.acc + Math.round(Math.max(0, Math.min(100, finite(result.accuracy)))),
+    // In whole percent rounded down, as Results shows it (§6.3): a day of 99.69% rounds is no 100% on Progress. The
+    // 1e-9 keeps a whole percent that floating point puts just under it.
+    acc: d.acc + Math.floor(Math.max(0, Math.min(100, finite(result.accuracy))) + 1e-9),
     off: d.off + off,
     hits: d.hits + hit.length,
     cells: addCells(d.cells, cells),
@@ -141,6 +155,13 @@ export function recordEcho(p: Progress, exercise: Exercise, result: Pick<JudgeRe
   const [n, best] = p.stats.echo[level] ?? [0, 0];
   return withStats(p, { echo: { ...p.stats.echo, [level]: [n + (counts ? 1 : 0), long ? Math.max(best, stars) : best] } });
 }
+
+/**
+ * `part` of `whole` as a whole percent, rounded down (§6.3): a skill check, a band or a weak spot is met only by the real
+ * value, so 89.5% is 89%, not the notes check's 90%. The 1e-9 keeps a whole percent that floating point puts just under
+ * it (57 of 100 is 56.99999999999999). The one place of this rule: Results' wholePercent (ui/lib/format.ts) uses it too.
+ */
+export const wholePercentOf = (part: number, whole: number): number => Math.max(0, Math.min(100, Math.floor((part / whole) * 100 + 1e-9)));
 
 /** The faster of two average answer times, where 0 means none yet. */
 export const fastest = (a: number, b: number): number => (a === 0 ? b : b === 0 ? a : Math.min(a, b));
@@ -206,7 +227,7 @@ export function recordNotes(p: Progress, notes: RoundNote[], answers: NoteAnswer
   for (const clef of CLEFS) {
     const c = perClef[clef];
     if (!c || c.total < READING_MIN_NOTES) continue;
-    const acc = Math.round((c.right / c.total) * 100);
+    const acc = wholePercentOf(c.right, c.total);
     const avg = Math.round(c.ms / c.total);
     for (const level of readingLevels(settings, clef)) {
       const key = `${clef}:${level}`;
@@ -252,6 +273,6 @@ export function cellTotals(p: Progress, today: string): Record<CellId, [number, 
 /** Notes counted in a cell's totals. */
 export const cellNotes = (totals: [number, number]): number => Math.round(totals[1] / POINTS.perfect);
 
-/** A cell's rolling accuracy as a whole %, or null under MIN_CELL_NOTES notes. */
+/** A cell's rolling accuracy as a whole %, rounded down (wholePercentOf), or null under MIN_CELL_NOTES notes. */
 export const cellAccuracy = (totals: [number, number]): number | null =>
-  cellNotes(totals) >= MIN_CELL_NOTES ? Math.round((totals[0] / totals[1]) * 100) : null;
+  cellNotes(totals) >= MIN_CELL_NOTES ? wholePercentOf(totals[0], totals[1]) : null;

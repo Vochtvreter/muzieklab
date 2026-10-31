@@ -1,10 +1,13 @@
 /** Routes and app-wide effects (theme, language). */
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react';
 import type { SkillId } from './game/storage';
 import { resolveLocale, setLocale, t } from './i18n';
 import { Announcer } from './ui/components/Announcer';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { FeedbackTool } from './ui/feedback/FeedbackTool';
+import { useBreakpoint, useExerciseLayout } from './ui/hooks';
+import { focusHeading, focusLost, useFocusAcrossLayouts } from './ui/lib/screenFocus';
+import { guardFollowUpTap } from './ui/lib/tapGuard';
 import { routeParam, useRoute } from './ui/router';
 import { AccountScreen } from './ui/screens/account/Account';
 import { AcceptInvite, NewPassword } from './ui/screens/account/LinkPassword';
@@ -20,7 +23,7 @@ import { Calibration } from './ui/screens/Calibration';
 import { Changelog } from './ui/screens/Changelog';
 import { Home } from './ui/screens/Home';
 import { findChapter } from './ui/learn/chapters';
-import { LearnChapter, LearnHub } from './ui/screens/Learn';
+import { LearnChapter, LearnHub, LearnPractice } from './ui/screens/Learn';
 import { NotesDone } from './ui/screens/notes/NotesDone';
 import { NotesKey } from './ui/screens/notes/NotesKey';
 import { NotesPlay } from './ui/screens/notes/NotesPlay';
@@ -47,13 +50,17 @@ const RenderDemo = import.meta.env.DEV ? lazy(() => import('./render/RenderDemo'
 /** The test site names the branch it was built from (deploy-test.yml), so a tester knows what they are trying. */
 const BRANCH = import.meta.env.VITE_DEPLOY_BRANCH;
 
-/** data-theme on <html> overrides the system scheme (the staff redraws when it changes). */
+/**
+ * data-theme on <html> overrides the system scheme (the staff redraws when it changes). A layout effect, so it is set
+ * before the screens paint, not a frame after them in the device's theme; index.html sets it before the app loads.
+ */
 function useTheme(theme: 'system' | 'light' | 'dark'): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (theme === 'system') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', theme);
-    // Browser chrome colour follows the forced theme too.
+    // Browser chrome colour follows the forced theme too: the browser takes the first theme-color meta that matches, and
+    // one of index.html's two always matches the device, so the forced one goes first (index.html may have added it).
     let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"][data-forced]');
     if (theme === 'system') {
       meta?.remove();
@@ -62,22 +69,41 @@ function useTheme(theme: 'system' | 'light' | 'dark'): void {
         meta = document.createElement('meta');
         meta.name = 'theme-color';
         meta.dataset.forced = '';
-        document.head.appendChild(meta);
+        document.head.insertBefore(meta, document.querySelector('meta[name="theme-color"]'));
       }
       meta.content = theme === 'dark' ? '#101415' : '#eef1f0';
     }
   }, [theme]);
 }
 
+/** Screens that keep an exercise (or a calibration) being played in their own state: a remount starts it over. */
+const RUN_ROUTES: ReadonlySet<string> = new Set(['/play', '/notes/play', '/scales/play', '/calibrate']);
+
 function Screens(): JSX.Element {
   const { state } = useStore();
+  const route = useRoute();
   useTheme(state.prefs.theme);
   // Progress on the account, while someone is signed in (BACKEND-PLAN.md §6).
   useProgressSync();
+  // A tablet turned, or a window made wider or narrower, draws the screen in its other layout: the focus goes on to the
+  // same control there (an exercise screen keeps the phone layout on a phone on its side, the other screens do not).
+  useFocusAcrossLayouts(useBreakpoint() + ' ' + useExerciseLayout());
   // t() reads module state: switch the catalog before the screens render, and remount them on a change so text kept
-  // in state or memos is redone in the new language.
-  const locale = resolveLocale(state.prefs.language);
+  // in state or memos is redone in the new language. A language from elsewhere (another tab, the account) that comes
+  // while an exercise is played waits until its screen is left, as the remount would start the exercise over.
+  const wanted = resolveLocale(state.prefs.language);
+  const held = useRef(wanted);
+  if (!RUN_ROUTES.has(route)) held.current = wanted;
+  const locale = held.current;
   setLocale(locale);
+  // The remount takes the focused element with it: the new screen's heading takes the focus, as after a change of
+  // screen, unless the screen took it itself (the Language row, when the language was picked there).
+  const shownLocale = useRef(locale);
+  useEffect(() => {
+    if (shownLocale.current === locale) return;
+    shownLocale.current = locale;
+    if (focusLost()) focusHeading();
+  }, [locale]);
   // The feedback tool sits over every screen, in feedback mode only (docs/FEEDBACK-LOOP.md).
   return (
     <>
@@ -89,9 +115,20 @@ function Screens(): JSX.Element {
 
 function Route(): JSX.Element {
   const route = useRoute();
+  // A new screen puts focus on its heading: the control that led there went with the old screen, so focus would fall
+  // to the page and a screen reader would hear nothing of the new one (Results after a run). Not on the first screen,
+  // whose page load is read out, nor when the new screen took focus itself (a field, a sheet). And the second tap of a
+  // double tap on what opened it does nothing here (tapGuard.ts): Round done has New round where See the round was, a
+  // setup its Start where Change setup or a key screen's Use was.
+  const shown = useRef(route);
   useEffect(() => {
     window.scrollTo(0, 0);
+    if (shown.current === route) return;
+    shown.current = route;
+    guardFollowUpTap();
+    if (focusLost()) focusHeading();
   }, [route]);
+  if (route === '/learn/practice') return <LearnPractice />;
   if (route.startsWith('/learn/')) {
     const chapter = findChapter(Number(route.slice('/learn/'.length)));
     return chapter ? <LearnChapter key={chapter.n} chapter={chapter} /> : <LearnHub />;

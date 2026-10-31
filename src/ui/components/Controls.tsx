@@ -12,6 +12,8 @@ export function SwitchTrack({ on }: { on: boolean }): JSX.Element {
 interface SegOption<T extends string | number> {
   value: T;
   label: ReactNode;
+  /** The label's language, where it is not the app's (a language named in its own: Nederlands). */
+  lang?: string;
 }
 
 interface SegmentedProps<T extends string | number> {
@@ -68,7 +70,7 @@ export function Segmented<T extends string | number>(props: SegmentedProps<T>): 
         </div>
       </div>
       {options.map((o) => (
-        <button key={String(o.value)} type="button" aria-pressed={o.value === value} className={'seg-btn' + (o.value === value ? ' is-on' : '')}
+        <button key={String(o.value)} type="button" lang={o.lang} aria-pressed={o.value === value} className={'seg-btn' + (o.value === value ? ' is-on' : '')}
           autoFocus={autoFocus && o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
         </button>

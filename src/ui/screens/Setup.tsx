@@ -1,6 +1,6 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
-import { useMemo, useState } from 'react';
-import { checkSettings, DEFAULT_SETTINGS, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { checkSettings, DEFAULT_SETTINGS, MAX_BARS, MAX_TEMPO, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
 import { ExerciseFrame } from '../components/AppShell';
@@ -8,6 +8,7 @@ import { StaffBox } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { exerciseView } from '../exerciseView';
 import { useDocTitle } from '../hooks';
+import { announce } from '../lib/announce';
 import { difficultyLevel, newSeed, tempoWordKey } from '../lib/format';
 import { describeBars } from '../lib/notation';
 import { useLearnReturn } from '../lib/learnReturn';
@@ -27,8 +28,8 @@ export function Setup(): JSX.Element {
   const start = useStartPractice();
   const [previewSeed, setPreviewSeed] = useState(() => newSeed());
   const [more, setMore] = useState(false);
-  // Opened from a Learn section: Back returns there.
-  const { back } = useLearnReturn();
+  // Opened from a Learn section or a chapter's Practice button: Back returns there, and the run Start begins keeps it.
+  const { back, carry } = useLearnReturn();
   useDocTitle(t('app.docTitle', { page: t('setup.title') }));
 
   const s: Settings = practiceSettings(state, state.settings);
@@ -48,6 +49,17 @@ export function Setup(): JSX.Element {
   }, [JSON.stringify(s)]);
   const hints = setupHints(s, feas);
   const blockedKey = startBlockedKey(s, feas);
+  // A change that brings a hint (the last note value off, which turns Start off) has it read out through the app's one
+  // live region (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen
+  // reader. The hints a setup opens with are read with the page. Each is a line of its own on screen, so a sentence
+  // break between them ("… eighth note. 3/4 needs …").
+  const hintText = hints.map((h) => h.text).join('. ');
+  const hintsBefore = useRef(hintText);
+  useEffect(() => {
+    if (hintsBefore.current === hintText) return;
+    hintsBefore.current = hintText;
+    announce(hintText);
+  }, [hintText]);
 
   const preview = useMemo(() => {
     if (!feas.ok) return null;
@@ -61,7 +73,7 @@ export function Setup(): JSX.Element {
     <ExerciseFrame className="frame--setup" wide>
       <div className="page setup no-scrollbar">
         <div className="screen-head">
-          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('common.back')} className="icon-btn icon-btn--edge">
+          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back?.label ?? t('common.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">
@@ -109,7 +121,7 @@ export function Setup(): JSX.Element {
                 })}
               </div>
               {hints.length > 0 && (
-                <div className="hint-box m-in" role="status">
+                <div className="hint-box m-in">
                   {hints.map((h) => (
                     <span key={h.id} id={h.id}>
                       {h.text}
@@ -161,12 +173,19 @@ export function Setup(): JSX.Element {
                 <div className="label" id="bars-label">
                   {t('setup.bars')}
                 </div>
+                {/* A step at its end has nothing to do: aria-disabled, as disabled drops the focus to the page. */}
                 <div className="stepper" role="group" aria-labelledby="bars-label">
-                  <button type="button" aria-label={t('setup.fewerBars')} disabled={s.bars <= 1} onClick={() => update({ bars: Math.max(1, s.bars - 1) })}>
+                  <button type="button" aria-label={t('setup.fewerBars')} aria-disabled={s.bars <= 1 || undefined}
+                    onClick={() => {
+                      if (s.bars > 1) update({ bars: Math.max(1, s.bars - 1) });
+                    }}>
                     −
                   </button>
                   <span aria-live="polite">{s.bars}</span>
-                  <button type="button" aria-label={t('setup.moreBars')} disabled={s.bars >= 16} onClick={() => update({ bars: Math.min(16, s.bars + 1) })}>
+                  <button type="button" aria-label={t('setup.moreBars')} aria-disabled={s.bars >= MAX_BARS || undefined}
+                    onClick={() => {
+                      if (s.bars < MAX_BARS) update({ bars: Math.min(MAX_BARS, s.bars + 1) });
+                    }}>
                     +
                   </button>
                 </div>
@@ -176,7 +195,7 @@ export function Setup(): JSX.Element {
                   {t('setup.tempo')}
                   <span className="label-value">{t('setup.tempoValue', { bpm: s.tempo, word: t(tempoWordKey(s.tempo)) })}</span>
                 </label>
-                <input id="tempo" type="range" min={40} max={200} value={s.tempo} className="tempo-range"
+                <input id="tempo" type="range" min={40} max={MAX_TEMPO} value={s.tempo} className="tempo-range"
                   aria-valuetext={t('setup.tempoValue', { bpm: s.tempo, word: t(tempoWordKey(s.tempo)) })}
                   onChange={(e) => update({ tempo: Number(e.target.value) })} />
               </div>
@@ -238,7 +257,9 @@ export function Setup(): JSX.Element {
                 </span>
               </div>
               {preview ? (
-                <StaffBox bars={preview.bars} meter={preview.run.exercise.meter} barsPerRow={1} label={describeBars(preview.bars, preview.run.exercise.meter.id)} />
+                // With Triplets on, room for a 3 whether or not this bar has one: the card keeps one height.
+                <StaffBox bars={preview.bars} meter={preview.run.exercise.meter} barsPerRow={1} label={describeBars(preview.bars, preview.run.exercise.meter.id)}
+                  tupletSpace={s.triplets} />
               ) : (
                 <p className="preview-none">{t('setup.previewNone')}</p>
               )}
@@ -249,7 +270,7 @@ export function Setup(): JSX.Element {
                 {t(blockedKey)}
               </button>
             ) : (
-              <button type="button" className="btn btn--accent start-btn" onClick={() => start(s)}>
+              <button type="button" className="btn btn--accent start-btn" onClick={() => start(s, { query: carry, shows: state.setupShows })}>
                 {t('setup.start', { bars: t('common.bars', { count: s.bars }) })}
               </button>
             )}

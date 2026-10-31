@@ -2,9 +2,11 @@ import type { FastifyPluginAsync } from 'fastify';
 import { ObjectId, type Filter } from 'mongodb';
 import type { AuditEntry } from '../../../shared/api.js';
 import {
+  FEEDBACK_DESCRIPTION_MAX,
   FEEDBACK_KINDS,
   FEEDBACK_NOTE_MAX,
   FEEDBACK_STATUSES,
+  showsNothing,
   type FeedbackDetail,
   type FeedbackListResponse,
   type FeedbackMode,
@@ -13,6 +15,8 @@ import {
   type FeedbackSaved,
   type FeedbackStatus,
   type FeedbackUpdateRequest,
+  withoutSecrets,
+  withoutToken,
 } from '../../../shared/feedback.js';
 import { writeAudit } from '../accounts/audit.js';
 import { toFeedbackDetail, toFeedbackSummary, type FeedbackSummaryFields } from '../accounts/views.js';
@@ -45,7 +49,7 @@ const obj = <P extends Record<string, object>>(properties: P) => s.body(properti
 const report = obj({
   kind: { enum: FEEDBACK_KINDS },
   title: text(200),
-  description: text(5000),
+  description: text(FEEDBACK_DESCRIPTION_MAX),
   target: obj({
     mode: { enum: ['element', 'area'] },
     selector: text(2000),
@@ -124,7 +128,9 @@ export const feedbackRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (ap
     async (request): Promise<FeedbackSaved> => {
       const actor = signedIn(request).account;
       const { kind, title, description, target, context } = request.body;
-      if (!description.trim()) throw new ApiError('bad_request', 'Say what should change');
+      // Only spaces, or characters that show nothing (a zero-width space pasted in), say nothing: the admin would read an
+      // empty report.
+      if (showsNothing(description)) throw new ApiError('bad_request', 'Say what should change');
       // The settings are the one part of the report the schema leaves open, and they are stored as they come: no key may
       // be one of MongoDB's operators, as in synced progress.
       const problem = storableProblem(context.prefs);
@@ -148,8 +154,9 @@ export const feedbackRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (ap
         kind,
         title,
         description,
-        target,
-        context,
+        // Also when an app sent them with a link's token, or what was typed in a field, in.
+        target: withoutSecrets(target),
+        context: { ...context, url: withoutToken(context.url), route: withoutToken(context.route) },
         status: 'new',
         authorId: actor._id,
         createdAt: now,

@@ -15,7 +15,7 @@
  * Needs `feedback.review`. A report deleted meanwhile says so, with the way back to the list.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { buildIssue, FEEDBACK_NOTE_MAX, FEEDBACK_STATUSES, type FeedbackDetail, type FeedbackReport, type FeedbackStatus, type FeedbackUpdateRequest } from '../../../../shared/feedback';
+import { buildIssue, FEEDBACK_NOTE_MAX, FEEDBACK_STATUSES, showsNothing, type FeedbackDetail, type FeedbackReport, type FeedbackStatus, type FeedbackUpdateRequest } from '../../../../shared/feedback';
 import { api } from '../../../api/client';
 import { formatDateTime, formatLongDate, hasMessage, LOCALES, t } from '../../../i18n';
 import { useAccount } from '../../account';
@@ -27,7 +27,7 @@ import { useMounted } from '../../hooks';
 import { setListNotice } from '../../lib/admin';
 import { announce } from '../../lib/announce';
 import { errorMessage, failureOf, type Failure } from '../../lib/apiErrors';
-import { Link, navigate, parseHash } from '../../router';
+import { leave, Link, parseHash } from '../../router';
 import { authorName, kindName, reportTitle } from './AdminFeedback';
 import { GateMessage, NoAccess, useAdminGate } from './AdminParts';
 
@@ -150,7 +150,7 @@ function ReportCard({ detail }: { detail: FeedbackDetail }): JSX.Element {
       <Facts rows={[{ label: t('feedbackReview.kind'), value: kindName(detail.kind) }]} />
       <div className="report-text">
         <b>{t('feedbackReview.description')}</b>
-        {text.trim() ? <p className="report-quote">{text}</p> : <p className="row-sub">{t('feedbackReview.noDescription')}</p>}
+        {showsNothing(text) ? <p className="row-sub">{t('feedbackReview.noDescription')}</p> : <p className="report-quote">{text}</p>}
       </div>
     </Section>
   );
@@ -320,7 +320,7 @@ function ReviewCard({ detail, onChange, fail }: ChangeProps): JSX.Element {
       </div>
       <form className="card-pad" noValidate onSubmit={onSubmit(() => void saveNote(), busy)}>
         <TextAreaField label={t('feedbackReview.note')} name="note" value={note} maxLength={FEEDBACK_NOTE_MAX} inputRef={noteRef}
-          hint={t('feedbackReview.noteHint', { max: FEEDBACK_NOTE_MAX })} error={badNote ? t('feedbackReview.noteBadCharacters') : null} onChange={(v) => {
+          hint={t('feedbackReview.noteHint', { max: FEEDBACK_NOTE_MAX })} error={badNote ? t('form.hiddenCharacters') : null} onChange={(v) => {
             type(v);
             setSaved(false);
             setBadNote(false);
@@ -372,7 +372,8 @@ function ActionsCard({ detail, fail }: { detail: FeedbackDetail; fail(e: unknown
     try {
       await api.del<void>(`/admin/feedback/${detail.id}`);
       setListNotice(t('feedbackReview.deleted'));
-      navigate('/admin/feedback', { replace: true });
+      // Back to the list it was opened from, if it was (leave): Back then goes on to the screen before the list.
+      leave('/admin/feedback');
       return true;
     } catch (e) {
       if (mounted.current) setRemoveError(fail(e).message);

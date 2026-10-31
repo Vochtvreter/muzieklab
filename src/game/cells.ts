@@ -10,7 +10,7 @@
 import { notePoints, POINTS } from '../core/judge';
 import { spellExercise } from '../core/speller';
 import { buildTimeline } from '../core/timeline';
-import type { Exercise, JudgeResult, Leniency, NotatedSymbol } from '../core/types';
+import type { Exercise, JudgeResult, Leniency, NotatedBar, NotatedSymbol } from '../core/types';
 import type { CellId } from './storage';
 
 /** The rhythm unit (rhythm path, path.ts) whose first lesson opens each cell on the skill map. */
@@ -37,11 +37,14 @@ function valueCell(sym: NotatedSymbol, before: NotatedSymbol | undefined): CellI
   }
 }
 
-/** The cells each sounding note counts for, by its onset index (the timeline's numbering): none, one, or one and rests. */
-export function noteCells(exercise: Exercise): CellId[][] {
+/**
+ * The cells each sounding note counts for, by its onset index (the timeline's numbering): none, one, or one and rests.
+ * `bars`: the exercise as spelled, when the caller has it already (game/intro.ts).
+ */
+export function noteCells(exercise: Exercise, bars: readonly NotatedBar[] = spellExercise(exercise)): CellId[][] {
   const out: CellId[][] = [];
   let prev: NotatedSymbol | undefined;
-  for (const bar of spellExercise(exercise)) {
+  for (const bar of bars) {
     bar.symbols.forEach((sym, i) => {
       if (sym.kind === 'note' && sym.onsetIndex >= 0) {
         const own = valueCell(sym, bar.symbols[i - 1]);

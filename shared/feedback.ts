@@ -30,7 +30,7 @@ export interface Rect {
 /** The part of the screen that was marked: one element (a tap or click) or a box drawn over the screen. */
 export interface FeedbackTarget {
   mode: 'element' | 'area';
-  /** A CSS selector for the element (for an area: the element under its centre). */
+  /** A CSS selector for the element (for an area: the part under its centre, partAt in src/feedback/dom.ts). */
   selector: string;
   /** How a person would name it: `button “Start”`, `heading “Settings”`. */
   label: string;
@@ -40,7 +40,12 @@ export interface FeedbackTarget {
   html: string;
   /** The marked box in CSS px, relative to the viewport. */
   rect: Rect;
-  /** The page's scroll offset when it was marked, so the box can be found again on a long page. */
+  /**
+   * The page's scroll offset when it was marked, so the box can be found again on a long page: the window's plus that
+   * of the boxes around the element (a screen scrolls inside .page), leaving out scroll that does not move it (of the
+   * box a sticky part sticks in, all but how far the part went along before it stuck; all of it for a fixed part). The
+   * box plus it is the spot on the unscrolled page.
+   */
   scroll: { x: number; y: number };
 }
 
@@ -63,9 +68,25 @@ export interface FeedbackContext {
   prefs: unknown;
 }
 
+/** The longest description the API stores (counted as code points; a text field's maxLength counts no fewer). */
+export const FEEDBACK_DESCRIPTION_MAX = 5000;
+
+/**
+ * What shows nothing: spaces and line breaks, and characters such as the zero-width space, the word joiner, the Hangul
+ * filler and the blank Braille pattern (U+2800, which draws no ink). The interlinear annotation characters (U+FFF9 to
+ * U+FFFB) draw nothing either, though Unicode leaves them out of Default_Ignorable_Code_Point.
+ */
+const INVISIBLE = /[\s\p{Default_Ignorable_Code_Point}\u2800\ufff9-\ufffb]/gu;
+/**
+ * Whether a text shows nothing, so is as good as empty: a description of only spaces or a pasted zero-width space says
+ * nothing, and a title like that is no title. Names keep to the same rule (api.ts, nameShowsNothing).
+ */
+export const showsNothing = (text: string): boolean => !text.replace(INVISIBLE, '');
+
 export interface FeedbackReport {
   kind: FeedbackKind;
   title: string;
+  /** What should change, up to FEEDBACK_DESCRIPTION_MAX characters. */
   description: string;
   target: FeedbackTarget;
   context: FeedbackContext;
@@ -80,6 +101,41 @@ export interface IssueDraft {
 const KIND_WORD: Record<FeedbackKind, string> = { bug: 'Bug', change: 'Change request', idea: 'Idea' };
 
 const round = (r: Rect): Rect => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) });
+
+/**
+ * An invite or new-password screen's route, with its token: '/reset/<token>', or '#/reset/<token>' in an address, or
+ * in the text or markup of a marked part (an admin's link card). A token is base64url, so the match ends at the space,
+ * quote or tag after it.
+ */
+const TOKEN_ROUTE = /(^|#)\/(invite|reset)\/[\w-]+/g;
+
+/**
+ * The route, address or text with an invite or new-password link's token left out ('/reset/:token'). Whoever has the
+ * token can claim the account (BACKEND-PLAN.md §5.1), and a report is read by its reviewers and may become a public
+ * issue, so the app leaves it out of what it sends, and the API again of what it stores.
+ */
+export function withoutToken(routeOrUrl: string): string {
+  return routeOrUrl.replace(TOKEN_ROUTE, '$1/$2/:token');
+}
+
+/** A field's start tag as a browser writes it, its attributes whole (a quoted value may hold a '>'), cut short or not. */
+const FIELD_TAG = /<(?:input|textarea)\b(?: [^\s"'>/=]+(?:="[^"]*(?:"|$))?)*/gi;
+const FIELD_VALUE = / value="[^"]*(?:"|$)/gi;
+/** A text area's start tag and its text, up to its end tag or the end of markup that was cut. */
+const AREA_TEXT = /(<textarea\b(?: [^\s"'>/=]+(?:="[^"]*")?)*>)[^<]*/gi;
+
+/**
+ * The marked part as a report keeps it: no link token in its name, text or markup (withoutToken), and nothing typed in
+ * a field in its markup. React keeps what is typed in a field in its value attribute, a password too, and a text area's
+ * in its text. The app leaves them out of what it sends (src/feedback/dom.ts), and the API again of what it stores and
+ * hands out, for a report sent before the app did.
+ */
+export function withoutSecrets(target: FeedbackTarget): FeedbackTarget {
+  const html = withoutToken(target.html)
+    .replace(FIELD_TAG, (tag) => tag.replace(FIELD_VALUE, ''))
+    .replace(AREA_TEXT, '$1');
+  return { ...target, label: withoutToken(target.label), text: withoutToken(target.text), html };
+}
 
 /** One line with no line breaks or runs of spaces, cut to `max` characters. */
 export function clip(s: string, max: number): string {
@@ -104,14 +160,14 @@ export function reportData(r: FeedbackReport, lean = 0): object {
 export function buildIssue(r: FeedbackReport, lean = 0): IssueDraft {
   const { target: tg, context: cx } = r;
   const box = round(tg.rect);
-  const title = clip(r.title, 120) || `${KIND_WORD[r.kind]}: ${clip(tg.label, 60)} on ${cx.route}`;
+  const title = showsNothing(r.title) ? `${KIND_WORD[r.kind]}: ${clip(tg.label, 60)} on ${cx.route}` : clip(r.title, 120);
   const shown = `${cx.viewport.width} × ${cx.viewport.height}`;
   const lines = [
     `**${KIND_WORD[r.kind]}** · reported in the app (v${cx.version})`,
     '',
     '### What should change',
     '',
-    r.description.trim() || '_No description._',
+    showsNothing(r.description) ? '_No description._' : r.description.trim(),
     '',
     '### Where',
     '',

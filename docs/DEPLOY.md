@@ -112,7 +112,10 @@ sudo apt install -y certbot python3-certbot-nginx && sudo certbot --nginx -d viv
 ```
 
 Both configs cache the hashed files in `assets/` for a year and have browsers check everything else (the page, the
-service worker, the manifest) on every visit, so each deploy reaches people on their next visit.
+service worker, the manifest) on every visit, so each deploy reaches people on their next visit. A name in `assets/`
+that is not there gets its 404 without the year: asked for during a deploy, or brought back by a rollback, it is
+fetched again once it is there. (Caddy sets the header only on a file that exists; nginx's `add_header` leaves out a
+404 by itself.)
 
 ### 6. Add the settings to GitHub
 

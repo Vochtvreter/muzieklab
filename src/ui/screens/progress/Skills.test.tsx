@@ -63,6 +63,14 @@ const open = (hash: string, progress: Progress | null = boardProgress()): void =
 const stored = (): Progress => JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? '{}') as Progress;
 /** The main navigation: the tab bar on phone, the top header on tablet and desktop. */
 const mainNav = (): HTMLElement => (width >= 700 ? within(screen.getByRole('banner')) : screen).getByRole('navigation', { name: 'Main' });
+/** An element's words as shown (without what is there for screen readers only), and as a screen reader hears them. */
+const without = (el: Element, selector: string): string => {
+  const copy = el.cloneNode(true) as Element;
+  copy.querySelectorAll(selector).forEach((x) => x.remove());
+  return copy.textContent ?? '';
+};
+const seen = (el: Element): string => without(el, '.sr-only');
+const heard = (el: Element): string => without(el, '[aria-hidden="true"]');
 
 beforeEach(() => {
   localStorage.clear();
@@ -109,7 +117,8 @@ describe('Skill levels', () => {
       const focus = within(screen.getByRole('region', { name: 'Focus next' }));
       expect(focus.getByText(/is your lowest skill/).textContent).toBe('Bass clef is your lowest skill: level 3, 2 levels behind treble clef.');
       expect(focus.getByText('Bass clef').tagName).toBe('B');
-      expect(focus.getByRole('link', { name: 'Read bass notes' }).getAttribute('href')).toBe('#/notes');
+      // The setup it opens goes back to Skill levels.
+      expect(focus.getByRole('link', { name: 'Read bass notes' }).getAttribute('href')).toBe('#/notes?from=skills');
       expect(screen.getByText(/^A level is passed when all its checks are met/).textContent).toContain('for 14 days shows Review due until');
     });
   }
@@ -126,9 +135,28 @@ describe('Skill levels', () => {
     const tiles = within(screen.getByRole('region', { name: 'Last 30 days' }));
     expect(tiles.getByText('No review due')).toBeTruthy();
     expect(screen.getByText('Your skills are all at level 0.')).toBeTruthy();
-    expect(screen.getAllByRole('link', { name: /: level 0 of 10\. 0 of \d+ checks for level 1, / })).toHaveLength(6);
+    expect(screen.getAllByRole('link', { name: /: level 0 of 10\. 0 of \d+ checks? for level 1, / })).toHaveLength(6);
+    // Treble clef, Bass clef and Scales have one check for level 1: "check", as the skill's screen writes it.
+    expect(screen.getByRole('link', { name: 'Treble clef: level 0 of 10. 0 of 1 check for level 1, Lines: E G B D F.' })).toBeTruthy();
+    expect(screen.queryAllByRole('link', { name: /0 of 1 checks/ })).toHaveLength(0);
     // Rhythm reading comes first in the skills' order: its button opens the Learning path.
     expect(screen.getByRole('link', { name: 'Continue unit 2' }).getAttribute('href')).toBe('#/path');
+  });
+
+  // A screen reader reads a sign as a symbol or skips it, and "A and E♭ major" would then sound like "A and E major":
+  // a level's name with a sign is said in words, as the Scales hub says its keys. The row shows the sign.
+  it("says a next level's name with a sign in words for screen readers: A and E flat major", () => {
+    open('#/progress/skills');
+    const rows = within(screen.getByRole('region', { name: 'Your skills' })).getAllByRole('link');
+    expect(rows[2].getAttribute('aria-label')).toBe('Treble clef: level 5 of 10. 0 of 2 checks for level 6, Keys with 1 sharp or 1 flat. +1 this month.');
+    expect(rows[2].textContent).toContain('next: Keys with 1♯ or 1♭');
+    expect(rows[4].getAttribute('aria-label')).toBe('Scales: level 3 of 10. 0 of 2 checks for level 4, A and E flat major. +1 this month.');
+    expect(rows[4].textContent).toContain('next: A and E♭ major');
+    cleanup();
+    localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ language: 'nl' }));
+    open('#/progress/skills');
+    expect(screen.getByRole('link', { name: 'Toonladders: niveau 3 van 10. 0 van 2 voorwaarden voor niveau 4, A en es majeur. +1 deze maand.' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /^Vioolsleutel: .*, Toonsoorten met 1 kruis of 1 mol\. / })).toBeTruthy();
   });
 
   it('in Dutch', () => {
@@ -194,14 +222,15 @@ describe('One skill', () => {
   it("rhythm by ear's button puts Echo mode on the rhythm setup", () => {
     open('#/progress/skills/ear');
     const cta = screen.getByRole('link', { name: 'Practice Echo' });
-    expect(cta.getAttribute('href')).toBe('#/setup');
+    expect(cta.getAttribute('href')).toBe('#/setup?from=skills.ear');
     fireEvent.click(cta);
-    // The setup (where the link goes) opens with Echo picked.
+    // The setup (where the link goes) opens with Echo picked, and its back arrow returns to the skill.
     act(() => {
-      window.location.hash = '#/setup';
+      window.location.hash = '#/setup?from=skills.ear';
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     expect(screen.getByRole('group', { name: 'Mode' }).querySelector('[aria-pressed="true"]')?.textContent).toBe('Echo');
+    expect(screen.getByRole('link', { name: 'Back to Rhythm by ear in Skill levels' }).getAttribute('href')).toBe('#/progress/skills/ear');
   });
 
   it("the clefs' button puts the clef on the Read notes setup", () => {
@@ -235,9 +264,45 @@ describe('One skill', () => {
     expect(next.getByText('This level comes later, with its lessons.')).toBeTruthy();
     expect(next.queryByRole('listitem')).toBeNull();
     expect(next.queryByText(/checks/)).toBeNull();
-    expect(next.getByRole('link', { name: 'Free practice' }).getAttribute('href')).toBe('#/setup');
+    expect(next.getByRole('link', { name: 'Free practice' }).getAttribute('href')).toBe('#/setup?from=skills.rhythm');
     expect(screen.getByRole('img', { name: 'Level 8 of 10' })).toBeTruthy();
     expect(within(screen.getByRole('region', { name: 'All levels' })).getAllByRole('listitem')[8].textContent).toBe('9SyncopationLater');
+  });
+
+  it('a new player: one check for level 1 is "1 check" in the labels too, in English and in Dutch', () => {
+    open('#/progress/skills/treble', null);
+    expect(screen.getByRole('img', { name: 'Level 0 of 10, and 0 of 1 check for level 1' })).toBeTruthy();
+    const next = within(screen.getByRole('region', { name: 'Next · level 1' }));
+    expect(next.getByText('0 of 1').closest('.skill-meta')?.textContent).toBe('0 of 1 check');
+    expect(next.getByRole('img', { name: '0 of 1 check done' })).toBeTruthy();
+    cleanup();
+    localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ language: 'nl' }));
+    open('#/progress/skills/treble', null);
+    expect(screen.getByRole('img', { name: 'Niveau 0 van 10, en 0 van 1 voorwaarde voor niveau 1' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '0 van 1 voorwaarde gehaald' })).toBeTruthy();
+  });
+
+  // As on the list: a name or check with a sign shows it, and a screen reader hears it in words.
+  it('scales: says the level names and checks with a sign in words for screen readers, in English and in Dutch', () => {
+    open('#/progress/skills/scales');
+    const next = screen.getByRole('region', { name: 'Next · level 4' });
+    const name = next.querySelector('.skill-next-name')!;
+    expect([seen(name), heard(name)]).toEqual(['A and E♭ major', 'A and E flat major']);
+    const checks = within(next).getAllByRole('listitem');
+    expect(checks.map(seen)).toEqual(['A major at ★★now 1 star', 'E♭ major at ★★now 1 star']);
+    expect(checks.map(heard)).toEqual(['A major at ★★now 1 star', 'E flat major at ★★now 1 star']);
+    // A check without a sign is said as shown, with nothing added.
+    expect(checks[0].querySelector('.sr-only')).toBeNull();
+    const levels = within(screen.getByRole('region', { name: 'All levels' })).getAllByRole('listitem');
+    expect(levels.map(seen).slice(2, 7)).toEqual(['3D and B♭ majorPassed', '4A and E♭ major0 of 2', '5E and A♭ major', '6All 15 major scales', '7Natural minor, up to 2♯ or 2♭']);
+    expect(levels.map(heard).slice(2, 7)).toEqual(['3D and B flat majorPassed', '4A and E flat major0 of 2', '5E and A flat major', '6All 15 major scales', '7Natural minor, up to 2 sharps or 2 flats']);
+    expect(levels[0].querySelector('.sr-only')).toBeNull();
+    cleanup();
+    localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ language: 'nl' }));
+    open('#/progress/skills/scales');
+    const nl = screen.getByRole('region', { name: 'Volgende · niveau 4' });
+    expect(heard(nl.querySelector('.skill-next-name')!)).toBe('A en es majeur');
+    expect(within(nl).getAllByRole('listitem').map(heard)).toEqual(['A majeur op ★★nu 1 ster', 'es majeur op ★★nu 1 ster']);
   });
 
   it('every level passed', () => {
@@ -247,7 +312,7 @@ describe('One skill', () => {
     expect(screen.getByRole('img', { name: 'Level 10 of 10' })).toBeTruthy();
     const card = within(screen.getByRole('region', { name: 'Level 10' }));
     expect(card.getByText('Every level passed')).toBeTruthy();
-    expect(card.getByRole('link', { name: 'Practice scales' }).getAttribute('href')).toBe('#/scales');
+    expect(card.getByRole('link', { name: 'Practice scales' }).getAttribute('href')).toBe('#/scales?from=skills.scales');
     expect(within(screen.getByRole('region', { name: 'All levels' })).getAllByText('Passed')).toHaveLength(10);
   });
 

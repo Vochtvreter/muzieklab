@@ -1,4 +1,7 @@
-/** Small shared pieces: lesson tiles, the staff with a safety net, the tap pad, the beat counters (digital, analog). */
+/**
+ * Small shared pieces: lesson tiles, the staff with a safety net, the tap pad, the beat counters (digital, analog), and
+ * a name shown with its signs but said in words.
+ */
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import { DIAMOND, MAX_STARS, type Meter, type NotatedBar } from '../../core/api';
 import { lessonOpen } from '../../game/track';
@@ -52,6 +55,21 @@ export function LessonTiles({ unit, progress, currentId, onFill, onPick }: {
 }
 
 /**
+ * Words shown with their signs ("F♯ major") and said in words to a screen reader ("F sharp major"), which reads a sign
+ * as a symbol or skips it. The box around them is positioned, so the words for screen readers (.sr-only) sit inside
+ * the page's scroll box.
+ */
+export function Said({ shown, said }: { shown: string; said: string }): JSX.Element {
+  if (said === shown) return <>{shown}</>;
+  return (
+    <>
+      <span aria-hidden="true">{shown}</span>
+      <span className="sr-only">{said}</span>
+    </>
+  );
+}
+
+/**
  * A lesson's stars, drawn one way wherever lessons show (Home tiles, the Path; DESIGN.md §6.3): three slots (★★☆), four
  * stars for the 4th, and four diamond-blue stars for the diamond, so a better result never shows fewer stars. The gold
  * comes from where they sit; the tile or button around them carries the label (`starsLabel`).
@@ -77,6 +95,9 @@ interface StaffBoxProps {
   marks?: Record<number, NoteMark>;
   cursor?: number | null;
   scale?: number;
+  shrinkToFit?: boolean;
+  end?: boolean;
+  tupletSpace?: boolean;
 }
 
 /** The VexFlow staff; if drawing fails, the text alternative is shown instead of breaking the screen. */

@@ -73,7 +73,11 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    *Voortellen*) instead of *Bar 1 of N*, and no note is highlighted (none before the start either). The beat counter
    draws the current beat as an outlined slate ring, with the digit in slate, instead of the filled circle. On desktop
    the stat card's label reads COUNT-IN and the active digit is hollow. From beat 1 everything looks as before. The
-   analog metronome is unchanged, and the aria labels stay *Count-in, beat x of y*.
+   analog metronome is unchanged, and the aria labels stay *Count-in, beat x of y*. The timing lane draws no playhead
+   until beat 1, and a press held just before it is a short mark at the bar's start until then (it was drawn across
+   the whole lane). The count-in after a pause already shows the bar it leads into, the one Resume plays again, in the
+   staff and lane windows, the progress and the Pause sheet's *Bar x of y*, although its clock is still in the bar
+   before.
 3. **Play** — a cursor sweeps across the notation in time. The player presses on every
    note and holds it for its length. Rests = nothing pressed. Tied notes = press once and
    keep holding through the tied note (the tie continues the sound, no new onset — an
@@ -83,6 +87,14 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
    that fills while you hold, reaching full at the moment the note ends. Under the notation
    a **length lane** draws every note to scale in gray (so durations are visible at a
    glance) and your holds on top in color; a note let go too early gets a dashed outline.
+   The lane has four bars a row, and its head names the bars it shows (*bars 1–8*). Tablet and desktop show every
+   bar; Results shows the whole exercise. A phone shows two rows (eight bars) at a time, from the row being played, as
+   the staff shows a window of its bars. At the end it keeps the last two rows, so the last row is played on the lower
+   one (bars 9–16 from bar 9 of 16, bars 5–12 from bar 5 of 12). With every row, 12 or 16 bars took three or four rows
+   and pushed the pad and *Skip to results* off a short phone. Its accessible name says what it compares: *Note
+   lengths compared with how long each note was held*, or in tap only *When each note starts compared with when you
+   tapped* (nl *De lengte van elke noot naast hoe lang je hem vasthield*, *Het begin van elke noot naast wanneer je
+   tikte*), on Play and Results.
    A combo counter grows on consecutive notes that were both started well and held right.
    A missed note also gets a small × under it, so a miss is shape as well as colour (§9).
    The pad itself only says what it is, a quarter-note symbol and **Tap** (nl *Tik*; since 0.10.0, before
@@ -106,9 +118,14 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
       what each lesson brings that no earlier lesson used (1.2 the half note, 2.2 the quarter rest, 3.1 three-four,
       4.1 the eighth, 6.1 the tie, 7.1 the dot …); lesson 1.1 brings nothing, because How to play covers it. Every
       lesson run (Continue, the Path, *Next lesson*, *Next exercise*) has an exercise that shows all of what its lesson
-      brings: the start tries new seeds until the spelled exercise has each of them (`makeLessonRun` in `ui/store.tsx`,
-      `exerciseHas` in `game/intro.ts`; up to 200 seeds, because 3.4's whole rest is in only about 1 exercise in 22,
-      where most lessons need a few), and keeps the last one tried if none has. The sheet lists only what the
+      brings, and what it is about though nothing in it is new: what its title names (its `preview` in `game/path.ts`:
+      7.4's dotted quarter, which the generator leaves out when a dotted half is the exercise's dotted value, and the
+      figure a title names: 4.1's eighth pair, 7.3's dotted quarter and eighth, 8.1's four sixteenths and 8.3's eighth
+      and two sixteenths in one beat, which about half its exercises would not have) and the dot or the tie of its unit
+      (6.2 *Ties with eighths*). The start tries new seeds until the spelled exercise has
+      each of them (`makeLessonRun` in `ui/store.tsx`, `exerciseHas` in `game/intro.ts`; up to 200 seeds, because 3.4's
+      whole rest is in only about 1 exercise in 22, where most lessons need a few), and keeps the last one tried if
+      none has. The sheet lists only what the
       exercise shows, so it never names a symbol the staff does not have (nor saves it as shown). What was shown is
       kept in `prefs.seenIntros`. The sheet has the eyebrow *New in this lesson* and the lesson title as its heading.
       Each symbol gets a 72 px accent-soft tile with its glyph (Noto Music, as the Setup buttons draw it; a
@@ -121,10 +138,10 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
       rest. Start marks the symbols as shown and starts the count-in. **?** on the sheet opens How to play and leads
       back to it; when How to play was not due, its eyebrow names the run (*Lesson 3.1*) instead of *First time here*
       (also from Ready). When How to play is due as well, it comes first and *Got it* brings the intro sheet.
-   3. **Ready**, when no tap led here (a reload, Back / Forward into Play), or when the run is a lesson other than the
-      last finished run's (Results → *Next lesson*, another lesson from the Path or Home), so the new rhythm can be
-      read first. Retry and Next exercise of the same lesson, free practice, and the first run of a session count in
-      straight away.
+   3. **Ready**, when no tap led here (a reload, Back / Forward into Play, a Learn practice link opened in a new tab:
+      §9.1), or when the run is a lesson other than the last finished run's (Results → *Next lesson*, another lesson
+      from the Path or Home), so the new rhythm can be read first. Retry and Next exercise of the same lesson, free
+      practice, and the first run of a session count in straight away.
 
    The intro sheet uses the same Sheet as the others: a bottom sheet on phone and tablet (landscape too), a 440 px
    dialog on desktop. On desktop the intro and Ready dialogs sit low (aligned to the bottom, 48 px padding), so the
@@ -137,7 +154,10 @@ In pure tapping, a quarter note and an "eighth + eighth rest" would feel identic
   `keyup` = release. Key auto-repeat events are ignored. If several keys are down, the
   hold lasts until the last one is released. A key (or finger) going down while another is
   held starts a new press, so rolling two fingers over fast notes works; within 50 ms of the
-  held press it counts as the same press (a chord).
+  held press it counts as the same press (a chord). Space and Enter are taps also on a control that kept the focus
+  after a click (the metronome switch), or that a sheet gave it back to (Pause after *Resume*), but on a control the
+  player reached with Tab they press it, as in Read notes and Scales: *Skip to results*, Pause, **?** and Quit (Enter
+  only on the Quit link). The Tap pad is played with them however it got the focus.
 - Mobile: a large **tap pad** in the bottom half of the screen: `pointerdown` = press,
   `pointerup` / `pointercancel` = release. The pad captures the pointer
   (`setPointerCapture`), so sliding off the pad does not end the hold.
@@ -239,7 +259,11 @@ like the rhythm notation.
   `core/noteRound.ts`). The player picks the sign first (♮, no sign, is the default) and the seven buttons
   update to show it (D♯, re♯). The written spelling is required: right letter with the
   wrong sign is wrong, and F♯ is not accepted for a written G♭. Desktop keys: − = ♭,
-  0 = ♮, = = ♯, then the letter.
+  0 = ♮, = = ♯, then the letter. The row is a radio group: one Tab stop, on the sign picked, and the arrow keys pick the
+  next sign (round the ends), Home and End the first and last.
+  After a wrong letter or a timeout the right button turns green with the note's own name (F♯ also when ♮ is picked,
+  D when ♯ is), so the green mark never sits on a name that is wrong; a right letter with the wrong sign stays red, as
+  it reads.
   A round in C major / A minor with no extra signs has no sign row, no *Pick the sign if there is one, then the name.*
   line and no − 0 = keys: seven buttons for seven answers (since 0.10.0). The idle line is then empty on phone and
   tablet (the question *Which note is highlighted?* sits above the staff); desktop shows *Which note is highlighted?*
@@ -248,6 +272,12 @@ like the rhythm notation.
 - Desktop: names are typed with the letter keys (A–G); the piano maps to the
   computer keyboard with the common layout **A S D F G H J** = C D E F G A B and
   **W E T Y U** = C♯ D♯ F♯ G♯ A♯.
+- Enter or Space goes to the next note once one is answered, and checks a note to write, except on a control the
+  player reached with Tab, as in Scales: a button takes Space and Enter itself (Skip to summary, another answer mode,
+  a piano key, ▲ ▼), and the Quit link Enter. A name button, or the answer mode or key labels already chosen, has
+  nothing to do once its note is answered, so there they still go on. After a click, or when Hint or Next note hands
+  the focus on (§11), Enter and Space do nothing on a name button or piano key until the note is answered, so the
+  answer that has the focus is not pressed by them; it takes them once the player tabs to it.
 - **Do re mi or letters** on the name buttons is a saved preference, switched on the play screen. A new player gets
   do re mi when the device language is French, Italian, Spanish, Portuguese, Romanian or Dutch in Belgium (`nl-BE`),
   and letters otherwise (since 0.10.0; before, do re mi for everyone). A new player is one with nothing saved at all,
@@ -261,12 +291,14 @@ like the rhythm notation.
   to the key signature still follows (*… Look at the sharp after the clef.*).
 
 **Hearing the notes** (since 0.10.0). The setup has a *Hear the notes* switch, on by default. With it on, a piano key
-sounds as it is pressed, in the octave of the note on the staff, so the right key sounds as the note. After every
-answer (names or piano; right, wrong or timed out) the note on the staff sounds as written, with the key signature and
-its own sign applied. After a wrong piano key, the right note follows half a second later. Once a note is answered,
-the piano keys only sound, so the player can compare them. The sound is the Scales piano tone, at the Playback volume.
-Read notes and Keys path lessons keep the player's choice (the lesson presets do not set it). Audio is unlocked from the
-Start tap and from every answer tap.
+sounds as it is pressed, in the octave of the note on the staff, so the right key sounds as the note. The other keys
+sound in the C–B octave of the note's letter: for B♯4, which sounds as C5, the B key sounds B4, the letter the player
+read, a half step under the note (not B5), and for C♭5 (B4) the C key sounds C5 (so the C♯ key for B♯4 sounds C♯4,
+and the B♭ key for C♭5 sounds B♭5). After every answer (names or piano; right, wrong or timed out) the note on the
+staff sounds as written, with the key signature and its own sign applied. After a wrong piano key, the right note
+follows half a second later. Once a note is answered, the piano keys only sound, so the player can compare them. The
+sound is the Scales piano tone, at the Playback volume. Read notes and Keys path lessons keep the player's choice (the
+lesson presets do not set it). Audio is unlocked from the Start tap and from every answer tap.
 
 **Write it, hear it** (path lessons, since 0.11.0; §8.2). A round's notes can ask three things, set by the lesson
 (`tasks`; with more than one they take turns every 5 notes, in order):
@@ -276,18 +308,29 @@ Start tap and from every answer tap.
   system in brackets) and its slot on the staff is empty, with the cursor. The player taps the staff where the note
   goes: the nearest line or space gets a note in the cursor's slate, which can be dragged, moved a line or space at a
   time with ▲ ▼ (or ↑ ↓ on a keyboard), and is taken with **Check** (Enter). The staff is drawn taller in a round
-  that writes (4 bars on a phone) so a line or space is easy to point at, and does not scroll the page while
-  dragging. Screen readers get the staff as a slider whose value is the place (*the 2nd space*). After Check the note
-  is drawn where it belongs, green or red as when reading; a wrong one says where it went: *You wrote sol (G), on the
-  2nd line; la (A) goes on the 2nd space.* The hint is the reading hint (the nearest landmark and the way from it).
+  that writes (4 bars on a phone, on its side too) so a line or space is easy to point at, and does not scroll the page
+  while dragging. Screen readers get the staff as a slider whose value is the place (*the 2nd space*). After Check the
+  note is drawn where it belongs, green or red as when reading; a wrong one says where it went: *You wrote sol (G), on
+  the 2nd line; la (A) goes on the 2nd space.* The staff has a second D, E, F and G: the right letter an octave off is
+  still wrong (the lesson teaches the place), and the feedback says so, as in Scales: *Right note, wrong octave: write
+  the lower sol (G), on the 2nd line.* The hint is the reading hint (the nearest landmark and the way from it).
 - **Hear it**: sol (G4) sounds, then the note, 0.9 s apart; the slot stays empty until the note is named, and *Hear
-  it again* plays both again. The note always sounds, also with *Hear the notes* off. Answers are the name buttons (or
+  it again* plays both again. The note always sounds, also with *Hear the notes* off. After a reload no tap led to the
+  round, so the browser may not let the audio start, and tones played then would wait in a silent context and come out
+  together at the next tap: nothing sounds until a tap. A first note to hear waits on its button, *Hear it*, and the
+  feedback says *Tap Hear it: first sol, then the note. Which one is it?*; any answer or Next note counts as the tap
+  too, and a time per note that runs out does not (the right note stays silent). Answers are the name buttons (or
   the piano), and the feedback places the note from sol: *Right: mi (E), 2 steps below sol.* The hint says only that:
   *Hint: it is 2 steps below sol.*
 
 A lesson can also narrow the notes (`only`: the positions it draws from; the name buttons show just their names, one
 to seven, centred and no wider than 96 px each) and stress one (`stress`: three times as often). A note that has
-only one position to come from repeats (sol in unit 1).
+only one position to come from repeats (sol in unit 1). Of two positions (sol and mi, the path's unit 3) a note may come
+twice in a row, never three times: never repeating, they would take strict turns (E G E G …), which can be answered
+without reading or hearing a note, and mi could come no more often than sol. That unit's hearing lesson (*Hear mi*)
+does not stress mi: wherever either note could come, mi would be the answer three times in four, and after a pair the
+other note is certain, so a player who answered mi unless it had just come twice scored 82 % without listening and
+opened the next lesson in almost half the rounds. Without the stress the best blind guess scores about 64 %.
 
 **Keys.** The player chooses which key to read in, on its own screen (*Key*, opened from
 the setup). All 15 standard key signatures are offered: C major (no signs), then sharps
@@ -304,12 +347,21 @@ notes read the same.
   the player picks ♯ and F (or the F♯ black key). F without ♯ is wrong, and the feedback
   says why ("G major has F♯ in the key signature").
 - Every whole note is drawn in **its own bar** (a bar line after each note). An accidental
-  only lasts until the next bar line, so a sign never carries over to the next note.
+  only lasts until the next bar line, so a sign never carries over to the next note. Each bar has room for its note
+  and its sign: in a narrow bar the note moves back toward its bar line, and where that is not enough the staff is
+  drawn smaller (§9). The highlight around the note to name, its sign included, stays inside that note's bar.
 - With **Extra sharps and flats** on, a note can also carry a sign that changes the key
   signature's note: ♯ or ♭, or ♮ to cancel it (F♮ in G major). Alterations that would
-  need a double sharp or double flat are left out.
+  need a double sharp or double flat are left out. So *Sharps* adds none in C♯ major, where every letter is sharp
+  already: there the setup's summary does not say *extra signs appear*, and the round is not counted as harder (XP).
 - Learn chapter 9 *Sharps, flats and naturals* and chapter 10 *Key signatures* explain all of this; the Key screen
   ("What is a key?") links to 10.1.
+- *Use* goes back to the setup's own place in the history, so one Back from the setup leaves it (Scales' *Choose…* and
+  *Change* too).
+- A screen reader hears the keys in words, as the Scales hub says them (§3.7): each key (*F sharp major or D sharp
+  minor, 6 sharps*; Dutch *fis majeur of dis mineur, 6 kruisen*), the summary read out when the key changes, *Use F
+  sharp major*, and on the setup the Key row and the summary's *11 staff positions per clef · F sharp major*. The
+  screen still writes them with their signs (*F♯ major*).
 
 **Settings** (Read notes setup screen)
 
@@ -324,18 +376,22 @@ notes read the same.
 | Time per note | off · 5 s · 3 s | off |
 | Hear the notes (since 0.10.0) | on · off | on |
 
-**Note generator:** draws from the allowed positions, spelled in the chosen key, with no immediate repeats and no
-more than two steps of the same direction in a row, and boosts notes the player recently
-got wrong or answered slowly (spaced repetition per note). In mixed-clef rounds the clef
+**Note generator:** draws from the allowed positions, spelled in the chosen key, with no immediate repeats (of only two
+positions, no more than two in a row) and no more than two steps of the same direction in a row, and boosts notes the
+player recently got wrong or answered slowly (spaced repetition per note). In mixed-clef rounds the clef
 changes at most every 4 notes, with a visible clef change.
 
 **Scoring:** correct / total, average response time, and a per-note weak-spot list. Stars: ★ ≥ 70% · ★★ ≥ 85% ·
 ★★★ ≥ 95% with an average under 2 s (starting values, to tune). XP and streaks work as in the rhythm modes.
-Round done's *Needs practice* shows each missed or slow note as the player reads it (since 0.10.0; before, in
-scientific pitch, *F5 ×3*): a chip with a small staff (the note's clef and the note, with its own sign; no key signature at this
-size), the name in the player's note names (fa♯ or F♯), and ×count or the seconds. Screen readers hear e.g. *fa, F on
-the top line (treble clef), missed 3 times*. The desktop play screen's Needs practice card also uses the player's
-names.
+Round done's *Needs practice* shows each missed, hinted or slow note, all of them, in rows that wrap (as *Practice
+missed notes* drills them all; the row's name stays beside its first chips), as the player reads it (since 0.10.0;
+before, in scientific pitch, *F5 ×3*): a chip with a small staff (the note's clef and the note, with its own sign; no
+key signature at this size), the name in the player's note names (fa♯ or F♯), and ×count or the seconds. Screen readers
+hear e.g. *fa, F on the top line (treble clef), missed 3 times* or *…, answered with a hint*. A note right only with a
+hint is not right (the score), and *Practice missed notes* drills it, so it has a row of its own, *With a hint*, between
+*Missed* and *Slow*; *Nothing to practise: every note right, and quick.* shows only when all three are empty. The
+desktop play screen's Needs practice card also uses the player's names, and names each note missed or hinted with its
+own sign (F♯ missed on a line where an F was right reads F♯).
 
 ### 3.7 Scales — *every key*
 
@@ -347,44 +403,83 @@ Learn and practice major and minor scales in all 15 keys.
   The three positions at the bottom carry both spellings (B/C♭, F♯/G♭, D♭/C♯); tapping
   the selected key again switches spelling. Each key is filled by progress (★ light,
   ★★ mid, ★★★ dark slate); for minor, by how many of the three forms have ★★ or more.
-  The centre shows the selected key signature. Under the circle: the scale's notes (each
+  A position of two spellings shows the selected one, else the one with more progress on the ring in front (the first
+  on a tie), so it is filled whichever spelling earned it, as on Round done's circle. The faint ring takes the same
+  spelling, so it still holds the relative minor (*C♭* over *a♭*, not *g♯*). The ScaleHub boards always draw the first.
+  A key on the faint ring switches the ring and keeps the focus: the keys come in one order on both tabs, the major
+  ring first, so a keyboard or screen-reader user stays on the key just chosen.
+  Every key, on both rings, takes taps 44 px across (§11), round its circle where that is drawn smaller, as on a phone
+  (the phone board's keys are 50 / 40 px on the outer ring, 42 / 32 px on the inner one). Neighbours on the inner ring
+  are only 12.7% of the circle apart, so on a phone under 390 px wide its keys take taps as far as the next key: 43 px
+  at 375, 36 px at 320.
+  A second spelling (*C♭* under *B*) is smaller than the name and, on the ring in front, drawn at 90%, which keeps it
+  4.5:1 or more on every fill (§11; at 80% a ★★ key's was 4.2:1 in dark). On the faint ring it is `--muted` as the name
+  is, not fainter, which took it under 4.5:1 on the page and on the disc. The ScaleHub boards draw it on both rings at
+  75% on phone and 80% on tablet and desktop.
+  The centre shows the selected key signature; six or seven signs take two balanced lines (*F♯ C♯ G♯* over
+  *D♯ A♯ E♯ B♯*), so none runs under the inner ring's keys beside it. Under the circle: the scale's notes (each
   letter once, sharps and flats tinted), stars, *Options* and *Practice*, plus *Go round
-  the circle* (all 15 in circle order).
+  the circle* (all 15 in circle order). On a phone a minor key's stars are, as its fill, how many of its forms have ★★
+  or more, and are said so (*2 of 3 forms with 2 stars*, *No form with 2 stars yet*), not as a rating.
 - **Where the hub sits:** it is a Home page, opened from Home's Scales tile, so it keeps the
   app's navigation with Home current (§9): the tab bar on phone, with a back arrow as on a
-  Learn chapter; the top header on tablet and desktop. Tablet and desktop put the circle and
+  Learn chapter; the top header on tablet and desktop. Opened from Learn chapter 11's Practice button, Learn is
+  current instead and its back arrow returns to the chapter (*Back to chapter 11*, §9.1). Opened from Progress (*Open
+  the circle of fifths*, or Scales' *Practice scales* on Skill levels), Progress is current and its back arrow returns
+  there (§8.5). Tablet and desktop put the circle and
   the selected key side by side: the key signature, the stars per form (one rating for major,
   natural / harmonic / melodic for minor), the scale's notes and *Options* / *Practice*.
 - **Starts on C major** (since 0.8.0): no sharps or flats and only white keys, where method books start; G, one sharp,
-  is the next step round the circle.
+  is the next step round the circle. After that it opens on the key last picked, after a reload too: with the setup on
+  one key or round the circle (which plays all 15 whatever its key) that key is the setup's; with keys chosen, which are
+  the round's, the device keeps it on its own (`muzieklab.scaleHub.v1`), out of the progress and its sync.
 - **Settings:** keys (the selected key · all 15 · choose, using the Key screen from Read
   notes) · scales (major, natural minor, harmonic minor, melodic minor; each shows its
   step pattern) · answer with (piano · names · mixed) · direction (up · up and down) ·
   write with (♯ ♭ signs · key signature) · show the steps (W and H) · play each note.
-  A minor scale uses the relative minor of the chosen key (G → E minor).
+  A minor scale uses the relative minor of the chosen key (G → E minor). The summary above Start says how the round
+  goes: shuffled, or in circle order when it goes round the circle (all 15).
 - **Piano:** a keyboard window that starts on the tonic, or on the white key just below it
   when the tonic is a black key (F♯, D♭ …): 9 white keys, enough for one octave from any
   starting note. The white keys always show their letters (A–G), whatever the label setting in
   Read notes: the window starts somewhere new with every scale, so the letters find the keys.
   The player plays the scale note by note; each right
   note is written on the staff and fills the next degree box. The W/H steps sit between
-  the boxes. A wrong key flashes red and the feedback names the step ("From G, go a whole
-  step: skip one key"). *Hear it so far* and *Start over* appear once the first note is played (since 0.10.0; before
-  that they would do nothing). They are hidden but keep their place, so nothing moves when they come. When the scale is
-  done, *Hear it so far* reads *Hear the scale*. This holds for play and spell, on phone and tablet (the row under the
-  feedback) and on desktop (the side panel). Computer keys
+  the boxes: those still to come in `--muted`, a W passed in `--accent-ink` (about 1.6:1 from `--muted`, so the two
+  tell apart) and an H or a step and a half passed in gold (`--reward-ink`), each 4.5:1 or more on the page and on a
+  card (§11); the degree numbers take their box's ink, not faded. The ScalePlay and ScaleSpell boards (phone and
+  desktop) draw the steps still to come fainter (#a7b1b0, under 2:1), a W passed in the accent, an H in `--gold-ink`
+  and the numbers at 70–75%.
+  A wrong key flashes red and the feedback names the step ("From G, go a whole
+  step: skip one key"). The note's own key an octave off is a mistake too, as the octave counts; the feedback says so
+  (*Right note, wrong octave: play the lower C.*), not *Not C*. A key the window has twice, an octave apart, reads
+  *low* or *high* after its name to a screen reader (*C, low*), and each degree box reads its note once answered, else
+  *now* or *not yet* (after the given letter when spelling: *F, now*). Notes show their signs (*F𝄪*) but are named as
+  they are said (*F double sharp*, Dutch *fisis*), which a screen reader would read as a symbol or skip: in the degree
+  boxes, the staff's description, the feedback line, the hub's notes and circle keys (*G sharp minor*), the hub's
+  selected key with its relative key and *Practice*, the setup's key, hint and summary, the scale's name over the staff
+  (on desktop it names the answer card) and Round done's scales and circle, as in Learn (§9.1). The key signature's
+  letters under the hub's small staff and Round done's line of keys new this round are left to the staff's and the
+  circle's descriptions, which say them. After a wrong answer the feedback's words for a screen reader end with the
+  mistakes so far (*… go up a whole step (skip one key). 2 mistakes.*), so the same wrong key or sign again is read out
+  again. *Hear it so far* and *Start over* appear once
+  the first note is played (since 0.10.0; before that they would do nothing). They are hidden but keep their place,
+  so nothing moves when they come. When the scale is done, *Hear it so far* reads *Hear the scale*. This holds for
+  play and spell, on phone and tablet (the row under the feedback) and on desktop (the side panel). Computer keys
   on desktop, as in Read notes: A S D F G H J K L for the white keys, and for a black key
   the letter above the gap between its two white keys (W E R T Y U I O). Space is *Hear it so far* and Enter goes on,
-  except on a button the player reached with Tab: that button takes Space and Enter itself (since 0.9.0). After a click
-  Space stays *Hear it so far*, so a piano key that kept the focus is not pressed again.
+  except on a button the player reached with Tab: that button takes Space and Enter itself (since 0.9.0). After a click,
+  or when Hint, Next scale or Start over hands the focus on (§11), Space stays *Hear it so far*, and Enter does nothing
+  until the scale is done, so a piano key or a sign that has the focus is not pressed by them.
 - **Names (spelling):** the letters are given, one per degree, because a scale uses each
   letter once; the player chooses ♭, ♮ or ♯ for each (keys − 0 =, as in Read notes). This
   drills exactly what changes between keys and between the minor forms (D♯ in E harmonic
   minor). Double sharps (F𝄪 in G♯ harmonic minor, C𝄪 in D♯, G𝄪 in A♯) appear only in keys
   that need them: then a fourth button, 𝄪 (key X), joins the row. No scale here needs a
-  double flat.
-- **Up and down** adds the way back: the degree row gets a second line, from 7 down to 1, and
-  the piano window stays the same.
+  double flat. *Hint* names the step from the note before. Right after a wrong sign it takes the place of why and of
+  the sign's red mark; the next mistake says why again, and Hint can be asked once more.
+- **Up and down** adds the way back: the degree row gets a second line, from 8 (the top note again, answered once it is
+  played or spelled going up) down to 1, and the piano window stays the same.
 - **Melodic minor down** is written as natural minor (the classical form).
 - **Scoring:** a scale is right when it was finished without mistakes; stars by mistakes
   (0 → ★★★, 1 → ★★, 2–3 → ★). A scale with mistakes comes back at the end of the round.
@@ -392,8 +487,8 @@ Learn and practice major and minor scales in all 15 keys.
   has ★★★ (starting values, to tune).
 - **Round done** lists each scale with its mistakes and stars (a scale with mistakes is
   marked *Came back at the end of the round*) and how far the circle is filled, with
-  *Change setup* and *New round* (the same setup, shuffled again). Its back arrow goes to the
-  Scales hub.
+  *Change setup* and *New round* (the same setup: shuffled again, or round the circle in circle order again). Its back
+  arrow goes to the Scales hub, or to the Learn section or chapter the round was started from (§9.1).
 - **Layout:** setup, play, spell and round done are exercise screens (no tab bar or header):
   the phone layout, in the 640 px column on tablet. On desktop, play and spell use the wide
   exercise layout of Read notes: the exercise header (title, scale *n* of *m*, progress,
@@ -429,7 +524,8 @@ A quick theory check on any **chapters the player chooses**, opened from the Lea
 ## 4. Exercise settings
 
 All settings are shown on one *Practice setup* screen, with a live preview bar that
-regenerates as you change things, plus a difficulty meter.
+regenerates as you change things, plus a difficulty meter. The setup is saved with the progress as it is changed, as
+the Read notes and Scales setups are, so a reload or the app opened again keeps it (it was saved only on Start).
 
 | Setting | Options | Default |
 |---|---|---|
@@ -631,11 +727,16 @@ note/rest). A separate **speller** turns it into **notation** following engravin
 - **Rests** are never tied; they are written to show the beat. In 4/4 a two-beat (half)
   rest only on beat 1 or 3; a two-beat silence starting on beat 2 is two quarter rests.
   In simple meters, dotted rests are used only when shorter than one beat. A fully empty
-  bar gets a single whole rest centred in the bar, in every time signature.
+  bar gets a single whole rest centred in the bar, in every time signature: midway between its bar lines (after the
+  time signature in the first bar).
 - **Beaming** per beat (simple meters) or per dotted-quarter (compound); never across
   beats 2–3 in 4/4. Four eighths may be beamed as a half-bar group (beats 1–2 or 3–4) in
   4/4, an accepted alternative; the default beams per beat. Sixteenths beamed per beat.
-- Triplets get a bracket/number per beat.
+- Triplets get a bracket/number per beat. The staff keeps room above its first row for the number. Play keeps it on
+  every window of an exercise with triplets, and the Setup preview whenever Triplets is on, so neither changes height
+  as the window moves or a new preview bar is drawn.
+- The final barline (thin and thick) closes the exercise's last bar. Play shows two rows of bars at a time: a window
+  that stops before the exercise's end closes with a plain bar line.
 
 Keeping rhythm and spelling separate lets dictation compare *what you heard* rather than
 *how you wrote it*, and lets the scoring engine ignore ties (a tie is not an onset).
@@ -708,10 +809,16 @@ codes are reproducible across devices.
   starts with *Measured over N taps*. The stored value is still the median offset. The Dutch start prompt is *TIK OM
   TE BEGINNEN*; it must fit on one line on a 320 px phone.
 - Calibrate opens from Settings, and from a coaching tip on Results (§6.4) as `#/calibrate?from=results`: then its
-  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. When Results goes back
+  back arrow (*Back to results*) and Save return to `#/results`, which shows the last run again. Save goes back to
+  the Settings or Results entry it was opened from (as Sign in does), and so does *Back to results*, so the browser's
+  Back does not open Calibrate again, nor the finished run after Results' own arrow. When Results goes back
   to a Learn section (`?from=7.3`), Calibrate carries it as `&learn=7.3` and returns to `#/results?from=7.3`, so the
   way back to the section stays. Opened any other way, or after a reload (the store then has no last run to show),
   they return to Settings (*Back to settings*).
+- The clicks run on the audio clock, so a run whose audio stops (an iOS call or Siri, the browser suspending it, a
+  context that never starts, as Play checks it) or that the player leaves (the app hidden) ends at once: *The clicks
+  were interrupted. Try again to measure from the first click.*, with Try again and no Save. Before, the clock stood
+  still and the run never ended, with the pad doing nothing.
 
 ### 6.2 Matching taps to notes
 
@@ -773,7 +880,15 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 
 ### 6.3 Scores
 
-- **Accuracy %** = points / max points (floored at 0).
+- **Accuracy %** = points / max points (floored at 0). It is shown in whole percent rounded down (Results, Play's *So
+  far*, Home's daily, the personal bests, Read notes' *Round done*, Progress' *Accuracy · 14 days*, *Accuracy per clef*
+  and skill map, Skill levels' *now 89%*), so a run never shows a threshold it did not reach: 31 Perfect and a Great
+  are 99.7%, shown as 99%, as 100% is only the diamond's; 89.7% (two stars) shows 89%, not 90%. The stored accuracy
+  keeps its fraction; the day's figures for Progress (§8.5) add each round in whole percent, rounded down too. A target
+  is met only by the real value: the skill map's bands and weak spots (§8.4) and the skill checks (§8.6) compare the
+  accuracy rounded down, so a Read notes round with 89.5% of its treble notes right is 89%, short of the 90% check, and
+  a cell at 84.6% is short of 85%. A Read notes check keeps its best in whole percent, rounded down (bests saved by
+  earlier versions were rounded to the nearest and stay so).
 - **Stars:** ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% · ★★★★ ≥ 95% with no Good and no Miss (no
   yellow or red noteheads).
 - **Three star slots are shown** (☆☆☆) on the results, the lesson tiles and the Path. The 4th star is a hidden
@@ -831,17 +946,20 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
      rushing: *You were rushing: on average 110 ms early. Wait for each note.*
   3. Off track (misses + extra taps add up to a quarter or more of the notes): timing advice is beside the point when
      the player lost their place, so it names the misses, with the bar that had the most (*You missed 3 notes, most in
-     bar 2. Read one beat ahead.*) or, when bars tie, without a bar (*You missed 8 notes. Read one beat ahead.*); or
-     the extra taps.
+     bar 2. Read one beat ahead.*; one note: *You missed 1 note in bar 2.*) or, when bars tie, without a bar (*You
+     missed 8 notes. Read one beat ahead.*); or the extra taps. Echo hides the notation while it is tapped back, so
+     there it ends *Count along as you listen, so you know where each note falls.* instead of reading ahead.
   4. The worst hold problem, e.g. "You let go of the dotted quarter in bar 2 too early".
   5. The tendency (only from 4+ hit notes). When the player drags steadily (every hit at least 20 ms late, SD
      ≤ 45 ms) on a run played before any calibration, it points to calibration instead of "press sooner": *Your taps
      came on average 60 ms late, about the same on every note. That is often the speaker or headphones: calibrate
      once and it is taken off every score.* Taps on both sides of the beat are the player, and so is rushing: *Wait
      for each note.*
-  6. Misses (the same tie rule), extra taps, unsteady, then praise. A perfect run that offers Next lesson says *Every
-     note perfect. On to the next lesson.* (a lesson fixes tempo and bars); free practice and the daily keep *Every
-     note perfect. Try a faster tempo or more bars.*
+  6. Misses (the same tie rule and Echo wording), extra taps, unsteady, then praise. A perfect run that offers Next
+     lesson says *Every note perfect. On to the next lesson.* (a lesson fixes tempo and bars); free practice and the
+     daily keep *Every note perfect. Try a faster tempo or more bars.*, asking only for what the setup still offers: at
+     its fastest tempo (200 BPM) *Try more bars.*, at its most bars (16) *Try a faster tempo.*, and at both *Every note
+     perfect, at the fastest tempo and the most bars. Try other note values, rests or extras.*
 - **Calibrate in the tip** (since 0.10.0): with the delay tip, or a dragging tip on a run played before any
   calibration (`prefs.calibratedAt` was null), the tip box shows a quiet **Calibrate** action (a ghost button with the
   metronome icon, titled *Measure the delay of your speaker or headphones*) under its text. It opens
@@ -861,7 +979,10 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   2 s and has the code in its title. On tablet and desktop it is the third ghost button, after Listen and Practice
   settings (in the side panel since 0.13.0, on a row of its own when the panel is narrow); on a phone (< 700 px) that
   row has no room, so it is a small muted link (13 px, 44 px target) at the very
-  bottom, under the main buttons. A daily challenge's date line (*Oct 22*) sits under the title, as on Round done; it
+  bottom, under the main buttons. Where the browser refuses the clipboard (a site permission, some in-app browsers),
+  it copies with the browser's copy command instead; where that fails too, the code shows on a line of its own under
+  it, in a read-only field, selected, with *Selected. Copy it with your device's copy command.*, as the Copy field does
+  (§9.2). A daily challenge's date line (*Oct 22*) sits under the title, as on Round done; it
   no longer says *same for everyone*, as the daily follows the player's unit (§3.4).
 - After a lesson (since 0.8.0), a badge under the score says what the run means for the Learning Path, and the main
   button follows it:
@@ -878,7 +999,9 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
   other badges (since 0.19.0, §8.3; no board). With a new level, the level-up sheet lists it instead.
 - On a short screen (an 8-bar exercise, a 1280 × 800 laptop) Results scrolls and Listen, Retry and Next stay at the
   bottom, as Start does on Setup; the round summaries of Read notes and Scales do the same. A control that is scrolled
-  or tabbed to (Calibrate in the tip) stays above those sticky actions (`scroll-padding-bottom`, since 0.10.0).
+  or tabbed to (Calibrate in the tip) stays above those sticky actions (`scroll-padding-bottom`, since 0.10.0), and on
+  a phone above the setups' Start and the key lists' Use too (Rhythm, Read notes, Scales; before, only Scales' setup
+  had it, and Tab could leave Dotted or a key under Start).
 
 ---
 
@@ -946,7 +1069,8 @@ player saw only the rhythm path (Home's Continue card followed it, and the switc
 its line; mi and fa sit just below it, then la, do, re and si above. All seven are on the staff (E4–D5: the bottom
 line to the 4th line), so there are no ledger lines and no key signature, and with all seven learned the next unit
 reads the whole treble staff. A note unit's lessons draw only the notes learned so far (the name buttons show just
-those), and the new note comes up three times as often:
+those), and the new note comes up three times as often, except in the review and in *Hear mi*, a two-note unit's
+hearing lesson, where the stressed note could be answered without listening (§3.5):
 
 | Lesson | Task |
 |---|---|
@@ -964,6 +1088,11 @@ How write and hear work is in §3.5, *Write it, hear it*.
   (`src/game/notesPath.ts`: clefs, keys, mix keys, answer with, range, extra signs, notes, timer, and since 0.11.0 the
   tasks, the notes it draws from and the note it stresses). The preset is the whole setup: the player's own setup is
   left as it is.
+- Every round of a Keys lesson asks for the sign it is about: per key the round uses that has a key signature, a note
+  the signature changes (the B♭ of *B flat in the key*: the treble staff has one B in its 11 places, and a third of
+  that lesson's rounds had none), and with extra signs a note a sign raises, and with both kinds one a sign lowers too
+  (*Flats too*). The start tries other seeds until the round has them (`noteLessonSeed` in `src/game/notesPath.ts`, up
+  to 100 seeds), as a rhythm lesson does for what it brings, and keeps that seed, so a reload draws the same round.
 - `src/game/tracks.ts` puts the units in path order and numbers them 1, 2, 3, …; that number is what the player sees
   everywhere (*Lesson 4.2*, *Unit 4 of 26*, Results, Round done, the Learn chapter headers). The rules are those of
   `src/game/track.ts`: two stars open the next lesson, and two stars on every lesson of a unit open the next unit.
@@ -972,23 +1101,33 @@ How write and hear work is in §3.5, *Write it, hear it*.
   played before 0.11.0 can be played again; the path goes on from its first lesson without two stars (for a player
   with rhythm progress: sol).
 - Every open unit is a button that opens and closes it (the current unit is open). An open unit shows its lessons by
-  name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars; any open lesson can
-  be played again. The current unit has no *Next: lesson …* line under it (since 0.10.0): its Start button already
-  says it. A note unit's node shows its note (*sol*), a rhythm unit's its glyph.
+  name: rows on phone, five tiles on tablet and desktop. A closed unit shows its lessons as stars, on a second line
+  where they do not fit one (five lessons with four stars on a 320 px phone); any open lesson can be played again with a
+  tap on its stars, a 44 px area from the unit's title row down (the row keeps its own 44 px and opens the unit),
+  whatever font the device draws ★ with: the stars are 15 px tall. The current unit has no *Next: lesson …* line under
+  it (since 0.10.0): its Start button already says it. Once the whole path is done, Start plays the last lesson again
+  and says so (*Play lesson 26.5 again*, nl *Speel les 26.5 nog een keer*), as Home's card says *Play again*. A note
+  unit's node shows its note (*sol*), a rhythm unit's its glyph; a word there (*Mix*) comes from the catalog.
 - A locked unit shows its title and a lock at the right of its row (screen readers hear *Locked*). What opens it is
   said once, under the first locked unit: *Opens with 2 stars on every unit N lesson* (since 0.10.0; before, every
-  locked unit repeated it).
-- Under the header: *Unit N of 26 · stars* and *Theory: Learn*. Desktop: the title and a *Notes and rhythm* card with
+  locked unit repeated it). The title row is faded (0.6), the hint is not: it is text the player reads, 4.5:1 on the
+  page (§11; the Path boards fade the whole unit).
+- Under the header: *Unit N of 26 · stars* and *Theory: Learn*; a screen reader hears *Unit N of 26, 40 of 390 stars*
+  (at the end *All done, …*), not only the stars. Desktop: the title and a *Notes and rhythm* card with
   a progress bar on the left; the current unit's name, the same line and Start over the units on the right.
 - In Dutch a path unit is a *blok* (*Blok 3 · Les 1 van 5*, *Blok 1 van 8*, *Leerpad, blokken 1, 3, 5*), so it is not
   confused with a Learn chapter, which stays a *hoofdstuk* (since 0.10.0, §11).
 - A lesson round counts every note: skipping to the summary counts the notes left as missed, so a lesson cannot be
-  passed on its first few notes. Play names the lesson; Quit goes back to the Path. Results and Round done name the
-  lesson and its unit, show what the run did for the path (§6.4) and offer Next lesson once the lesson has two stars;
-  Next lesson starts the next lesson of either kind.
+  passed on its first few notes. Play names the lesson; Quit goes back to the Path, also for a lesson started from
+  Home's Continue card, and so do Results' and Round done's back arrows (*Back to the path*). Results and Round done
+  name the lesson and its unit, show what the run did for the path (§6.4) and offer Next lesson once the lesson has
+  two stars; Next lesson starts the next lesson of either kind.
 - Home's Continue card follows the Learning path (since 0.11.0): a rhythm lesson shows a bar of its rhythm, a First
   notes lesson the notes learned so far with their names (the new one highlighted), and a later note lesson a few
-  notes of its round. The daily challenge follows the highest open rhythm unit (§3.4).
+  notes of its round, on the staff they are read on: those of the round's first clef and key, as Play starts a new
+  staff for a new one (4 on a phone, 4 to 6 on a tablet or desktop), from a round whose first four notes show the
+  sign a Keys lesson is about, so a phone and a wider screen start alike. A screen reader hears that clef and key (*A
+  few notes from the lesson: bass clef, E♭ major*). The daily challenge follows the highest open rhythm unit (§3.4).
 - Not yet: free practice cannot write or hear notes. The Progress tab (since 0.19.0, §8.5) counts every kind of
   practice: its accuracy, timing and skill map count rhythm rounds (free practice, lessons, the daily, Echo), its Notes
   view every Read notes round (free practice and note lessons), and its minutes every mode. The skill levels (§8.6)
@@ -1037,10 +1176,10 @@ How write and hear work is in §3.5, *Write it, hear it*.
   Perfect bar* badge (medal icon) beside the other badges on Results, Read notes' Round done or Scales' round done (no
   board; Scales' round done gained a badge row under the score for it). *50 perfect taps in a row* and the rest wait for
   the full achievements list (Later, §9).
-- **Personal bests** (since 0.19.0): a lesson played before whose best accuracy goes up, in whole percent (87.45% after
-  87.4% is not a new best), or the daily challenge's best (as Results' *New personal best* badge, §3.4), is a *New
-  personal best* row on the level-up sheet. Rhythm and note lessons count; Scales rounds do not. Bests per settings
-  combination and a history of them are still Later.
+- **Personal bests** (since 0.19.0): a lesson played before whose best accuracy goes up, or the daily challenge's best
+  (as Results' *New personal best* badge, §3.4), each in whole percent as shown (rounded down, §6.3: 87.9% after 87.4%
+  is not a new best), is a *New personal best* row on the level-up sheet. Rhythm and note lessons count; Scales rounds
+  do not. Bests per settings combination and a history of them are still Later.
 
 ### 8.4 Skill tracking (Weak Spots)
 
@@ -1053,11 +1192,14 @@ built (since 0.19.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
   half for *Dotted half*; a dotted quarter, and the eighth right after it, for *Dotted quarter + eighth*; else a
   quarter, half, eighth or sixteenth for its own cell (the dotted eighth of a sixteenth figure counts for
   *Sixteenths*). Whole notes and triplets count for none. The first note after a rest also counts for *Rests*. A note
-  adds the points the accuracy gives it (§6.3) to its cells, out of a Perfect's.
+  adds the points the accuracy gives it (§6.3) to its cells, out of a Perfect's. A round ended early (*Skip to
+  results*, Echo's *Done*) counts only the notes up to where the music stopped: Results counts the rest as missed, but
+  they were never played (as Read notes' weak spots learn from the notes answered).
 - **Rolling accuracy.** The points are kept per local day (`progress.stats.days`, the newest 42 days), and a cell's
-  accuracy is its points earned over points possible across the last 42 days, as a whole percent. It shows from 12
-  notes in that window (*—* before). A per-day sum instead of a moving average, because two devices' days merge (each
-  day keeps one device's record, BACKEND-PLAN §6.2) and old figures drop out of the window as practice moves on.
+  accuracy is its points earned over points possible across the last 42 days, as a whole percent rounded down (§6.3:
+  89.6% is in the 80–89% band). It shows from 12 notes in that window (*—* before). A per-day sum instead of a moving
+  average, because two devices' days merge (each day keeps one device's record, BACKEND-PLAN §6.2) and old figures drop
+  out of the window as practice moves on.
 - **Bands and weak spots.** 90% and up, 80–89%, and under 80%: a **weak spot**. A cell is locked until the Learning path
   opens the first lesson of the rhythm unit that teaches it (Quarter and Half: unit 1, Rests: 2, Eighths: 4, Ties: 6,
   the dotted cells: 7, Sixteenths: 8), unless it already has notes in any day kept (not only the window, so a cell
@@ -1066,11 +1208,26 @@ built (since 0.19.0, `game/cells.ts`, `game/stats.ts`, `game/weakSpots.ts`):
 - **Practice weak spots** is a practice-setup preset (as §9 v1.5 planned), not a generator mode. It takes the rhythm
   setup as it is and switches on what the weak cells need: their note value (quarter, half, eighth, sixteenth); for
   Rests, quarter rests (and eighth rests when eighths are on) with *many* rests; for Ties, ties; for Dotted half, dotted
-  notes with halves and 3/4; for Dotted quarter + eighth, dotted notes with quarters and eighths. With no cell under 80%
-  it uses the two weakest open cells. It puts the result on the rhythm setup (the player's own setup changes, as a
-  Learn practice link does) and opens it, where Start plays it: a setup Start could not play (every time signature or
-  note value switched off, or none that fills a bar) first gets 4/4 when it has no time signature, then quarter notes
-  when it still needs them. It is hidden while no cell has 12 notes.
+  notes with halves and 3/4; for Dotted quarter + eighth, dotted notes with quarters and eighths. For Ties, both dotted
+  cells and Rests it also sets Bars to 2 at least: an exercise of 1 bar has no tie and no dotted half, and a dotted
+  quarter + eighth or a note after a rest in fewer than half of them, and more for several (*Bars for several weak
+  cells*, below). With no cell under 80% it uses the two weakest open cells. It puts the result on the rhythm setup (the
+  player's own setup changes, as a Learn practice link does, but Bars too: the link keeps the player's Bars and plays 2
+  for its run only) and opens it, where Start plays it: a setup Start could not play (every time signature or note value
+  switched off, or none that fills a bar) first gets 4/4 when it has no time signature, then quarter notes when it still
+  needs them. It is hidden while no cell has 12 notes.
+- **Its Start looks for the weak cells**: an exercise with a note that counts for each of them on the skill map (a
+  dotted half tied on counts for Ties, not for Dotted half, and a dotted half is no half), trying other seeds as a
+  Learn practice link does (up to 200), and its Retry and Next do too. The settings alone left it to chance: the
+  generator takes any dotted value for its dotted note and an off-beat eighth for its syncopation, so with eighths on
+  only about 1 exercise of 2 bars in 6 had a dotted half and 1 in 3 a tie. Only the run the preset starts looks for
+  them: a change on the setup by hand, or a later Start, plays the setup as it comes.
+- **Bars for several weak cells**: so that the start finds them all within a few tries, the preset adds a bar for each
+  of Ties, the dotted cells and Rests after the first (2 bars had ties and a dotted half together in 2 starts of 5, and
+  all four in none), one for a dotted half with eighths or sixteenths on (in 2 bars 1 exercise in 6 has one with
+  eighths, 1 in 300 with sixteenths; in 3 bars 1 in 3 and 1 in 10), and one for both dotted cells, which an exercise
+  seldom has together (1 in 35 of 3 bars, 1 in 5 of 5). So a dotted half with eighths plays 3 bars, ties and a dotted
+  half with eighths 4, both dotted cells 5, and all four 7, or the player's Bars when more.
 - **Meters are not tracked separately.** A round has one meter, so a meter score would be the accuracy of whole rounds,
   not of the notes that are hard. The meters are taught by rhythm units (3/4 in unit 3, 2/4 in unit 5) that the
   Rhythm reading levels already check (§8.6), and every board's skill map draws cells only. A boost in the generator
@@ -1086,11 +1243,11 @@ worked out by `game/progressView.ts` from the progress and today's date; the scr
 
 **Head.** A segmented switch, *Show progress for*: **Rhythm · Notes · Scales** (Rhythm first). It changes only the
 cards below it, and is not remembered: every visit starts on Rhythm.
-- Phone: the title with the streak chip (*12-day streak*), the level line and the switch stay at the top while the
-  cards scroll under them. The level line reads *Level 7 · Measure* and *1445 / 1750 XP* (the total, and the XP where
-  the next level starts), then the bar, filled for the XP into the level, then *305 XP to level 8 · next rank Groove*.
-  On a phone under 700 px tall (the phone browser sizes) the whole page scrolls, head included, so the cards still
-  show.
+- Phone: the title with the streak chip (*12-day streak*; under the title, at the right, where the two do not fit side
+  by side: in Dutch on a 320 px phone), the level line and the switch stay at the top while the cards scroll under them.
+  The level line reads *Level 7 · Measure* and *1445 / 1750 XP* (the total, and the XP where the next level starts),
+  then the bar, filled for the XP into the level, then *305 XP to level 8 · next rank Groove*. On a phone under 700 px
+  tall (the phone browser sizes) the whole page scrolls, head included, so the cards still show.
 - Tablet and desktop: the title and the switch (340 px, 360 px on desktop) in one row, no streak chip. The level is
   the **Level card**: *Level 7 · Measure*, the bar, *1445 / 1750 XP* and *305 XP to level 8*, and the *Ranks* ladder
   (six rows: reached, *Level 7 · now*, next, later). The bar's label says *95 of 400 XP, 23 percent of the way to
@@ -1110,19 +1267,28 @@ cards below it, and is not remembered: every visit starts on Rhythm.
 
 **The cards.** Each is a section with an eyebrow heading (`h2`); the charts are SVG drawn at the card's width, each a
 `role="img"` with a sentence built from the data, and a title per point.
-- **Skill levels:** *25 of 60 levels · 6 skills · 1 review due*, a link to the Skill levels screen (§8.6).
+- **Skill levels:** *25 of 60 levels · 6 skills · 1 review due*, a link to the Skill levels screen (§8.6). A number
+  stays on the line of the word after it (a no-break space in the message), as in the achievements' names (*Played at
+  160 BPM*).
 - **Streak calendar:** five weeks, Monday to Sunday, ending this week. Days of the current streak are gold (with dark
   ink on the gold in both themes), earlier practice days a gold tint, missed days plain, today outlined, later days
   empty; a legend, and *Practised 28 of 32 days* over the calendar's days so far.
 - **Accuracy · 14 days:** rhythm rounds only (tap and Echo): each day the mean of its rounds' accuracy, a line with a
-  gap and a tick for a day without one, the latest value at the end and the average beside the title. The scale is
-  60–100%, and drops to 20% or 0% when a day is under 60%.
+  gap and a tick for a day without one, the latest value at the end and the average beside the title. Both are rounded
+  down (§6.3), so 100% means every round was flawless. The scale is 60–100%, and drops to 20% or 0% when a day is under
+  60%. Its label names those days *no rhythm rounds on Oct 3*: a day of only Read notes or Scales is still a practice
+  day, in the streak and in Minutes.
 - **Timing tendency:** each day the mean offset of the hit notes, against the steady band from −40 to +30 ms (the
-  tendency's thresholds, §6.3; the range widens past −70 and +50 ms when needed). The caption names the latest day's
-  tendency (*Steady · −22 ms*) and how it started (*Was rushing (−52 ms). A little early is normal.*).
+  tendency's thresholds, §6.3; the range widens past −70 and +50 ms when needed). A wider range puts the band's lines
+  closer together: a line keeps its label (*+30*, *0*, *−40*) only 11 px or more from the others, 0 first, and *steady*
+  moves up to the zero line, or is left out when the band above it is under 11 px. *steady*, *late · dragging* and
+  *early · rushing* are drawn over the line, with a halo of the colour under them (the band's for *steady*, the card's
+  for the others), so the line goes under their letters. The caption names the latest day's tendency
+  (*Steady · −22 ms*) and how it started (*Was rushing (−52 ms). A little early is normal.*).
 - **Minutes this week:** every mode, a bar per day, Monday to Sunday, and the total. A rhythm round counts its played
-  length with the count-in (Echo also every time it was heard); Read notes the answer times, each at most 15 s; Scales
-  the time on its play screen, at most 90 s a scale. A day with any practice shows at least 1 minute.
+  length with the count-in (Echo also every time it was heard), and one ended with *Skip to results* (or Echo's *Done*)
+  only up to where the music stopped; Read notes the answer times, each at most 15 s; Scales the time on its play
+  screen, at most 90 s a scale. A day with any practice shows at least 1 minute.
 - **Skill map · rhythm cells:** the eight cells (§8.4) as tiles, 2 a row on phone and 4 on tablet and desktop, coloured
   by band, locked, or *—* under 12 notes; the legend (*90%+*, *80–89%*, *Under 80% · weak spot*) and **Practice weak
   spots** when a cell has enough notes.
@@ -1131,10 +1297,23 @@ cards below it, and is not remembered: every visit starts on Rhythm.
 - **Accuracy per clef:** treble and bass over every Read notes round.
 - **Slowest notes:** the three notes with the longest average answer time (from 3 answers), named as the Note names
   setting says, with the sign the last round's key gives them, where they sit (*top space · treble*) and the seconds.
-- **Key:** the last Read notes round's key signature on its staff, its name and what it does, and **Read notes**.
+- **Key:** the last Read notes round's key signature on its staff, its name and what it does, and **Read notes**. A
+  key or sign with ♯ or ♭ is said in words to a screen reader (*F sharp major · D sharp minor, 6 sharps: F sharp, …*),
+  as on the Read notes setup's Key row (§3.5).
 - **Major scales:** the 15 major scales round the circle of fifths with their best stars; *9 of 15* with ★★ or more.
 - **Minor scales:** the minor keys started, with the best stars of each form (natural, harmonic, melodic), and **Open
-  the circle of fifths** (the Scales hub).
+  the circle of fifths** (the Scales hub). Each form's column is as wide as its head, with 2 px of room on each side;
+  where the card is less than 280 px wide inside its padding (a 320 px phone, whose card is 280 px with 248 px inside;
+  every other size has 303 px or more) the heads are 11 px, so in Dutch *Natuurlijk Harmonisch Melodisch* stay apart
+  and *A♯ mineur* stays on one line.
+
+**The way back.** A screen opened from a button here keeps where it came from (`?from=progress`), as one opened from
+Learn does (§9.1): the rhythm setup from *Practice weak spots*, the Read notes setup from *Read notes* and the Scales
+hub from *Open the circle of fifths*. Its back arrow (*Back to Progress*) returns to the Progress tab, as do the back
+arrows of the rounds' Results and Round done, and the hub has Progress current. A skill's button on Skill levels
+(§8.6) does the same: from *Focus next* back to Skill levels (`?from=skills`), from a skill's own screen back to it
+(`?from=skills.bass`, *Back to Bass clef in Skill levels*). A button that opens a tab (the Path, Learn) needs no way
+back. Progress itself starts on Rhythm again (see Head).
 
 **A new player** (no board) sees every card: short muted lines instead of a chart (*No rhythm rounds in the last 14
 days.*, *No practice this week yet.*, *No Read notes round yet.*, *No minor scale started yet.*, and for slowest notes
@@ -1198,13 +1377,14 @@ checked after a sync).
   notes of that clef answered. It covers level 1 when it draws every line of the staff, 2 every space, 3 every staff
   position, 4 every note from middle C up to G (treble) or down to F (bass), 5 and 8 every note of the one- or
   two-ledger-line range; 6, 7, 9 and 10 when it covers the whole staff in a key with 1, 2–3, 4–5 or 6–7 sharps or
-  flats. Checks: *A round over the whole staff at 90%* (the best accuracy of that clef's notes in such a round) and,
-  from level 3, *Average answer under 2.0 s* (level 10: 1.5 s). Middle C is a ledger line, so level 4 needs a round
-  with ledger lines. Button: *Read treble notes* / *Read bass notes*, which puts that one clef on the Read notes setup
-  (the rest as set up) and opens it.
+  flats. Checks: *A round over the whole staff at 90%* (the best accuracy of that clef's notes in such a round,
+  rounded down, §6.3) and, from level 3, *Average answer under 2.0 s* (level 10: 1.5 s). Middle C is a ledger line, so
+  level 4 needs a round with ledger lines. Button: *Read treble notes* / *Read bass notes*, which puts that one clef on
+  the Read notes setup (the rest as set up) and opens it.
 - **Scales** (the Scales hub's best stars): levels 1–5 one check per scale, *A major at ★★*; level 6 all 15 major
   scales at ★★; levels 7–9 the five minor keys up to 2♯ or 2♭ (A, E, D, B and G minor) in their natural, harmonic or
-  melodic form at ★★; level 10 all 60 scales at ★★★. Button: *Practice scales* (the Scales hub).
+  melodic form at ★★, also one check per scale (*A harmonic minor at ★★*), as only those five count; level 10 all 60
+  scales at ★★★. Button: *Practice scales* (the Scales hub).
 - **Theory:** the Learn chapters (§9.1), measured with **sections read** until Test yourself (§3.6) exists. One check
   per section, *Read 5.2 Dotted notes*. Button: *Continue chapter 5*, the first chapter from the next level on with a
   section not read (*Open Learn* once all are read). A section added to a chapter becomes a check of its level; a
@@ -1226,9 +1406,9 @@ as Settings' sub-pages, with Progress current; on a phone at least 700 px tall t
 - Two tiles for the last 30 days: *+4 levels up in 30 days* and *1 review due · Theory* (*0 · No review due*, neutral,
   when none is).
 - *Your skills · 10 levels each*: a row per skill, a link to its screen, with its icon, a chip (*Review due*, or *+2
-  this month* for levels passed in the last 30 days), a 10-segment meter (passed levels slate, the next one gold for
-  the share of its checks done) and *Level 6 · next: Dotted notes*. Below 335 px of list width (345 px in Dutch) every
-  chip goes under its name.
+  this month* for levels passed in the last 30 days), a 10-segment meter (passed levels slate, the next one gold for the
+  share of its checks done) and *Level 6 · next: Dotted notes*, which wraps when the name is long (Dutch, a narrow
+  phone). Below 335 px of list width (345 px in Dutch) every chip goes under its name.
 - **Focus next:** the lowest skill, ties by the order above: *Bass clef is your lowest skill: level 3, 2 levels behind
   treble clef.* It is compared with its pair (Rhythm reading and Rhythm by ear, Treble and Bass clef) when that is
   higher, else with the highest skill; with all level, *Your skills are all at level 3.* Then the skill's button.
@@ -1239,6 +1419,9 @@ as Settings' sub-pages, with Progress current; on a phone at least 700 px tall t
 72%*), and the skill's button; **Level · 12 weeks**: a bar per week for the level at its end (this week: today), with
 *+1 in 30 days* or *No change in 30 days*; and **All levels**: the ten, passed, next (*1 of 3*) or later (*Later* for
 a level that comes later). With all ten passed the next card reads *Level 10 · Every level passed* (no board).
+A level's name or a check that writes a sign (*A and E♭ major*, *E♭ major at ★★*) is said in words to a screen reader
+(*A and E flat major*, Dutch *A en es majeur*; `skills.levelSpoken`), here and in the list's rows, as the Scales hub
+says its keys (§3.7).
 
 ---
 
@@ -1289,6 +1472,13 @@ Built in v0.2 (dark theme was already in the MVP):
   code is still later. Since 0.10.0 Results no longer shows the code itself, only a quiet *Copy code* (§6.4).
 - **Echo mode:** a Tap · Echo switch on Practice setup. Play first shows a listen card (two plays), then the normal
   Play session with the notation and length lane hidden (Hear again goes back to listening). Results is the reveal.
+  The beat counter is the one Settings picks in both phases (the pendulum with the analog look). A listen cut off
+  before its end (the app sent to the background, the tab hidden, the audio suspended or interrupted) stops and does
+  not count, as the tapping pauses then. So does one whose audio has still not started 0.8 s after the press (Play's
+  grace for it), or whose clock stands still: before, it played in silence and used up a play. When the audio stopped
+  or never started, the listen card's title says so until the next press, as Play's Pause sheet does: *The sound was
+  interrupted. Press play to try again.* (nl *Het geluid werd onderbroken. Druk op afspelen om het opnieuw te
+  proberen.*). Leaving the app, the player's own doing, keeps *Listen to the rhythm*.
 
 **v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Two things
 change in the app:
@@ -1307,12 +1497,12 @@ chapter 8 · Notes on the staff (since 0.3.4 chapters 8–10, see §9.1).
 Built in v0.3 (ahead of v1.2, whose rhythm chapters 1–7 come next; the Learn tab holds chapter 8 until then):
 - **Pitch engine** (`core/pitch.ts`): staff positions as letter steps (C4 = 28), the 15 key signatures with their major
   and relative minor, written names and pitch classes.
-- **Rounds** (`core/noteRound.ts`): the seeded generator (allowed positions per range, no immediate repeats, at most two
-  moves the same way, clef runs of 4–6 notes, a new key every 5 notes when mixed, extra signs on a quarter of the notes,
-  weak spots and *Practice missed notes* boosted), judging (names need the written spelling; the piano accepts the
-  sounding key), the score (right without a hint / answered; hints count as not right), weak spots (misses +2, hints and
-  answers over 3 s +1, quick right answers −1; 0–5 per note) and XP: notes × (2 + difficulty / 4) × accuracy, + 5 for 3
-  stars. Mixed input alternates names and piano every 5 notes.
+- **Rounds** (`core/noteRound.ts`): the seeded generator (allowed positions per range, no immediate repeats (of two
+  positions, at most two in a row), at most two moves the same way, clef runs of 4–6 notes, a new key every 5 notes when
+  mixed, extra signs on a quarter of the notes, weak spots and *Practice missed notes* boosted), judging (names need the
+  written spelling; the piano accepts the sounding key), the score (right without a hint / answered; hints count as not
+  right), weak spots (misses +2, hints and answers over 3 s +1, quick right answers −1; 0–5 per note) and XP: notes ×
+  (2 + difficulty / 4) × accuracy, + 5 for 3 stars. Mixed input alternates names and piano every 5 notes.
 - **Screens:** Home's free practice is two tiles (Rhythm, Read notes); Read notes setup, Key, Name it (names with the
   sign row, or the piano; computer keys on desktop; a right answer moves on by itself after 0.7 s, a wrong one waits
   for Next note), Round done (time per note, needs practice, by sign, New round / Practice missed notes), and Learn
@@ -1390,23 +1580,128 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
 **Breakpoints.** Phone < 700 px; tablet 700–1099 px; desktop ≥ 1100 px.
 - A phone in landscape (height ≤ 560 px) lays the exercise screens (Play, Echo, Read notes, Scales, Calibration) out in
   two columns, so the pad or the answer buttons stay in view next to the notation (Scales: the staff and the degree row
-  on the left, the piano or the sign buttons on the right).
+  on the left, the piano or the sign buttons on the right). Its Read notes staff is the phone's (1.45, or 2.1 with 4
+  bars in a round that writes), in the narrow column, not the tablet's. Play's analog beat counter is 44 px tall
+  there, as the digits' row beside the lesson line, so the timing lane's two rows stay in the staff card. With a
+  triplet, the room for its 3 above the staff comes out of the card's padding there (10 px at the top, not 14 px), for
+  the same reason.
+- The rhythm staff on Play and Results is drawn at its screen's size, or smaller, down to 0.75, when a busy bar's notes
+  need more room than its share of the row leaves them (sixteenths on a phone, a busy 4/4 bar on tablet Play or desktop
+  Results). VexFlow never sets notes in less room than they need, so they would run over the bar line and off the
+  staff's end, where the drawing cuts them off. Smaller than 0.75 the notes are too small to read, so where a bar's
+  notes would still reach its bar line at 0.75, the rows get fewer bars instead (since 0.19.1), each drawn as large as
+  it then fits: on a phone one bar a row (Play shows two rows: the bar being played and the next), on tablet Play and on
+  desktop Results three. That is mostly Setup's Busy sixteenths, and now and then a Unit 8 lesson on a 320 px phone (8.5
+  in about 1 exercise in 20); notes that still fit at 0.75, close to the bar line, keep their rows. Play works the rows
+  and the size out once for the exercise, over every window it shows in turn and after the time signature each window
+  starts with, so the staff keeps one layout and one height as the window moves (`fitWindows` in `render/staffDraw.ts`),
+  and again when the staff's width changes: a window made narrower or wider during the exercise can swap the phone's
+  layout for the tablet's, with a staff of its own, which Play measures anew (`useWidthOf` in `render/theme.ts`).
+  Results does the same for the whole exercise, and scrolls when it gets longer. The canvases draw two bars a row on a
+  phone and four on tablet Play and desktop Results, at full size. Learn's examples are drawn smaller the same way
+  (§9.1, Narrow phones); none of them needs fewer bars a row.
+- A pitch staff (Read notes, Scales, Learn, Home's Continue card) is drawn at its screen's size, or smaller when its
+  notes need more room than its width leaves at that size: a key signature with many signs, sharps and flats before
+  the notes, a 320 px phone. A bar first gives up the room VexFlow leaves before its note (on a phone, keys with up to
+  three sharps or flats keep the full size), and a staff without bar lines keeps its size as long as its notes, the
+  cursor and the labels fit on it with the notes apart (on a phone, C, G and D major with their signs; Learn's scales
+  at 375 px and wider). Every whole note keeps its own bar, and the notes, the cursor and the labels stay inside the
+  staff; with bar lines, the cursor stays in the bar of the note it marks. So do the clef, the key signature and the
+  signs: above and below its lines the staff keeps the room its screen gives it for ledger lines, or more where
+  something reaches further, as the drawing cuts off what is past its edge (the treble clef's tail 1.67 spaces under
+  the bottom line, a flat on B5 3.3 spaces over the top line; `staffRoom`). A key staff keeps the room every key's
+  signature needs, so all keys have one height. It keeps one size while its notes come in or stay hidden: on every
+  page of a Read notes key and clef, and through a scale's page (`fitNotes` in `render/pitchDraw.ts`).
+- A screen's title is never narrower than its longest word, so it does not draw over what is beside it. A text link
+  beside it (the Scales hub's *Learn scales* on a phone, Key's *What is a key?*) takes two lines, right aligned, when
+  the two do not fit on one, and under 375 px wide such a title is 18 px (20 px on the board): in Dutch both fit on one
+  line at 360 px, and at 320 px the link takes two (*Toonladders* beside *Over toonladders*).
+- The Key screen (Read notes and Scales) under 360 px wide draws each key's signature 66 px wide (72 px on the board),
+  fitted to that width, so the longest Dutch names (*C♭ majeur*, 13 px) end inside their buttons.
+- The Scales setup's *Keys* control: a set of keys chosen, in Dutch (*15 toonsoorten*), is wider than a third of the
+  control at 320 px, so its label takes a second line instead of running out of the control.
+- Setup's tempo value (*112 BPM · Moderato*) is never broken in two. Under about 345 px wide it does not fit beside
+  *Tempo*, so it takes a line of its own under it, right aligned. The *Bars* and *Tempo* labels stay level at the top,
+  with the stepper and the slider level below them.
+- Setup's *More options* under 370 px wide put each label (*Metronome*, *Count-in*, *Density*, *Rest amount*) on a
+  line of its own over its segmented control, which takes the width, as Settings' rows do under 390 px: beside the
+  238 px control a label had 30 px at 320 px, and the control drew over it.
+- Home's daily challenge card under 375 px wide puts its button on a line of its own under the date and the text, the
+  card's width, as on desktop: once the daily is done, *Play again* (nl *Nog een keer*) left the text at 320 px a
+  column narrower than its words.
 - **Phone browsers** (since 0.10.0). In Safari or Chrome the toolbars take about 180 px of a phone's screen, so the
   sizes to check include the visible area: 390 × 664 (an iPhone 14 in Safari) and 375 × 553 (an iPhone SE in Safari),
   `phone-browser` and `phone-se-browser` in `e2e/helpers.ts`, next to the whole-screen sizes. The exercise screens
   (Play, Echo, Read notes, Scales, Calibration) must fit them without scrolling during play, with the pad, the piano
   and the answer buttons in view and at least 44 px tall. A phone in portrait has two short-screen steps (CSS
-  `max-height: 699.98px` and `599.98px`; the second is `SHORTER_PHONE` in `ui/hooks.ts`). 390 × 844, tablets, desktop
-  and phone landscape do not change.
-  - Under 700 px tall (390 × 664, 375 × 667): the gaps tighten to 10 px, and so do the page padding (10 px at the top,
-    12 px at the bottom) and the staff card's. Then the pad and the pianos give up height, down to 112 px for the pad
-    (214 px on the board), 120 px for the Read notes piano (200 px) and 140 px for the Scales piano (210 px). The pad
-    is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only *Tap* in the ring,
-    without the note. Calibration's Save and Try again sit side by side and stay in view at the bottom, as on Results.
-  - Under 600 px tall (375 × 553, 320 × 568): the gaps are 8 px, and the staves are drawn smaller: the rhythm staff at
-    0.8, the Read notes staff at 1.15 (not 1.45) and the Scales staff at 1.1 (not 1.25). The floors are lower (pad
-    76 px, Read notes piano 80 px, Scales piano 110 px), and so are the name buttons (56 px), the feedback, the
-    degrees, the sign buttons, Echo's listen card and Calibration's intro.
+  `max-height: 799.98px` and `659.98px`; `SHORT_PHONE` and `SHORTER_PHONE` in `ui/hooks.ts`). They fit every height
+  in between too, not only the sizes in `e2e/helpers.ts`: with the steps at 700 and 600 px, Play, Read notes and Scales
+  ran past the screen on phones 700–800 and 600–660 px tall (430 × 739 is an iPhone Pro Max in Safari, 375 × 629 an
+  iPhone mini), and a layout test now resizes them through those heights. 390 × 844, tablets and phone landscape do
+  not change. The analog beat counter, Read notes' ranges with ledger lines and Scales' Up & down, which take more
+  height, have steps of their own. Up & down has one in phone landscape too: its degree rows are 32 px high and 4 px
+  apart, the gaps 4 px and its staff drawn at 1, so the feedback stays in view in the left column. A scale going one
+  way has its rows 8 px apart there (as Play's), and either way the staff card has 4 px above and below and the
+  feedback is 40 px high in 14 px text, so at 844 × 390 Skip to summary stays whole under a why or a done line of two
+  lines, beside a B♭ scale's staff too, with room for its focus ring (before, the page scrolled and cut it). So does
+  Read notes: in phone landscape its staff card has 8 px above and below (6 px with a time per note, the timer bar 4 px
+  under the staff) and the feedback is 40 px high in 14 px text, so a round that writes (the staff drawn bigger) or
+  hears (Hear it again in the card) leaves Skip to summary whole under a why of two lines. A phone 375 px tall on its
+  side (667 × 375, 812 × 375) still scrolls both a little, Scales by up to about 15 px and Read notes by up to about
+  25 px, and one 360 px tall (740 × 360) by about 15 to 30 px. Scales' last row there holds Skip to summary, with the
+  page's 6 px of padding under it, so Tab scrolls the column on to that padding and Skip's focus ring shows whole (the
+  scroll ended flush with Skip, which cut the ring). Play's timing lane takes at most two rows on a phone (§3.1), so the
+  16 bars Setup allows fit as 8 do. The pianos give up height at any height of a phone in portrait, only as much as is
+  missing, so a taller phone keeps the board's piano (a range with ledger lines needs it up to about 820 px tall): down
+  to 100 px for the Read notes piano (200 px on the board) and 140 px for the Scales piano (210 px).
+  - Under 800 px tall (390 × 664, 375 × 667, 430 × 739): the gaps tighten to 10 px, and so do the page padding (10 px
+    at the top, 12 px at the bottom) and the staff card's. Then the pad gives up height, down to 112 px (214 px on the
+    board). The pad is a size container: its ring follows the pad's height, and a pad lower than 104 px shows only
+    *Tap* in the ring, without the note. Calibration's Save and Try again sit side by side and stay in view at the
+    bottom, as on Results. The analog beat counter is 52 px tall (84 px on the board, which taller phones keep). Read
+    notes draws a staff more than 8 staff spaces high smaller, at 8 spaces (*On the staff* is about 7.3):
+    a range with ledger lines (about 1.03 for +2 ledger lines, 1.26 for +1), and signs or the cursor that reach far
+    over or under the staff. From 360 px wide its key labels sit beside *Any octave counts*. The scale's name is 18 px
+    (22 px on the board), so a long one (*A♯ harmonisch mineur*) stays on one line at 375 px, and Up & down's two
+    degree rows are 40 px high, 4 px apart.
+  - Under 660 px tall (375 × 553, 320 × 568, 375 × 629): the gaps are 8 px, and the staves are drawn smaller: the rhythm
+    staff at 0.8, the Read notes staff at 1.15 (not 1.45; about 0.82 and 1.0 with ledger lines) and the Scales staff at
+    1.1 (not 1.25; 1 with Up & down, its staff card 4 px above and below), or smaller still to fit their notes. With a
+    time per note, Read notes' staff card has 6 px above and below and its timer bar sits 4 px under the staff, so a why
+    of three lines with two ledger lines leaves Hint and Next note in view at 375 × 553. The floors are lower (pad
+    72 px, Read notes piano 64 px with its black keys kept at 44 px and the white keys' labels below them, Scales piano
+    110 px), and so are the name buttons (56 px), the feedback, the degrees (32 px with Up & down, where the gaps are
+    6 px), the sign buttons (64 px, 56 px with Up & down), the analog beat counter (44 px, as the digits' row), Echo's
+    listen card and Calibration's intro. At 320 px wide Read notes leaves out *Any octave counts* above the key labels
+    (screen readers still read it), so the why of a wrong key in a lesson in a key fits on its three lines. Up & down's
+    done line leaves out the scale's 15 notes, which its degree rows show right above it (screen readers hear them in
+    the line said beside it): it takes two lines at most, in Dutch at 320 px too. Like a why of two lines, it leaves Hint and Next scale in
+    view beside the tallest staff, a B♭ scale's (its high B♭ with its flat), also in B♭ harmonic minor, whose eyebrow
+    takes two lines at 375 px beside *2 mistakes*.
+- **Short desktop windows.** Desktop Play and Echo do not scroll either (Scrolling, below). Under 800 px tall (a
+  1280 × 720 laptop, `laptop-720`) the page's padding (20 px at the top, 16 px at the bottom), its gap (16 px) and the
+  staff card's padding (20 × 40 px, 16 px at the bottom) tighten, and the stat cards are lower (12 px × 18 px), so two
+  staff rows, a timing lane of four rows (16 bars) and the analog pendulum fit. Under 822 px only the room under the pad
+  row is smaller (12 px, not 36 px), which shows only when 16 bars with the pendulum and the room for a triplet's 3 fill
+  a 1280 × 800 window or a 1180 × 820 tablet on its side. Under 720 px tall (a 1366 × 768 laptop's window in Chrome,
+  1366 × 657) the header's padding (12 px above and below), the page's (12 px) and its gap (12 px), the staff card's
+  padding (14 × 40 px, 10 px at the bottom), the stat cards (8 × 16 px, 8 px apart) tighten once more and the pad is at
+  least 160 px high, so 16 bars fit there too (they ran 53 px past it). Under about 650 px (1366 × 625, with Chrome's
+  bookmarks bar) 16 bars with the pendulum still run about 25 px over; that would take a smaller staff on short desktop
+  windows.
+  Read notes and Scales fit a window 800 px tall or more (1280 × 800, a 1180 × 820 tablet on its side): under 960 px
+  tall their page's padding (20 px at the top, 16 px at the bottom) and gap (16 px), the staff card's padding
+  (14 × 40 px) and the answer card's (18 × 24 px, 12 px between its rows) tighten and the piano is 160 px high (210 px
+  on the board). The key labels' row and Hint and Next note, which the NoteDesktop board does not draw, then fit under
+  a staff with two ledger lines and a why of two lines. On a shorter laptop window their page scrolls. Read notes'
+  stats column is 304 px wide (240 px on the board, which draws only *2 / 3*), so the Correct card holds the widest
+  score, *50 / 50*, on one line, and Avg time an average of 10 s or more: at 240 px the score broke after the slash
+  from the 10th note on. Its cards' sides are 14 px (18 px on the board), so the score keeps a few px to spare in a
+  browser that draws each letter a whole pixel wide (112 px there, 109 px elsewhere). The answer card beside it is 64 px
+  narrower, so under about 1130 px wide its *do re mi · A B C · Piano* switch (330 px on the board) narrows beside a
+  long keyboard hint, to about 300 px at 1100 px, and the hint stays on its row: on a line of its own (up to 1110 px on
+  the piano, 1130 px with the Dutch name buttons) it made the card a line taller, and two ledger lines with a timer
+  scrolled the page.
 - A touch-only screen at desktop width (a tablet in landscape) gets the desktop layout, without the keyboard hints
   (Esc, ?, the letter on each key).
 - On tablet and desktop, the mobile bottom tab bar becomes a top header with the same items as the
@@ -1414,7 +1709,9 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   v1.5). The active item has the soft slate pill and `aria-current="page"`. Tablet keeps the icon
   with each word and puts the items on the right; desktop puts them right after the brand, as words
   only. There is no sidebar. A screen opened from a tab (the Scales hub from Home's practice tile, a
-  Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow.
+  Learn chapter) marks that tab as current; on phone it keeps the tab bar and adds a back arrow. A phone turned on its
+  side (844 px) gets the header around the same page: a Learn chapter is not built again, so it keeps its place and
+  answers (§9.1).
   Since 0.19.0 there are five items, **Home · Path · Learn · Progress · Settings**: Progress is the 4th, with a
   three-bar icon (MVP canvas, Home & shell page, the *Home · 5-item tab bar* boards), *Voortgang* in Dutch. The phone's
   tab bar has five equal columns (the pill still fits at 320 px, in Dutch too). On a narrow tablet (700–820 px) the
@@ -1447,9 +1744,10 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   1160 px in all) that holds the summary and the screen's main button and stays in view while the main content
   scrolls. Setups: the options on the left; the preview (Rhythm) or the summary, and Start, on the right. Key: the keys
   on the left; the one key's signature drawn large, what it means, and Use on the right. Results: the judged staff (4
-  bars a row on desktop, 2 on tablet), the timing lane and the tip on the left; the stars, the score line, the badges,
-  the counts and every button on the right. Round done (Read notes, Scales): the cards (time per note, needs practice,
-  by sign; the scales played and the circle of fifths) on the left; the score, its line and the buttons on the right.
+  bars a row on desktop, 2 on tablet; fewer where a busy bar's notes do not fit, see the rhythm staff above), the
+  timing lane and the tip on the left; the stars, the score line, the badges, the counts and every button on the
+  right. Round done (Read notes, Scales): the cards (time per note, needs practice, by sign; the scales played and the
+  circle of fifths) on the left; the score, its line and the buttons on the right.
   A Read notes round with nothing answered has no cards, so it keeps the one column. A phone keeps the one column, in
   the same order. On a phone in landscape the side panel scrolls with the page until its end is in view (Results'
   is taller than the screen), and the buttons stay at the bottom as on a phone. Calibration on tablet uses the whole width with the pad filling the height under the plot (as Play
@@ -1462,12 +1760,13 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
   also a phone on its side (landscape, ≤ 560 px tall) keeps the phone layout and its two columns (`useExerciseLayout`
   in `ui/hooks.ts`).
   - Play (App design canvas, PlayTablet): the exercise header with help, Pause and Quit; the staff and lane across the
-    width (four bars a row); the Count and Combo cards (the pendulum in the Count card with the analog look); the
-    judgement; a big pad that fills the rest of the height (its ring grows with it, up to 230 px); Skip to results.
-    Echo's tap-back phase is the same.
-  - Echo's listen phase, on tablet like Play with the listen card where the staff goes, the Count and Combo cards, *Listen
-    first* and the pad off; on desktop Play's desktop layout with the listen card in the staff card and a key cap that is
-    off. Its header has help and Quit, no Pause.
+    width (four bars a row; three where a busy bar's notes do not fit, see the rhythm staff above); the Count and Combo
+    cards (the pendulum in the Count card with the analog look); the judgement; a big pad that fills the rest of the
+    height (its ring grows with it, up to 230 px); Skip to results. Echo's tap-back phase is the same.
+  - Echo's listen phase, on tablet like Play with the listen card where the staff goes, the Count and Combo cards (the
+    pendulum in the Count card with the analog look, as on Play), *Listen first* and the pad off; on desktop Play's
+    desktop layout with the listen card in the staff card and a key cap that is off. Its header has help and Quit, no
+    Pause.
   - Read notes (App design canvas, NoteTablet): the exercise header; the eyebrow, the question and the correct count; a
     big staff card (six bars, not the board's eight: eight leave no room for a sign before the last note); the feedback;
     the answer card with the input switch, the sign row, 200 px name keys or the piano, and Hint / Next note; Skip to
@@ -1477,6 +1776,12 @@ closes and every tab leads somewhere. All MVP screens are designed on the canvas
     scale; Skip to summary.
   - A shorter tablet window tightens the gaps (Play under 900 px tall, Read notes and Scales under 1100 px); under
     960 px Read notes' and Scales' keys keep their height and the page scrolls, as the desktop layout does on a laptop.
+    Play tightens once more under 760 px tall, a tablet on its side in Safari (1024 × 694 on a 9.7" iPad, 1080 × 736
+    on a 10.2"): the header 8 px above and below, the page 10 px at the top and 8 px between its parts, the staff card
+    10 × 24 px (8 px at the bottom), the Count and Combo cards 4 px above and below, and the pad down to 72 px, so 16
+    bars (two staff rows and a timing lane of four) fit with Skip to results, with the pendulum and a triplet's 3 too.
+    Under about 685 px (1024 × 660, Safari with its tab bar) 16 bars still run about 25 px over, and 12 bars under
+    about 650 px; that would take a smaller staff or lower lane rows.
 - Large screens show the same content and data as mobile, laid out side by side. They add no
   extra features.
 
@@ -1505,10 +1810,13 @@ reserved for feedback; gold only for rewards (stars, streak, XP).
 | Perfect / great | `#1f8a5b` | `#4cc38a` |
 | Perfect / great text (`--good-ink`) | `#176c47` | `#7ad9a8` |
 | Good (early/late) | `#b7791f` | `#f0b429` |
+| Good text (`--gold-ink`) | `#835d0c` | `#f0c35a` |
 | Miss | `#d64545` | `#ff6b6b` |
+| Miss text (`--miss-ink`) | `#a12f2f` | `#ff9a9a` |
 | Field border (`--field-line`, since 0.12.0) | `#7a8687` | `#738080` |
 | Gold text (`--reward-text`, since 0.19.0) | `#7a540c` | `#f0c35a` |
 | Ink on gold (`--on-reward`, since 0.19.0) | `#161b1c` | `#101415` |
+| Focus ring (`--focus`) | `#8a6412` | `#f0b429` |
 
 `--reward-text` is the boards' gold text on the gold tint or on paper (Progress: a practised day, *Earned*, the stars
 on a scale tile, the level-up rows' eyebrows). `--on-reward` is the text on a gold fill (a streak day on the
@@ -1518,6 +1826,13 @@ about 1.5:1).
 A text field's border (§9.2) is `--field-line`, not Line. Line is 1.2–1.4:1 against paper and ground, under the 3:1
 that WCAG 1.4.11 asks of a field's edge. `--field-line` is 3.76:1 on paper and 3.31:1 on ground in light, and 4.08:1
 and 4.53:1 in dark (`src/styles/fieldContrast.test.ts` checks it). The Foundations boards do not have it yet.
+
+The keyboard's focus ring (3 px, 2 px away from the control) borders what is behind the control, so it is 3:1 or more
+against the page, a card, a track and Accent soft (WCAG 1.4.11): in light a dark gold, the gold text's `--reward-ink`
+(4.2–5.4:1), as the reward gold `#e0a526` is only 1.7–2.2:1 there; in dark the bright gold (7.4–9.9:1). On the
+slate fill of a card with controls on it (the Continue card, and What's new's latest release with its try link), which
+turns light in dark, no gold is 3:1, so the ring there is the ink on the fill (`--on-fill`: white in light, near-black
+in dark). `src/styles/fieldContrast.test.ts` checks both.
 
 Type: **Unbounded** (display, scores, counts), **Figtree** (UI and body),
 **JetBrains Mono** (numbers, ms, BPM, codes), **Noto Music** (note and rest glyphs on
@@ -1552,7 +1867,14 @@ scroll the whole page on phones with the system scrollbar hidden. At every size 
 edge, never at the side of the content (since 0.13.2; before, a page in a centred column, such as the setups and
 Results (1160 px) or Account (640 px), had it at the column's edge): the page spans the window and pads its content into
 the column, and the Learning path's units, which scroll in a box of their own, reach the window's edge the same way.
-Only a side menu (a Learn chapter's sections, What's new's releases on desktop) scrolls where it stands.
+Only a side menu (a Learn chapter's sections, What's new's releases on desktop) scrolls where it stands. Each box that
+scrolls keeps 6 px of room at its top and bottom when Tab scrolls a control to its edge, so the control's focus ring
+shows whole: a page, the Path's units, a side menu, and the shell's main box around the page, which scrolls instead on
+desktop Home and on the Scales hub in a short window (the hub's page grows with its content, so its padding stays
+under Go round the circle). Setup and Results keep more at the bottom, above their sticky buttons. A page that does not
+scroll keeps as much under a control on its bottom edge: the Path's Start on a phone, where the units scroll. Play's
+Skip on a phone under 800 px tall ends at the page's bottom edge (the room under it went to the pad), so it draws its
+ring inside its 44 px box instead.
 
 **Notation colour rule:** notes are always drawn in the *Ink* token of the current theme
 (black on paper, light on dark), never a hard-coded black. VexFlow output must have every
@@ -1570,7 +1892,7 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 |---|---|
 | **Home** | Level and streak chips; big *Continue* card; *Daily challenge*; *Free practice*; *Listen (dictation)*; *Progress* (below). |
 | **Practice setup** | Mode switch; chips for meters; icon toggles for note values and rests; extras; bars stepper; tempo slider; live preview + difficulty meter; *Start*. |
-| **Play (Tap)** | Top bar: bar x/y (*Count-in* until the music's first beat), tempo, combo, pause. Notation (wraps 2 bars/line on phone, 4 on desktop, auto-scrolls). Beat dots. Big tap pad (mobile) / "press any key" hint (desktop). |
+| **Play (Tap)** | Top bar: bar x/y (*Count-in* until the music's first beat), tempo, combo, pause. Notation (wraps 2 bars/line on phone, 4 on desktop, fewer for a bar whose notes do not fit, §9; auto-scrolls). Beat dots. Big tap pad (mobile) / "press any key" hint (desktop). |
 | **Dictation** | Play/replay button with plays left; staff showing what you've entered; bar fill meter; note palette; *Check*. |
 | **Results** | Stars, accuracy, timing strip, tips (with Calibrate when it may be the device), Retry / Next, or Try again under 2 stars (§6.4). |
 | **Path** | One Learning path (since 0.11.0; before, three paths behind a switcher): note units and rhythm units taking turns, as a vertical path whose units open to show their lessons by name, with stars and locks (§8.2). |
@@ -1590,7 +1912,10 @@ phone the card still fills the screen. The lesson tiles show their stars as on t
 **Settings** (since 0.10.0). Sound has one *Metronome* row (volume and on/off). The Display row for the digital or
 analog look is *Beat counter* (nl *Telteller*), with the group label *Beat counter style*. The leniency hints describe
 each level in words, with no milliseconds: Strict *Tight timing, for confident players.*, Normal *Fair timing for most
-players.*, Relaxed *Wide timing, for young beginners.* Calibration is in §6.1.
+players.*, Relaxed *Wide timing, for young beginners.* Calibration is in §6.1. Picking another language redraws the
+screen in that language, and the focus stays on the language control. A language picked in another tab, or coming
+from the account, redraws the screen too, with the focus on its heading; while an exercise or a calibration is played,
+it waits until that screen is left, so the run does not start over.
 
 ### 9.1 Learn: theory in chapters
 
@@ -1601,25 +1926,99 @@ notation (with the counting under the notes in the rhythm chapters; held or sile
 an *In the game* tip where one helps, a quick check of one question on what the section explained, and a *Practice*
 link (below). A section is marked read when its quick check is
 answered right (since 0.6.0; before, scrolling past it was enough). A wrong answer says what to look at again, without
-giving the answer away, and the player tries again. Chapter headers show which Learning Path units use them. The contents follow the research in
-`LEARN-CHAPTERS.md`, which compares them with Flemish and Dutch courses (*Allemaal nootjes*, AMV, HaFaBra) and with
+giving the answer away, and the player tries again. What the answer means is read out by the app's live region
+(*Announcements* in §9.2, Components), and a note answer shows its sign (*F♯*) but is named as it is said (*F sharp*,
+Dutch *fis*), as the piano's keys are. Chapter headers show which Learning Path units use them. The contents follow the
+research in `LEARN-CHAPTERS.md`, which compares them with Flemish and Dutch courses (*Allemaal nootjes*, AMV, HaFaBra) and with
 ABRSM, Trinity, RCM and Kodály.
+
+**Narrow phones.** A rhythm example keeps two bars a row on every phone. When its counts would touch (two busy bars on
+a 320 px phone, or Dutch *en*, wider than *&*, at 375 and 390 px) or its notes would run into the bar line (the note
+tree's sixteenths at 320 px), the staff is drawn smaller, down to 0.75, as Play's staff is on a short screen. Two
+counts that meet letter to letter (*trip let*) keep half a letter apart, or they read as one word (*triplet*): 7.1 is
+drawn smaller under 390 px (0.75 at 320 px); a bracket, a digit or *&* between two counts keeps them apart already.
+Each count is drawn exactly as wide as the room the staff keeps for it (its `textLength`), also in a browser that draws
+each letter a whole pixel wide at the size the staff is shown (*trip* and *let* touched at 380 px there). A held count
+shares the room between its neighbours by how wide their words are. Where everything fits, nothing changes. The tables
+and diagrams keep their words apart too, at every width and in Dutch:
+- A table row's name keeps its words whole (*Gepunteerde*); its value wraps instead (*2 + 1 = 3* over *tellen*).
+- 1.3's strong and weak beats: each beat is at least as wide as its word (*medium*, *halfzwaar*), and the meters share
+  their columns, so the beats still line up from row to row.
+- A step pattern or a row of letters (*W H W W W W H*, *E G B D F*) stays on one line and its title wraps instead;
+  beside a key signature the letters go under the staff when they do not fit (*F C G D A E B* at 320 px).
+- Under 360 px a beat grid's row names (4.2, 5.3, 7.1) go above their cells, so its 12 columns get the width: Dutch
+  *(en)* is wider than three of them beside the names.
+- A chapter's title in the previous / next cards hyphenates a word longer than the card (*herstellingste-kens* at
+  320 px) instead of running into its padding; words under 12 letters stay whole.
 
 **Practice links** start practice for the section straight away (since 0.10.0; before, they opened the setup, with
 13 controls between the section and the exercise):
 - Rhythm links start an exercise with the section's preset in Tap mode (Echo would hide the notation the section
-  teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1).
+  teaches). Tempo, bars and the metronome stay the player's, and hold follows the free-practice rule (§3.1). The
+  exercise shows what the section teaches: the extra the preset turns on (5.1's and 6.1's tie, 5.2's dot, 7.1's
+  triplet), which the generator only makes likely, and what the section names where the preset alone does not make
+  sure of it (`shows` in `learn/chapters.ts`): 5.3's dotted eighth, where about one exercise in six had only a dotted
+  quarter, and 3.1's rest, 3.2's rest and silent bar (one whole rest), 4.1's eighth pair and eighth rest, 4.2's four
+  sixteenths in one beat and 4.3's eighth and sixteenth, which many exercises lacked, most of all with Bars at 1 or
+  sparse notes. The start tries other seeds until it does, as a lesson does for what it introduces, and Results' Next
+  keeps that, also after a reload on Play. One exception to the player's bars: no exercise of 1 bar has a tie, so with
+  Bars at 1 5.1 and 6.1 play 2 bars, and so do their Retry and Next. The player's setup keeps 1 bar (Setup, Practice
+  settings and the next start show it). Where none of the seeds a start tries has it all, it keeps the exercise that
+  comes closest (what the title names counts first). So some exercises still lack a part of it:
+  - 2.1 has no whole note with Bars at 1, where it does not fit beside a half and a quarter (from 2 bars every exercise
+    has all three).
+  - 3.2 has a silent bar only from 3 bars: the first bar opens with a note and the last ends on one. With Bars at 1
+    or 2 it shows a rest and does not look for a silent bar.
+  - With Bars at 1 and Sparse notes, 4.1's eighth rest and 4.2's four sixteenths in one beat are missing in about 1
+    start in 4 to 1 in 2. The eighth pair and a sixteenth are always there.
+  - 5.2 with Bars at 1 and Busy notes has no dot in up to 1 start in 4 (with few rests), as the generator makes one
+    there in about 1 exercise of 100.
 - Read notes links start the round.
 - Play, Results and Round done carry the section (`?from=8.3`). Quit and their back arrow (*Back to chapter 8*) return
   to it, and Retry, Next, New round and Practice missed notes keep it, as does a visit to Calibrate from the tip
-  (§6.1).
+  (§6.1). The browser's Back from the screen the link opened returns to the section too: the link first sets the
+  chapter's own place in the history to it (`#/learn/8?s=8.3`). Quit and the back arrow then go back to that place
+  instead of adding the section again, so one Back after them leaves the chapter. Every exercise's Quit, and the back
+  arrow of Results and Round done, does this when it returns to the screen it was opened from: Read notes to its setup,
+  Scales to the Scales tab, Play to Home, a lesson to the Path. Otherwise the finished screen gives its place in the
+  history to where the arrow goes, so Back never opens it again. Pause's *Practice settings* leaves Play for the setup
+  the same way: back to the setup Play was opened from, else in Play's place. A setup opened from a chapter or a
+  section (`?from=8`: its Practice button, Results' *Practice settings* or Round done's *Change setup*), for Read
+  notes, rhythm and Scales alike, passes it on to the round its Start starts: Quit goes back to that setup, still *Back
+  to chapter 8*, and the back arrow of Results or Round done to the chapter. So does the Scales tab opened from chapter
+  11's Practice button (`?from=11`): its back arrow returns to the chapter's end, and *Options*, *Practice* and *Go
+  round the circle* keep it; a round started there quits to the Scales tab, still *Back to chapter 11*.
+- A practice link opened in a new tab or window (a middle click, or with Ctrl, Cmd or Shift) starts the same practice
+  there: its address, `#/learn/practice?s=8.3`, sets up the section's practice in its own place. A plain click starts
+  it in the same tab. No tap led to the new tab, so the browser does not let it make sound yet: a rhythm practice
+  opened this way waits on the Ready sheet and its *Start*, as after a reload (§3.1).
 - Results' *Practice settings* and Round done's *Change setup* open the setup with the preset. Its back arrow still
   returns to the section, also after a visit to the Key screen (since 0.9.0).
-- Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup.
+- Scales links still open the Scales setup, and the chapter's big Practice button still opens the setup (chapter 11's
+  opens the Scales tab, with its circle of fifths).
+
+**The browser's Back to a chapter** opens it where the reader left it, not at its top (the chapter is built afresh in
+its own scroller, so the browser cannot keep the place). Every link that leaves a chapter first sets the chapter's own
+place in the history to where the reader is (`?s=`), as the practice links do: for a link in the chapter, the section
+it is in, and for those at its end (previous / next, the Practice button, *Back to all chapters*) the quick check
+(`?s=check`); for the sidebar or the tab bar, the section at the top of the view, or the quick check when the chapter
+is scrolled to its end, where its last sections cannot reach the top. A jump to a section (the sidebar, the tablet's
+chips) sets the place the same way first, so Back returns to where the reader was before it, or to the chapter's top
+when that was above the first section, with the focus on the title. It leaves the place as it is when the reader is
+already at the section it jumps to, or back at the place the last jump came from (the chips sit above the sections, so
+a second chip finds the top), so no place is in the history twice in a row and every Back goes somewhere. A screen
+opened from the chapter's Practice button returns to its end too (its back arrow, Quit). Back to the Learn tab opens
+the chapter that was open there; otherwise the tab opens the first one not done.
+
+**A phone turned on its side** is tablet-wide and gets the top header in place of the tab bar (§9), but the chapter
+stays as it was: its quick-check answers, an example still playing with its *Stop*, and the reader's place, the
+section at the top of the view and how far into it, which the new width scrolls back to (the text reflows, and the
+browser does not keep the place through that).
 
 **Hearing the examples** (since 0.10.0). Examples that show music can be heard. A small round slate play button sits
 with the example: a 36 px accent circle in a 44 px touch target, with an on-fill icon and the label *Play* / *Stop*.
-While it plays, the icon becomes a stop square and the circle gets an accent-halo ring.
+While it plays, the icon becomes a stop square and the circle gets an accent-halo ring. A section has several, so the
+label says which example it plays: its title, or what its notation shows (*Play: Whole note*, *Stop: 60 BPM*).
 - Rhythm examples: a one-bar count-in, then the rhythm on the woodblock with every beat clicking, at 80 BPM or the
   block's `tempo`. Ties are merged and rests are silent.
 - The note tree (2.2): each row plays its bar the same way; the Rests row plays only the clicks.
@@ -1683,9 +2082,14 @@ On tablet (≥ 700 px) and desktop (≥ 1100 px) a chapter page keeps one column
 sections in reading order, each filling the width. Inside a section, related parts sit side
 by side (lines | spaces, example | rule, text | keyboard) and stack again on narrow screens,
 so notation keeps a readable size instead of stretching. Desktop adds the chapter sidebar;
-on tablet the sidebar becomes a row of section chips under the title. The canvas shows chapter 8 at 834 px (tablet) and 1280 px (desktop).
+on tablet the sidebar becomes a row of section chips under the title. On a short screen (1280 × 720, a tablet in
+landscape) the sidebar scrolls on its own, and it opens with the open chapter's title and sections in view, also for
+the last chapters of the list; the page stays at its top. On a touch screen the sidebar's rows and the
+chips are 44 px tall, and the *Learn* link over the title (tablet and desktop) is a 44 px tap. The canvas shows
+chapter 8 at 834 px (tablet) and 1280 px (desktop).
 Both use the full width (up to 1160 px of content) instead of the 640 px column, and the Learn tab's chapter list
-(up to 960 px) shows a chapter's sections in two columns, read down.
+(up to 960 px) shows a chapter's sections in two columns, read down. A jump to a section (a chip, the sidebar, or a
+link to `#/learn/8?s=8.3`) brings it into view and gives it focus, so Tab goes on inside the section.
 
 The bottom tab bar gains a **Learn** tab: Home · Path · Learn · Progress · Settings (Progress since 0.19.0). The active tab is unmistakable: its icon sits in a slate-tint pill (#dfeaea, 56 × 30) and its label turns ink and bold, while the other tabs stay muted gray. It is marked `aria-current="page"` for screen readers.
 
@@ -1713,15 +2117,24 @@ server.
     muted) that says whether the progress is on the account: a green check and *Progress saved to your account*; a
     clock and *Saving your progress…*; a clock and *Not saved yet. Your progress is saved when you're back online.*;
     or an alert icon, *Your progress couldn't be saved.* and **Try again** beside it (under it when the words need the
-    room). It is not read out: it changes after every exercise. Then *Accounts* (*Invite people and manage roles*) →
-    the admin screens, only with `accounts.read`; since 0.17.0 *Feedback* (*Review the reports sent from the app*) →
-    the feedback reports, only with `feedback.review`, and a *Feedback button* switch (*On this device: mark part of a
-    screen and send what should change.*), only with `feedback.give` and only while feedback mode is on (0.18.0); and
-    *Sign out*.
+    room). It is not read out: it changes after every exercise. Its Try again keeps its focus while it saves, and the
+    outcome is read out: still *Your progress couldn't be saved.* (Try again is ready again), or the line it ends on,
+    with the focus on the account row. Then *Accounts* (*Invite people and manage roles*) → the admin screens, only
+    with `accounts.read`; since 0.17.0 *Feedback* (*Review the reports sent from the app*) → the feedback reports, only
+    with `feedback.review`, and a *Feedback button* switch (*On this device: mark part of a screen and send what should
+    change.*), only with `feedback.give` and only while feedback mode is on (0.18.0); and *Sign out*.
   - *Sign out* opens a confirm in place (as *Sign out everywhere*: the question in ink, a tonal button): *Sign out on
     this device?*, *Your progress stays on your account. On a shared device, remove it from this one.*, then a
-    two-choice segmented control, *Progress on this device*: **Keep** (chosen when it opens) · **Remove**, then Cancel
-    and Sign out. It saves the last change first. Cancel puts the choice back to Keep.
+    two-choice segmented control, *Progress on this device*: **Keep** (chosen, and focused, when it opens) · **Remove**,
+    then Cancel and Sign out. It saves the last change first. When that fails (a server error, or still on its way
+    after 5 s), Remove is refused with *Your progress isn't on your account yet, so it can't be removed from this
+    device. Choose Keep, or try again in a moment.*, and the confirm stays open; Keep still signs out. When the save
+    got no answer from the API, Remove is refused with *Can't reach Muzieklab right now. Check your connection and try
+    again.* instead, which is also what Keep then says: the session ends on the API, so neither signs out until it
+    answers. Signed out, the focus goes to the Sign in row. Cancel puts the choice back to Keep. On a link opened
+    while someone else is signed in (Accept invite, New password), the same confirm opens on Remove and goes back to
+    it, and a refused Remove does not offer Keep (*… can't be removed from this device. Try again in a moment.*),
+    which would hand their progress to the link's account.
   - No answer from the API, with a cached account: the account row, then *Muzieklab can't be reached right now. You
     can change your account again once it can.* with **Try again**. (Not "Offline": the device may be online while
     the API restarts or answers 502.) Try again keeps its focus while it checks and shows *Checking…* for at least
@@ -1734,28 +2147,62 @@ server.
     your progress is kept.* (after Delete account, by the choice made), *You're signed in. Welcome to Muzieklab.*, *Password saved. Your
     other devices are signed out.*, or, after a first sign-in on a device that had progress, *The progress on this
     device is on your account now too.* It is read out once, when it happens (not again when the language is switched),
-    and it goes when Settings is left.
+    and it goes when Settings is left. It shows only in the tab where it happened: another tab of the browser follows
+    the account without it.
 - Settings → About has a **Privacy** row (*What stays on this device, and what an account stores*), with or without an
   API. Its *Reset progress* confirm says, while signed in, *Streak, stars and XP, on every device with your account.
   No undo.*, and resets the account's progress too.
 - **The feedback tool** (0.17.0, [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md); no board yet): while feedback mode is on (0.18.0,
   switched by an admin on *Feedback*, below), for an account with `feedback.give`, a button floats over every screen (phone: a 48 px round icon above the tab bar; tablet and desktop: a
-  pill with the word, bottom right). It marks an element or a drawn box, then a sheet (desktop: a dialog beside the
-  spot) takes the kind, what should change and a title. A muted note under the fields says what happens to it: *Saved
-  for the team to review, with this screen, the marked spot, the screen size, the theme, the language and the
-  settings. Not your progress. If it is picked up, it becomes a public GitHub issue, without your name.* Then *Copy*
-  (the report in Markdown) and **Send**.
+  pill with the word, bottom right). On the screens without the tab bar or header (an exercise, its setup and results,
+  a form on its own), whose controls sit low, it is a 44 × 52 px icon tab (its focus ring inside) on the right edge:
+  halfway down; 30% of the way down while an exercise is played, as its answers take the lower half and, on Scales,
+  the middle (Hear it so far, Start over); and three quarters of the way down on a form on its own, which sits at the
+  top. A phone in landscape has its answers and Start in the right-hand column, so there the tab is on the left edge,
+  halfway down. It covers none of the controls that stay in place; on a setup or key list, which scroll, a row's end
+  can pass under it. While the tool is on, a screen with the tab bar or header leaves room under the end of its page
+  for the button (Path's Start lesson stands above it too), so a page scrolled to its end has none of its controls
+  under it; and on a portrait phone the exercise's staff card stops before the tab, so no note of the staff is under it,
+  and so does Calibrate's card, whose count and delay are read while tapping.
+  It marks an element or a drawn box, then a sheet (desktop: a dialog
+  beside the spot) takes the kind, what should change (at most 5000 characters, as the API stores; only spaces, or a
+  zero-width space pasted in, are none, so Send waits for more) and a title. A
+  muted note under the fields says what happens to it: *Saved for the team to review, with this screen, the marked
+  spot, the screen size, the theme, the language and the settings. Not your progress. If it is picked up, it becomes a
+  public GitHub issue, without your name.* Then *Copy* (the report in Markdown) and **Send**.
+  - Marking: the hint bar sits at the top; a tap on it moves it to the bottom edge (and back), off what it covered (a
+    phone's title, the header's tabs). A tap, a click or a drag marks once its gesture is over, on its click (a touch
+    screen sends none after a drag longer than its tap slop: then the box is marked 350 ms later), so it presses
+    nothing in the sheet that opens under the finger. With the keyboard (the layer is modal: Tab keeps to it), the arrow keys pick the screen's parts
+    in turn (its controls, headings, text and pictures), each outlined and named in the bar (*heading “Settings”*), and
+    Enter marks it; the desktop hint says so. A tap or click marks the same parts: one on a control's icon or a word in
+    it marks the control (*link “Home”*, not its drawing). A field is named by its label (*field “New password”*), and
+    one on that label marks the field. The
+    bar and the sheet say the part's role in the app's language (*knop “Start”*); the report keeps it in English, as the
+    issue it becomes. *Mark again* keeps the kind, title and description typed, and Cancel or
+    Esc then goes back to the form with the spot it had.
+  - *Copy* turns into a check and *Copied* for 2 s, and back to *Copy* as soon as the report changes. The button is never
+    narrower than the longer of the two (*Gekopieerd* in Dutch on a 320 px phone) and keeps its width, so neither it
+    nor Send moves on a copy. Where copying is not allowed, the Markdown shows in a copy field under the note, to copy by
+    hand.
   - Sent, the sheet says *Saved for review* over *An admin reads it in Settings → Account → Feedback, and picks what
     goes on to GitHub.*, with **Review it** (outlined) for an account that also has `feedback.review`: it opens the
     report (`#/admin/feedback/<id>`) and closes the tool. Then *Mark another* and *Close*.
   - When sending fails, why shows above the buttons as an alert (*Can't reach Muzieklab right now…*, or *Too many
     tries. Try again in 12 minutes.* after 30 reports in an hour), and the form stays as it was, so Send tries again.
+    A session that ended meanwhile (a new password on another device) signs out, and the sheet says *You're signed
+    out. Sign in again to go on.* with what was typed still in it, to copy. **Sign in** takes the place of Send (and
+    the focus): it closes the tool and opens Sign in, which says nothing was changed. Closed instead, the tool goes.
+  - Closing the tool (Cancel or Esc while marking; the X, Esc or *Close* on the sheet) puts the focus back on the
+    Feedback button. *Review it* and *Sign in* leave it to the screen they open.
   - Built from the sheet, button and field styles of the existing screens.
 - **Feedback reports** (0.17.0; no board yet): the screens *Feedback* and one report, for an account with
   `feedback.review`, are in the table below. They are built from *Deleted accounts* and *One account*. A report is not
   the feedback on *Deleted accounts*, which is what people wrote when they deleted their account.
 - **Roles on the admin screens** (0.17.0): the role switches list the built-in roles (Admin, Editor, Teacher, in the
-  app's words), then the custom roles admins made, by their names and descriptions.
+  app's words), then the custom roles admins made, by their names and descriptions. On *One account* a switch gives or
+  takes away only its own role, in the roles the account has then: a role another admin changed meanwhile stays as they
+  left it, and the switches show it once the answer comes.
 
 **Two frames.**
 - **A Settings sub-page** (Account, Privacy and the admin screens) keeps the shell, with Settings current. That is the
@@ -1777,17 +2224,17 @@ server.
 
 | Screen | Frame | What it shows | States |
 |---|---|---|---|
-| **Sign in** `#/signin` | form on its own | Email, Password (with Show), **Sign in**. Under the card: *Forgot your password? Ask the person who invited you.* and a Privacy link. | An empty field says what is missing. A wrong email or password: *Email or password is not right.*, with the password selected. Too many tries: *Too many tries. Try again in 2 seconds.* The server busy (its line for password checks is full, so it counted no try): *Muzieklab is busy. Try again in a moment.*, never "too many tries". Both are form errors. No answer. Already signed in: Account. Success: Settings. |
-| **Accept invite** `#/invite/<token>` | form on its own | *Checking the link…*, then *Welcome, {name}* over *Choose a password for {email}.* Name (filled in; it may be changed), New password with the rules (*At least 10 characters. Not a common password, and not your email.*), **Create account**. | A link that no longer works: the message and **Home**. No answer, or too many tries at checking the link: the message and **Try again**. Too many tries or the server busy when the form is sent: as Sign in, the form error. Success: Settings, with the welcome line. |
-| **New password** `#/reset/<token>` | form on its own | The same with one field, *Saving it signs out your other devices.*, and **Save password**. | As Accept invite. Success: Settings, with *Password saved…* |
-| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account (*You choose whether an anonymous copy of your progress is kept.*). Its confirm: *Delete your account?*, *Your name, email, password and devices are deleted, and you're signed out. Progress on this device stays. No undo.*; then *Your progress and settings*, a two-choice segmented control, **Keep anonymously** (chosen, and focused, when it opens) · **Delete too**, with a muted line under it saying what the chosen one does (*They're kept without your name, email or anything else that says they were yours…* / *They're deleted with your account. Nothing of your account is kept.*); *Why are you leaving? (optional)*, a text area (at most 1000 characters) with *It helps us make Muzieklab better. It's kept without your name or email, also when you delete everything, so leave out anything that says who you are.*; Password; Cancel and Delete. Cancel puts the choice back to Keep anonymously and empties the feedback. | Loading. Signed out: Sign in. No answer from the API with a cached account: the note (*Muzieklab can't be reached right now…*) with Try again at the top, the profile read only, the other sections hidden. No answer with nothing cached: the message and Try again. Too many tries and the server busy, where the current password is asked (Change email, Change password, Delete account): as Sign in, the form error. A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*). |
+| **Sign in** `#/signin` | form on its own | Email, Password (with Show), **Sign in**. Under the card: *Forgot your password? Ask the person who invited you.* and a Privacy link. | An empty field says what is missing. A wrong email or password: *Email or password is not right.*, with the password selected. Too many tries: *Too many tries. Try again in 2 seconds.* The server busy (its line for password checks is full, so it counted no try): *Muzieklab is busy. Try again in a moment.*, never "too many tries". Both are form errors. No answer. Already signed in: Account. Success: Settings; opened from Settings, Sign in goes back to it, so one Back then leaves Settings (as Quit, §9.1). Sent here because a request found the session ended (a new password or *Sign out everywhere* on another device, say): *You were signed out, so nothing was changed. Sign in again to go on.* in a hint box over the form, for that visit, and read out (an account or admin screen that gets the refusal gives way to Sign in before it can say so; after *Delete account* the screen would otherwise read as done). Also when the refusal comes once Sign in is there (the progress sync found the session ended first, and the screen gave way to Sign in while its own request was still out). |
+| **Accept invite** `#/invite/<token>` | form on its own | *Checking the link…*, then *Welcome, {name}* over *Choose a password for {email}.* Name (filled in; it may be changed), New password with the rules (*At least 10 characters. Not a common password, and not your email.*), **Create account**. | A link that no longer works: the message and **Home**. No answer, or too many tries at checking the link: the message and **Try again**. Someone else signed in on this device: one card, *You're signed in as {name} on this device. Sign out first to use this link. Progress you keep on this device is added to this link's account too.* and *Sign out*, Settings' confirm, instead of the form. It opens on **Remove** (the device is shared, and their progress is saved to their account first); with **Keep** their progress stays here, and this account's first sign-in on the device adds it, as any first sign-in does. When their progress can't be saved first, Remove is refused with *Your progress isn't on your account yet, so it can't be removed from this device. Try again in a moment.* (not Settings' *Choose Keep*), and the confirm stays open. Signed out, the form, with focus on its first field. Signed in to the link's own account (the same link was open in another tab, which accepted it): Settings, and the link leaves the history. Too many tries or the server busy when the form is sent: as Sign in, the form error. A name with a tab or another hidden character (pasted from a spreadsheet, say), or one that turns the text after it around (a right-to-left override): *Remove the tabs and other hidden characters.* under Name, and nothing is sent. A name that shows nothing (only spaces, or a zero-width space) is an empty one: *Type your name.* A link that stops working after the check (a new one was made meanwhile): the message and **Home** take the form's place, with the focus on the heading. Success: Settings, with the welcome line; on a device with progress, *The progress on this device is on your account now too.* instead, as after any first sign-in there. |
+| **New password** `#/reset/<token>` | form on its own | The same with one field, *Saving it signs out your other devices.*, and **Save password**. | As Accept invite; signed in to the link's own account, the form. Success: Settings, with *Password saved…*, also on a device with progress (it says the other devices were signed out; the sync line says the progress is saved). |
+| **Account** `#/account` | sub-page | *Profile*: Name (Save); Email, where *Change email* opens the new email and the current password in place; the roles and premium as a muted line. *Password*: the current and a new one, Change password. *Devices*: Sign out everywhere. *Your data*: Download my data (`muzieklab-account.json`), Delete account (*You choose whether an anonymous copy of your progress is kept.*). Its confirm: *Delete your account?*, *Your name, email, password and devices are deleted, and you're signed out. Progress on this device stays. No undo.*; then *Your progress and settings*, a two-choice segmented control, **Keep anonymously** (chosen, and focused, when it opens) · **Delete too**, with a muted line under it saying what the chosen one does (*They're kept without your name, email or anything else that says they were yours…* / *They're deleted with your account. Nothing of your account is kept.*); *Why are you leaving? (optional)*, a text area (at most 1000 characters) with *It helps us make Muzieklab better. It's kept without your name or email, also when you delete everything, so leave out anything that says who you are.* (feedback that shows nothing, only spaces or a zero-width space, is none); Password; Cancel and Delete. Cancel puts the choice back to Keep anonymously and empties the feedback. | Loading. Signed out: Sign in. After *Sign out everywhere* or *Delete account*: Settings, which says so; opened from Settings, the screen goes back to it, so one Back then leaves Settings (as Quit, §9.1). A request refused because the session ended meanwhile: Sign in, which says nothing was changed; *Sign out everywhere* then never says *Signed out on every device.* No answer from the API with a cached account: the note (*Muzieklab can't be reached right now…*) with Try again at the top, the profile read only, the other sections hidden. No answer with nothing cached: the message and Try again. Too many tries and the server busy, where the current password is asked (Change email, Change password, Delete account): as Sign in, the form error. A name with a tab or another hidden character (pasted from a spreadsheet, say), or one that turns the text after it around (a right-to-left override): *Remove the tabs and other hidden characters.* under Name, and nothing is sent. A name that shows nothing (only spaces, or a zero-width space) is an empty one: *Type your name.* A save ends with a green-check line (*Name saved.*, *Email changed. Sign in with it from now on.*, *Password changed. Your other devices are signed out.*); a saved email closes its form, with focus back on *Change email*, as Cancel does. The email the account has already (in capitals too): *That's already your email.* under New email, and nothing is sent. |
 | **Privacy** `#/privacy` | sub-page | A lead line, then *Without an account*, *With an account* (the last item: the feedback reports someone sends from the app, if their account can, and what they hold), *Why*, *Where*, *How long* (with *Deleted accounts: the anonymous copy, the feedback and the day, 2 years.* and *Feedback reports: until the team deletes them, or you delete your account.*), *When you delete your account* (the two choices; that the feedback reports go with the account whichever is chosen, and stay without the name when an admin deletes it; the feedback; and that backups hold the account for up to 14 days), *Your rights*, *Age*, and the day it was last updated. | None. Opened from Sign in (`?from=signin`), its back arrow goes to Sign in. |
-| **Accounts** `#/admin` | sub-page | **Invite someone**, the screen's one filled button: in the title row from 700 px, full width under the title on a phone. A search field (*Search*, *Name or email*; it searches once typing pauses for 250 ms, or on Enter), the status filter (All · Invited · Active · Blocked), then one section whose label counts (*4 accounts*, *1 account found*). Each row: the name (*(you)* after your own), the email, a status pill and the roles, and a chevron. | Checking; loading; *No accounts match.*; an error with Try again (outlined, as Invite someone is the filled button); no access (a lock, *You don't have access to this page.*, *Only admins manage accounts.*, Back to settings); no answer; signed out: Sign in. After Cancel invite or Delete account, a line saying so, once (*The invite for {name} was canceled.*). Under the list, a *History* section with one row: *Deleted accounts* (*Accounts that were deleted, and why people left*). |
-| **Deleted accounts** `#/admin/deleted` | sub-page | *Back to accounts*. A lead line: *Every account deleted in the last 2 years, with what its owner wrote. Nothing here says whose an account was.* A filter (*How it was deleted*: All · Archived · Data deleted · By an admin, chips in two pairs as on Accounts), then one section whose label counts (*4 deleted accounts*, *2 deleted accounts found*). Each entry (an `article`, not a link): the day (bold) and a pill on the right (*Archived*, *Data deleted*, *By an admin*); the feedback as written, line breaks kept, on a Ground panel (radius 12), or *No feedback.* (muted; not for an admin's deletion); for an archived one a muted line, *Joined March 2026 · Level 8 · 1840 XP · 2 lessons · 3 days practiced*, or *… · No progress saved*. Then *File*: *Download as a file* (*Every entry, with the anonymous progress, as JSON.*, `muzieklab-deleted-accounts.json`; every entry, whatever the filter). Needs `accounts.read`. | Checking; loading; *No account has been deleted yet.* (no filter or file then); *None of these.* for a filter with none; an error with Try again; no access; no answer; signed out: Sign in. A filter's count is read out. |
-| **Invite someone** `#/admin/invite` | sub-page | *Person*: Email, Name. *Roles* (only with `roles.grant`): a switch per role with what it does (*Makes classes and follows pupils (coming later).*), and *Without a role, they can practice and keep their own progress.* **Create invite**. Then a card: *Invite for {name} is ready* (it gets focus), *Send the link yourself, for example with the message below.*, the link with **Copy link**, *Works until {date and time}.* **This link is shown only now. Make a new one if it gets lost.**, and the message with **Copy message**. Under it *Invite someone else* (outlined) and **Done**. | An empty field. *There's already an account with this email.* under Email. No access; no answer. |
-| **One account** `#/admin/account/<id>` | sub-page | The name as the title, with the status pill and email under it. *Details*: Added, Last signed in, Devices signed in, and for an invite when its link stops working (*No working link. Make a new one below.*). *Name and email* (Save). *Roles*: switches, saved at once. *Premium*: a switch, and *Last day (optional)*, a date field with **Save date**. Then by status: invited, *New invite link* and *Cancel invite*; active, *New password link*, *Block* and *Delete account*; blocked, *Unblock* and *Delete account*. A new link shows as in Invite someone. | Each part shows only with its permission. On your own account the role switches are disabled, with *You can't change your own roles.*, and one row to Account (*This is your account*) replaces the links, Block and Delete. Loading; an error with Try again; *This account isn't there anymore…* with Back to accounts; no access. An invite accepted meanwhile: *{name} accepted the invite meanwhile, so the account was not removed.*, and the account reloads. *New invite link* or *New password link* pressed again: each answer keeps its place until the next one replaces it, so the page keeps its height and does not move under the admin's finger. While the press runs (the button says *Making a link…*), the earlier link, or why the last press failed, stays dimmed (45%) and cannot be used (inert). A new link takes the earlier one's place, and its *New link ready. Send it yourself.* is read out again. If the press fails, why takes the place of *New link ready…* (an alert, read out each time, ending *The link below may not work anymore.*), and the earlier link and its message stay under it, dimmed and not usable, until a new link replaces them. A first press that fails shows only why. When the answer lands below the screen's edge (the button was at the bottom of the screen), the page scrolls just enough to show it, all of it where it fits; not when the admin has scrolled away from the button meanwhile. |
-| **Feedback** `#/admin/feedback` | sub-page | Opened from Settings → Account. A lead line: *Reports sent from the app.* Then a *Feedback mode* section (0.18.0): one switch row, *Feedback mode*, with *On: everyone who can send feedback sees the Feedback button on every screen.* or *Off: nobody sees the Feedback button. Turn it on to collect feedback.* under it. It is for everyone, saved at once, and starts off. A filter (New · Accepted, Declined · All, chips in two pairs as on Accounts), each chip with its count after the word in a lighter weight (*New 3*): New is chosen first, and the filter stays as it was when coming back from a report. Then one section whose label counts (*3 new reports*, *4 reports*). Each row links to the report: its title as written, or one made up in the app's language from the kind and the screen (*Bug on #/settings*), and a muted line, *Bug · button “Start” · Ann · October 25, 2026* (the kind, the marked spot, who sent it or *A deleted account*, the day). Under All, each row also has a status pill on the right. More than the newest 500: *Showing the newest 500.* under the list. Needs `feedback.review`. | Checking; *Loading reports…*; *No reports yet. They appear here when someone sends feedback from the app.* (no filter then); *No reports with this status.* for a filter with none; an error with Try again (under the filter, which stays with the counts it had, so another filter can be chosen; without counts when the first list did not come); no access (*Only admins review feedback reports.*); no answer; signed out: Sign in. Feedback mode that could not be switched: the switch goes back, with the form error under it. After Delete report, *The report was deleted.*, once. A filter's count is read out; another filter keeps the rows it has, dimmed, until the answer comes. |
-| **One report** `#/admin/feedback/<id>` | sub-page | *Back to feedback*. The title as in the list. *Report*: Kind, then *What should change*, the description as written, line breaks kept, on a Ground panel (as on Deleted accounts), or *No description.* *Where*: Screen (`#/settings`, mono), Marked (its name), Text there, Selector (mono), Marked as (*An element* or *A drawn area*), Box (*x 12, y 340, 366 × 48 px*, and where the page was scrolled to), then *Open this screen*, a row link, only for a screen the app has. *Device*: Viewport (*390 × 844 px, pixel ratio 3*), Size (Phone, Tablet or Desktop), Orientation, Input (Touch or Mouse), Theme (*Dark, from the system setting*), Language, App version (mono) and Browser (the user agent, mono). *Sent*: From (the name, or *A deleted account*) and Date (the day and time). *Review*: *Status*, a segmented control New · Accepted · Declined, saved at once, with *Reviewed by Ann, October 25, 2026* under it (or *Not reviewed yet.*), which is read out when it changes; *Note for the team*, a text area (at most 2000 characters) with *Only people who review feedback see it, not the person who sent it. Up to 2000 characters.*, and **Save note** (tonal; *Saved.*). *Actions*: *Copy as Markdown* (*The title and text for a GitHub issue, to make by hand for now.*), whose row turns into a check and *Copied* for 2 s, and *Delete report*, a confirm: *Delete this report?*, *It is removed from the app for everyone. No undo.*, Cancel and Delete. A long value (the marked text, the selector, the browser) sits under its label, read from the left. Needs `feedback.review`. | Checking; *Loading the report…*; an error with Try again; *This report isn't there anymore.* with Back to feedback, also when another reviewer deleted it meanwhile; no access; no answer. A status or note that could not be saved: the form error under it. A status picked while the note saves (or the other way round) is sent after it, so the screen ends on the newest. Typing that goes on while the note saves stays in the field, still to be saved, without *Saved.* A note with a tab or another hidden character: *Remove the tabs and other hidden characters.* under the field. Where copying is not allowed, the Markdown shows in a copy field, to copy by hand. After Delete: the list, with *The report was deleted.* |
+| **Accounts** `#/admin` | sub-page | **Invite someone**, the screen's one filled button: in the title row from 700 px, full width under the title on a phone. A search field (*Search*, *Name or email*; it searches once typing pauses for 250 ms, or on Enter), the status filter (All · Invited · Active · Blocked), then one section whose label counts (*4 accounts*, *1 account found*). Each row: the name (*(you)* after your own), the email, a status pill and the roles, and a chevron. | Checking; loading; *No accounts match.*; an error with Try again (outlined, as Invite someone is the filled button); no access (a lock, *You don't have access to this page.*, *Only admins manage accounts.*, Back to settings); no answer; signed out: Sign in. After Cancel invite or Delete account, a line saying so, once (*The invite for {name} was canceled.*); opened from the list, the account's screen goes back to it, so one Back then leaves the list (as Quit, §9.1). Under the list, a *History* section with one row: *Deleted accounts* (*Accounts that were deleted, and why people left*). |
+| **Deleted accounts** `#/admin/deleted` | sub-page | *Back to accounts*. A lead line: *Every account deleted in the last 2 years, with what its owner wrote. Nothing here says whose an account was.* A filter (*How it was deleted*: All · Archived · Data deleted · By an admin, chips in two pairs as on Accounts), then one section whose label counts (*4 deleted accounts*, *2 deleted accounts found*). Each entry (an `article`, not a link): the day (bold) and a pill on the right (*Archived*, *Data deleted*, *By an admin*); the feedback as written, line breaks kept, on a Ground panel (radius 12), or *No feedback.* (muted; also for feedback that shows nothing, such as a pasted zero-width space; not for an admin's deletion); for an archived one a muted line, *Joined March 2026 · Level 8 · 1840 XP · 2 lessons · 3 days practiced*, or *… · No progress saved*. Then *File*: *Download as a file* (*Every entry, with the anonymous progress, as JSON.*, `muzieklab-deleted-accounts.json`; every entry, whatever the filter). More than the newest 500: *Showing the newest 500 of 640. The file has them all.* under the list, and the file asks for all of them (*Downloading…*). Needs `accounts.read`. | Checking; loading; *No account has been deleted yet.* (no filter or file then); *None of these.* for a filter with none; an error with Try again; no access; no answer; signed out: Sign in. A file that could not be fetched: the form error under it. A filter's count is read out. |
+| **Invite someone** `#/admin/invite` | sub-page | *Person*: Email, Name. *Roles* (only with `roles.grant`): a switch per role with what it does (*Makes classes and follows pupils (coming later).*), and *Without a role, they can practice and keep their own progress.* **Create invite**. Then a card: *Invite for {name} is ready* (it gets focus), *Send the link yourself, for example with the message below.*, the link with **Copy link**, *Works until {date and time}.* **This link is shown only now. Make a new one if it gets lost.**, and the message with **Copy message**. Under it *Invite someone else* (outlined) and **Done**. | An empty field. *There's already an account with this email.* under Email. A name with a tab or another hidden character (pasted from a spreadsheet, say), or one that turns the text after it around (a right-to-left override): *Remove the tabs and other hidden characters.* under Name, and nothing is sent. A name that shows nothing (only spaces, or a zero-width space) is an empty one: *Type their name.* No access; no answer. |
+| **One account** `#/admin/account/<id>` | sub-page | The name as the title, with the status pill and email under it. *Details*: Added, Last signed in, Devices signed in, and for an invite when its link stops working (*No working link. Make a new one below.*). *Name and email* (Save). *Roles*: switches, saved at once. *Premium*: a switch, and *Last day (optional)*, a date field with **Save date**. Then by status: invited, *New invite link* and *Cancel invite*; active, *New password link*, *Block* and *Delete account*; blocked, *Unblock* and *Delete account*. A new link shows as in Invite someone. | Each part shows only with its permission. An account that can do something yours can't (an admin, or one whose roles give a permission you lack; GET /admin/roles says what each role gives): no *New invite link* or *New password link*, *No working link* without *Make a new one below.*, and Name and email read only without Save, with *This account can do things yours can't, so you can't change its name or email, or make a new link for it.* under them (the API refuses all three anyway, BACKEND-PLAN.md §4.2). On your own account the role switches are disabled, with *You can't change your own roles.*, and one row to Account (*This is your account*) replaces the links, Block and Delete. Loading; an error with Try again; *This account isn't there anymore…* with Back to accounts; no access. An invite accepted meanwhile: *{name} accepted the invite meanwhile, so the account was not removed.*, and the account reloads. Such a message (also *{name} was blocked meanwhile, so no new link was made.*) stays through that reload, and goes at the admin's next press under Access or Invite (Unblock, Block, a new link…). A name with a tab or another hidden character (pasted from a spreadsheet, say), or one that turns the text after it around (a right-to-left override): *Remove the tabs and other hidden characters.* under Name, and nothing is sent. A name that shows nothing (only spaces, or a zero-width space) is an empty one: *Type their name.* A new email saved: a link shown under *New invite link* or *New password link* goes with its message, as it stops working (BACKEND-PLAN.md §5.3), and only the button is left; a new name keeps it. *New invite link* or *New password link* pressed again: each answer keeps its place until the next one replaces it, so the page keeps its height and does not move under the admin's finger. While the press runs (the button says *Making a link…*), the earlier link, or why the last press failed, stays dimmed (45%) and cannot be used (inert). A new link takes the earlier one's place, and its *New link ready. Send it yourself.* is read out again. If the press fails, why takes the place of *New link ready…* (an alert, read out each time, ending *The link below may not work anymore.*), and the earlier link and its message stay under it, dimmed and not usable, until a new link replaces them. A first press that fails shows only why. When the answer lands below the screen's edge (the button was at the bottom of the screen), the page scrolls just enough to show it, all of it where it fits; not when the admin has scrolled away from the button meanwhile. |
+| **Feedback** `#/admin/feedback` | sub-page | Opened from Settings → Account. A lead line: *Reports sent from the app.* Then a *Feedback mode* section (0.18.0): one switch row, *Feedback mode*, with *On: everyone who can send feedback sees the Feedback button on every screen.* or *Off: nobody sees the Feedback button. Turn it on to collect feedback.* under it. It is for everyone, saved at once, and starts off. A filter (New · Accepted, Declined · All, chips in two pairs as on Accounts), each chip with its count after the word in a lighter weight (*New 3*): New is chosen first, and the filter stays as it was when coming back from a report. Then one section whose label counts (*3 new reports*, *4 reports*). Each row links to the report: its title as written, or one made up in the app's language from the kind and the screen (*Bug on #/settings*), and a muted line, *Bug · button “Start” · Ann · October 25, 2026* (the kind, the marked spot, who sent it or *A deleted account*, the day). Under All, each row also has a status pill on the right. More than the newest 500: *Showing the newest 500.* under the list. Needs `feedback.review`. | Checking; *Loading reports…*; *No reports yet. They appear here when someone sends feedback from the app.* (no filter then); *No reports with this status.* for a filter with none; an error with Try again (under the filter, which stays with the counts it had, so another filter can be chosen; without counts when the first list did not come); no access (*Only admins review feedback reports.*); no answer; signed out: Sign in. Feedback mode that could not be switched: the switch goes back, with the form error under it. After Delete report, *The report was deleted.*, once; opened from the list, the report goes back to it, so one Back then leaves the list. A filter's count is read out; another filter keeps the rows it has, dimmed, until the answer comes. |
+| **One report** `#/admin/feedback/<id>` | sub-page | *Back to feedback*. The title as in the list. *Report*: Kind, then *What should change*, the description as written, line breaks kept, on a Ground panel (as on Deleted accounts), or *No description.* *Where*: Screen (`#/settings`, mono), Marked (its name), Text there, Selector (mono), Marked as (*An element* or *A drawn area*), Box (*x 12, y 340, 366 × 48 px*, and where the page was scrolled to), then *Open this screen*, a row link, only for a screen the app has. *Device*: Viewport (*390 × 844 px, pixel ratio 3*), Size (Phone, Tablet or Desktop), Orientation, Input (Touch or Mouse), Theme (*Dark, from the system setting*), Language, App version (mono) and Browser (the user agent, mono). *Sent*: From (the name, or *A deleted account*) and Date (the day and time). *Review*: *Status*, a segmented control New · Accepted · Declined, saved at once, with *Reviewed by Ann, October 25, 2026* under it (or *Not reviewed yet.*), which is read out when it changes; *Note for the team*, a text area (at most 2000 characters) with *Only people who review feedback see it, not the person who sent it. Up to 2000 characters.*, and **Save note** (tonal; *Saved.*). *Actions*: *Copy as Markdown* (*The title and text for a GitHub issue, to make by hand for now.*), whose row turns into a check and *Copied* for 2 s, and *Delete report*, a confirm: *Delete this report?*, *It is removed from the app for everyone. No undo.*, Cancel and Delete. A long value (the marked text, the selector, the browser) sits under its label, read from the left; a name with no space to break at (From, *Reviewed by*) breaks inside the card. Needs `feedback.review`. | Checking; *Loading the report…*; an error with Try again; *This report isn't there anymore.* with Back to feedback, also when another reviewer deleted it meanwhile; no access; no answer. A status or note that could not be saved: the form error under it. A status picked while the note saves (or the other way round) is sent after it, so the screen ends on the newest. Typing that goes on while the note saves stays in the field, still to be saved, without *Saved.* A note with a tab or another hidden character: *Remove the tabs and other hidden characters.* under the field. Where copying is not allowed, the Markdown shows in a copy field, to copy by hand. After Delete: the list, with *The report was deleted.* |
 
 **Components** (`src/ui/components/Form.tsx`, `src/styles/account.css`). They use tokens only, so light and dark
 both work.
@@ -1809,7 +2256,9 @@ both work.
   error**: a wrong email or password on Sign in (which of the two is not told), and every request that failed (no
   answer, a server error). It is a box above the button in `--miss-soft` / `--miss-ink`, radius 12, 14 px / 600, with
   the alert icon, and it is read out. A done message is a green check and one line, 14 px / 600, read out once by the
-  live region (below).
+  live region (below). In a card whose Save waits for a change (Name; Name and email; Save date; Save note), a field's
+  error goes as soon as that field is edited: typed back to what is saved, Save cannot be pressed, so nothing else
+  would clear it. A form error stays until the next press.
 - **Buttons:** one filled button per screen, as elsewhere: Sign in, Create account, Save password, Invite someone,
   Create invite, Done, Try again. A card's own small form (Save, Save email, Change password, Save date, Save note) has
   a **tonal** button: `--accent-soft` with `--accent-ink` text. A busy button says so (*Signing in…*) and cannot be
@@ -1837,16 +2286,22 @@ both work.
 - **Announcements:** one polite live region for the whole app (`#announcer`) reads out results whose button is gone,
   busy or far away: Settings' one-line notices, the accounts list's line after Cancel invite or Delete account, the
   feedback list's after Delete report, Block and Unblock, the count after a search, a filter or Try again, the outcome
-  of Try again on the note for no answer, every form's done line (*Name saved.*, *Saved.*, *New link ready. Send it
-  yourself.*) and Settings' *Progress was reset.* Those lines are plain text, not a `role="status"` of their own, so
-  nothing is read twice.
+  of Try again on the note for no answer and on the sync line, every form's done line (*Name saved.*, *Saved.*, *New
+  link ready. Send it yourself.*) and Settings' *Progress was reset.*, what a Learn quick check's answer means, the
+  Practice setup's hint a change brings (*Turn on at least one note value to play*, as Start turns off; the hints the
+  setup opens with are read with the page; two of them as two sentences), Calibrate's result (its sentence, with the
+  delay), the Pause sheet's *The sound was interrupted. …*, and the Copy field's and Results' Copy code's *Selected.
+  Copy it with your device's copy command.* as the focus goes to the selected text. Those lines are plain text, not a
+  `role="status"` of their own, so nothing is read twice: a status put in already holding its text is not read by
+  every screen reader.
 
 **Destructive confirm** (`ConfirmAction`) is Settings' Reset progress pattern.
 - The row button (red words and icon) turns, in place, into the question in bold, one line on what happens, any field
   it needs, then *Cancel* (outlined) and the verb, on the right. On a phone the two buttons share the row.
 - Only the confirm step has the red fill: `--miss`, with `--on-fill` text.
 - It is a form (`role="alertdialog"`): Enter confirms from its field, and Escape or Cancel closes it, putting focus
-  back on the row button.
+  back on the row button. When it opens, focus goes into it (its first choice or field, or Cancel when it has none),
+  so a screen reader reads it out and Escape reaches it.
 - Used for Delete account (your own, with the choice of what happens to your progress, feedback and your password),
   Block, Cancel invite, an admin's Delete account, and Delete report.
 - A choice inside a confirm (Sign out's Keep · Remove, Delete account's Keep anonymously · Delete too) is a segmented
@@ -1877,7 +2332,18 @@ what to do. For accounts:
 ### UX principles
 
 - **One-thumb mobile**: primary actions at the bottom; tap pad is huge; no scroll during play.
-- No accidental zoom/scroll during play (`touch-action: none` on the pad, Wake Lock on).
+- No accidental zoom/scroll during play (`touch-action: none` on the pad, Wake Lock on). A double tap on a Start button
+  starts once: a touch tap that comes down within 450 ms of the tap that started is dropped, so it does not press what
+  the exercise screen has there (Skip to results, an answer, a piano key; `ui/lib/tapGuard.ts`). So is the second click
+  of a mouse double click, for as long as the system counts it as one (its double-click time, which can be longer), and
+  its press does not take the focus there either, also on a disabled control (Read notes' Next note before the first
+  answer); a click of its own is meant. The same goes for the buttons on Play's sheets that start or resume the run
+  (How to play's Got it, the intro's and Ready's Start, Resume, Restart exercise), whose sheet is gone in 240 ms, for
+  Echo's Tap it back (Hear again is under it), for Read notes' Check (Next note takes its place, and a wrong note's why
+  waits there), for a Learn chapter's jump to a section (a tablet's chips, the desktop sidebar: the jump puts a quick
+  check's answer under the pointer), and for every tap that opens another screen (`App.tsx`): See summary and See the
+  round open Round done, with New round or Change setup under the finger, and Change setup, Options or a Key screen's
+  Use open a setup, with its Start or a switch there.
 - Feedback by **colour + shape/icon** (colour-blind safe), sound optional. A missed note gets a × on the staff as
   well as the red (since 0.10.0; §9).
 - Full keyboard support; `prefers-reduced-motion` respected; light & dark theme.
@@ -1896,7 +2362,7 @@ what to do. For accounts:
 | UI | **React** + small store (Zustand) | Familiar, enough for a handful of screens. |
 | Notation | **VexFlow** (SVG) | Mature engraving: beams, ties, tuplets, rests. |
 | Audio | **Web Audio API**, own scheduler | Sample-accurate timing, zero dependencies. |
-| Storage | `localStorage` (settings) + **IndexedDB** (history, stats); the signed-in account's cache, `muzieklab.account.v1` | Offline, no account needed. The cache holds only what `GET /me` returns (never a password or a token), so a signed-in device shows its account offline. |
+| Storage | `localStorage` (settings) + **IndexedDB** (history, stats); the signed-in account's cache, `muzieklab.account.v1` | Offline, no account needed. The cache holds only what `GET /me` returns (never a password or a token), so a signed-in device shows its account offline. The tabs of one browser share it: each takes up the prefs and progress another tab saves (the `storage` event), so none saves its older copy over them, and the account another tab signed in or out (they share its session cookie too), so none shows, changes or syncs the one before. |
 | Offline / install | **PWA** (`vite-plugin-pwa`) | Home-screen app on phones. |
 | Tests | **Vitest** + **fast-check** (property tests) | Generator correctness over thousands of seeds. |
 | Hosting | Static, on our own server ([DEPLOY.md](DEPLOY.md)), with an optional API on the same server under `/api` | The app needs no backend: it works fully without the API, and shows no account then. |
@@ -2008,19 +2474,78 @@ without code changes:
   counting syllables ("1 & 2 &" differs per language and teaching method; Dutch counts "1 en 2 en"), rank names.
 - Format numbers, dates and BPM with `Intl` for the active locale.
 - Layout must survive longer translations (Dutch and German text is often noticeably
-  longer than English): no fixed-width text boxes; labels may wrap.
+  longer than English): no fixed-width text boxes; labels may wrap. A count stays on the line of the word it counts
+  (a no-break space in the message): Progress's *6 skills*, Read notes' *3 keys* and *11 staff positions* (its setup
+  summary, Key row and Round done's line). A key's name stays on one line too (*F♯ major*, Dutch *G♭ majeur*:
+  `notes.major` and `notes.minor`), as it ends the setup's summary and Round done's line. A chip too narrow for both
+  is the exception: Read notes' *+2 ledger lines* takes two lines inside its chip on a 320 px phone (*+2* over
+  *hulplijnen* in Dutch) rather than run out of it.
 - Notation images carry no baked-in words. Counting under notes is drawn from the
   locale's syllables at render time.
 - Theory content (Learn pages) is stored as structured, translatable content, with its
   sources kept per locale (for example Dutch Wikipedia for Dutch note names, already
   checked in `THEORY-SOURCES.md`).
-- `lang` attribute set from the active locale; right-to-left support is not planned.
+- `lang` attribute set from the active locale, and on each language's name in Settings → Language, which is in that
+  language (*Nederlands*); right-to-left support is not planned.
 - Screen-reader labels for controls; notation itself gets a text alternative
-  ("quarter, quarter, half").
-- High-contrast theme; big touch targets (≥ 48 px).
+  ("quarter, quarter, half"). A piano's keys come in the page low to high, each black key after the white key it
+  follows, so Tab and a screen reader go along the keyboard as it is drawn and played (Read notes, Scales, Learn's
+  piano); the black keys are lifted over the white ones, so a pressed white key, scaled a little, stays under them.
+- Focus is never left on the page when the control that had it goes away (`ui/lib/screenFocus.ts`). A new screen puts it
+  on its heading, so a screen reader hears it (*Exercise done* when a run ends), unless the screen took it itself (a
+  field, a sheet); the first screen is left to the page load. So does a screen redrawn in a language picked elsewhere,
+  and what Try again brings in place of its message. A button that is busy, or has nothing to do (a Save once saved, a
+  setup stepper's − or + at its end), keeps the focus: it is `aria-disabled`, not disabled, which drops it to the page.
+  An outline button that is disabled (Hint once asked, Scales' Start over once the scale is done, Read notes' Lower and
+  Higher once the note is checked) is dimmed to 50%, as the sign buttons are, so a tap that does nothing is no surprise.
+  A button that gives way to another hands it on (Block and Unblock; Sign out to Sign in; Calibrate's Try again to the
+  Tap pad, and the Tap pad, when the run ends, to Save or else Try again). Reset progress leaves only its line
+  (*Progress was reset.*, read out), so it hands it to the About heading. A sheet that closes gives it back to the
+  control that opened it, else to Pause on Play (How to play, the intro and Ready open by themselves) or the screen's
+  heading (the level-up sheet); there Space and Enter are the exercise's keys again until the next Tab (below), so the
+  first Space after *Resume* is a tap, not Pause pressed again. Echo's Tap it back and Hear again swap the screen inside
+  Play, so the new phase's heading takes it. On What's new (desktop), Newer or Older that goes away at the end hands it
+  to the one left. A screen drawn in its other layout (a tablet turned, tablet and desktop; a window made wider or
+  narrower) gives it to the same control there, found by its name or by its place among the name buttons or a piano's
+  keys, else to its heading (from Play's Tap pad on a tablet, as the desktop layout's pad is no button). In Read notes
+  and Scales a control that a step disables or removes hands it on: an answer that ends the note or the scale (the last
+  sign or key, the staff written on and checked) to Next note or Next scale; Hint, Next note, Next scale and Start over
+  to the answers (the first name button, sign or piano key, or the next note's staff to write on). There Space and Enter
+  stay the exercise's keys, as after a click, until the player presses Tab (`ui/lib/focusModality.ts`; §3.5, §3.7), so
+  the Enter after one on Next note does not answer with the name button the focus went to. Echo's play button keeps it
+  while the rhythm plays (`aria-disabled`), then Tap it back takes it.
+- High-contrast theme; big touch targets (≥ 48 px). In a Windows contrast theme (forced colors) the system paints
+  every background in the page's colour and all text and borders in one colour, so nothing may be told by a fill or a
+  colour alone: a chosen option (`aria-pressed`, a checked radio), the current tab, Play's beat and Read notes' right
+  answer take the system's selection colours, a switch has an edge and a knob, a filled button (desktop Play's key too)
+  and a piano's black key an edge, the Learn piano's marked keys a thick edge in the selection colour, and a wrong
+  answer a dashed edge with its name struck through. A star not earned is outlined (☆ in Scales, as a lesson's; a
+  result's three get an outline), the circle of fifths' levels an edge (★ dashed, ★★ double) or the text colour's fill
+  (★★★), and so do its legend's dots. On Progress and Skill levels a streak day, the current rank, the next level's part
+  and this week's bar take the selection colours, an earlier practice day a solid edge and a missed one a dashed edge,
+  the skill map's bands a fill, an edge or a dashed edge; every bar and meter keeps an edge and fills in the text
+  colour: the XP bar, an exercise's progress bar (Play, Read notes, Scales), Read notes' time per note, Round done's
+  bars by sign, the Learn tab's progress, the Path's *Notes and rhythm* bar, the hold bar in desktop Play's key (in the
+  key's colours), Setup's difficulty and the pips of Calibration and Echo too (before, these disappeared). Desktop
+  Home's Learning path card fills a unit done in the text colour and the current one in the selection colour, and
+  outlines a locked one. Calibration's timing plot draws its axis and ticks in the text colour, the taps and the line
+  at their median in the selection colour, and the tap just made in the text colour, as it is in ink (before, the plot
+  showed nothing). The legend under Round done's time chart keeps the colours of the chart's bars, which the browser
+  does not force. Learn's diagrams are drawn in the text colour: 1.1's beats on their time line (the beat just
+  heard in the selection colour), 1.3's strong and medium beats filled and its weak ones outlined, the beat grid's cells
+  outlined (a held count's dashed), and a play button keeps its circle as an edge (`base.css`, `app.css`, `notes.css`,
+  `scales.css`, `progress.css`, `skills.css`; layout tests check it in light and dark).
 - Text contrast meets WCAG AA on its surface: at least 4.5:1 for text under 24 px (under 18.7 px if bold), 3:1 for
-  larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills, dots,
-  borders and bars.
+  larger text and for icons. Green text uses `--good-ink`: `--good` is 4.3:1 on paper, so it stays for fills without
+  text, dots, borders and bars. A green fill with text on it is `--good-ink` too: Read notes' right black piano key,
+  whose name is white in light (4.3:1 on `--good`). Gold and red text use `--gold-ink` and `--miss-ink` the same way:
+  Play's GOOD · LATE and MISS are 4.5:1 or more on the page, on desktop's pad card (Accent soft) and on paper
+  (`src/styles/fieldContrast.test.ts`). The total after a score (Read notes' "2 / 3", Scales' "1 / 1" on Round done) is
+  `--muted`: `--faint` is 2.7:1 on the page in light. So is Setup's *Nothing to preview yet* on its card, where
+  `--faint` was 3.1:1 (3.6:1 in dark). Text on a tile is measured on the tile: a lesson not played yet on Home's
+  Continue card is `--on-tile-muted` (4.6:1 on the tile's white overlay in light), as `--on-fill-muted`, which the
+  boards draw there, is 4.85:1 on the plain fill but 3.85:1 on the tile. Fading counts too: the Path's unlock hint
+  (*Opens with 2 stars…*) is not faded with the locked unit's title (it was 2.4:1 in light, 3.4:1 in dark).
 
 ---
 

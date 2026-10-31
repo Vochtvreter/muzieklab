@@ -240,8 +240,11 @@ test('a renewal whose answer never came back (a reload on the way) is made again
   const lost = await request.post(API + '/auth/refresh', { headers: { Origin: ORIGIN, Cookie: `refresh=${refresh}` } });
   expect(lost.status()).toBe(204);
 
-  // On start the app renews with that token again, moments later, and gets the pair the lost answer had.
+  // On start the app renews with that token again, moments later, and gets the pair the lost answer had. The cached
+  // name shows before the renewal answers, so the cookies are read once it has.
+  const renewed = page.waitForResponse((r) => r.url().endsWith('/api/v1/auth/refresh') && r.status() === 204);
   await page.reload();
+  await renewed;
   await expect(page.getByLabel('Name')).toHaveValue(member.name);
   expect(await cookie('session')).toBeDefined();
   expect(await cookie('refresh')).not.toBe(refresh);
@@ -310,10 +313,11 @@ test('blocking signs a member out at their next request and refuses sign-in unti
   const access = a.getByRole('region', { name: 'Access' });
   await expect(access.locator('.row-status')).toHaveText("Blocked. They're signed out.");
 
-  // The member's next request finds the session gone: signed out, to Sign in.
+  // The member's next request finds the session gone: signed out, to Sign in, which says the name was not saved.
   await m.getByLabel('Name').fill(member.name + ' B.');
   await m.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(m).toHaveURL(/#\/signin$/);
+  await expect(m.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toBeVisible();
   await m.getByLabel('Email').fill(member.email);
   await m.getByLabel('Password', { exact: true }).fill(member.password);
   await m.getByRole('button', { name: 'Sign in' }).click();
@@ -352,9 +356,18 @@ test("a new-password link: set on another device, and the member's other devices
   await expect(accountSection(other).locator('.row-status')).toHaveText('Password saved. Your other devices are signed out.');
   await expect(accountRow(other, member.name)).toBeVisible();
 
-  // The first device is signed out; the old password no longer works, the new one does.
+  // The first device is signed out, but does not know yet (Settings was open there): its Sign out everywhere is refused,
+  // and Sign in says nothing was changed, never that every device was signed out.
+  await m.evaluate(() => (location.hash = '#/account'));
+  await m.getByRole('button', { name: /^Sign out everywhere/ }).click();
+  await m.getByRole('alertdialog').getByRole('button', { name: 'Sign out' }).click();
+  await expect(m).toHaveURL(/#\/signin$/);
+  await expect(m.getByRole('main').getByText('You were signed out, so nothing was changed. Sign in again to go on.')).toBeVisible();
+  await expect(m.getByText('Signed out on every device.')).toHaveCount(0);
+  await m.goto('./#/settings');
   await m.reload();
   await expect(accountSection(m).getByRole('link', { name: /^Sign in/ })).toBeVisible();
+  // The old password no longer works, the new one does.
   await signIn(m, member.email, member.password);
   await expect(m.getByRole('alert')).toHaveText('Email or password is not right.');
   await m.getByLabel('Password', { exact: true }).fill(NEW_PASSWORD);
@@ -540,8 +553,12 @@ test('a role an admin makes gives its permission: in feedback mode, with feedbac
   await expect(mode).toHaveAttribute('aria-checked', 'false');
   await mode.click();
   await expect(mode).toHaveAttribute('aria-checked', 'true');
+  // The member's app opens again on Home, not on an account screen: its account, kept while the mode was off, still
+  // asks GET /me when the app starts, and so learns that the mode is on.
+  await member.page.goto('./#/');
   await member.page.reload();
   await expect(fab).toBeVisible();
+  await member.page.goto('./#/settings');
   await expect(accountSection(member.page).getByRole('switch', { name: 'Feedback button' })).toHaveAttribute('aria-checked', 'true');
   // Reviewing is not part of the role: no Feedback row to the reports.
   await expect(accountRow(member.page, 'Feedback')).toHaveCount(0);

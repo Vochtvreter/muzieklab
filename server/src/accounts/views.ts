@@ -10,13 +10,15 @@ import {
   type Role,
   type SavedProgress,
 } from '../../../shared/api.js';
-import type {
-  FeedbackContext,
-  FeedbackDetail,
-  FeedbackPerson,
-  FeedbackReport,
-  FeedbackSummary,
-  FeedbackTarget,
+import {
+  withoutSecrets,
+  withoutToken,
+  type FeedbackContext,
+  type FeedbackDetail,
+  type FeedbackPerson,
+  type FeedbackReport,
+  type FeedbackSummary,
+  type FeedbackTarget,
 } from '../../../shared/feedback.js';
 import type { AccountDoc, AuditDoc, Collections, FeedbackDoc, ProgressDoc } from '../db.js';
 import { permissionsOf } from '../auth/policy.js';
@@ -111,9 +113,20 @@ export function toSavedProgress(doc: ProgressDoc | null): SavedProgress {
 
 // --- feedback reports (routes/feedback.ts) ---------------------------------------------------------------------------
 
-/** The report as the app sent it, from the stored fields. */
+/**
+ * The report as stored, with no invite or new-password token in its route or address (withoutToken), nor in the marked
+ * part, and nothing typed in a field there (withoutSecrets): POST /feedback leaves them out, but a report kept before it
+ * did may still hold them.
+ */
 export function feedbackReport(doc: FeedbackDoc): FeedbackReport {
-  return { kind: doc.kind, title: doc.title, description: doc.description, target: doc.target, context: doc.context };
+  const { context } = doc;
+  return {
+    kind: doc.kind,
+    title: doc.title,
+    description: doc.description,
+    target: withoutSecrets(doc.target),
+    context: { ...context, url: withoutToken(context.url), route: withoutToken(context.route) },
+  };
 }
 
 /** What a list row needs of a stored report: GET /admin/feedback loads only these fields. */
@@ -129,8 +142,8 @@ export function toFeedbackSummary(doc: FeedbackSummaryFields, author: FeedbackPe
     kind: doc.kind,
     title: doc.title,
     description: doc.description,
-    route: doc.context.route,
-    label: doc.target.label,
+    route: withoutToken(doc.context.route),
+    label: withoutToken(doc.target.label),
     mode: doc.target.mode,
     status: doc.status,
     author,

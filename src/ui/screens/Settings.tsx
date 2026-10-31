@@ -31,6 +31,7 @@ export function SettingsScreen(): JSX.Element {
   const bp = useBreakpoint();
   const [confirm, setConfirm] = useState(false);
   const [wiped, setWiped] = useState(false);
+  const resetBtn = useRef<HTMLButtonElement>(null);
   useDocTitle(t('app.docTitle', { page: t('settings.title') }));
   const prefs = state.prefs;
   const set = (patch: Partial<Prefs>): void => dispatch({ type: 'prefs', patch });
@@ -48,6 +49,11 @@ export function SettingsScreen(): JSX.Element {
     set({ volumes: { ...prefs.volumes, [k]: v / 100 }, ...(sw ? { [sw]: true } : {}) });
 
   const offline = useOfflineReady();
+  const cancelReset = (): void => {
+    setConfirm(false);
+    // Back to the row button that opened it, as in every confirm (ConfirmAction).
+    requestAnimationFrame(() => resetBtn.current?.focus());
+  };
 
   const wide = bp !== 'phone';
   // The Account section shows once the API answered, or with a cached account (AccountSection); the list names it then.
@@ -124,7 +130,7 @@ export function SettingsScreen(): JSX.Element {
     </Section>
   );
   const about = (
-    <Section id="about" title={t('settings.about')}>
+    <Section id="about" title={t('settings.about')} focusable>
       <Link to="/changelog" className="row-link">
         <span className="row-link-text">
           <b>{t('changelog.title')}</b>
@@ -148,31 +154,37 @@ export function SettingsScreen(): JSX.Element {
       </div>
       <div className="reset-row">
         {!confirm && !wiped && (
-          <button type="button" className="reset-btn" onClick={() => setConfirm(true)}>
+          <button type="button" ref={resetBtn} className="reset-btn" onClick={() => setConfirm(true)}>
             <Icon name="trash" size={18} />
             <span>{t('settings.reset')}</span>
           </button>
         )}
         {confirm && (
-          <div className="reset-confirm m-in" role="alertdialog" aria-labelledby="reset-q" aria-describedby="reset-d">
+          <div className="reset-confirm m-in" role="alertdialog" aria-labelledby="reset-q" aria-describedby="reset-d" onKeyDown={(e) => {
+            if (e.key === 'Escape') cancelReset();
+          }}>
             <p className="reset-text">
               <b id="reset-q">{t('settings.resetQuestion')}</b>
               <span id="reset-d">{t(state.account.me ? 'settings.resetDetailAccount' : 'settings.resetDetail')}</span>
             </p>
-            <button type="button" className="small-btn" autoFocus onClick={() => setConfirm(false)}>
-              {t('common.cancel')}
-            </button>
-            <button type="button" className="small-btn small-btn--danger" onClick={() => {
-              dispatch({ type: 'resetProgress' });
-              // Signed in, the account's progress is reset too, so another device does not bring it back.
-              if (state.account.me) progressSync()?.reset();
-              setConfirm(false);
-              setWiped(true);
-              // The button that was pressed is gone: the line under it is read out (ui/lib/announce.ts).
-              announce(t('settings.resetDone'));
-            }}>
-              {t('settings.resetConfirm')}
-            </button>
+            <div className="confirm-actions">
+              <button type="button" className="small-btn" autoFocus onClick={cancelReset}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="small-btn small-btn--danger" onClick={() => {
+                dispatch({ type: 'resetProgress' });
+                // Signed in, the account's progress is reset too, so another device does not bring it back.
+                if (state.account.me) progressSync()?.reset();
+                setConfirm(false);
+                setWiped(true);
+                // The button that was pressed is gone, and so is the row button: the line under it is read out
+                // (ui/lib/announce.ts), and the focus goes to the section's heading instead of the page.
+                announce(t('settings.resetDone'));
+                requestAnimationFrame(() => document.getElementById('h-about')?.focus({ preventScroll: true }));
+              }}>
+                {t('settings.resetConfirm')}
+              </button>
+            </div>
           </div>
         )}
         {wiped && (
@@ -328,22 +340,24 @@ interface SegRowProps<T extends string> {
   label: string;
   group: string;
   value: T;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; lang?: string }[];
   onChange(v: T): void;
   hint: string;
   first?: boolean;
   /** See Segmented: the choice to slide in from on mount. */
   from?: T;
+  /** See Segmented: focus the chosen button on mount. */
+  autoFocus?: boolean;
   /** Shown under the hint, e.g. a preview of the choice. */
   children?: ReactNode;
 }
 
-function SegRow<T extends string>({ label, group, value, options, onChange, hint, first, from, children }: SegRowProps<T>): JSX.Element {
+function SegRow<T extends string>({ label, group, value, options, onChange, hint, first, from, autoFocus, children }: SegRowProps<T>): JSX.Element {
   return (
     <div className={'seg-row' + (first ? ' is-first' : '')}>
       <div className="seg-row-line">
         <b className="seg-row-label">{label}</b>
-        <Segmented label={group} value={value} options={options} onChange={onChange} from={from} className="seg--settings" />
+        <Segmented label={group} value={value} options={options} onChange={onChange} from={from} autoFocus={autoFocus} className="seg--settings" />
       </div>
       <span aria-live="polite" className="row-sub">
         {hint}
@@ -362,16 +376,31 @@ const SEGMENTED_LOCALES = 3;
  */
 let shownLocale: string | undefined;
 
+/**
+ * Set when this row switched the language. The remount takes the focused button away, so the new control gets the
+ * focus back; after a language that changes elsewhere (another tab, the account), the heading takes it (App.tsx).
+ */
+let refocusLanguage = false;
+
 /** Settings → Language: every catalog in src/i18n, each named in its own language. Shows the language in use. */
 function LanguageRow({ onChange }: { onChange(code: string): void }): JSX.Element {
   const value = getLocale();
+  const refocus = refocusLanguage;
   useEffect(() => {
     shownLocale = value;
   }, [value]);
+  useEffect(() => {
+    refocusLanguage = false;
+  }, []);
+  const pick = (code: string): void => {
+    // The language in use, picked again, remounts nothing: the flag would wait for the next visit to Settings.
+    if (code !== value) refocusLanguage = true;
+    onChange(code);
+  };
   if (LOCALES.length <= SEGMENTED_LOCALES) {
     return (
-      <SegRow label={t('settings.language')} group={t('settings.languageGroup')} value={value} onChange={onChange} hint={t('settings.hintLanguage')}
-        options={LOCALES.map((l) => ({ value: l.code, label: l.name }))} from={shownLocale} first />
+      <SegRow label={t('settings.language')} group={t('settings.languageGroup')} value={value} onChange={pick} hint={t('settings.hintLanguage')}
+        options={LOCALES.map((l) => ({ value: l.code, label: l.name, lang: l.code }))} from={shownLocale} autoFocus={refocus} first />
     );
   }
   return (
@@ -380,7 +409,7 @@ function LanguageRow({ onChange }: { onChange(code: string): void }): JSX.Elemen
         <label htmlFor="language" className="seg-row-label">
           <b>{t('settings.language')}</b>
         </label>
-        <select id="language" className="lang-select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <select id="language" className="lang-select" value={value} autoFocus={refocus} onChange={(e) => pick(e.target.value)}>
           {LOCALES.map((l) => (
             <option key={l.code} value={l.code} lang={l.code}>
               {l.name}

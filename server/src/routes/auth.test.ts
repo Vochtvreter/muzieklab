@@ -820,12 +820,17 @@ describe('POST /auth/refresh', () => {
     const none = await refreshWith(t);
     expect(none.statusCode).toBe(401);
     expect(none.json()).toEqual({ error: 'unauthenticated', message: 'Not signed in' });
-    expect((await refreshWith(t, 'garbage')).statusCode).toBe(401);
+    expect(none.headers['set-cookie']).toEqual(cleared);
+    const garbage = await refreshWith(t, 'garbage');
+    expect(garbage.statusCode).toBe(401);
+    expect(garbage.headers['set-cookie']).toEqual(cleared);
     const unknown = await refreshWith(t, 'x'.repeat(43));
     expect(unknown.statusCode).toBe(401);
     expect(unknown.headers['set-cookie']).toEqual(cleared);
     // The session token is not a refresh token.
-    expect((await refreshWith(t, cookie)).statusCode).toBe(401);
+    const session = await refreshWith(t, cookie);
+    expect(session.statusCode).toBe(401);
+    expect(session.headers['set-cookie']).toEqual(cleared);
   });
 
   it('ends the session of an account blocked or deleted behind its back', async () => {
@@ -871,7 +876,8 @@ describe('the Origin check', () => {
     const post = (headers: Record<string, string | undefined>) =>
       t.app.inject({ method: 'POST', url: '/api/v1/auth/sign-in', payload, headers: { host: HOST, ...headers } });
 
-    for (const origin of [undefined, 'https://evil.example', 'null', 'https://test.vivanova.app:8443', 'not a url']) {
+    // Plain http of this host is another origin (port 80): a network attacker can serve it, as the site has no HSTS.
+    for (const origin of [undefined, 'https://evil.example', 'null', 'https://test.vivanova.app:8443', 'not a url', `http://${HOST}`, `http://${HOST}:80`]) {
       const res = await post(origin === undefined ? {} : { origin });
       expect(res.statusCode, String(origin)).toBe(403);
       expect(res.json()).toEqual({ error: 'bad_origin', message: expect.any(String) });
@@ -888,6 +894,8 @@ describe('the Origin check', () => {
       t.app.inject({ method: 'POST', url: '/api/v1/auth/sign-in', payload, headers: { host, origin } });
     expect((await post('localhost:5173', 'http://localhost:5173')).statusCode).toBe(200);
     expect((await post('localhost:5173', 'http://localhost:5174')).statusCode).toBe(403);
+    // npm run e2e:real serves the app on 127.0.0.1.
+    expect((await post('127.0.0.1:4180', 'http://127.0.0.1:4180')).statusCode).toBe(200);
   });
 
   it('needs no Origin for GET', async () => {
@@ -1108,9 +1116,15 @@ describe('invites', () => {
       expect(res.statusCode).toBe(409);
       expect(res.json()).toMatchObject({ error: 'email_taken' });
     }
-    const bad = await t.call({ method: 'POST', url: '/api/v1/admin/invites', cookie: admin.cookie, payload: { email: 'not an email', name: 'X', roles: [] } });
-    expect(bad.statusCode).toBe(422);
-    expect(bad.json()).toMatchObject({ error: 'email_invalid' });
+    // Nor a second account under the same address with a hidden character in it, which would look the same.
+    for (const email of ['not an email', 'bob@example.com\u200B', '\u200Bbob@example.com']) {
+      const bad = await t.call({ method: 'POST', url: '/api/v1/admin/invites', cookie: admin.cookie, payload: { email, name: 'X', roles: [] } });
+      expect(bad.statusCode, JSON.stringify(email)).toBe(422);
+      expect(bad.json()).toMatchObject({ error: 'email_invalid' });
+    }
+    // Nor an invite to someone whose name shows nothing.
+    const blank = await t.call({ method: 'POST', url: '/api/v1/admin/invites', cookie: admin.cookie, payload: { email: 'cy@example.com', name: '\u200B', roles: [] } });
+    expect(blank.statusCode).toBe(400);
   });
 
   it('is for admins only', async () => {

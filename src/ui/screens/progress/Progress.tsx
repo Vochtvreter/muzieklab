@@ -11,12 +11,13 @@
  */
 import { useMemo, useState } from 'react';
 import { progressView } from '../../../game/progressView';
-import { weakSpotsSettings } from '../../../game/weakSpots';
+import { weakSpotsSettings, weakSpotsShows } from '../../../game/weakSpots';
 import { t } from '../../../i18n';
 import { AppShell } from '../../components/AppShell';
 import { Segmented } from '../../components/Controls';
 import { StreakPill } from '../../components/Reward';
 import { useBreakpoint, useDocTitle, useToday } from '../../hooks';
+import { FROM_PROGRESS } from '../../lib/learnReturn';
 import { navigate } from '../../router';
 import { todayIso, useStore } from '../../store';
 import {
@@ -46,12 +47,13 @@ export function ProgressScreen(): JSX.Element {
   const [view, setView] = useState<View>('rhythm');
   const v = useMemo(() => progressView(state.progress, today), [state.progress, today]);
 
-  // Practice weak spots: the rhythm setup with what the weak cells need, then the setup screen, where Start plays it.
+  // Practice weak spots: the rhythm setup with what the weak cells need, then the setup screen, where Start plays it
+  // with a note of each weak cell. The setup's back arrow returns here, and so does Results' after a round started there.
   const weak = useMemo(() => weakSpotsSettings(state.settings, v.cells), [state.settings, v.cells]);
   const practice = weak
     ? (): void => {
-        dispatch({ type: 'settings', settings: weak });
-        navigate('/setup');
+        dispatch({ type: 'settings', settings: weak, shows: weakSpotsShows(v.cells) });
+        navigate('/setup', { query: FROM_PROGRESS });
       }
     : null;
   const solfege = state.prefs.noteNames === 'solfege';

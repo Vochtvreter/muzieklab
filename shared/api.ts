@@ -5,7 +5,7 @@
  * Dates are ISO 8601 strings. Every error is an ApiErrorBody with a stable `error` code the app translates.
  */
 
-import type { FeedbackReport, FeedbackStatus } from './feedback.js';
+import { showsNothing, type FeedbackReport, type FeedbackStatus } from './feedback.js';
 
 // --- roles, permissions, entitlements (BACKEND-PLAN.md §4) ------------------------------------------------------
 
@@ -273,7 +273,14 @@ export interface InviteCreated extends LinkCreated {
 export interface AdminUpdateRequest {
   name?: string;
   email?: string;
+  /** Every role the account has from now on. */
   roles?: Role[];
+  /**
+   * Roles to give and to take away, changed in the roles the account has when the change arrives, so what another admin
+   * changed meanwhile stays (the role switches send these). Not with `roles`, and no role in both.
+   */
+  addRoles?: Role[];
+  removeRoles?: Role[];
   /** Block or unblock. An invited account cannot be set to active here: it becomes active by accepting the invite. */
   status?: 'active' | 'blocked';
   /** Premium on (through a last day, YYYY-MM-DD, or null for no end) or off. A last day already over is refused. */
@@ -315,9 +322,11 @@ export interface ClosureArchive {
   data: SyncedData | null;
 }
 
-/** GET /admin/closures → { closures }, newest day first, at most 500. */
+/** GET /admin/closures → { closures, total }, newest day first, at most 500 (with all=true, every one). */
 export interface ClosureListResponse {
   closures: Closure[];
+  /** How many there are, also beyond the 500. */
+  total: number;
 }
 
 // --- roles (accounts.read to list them; roles.manage to change them; BACKEND-PLAN.md §4) ------------------------------
@@ -484,6 +493,23 @@ export interface ApiErrorBody {
 /** Password rules, the same on both sides (BACKEND-PLAN.md §5.5). */
 export const PASSWORD_MIN = 10;
 export const PASSWORD_MAX = 128;
+
+// Name rules, the same on both sides: an account's name and a custom role's (BACKEND-PLAN.md §3.1, §3.8).
+
+/**
+ * Control characters (a tab pasted from a spreadsheet), and bidi embeddings, overrides and isolates, which turn the
+ * text after them around: a name could read as another word in a list or in an invite's message. The joiners an emoji
+ * or a Persian name needs are not among them.
+ */
+const NAME_REFUSED = /[\p{Cc}\u202A-\u202E\u2066-\u2069]/u;
+
+/**
+ * Whether a name shows nothing, so is as good as empty: only spaces, or characters that show nothing (the zero-width
+ * space…), as a feedback report's description (feedback.ts, showsNothing).
+ */
+export const nameShowsNothing: (name: string) => boolean = showsNothing;
+/** Whether a name holds a control or bidi character, which the API refuses in it (NAME_REFUSED). */
+export const nameHasRefusedCharacters = (name: string): boolean => NAME_REFUSED.test(name);
 
 /** How long links work (BACKEND-PLAN.md §5.1, §5.3). */
 export const INVITE_DAYS = 7;

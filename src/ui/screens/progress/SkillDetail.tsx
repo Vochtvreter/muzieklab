@@ -7,15 +7,17 @@
  * Tablet and desktop have no board: the 640 px column under the top header, as Settings' sub-pages.
  */
 import { skillView, type SkillView } from '../../../game/progressView';
-import { SKILL_LEVELS } from '../../../game/skills';
+import { SKILL_LEVELS, type Check } from '../../../game/skills';
 import type { SkillId } from '../../../game/storage';
 import { t } from '../../../i18n';
 import { AppShell } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle, useToday } from '../../hooks';
 import { labelText, rich } from '../../lib/format';
+import { fromSkills } from '../../lib/learnReturn';
+import { spokenName } from '../../lib/noteText';
 import { todayIso, useStore } from '../../store';
-import { LevelMeter, SkillBack, SkillCtaLink, SkillIcon } from './Skills';
+import { LevelMeter, LevelName, SkillBack, SkillCtaLink, SkillIcon } from './Skills';
 
 /** The history chart's height: level 10 fills it, level 0 still shows a sliver. */
 const HIST_PX = 66;
@@ -28,6 +30,15 @@ function meterLabel(s: SkillView): string {
   return t('skills.detail.meter', { level: s.level, max: SKILL_LEVELS, done: next.done, total: next.total, n: next.n });
 }
 
+/**
+ * A check as said, for screen readers, when its tonic has a sign, which a reader says as a symbol or skips: "E flat
+ * major at ★★" (Dutch "es majeur op ★★") for "E♭ major at ★★". Null when it is said as written.
+ */
+function checkSpoken(c: Check): string | null {
+  if (!c.tonic || c.tonic.alter === 0) return null;
+  return labelText({ key: c.label.key, params: { ...c.label.params, tonic: spokenName(c.tonic.letter, c.tonic.alter) } });
+}
+
 /** The next level: its name, how many checks are done, each check with where the player is now, and the skill's button. */
 function NextCard({ skill: s }: { skill: SkillView }): JSX.Element {
   const next = s.next;
@@ -38,7 +49,7 @@ function NextCard({ skill: s }: { skill: SkillView }): JSX.Element {
           {t('skills.detail.top', { n: SKILL_LEVELS })}
         </h2>
         <div className="skill-next-name">{t('skills.detail.allPassed')}</div>
-        <SkillCtaLink cta={s.cta} />
+        <SkillCtaLink cta={s.cta} from={fromSkills(s.id)} />
       </section>
     );
   }
@@ -51,7 +62,9 @@ function NextCard({ skill: s }: { skill: SkillView }): JSX.Element {
         </h2>
         {!next.later && <span className="skill-meta">{rich('skills.detail.checks', { total: next.total }, { progress: <b className="skill-meta-n">{progress}</b> })}</span>}
       </div>
-      <div className="skill-next-name">{t(next.name)}</div>
+      <div className="skill-next-name">
+        <LevelName name={next.name} />
+      </div>
       {next.later ? (
         <p className="skill-later">{t('skills.later')}</p>
       ) : (
@@ -60,27 +73,31 @@ function NextCard({ skill: s }: { skill: SkillView }): JSX.Element {
             <div style={{ width: Math.round((next.done / Math.max(1, next.total)) * 100) + '%' }} />
           </div>
           <ul className="skill-checks">
-            {next.checks.map((c, i) => (
-              <li key={i} className={c.done ? 'is-done' : undefined}>
-                <span className="skill-check-mark">{c.done && <Icon name="check" size={14} strokeWidth={3} />}</span>
-                {c.done && <span className="sr-only">{t('skills.detail.done')}: </span>}
-                <span className="skill-check-text">
-                  <span className="skill-check-label">{labelText(c.label)}</span>
-                  {!c.done && c.now && (
-                    <span className="skill-check-now">
-                      <span className="skill-check-bar" aria-hidden="true">
-                        <span style={{ width: Math.round(c.w * 100) + '%' }} />
+            {next.checks.map((c, i) => {
+              const said = checkSpoken(c);
+              return (
+                <li key={i} className={c.done ? 'is-done' : undefined}>
+                  <span className="skill-check-mark">{c.done && <Icon name="check" size={14} strokeWidth={3} />}</span>
+                  {c.done && <span className="sr-only">{t('skills.detail.done')}: </span>}
+                  <span className="skill-check-text">
+                    <span className="skill-check-label" aria-hidden={said ? true : undefined}>{labelText(c.label)}</span>
+                    {said && <span className="sr-only">{said}</span>}
+                    {!c.done && c.now && (
+                      <span className="skill-check-now">
+                        <span className="skill-check-bar" aria-hidden="true">
+                          <span style={{ width: Math.round(c.w * 100) + '%' }} />
+                        </span>
+                        <span className="skill-check-value">{labelText(c.now)}</span>
                       </span>
-                      <span className="skill-check-value">{labelText(c.now)}</span>
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}
-      <SkillCtaLink cta={s.cta} />
+      <SkillCtaLink cta={s.cta} from={fromSkills(s.id)} />
     </section>
   );
 }
@@ -128,7 +145,9 @@ function LadderCard({ skill: s }: { skill: SkillView }): JSX.Element {
         {s.levels.map((l) => (
           <li key={l.n} className={'is-' + l.state}>
             <span className="skill-ladder-n">{l.n}</span>
-            <span className="skill-ladder-name">{t(l.name)}</span>
+            <span className="skill-ladder-name">
+              <LevelName name={l.name} />
+            </span>
             {l.state === 'passed' ? (
               <span className="skill-ladder-mark">{t('skills.detail.passed')}</span>
             ) : l.state === 'next' && next ? (
@@ -176,7 +195,7 @@ export function SkillDetail({ skill }: { skill: SkillId }): JSX.Element {
                 <h2 id="review-title">{t('skills.review.title')}</h2>
                 <p>{t('skills.review.text', { count: s.review.days ?? 0 })}</p>
               </div>
-              <SkillCtaLink cta={s.cta} review />
+              <SkillCtaLink cta={s.cta} from={fromSkills(skill)} review />
             </section>
           )}
 

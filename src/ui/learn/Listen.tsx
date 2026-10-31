@@ -106,10 +106,13 @@ export const notesSound =
     return (midis.length - 1) * NOTE_GAP_S + TONE_S;
   };
 
-/** The round slate button: Play, and Stop while its example sounds. */
-export function PlayButton({ on, label, onClick }: { on: boolean; label?: string; onClick(): void }): JSX.Element {
+/**
+ * The round slate button: Play, and Stop while its example sounds. It shows only its icon, and a section has several:
+ * its name says which example it plays ("Play: Whole note").
+ */
+export function PlayButton({ on, name, onClick }: { on: boolean; name: string; onClick(): void }): JSX.Element {
   return (
-    <button type="button" className={'learn-play' + (on ? ' is-on' : '')} aria-label={on ? t('learn.stop') : (label ?? t('learn.play'))} onClick={onClick}>
+    <button type="button" className={'learn-play' + (on ? ' is-on' : '')} aria-label={t(on ? 'learn.stop' : 'learn.play', { name })} onClick={onClick}>
       <span className="learn-play-dot">
         <Icon name={on ? 'stop' : 'play'} size={16} />
       </span>

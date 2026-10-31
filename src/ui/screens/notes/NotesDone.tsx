@@ -1,8 +1,8 @@
 /**
  * Read notes · round done (DESIGN.md §3.5 Scoring): stars, correct / total, the average time and XP; time per note;
- * the notes that need practice (missed, slow), each on a small staff with its name as the player reads it (do re mi
- * or letters); right answers by sign; and New round / Practice missed notes. After a note lesson of the Learning path
- * (§8.2): the lesson and its unit, what it did for the path, and Next lesson once it has two stars.
+ * the notes that need practice (missed, with a hint, slow), each on a small staff with its name as the player reads it
+ * (do re mi or letters); right answers by sign; and New round / Practice missed notes. After a note lesson of the
+ * Learning path (§8.2): the lesson and its unit, what it did for the path, and Next lesson once it has two stars.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -20,15 +20,16 @@ import {
 } from '../../../core/api';
 import { findPathLesson, pathLessonOf, pathOutcome } from '../../../game/tracks';
 import { levelInfo } from '../../../game/xp';
-import { PitchStaff } from '../../../render/PitchStaff';
+import { PitchStaff, type PitchNote } from '../../../render/PitchStaff';
+import { staffRoom } from '../../../render/pitchDraw';
 import { useElementWidth } from '../../../render/theme';
-import { t, tx } from '../../../i18n';
+import { formatDecimal, t, tx } from '../../../i18n';
 import { ExerciseFrame } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
 import { AchievementBadges, LevelUpContent, OutcomeBadge } from '../../components/Reward';
 import { Sheet } from '../../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering } from '../../hooks';
-import { starsLabel } from '../../lib/format';
+import { andList, starsLabel, wholePercent } from '../../lib/format';
 import { useLearnReturn } from '../../lib/learnReturn';
 import { letterName, majorName, positionText, signWord, solfegeName, spokenName, type NameSystem } from '../../lib/noteText';
 import { Link, navigate } from '../../router';
@@ -37,7 +38,7 @@ import { useStartPathLesson } from '../start';
 import { useStartNoteLesson, useStartNotes } from './start';
 
 const shownLevelUp = new WeakSet<NoteLast>();
-const secs = (ms: number): string => (ms / 1000).toFixed(1);
+const secs = (ms: number): string => formatDecimal(ms / 1000);
 
 export function NotesDone(): JSX.Element | null {
   const { state, dispatch } = useStore();
@@ -74,6 +75,7 @@ export function NotesDone(): JSX.Element | null {
   const d = run.lesson ? scoreRound(run.notes, answers) : r;
   const s = run.settings;
   const keys = roundKeys(s);
+  const oneKey = keys.length === 1 ? keys[0] : null;
   const clefs = s.clefs.length > 1 ? t('notes.setup.clefsBoth').toLowerCase() : t('notes.clefLower.' + s.clefs[0]);
   const keyText = keys.length > 1 ? t('notes.done.keysMix', { count: keys.length }) : majorName(keys[0]);
   const missed = missedIds(run.notes, answers);
@@ -106,7 +108,7 @@ export function NotesDone(): JSX.Element | null {
             ))}
           </span>
         </div>
-        <div className="score-pct">{t('common.percent', { value: Math.round(r.accuracy) })}</div>
+        <div className="score-pct">{t('common.percent', { value: wholePercent(r.accuracy) })}</div>
         <div className="muted-text score-sub">
           {d.total === 0 ? t('notes.done.none') : t('notes.done.score', { right: r.right, total: r.total, avg: secs(d.avgMs) })}
           {r.hinted > 0 && ' · ' + t('notes.done.hinted', { count: r.hinted })} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
@@ -124,12 +126,15 @@ export function NotesDone(): JSX.Element | null {
 
   // Nothing answered: no cards, only the score and the actions.
   const answered = d.total > 0;
+  // By sign with one group only repeats the score, unless it carries the key signature's tip: in C♯ major or C♭ major
+  // every note is in the key's group.
+  const keyTip = oneKey !== null && keySigns(oneKey).length > 0 && d.keySignMisses > 0;
   const cards = answered && (
     <>
       <TimeChart answers={answers.slice(0, d.total)} avgMs={d.avgMs} missed={d.total - d.right - d.hinted} />
-      {/* Skipped with nothing missed or slow among the notes answered: no "every note right" over a lesson score that counts the rest. */}
-      {(d.total === r.total || d.missed.length + d.slow.length > 0) && <Needs r={d} system={state.prefs.noteNames} />}
-      {d.bySign.length > 1 && <BySign r={d} keyId={keys.length === 1 ? keys[0] : null} />}
+      {/* Skipped with nothing to practise among the notes answered: no "every note right" over a lesson score that counts the rest. */}
+      {(d.total === r.total || d.missed.length + d.hintedNotes.length + d.slow.length > 0) && <Needs r={d} system={state.prefs.noteNames} />}
+      {(d.bySign.length > 1 || keyTip) && <BySign r={d} keyId={oneKey} />}
     </>
   );
 
@@ -191,8 +196,9 @@ export function NotesDone(): JSX.Element | null {
     <ExerciseFrame className="frame--results" wide={wide}>
       <div className="page results ndone no-scrollbar">
         <div className="screen-head">
-          <Link to={lesson ? '/path' : (back?.to ?? '/')} query={lesson ? undefined : back?.query}
-            aria-label={lesson ? t('notes.done.lessonBack') : back ? t('learn.backToChapter', { n: back.chapter }) : t('notes.done.back')} className="icon-btn icon-btn--edge-sm">
+          {/* Leaves as Quit does, so the browser's Back does not open the finished round again. */}
+          <Link to={lesson ? '/path' : (back?.to ?? '/')} query={lesson ? undefined : back?.query} leaves
+            aria-label={lesson ? t('notes.done.lessonBack') : (back?.label ?? t('notes.done.back'))} className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>
           <div className="screen-head-text">
@@ -260,9 +266,12 @@ function TimeChart({ answers, avgMs, missed }: { answers: NoteAnswer[]; avgMs: n
             <rect key={i} x={i * slot + (slot - bw) / 2} y={y(a.ms)} width={bw} height={Math.max(2, base - y(a.ms))} rx={2.5}
               className={'nchart-bar is-' + (a.outcome === 'right' ? 'right' : a.outcome === 'hinted' ? 'hint' : 'missed')} />
           ))}
-          <text x={0} y={H - 2} className="nchart-text">
-            1
-          </text>
+          {/* One note: its "1" under its bar, not a second one at the start. */}
+          {n > 1 && (
+            <text x={0} y={H - 2} className="nchart-text">
+              1
+            </text>
+          )}
           <text x={(n - 1) * slot + slot / 2} y={H - 2} textAnchor="middle" className="nchart-text">
             {n}
           </text>
@@ -289,15 +298,26 @@ function TimeChart({ answers, avgMs, missed }: { answers: NoteAnswer[]; avgMs: n
 
 /** The small staff in a chip: VexFlow's size × this (5 px per staff space). */
 const CHIP_SCALE = 0.5;
+/** A chip's note. No key signature in a chip this small: the note carries its sign, as its name does. */
+const chipNote = (c: NoteChip): PitchNote => ({ step: c.step, sign: c.alter === 0 ? null : c.alter });
 
 function Needs({ r, system }: { r: RoundResult; system: NameSystem }): JSX.Element {
+  // A note right only with a hint is not right (the score), and Practice missed notes drills it: it is listed too.
+  // Every note, not the first six: Practice missed notes drills them all (the rows wrap, and the column scrolls).
   const groups = [
-    { key: 'missed', label: t('notes.done.missed'), chips: r.missed.slice(0, 6) },
-    { key: 'slow', label: t('notes.done.slow'), chips: r.slow.slice(0, 6) },
+    { key: 'missed', label: t('notes.done.missed'), chips: r.missed },
+    { key: 'hinted', label: t('notes.done.hintedGroup'), chips: r.hintedNotes },
+    { key: 'slow', label: t('notes.done.slow'), chips: r.slow },
   ].filter((g) => g.chips.length > 0);
-  // One staff height for every chip: room (in staff spaces) for the note furthest off the staff.
+  // One staff height for every chip: room (in staff spaces) for the note furthest off the staff, and for a clef or sign
+  // that reaches further.
   const beyond = (c: NoteChip): number => Math.max(0, -staffOffset(c.clef, c.step), staffOffset(c.clef, c.step) - 8) / 2;
-  const room = Math.max(1.5, ...groups.flatMap((g) => g.chips.map((c) => beyond(c) + 1)));
+  const room = Math.max(
+    1.5,
+    ...groups.flatMap((g) =>
+      g.chips.flatMap((c) => Object.values(staffRoom({ clef: c.clef, key: 'C', notes: [chipNote(c)], room: beyond(c) + 1 }))),
+    ),
+  );
   return (
     <div className="card ncard">
       <b>{t('notes.done.needs')}</b>
@@ -323,26 +343,19 @@ function Chip({ c, kind, system, room }: { c: NoteChip; kind: string; system: Na
   const name = (system === 'solfege' ? solfegeName : letterName)(L, c.alter);
   const spoken = system === 'solfege' ? `${solfegeName(L, 0)}, ${spokenName(L, c.alter)}` : spokenName(L, c.alter);
   const note = t('notes.done.chipNote', { name: spoken, pos: positionText(c.clef, c.step), clef: t('notes.clefLower.' + c.clef) });
-  const aria = kind === 'missed' ? t('notes.done.missedChip', { note, count: c.count }) : t('notes.done.slowChip', { note, value: secs(c.ms) });
-  // No key signature in a chip this small: the note carries its sign, as its name does.
-  const shown = useMemo(() => [{ step: c.step, sign: c.alter === 0 ? null : c.alter }], [c.step, c.alter]);
+  const aria =
+    kind === 'slow' ? t('notes.done.slowChip', { note, value: secs(c.ms) }) : t(kind === 'hinted' ? 'notes.done.hintedChip' : 'notes.done.missedChip', { note, count: c.count });
+  const shown = useMemo(() => [chipNote(c)], [c.step, c.alter]);
   return (
     <span role="listitem" aria-label={aria} className={'nchip nchip--' + kind}>
       <PitchStaff clef={c.clef} keyId="C" notes={shown} slots={1} barlines={false} scale={CHIP_SCALE} room={room} className="nchip-staff" />
       <span aria-hidden="true" className="nchip-name">
         {name}
       </span>
-      {kind === 'missed' && c.count > 1 && <span aria-hidden="true" className="nchip-tag">{t('notes.done.times', { count: c.count })}</span>}
+      {kind !== 'slow' && c.count > 1 && <span aria-hidden="true" className="nchip-tag">{t('notes.done.times', { count: c.count })}</span>}
       {kind === 'slow' && <span aria-hidden="true" className="nchip-tag">{t('notes.play.seconds', { value: secs(c.ms) })}</span>}
     </span>
   );
-}
-
-/** "F, C and G" */
-function andList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? '';
-  const head = items.slice(0, -1).reduce((a, b) => t('common.commaList', { a, b }));
-  return t('common.and', { a: head, b: items[items.length - 1] });
 }
 
 /** Right answers by sign, and (one key) a tip when misses had the right letter but not the key signature's sign. */

@@ -21,13 +21,19 @@ export interface StaffProps {
   countText?: (mark: CountMark) => string;
   /** The time signature as drawn, when not the meter's numbers: 'C' for common time. */
   timeSig?: string;
-  /** Size of the notation, 1 by default; Play draws it smaller on a short phone (the bars still fill the width). */
+  /** Size of the notation, 1 by default; Play draws it smaller on a short phone and for busy bars (fitWindows). */
   scale?: number;
+  /** Drawn smaller, or with fewer bars a row, when the notes or counts do not fit (Learn on a narrow phone, Results). */
+  shrinkToFit?: boolean;
+  /** The bars end the piece, with the final barline (default); false for Play's window of a longer exercise. */
+  end?: boolean;
+  /** Room for a triplet's 3 when the first row has none: Play's moving window and the Setup preview keep one height. */
+  tupletSpace?: boolean;
 }
 
 /** VexFlow staff (one-line percussion staff), coloured from the theme tokens (§3.1, §9 notation colour rule). */
 export function Staff(props: StaffProps): JSX.Element {
-  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig, scale } = props;
+  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig, scale, shrinkToFit, end, tupletSpace } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(hostRef);
   const themeVersion = useThemeVersion();
@@ -47,9 +53,12 @@ export function Staff(props: StaffProps): JSX.Element {
       cursor: cursorRef.current,
       // A staff that can show a cursor (cursor prop given, even null) keeps room for it, so it never jumps.
       cursorSpace: cursor !== undefined,
+      tupletSpace,
+      end,
       barsPerRow,
       width,
       scale,
+      shrinkToFit,
       timeSig,
       counts: countText && { text: countText, held: readToken(el, 'muted') },
       palette: {
@@ -63,7 +72,7 @@ export function Staff(props: StaffProps): JSX.Element {
     });
     drawn.current = { onsets, colour };
     // cursor is left out on purpose (the effect below moves it); `cursor !== undefined` only sets the room above.
-  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, scale, themeVersion, countText, timeSig]);
+  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, scale, shrinkToFit, end, tupletSpace, themeVersion, countText, timeSig]);
 
   // Play moves the cursor once per note: swap the highlight box instead of drawing VexFlow again.
   useLayoutEffect(() => {

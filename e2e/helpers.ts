@@ -56,9 +56,32 @@ export async function expectFits(page: Page): Promise<void> {
   expect(over, 'the screen scrolls').toBeLessThanOrEqual(1);
 }
 
-/** A touch target at least 44 px tall (DESIGN.md §9, visual design tokens). */
+/**
+ * A touch target at least 44 px tall (DESIGN.md §9, visual design tokens). A hundredth of a pixel is float error: a
+ * control measured while it slides in (a confirm's m-in) sits at a fractional offset and reads 43.99994.
+ */
 export async function expectTouchHeight(el: Locator): Promise<void> {
-  expect((await el.boundingBox())!.height, 'shorter than 44 px').toBeGreaterThanOrEqual(44);
+  expect((await el.boundingBox())!.height, 'shorter than 44 px').toBeGreaterThanOrEqual(44 - 0.01);
+}
+
+/**
+ * A tap target at least 44 px tall where taps land on it, for a small one whose hit area is a pseudo-element outside
+ * its box (a link in a line of text, the Path's lesson stars): the box says nothing then, and what lies over the area
+ * (a unit's head over the stars) takes those taps. Counted px by px down a line through its middle.
+ */
+export async function expectHitHeight(el: Locator): Promise<void> {
+  const hits = await el.evaluate((node) => {
+    node.scrollIntoView({ block: 'center' });
+    const r = node.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    let n = 0;
+    for (let y = Math.floor(r.top) - 40; y < r.bottom + 40; y++) {
+      const top = document.elementFromPoint(x, y + 0.5);
+      if (top && (top === node || node.contains(top))) n++;
+    }
+    return n;
+  });
+  expect(hits, 'taps that land on it, in px from top to bottom').toBeGreaterThanOrEqual(44);
 }
 
 /** The box shows all of its content (nothing spills out of a card that was squeezed too small). */
@@ -74,15 +97,71 @@ export async function expectNoOverlap(a: Locator, b: Locator): Promise<void> {
   expect(overlap, 'boxes overlap').toBe(false);
 }
 
-/** No button or segmented choice cuts its words off (longer translations must wrap or fit, DESIGN.md §11). */
+/**
+ * No button, link or segmented choice cuts its words off (longer translations must wrap or fit, DESIGN.md §11), nor a
+ * line inside one that clips its own text (a Learn chapter's subtitle once ended in "…", and a Skill levels row its
+ * next level's name).
+ */
 export async function expectNoClippedLabels(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  const clipped = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('button, .seg-btn, a.btn, select')]
-      .filter((el) => el.offsetParent !== null && /\p{L}/u.test(el.textContent ?? '') && el.scrollWidth > el.clientWidth + 1)
-      .map((el) => (el.textContent ?? '').trim() || el.getAttribute('aria-label') || el.tagName),
-  );
+  const clipped = await page.evaluate(() => {
+    const words = (el: Element): boolean => /\p{L}/u.test(el.textContent ?? '');
+    const cut = (el: Element): boolean => el.scrollWidth > el.clientWidth + 1;
+    // A line that clips; text for screen readers only (.sr-only, a box of 1 px) is not shown at all.
+    const clips = (el: Element): boolean => el.clientWidth > 1 && getComputedStyle(el).overflowX !== 'visible';
+    // A link that is not a button may draw past its own box (a word with a 44 px tap area around it): only the lines
+    // inside it that clip count. A button with a tap area round it (an absolute ::after, as the circle of fifths' keys
+    // have) reaches past its box with it: there its words, measured on their own, must stay inside the box.
+    const tapArea = (el: Element): boolean => {
+      const after = getComputedStyle(el, '::after');
+      return after.content !== 'none' && after.position === 'absolute';
+    };
+    const spills = (el: Element): boolean => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const w = range.getBoundingClientRect();
+      const b = el.getBoundingClientRect();
+      return w.width > 0 && (w.left < b.left - 1 || w.right > b.right + 1);
+    };
+    const box = (el: Element): boolean => !el.matches('a:not(.btn)') && (tapArea(el) ? spills(el) : cut(el));
+    return [...document.querySelectorAll<HTMLElement>('button, .seg-btn, a, select')]
+      .filter((el) => el.offsetParent !== null && words(el))
+      .filter((el) => box(el) || [...el.querySelectorAll('*')].some((x) => clips(x) && words(x) && cut(x)))
+      .map((el) => (el.textContent ?? '').trim() || el.getAttribute('aria-label') || el.tagName);
+  });
   expect(clipped, 'labels cut off').toEqual([]);
+}
+
+/**
+ * The element's focus ring shows on every side when the keyboard reaches it: no box around it cuts the ring off (a
+ * card with overflow: hidden, a side list that scrolls on its own). A list that scrolls up and down is only checked at
+ * its sides: focus scrolls the element into its view. Only its box, though: a side menu's and a page's top and bottom
+ * edges are checked control by control with Tab in layout.spec.ts (expectRingsInSideMenu, expectRingsOnPage).
+ */
+export async function expectFocusRing(el: Locator): Promise<void> {
+  // Back one stop and forward again, so the element has focus from the keyboard (:focus-visible).
+  await el.focus();
+  await el.page().keyboard.press('Shift+Tab');
+  await el.page().keyboard.press('Tab');
+  await expect(el).toBeFocused();
+  const cutBy = await el.evaluate((node) => {
+    const style = getComputedStyle(node);
+    if (!node.matches(':focus-visible') || style.outlineStyle === 'none') return 'no focus ring';
+    // How far the ring reaches outside the element: 3 px wide, 2 px away (base.css), or nothing when drawn inside.
+    const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+    const r = node.getBoundingClientRect();
+    for (let box = node.parentElement; box; box = box.parentElement) {
+      const o = getComputedStyle(box);
+      const b = box.getBoundingClientRect();
+      const left = b.left + box.clientLeft;
+      const top = b.top + box.clientTop;
+      const name = box.tagName.toLowerCase() + '.' + box.className;
+      if (o.overflowX !== 'visible' && (r.left - ring < left - 0.5 || r.right + ring > left + box.clientWidth + 0.5)) return name;
+      if (/hidden|clip/.test(o.overflowY) && (r.top - ring < top - 0.5 || r.bottom + ring > top + box.clientHeight + 0.5)) return name;
+    }
+    return null;
+  });
+  expect(cutBy, 'the focus ring is cut off by').toBeNull();
 }
 
 /**
@@ -100,9 +179,75 @@ export async function expectScrollbarAtEdge(page: Page): Promise<void> {
   expect(off, 'scroll boxes that stop short of the window\'s right edge').toEqual([]);
 }
 
+/**
+ * Nothing scrolls sideways: not the window, and not a page or a list that scrolls on its own (.m-scroll: the Path's
+ * units). They scroll up and down (overflow-y: auto), which makes them scroll sideways too when a row is wider than
+ * they are, while the window does not.
+ */
 export async function expectNoSideScroll(page: Page): Promise<void> {
-  const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-  expect(wide, 'no horizontal scroll').toBe(false);
+  const wide = await page.evaluate(() => [
+    ...(document.documentElement.scrollWidth > window.innerWidth + 1 ? ['the window'] : []),
+    ...[...document.querySelectorAll<HTMLElement>('.page, .m-scroll')].filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.className),
+  ]);
+  expect(wide, 'no horizontal scroll').toEqual([]);
+}
+
+/**
+ * Every pitch staff on the page has room for its notes: each whole note inside its own bar, after the clef and key
+ * signature and clear of the note before it (DESIGN.md §3.5), and the notes, the cursor and the labels inside the
+ * drawing. With bar lines, the cursor stays in the bar of the note it marks: clear of the bar lines on either side, of
+ * the clef and key signature and of the notes next to it. Nothing is drawn above or below the drawing either: not the
+ * treble clef's tail, a sign over or under the staff, or the cursor. The svg cuts off what runs past its edge, so the
+ * page never scrolls sideways and expectNoSideScroll misses it.
+ */
+export async function expectStavesFit(page: Page): Promise<void> {
+  const wrong = await page.evaluate(() =>
+    [...document.querySelectorAll<SVGSVGElement>('.pitch-staff svg')].flatMap((svg, k) => {
+      const span = (el: Element): [number, number] => {
+        const b = (el as SVGGraphicsElement).getBBox();
+        return [b.x, b.x + b.width];
+      };
+      const width = svg.viewBox.baseVal.width;
+      const head = Math.max(0, ...[...svg.querySelectorAll('.vf-clef, .vf-keysignature')].map((el) => span(el)[1]));
+      const out: string[] = [];
+      let before = head;
+      const notes = [...svg.querySelectorAll('.vf-stavenote')].map((note, i) => {
+        const [l, r] = span(note);
+        // Each bar is a stave of its own, drawn just before its note.
+        let bar = note.previousElementSibling;
+        while (bar && !bar.matches('.vf-stave')) bar = bar.previousElementSibling;
+        const [start, end] = bar ? span(bar) : [0, width];
+        if (l < Math.max(start, before) - 0.5) out.push(`staff ${k + 1}: note ${i + 1} runs into the bar line, signature or note before it`);
+        if (r > Math.min(end, width) + 0.5) out.push(`staff ${k + 1}: note ${i + 1} runs over its bar line or off the staff`);
+        before = r;
+        return [l, r];
+      });
+      // The bars of a staff with bar lines, each from its bar line (1 unit wide) to the next one.
+      const bars = [...svg.querySelectorAll('.vf-stave')].map(span);
+      for (const el of svg.querySelectorAll(':scope > rect')) {
+        const [l, r] = span(el);
+        if (l < -0.5 || r > width + 0.5) out.push(`staff ${k + 1}: the cursor is cut off`);
+        const bar = bars.length > 1 && bars.find(([start, end]) => start <= (l + r) / 2 && (l + r) / 2 <= end);
+        if (!bar) continue;
+        if (l < (bar === bars[0] ? head : bar[0] + 1) - 0.5 || r > bar[1] + 0.5) out.push(`staff ${k + 1}: the cursor runs over a bar line or the key signature`);
+        if (notes.filter(([a, b]) => a < r - 0.5 && b > l + 0.5).length > 1) out.push(`staff ${k + 1}: the cursor covers two notes`);
+      }
+      for (const el of svg.querySelectorAll('text')) {
+        const [l, r] = span(el);
+        if (l < -0.5 || r > width + 0.5) out.push(`staff ${k + 1}: the label ${el.textContent} is cut off`);
+      }
+      const height = svg.viewBox.baseVal.height;
+      for (const el of svg.querySelectorAll('path, rect')) {
+        const b = (el as SVGGraphicsElement).getBBox();
+        const parts = [['.vf-clef', 'the clef'], ['.vf-keysignature', 'the key signature'], ['.vf-stavenote', 'a note or its sign']];
+        const what = parts.find(([sel]) => el.closest(sel))?.[1] ?? (el.parentNode === svg ? 'the cursor' : 'the staff');
+        if (b.y < -0.5) out.push(`staff ${k + 1}: ${what} is drawn ${(-b.y).toFixed(1)} units above the drawing`);
+        if (b.y + b.height > height + 0.5) out.push(`staff ${k + 1}: ${what} is drawn ${(b.y + b.height - height).toFixed(1)} units below the drawing`);
+      }
+      return out;
+    }),
+  );
+  expect(wrong, 'notes that do not fit their staff').toEqual([]);
 }
 
 /**
@@ -127,18 +272,57 @@ export async function seed(page: Page, data: { prefs?: object; progress?: object
 
 export const pad = (page: Page): Locator => page.getByRole('button', { name: 'Tap pad' });
 
+/**
+ * Calibrates on the keyboard: the first press starts the 16 clicks (90 BPM, the first 1 s later), then one press on each
+ * of the first `taps` clicks (all of them by default). As in tapLate, each key event carries its own time stamp.
+ */
+export async function calibrateAlong(page: Page, taps = 16): Promise<void> {
+  await page.evaluate(
+    (taps) =>
+      new Promise<void>((resolve) => {
+        const key = (type: string, at: number): void => {
+          const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
+          Object.defineProperty(ev, 'timeStamp', { value: at });
+          window.dispatchEvent(ev);
+        };
+        const t0 = performance.now();
+        key('keydown', t0);
+        key('keyup', t0 + 80);
+        const clicks = Array.from({ length: taps }, (_, k) => t0 + 1000 + (k * 60_000) / 90);
+        for (const at of clicks) {
+          window.setTimeout(() => {
+            key('keydown', at);
+            key('keyup', at + 80);
+          }, at + 80 - performance.now());
+        }
+        window.setTimeout(resolve, clicks[taps - 1] + 200 - performance.now());
+      }),
+    taps,
+  );
+}
+
+/** Presses Tab (or Shift+Tab) until `target` has the focus, as a player on the keyboard gets there. */
+export async function tabTo(page: Page, target: Locator, key: 'Tab' | 'Shift+Tab' = 'Tab'): Promise<void> {
+  for (let i = 0; i < 60; i++) {
+    if (await target.evaluate((el) => el === document.activeElement)) return;
+    await page.keyboard.press(key);
+  }
+  throw new Error('Tab does not reach ' + String(target));
+}
+
 /** One bar of four quarter notes at 120 BPM, tap only: a free-practice run of a few seconds. */
 export const QUARTERS = { mode: 'tap', hold: false, meters: ['4/4'], notes: ['quarter'], rests: [], dotted: false, ties: false, triplets: false, bars: 1, tempo: 120,
   metronome: 'on', countIn: 1, density: 'balanced', restAmount: 'few' };
 
 /**
  * Plays along on the keyboard, every beat `lateMs` after it, from the first counted beat on Play: on the beat with 0, a
- * steady late tapper (Bluetooth headphones) with more. Each key event carries its own time stamp, so a timer that fires
- * late does not move a tap.
+ * steady late tapper (Bluetooth headphones) with more. `extras` adds presses at those times (ms after the first beat),
+ * such as an extra tap between two beats. Each key event carries its own time stamp, so a timer that fires late does
+ * not move a tap.
  */
-export async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number): Promise<void> {
+export async function tapLate(page: Page, beats: number, beatMs: number, lateMs: number, extras: number[] = []): Promise<void> {
   await page.evaluate(
-    ({ beats, beatMs, lateMs }) =>
+    ({ beats, beatMs, lateMs, extras }) =>
       new Promise<void>((resolve) => {
         const key = (type: string, at: number): void => {
           const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
@@ -148,18 +332,20 @@ export async function tapLate(page: Page, beats: number, beatMs: number, lateMs:
         const look = (): void => {
           if (!document.querySelector('[role="img"][aria-label^="Counting beat 1 "]')) return void requestAnimationFrame(look);
           const t0 = performance.now();
-          for (let k = 0; k < beats; k++) {
-            const at = t0 + k * beatMs + lateMs;
+          const times = [...Array.from({ length: beats }, (_, k) => k * beatMs + lateMs), ...extras];
+          for (const time of times) {
+            const at = t0 + time;
             window.setTimeout(() => {
               key('keydown', at);
               key('keyup', at + 80);
             }, at + 80 - performance.now());
           }
-          window.setTimeout(resolve, beats * beatMs + lateMs);
+          // Done a beat after the last press.
+          window.setTimeout(resolve, Math.max(...times) + beatMs);
         };
         look();
       }),
-    { beats, beatMs, lateMs },
+    { beats, beatMs, lateMs, extras },
   );
 }
 
@@ -449,7 +635,7 @@ export const CLOSURES: Closure[] = [
 export function adminApi(accounts: AccountSummary[] = ACCOUNTS, me: Me = ME_ADMIN): MockRoutes {
   return {
     ...signedInAs(me),
-    'GET /admin/closures': { json: { closures: CLOSURES } },
+    'GET /admin/closures': { json: { closures: CLOSURES, total: CLOSURES.length } },
     'GET /admin/accounts': ({ query }) => {
       const q = (query.get('q') ?? '').toLowerCase();
       const status = query.get('status');

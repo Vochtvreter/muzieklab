@@ -24,7 +24,7 @@ import { toAuditEntry, toDetail, toSummary } from '../accounts/views.js';
 import { signedIn } from '../auth/guard.js';
 import { createLink, inviteExpiresAt } from '../auth/links.js';
 import { siteOrigin } from '../auth/origin.js';
-import { canAll, stillHeld } from '../auth/policy.js';
+import { canAll, permissionsOf, stillHeld } from '../auth/policy.js';
 import type { AppContext } from '../context.js';
 import {
   inTransaction,
@@ -69,9 +69,12 @@ const premium = {
   ],
 } as const;
 
-/** Regular-expression characters in `q` match themselves: an admin searches text, not patterns. */
+/**
+ * Regular-expression characters in `q` match themselves: an admin searches text, not patterns. So does a NUL (pasted),
+ * written as \x00: MongoDB cannot take one in a pattern as it is, and the search would fail with a 500.
+ */
 function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\0/g, '\\x00');
 }
 
 /** Premium's last day as sent: null for no end, or a real date (YYYY-MM-DD) that is not over yet anywhere. */
@@ -86,7 +89,7 @@ function parseLastDay(until: string | null, now: Date): string | null {
 function patchNeeds(body: AdminUpdateRequest): Permission[] {
   const needs: Permission[] = ['accounts.read'];
   if (body.name !== undefined || body.email !== undefined) needs.push('accounts.invite');
-  if (body.roles !== undefined) needs.push('roles.grant');
+  if (body.roles !== undefined || body.addRoles !== undefined || body.removeRoles !== undefined) needs.push('roles.grant');
   if (body.status !== undefined) needs.push('accounts.block');
   if (body.premium !== undefined) needs.push('entitlements.grant');
   return needs;
@@ -206,7 +209,7 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       config: { permission: 'accounts.read' },
       schema: {
         params: s.idParams,
-        body: s.body({ name: s.name, email: s.email, roles, status: { enum: ['active', 'blocked'] }, premium }),
+        body: s.body({ name: s.name, email: s.email, roles, addRoles: roles, removeRoles: roles, status: { enum: ['active', 'blocked'] }, premium }),
       },
     },
     async (request): Promise<AccountDetail> => {
@@ -216,6 +219,9 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
       if (!(await canAll(c, actor, needs))) throw forbidden();
       const targetId = parseId(request.params.id);
       if (!targetId) throw notFound();
+      const oneByOne = body.addRoles !== undefined || body.removeRoles !== undefined;
+      if (oneByOne && body.roles !== undefined) throw new ApiError('bad_request', 'Send roles, or addRoles and removeRoles, not both');
+      if (body.addRoles?.some((r) => body.removeRoles?.includes(r))) throw new ApiError('bad_request', 'A role is in addRoles and removeRoles');
       const name = body.name === undefined ? undefined : validName(body.name);
       const email = body.email === undefined ? undefined : normalizeEmail(body.email);
       const now = ctx.now();
@@ -236,8 +242,13 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
           const set: Partial<AccountDoc> = {};
           const audit: Omit<AuditInput, 'actorId' | 'targetId'>[] = [];
 
-          if (body.roles !== undefined) {
-            const next = sortRoleIds(body.roles);
+          // `roles` is the whole new set. addRoles and removeRoles change the roles the account has now, inside this
+          // transaction: a role switch then never undoes what another admin changed after the switch's screen loaded.
+          const roleIds = oneByOne
+            ? [...target.roles.filter((r) => !body.removeRoles?.includes(r)), ...(body.addRoles ?? [])]
+            : body.roles;
+          if (roleIds !== undefined) {
+            const next = sortRoleIds(roleIds);
             const added = next.filter((r) => !target.roles.includes(r));
             const removed = target.roles.filter((r) => !next.includes(r));
             if (added.length > 0 || removed.length > 0) {
@@ -283,7 +294,12 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
             changed.email = email;
             changed.previousEmail = target.email;
           }
-          if (fields.length > 0) audit.push({ action: 'account.update', details: { fields, ...changed } });
+          if (fields.length > 0) {
+            // A new email locks the owner out and ends their links, and a name is who others take the account for: as with
+            // a link, only someone who holds every permission the account has may change them.
+            assertHolds(held, await permissionsOf(c, target, session));
+            audit.push({ action: 'account.update', details: { fields, ...changed } });
+          }
 
           if (newPremium !== undefined) {
             const before = target.premium;
@@ -336,7 +352,9 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
   ] as const) {
     app.post<{ Params: { id: string } }>(
       `/admin/accounts/:id/${kind}-link`,
-      // A new-password link lets whoever holds it into the account, like an invite does: the same permission.
+      // A new-password link lets whoever holds it into the account, like an invite does: the same permission. And as
+      // with an invite's roles, whoever makes it must hold every permission the account has (an invited one: once it
+      // accepts), else it is a way to sign in as an admin.
       { config: { permission: 'accounts.invite' }, schema: { params: s.idParams } },
       async (request): Promise<LinkCreated> => {
         const actor = signedIn(request).account;
@@ -345,6 +363,7 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
         const now = ctx.now();
         const origin = siteOrigin(request);
         return inTransaction(ctx.db, async (session) => {
+          const held = await stillHeld(c, actor._id, ['accounts.invite'], session);
           const target = await c.accounts.findOne({ _id: targetId }, { session });
           if (!target) throw notFound();
           if (target.status !== status) {
@@ -353,6 +372,7 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
               kind === 'invite' ? 'Only an invited account gets an invite link' : 'Only an active account gets a new-password link',
             );
           }
+          assertHolds(held, await permissionsOf(c, target, session));
           const link = await createLink(c, { kind, accountId: target._id, createdBy: actor._id, now, origin }, session);
           await writeAudit(
             c,
@@ -417,12 +437,20 @@ export const adminRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, 
     },
   );
 
-  app.get(
+  app.get<{ Querystring: { all?: 'true' } }>(
     '/admin/closures',
-    { config: { permission: 'accounts.read' } },
-    async (): Promise<ClosureListResponse> => {
-      const docs = await c.closures.find().sort({ day: -1, _id: 1 }).limit(LIST_MAX).toArray();
-      return { closures: docs.map(toClosure) };
+    {
+      config: { permission: 'accounts.read' },
+      schema: { querystring: { type: 'object', additionalProperties: false, properties: { all: { const: 'true' } } } },
+    },
+    async (request): Promise<ClosureListResponse> => {
+      // The screen shows the newest LIST_MAX and says how many there are; its file (all=true) has every one.
+      const found = c.closures.find().sort({ day: -1, _id: 1 });
+      const [docs, total] = await Promise.all([
+        (request.query.all ? found : found.limit(LIST_MAX)).toArray(),
+        c.closures.countDocuments(),
+      ]);
+      return { closures: docs.map(toClosure), total };
     },
   );
 

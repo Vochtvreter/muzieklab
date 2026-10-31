@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../../api/client';
 import { hasMessage, setLocale, t } from '../../i18n';
-import { CLIENT_ERROR_CODES, errorField, errorMessage, failureOf, fieldError, formError, passwordLengthFailure } from './apiErrors';
+import { CLIENT_ERROR_CODES, errorField, errorMessage, failureOf, fieldError, formError, nameCharactersError, nameIsBlank, passwordLengthFailure } from './apiErrors';
 
 afterEach(() => setLocale('en'));
 
@@ -98,5 +98,15 @@ describe('which field an error belongs to', () => {
     expect(passwordLengthFailure('🎵'.repeat(10))).toBeNull();
     expect(passwordLengthFailure('🎵'.repeat(9) + 'a')).toBeNull();
     expect(passwordLengthFailure('🎵'.repeat(129))?.field).toBe('password');
+  });
+
+  it('checks a name before sending it, as the server does: one that shows nothing, or holds what the server refuses', () => {
+    // Spaces, a zero-width space, a Hangul filler, word joiners, the blank Braille pattern, the interlinear annotation
+    // characters: nothing shows.
+    for (const name of ['', '   ', '\u200B', ' \u3164 ', '\u2060\u2060', '\u2800', ' \u2800 ', '\uFFF9', ' \uFFFA\uFFFB ']) expect(nameIsBlank(name), JSON.stringify(name)).toBe(true);
+    for (const name of ['Ann', '👨\u200D👩\u200D👧', 'می\u200Cخواهم']) expect(nameIsBlank(name), name).toBe(false);
+    // A tab, and a right-to-left override or isolate, which turns the text after it around.
+    for (const name of ['Ann\tde Vries', 'Smoke \u202Enimda', 'Ann \u2067de Vries']) expect(nameCharactersError(name), JSON.stringify(name)).toBe('Remove the tabs and other hidden characters.');
+    for (const name of ['Ann de Vries\t', 'می\u200Cخواهم']) expect(nameCharactersError(name), JSON.stringify(name)).toBeNull();
   });
 });

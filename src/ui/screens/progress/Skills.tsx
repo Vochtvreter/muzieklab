@@ -5,18 +5,19 @@
  * while the rest scrolls under it. Tablet and desktop have no board: the same content in the 640 px column under the
  * top header, as Settings' sub-pages, with Progress current in the header.
  *
- * Also the pieces the one-skill screen (SkillDetail) shares: the way back, the skill's icon tile, the level meter and
- * the skill's button.
+ * Also the pieces the one-skill screen (SkillDetail) shares: the way back, the skill's icon tile, the level meter, a
+ * level's name and the skill's button.
  */
 import type { MouseEvent } from 'react';
 import { skillsView, type SkillView } from '../../../game/progressView';
 import { echoPreset, notesPreset, REVIEW_DAYS, SKILL_LEVELS, type SkillCta } from '../../../game/skills';
 import type { SkillId } from '../../../game/storage';
-import { t, translateParams } from '../../../i18n';
+import { hasMessage, t, translateParams } from '../../../i18n';
 import { AppShell } from '../../components/AppShell';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle, useToday } from '../../hooks';
 import { andList, labelText, rich } from '../../lib/format';
+import { fromSkills } from '../../lib/learnReturn';
 import { Link, type Route } from '../../router';
 import { todayIso, useStore } from '../../store';
 
@@ -76,11 +77,13 @@ export function LevelMeter({ skill, big, label }: { skill: SkillView; big?: bool
 /**
  * A skill's button (Focus next, the skill's screen): a link to where it is practised. Rhythm by ear first puts Echo
  * mode on the rhythm setup, the clefs put their clef on the Read notes setup, so the setup opens ready to start.
- * `review`: the Review due card's smaller dark button, without the arrow.
+ * `from` is the screen it is on (fromSkills): the setup or the Scales tab it opens goes back there. A tab it opens (the
+ * Path, Learn) has no way back to keep. `review`: the Review due card's smaller dark button, without the arrow.
  */
-export function SkillCtaLink({ cta, review }: { cta: SkillCta; review?: boolean }): JSX.Element {
+export function SkillCtaLink({ cta, from, review }: { cta: SkillCta; from: string; review?: boolean }): JSX.Element {
   const { state, dispatch } = useStore();
   const target = cta.target;
+  const tab = target.to === '/path' || target.to.startsWith('/learn');
   const apply = (e: MouseEvent): void => {
     // A click that opens the link in a new tab or window leaves this tab's setup as it is.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -88,10 +91,33 @@ export function SkillCtaLink({ cta, review }: { cta: SkillCta; review?: boolean 
     else if (target.kind === 'notes') dispatch({ type: 'noteSettings', settings: notesPreset(state.noteSettings, target.clef) });
   };
   return (
-    <Link to={target.to as Route} className={review ? 'btn btn--ink skill-review-btn' : 'btn btn--accent skill-cta'} onClick={apply}>
+    <Link to={target.to as Route} query={tab ? undefined : from} className={review ? 'btn btn--ink skill-review-btn' : 'btn btn--accent skill-cta'} onClick={apply}>
       {labelText(cta.label)}
       {!review && <Icon name="arrow" size={18} strokeWidth={2.2} />}
     </Link>
+  );
+}
+
+/**
+ * A level's name as said, for screen readers: a name that writes a sign ("D and B♭ major"), which a reader says as a
+ * symbol or skips, has its words in skills.levelSpoken ("D and B flat major", Dutch "D en bes majeur"); any other name
+ * is said as it is written.
+ */
+export function levelSpoken(name: string): string {
+  const said = name.replace(/^skills\.level\./, 'skills.levelSpoken.');
+  return t(said !== name && hasMessage(said) ? said : name);
+}
+
+/** A level's name (a message key): as written, and in words for screen readers where it writes a sign (levelSpoken). */
+export function LevelName({ name }: { name: string }): JSX.Element {
+  const shown = t(name);
+  const said = levelSpoken(name);
+  if (said === shown) return <>{shown}</>;
+  return (
+    <>
+      <span aria-hidden="true">{shown}</span>
+      <span className="sr-only">{said}</span>
+    </>
   );
 }
 
@@ -100,8 +126,8 @@ function rowLabel(s: SkillView): string {
   const next = s.next;
   const parts = [t('skills.list.rowLevel', { name: t(s.name), level: s.level, max: SKILL_LEVELS })];
   if (!next) parts.push(t('skills.list.rowDone'));
-  else if (next.later) parts.push(t('skills.list.rowLater', { n: next.n, next: t(next.name) }));
-  else parts.push(t('skills.list.rowChecks', { done: next.done, total: next.total, n: next.n, next: t(next.name) }));
+  else if (next.later) parts.push(t('skills.list.rowLater', { n: next.n, next: levelSpoken(next.name) }));
+  else parts.push(t('skills.list.rowChecks', { done: next.done, total: next.total, n: next.n, next: levelSpoken(next.name) }));
   if (s.chip) parts.push(labelText(s.chip.label) + '.');
   return parts.join(' ');
 }
@@ -209,7 +235,7 @@ export function Skills(): JSX.Element {
             <p className="skill-focus-text">
               {rich(focus.key, translateParams(focus.params), typeof focus.params.skill === 'string' ? { skill: <b>{t(focus.params.skill)}</b> } : {})}
             </p>
-            <SkillCtaLink cta={view.focus.cta} />
+            <SkillCtaLink cta={view.focus.cta} from={fromSkills()} />
           </section>
 
           <p className="skill-foot">{rich('skills.list.foot', { count: REVIEW_DAYS }, { review: <b>{t('skills.chip.review')}</b> })}</p>

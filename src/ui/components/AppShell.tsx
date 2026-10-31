@@ -49,27 +49,27 @@ export function AppShell({ bp, active, children, wide, fill }: Props): JSX.Eleme
     </Link>
   );
 
-  if (bp !== 'phone') {
-    const desk = bp === 'desktop';
-    const full = fill || (desk && wide);
-    return (
-      <div className={'shell shell--top shell--' + bp}>
+  // One tree at every size, with the page in the same place: a phone turned on its side (tablet-wide) swaps the tab bar
+  // for the header around it, and a screen that fills the width (a Learn chapter) keeps its state and its scroll.
+  const phone = bp === 'phone';
+  const desk = bp === 'desktop';
+  const full = phone || fill || (desk && wide);
+  return (
+    <div className={'shell ' + (phone ? 'shell--phone' : 'shell--top shell--' + bp)}>
+      {!phone && (
         <header className={'topbar' + (desk ? ' topbar--desk' : '')}>
           {brand}
           <nav aria-label={t('nav.main')} className="nav nav--top">
             {items}
           </nav>
         </header>
-        <main className="shell-main">{full ? children : <div className="column">{children}</div>}</main>
-      </div>
-    );
-  }
-  return (
-    <div className="shell shell--phone">
-      <main className="shell-main">{children}</main>
-      <nav aria-label={t('nav.main')} className="nav nav--tabs">
-        {items}
-      </nav>
+      )}
+      <main className="shell-main">{full ? children : <div className="column">{children}</div>}</main>
+      {phone && (
+        <nav aria-label={t('nav.main')} className="nav nav--tabs">
+          {items}
+        </nav>
+      )}
     </div>
   );
 }

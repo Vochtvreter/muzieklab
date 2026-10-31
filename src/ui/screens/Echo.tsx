@@ -9,17 +9,19 @@ import { LISTEN_LEAD_IN_S as LEAD_IN_S } from '../../game/stats';
 import { t } from '../../i18n';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { ExerciseFrame } from '../components/AppShell';
-import { BeatRow, TapPad } from '../components/Bits';
+import { AnalogMetronome, BeatRow, TapPad } from '../components/Bits';
 import { ExerciseHeader } from '../components/ExerciseHeader';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import type { ExerciseView } from '../exerciseView';
-import { useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering } from '../hooks';
+import { useBreakpoint, useDocTitle, useExerciseLayout, useKeyboardHints, useLingering, useReducedMotion } from '../hooks';
 import { metersLabel } from '../lib/format';
 import { beatAt, type BeatState } from '../lib/playMath';
-import { Link, navigate } from '../router';
+import { focusLost } from '../lib/screenFocus';
+import { leave, Link, type Route } from '../router';
 import { useStore, type Run } from '../store';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
+import { AUDIO_START_GRACE_MS, STOPPED_AUDIO } from './playSession';
 import { HowToContent } from './PlaySheets';
 
 /** How often the rhythm can be heard (the first listen included). */
@@ -53,24 +55,35 @@ interface ListenProps {
   /** Start playing on mount (Hear again from the tap phase). */
   autoPlay: boolean;
   onPlayed(): void;
+  /** A listen cut off before its end (the app left, the audio stopped): it is not counted. */
+  onCancelled(): void;
   onTapBack(): void;
+  /** Where Quit goes, as on Play: Home, or back to Learn or the setup opened from it. */
+  exit: { to: Route; query?: string };
 }
 
 /** Listen: a big play button, the plays left, the beat counter and the (not yet active) pad. */
-export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, onTapBack }: ListenProps): JSX.Element {
+export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, onCancelled, onTapBack, exit }: ListenProps): JSX.Element {
   const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const desktop = bp === 'desktop';
   const tablet = useExerciseLayout() === 'tablet';
   const keys = useKeyboardHints(bp);
+  const still = useReducedMotion();
   const ex = run.exercise;
   useDocTitle(t('app.docTitle', { page: t('play.docTitle') }));
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(playsLeft < ECHO_PLAYS);
   const [beat, setBeat] = useState<BeatState>(IDLE_BEAT);
+  /** Beats since the first beat, with the fraction: the analog metronome's swing. */
+  const [at, setAt] = useState(0);
   const [help, setHelp] = useState<'help' | null>(state.prefs.seenEchoHowTo ? null : 'help');
   const timer = useRef<number | null>(null);
   const raf = useRef<number | null>(null);
+  /** A listen is playing that has not ended or been cut off: it is given back once only. */
+  const listening = useRef(false);
+  /** The last listen was cut off because the audio stopped or never started: the title says so until the next press. */
+  const [stopped, setStopped] = useState(false);
 
   const stopLoop = (): void => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -78,31 +91,87 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     timer.current = raf.current = null;
   };
 
+  // A listen cut off before its end stops, and is given back: it is not counted. `audio`: the sound stopped (or never
+  // started) under it, which the title then says, as Play's Pause sheet does; leaving the app was the player's doing.
+  const cut = useCallback(
+    (audio: boolean): void => {
+      if (!listening.current) return;
+      listening.current = false;
+      stopLoop();
+      engine().stop();
+      setBeat(IDLE_BEAT);
+      setPlaying(false);
+      setStopped(audio);
+      onCancelled();
+    },
+    [onCancelled],
+  );
+
+  // The play button keeps the focus while it plays (aria-disabled, not disabled, which would drop it to the page). Once
+  // it has played, Tap it back, which comes in under it, takes the focus from it: the player's turn.
+  const playButton = useRef<HTMLButtonElement>(null);
+  const tapButton = useRef<HTMLButtonElement>(null);
+  const pressed = useRef(false);
+  useEffect(() => {
+    if (playing || !pressed.current) return;
+    pressed.current = false;
+    if (document.activeElement === playButton.current || focusLost()) tapButton.current?.focus({ preventScroll: true });
+  }, [playing]);
+
   const listen = useCallback(() => {
-    if (playsLeft <= 0) return;
+    if (playing || playsLeft <= 0) return;
+    pressed.current = document.activeElement === playButton.current;
     unlockAudio();
     const eng = engine();
     applyAudioPrefs(state.prefs, eng);
     stopLoop();
     const started = eng.start({ timeline: view.timeline, meter: ex.meter, tempo: ex.tempo, countInBars: 1, metronome: ex.settings.metronome, playRhythm: true, leadIn: LEAD_IN_S });
+    const startedAt = performance.now();
+    listening.current = true;
+    setStopped(false);
     onPlayed();
     setPlaying(true);
     const beatSec = view.timeline.beatSeconds;
     const tick = (): void => {
+      // Audio stopped from the start (a context that never started, one the browser would not resume) says so with no
+      // state change, nor does a clock that froze: so it is checked here, with Play's grace to start (playSession.ts).
+      if (STOPPED_AUDIO.has(eng.audioState()) && performance.now() - startedAt > AUDIO_START_GRACE_MS) {
+        cut(true);
+        return;
+      }
       const tg = eng.heardNow() - started.exerciseStart;
       const now = beatAt(tg, beatSec, ex.meter.beatsPerBar, ex.meter.beatsPerBar, view.timeline.totalSeconds);
-      // A new state only when the beat changes, not every frame.
+      // A new state only when the beat changes, not every frame; the analog metronome swings with every frame.
       setBeat((b) => (b.inBar === now.inBar && b.countIn === now.countIn ? b : now));
+      if (state.prefs.metronomeLook === 'analog') setAt(tg / beatSec);
       raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
     timer.current = window.setTimeout(() => {
+      listening.current = false;
       stopLoop();
       setBeat(IDLE_BEAT);
       setPlaying(false);
       setHeard(true);
     }, Math.max(0, started.end - eng.now() + 0.25) * 1000);
-  }, [playsLeft, state.prefs, view, ex, onPlayed]);
+  }, [playing, playsLeft, state.prefs, view, ex, onPlayed, cut]);
+
+  // Leaving the app or the tab, or the audio stopping under it (an iOS call or Siri, the browser suspended it), cuts
+  // the rhythm off: the listen stops and is given back, as the tapping pauses then (playSession.ts).
+  useEffect(() => {
+    if (!playing) return;
+    const onVis = (): void => {
+      if (document.visibilityState === 'hidden') cut(false);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    const off = engine().onStateChange((s) => {
+      if (STOPPED_AUDIO.has(s)) cut(true);
+    });
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      off();
+    };
+  }, [playing, cut]);
 
   // Hear again from the tap phase: play straight away (the tap there was the gesture).
   const autoPlayed = useRef(false);
@@ -124,16 +193,16 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     e.preventDefault();
     stopLoop();
     engine().stop();
-    navigate('/', { replace: true });
+    leave(exit.to, exit.query);
   };
   const closeHelp = (): void => {
     setHelp(null);
     if (!state.prefs.seenEchoHowTo) dispatch({ type: 'prefs', patch: { seenEchoHowTo: true } });
   };
-  // Desktop: Esc closes How to play and ? opens it again, as the sheet says (closing it starts no sound here).
+  // Esc closes How to play and ? opens it again, at every size as on Play (a keyboard on a phone or tablet too; the
+  // sheet names the keys on desktop only). Closing it starts no sound here.
   const seen = state.prefs.seenEchoHowTo;
   useEffect(() => {
-    if (!keys) return;
     const onKey = (e: KeyboardEvent): void => {
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'Escape' && help) {
@@ -147,27 +216,31 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [keys, help, seen, dispatch]);
+  }, [help, seen, dispatch]);
   const { shown: helpShown, closing } = useLingering(help, 240);
   const bars = t('common.bars', { count: ex.bars.length });
   const cue = playing ? t('play.echo.listening') : heard ? t('play.echo.yourTurnCue') : t('play.echo.listenFirst');
   const beatLabel = beat.inBar === null
     ? t('play.beats', { total: ex.meter.beatsPerBar })
     : t(beat.countIn ? 'play.countIn' : 'play.countingBeat', { beat: beat.inBar + 1, total: ex.meter.beatsPerBar });
+  // The beat counter Settings asks for, as on Play, so it keeps its look once the tapping starts.
+  const analog = state.prefs.metronomeLook === 'analog' && (
+    <AnalogMetronome beats={ex.meter.beatsPerBar} active={beat.inBar} at={at} tempo={ex.tempo} label={beatLabel} still={still} />
+  );
 
   const listenBody = (
     <>
-      <button type="button" className={'echo-play' + (playing ? ' is-playing' : '')} disabled={playing || playsLeft <= 0}
-        aria-label={t(heard ? 'play.echo.replay' : 'play.echo.play')} onClick={listen}>
+      <button ref={playButton} type="button" className={'echo-play' + (playing ? ' is-playing' : '')} disabled={!playing && playsLeft <= 0}
+        aria-disabled={playing || undefined} aria-label={t(heard ? 'play.echo.replay' : 'play.echo.play')} onClick={listen}>
         <Icon name="play" size={34} />
       </button>
       <h2 id="echo-listen-title" className="echo-title" aria-live="polite">
-        {playing ? t('play.echo.playing') : t('play.echo.listenTitle')}
+        {playing ? t('play.echo.playing') : stopped ? t('play.echo.interrupted') : t('play.echo.listenTitle')}
       </h2>
       <span className="muted-text">{t('play.echo.meta', { bars, meter: metersLabel([ex.meter.id]), bpm: ex.tempo })}</span>
       <PlaysLeft left={playsLeft} />
       {heard && !playing && (
-        <button type="button" className="btn btn--accent echo-start m-in" onClick={onTapBack}>
+        <button ref={tapButton} type="button" className="btn btn--accent echo-start m-in" onClick={onTapBack}>
           {t('play.echo.start')}
         </button>
       )}
@@ -183,7 +256,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
   if (desktop || tablet) {
     // Play's tablet and desktop layout (Play.tsx): the exercise header, the listen card in the staff card, then the
     // count and the pad, which takes taps once the rhythm is tapped back.
-    const count: CountProps = { beats: ex.meter.beatsPerBar, beat, label: beatLabel, countIn: beat.countIn };
+    const count: CountProps = { beats: ex.meter.beatsPerBar, beat, label: beatLabel, countIn: beat.countIn, analog };
     const header = (
       <ExerciseHeader tablet={tablet} eyebrow={where}
         line={
@@ -196,7 +269,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
           aria-label={t(keys ? 'play.helpShortcut' : 'play.help')} title={t(keys ? 'play.helpTitle' : 'play.help')} onClick={() => setHelp('help')}>
           <Icon name="help" size={20} strokeWidth={1.8} />
         </button>
-        <Link to="/" className="text-link-btn" onClick={quit}>
+        <Link to={exit.to} query={exit.query} className="text-link-btn" onClick={quit}>
           {t('play.quitShort')}
         </Link>
       </ExerciseHeader>
@@ -239,7 +312,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
       <div className="page play echo">
         <h1 className="sr-only">{t('play.echo.listenTitle')}</h1>
         <div className="play-top">
-          <Link to="/" aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quit}>
+          <Link to={exit.to} query={exit.query} aria-label={t('play.quit')} className="icon-btn icon-btn--edge-sm" onClick={quit}>
             <Icon name="close" size={22} strokeWidth={2.2} />
           </Link>
           <div className="progress" role="progressbar" aria-label={t('play.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={heard ? 10 : 5}>
@@ -264,7 +337,7 @@ export function EchoListen({ run, view, where, playsLeft, autoPlay, onPlayed, on
           {listenBody}
         </section>
 
-        <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />
+        {analog || <BeatRow beats={ex.meter.beatsPerBar} active={beat.inBar} countIn={beat.countIn} label={beatLabel} />}
         <div aria-live="polite" className="judgement judgement--phone tone-muted">
           {cue}
         </div>

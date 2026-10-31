@@ -89,7 +89,8 @@
     "dailyPlay": "Spelen",
     "dailyAgain": "Nog een keer",
     "dailyDone": "Vandaag gedaan · {accuracy}%",
-    "dailyPlayLabel": "Speel de uitdaging van {date}",
+    "dailyPlayLabel": "Spelen: de uitdaging van {date}",
+    "dailyAgainLabel": "Nog een keer: de uitdaging van {date}",
     "freeHeading": "Vrij oefenen",
     "rhythmTile": "Ritme",
     "rhythmTileSub": "Eindeloos oefenen",
@@ -98,7 +99,7 @@
     "scalesTile": "Toonladders",
     "scalesTileSub": "Alle toonsoorten",
     "notesPreview": "De noten tot nu toe: {names}",
-    "notesPreviewRound": "Een paar noten uit de les"
+    "notesPreviewRound": "Een paar noten uit de les: {clef}, {key}"
   },
   "tile": {
     "next": "volgende les, nog geen sterren",
@@ -114,6 +115,7 @@
     "next": "Volgende: les {lesson} · {title} · {bpm} BPM",
     "unlocks": "Gaat open met 2 sterren op elke les van blok {unit}",
     "start": "Begin les {id}",
+    "replay": "Speel les {id} nog een keer",
     "playLesson": "Speel les {id} · {title}: {stars}",
     "lockedLesson": "Les {id}, op slot",
     "u1": {
@@ -185,7 +187,8 @@
     "trackLocked": "Op slot",
     "trackStars": "Blok {unit} van {total} · {stars} / {max} ★",
     "trackStarsDone": "Alles klaar · {stars} / {max} ★",
-    "trackStarsLabel": "{stars} van {max} sterren",
+    "trackStarsLabel": "Blok {unit} van {total}, {stars} van {max} sterren",
+    "trackStarsDoneLabel": "Alles klaar, {stars} van {max} sterren",
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} van {max} sterren",
     "lockedLessonTitled": "Les {id} · {title}, op slot",
@@ -332,6 +335,7 @@
       },
       "u6": {
         "title": "Toonsoorten door elkaar",
+        "glyph": "Mix",
         "l1": "C, G en F",
         "l2": "Tot twee voortekens",
         "l3": "Tot drie voortekens",
@@ -422,6 +426,7 @@
     "dottedQuarter": "gepunteerde kwartrust",
     "eighth": "achtste rust",
     "dottedEighth": "gepunteerde achtste rust",
+    "tripletEighth": "achtste triool-rust",
     "sixteenth": "zestiende rust"
   },
   "notation": {
@@ -492,6 +497,7 @@
       "replay": "Speel het ritme opnieuw",
       "listenTitle": "Luister naar het ritme",
       "playing": "Speelt…",
+      "interrupted": "Het geluid werd onderbroken. Druk op afspelen om het opnieuw te proberen.",
       "meta": "{bars} · {meter} · {bpm} BPM",
       "playsLeft": "{count, plural, =0 {Niet meer te horen} one {Nog # keer te horen} other {Nog # keer te horen}}",
       "start": "Tik het na",
@@ -615,7 +621,9 @@
     "copyCode": "Kopieer code",
     "copied": "Gekopieerd",
     "copyTitle": "Kopieer de code van de oefening: {code}",
+    "code": "Code van de oefening",
     "backHome": "Terug naar start",
+    "lessonBack": "Terug naar het leerpad",
     "accuracy": "{value}%",
     "summary": "nauwkeurigheid",
     "streakKept": "Reeks gehouden · {count, plural, one {# dag} other {# dagen}}",
@@ -656,7 +664,8 @@
     "calibrate": "Kalibreren",
     "calibrateTitle": "Meet de vertraging van je speaker of koptelefoon",
     "calibrated": "Gekalibreerd. Je volgende oefening houdt er rekening mee.",
-    "laneLabel": "De lengte van elke noot naast hoe lang je hem vasthield"
+    "laneLabel": "De lengte van elke noot naast hoe lang je hem vasthield",
+    "laneLabelTap": "Het begin van elke noot naast wanneer je tikte"
   },
   "settings": {
     "title": "Instellingen",
@@ -744,6 +753,8 @@
     "signOutChoice": "Voortgang op dit apparaat",
     "signOutKeep": "Houden",
     "signOutClear": "Verwijderen",
+    "signOutNotSaved": "Je voortgang staat nog niet op je account, dus je kunt hem nog niet van dit apparaat weghalen. Kies Houden, of probeer het zo opnieuw.",
+    "signOutNotSavedLink": "Je voortgang staat nog niet op je account, dus je kunt hem nog niet van dit apparaat weghalen. Probeer het zo opnieuw.",
     "resetDetailAccount": "Reeks, sterren en XP, op elk apparaat met je account. Je kunt dit niet ongedaan maken."
   },
   "calibrate": {
@@ -769,7 +780,8 @@
     "resultLate": "Gemeten over {count} tikken. Je tikken komen {ms} ms na de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
     "resultEarly": "Gemeten over {count} tikken. Je tikken komen {ms} ms voor de klik bij Muzieklab aan, dus elke score schuift zoveel op.",
     "resultZero": "Gemeten over {count} tikken. Je tikken vallen precies op de klik, dus er hoeft niets te verschuiven.",
-    "tooFew": "Maar {count, plural, one {# tik viel} other {# tikken vielen}} dicht bij een klik. Probeer het opnieuw en tik op elke klik.",
+    "tooFew": "{count, plural, =0 {Er viel geen tik} one {Maar # tik viel} other {Maar # tikken vielen}} dicht bij een klik. Probeer het opnieuw en tik op elke klik.",
+    "interrupted": "De klikken werden onderbroken. Probeer het opnieuw om vanaf de eerste klik te meten.",
     "save": "Bewaren",
     "again": "Opnieuw"
   },
@@ -790,7 +802,8 @@
     "save": "Bewaren",
     "saving": "Bewaren…",
     "passwordEmpty": "Typ je wachtwoord.",
-    "emailEmpty": "Typ je e-mailadres."
+    "emailEmpty": "Typ je e-mailadres.",
+    "hiddenCharacters": "Haal de tabs en andere onzichtbare tekens weg."
   },
   "apiError": {
     "bad_request": "Er klopt iets niet in het formulier. Kijk het na en probeer het opnieuw.",
@@ -837,6 +850,7 @@
     "submit": "Inloggen",
     "busy": "Inloggen…",
     "forgot": "Wachtwoord vergeten? Vraag het aan degene die je heeft uitgenodigd.",
+    "sessionEnded": "Je bent uitgelogd, dus er is niets gewijzigd. Log opnieuw in om verder te gaan.",
     "privacy": "Privacy"
   },
   "invite": {
@@ -849,7 +863,8 @@
     "password": "Nieuw wachtwoord",
     "submit": "Account maken",
     "busy": "Account maken…",
-    "home": "Naar Start"
+    "home": "Naar Start",
+    "signedInAs": "Je bent op dit apparaat ingelogd als {name}. Log eerst uit om deze link te gebruiken. Voortgang die je op dit apparaat houdt, komt ook op het account van deze link."
   },
   "reset": {
     "title": "Nieuw wachtwoord",
@@ -877,6 +892,7 @@
     "currentPassword": "Huidig wachtwoord",
     "saveEmail": "E-mailadres bewaren",
     "emailSaved": "E-mailadres gewijzigd. Log er voortaan mee in.",
+    "emailSame": "Dat is al je e-mailadres.",
     "premium": "Premium",
     "premiumUntil": "Premium tot {date}",
     "password": "Wachtwoord",
@@ -1013,6 +1029,7 @@
     "profile": "Naam en e-mailadres",
     "saved": "Bewaard.",
     "ownRoles": "Je kunt je eigen rollen niet wijzigen.",
+    "outranked": "Dit account kan dingen die het jouwe niet kan. Daarom kun je de naam en het e-mailadres niet wijzigen en er geen nieuwe link voor maken.",
     "premium": "Premium",
     "premiumOff": "Geeft premiumfuncties (komt later).",
     "premiumUntil": "Tot {date}",
@@ -1079,7 +1096,9 @@
     "days": "{count, plural, one {# dag geoefend} other {# dagen geoefend}}",
     "file": "Bestand",
     "download": "Downloaden als bestand",
-    "downloadSub": "Alles hierboven, met de anonieme voortgang, als JSON."
+    "downloadSub": "Alle verwijderde accounts, met de anonieme voortgang, als JSON.",
+    "downloading": "Downloaden…",
+    "newest": "De nieuwste {count} van {total} staan hier. Het bestand bevat ze allemaal."
   },
   "closureKind": {
     "archived": "Gearchiveerd",
@@ -1168,7 +1187,6 @@
     "notReviewed": "Nog niet beoordeeld.",
     "note": "Notitie voor het team",
     "noteHint": "Alleen wie feedback beoordeelt ziet dit, niet degene die het stuurde. Maximaal {max} tekens.",
-    "noteBadCharacters": "Haal de tabs en andere onzichtbare tekens weg.",
     "saveNote": "Notitie bewaren",
     "actions": "Acties",
     "copy": "Kopiëren als Markdown",
@@ -1201,11 +1219,16 @@
     "rushing": "Je jaagde: gemiddeld {ms} ms te vroeg. Wacht op elke noot.",
     "dragging": "Je sleepte: gemiddeld {ms} ms te laat. Druk iets eerder.",
     "draggingCalibrate": "Je tikken kwamen gemiddeld {ms} ms te laat, bij elke noot ongeveer even veel. Dat komt vaak door de speaker of koptelefoon: kalibreer één keer en het gaat van elke score af.",
-    "missed": "{count, plural, one {Je miste # noot} other {Je miste # noten}}, de meeste in maat {bar}. Lees één tel vooruit.",
+    "missed": "{count, plural, one {Je miste # noot in maat {bar}} other {Je miste # noten, de meeste in maat {bar}}}. Lees één tel vooruit.",
     "missedSpread": "{count, plural, one {Je miste # noot} other {Je miste # noten}}. Lees één tel vooruit.",
+    "missedEcho": "{count, plural, one {Je miste # noot in maat {bar}} other {Je miste # noten, de meeste in maat {bar}}}. Tel mee terwijl je luistert, dan weet je waar elke noot valt.",
+    "missedSpreadEcho": "{count, plural, one {Je miste # noot} other {Je miste # noten}}. Tel mee terwijl je luistert, dan weet je waar elke noot valt.",
     "extraTaps": "{count, plural, one {# extra tik kostte} other {# extra tikken kostten}} punten. Blijf bij rusten van het pad af.",
     "unsteady": "Je timing zwierf zo’n {ms} ms heen en weer. Tel zachtjes mee om gelijk te blijven.",
     "perfect": "Elke noot perfect. Probeer een sneller tempo of meer maten.",
+    "perfectBars": "Elke noot perfect. Probeer meer maten.",
+    "perfectTempo": "Elke noot perfect. Probeer een sneller tempo.",
+    "perfectTop": "Elke noot perfect, op het snelste tempo en met de meeste maten. Probeer andere notenwaarden, rusten of extra’s.",
     "perfectLesson": "Elke noot perfect. Door naar de volgende les.",
     "good": "Goed gedaan. Houd de tel gelijk en probeer de volgende."
   },
@@ -1275,8 +1298,8 @@
       "treble": "vioolsleutel",
       "bass": "bassleutel"
     },
-    "major": "{tonic} majeur",
-    "minor": "{tonic} mineur",
+    "major": "{tonic}\u00a0majeur",
+    "minor": "{tonic}\u00a0mineur",
     "keyPair": "{major} · {minor}",
     "keyNone": "Geen kruisen of mollen",
     "keySharps": "{count, plural, one {1 kruis: elke {letter} is een {name}} other {# kruisen: {names}}}",
@@ -1288,7 +1311,7 @@
       "clefs": "Sleutels",
       "key": "Toonsoort",
       "keyAria": "Toonsoort: {name}, {sub}. Toonsoort wijzigen",
-      "keysMix": "{count, plural, one {1 toonsoort, gemengd} other {# toonsoorten, gemengd}}",
+      "keysMix": "{count, plural, one {1\u00a0toonsoort, gemengd} other {#\u00a0toonsoorten, gemengd}}",
       "keysMixSub": "Elke 5 noten een nieuwe toonsoort",
       "answerWith": "Antwoord met",
       "inputNames": "Namen",
@@ -1321,7 +1344,7 @@
         "mixed": "gemengd"
       },
       "summary": "{clefs} · {input}",
-      "pool": "{count} plekken op de balk per sleutel · {key}",
+      "pool": "{count}\u00a0plekken op de balk per sleutel · {key}",
       "poolExtras": "{pool} · met extra tekens",
       "sound": "Hoor de noten",
       "soundOn": "Pianotoetsen als je ze indrukt, en na elk antwoord de juiste noot",
@@ -1394,13 +1417,13 @@
       "rightKey": "Goed: {name}. Door de voortekening krijgt elke {letter} een {signWord}.",
       "rightSign": "Goed: {name}, met een {signWord} ervoor.",
       "wrongKeySign": "Juiste {place}, maar {key} heeft {keyName} in de voortekening: het is {name}.",
-      "wrongNoteSign": "Juiste {place}, maar let op de {signWord} voor de noot: het is {name}.",
+      "wrongNoteSign": "Juiste {place}, maar let op {signWord, select, mol {de mol} dubbelmol {de dubbelmol} other {het {signWord}}} voor de noot: het is {name}.",
       "wrongExtraSign": "Juiste {place}, maar er staat geen teken: het is {name}.",
       "wrongLetter": "Dat was {name}: {pos}.",
       "wrongLetterKey": "Dat was {name}: {pos}, met een {signWord} uit de voortekening.",
       "wrongLetterSign": "Dat was {name}: {pos}, met een {signWord} ervoor.",
-      "pianoKey": "Dat was {name}: {pos} is {letter}, en met de {signWord} in de voortekening wordt het {name}.",
-      "pianoSign": "Dat was {name}: {pos} is {letter}, en met de {signWord} ervoor wordt het {name}.",
+      "pianoKey": "Dat was {name}: {pos} is {letter}, en met {signWord, select, mol {de mol} dubbelmol {de dubbelmol} other {het {signWord}}} in de voortekening wordt het {name}.",
+      "pianoSign": "Dat was {name}: {pos} is {letter}, en met {signWord, select, mol {de mol} dubbelmol {de dubbelmol} other {het {signWord}}} ervoor wordt het {name}.",
       "timeout": "De tijd is om: het was {name}, {pos}.",
       "place": {
         "line": "lijn",
@@ -1408,8 +1431,8 @@
       },
       "hint": "Hint",
       "next": "Volgende noot",
-      "finish": "Naar het overzicht",
-      "skip": "Naar het overzicht",
+      "finish": "Naar de samenvatting",
+      "skip": "Naar de samenvatting",
       "timeLeft": "Tijd over",
       "staffLabel": "{clef}, notenbalk in {key}, één hele noot per maat. Noot {n} van {total} is gemarkeerd.",
       "hintOn": "Dit is {landmark}: {name}.",
@@ -1452,8 +1475,10 @@
       "idleWrite": "Tik op de balk waar de noot hoort.",
       "idleWriteCheck": "Sleep hem of verschuif hem met de pijlen, en dan Controleer.",
       "idleHear": "Luister: eerst sol, dan de noot. Welke is het?",
+      "idleHearTap": "Tik op Luisteren: eerst sol, dan de noot. Welke is het?",
+      "hear": "Luisteren",
       "hearAgain": "Nog eens horen",
-      "hearSame": "hetzelfde als {sol}",
+      "hearSame": "even hoog als {sol}",
       "hearFrom": "{count, plural, one {één stap} other {# stappen}} {dir, select, up {boven} other {onder}} {sol}",
       "hearHint": "Hint: hij ligt {from}.",
       "hearRight": "Goed: {name}, {from}.",
@@ -1461,6 +1486,8 @@
       "hearTimeout": "De tijd is om: het was {name}, {from}.",
       "writeRight": "Goed: {name} staat op {pos}.",
       "writeWrong": "Je schreef {wrote}, op {wrotePos}; {name} hoort op {pos}.",
+      "writeOctaveHigh": "Juiste noot, verkeerd octaaf: schrijf de lagere {name}, op {pos}.",
+      "writeOctaveLow": "Juiste noot, verkeerd octaaf: schrijf de hogere {name}, op {pos}.",
       "writeSlider": "Waar {name} op de balk hoort",
       "writeNone": "Nog niet op de balk",
       "writeLabel": "Schrijf",
@@ -1475,7 +1502,7 @@
       "title": "Ronde klaar",
       "back": "Terug naar start",
       "sub": "Noten lezen · {clefs} · {keys}",
-      "keysMix": "{count, plural, one {1 toonsoort} other {# toonsoorten}}",
+      "keysMix": "{count, plural, one {1\u00a0toonsoort} other {#\u00a0toonsoorten}}",
       "score": "{right} van {total, plural, one {# noot} other {# noten}} goed · gem. {avg} s",
       "hinted": "{count} met een hint",
       "none": "In deze ronde zijn geen noten beantwoord.",
@@ -1485,11 +1512,13 @@
       "legendHint": "met een hint",
       "legendMissed": "gemist",
       "legendSlow": "meer dan 3 s = langzaam",
-      "chartLabel": "Antwoordtijd voor elk van de {count} noten. Gemiddeld {avg} seconden. {missed, plural, =0 {Geen noten gemist.} one {1 noot gemist.} other {# noten gemist.}}",
+      "chartLabel": "Antwoordtijd voor {count, plural, one {# noot} other {elk van de # noten}}. Gemiddeld {avg} seconden. {missed, plural, =0 {Geen noten gemist.} one {1 noot gemist.} other {# noten gemist.}}",
       "needs": "Nog oefenen",
       "missed": "Gemist",
+      "hintedGroup": "Met een hint",
       "slow": "Langzaam",
       "missedChip": "{note}, {count, plural, one {één keer gemist} other {# keer gemist}}",
+      "hintedChip": "{note}, {count, plural, one {met een hint beantwoord} other {# keer met een hint beantwoord}}",
       "chipNote": "{name} op {pos} ({clef})",
       "times": "×{count}",
       "slowChip": "{note}, {value} seconden",
@@ -1557,6 +1586,7 @@
       "circleMinor": "Kwintencirkel, mineurtoonsoorten",
       "majorAria": "{name}: {level, plural, =0 {nog geen sterren} one {1 ster} other {# sterren}}",
       "minorAria": "{name}: {level, plural, =0 {nog geen vorm met 2 sterren} one {1 vorm met 2 sterren} other {# vormen met 2 sterren}}",
+      "formsAria": "{count, plural, =0 {Nog geen vorm met 2 sterren} one {1 van 3 vormen met 2 sterren} other {# van 3 vormen met 2 sterren}}",
       "alsoAria": " (of {other})",
       "sigAria": "Voortekening: {signs}",
       "noSigns": "geen ♯ of ♭",
@@ -1625,6 +1655,7 @@
       "soundOff": "Stil",
       "summary": "{types} · {keys} · {direction}",
       "summaryMany": "Door elkaar; een ladder met fouten komt aan het eind terug.",
+      "summaryCircle": "In de volgorde van de kwintencirkel; een ladder met fouten komt aan het eind terug.",
       "summaryOne": "Eén ladder, daarna een korte samenvatting.",
       "start": "Start · {count, plural, one {# ladder} other {# ladders}}"
     },
@@ -1642,14 +1673,21 @@
       "mistakes": "{count, plural, one {fout} other {fouten}}",
       "mistakesAria": "{count, plural, =0 {Geen fouten} one {1 fout} other {# fouten}}",
       "mistakesTitle": "Fouten",
-      "starsRule": "0 fouten ★★★ · 1 ★★ · 2–3 ★",
+      "starsRule": {
+        "three": "0 fouten ★★★",
+        "two": "1 ★★",
+        "one": "2–3 ★"
+      },
       "staffLabel": "Notenbalk met vioolsleutel, {scale}: {notes}",
       "none": "nog geen noten",
       "degreesUp": "Trappen omhoog",
       "degreesDown": "Trappen omlaag",
       "degreeAria": "Trap {degree}: {name}",
       "unknown": "nog niet",
+      "now": "nu",
       "piano": "Pianotoetsenbord van {from} tot {to}",
+      "keyLow": "{name}, laag",
+      "keyHigh": "{name}, hoog",
       "signFor": "Teken voor {letter}",
       "kbdPiano": "Speel met A S D F G H J K L (wit) en W E R T Y U I O (zwart)",
       "kbdNames": "Druk − voor ♭, 0 voor ♮, = voor ♯ (X voor 𝄪)",
@@ -1661,11 +1699,13 @@
       "wrongStart": "Niet {given}. De ladder begint op zijn naam: {scale}.",
       "wrongUp": "Niet {given}. Ga vanaf {prev} {how} omhoog.",
       "wrongDown": "Niet {given}. Ga vanaf {prev} {how} omlaag.",
+      "wrongOctaveHigh": "Juiste noot, verkeerd octaaf: speel de lagere {note}.",
+      "wrongOctaveLow": "Juiste noot, verkeerd octaaf: speel de hogere {note}.",
       "hintStart": "Tip: de eerste noot staat in de naam: {scale}.",
       "hintUp": "Tip: vanaf {prev} is de stap omhoog {step}, {how}.",
       "hintDown": "Tip: vanaf {prev} is de stap omlaag {step}, {how}.",
-      "doneClean": "{scale}: klaar, geen fouten. {notes}",
-      "doneMistakes": "{scale}: klaar met {count, plural, one {1 fout} other {# fouten}}. {notes}",
+      "doneClean": "{scale}: klaar, geen fouten.",
+      "doneMistakes": "{scale}: klaar met {count, plural, one {1 fout} other {# fouten}}.",
       "hear": "Hoor tot nu toe",
       "hearAll": "Hoor de ladder",
       "space": "Spatie",
@@ -1680,7 +1720,7 @@
       "title": "Ronde klaar",
       "back": "Terug naar Toonladders",
       "sub": "Toonladders · {types} · {dir} · {input}",
-      "cleanAria": "{clean} van {total} ladders zonder fout",
+      "cleanAria": "{clean} van {total, plural, one {# ladder} other {# ladders}} zonder fout",
       "score": "ladders zonder fout · {count, plural, one {1 fout} other {# fouten}} in totaal",
       "none": "Geen ladder afgemaakt in deze ronde.",
       "listAria": "Ladders in deze ronde",
@@ -1690,12 +1730,12 @@
       "of": "van {total}",
       "majorCount": "majeurladders met 2+ sterren.",
       "minorCount": "mineurvormen met 2+ sterren.",
-      "reached": "{names} haalde deze ronde ★★.",
+      "reached": "{count, plural, one {{names} haalde deze ronde ★★.} other {{names} haalden deze ronde ★★.}}",
       "nothingNew": "Twee sterren op een ladder vullen zijn toonsoort.",
       "circleMajorAria": "Kwintencirkel, majeurtoonsoorten met 2 of meer sterren: {count} van {total}. Nieuw deze ronde: {fresh}.",
       "circleMinorAria": "Kwintencirkel, mineurvormen met 2 of meer sterren: {count} van {total}. Nieuw deze ronde: {fresh}.",
       "noneNew": "geen",
-      "change": "Setup wijzigen",
+      "change": "Instellingen wijzigen",
       "newRound": "Nieuwe ronde"
     }
   },
@@ -1772,8 +1812,8 @@
     "next": "Volgende",
     "check": "Snelle check",
     "checkHint": "Beantwoord hem goed, dan is dit deel gelezen.",
-    "play": "Afspelen",
-    "stop": "Stoppen",
+    "play": "Afspelen: {name}",
+    "stop": "Stoppen: {name}",
     "ch1": {
       "intro": "Muziek beweegt op een vaste puls. Dit hoofdstuk laat zien hoe snel die puls gaat, hoe hij in maten wordt verdeeld, en waarom sommige tellen sterker voelen dan andere. Alle volgende hoofdstukken tellen in deze tellen.",
       "s1": {
@@ -1927,7 +1967,7 @@
         "placeAlt": "Twee maten 4/4 op de balk met één lijn: een hele rust die onder de lijn hangt, geteld (1 2 3 4), dan een halve rust die op de lijn staat, geteld (1 2), en een halve noot geteld 3 (4)",
         "count": "Blijf door elke rust heen tellen. Stille tellen staan tussen grijze haakjes:",
         "countAlt": "Een maat 4/4: een kwartnoot op 1, een kwartrust op (2), een kwartnoot op 3, een kwartrust op (4); dan een halve rust op (1 2) en een halve noot op 3 (4)",
-        "game": "In het spel: laat los als een noot afloopt en blijf eraf tijdens de rust. Met Houd noten vast zo lang ze duren aan, zoals in het Leerpad vanaf blok 2, telt ook het moment van loslaten mee.",
+        "game": "In het spel: laat los als een noot afloopt en blijf eraf tijdens de rust. Met Houd noten vast zo lang ze duren aan, zoals in het Leerpad vanaf blok 4, telt ook het moment van loslaten mee.",
         "practice": "Oefen rusten",
         "check": {
           "question": "Welke rust hangt op de balk met één lijn in het spel onder de lijn?",
@@ -2196,7 +2236,6 @@
     },
     "pulse": {
       "bpm": "{bpm} BPM",
-      "play": "{bpm} BPM afspelen",
       "time": "tijd",
       "sec": "{s} s"
     },
@@ -2572,7 +2611,7 @@
     "rankNow": "Level {level} · nu",
     "rankNext": "volgende",
     "rankDone": "behaald",
-    "skillsSub": "{total} van {max} niveaus · {count, plural, one {# vaardigheid} other {# vaardigheden}} · {due, plural, =0 {niets te herhalen} other {# te herhalen}}",
+    "skillsSub": "{total}\u00a0van {max}\u00a0niveaus · {count, plural, one {#\u00a0vaardigheid} other {#\u00a0vaardigheden}} · {due, plural, =0 {niets te herhalen} other {#\u00a0te\u00a0herhalen}}",
     "calendar": {
       "range": "{from} – {to}",
       "label": "Oefenkalender, {from} tot {to}. {details}.",
@@ -2606,8 +2645,8 @@
       "rise": ", stijgend van {first}% naar {peak}% op {date}",
       "high": ", hoogste {peak}% op {date}",
       "today": ", vandaag {value}%",
-      "gaps": "; niet geoefend op {days}",
-      "gapCount": "; {count, plural, one {# dag} other {# dagen}} niet geoefend",
+      "gaps": "; geen ritmerondes op {days}",
+      "gapCount": "; {count, plural, one {# dag} other {# dagen}} zonder ritmeronde",
       "point": "{date}: {value}%",
       "empty": "Geen ritmerondes in de laatste 14 dagen."
     },
@@ -2644,7 +2683,7 @@
     "minutes": {
       "title": "Minuten deze week",
       "total": "{value} min",
-      "label": "Minuten geoefend deze week: {days}; {total} minuten in totaal.",
+      "label": "Minuten geoefend deze week: {days}; {total, plural, one {# minuut} other {# minuten}} in totaal.",
       "day": "{day} {value}",
       "dayToday": "vandaag {day} {value}",
       "bar": "{day}: {value} min",
@@ -2791,6 +2830,19 @@
         "10": "Toonsoorten en toonladders"
       }
     },
+    "levelSpoken": {
+      "notes": {
+        "6": "Toonsoorten met 1 kruis of 1 mol",
+        "7": "Tot 3 kruisen of 3 mollen",
+        "9": "Tot 5 kruisen of 5 mollen"
+      },
+      "scales": {
+        "3": "D en bes majeur",
+        "4": "A en es majeur",
+        "5": "E en as majeur",
+        "7": "Natuurlijk mineur, tot 2 kruisen of 2 mollen"
+      }
+    },
     "material": {
       "1": "kwartnoten en halve noten",
       "2": "rusten",
@@ -2841,6 +2893,7 @@
       "read": "{pct}% in een ronde {what}",
       "speed": "Gemiddeld antwoord onder {seconds, number, ::.0} s",
       "major": "{tonic} majeur op ★★",
+      "scale": "{scale} op ★★",
       "scaleCount": "{count} toonladders {type} op ★★",
       "allScales": "Alle {count} toonladders op ★★★",
       "section": "Lees {id} {title}"
@@ -2889,7 +2942,7 @@
       "next": "volgende: {name}",
       "allPassed": "alle niveaus gehaald",
       "rowLevel": "{name}: niveau {level} van {max}.",
-      "rowChecks": "{done} van {total} voorwaarden voor niveau {n}, {next}.",
+      "rowChecks": "{done} van {total, plural, one {# voorwaarde} other {# voorwaarden}} voor niveau {n}, {next}.",
       "rowLater": "Niveau {n}, {next}, komt later.",
       "rowDone": "Alle niveaus gehaald.",
       "legendPassed": "Gehaald",
@@ -2899,13 +2952,14 @@
     },
     "detail": {
       "back": "Terug naar Vaardigheden",
+      "backToSkill": "Terug naar {name} in Vaardigheden",
       "of": "van {max}",
-      "meter": "Niveau {level} van {max}, en {done} van {total} voorwaarden voor niveau {n}",
+      "meter": "Niveau {level} van {max}, en {done} van {total, plural, one {# voorwaarde} other {# voorwaarden}} voor niveau {n}",
       "meterLevel": "Niveau {level} van {max}",
       "next": "Volgende · niveau {n}",
       "checks": "{total, plural, one {{progress} voorwaarde} other {{progress} voorwaarden}}",
       "progress": "{done} van {total}",
-      "checksDone": "{done} van {total} voorwaarden gehaald",
+      "checksDone": "{done} van {total, plural, one {# voorwaarde} other {# voorwaarden}} gehaald",
       "done": "Gehaald",
       "top": "Niveau {n}",
       "allPassed": "Alle niveaus gehaald",
@@ -2922,7 +2976,7 @@
   },
   "achievements": {
     "streak7": {
-      "name": "7 dagen op rij",
+      "name": "7\u00a0dagen op rij",
       "text": "Oefen zeven dagen achter elkaar"
     },
     "perfectBar": {
@@ -2938,20 +2992,44 @@
       "text": "Twee sterren op een ritme met zestienden"
     },
     "tempo160": {
-      "name": "Gespeeld op 160 BPM",
+      "name": "Gespeeld op 160\u00a0BPM",
       "text": "Twee sterren op 160 BPM of sneller"
     }
   },
   "feedback": {
     "open": "Feedback",
     "openLabel": "Feedback: markeer een deel van dit scherm",
-    "markHint": "Klik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen. Esc annuleert.",
+    "markHint": "Klik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen. Met de pijltjestoetsen en Enter kies je er ook een. Esc annuleert.",
     "markHintTouch": "Tik op het deel dat je bedoelt, of sleep om er een kader omheen te tekenen.",
     "cancel": "Annuleren",
     "title": "Feedback",
     "marked": "Gemarkeerd",
     "markedArea": "Gemarkeerd gebied",
     "markAgain": "Opnieuw markeren",
+    "role": {
+      "link": "link",
+      "button": "knop",
+      "heading": "kop",
+      "text": "tekst",
+      "field": "veld",
+      "list": "lijst",
+      "image": "afbeelding",
+      "img": "afbeelding",
+      "drawing": "tekening",
+      "navigation": "navigatie",
+      "switch": "schakelaar",
+      "slider": "schuifregelaar",
+      "group": "groep",
+      "radiogroup": "keuzegroep",
+      "radio": "keuzerondje",
+      "listitem": "lijstonderdeel",
+      "progressbar": "voortgangsbalk",
+      "status": "status",
+      "alert": "melding",
+      "dialog": "venster",
+      "alertdialog": "venster",
+      "search": "zoeken"
+    },
     "kindGroup": "Soort feedback",
     "kind": {
       "bug": "Fout",
@@ -2965,6 +3043,7 @@
     "attached": "Bewaard zodat het team het kan beoordelen, met dit scherm, de gemarkeerde plek, de schermgrootte, het thema, de taal en de instellingen. Niet je voortgang. Als het wordt opgepakt, wordt het een openbaar GitHub-issue, zonder je naam.",
     "copy": "Kopiëren",
     "copied": "Gekopieerd",
+    "markdown": "Markdown",
     "send": "Versturen",
     "sending": "Versturen…",
     "saved": "Bewaard om te beoordelen",
@@ -2996,6 +3075,21 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_19_1": {
+      "title": "Verbeteringen na een volledige test van de app",
+      "tabs": "Met de app open in twee tabbladen overschrijft het ene tabblad niet meer de voortgang, instellingen of aanmelding die het andere bewaarde. Je thema staat er vanaf het eerste moment, zonder dat eerst het andere even te zien is.",
+      "pause": "Pauze en Verder spelen de gepauzeerde maat opnieuw en beoordelen hem één keer: een tik van vlak voor de pauze telt niet meer als extra tik, een tik in het voortellen speelt geen noot meer die voor de pauze werd gemist, een noot die in die maat is overgebonden wordt niet meer te kort genoemd, en het voortellen toont de maat waar het naartoe telt.",
+      "rhythm": "Ritme: elke les heeft een oefening met het ritme waar de les over gaat, Stop in een les gaat terug naar het Leerpad, Enter of spatie op een knop waar je met Tab bent gekomen drukt die knop in in plaats van te tikken, Naar de uitslag telt alleen de gespeelde tijd bij Minuten deze week, de nauwkeurigheid wordt naar beneden afgerond zodat 100% betekent dat elke noot perfect was, de tip na een perfecte ronde vraagt alleen wat nog omhoog kan, Zwakke punten oefenen speelt altijd de ritmes die zwak zijn, met meer maten als dat nodig is, je ritme-instelling blijft na het herladen bewaard, een ronde waarbij je naar de uitslag ging telt op de vaardighedenkaart alleen de gespeelde noten, een dagrecord telt alleen als het getoonde percentage omhoog gaat, een tik die je voor tel 1 vasthoudt loopt niet meer over de hele tijdlijn, Echo toont de analoge metronoom, geeft een keer luisteren terug als de app verborgen was of het geluid niet speelde en zegt niet meer dat je vooruit moet lezen, Kopieer code toont de code als kopiëren niet mag, en Spelen gaat stil verder als de browser geen geluid wil starten.",
+      "staves": "Notenbalken passen op hun scherm: elke noot blijft in zijn eigen maat en op de notenbalk, met drukke maten kleiner of met minder per regel, een rust van een hele maat staat in het midden, de 3 van een triool, de sleutel, de voortekening en elk teken staan er helemaal, en de slotstreep staat alleen aan het eind van de oefening.",
+      "fit": "Spelen, Noten lezen en Toonladders passen op lage en middelhoge telefoons, een telefoon op zijn kant en een venster van 1280 × 800, Spelen ook op een laptop van 1280 × 720 en een lage tablet, ook met de analoge metronoom, hulplijnen, Op & neer en zestien maten, en scores en tellingen blijven op één regel.",
+      "readNotes": "Noten lezen: na een fout toont de groene knop de goede naam (F♯, niet F), een noot met een hint is er een om te oefenen, een noot een octaaf te hoog of te laag geschreven zegt dat ook, B♯ en C♭ klinken waar ze staan, tijden hebben een decimale komma, C♯ majeur en C♭ majeur krijgen hun tip over de voortekening, de lessen over mi en sol wisselen niet meer strikt af, een les over toonsoorten heeft altijd het teken dat hij leert, twee keer snel tikken op Controleer slaat de uitleg niet meer over, toonsoortnamen blijven op één regel, een luisterles speelt na het herladen zijn noten, Nog oefenen toont elke noot, en het voorbeeld van een les op Start toont de sleutel en toonsoort waarmee de les begint.",
+      "scales": "Toonladders: Enter na een klik speelt niet nog eens dezelfde toets, Hint werkt na een fout, de goede noot in het verkeerde octaaf zegt dat ook, de cirkel toont elke voortekening helemaal en de voortgang van beide spellingen van een toonsoort, de toetsen ervan zijn makkelijker aan te tikken, Ronde klaar noemt beide spellingen, Op & neer vraagt om één noot tegelijk, niveau 7 tot 9 noemen de mineurtoonsoorten die meetellen, de cirkel houdt na het herladen zijn toonsoort vast, Tab gaat op toonhoogte langs de piano, een fout antwoord wordt elke keer voorgelezen, en De cirkel rond zegt niet meer dat de toonladders door elkaar staan.",
+      "learn": "Leren: een oefenlink houdt je eigen metronoom, werkt ook in een nieuw tabblad en geeft een oefening met wat het onderdeel leert, elke instelling die je vanuit een hoofdstuk opent houdt de weg terug na Start, Oefenen in hoofdstuk 11 opent de cirkel met de weg terug, Terug brengt je in één stap naar het onderdeel waar je vandaan kwam, een telefoon die je op zijn kant draait houdt je plek vast, dubbelklikken op een onderdeel beantwoordt de Snelle check niet meer, hoofdstuk 9 en 10 zeggen waarop ze voortbouwen, tabellen, schema's en lange hoofdstuknamen passen op een smalle telefoon, en de ondertitel van elk hoofdstuk staat er helemaal.",
+      "accounts": "Accounts: open je een uitnodigings- of nieuw-wachtwoordlink terwijl iemand anders is ingelogd, dan vraagt de app eerst om die persoon uit te loggen, Uitloggen met Verwijderen wacht tot je voortgang op het account staat, zodat er niets verloren gaat of bij het verkeerde account komt, een naam of e-mailadres met onzichtbare tekens wordt geweigerd, de foutmelding bij een veld verdwijnt zodra je typt, Uitloggen zonder verbinding verwijst niet meer naar Houden, als je al was uitgelogd, zeggen Overal uitloggen, Account verwijderen en Inloggen dat er niets is veranderd; en de melding dat je voortgang op je account staat, verschijnt alleen in het tabblad waarin je inlogde.",
+      "admin": "Feedback en beheerders: een feedbackmelding bewaart niets meer wat in een veld is getypt, zoals een wachtwoord, en geen werkende uitnodigings- of nieuw-wachtwoordlink; het feedbackvenster houdt je tekst vast als je sessie afloopt; de feedbacktool markeert de hele knop waarop je tikt, of het veld van een label, noemt hem in je eigen taal en laat ruimte om eraan voorbij te scrollen; feedback of een afscheidsbericht van alleen lege tekens telt als geen; zoeken naar een account met een verborgen teken werkt; het antwoord bij een nieuwe link scrolt in beeld; een account dat alleen mag uitnodigen, kan geen nieuw-wachtwoordlink meer maken voor een account met meer rechten; een rolschakelaar verandert alleen die rol; lange namen en rolnamen passen, ook in bevestigingen; en de feedbackmodus bereikt elk apparaat.",
+      "keyboard": "Toetsenbord en schermlezers: de focus gaat naar elk nieuw scherm en blijft op een knop die bezig is of die een stap vervangt, of als een tablet draait, elke knop en elk voorbeeld heeft een naam, kruisen, mollen en triool-rusten worden in woorden voorgelezen, ook op Voortgang, bij Toonladders en op het scherm Toonsoort, statusregels worden voorgelezen, de pijltjestoetsen gaan langs de tekens, Escape sluit elke bevestiging en elk venster, elke focusrand is helemaal te zien en valt op in het lichte thema, de modus met hoog contrast toont gekozen opties, schakelaars, de sterren van Toonladders, de grafieken van Voortgang, de balken van Noten lezen en Leren en de grafiek van Kalibreren, en twee keer snel tikken of klikken op Start drukt geen knop meer in op het volgende scherm.",
+      "misc": "Kleinere verbeteringen: een voorwaarde voor een niveau is pas gehaald bij de echte nauwkeurigheid, dus 89,5% is geen 90%, tekst en tekens met genoeg contrast in licht en donker, Nederlandse meervouden en woorden, één minuut en één voorwaarde in het enkelvoud, getallen die bij hun woord blijven, lange e-mailadressen en smalle rijen die passen, tikvlakken van 44 px, Kalibreren en Luisteren nadat het geluid was gepauzeerd, Opslaan bij Kalibreren laat geen extra stap voor Terug achter en de stippen blijven van de labels af, oefenen vanuit Voortgang gaat daar weer naartoe, het logo in de kop is een tikvlak van 44 px, een afgerond Leerpad dat geen volgende les meer aanbiedt, een adres dat de app niet heeft zegt nu dat het niet bestaat in plaats van een lege pagina te tonen, en duidelijke meldingen voor een naam met een tab erin of een feedbacktekst die te lang is."
+    },
     "v0_19_0": {
       "title": "Je voortgang in één oogopslag",
       "try": "Open Voortgang",

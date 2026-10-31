@@ -72,8 +72,9 @@ tool, and their app sends no request for it.
 The tool shows only in **feedback mode**, which an admin turns on and off for everyone with the **Feedback mode** switch
 above the reports (Settings → Account → Feedback; `PUT /admin/feedback-mode`, `feedback.review`). It starts off, so
 nobody sees the button until an admin turns it on, for a round of testing for example. The app learns it with the
-account (`Me.feedbackMode`, from GET /me when the app starts), so others see the change the next time they open the
-app; the admin who switched it sees it at once.
+account (`Me.feedbackMode`, from GET /me when the app starts, on any screen: every account kept on the device asks,
+also one kept while the mode was off), so others see the change the next time they open the app; the admin who
+switched it sees it at once.
 
 While it is on, a signed-in account with `feedback.give` sees the tool on every screen. **Settings → Account → Feedback
 button** turns it off on one device (and on again); the form's *Hide the feedback button on this device* does the same.
@@ -83,20 +84,33 @@ there too, which opens the reports.
 ### Marking and sending
 
 1. A **Feedback** button floats over every screen. On phone it is a round icon above the tab bar; on tablet and desktop
-   it sits in the bottom-right corner.
+   it sits in the bottom-right corner. Screens without the tab bar or header (an exercise, its setup and results, a
+   form on its own) have their controls low on the screen, so there it is a tab on the right edge: halfway down, 30%
+   of the way down while an exercise is played (above its answers), and three quarters down on a form on its own. A
+   phone in landscape has it on the left edge, as its answers are on the right.
 2. Press it, then tap or click the part you mean, or drag to draw a box. With a mouse, the element a click would mark is
-   outlined. Press Esc or Cancel to stop. To mark something further down the page, scroll first, then press Feedback.
+   outlined. With the keyboard, the arrow keys pick the screen's parts in turn, the hint bar names the one picked, and
+   Enter marks it. A tap or click marks the same parts: one on a control's icon or a word in it marks the control, and
+   one on a field's label the field. The
+   hint bar sits at the top; tap it to move it to the bottom (and back) when it is over what you mean. Press Esc or
+   Cancel to stop. To mark something further down the page, scroll first, then press Feedback.
+   However the tool closes (Esc, Cancel, or the sheet's X or Close), the focus goes back to the Feedback button.
 3. A sheet opens (a dialog on desktop, beside the marked spot). The spot stays lit and the rest of the screen dims.
-   Choose **Bug**, **Change** or **Idea**, then say what should change. A title is optional; without one, the review
-   screens name the report by its kind and screen (*Bug on #/settings*), and its issue by the kind, the spot and the
-   screen.
+   Choose **Bug**, **Change** or **Idea**, then say what should change (at most 5000 characters; only spaces or
+   characters that show nothing, such as a zero-width space, are not enough). A title is
+   optional; without one, the review screens name the report by its kind and screen (*Bug on #/settings*), and its
+   issue by the kind, the spot and the screen. **Mark again** marks another spot for the same report and keeps what is
+   typed; Esc or Cancel then goes back to the form as it was.
 4. Send the report:
    - **Send**: the app sends the report to the API (`POST /api/v1/feedback`), which stores it as New. The sheet then
      says *Saved for review*: an admin reads it in Settings → Account → Feedback, and picks what goes on to GitHub.
      For someone who also has `feedback.review`, **Review it** opens the report there.
-   - **Copy** puts the report on the clipboard in Markdown: the GitHub issue it would become.
+   - **Copy** puts the report on the clipboard in Markdown: the GitHub issue it would become. It says *Copied* for 2 s,
+     or until the report changes. Where the clipboard is not allowed, the Markdown shows in a field to copy by hand.
    - When sending fails (no connection, the server busy, too many reports in an hour), the sheet says why and keeps
-     the form as it is, so Send tries again.
+     the form as it is, so Send tries again. When the session ended meanwhile (a new password set on another device),
+     the app signs out and the sheet says so, still with what was typed, and **Sign in** takes the place of Send. It
+     opens Sign in, which says nothing was changed; closed instead, the tool goes.
 
 Nothing goes to GitHub from the app or the API yet, so no GitHub token is needed anywhere (DEPLOY.md). The report is
 stored with the account that sent it, so whoever reviews it sees who that was, and the audit log records it
@@ -142,11 +156,23 @@ hand when its author is on the allowlist (§4).
 
 ### What a report holds
 
-Each report holds (`shared/feedback.ts`; stored as it was sent, BACKEND-PLAN.md §3.9):
+Each report holds (`shared/feedback.ts`; stored as it was sent, less a link's token and what was typed in a field,
+`withoutSecrets`, BACKEND-PLAN.md §3.9):
 
 - **What should change:** the kind, the title and the description.
-- **Where:** the route (`#/settings`) and the marked element: its CSS selector, a readable name (`button “Start”`), its
-  text and its markup (shortened). It also holds the marked box in CSS pixels and the page's scroll offset.
+- **Where:** the route (`#/settings`) and the marked element: its CSS selector, a readable name (`button “Start”`, a
+  field by its label: `field “New password”`; in English whatever the app's language, as the issue is), its text (its
+  parts apart, as it reads) and its markup (shortened). What was typed in a field is never in it: React keeps it in the
+  field's `value` attribute (a password too), and a text area's in its text, so both are left out. An invite or
+  new-password link's token is left out too, `:token` in its place (`#/reset/:token`), in the route and address of its
+  screen and in the marked element's name, text and markup (an admin's link card shows the link): whoever has a token
+  can claim the account, and a report is read by its reviewers and may become a public issue. The app leaves these
+  out, and the API again, both when it stores a report and when it hands one out (for a report kept before it did,
+  `withoutSecrets` in `shared/feedback.ts`). It also holds the marked box in CSS
+  pixels and the page's scroll offset: how far the boxes around the element are scrolled (a screen scrolls inside the
+  page, not the window), leaving out scroll that does not move it (a sticky part, such as Settings' side column, counts
+  only how far it went along before it stuck; a fixed one stays put whatever scrolls), so the box plus the offset is
+  where the spot is on the page scrolled to its top.
 - **Device:** the viewport and pixel ratio, the breakpoint (phone, tablet or desktop), the orientation, touch or mouse,
   the theme (setting and shown), the language, the app version and the user agent.
 - **State:** the player's preferences (`muzieklab.prefs.v1`), so the agent can seed them and see the same screen.

@@ -29,11 +29,19 @@ export function useMediaQuery(query: string): boolean {
 }
 
 /**
- * A phone in portrait under 600 px tall: what a phone browser leaves of a small phone under its toolbars (DESIGN.md §9:
- * 375 × 553 on an iPhone SE in Safari). Exercise screens draw their staff smaller there; the CSS tightens the rest with
- * the same query, and from 700 px down already tightens gaps and paddings.
+ * A phone in portrait under 800 px tall: a phone browser's screen (DESIGN.md §9: 390 × 664 on an iPhone 14 in Safari,
+ * 430 × 739 on an iPhone Pro Max). The CSS tightens gaps and paddings there with the same query, and Read notes draws a
+ * staff with ledger lines smaller. At 700 px, where it once began, the screens ran past phones 700–800 px tall.
  */
-export const SHORTER_PHONE = '(max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait)';
+export const SHORT_PHONE = '(max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait)';
+
+/**
+ * A phone in portrait under 660 px tall: what a phone browser leaves of a small phone under its toolbars (DESIGN.md §9:
+ * 375 × 553 on an iPhone SE in Safari, 375 × 629 on an iPhone mini). Exercise screens draw their staff smaller there;
+ * the CSS tightens the rest with the same query, and from 800 px down already tightens gaps and paddings (SHORT_PHONE).
+ * At 600 px, where it once began, the screens ran past phones 600–660 px tall.
+ */
+export const SHORTER_PHONE = '(max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait)';
 
 /** DESIGN.md §9 breakpoints: phone < 700 px, tablet 700–1099 px, desktop ≥ 1100 px. */
 export function useBreakpoint(): Breakpoint {
@@ -101,9 +109,11 @@ export function useDocTitle(title: string): void {
 export function useLingering<T>(value: T | null, ms: number): { shown: T | null; closing: boolean } {
   const [shown, setShown] = useState<T | null>(value);
   const [closing, setClosing] = useState(false);
+  // Kept as it renders, not in the effect: React runs an effect's update a task later, so a value closed before then
+  // (a tap whose click closes what it opened) would come back after closing, and stay.
+  if (value !== null && value !== shown) setShown(value);
   useEffect(() => {
     if (value !== null) {
-      setShown(value);
       setClosing(false);
       return;
     }

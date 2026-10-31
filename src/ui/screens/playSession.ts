@@ -24,7 +24,8 @@ import { PLAY_LEAD_IN_S as LEAD_IN_S } from '../../game/stats';
 import type { Prefs } from '../../game/storage';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import type { ExerciseView } from '../exerciseView';
-import { beatAt, cursorAt, holdProgress, partialResult, pressFeedback, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
+import { keyForTabbedControl } from '../lib/focusModality';
+import { barAt, beatAt, cursorAt, holdProgress, partialResult, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, type BeatState } from '../lib/playMath';
 import type { Run } from '../store';
 
 export type Phase = 'intro' | 'running' | 'paused' | 'done';
@@ -41,9 +42,9 @@ const played = new WeakSet<Run>();
  * Audio states that stop the clock: the browser suspended the context, iOS interrupted it (a call, Siri), or its clock
  * froze while it says 'running' (iOS, back from the background).
  */
-const STOPPED_AUDIO = new Set(['suspended', 'interrupted', 'stalled']);
-/** How long the context may take to start running before Play treats it as stopped (ms). */
-const AUDIO_START_GRACE_MS = 800;
+export const STOPPED_AUDIO = new Set(['suspended', 'interrupted', 'stalled']);
+/** How long the context may take to start running before Play (and Calibrate) treats it as stopped (ms). */
+export const AUDIO_START_GRACE_MS = 800;
 
 export interface Frame {
   tg: number;
@@ -59,6 +60,8 @@ export interface Frame {
   cursor: number | null;
   ring: number;
   held: boolean;
+  /** The bar this segment starts at: after a pause the count-in leads into it, and Play shows it then (barAt). */
+  fromBar: number;
 }
 
 interface Segment {
@@ -142,15 +145,16 @@ export interface PlaySession {
 }
 
 /**
- * `onSeen`: a sheet before the start was done with (How to play, the intro sheet); the prefs to save. `fresh`: a lesson
- * other than the one finished last, so Play waits on Ready (see firstSheet).
+ * `onSeen`: a sheet before the start was done with (How to play, the intro sheet); the prefs to save. `onFinish`: the
+ * result, the presses and where the music stopped (exercise seconds: before the end after Skip to results, past it
+ * when played to the end). `fresh`: a lesson other than the one finished last, so Play waits on Ready (see firstSheet).
  */
 export function usePlaySession(
   run: Run,
   view: ExerciseView,
   prefs: Prefs,
   onSeen: (patch: Partial<Prefs>) => void,
-  onFinish: (r: JudgeResult, taps: Tap[]) => void,
+  onFinish: (r: JudgeResult, taps: Tap[], playedTo: number) => void,
   fresh = false,
 ): PlaySession {
   const ex = run.exercise;
@@ -158,7 +162,8 @@ export function usePlaySession(
   const barSec = view.barSeconds;
   const opts: JudgeOptions = { hold: ex.settings.hold, leniency: prefs.leniency };
 
-  // No tap led here (a reload, Back / Forward into Play): wait for one, so the audio may start.
+  // No tap led here (a reload, Back / Forward into Play, a Learn practice link opened in a new tab): wait for one, so
+  // the audio may start.
   const [gated] = useState(() => !!run.needsGesture || played.has(run));
   // How to play opens first the very first time, and again the first time holding counts (unit 1 is tap only).
   const [intro] = useState(() => howToIntro(prefs, ex.settings.hold));
@@ -173,7 +178,7 @@ export function usePlaySession(
   const introsDone = useRef(false);
   const [interrupted, setInterrupted] = useState(false);
   const segStartedAt = useRef(0);
-  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, countIn: false, cursor: null, ring: 0, held: false });
+  const [frame, setFrame] = useState<Frame>({ tg: -1, beat: { inBar: null, countIn: false }, beats: 0, countIn: false, cursor: null, ring: 0, held: false, fromBar: 0 });
   const [marks, setMarks] = useState<Record<number, NoteMark>>({});
   const [feedback, setFeedback] = useState<PlaySession['feedback']>(null);
   const [combo, setCombo] = useState(0);
@@ -188,6 +193,8 @@ export function usePlaySession(
   const pausedAt = useRef(0);
   /** The bar to resume at, kept as an integer: pausedAt / barSec can land just below a whole bar (2.9999…). */
   const pausedBar = useRef(0);
+  /** The press still down when the pause came (the pause ended its hold). */
+  const heldAtPause = useRef<Tap | null>(null);
   const raf = useRef<number | null>(null);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -231,7 +238,7 @@ export function usePlaySession(
     }
     seg.current = null;
     setPhase('done');
-    finishRef.current(result, taps.current.map((tp) => ({ ...tp })));
+    finishRef.current(result, taps.current.map((tp) => ({ ...tp })), heldUntil);
   }, [view, barSec, opts.hold, opts.leniency]);
 
   const tick = useCallback(() => {
@@ -265,7 +272,8 @@ export function usePlaySession(
     const countIn = ts < 0;
     const cursor = countIn ? null : cursorAt(view.timeline.notes, tg, view.timeline.totalSeconds);
     const cur = current.current;
-    setFrame({ tg, beat, beats: view.timeline.beatSeconds > 0 ? ts / view.timeline.beatSeconds : 0, countIn, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current });
+    const beats = view.timeline.beatSeconds > 0 ? ts / view.timeline.beatSeconds : 0;
+    setFrame({ tg, beat, beats, countIn, cursor, ring: holdProgress(cur?.note ?? null, tg), held: cur !== null || ignoredPress.current, fromBar: s.fromBar });
     const over = ts - s.timeline.totalSeconds;
     if ((over > END_GRACE_S && !cur) || over > END_HARD_S) {
       finish();
@@ -302,6 +310,9 @@ export function usePlaySession(
       segStartedAt.current = performance.now();
       setInterrupted(false);
       setPhase('running');
+      // The first render is the lead-in already, before the first tick: the frame from before a pause or Restart showed
+      // its bar, its beat and the timing lane's playhead there.
+      setFrame({ tg: (fromBar - countInBars) * barSec - LEAD_IN_S, beat: { inBar: null, countIn: false }, beats: 0, countIn: true, cursor: null, ring: 0, held: false, fromBar });
       cancelLoop();
       raf.current = requestAnimationFrame(tick);
       },
@@ -315,6 +326,7 @@ export function usePlaySession(
     current.current = null;
     ignoredPress.current = false;
     everPaused.current = false;
+    heldAtPause.current = null;
     setMarks({});
     setFeedback(null);
     setCombo(0);
@@ -336,13 +348,14 @@ export function usePlaySession(
       cur.tap.up = Math.max(cur.tap.down, tg);
       seg.current.judge.release(tg - seg.current.fromBar * barSec);
     }
+    heldAtPause.current = cur?.tap ?? null;
     current.current = null;
     ignoredPress.current = false;
     // Paused during a resumed segment's lead-in or count-in: tg is still before the bar it resumed at. Resume there,
     // not earlier (bar 0 would wipe the whole run).
     const fromBar = seg.current?.fromBar ?? 0;
     pausedAt.current = Math.max(tg, fromBar * barSec);
-    pausedBar.current = Math.max(fromBar, Math.floor(tg / barSec));
+    pausedBar.current = barAt(tg, barSec, fromBar);
     setPhase('paused');
     setSheet(kind);
     setFrame((f) => ({ ...f, ring: 0, held: false }));
@@ -359,8 +372,18 @@ export function usePlaySession(
       return;
     }
     const cut = b * barSec;
-    taps.current = tapsBeforeBar(taps.current, b, barSec, pausedAt.current);
-    extras.current = extras.current.filter((tp) => tp.down < cut);
+    // The note each press played, from the live judge: whether a press near the bar line is played again.
+    const noteOf = new Map<Tap, TimedNote>();
+    for (const [gi, r] of live.current) {
+      const note = view.timeline.notes[gi];
+      if (r.tap && note) noteOf.set(r.tap, note);
+    }
+    // An extra tap in the window of a replayed note would take that note when the run is judged again.
+    const inReplayedWindow = replayedWindows(view.timeline, b, opts.leniency);
+    taps.current = tapsBeforeBar(taps.current, b, barSec, pausedAt.current, { noteOf: (tp) => noteOf.get(tp), inReplayedWindow, held: heldAtPause.current });
+    heldAtPause.current = null;
+    // The live count of extra taps keeps the same ones.
+    extras.current = extras.current.filter((tp) => tp.down < cut && !inReplayedWindow(tp.down));
     for (const [gi] of live.current) {
       if ((view.timeline.notes[gi]?.bar ?? 0) >= b) live.current.delete(gi);
     }
@@ -372,7 +395,7 @@ export function usePlaySession(
     setFeedback(null);
     setCombo(0);
     startSegment(b, Math.max(1, ex.settings.countIn));
-  }, [ex, barSec, view, startSegment]);
+  }, [ex, barSec, view, startSegment, opts.leniency]);
 
   const down = useCallback((timeStamp: number) => {
     const s = seg.current;
@@ -385,7 +408,9 @@ export function usePlaySession(
       ignoredPress.current = true;
       return;
     }
-    const tap: Tap = { down: tg, up: null };
+    // After a resume the whole run is judged again: a press of this segment, also one in its count-in, plays only the
+    // bars played again, as the live judge, which has only those, says.
+    const tap: Tap = s.fromBar > 0 ? { down: tg, up: null, from: s.fromBar * barSec } : { down: tg, up: null };
     taps.current.push(tap);
     const p = s.judge.press(ts);
     let note: TimedNote | null = null;
@@ -426,10 +451,11 @@ export function usePlaySession(
     };
   }, [run]);
 
-  // Tap input only while the exercise runs with no sheet open, so keys never double as taps in a dialog.
+  // Tap input only while the exercise runs with no sheet open, so keys never double as taps in a dialog. Space and
+  // Enter are taps on a control too, except on one the player reached with Tab (Skip to results, Pause, Quit).
   useEffect(() => {
     if (phase !== 'running' || sheet !== null) return;
-    return attachTapInput(pad, { down, up, pause: () => pause('pause'), help: () => pause('help') }, { claimActivationKeys: true });
+    return attachTapInput(pad, { down, up, pause: () => pause('pause'), help: () => pause('help') }, { claimActivationKeys: true, leaveToControl: keyForTabbedControl });
   }, [phase, sheet, pad, down, up, pause]);
 
   // Leaving the tab or the window pauses (the input module releases held keys too): keys would go elsewhere.

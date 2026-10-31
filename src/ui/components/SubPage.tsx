@@ -32,19 +32,17 @@ export interface PageProps {
 }
 
 function Head({ title, sub, back, backLabel, action }: Pick<PageProps, 'title' | 'sub' | 'back' | 'backLabel' | 'action'>): JSX.Element {
+  // One h1, with or without the line under it: a screen whose line comes with what it loads (an account's status and
+  // email) keeps its heading, and the focus a new screen or Try again put on it.
   return (
     <div className="screen-head acct-head">
       <Link to={back} aria-label={backLabel} className="icon-btn icon-btn--edge">
         <Icon name="back" />
       </Link>
-      {sub ? (
-        <div className="screen-head-text">
-          <h1 className="screen-title">{title}</h1>
-          <p className="acct-sub">{sub}</p>
-        </div>
-      ) : (
+      <div className="screen-head-text">
         <h1 className="screen-title">{title}</h1>
-      )}
+        {sub && <p className="acct-sub">{sub}</p>}
+      </div>
       {action && <div className="acct-head-action">{action}</div>}
     </div>
   );

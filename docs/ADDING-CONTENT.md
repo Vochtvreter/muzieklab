@@ -34,7 +34,7 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
 | `{ kind: 'tip', text }` | a grey box: a memory aid or "in the game" |
 | `{ kind: 'list', items }` | a bulleted list |
 | `{ kind: 'tiles', tiles: [{ glyph, title, text }] }` | cards with a music glyph (the two clefs) |
-| `{ kind: 'staff', clef, keyId?, notes, labels?, title?, value?, slots?, room?, play?, alt }` | a five-line staff, one whole note per bar. `notes: 'E4 G4 F#4 Bb4 Fn5'` (letter, sign `#` `b` `n`, octave; C4 = middle C). `labels: 'name'` writes the names under the notes. `slots: 0` draws only the clef and key signature, with `value` beside it. `play: true` adds a play button (see *Sound* below). |
+| `{ kind: 'staff', clef, keyId?, notes, labels?, title?, value?, slots?, room?, play?, alt }` | a five-line staff, one whole note per bar. `notes: 'E4 G4 F#4 Bb4 Fn5'` (letter, sign `#` `b` `n`, octave; C4 = middle C). `labels: 'name'` writes the names under the notes. `slots: 0` draws only the clef and key signature, with `value` beside it. A `value` stays on one line (DESIGN.md §9.1, *Narrow phones*), so keep it as short as a step pattern or a row of letters. `play: true` adds a play button (see *Sound* below). |
 | `{ kind: 'rhythm', meter, bars, title?, value?, verdict?, common?, tempo?, alt }` | the one-line rhythm staff with the counting under the notes, and a play button. `bars: ['q [8 8] h', 'q. 8 q qr']`; the tokens are in `src/render/notationText.ts` (`w h q 8 16`, `.` dot, `r` rest, `~` tie, `t` triplet, `W` whole-bar rest, `[ ]` beam). The counts come from the rhythm (`src/render/counting.ts`). `verdict: 'write' \| 'avoid'` adds a green or red label, `common: true` draws 4/4 as C, `tempo: 60` plays it at 60 BPM (default 80). |
 | `{ kind: 'table', rows: [{ glyph?, title, text?, value? }] }` | rows of a name, a line under it and a value on the right (tempo words, the rests) |
 | `{ kind: 'beatGrid', rows: [{ title, beat }], alt }` | one beat divided several ways, each row's counts in one grid: `beat: '[8. 16]'` reads 1 (&) a |
@@ -46,13 +46,15 @@ Before you start: the chapter plan is in [`LEARN-CHAPTERS.md`](LEARN-CHAPTERS.md
 | `{ kind: 'noteNames' }` | C–B with do re mi |
 | `{ kind: 'pair', variant?, columns }` | columns side by side on tablet and desktop, stacked on phones (`'staves'` or `'text'`) |
 
-Every `alt` is the description a screen reader gets for the picture; for a staff it may use `{names}`.
+Every `alt` is the description a screen reader gets for the picture; for a staff it may use `{names}`, the notes as
+they are said (*F sharp*).
 
 ### Sound
 
 Examples that show music can be heard (DESIGN.md §9.1). A round play button sits in front of the notation on tablet and
-desktop, and at the start of the example's first line on phones; it turns into Stop while the example plays. One example
-plays at a time, and leaving the chapter stops it. The sound follows the Sound volumes in Settings.
+desktop, and at the start of the example's first line on phones; it turns into Stop while the example plays. Its name
+for screen readers is the example's `title`, or its `alt` when it has none (*Play: Whole note*). One example plays at a
+time, and leaving the chapter stops it. The sound follows the Sound volumes in Settings.
 
 | Block | Play button | What it plays |
 |---|---|---|
@@ -74,6 +76,17 @@ A new kind of block (counting under the notes, for example) is a case in the `Bl
 - `practice: { notes: { clefs: ['bass'], range: 'staff' } }` starts a Read notes round straight away, with those
   settings on top of the player's own (answer with, notes per round and the timer stay). `practice: { rhythm: { meters:
   ['3/4'] } }` starts a rhythm exercise the same way, in Tap mode (tempo, bars and the metronome stay the player's).
+  An extra the preset turns on (`dotted`, `ties`, `triplets`) is in the exercise and in Results' Next. A tie needs two
+  bars, so with the player's Bars at 1 a `ties` preset plays 2; the player's setup keeps 1. Where the preset alone
+  does not make sure of what the section teaches, name it with `shows` beside the preset, in the ids of
+  `src/game/intro.ts` (`SHOW_IDS`): 5.3 *Dotted eighth and sixteenth* has `shows: ['dotted:eighth']`, as a dotted
+  quarter has a dot too; 3.1 has `'rest'` (any rest), 4.1 `['figure:eighth-pair', 'rest:eighth']`, 4.2
+  `['note:sixteenth', 'figure:four-sixteenths']`. Every start and Next then has it, unless none of the seeds a start
+  tries has all of it: it then keeps the exercise that comes closest, the first id counting most, so put the title's
+  figure first. DESIGN.md §9.1 lists those gaps, such as 4.1's eighth rest with Bars at 1 and Sparse notes. Name only
+  what an exercise can have at any Bars, density and amount of rests: a whole note beside a half and a quarter needs 2
+  bars. One exception: 3.2's silent bar (`'rest:whole'`) needs 3, and a start with fewer does not look for it. Give a
+  new rhythm link its row in the `teaches` table of `src/ui/store.test.ts`, which checks what its exercises show.
   Quit, and the back arrow on Results or Round done, return to the section; their setup button opens the setup with
   the preset. `practice: { scales: { keyMode: 'one', keys: ['C'], types: ['major'] } }` opens the Scales setup.
 - The chapter's `practice: 'notes' | 'rhythm' | 'scales'` picks the big button at the end.
@@ -93,12 +106,24 @@ Set `PLANNED_CHAPTERS` in `chapters.ts` when the plan grows ("chapter 9 of 11").
 ## A Learning Path unit
 
 1. **Data:** add a `unit(…)` to `UNITS` in `src/game/path.ts`, numbered after the last rhythm unit: a base with every musical
-   setting, and five lessons that each add one thing, the fifth a review with more bars and a faster tempo.
+   setting, and five lessons that each add one thing, the fifth a review with more bars and a faster tempo. Home's
+   Continue card shows a bar with what a lesson is about: the symbols it is the first to use, else what it adds over
+   the lesson before, with the dot, tie or triplet when it has them (`src/ui/lib/lessons.ts`). Where the title names
+   something else, or the lesson adds what its exercises never have (a half rest in three-four), say what the bar must
+   show with `preview` (*Eighths with half notes*: `['note:eighth', 'note:half']`; *Dotted quarters in three-four*:
+   `['dotted:quarter']`; *Rests in three-four*: `['rest:quarter']`). A title that names a figure gets the figure
+   (*Eighth and two sixteenths*: `['figure:eighth-sixteenths']`, an eighth and two sixteenths that fill a beat; also
+   *Eighth-note pairs*, *Dotted quarter + eighth* and *Four sixteenths*); a new figure gets its id and notes in
+   `FIGURES`, `src/game/intro.ts`. Every exercise of the lesson shows it too, with what the lesson introduces
+   and its dot or tie (`makeLessonRun` in `src/ui/store.tsx`), so `preview` names only what most exercises of the
+   lesson can have.
 2. **Text:** `path.u{n}.title` and `path.u{n}.l1` … `l5` in `en.json`.
 3. **Place it:** add `['rhythm', n]` to `ORDER` in `src/game/tracks.ts`, where it belongs in the Learning path
    (DESIGN.md §8.2: rhythm units take turns with the note units). The path numbers its units in that order.
 4. **Run `npm test`.** `src/game/path.test.ts` checks the numbering, the texts, that every lesson can be played, and
-   the teaching order of §8.2 in DESIGN.md; `src/game/tracks.test.ts` checks the path order.
+   the teaching order of §8.2 in DESIGN.md; `src/game/tracks.test.ts` checks the path order, and
+   `src/ui/lib/helpers.test.ts` that each lesson's Home preview shows the symbols it introduces, and all of what it is
+   about (but in the unit review).
 
 Then link it from the chapter that explains it: the chapter's `units` in `chapters.ts` (by its number in the path),
 its row of DESIGN.md §9.1 and `LEARN-CHAPTERS.md` §5.
@@ -107,15 +132,19 @@ its row of DESIGN.md §9.1 and `LEARN-CHAPTERS.md` §5.
 
 Note units (DESIGN.md §8.2) work the same way, in `src/game/notesPath.ts`:
 
-1. **Data:** add a `unit('notes' | 'keys', n, glyph, base, lessons)` to `NOTES_UNITS` or `KEYS_UNITS`. The base and
-   each lesson are Read notes settings (clefs, keys, mix keys, input, range, extra signs, count, timer, and the
-   `tasks` read, write and hear, the positions it draws from `only` and the one it stresses `stress`); a lesson's
-   preset is laid over its unit's base, and the Read notes defaults fill the rest. First notes units come from
-   `FIRST_NOTES` (`pitchUnit`): a new note there is one entry, with its name and staff position.
+1. **Data:** add a `unit('notes' | 'keys', n, glyph, base, lessons)` to `NOTES_UNITS` or `KEYS_UNITS`. The glyph is
+   what the unit's node on the Path shows: signs or a short figure as written (`'1♯'`, `'3♭'`), or for a word a
+   message key (`'path.keys.u6.glyph'`, *Mix*), so it is translated. The base and each lesson are Read notes settings
+   (clefs, keys, mix keys, input, range, extra signs, count, timer, and the `tasks` read, write and hear, the positions
+   it draws from `only` and the one it stresses `stress`); a lesson's preset is laid over its unit's base, and the Read
+   notes defaults fill the rest. First notes units come from `FIRST_NOTES` (`pitchUnit`): a new note there is one
+   entry, with its name and staff position. A lesson with a key signature or extra signs needs nothing more for its
+   sign: every round, and Home's preview, is picked to show it (`noteLessonSeed`, `noteLessonMisses`).
 2. **Text:** `path.notes.u{n}.title` and `l1` … `l5` (or `path.keys.…`, `path.pitch.…`) in `en.json`.
 3. **Place it:** add it to `ORDER` in `src/game/tracks.ts`.
 4. **Run `npm test`.** `src/game/notesPath.test.ts` checks the numbering, the texts, that every preset is valid and
-   can be played, and the order of the units; `src/game/tracks.test.ts` the path order.
+   can be played, that every Keys round asks for its sign, and the order of the units; `src/game/tracks.test.ts` the
+   path order.
 
 ## Skill levels and achievements
 

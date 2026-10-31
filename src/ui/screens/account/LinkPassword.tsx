@@ -4,6 +4,10 @@
  * - New password (#/reset/<token>): a new password → signed in, and every other device signed out.
  * The link is checked first, so a used or expired one says so before anyone types a password. On success the token
  * leaves the history (replace), and Settings says what happened.
+ * Someone else signed in on this device: who, and Sign out before the form, with its confirm opening on Remove. An
+ * invite's own account signed in (another tab accepted it, and the store took that up): Settings, as after accepting.
+ * Signing in with the link straight away, or after Sign out with Keep, adds the progress on this device to the link's
+ * account, as a first sign-in on a device does; the card says so.
  */
 import { useEffect, useRef, useState } from 'react';
 import { PASSWORD_MIN, type LinkCheckResponse, type Me } from '../../../../shared/api';
@@ -13,8 +17,10 @@ import { useAccount } from '../../account';
 import { ErrorRetry, FormError, HiddenUsername, onSubmit, PasswordField, SubmitButton, TextField } from '../../components/Form';
 import { FocusedPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
-import { errorMessage, failureOf, fieldError, formError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
+import { screenHeading } from '../../lib/screenFocus';
+import { errorMessage, failureOf, fieldError, formError, nameCharactersError, nameIsBlank, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
 import { Link, navigate } from '../../router';
+import { SignOut, useRefocus } from './AccountSection';
 
 type Kind = 'invite' | 'reset';
 
@@ -40,9 +46,14 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState<Failure | null>(null);
   const [nameEmpty, setNameEmpty] = useState(false);
+  const [badName, setBadName] = useState<string | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const mounted = useMounted();
+  // Signed out (someone else was): the form's first field, which replaced the Sign out button.
+  const refocus = useRefocus(() => (kind === 'invite' ? nameRef : passwordRef).current);
+  // The link stopped working after the check: the message takes the place of the form, which had the focus.
+  const refocusHeading = useRefocus(screenHeading);
 
   useEffect(() => {
     let live = true;
@@ -63,6 +74,14 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
       live = false;
     };
   }, [kind, token, attempt]);
+
+  // An invited account cannot sign in, so the invite's own account signed in means it was accepted, in another tab
+  // with the same link (opened twice from the email). Not someone else to sign out: the link is used, and leaves the
+  // history.
+  const accepted = kind === 'invite' && check.state === 'good' && account.me?.email === check.link.email;
+  useEffect(() => {
+    if (accepted) navigate('/settings', { replace: true });
+  }, [accepted]);
 
   const title = t(kind === 'invite' ? 'invite.title' : 'reset.title');
   const back = { back: '/' as const, backLabel: t('invite.back') };
@@ -85,11 +104,33 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
   }
 
   const { link } = check;
+  const other = account.me && account.me.email !== link.email ? account.me : null;
+  const head = {
+    title: kind === 'invite' ? t('invite.welcome', { name: link.name }) : title,
+    docTitle: title,
+    sub: t(kind === 'invite' ? 'invite.choose' : 'reset.choose', { email: link.email }),
+    ...back,
+  };
+  // On its way to Settings: no form for a link that is used.
+  if (accepted) return <FocusedPage {...head}>{null}</FocusedPage>;
+  if (other) {
+    return (
+      <FocusedPage {...head}>
+        <div className="set-card">
+          <p className="row-pad acct-lead">{t('invite.signedInAs', { name: other.name })}</p>
+          <SignOut account={account} removeFirst onSignedOut={refocus} />
+        </div>
+      </FocusedPage>
+    );
+  }
+
   const submit = async (): Promise<void> => {
     setFail(null);
-    const noName = kind === 'invite' && !name.trim();
+    const noName = kind === 'invite' && nameIsBlank(name);
+    const bad = kind === 'invite' ? nameCharactersError(name) : null;
     setNameEmpty(noName);
-    if (noName) {
+    setBadName(bad);
+    if (noName || bad) {
       nameRef.current?.focus();
       return;
     }
@@ -114,6 +155,7 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
       const f = failureOf(e);
       if (f.code === 'link_invalid') {
         setCheck({ state: 'bad' });
+        refocusHeading();
         return;
       }
       setFail(f);
@@ -122,13 +164,12 @@ function LinkPassword({ kind, token }: { kind: Kind; token: string }): JSX.Eleme
   };
 
   return (
-    <FocusedPage title={kind === 'invite' ? t('invite.welcome', { name: link.name }) : title} docTitle={title}
-      sub={t(kind === 'invite' ? 'invite.choose' : 'reset.choose', { email: link.email })} {...back}>
+    <FocusedPage {...head}>
       <form className="acct-form" noValidate onSubmit={onSubmit(() => void submit(), busy)}>
         <HiddenUsername email={link.email} />
         {kind === 'invite' && (
           <TextField label={t('invite.name')} autoComplete="name" name="name" value={name} onChange={setName} maxLength={NAME_MAX} inputRef={nameRef}
-            error={nameEmpty ? t('account.nameEmpty') : null} />
+            error={nameEmpty ? t('account.nameEmpty') : badName} />
         )}
         <PasswordField label={t(kind === 'invite' ? 'invite.password' : 'reset.password')} autoComplete="new-password" name="new-password" value={password}
           onChange={setPassword} inputRef={passwordRef} hint={t('form.passwordRules', { min: PASSWORD_MIN })} error={fieldError(fail, 'password')} />

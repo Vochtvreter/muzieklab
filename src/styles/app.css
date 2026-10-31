@@ -24,6 +24,11 @@
   flex-direction: column;
   overflow-y: auto;
   scrollbar-width: none;
+  /*
+   * Room for the focus ring of a control that Tab scrolls to the box's top or bottom edge, as on .page: on some screens
+   * this box scrolls, not the page (the Scales hub on a phone on its side and on a laptop, desktop Home).
+   */
+  scroll-padding: 6px 0;
 }
 .shell-main::-webkit-scrollbar {
   display: none;
@@ -46,6 +51,16 @@
 }
 .brand:hover {
   color: var(--ink);
+}
+/* The header's brand is a link Home, a 24 px word: a 44 px tap around it, as tall as the items beside it, in the
+   header's room above and below it. */
+.topbar .brand {
+  position: relative;
+}
+.topbar .brand::after {
+  content: '';
+  position: absolute;
+  inset: -10px -8px;
 }
 .brand--home {
   font-size: 21px;
@@ -225,6 +240,8 @@
   padding: calc(var(--pt) - 36px + env(safe-area-inset-top, 0px)) var(--px) calc(var(--pb) - 12px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   scrollbar-width: none;
+  /* Room for the focus ring of a control that Tab scrolls to the page's top or bottom edge, as in the side menus. */
+  scroll-padding: 6px 0;
 }
 .page::-webkit-scrollbar {
   display: none;
@@ -314,11 +331,22 @@
 .screen-title {
   margin: 0;
   flex: 1;
-  min-width: 0;
+  /* Never narrower than its longest word, which would draw over what is beside it: a text link there wraps instead. */
+  min-width: min-content;
   font-family: var(--font-display);
   font-weight: 500;
   font-size: 20px;
   line-height: 1.2;
+}
+/* A text link beside the title (the Scales hub, Key) takes two lines when the two do not fit on one (Dutch at 320 px). */
+.screen-head > .text-btn--link {
+  text-align: right;
+}
+/* A narrow phone: a title with a text link beside it is smaller, so in Dutch both still fit on one line at 360 px. */
+@media (max-width: 374.98px) {
+  .screen-head--link > .screen-title {
+    font-size: 18px;
+  }
 }
 .muted-text {
   font-size: 13px;
@@ -380,8 +408,9 @@
 .tone-gold {
   color: var(--gold-ink);
 }
+/* Red words use --miss-ink: --miss, a fill, is 4.3:1 on the pad's card (desktop Play's MISS). */
 .tone-miss {
-  color: var(--miss);
+  color: var(--miss-ink);
 }
 .tone-ink {
   color: var(--ink);
@@ -404,6 +433,10 @@
   font-size: 16px;
   text-align: center;
   text-decoration: none;
+}
+/* A word cannot break, so a narrow button would squeeze its icon instead (Dutch "Gekopieerd" left no check). */
+.btn > svg {
+  flex: none;
 }
 .btn--accent {
   background: var(--accent);
@@ -430,6 +463,12 @@
   color: var(--ink);
   border: 1.5px solid var(--line);
   border-radius: 16px;
+}
+/* Disabled (Hint once asked, Start over once the scale is done, Read notes' Lower and Higher once the note is checked):
+   dimmed as the signs beside them are, so a tap that does nothing is no surprise. A busy button, or one with nothing to
+   do, is aria-disabled instead and keeps its look (DESIGN.md §11). */
+.btn--outline:disabled {
+  opacity: 0.5;
 }
 .btn--blocked,
 .btn--blocked:disabled {
@@ -703,6 +742,8 @@
   flex: 1 0 auto;
   background: var(--accent);
   color: var(--on-fill);
+  /* No gold is 3:1 on the slate fill, which turns light in dark (1.2:1 and 1.1:1): the ring is the ink on the fill. */
+  --focus: var(--on-fill);
   border-radius: 22px;
   padding: 20px;
   display: flex;
@@ -799,7 +840,7 @@
   color: var(--accent-ink);
 }
 .tiles--fill .tile--upcoming {
-  color: var(--on-fill-muted);
+  color: var(--on-tile-muted);
 }
 .tile--btn {
   border: 0;
@@ -1084,6 +1125,15 @@
   --pb: 14px;
   gap: 12px;
 }
+/*
+ * On a phone the units scroll, not the page, and Start sits on the page's bottom edge: the page pads --pb - 12 px under
+ * it, 6 px here, so its focus ring shows whole (DESIGN.md §9 Scrolling; with 2 px the ring lost its bottom line).
+ */
+@media (max-width: 699.98px) {
+  .path {
+    --pb: 18px;
+  }
+}
 /* vw, not %: the units use --px too, and the page always spans the window. */
 .path--tablet {
   --px: max(24px, calc((100vw - 720px) / 2));
@@ -1191,16 +1241,24 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 2px 10px;
+  /* Once the line wraps (320 px), the room Theory: Learn's 44 px box and its focus ring need under the stars. */
+  gap: 12px 10px;
   font-size: 13px;
 }
 .track-theory {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  min-height: 32px;
+  /* A 44 px touch target; the negative margins keep the line 32 px tall. */
+  min-height: 44px;
+  margin-block: -6px;
   font-weight: 600;
   text-decoration: none;
+}
+/* Its ring reaches over the units under it: lifted, so the current unit's halo does not paint over it. */
+.track-theory:focus-visible {
+  position: relative;
+  z-index: 1;
 }
 .units {
   list-style: none;
@@ -1212,6 +1270,7 @@
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
+  scroll-padding: 6px 0;
 }
 /* The units' scroll box reaches the window's edges, so its scrollbar is at the edge, as a page's is (DESIGN.md §9). */
 .path:not(.path--desk) .units {
@@ -1294,7 +1353,9 @@
   gap: 4px;
   padding: 2px 0 20px;
 }
-.unit--locked .unit-body {
+/* A locked unit's title and lock are faded; the unlock hint under the first one is not: it is the one line that says
+   how to open the units, and faded with them it was 2.4:1 in light. */
+.unit--locked .unit-head {
   opacity: 0.6;
 }
 .unit-title {
@@ -1455,9 +1516,13 @@ button.lesson-item:active:not(:disabled) {
     box-shadow: inset 0 0 0 1.5px var(--accent);
   }
 }
+/* A unit's five lessons with four stars each (the diamond, the 4th star) take a second line on a 320 px phone, instead
+   of running out of the unit and making the list scroll sideways. The lines are 30 px apart, more than the 25 px each
+   lesson's hit area reaches below its stars and the 4 px above: a tap on one line never opens the other's. */
 .unit-stars {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 30px 6px;
   font-size: 12px;
   letter-spacing: -1px;
   color: var(--rule);
@@ -1465,9 +1530,12 @@ button.lesson-item:active:not(:disabled) {
 .unit-stars .has-stars {
   color: var(--reward-star);
 }
-/* Each lesson's stars: a button (play it again) once unlocked. The 44 px hit area overlaps its neighbours' gaps. */
+/* Each lesson's stars: a button (play it again) once unlocked. The 44 px hit area overlaps its neighbours' gaps. They
+   are 15 px tall whatever font draws them: ★ is not in Figtree, and the font a device draws it with set their height
+   (14 px with DejaVu Sans, 15 px with Inter), which left a hit area of 43 px. */
 .lesson-stars {
   position: relative;
+  height: 15px;
   border: 0;
   background: transparent;
   padding: 0;
@@ -1479,10 +1547,12 @@ button.lesson-stars {
   cursor: pointer;
   border-radius: 6px;
 }
+/* 4 + 15 + 25 = 44 px: from the unit's head, 4 px above the stars (it lies over anything higher, and a tap on it opens
+   the unit), down into the room under the unit. */
 button.lesson-stars::after {
   content: '';
   position: absolute;
-  inset: -14px -3px;
+  inset: -4px -3px -25px;
 }
 button.lesson-stars.has-stars {
   color: var(--reward-star);
@@ -1707,6 +1777,8 @@ button.lesson-stars:hover {
   --pt: 52px;
   --pb: 26px;
   gap: 16px;
+  /* Scrolling to a control (Tab, or a script) leaves it above the sticky Start button. */
+  scroll-padding-bottom: 80px;
 }
 .switch-row {
   flex: none;
@@ -1769,7 +1841,10 @@ button.lesson-stars:hover {
 .bars-tempo {
   display: flex;
   gap: 18px;
-  align-items: flex-end;
+}
+/* The labels at the top, level when one takes two lines (the tempo value at 320 px), the stepper and slider below. */
+.bars-tempo .field {
+  justify-content: space-between;
 }
 .stepper {
   display: flex;
@@ -1788,7 +1863,7 @@ button.lesson-stars:hover {
   font-weight: 700;
   border-radius: 10px;
 }
-.stepper button:disabled {
+.stepper button[aria-disabled='true'] {
   color: var(--rule);
 }
 .stepper span {
@@ -1800,13 +1875,17 @@ button.lesson-stars:hover {
 }
 .label--split {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px;
+  gap: 2px 8px;
 }
+/* Whole: when it does not fit beside its label (the tempo at 320 px), it takes a line of its own, right aligned. */
 .label-value {
+  margin-left: auto;
   font-family: var(--font-mono);
   color: var(--ink);
   letter-spacing: 0;
+  white-space: nowrap;
 }
 .tempo-range {
   width: 100%;
@@ -1822,7 +1901,11 @@ button.lesson-stars:hover {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 32px;
+  /* A 44 px touch target; the negative margins keep the row 32 px tall. Above the options it opens, so they do not
+     take its lower edge. */
+  position: relative;
+  min-height: 44px;
+  margin-block: -6px;
   border: 0;
   background: transparent;
   padding: 0;
@@ -1861,6 +1944,17 @@ button.lesson-stars:hover {
 .more-row .seg {
   flex: none;
   width: 238px;
+}
+/* Under 370 px a label no longer fits beside its 238 px control, which drew over it (Metron…): stack them, as in Settings. */
+@media (max-width: 369.98px) {
+  .more-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .more-row .seg {
+    width: auto;
+  }
 }
 .preview-card {
   flex: none;
@@ -1908,7 +2002,8 @@ button.lesson-stars:hover {
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  color: var(--faint);
+  /* Text the player reads, not a disabled control: --faint was 3.1:1 on the card (fieldContrast.test.ts). */
+  color: var(--muted);
   margin: 0;
 }
 .start-btn {
@@ -2072,10 +2167,19 @@ button.lesson-stars:hover {
   align-items: center;
   gap: 14px;
 }
-/* Tall phones and tablets have room under the staff: a bigger pendulum reads better at arm's length. */
-@media (min-height: 700px) and (max-width: 1099.98px) {
+/*
+ * Tall phones have room under the staff: a bigger pendulum reads better at arm's length. A phone under 800 px tall has
+ * not: with eight bars the pad is at its floor, so the pendulum gives up height and Skip stays on the screen (under
+ * 660 px tall it is as high as the digits' row, below).
+ */
+@media (min-height: 800px) and (max-width: 1099.98px) {
   .play .beats--analog {
     height: 84px;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
+  .play .beats--analog {
+    height: 52px;
   }
 }
 .analog {
@@ -2237,15 +2341,26 @@ button.lesson-stars:hover {
     height: auto;
     max-height: 70%;
   }
+  /* The pendulum as high as the digits' row: it shares the row with the lesson line, and its 20 px more pushed the
+     timing lane's lower row, the one played last, out of the staff card. */
+  .play .beats--analog {
+    height: 44px;
+  }
+  /* The room for a triplet's 3 comes out of the card's padding above the staff (10 px, not 14 px), so the timing
+     lane's lower row stays in the card, where it is without a triplet. */
+  .play-staff--tuplets {
+    padding-top: 10px;
+  }
 }
 
 /*
- * A phone browser (DESIGN.md §9): its toolbars leave 390 × 664 on an iPhone 14 and 375 × 553 on an iPhone SE, not the
- * whole screen. Play still may not scroll, so the gaps and the page's padding tighten first, then the pad gives up
- * height down to a smaller minimum; below 600 px the staff is drawn at 0.8 as well (Play.tsx, SHORTER_PHONE in
- * hooks.ts). Calibration's pad follows the same rules (its own block below).
+ * A phone browser (DESIGN.md §9): its toolbars leave 390 × 664 on an iPhone 14, 430 × 739 on an iPhone Pro Max and
+ * 375 × 553 on an iPhone SE, not the whole screen. Play still may not scroll, so under 800 px the gaps and the page's
+ * padding tighten first, then the pad gives up height down to a smaller minimum; below 660 px the staff is drawn at
+ * 0.8 as well (Play.tsx, SHORTER_PHONE in hooks.ts). With the steps at 700 and 600 px, eight bars ran past phones
+ * 700–760 and 600–660 px tall and cut off Skip. Calibration's pad follows the same rules (its own block below).
  */
-@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
   .play {
     --pt: 46px;
     --pb: 24px;
@@ -2265,8 +2380,14 @@ button.lesson-stars:hover {
     height: min(150px, 100cqh - 16px);
     width: auto;
   }
+  /* Play does not scroll, and here Skip ends 0–2 px above the page's bottom edge, which cut off the bottom of a ring
+     drawn outside it: this one is drawn inside its 44 px box, clear of the word. Read notes' and Scales' Skip
+     (.nplay-skip) keep the room for theirs. */
+  .play .skip-link:not(.nplay-skip):focus-visible {
+    outline-offset: -3px;
+  }
 }
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .play {
     --pt: 44px;
     --pb: 22px;
@@ -2275,13 +2396,18 @@ button.lesson-stars:hover {
   .play-staff {
     padding: 8px 8px 6px;
   }
+  /* Low enough for eight bars with triplets, whose staff keeps room for the 3 (3 px more, DESIGN.md §5.7). */
   .play .pad,
   .cal .pad {
-    min-height: 76px;
+    min-height: 72px;
   }
   /* Play's Skip link; Read notes and Scales set their own margins (.nplay-skip). */
   .skip-link {
     margin-top: 0;
+  }
+  /* The pendulum as high as the digits' row. */
+  .play .beats--analog {
+    height: 44px;
   }
 }
 /* A pad squeezed under 104 px (8 bars on a short phone): the note glyph no longer fits in the ring, "Tap" does. */
@@ -2572,6 +2698,54 @@ button.lesson-stars:hover {
   font-size: 14px;
   color: var(--ink);
 }
+/*
+ * A shorter desktop window: Play does not scroll there either (DESIGN.md §9 Scrolling). Under 822 px tall the room
+ * under the pad row is smaller (12 px, not 36 px), which shows only when 16 bars with the pendulum and the room for a
+ * triplet's 3 fill a 1280 × 800 window (the boards' size) or a 1180 × 820 tablet on its side. Under 800 px (a 1280 × 720
+ * laptop) the spacing tightens and the stat cards are lower, so two staff rows, a timing lane of four rows (16 bars) and
+ * the pendulum fit. Under 720 px (a 1366 × 768 laptop's window, 1366 × 657 under Chrome's bars) the header, the spacing
+ * and the stat cards tighten once more and the pad is lower (160 px), as the 16 bars ran 53 px past the window. Read
+ * notes and Scales have steps of their own (.nplay-main, notes.css) and scroll on a laptop.
+ */
+@media (min-width: 1100px) and (max-height: 821.98px) {
+  .dplay-main:not(.nplay-main) {
+    padding-bottom: 12px;
+  }
+}
+@media (min-width: 1100px) and (max-height: 799.98px) {
+  .dplay-main:not(.nplay-main) {
+    padding: 20px 40px 16px;
+    gap: 16px;
+  }
+  .dplay-staff {
+    padding: 20px 40px 16px;
+  }
+  .dstats .stat {
+    padding: 12px 18px;
+  }
+}
+@media (min-width: 1100px) and (max-height: 719.98px) {
+  .dplay:not(.nplay-desk):not(.splay-desk) > .dplay-head {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .dplay-main:not(.nplay-main) {
+    padding: 12px 40px;
+    gap: 12px;
+  }
+  .dplay-staff {
+    padding: 14px 40px 10px;
+  }
+  .dpad {
+    min-height: 160px;
+  }
+  .dstats {
+    gap: 8px;
+  }
+  .dstats .stat {
+    padding: 8px 16px;
+  }
+}
 
 /* ---------- Play (tablet) ---------- */
 /*
@@ -2709,6 +2883,35 @@ button.lesson-stars:hover {
   }
   .tplay-main .pad {
     min-height: 96px;
+  }
+}
+/*
+ * A tablet on its side in Safari, under its bars (1024 × 694 on a 9.7" iPad, 1080 × 736 on a 10.2"): tighter still, so
+ * 16 bars, two staff rows and a timing lane of four, fit with the pad and Skip to results. The page keeps its 12 px at
+ * the bottom, which Skip's -10 px margin reaches into.
+ */
+@media (max-height: 759.98px) {
+  .dplay-head--tablet {
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    padding-bottom: 8px;
+  }
+  .tplay-main {
+    padding-top: 10px;
+    gap: 8px;
+  }
+  .tplay-staff {
+    padding: 10px 24px 8px;
+  }
+  .tplay-staff--echo {
+    padding: 0;
+  }
+  .tplay-count,
+  .tplay-combo {
+    padding: 4px 24px;
+  }
+  /* As low as on the shortest phones (DESIGN.md §9): with the pendulum and a triplet's 3 the pad gives up that much. */
+  .tplay-main .pad {
+    min-height: 72px;
   }
 }
 
@@ -2957,10 +3160,11 @@ button.lesson-stars:hover {
   border-color: var(--accent-ring);
   color: var(--accent-ink);
 }
+/* The Pause menu keeps its rows whole in a sheet taller than the screen (a phone on its side): the sheet scrolls. */
 .menu {
+  flex: none;
   border: 1px solid var(--divider);
   border-radius: 18px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -2983,6 +3187,20 @@ button.lesson-stars:hover {
 }
 .menu-item + .menu-item {
   border-top: 1px solid var(--divider);
+}
+/*
+ * The rows round the menu's corners themselves (its 18 px less its border): a menu that clipped them would cut off the
+ * focus ring outside a row. The focused row is lifted, so the next row's background does not paint over its ring.
+ */
+.menu-item:first-child {
+  border-radius: 17px 17px 0 0;
+}
+.menu-item:last-child {
+  border-radius: 0 0 17px 17px;
+}
+.menu-item:focus-visible {
+  position: relative;
+  z-index: 1;
 }
 .menu-item:active:not(:disabled) {
   transform: none;
@@ -3078,6 +3296,10 @@ button.lesson-stars:hover {
 }
 .score-sub {
   font-size: 14px;
+}
+/* The XP ("+14 XP") is one piece: a long score line breaks before it, not between the number and XP. */
+.score-sub b {
+  white-space: nowrap;
 }
 .counts-card {
   flex: none;
@@ -3191,6 +3413,16 @@ button.lesson-stars:hover {
 }
 .copy-link:hover {
   color: var(--ink);
+}
+/* Where copying is not allowed: the code itself under Copy code, selected, with the hint, on a line of its own. */
+.code-shown {
+  flex: 1 0 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.code-shown .copy-value {
+  flex: none;
 }
 /*
  * Results and the round summaries scroll when they are taller than the screen (8 bars, a 1280 × 800 laptop, a small
@@ -3485,12 +3717,15 @@ button.lesson-stars:hover {
 .row-link:hover {
   color: var(--ink);
 }
+/* A long word with no break point (an email, a one-word name, a route in a report's title) wraps rather than running
+   under the chevron and out of the card. */
 .row-link-text {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
+  overflow-wrap: anywhere;
 }
 .row-link-text b {
   font-size: 15px;
@@ -3524,7 +3759,9 @@ button.lesson-stars:hover {
   flex: none;
   width: 238px;
 }
-/* Settings → Metronome style: the chosen counter ticking at 80 BPM, on the ground colour like a small stage. */
+/* Settings → Metronome style: the chosen counter ticking at 80 BPM, on the ground colour like a small stage. The gap
+   is 18 px, but gives way down to 10 px where the preview is narrower than the four Digital beats (160 px), the tempo
+   (44 px), 18 px and 2 px to spare: a 320 px screen, a tablet's third column. */
 .look-preview {
   margin-top: 4px;
   padding: 10px 16px;
@@ -3533,13 +3770,16 @@ button.lesson-stars:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  column-gap: clamp(10px, calc(100% - 206px), 18px);
   min-height: 84px;
 }
 .look-preview .beats {
   align-self: center;
 }
+/* One line, as on Play: squeezed, it broke after the "=". */
 .look-preview-tempo {
+  flex: none;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
@@ -3582,8 +3822,9 @@ button.lesson-stars:hover {
   flex: 1;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  column-gap: 8px;
 }
 .about-version b {
   font-size: 15px;
@@ -3592,9 +3833,11 @@ button.lesson-stars:hover {
   font-size: 14px;
   font-weight: 600;
 }
-/* The test site's branch (VITE_DEPLOY_BRANCH), after the version: cut short when it is long. */
+/* The test site's branch (VITE_DEPLOY_BRANCH), after the version. Where the row is narrow (a tablet's third column,
+   320 px) it goes under the version instead of shrinking to nothing; it is cut short only when longer than the row. */
 .about-version .about-branch {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3635,20 +3878,22 @@ button.lesson-stars:hover {
 .reset-btn svg {
   flex: none;
 }
+/* The question and its line, then Cancel and the verb under them (.confirm-actions), as in every confirm (ConfirmAction,
+   DESIGN.md: Destructive confirm). Beside the buttons, a longer language left the words a column a word or two wide. */
 .reset-confirm {
-  min-height: 60px;
-  padding: 6px 0;
+  padding: 10px 0 12px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
 }
+/* The question can name an account (Block {name}?): a one-word name wraps rather than running out of the card. */
 .reset-text {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 .reset-text b {
   font-size: 14.5px;
@@ -3718,6 +3963,8 @@ button.lesson-stars:hover {
   border-radius: 24px;
   background: var(--accent);
   color: var(--on-fill);
+  /* The release's try link sits on the slate fill: the ring is the ink on the fill, as on the Continue card. */
+  --focus: var(--on-fill);
 }
 .cl-latest-head {
   grid-area: head;
@@ -3917,16 +4164,17 @@ button.lesson-stars:hover {
   font-size: 14px;
   line-height: 1.4;
 }
+/* At least as wide as the English words, and wider for a longer one (Dutch OPGELOST): no fixed-width text boxes. */
 .cl-kind {
   flex: none;
-  width: 54px;
+  min-width: 54px;
   margin-top: 1px;
   text-align: center;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 3px 0;
+  padding: 3px 6px;
   border-radius: 6px;
 }
 .cl-kind--new {
@@ -4033,7 +4281,7 @@ button.lesson-stars:hover {
   gap: 12px;
 }
 .changelog--wide .cl-kind {
-  width: 56px;
+  min-width: 56px;
 }
 .changelog--wide .cl-earlier {
   gap: 10px;
@@ -4152,6 +4400,8 @@ button.lesson-stars:hover {
   flex: 0 1 auto;
   min-height: 120px;
   overflow-y: auto;
+  /* Room for the focus ring of a release that Tab scrolls to the list's top or bottom edge. */
+  scroll-padding: 6px 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -4159,7 +4409,10 @@ button.lesson-stars:hover {
   border-radius: 20px;
   background: var(--paper);
 }
+/* A row keeps the height of its text (flex: none): shrunk to its min-height in the scrolling list, a title and a line
+   on two lines each (in Dutch) ran into the next row. */
 .cl-nav-item {
+  flex: none;
   width: 100%;
   min-height: 60px;
   border: 0;
@@ -4208,6 +4461,7 @@ button.lesson-stars:hover {
 .cl-card--latest {
   background: var(--accent);
   color: var(--on-fill);
+  --focus: var(--on-fill);
 }
 .cl-card-staff {
   position: absolute;
@@ -4237,9 +4491,10 @@ button.lesson-stars:hover {
   font-size: 30px;
   line-height: 1.12;
 }
-/* The staff drawing keeps the top right corner: a long title wraps before it instead of running under it. */
+/* The staff drawing keeps the top right corner: a long title wraps before it instead of running under it. The staff
+   covers the card's right 280 px (.cl-card-staff), 32 of them its padding; 12 more keep the title off it. */
 .cl-card--latest .cl-card-head {
-  padding-right: min(240px, 25%);
+  padding-right: 260px;
 }
 .cl-card--latest .cl-card-title {
   font-weight: 600;
@@ -4268,7 +4523,7 @@ button.lesson-stars:hover {
   line-height: 1.45;
 }
 .cl-card-changes .cl-kind {
-  width: 58px;
+  min-width: 58px;
   margin-top: 2px;
 }
 .cl-card-changes.cl-fill-changes {
@@ -4373,11 +4628,13 @@ button.lesson-stars:hover {
 .cal-stat--right {
   text-align: right;
 }
+/* One line, "7 of 16", also where the card is narrower (beside the feedback tool's tab, feedback.css). */
 .cal-count {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 26px;
   line-height: 1.1;
+  white-space: nowrap;
 }
 .cal-count span {
   font-size: 15px;
@@ -4649,7 +4906,7 @@ button.lesson-stars:hover {
 }
 
 /* A phone browser (see Play): tighter gaps first, then a smaller intro and card on the shortest screens; the pad shrinks. */
-@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
   .cal {
     --pt: 46px;
     --pb: 24px;
@@ -4672,7 +4929,7 @@ button.lesson-stars:hover {
     min-width: 0;
   }
 }
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .cal {
     --pt: 44px;
     --pb: 22px;
@@ -4799,6 +5056,18 @@ button.lesson-stars:hover {
   border-radius: 12px;
   font-size: 15px;
 }
+/*
+ * Under 375 px the button leaves the text too narrow a column for its words once it says Play again (nl Nog een keer):
+ * it goes full width under the date and text, as on desktop.
+ */
+@media (max-width: 374.98px) {
+  .daily-card:not(.daily-card--desk) {
+    flex-wrap: wrap;
+  }
+  .daily-card:not(.daily-card--desk) .daily-btn {
+    flex: 1 0 100%;
+  }
+}
 /* Desktop: the Play button runs the full width under the date and text. */
 .daily-card--desk {
   flex-direction: column;
@@ -4888,26 +5157,34 @@ button.lesson-stars:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 2px;
+  gap: 4px 0;
   font-size: 13px;
   color: var(--muted);
 }
+/* Each › is drawn after its rank, in a margin kept for it outside the rank's box: a line that wraps ends with one
+   instead of starting with one, and none sits on the current rank's pill. Screen readers skip it (the empty alt). */
 .ranks li {
+  position: relative;
   padding: 4px 8px;
   border-radius: 999px;
 }
-.ranks li + li::before {
+.ranks li:not(:last-child) {
+  margin-right: 10px;
+}
+.ranks li:not(:last-child)::after {
   content: '›';
-  margin: 0 8px 0 -6px;
+  content: '›' / '';
+  position: absolute;
+  left: 100%;
+  width: 10px;
+  text-align: center;
   color: var(--faint);
+  font-weight: 400;
 }
 .ranks li.is-current {
   background: var(--reward-soft);
   color: var(--reward-ink);
   font-weight: 700;
-}
-.ranks li + li.is-current::before {
-  margin-left: -8px;
 }
 /* Room for the bar and its label, which appears once the bar has filled. */
 .levelup-line {
@@ -5025,8 +5302,7 @@ button.lesson-stars:hover {
 .echo-play:disabled {
   opacity: 0.55;
 }
-.echo-play.is-playing:disabled {
-  opacity: 1;
+.echo-play.is-playing {
   box-shadow: 0 0 0 8px var(--accent-halo);
 }
 .echo-title {
@@ -5092,7 +5368,7 @@ button.lesson-stars:hover {
   opacity: 0.5;
 }
 /* The shortest phone browsers (375 × 553): a smaller play button and card, so the pad keeps its glyph. */
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   /* Later than .play-staff--echo, so the listen card gets this padding too (room for the play button's halo). */
   .echo-card {
     min-height: 200px;
@@ -5130,4 +5406,122 @@ button.lesson-stars:hover {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0.9;
+}
+
+/*
+ * Forced colors (a Windows contrast theme, DESIGN.md §11): backgrounds turn the page's colour and shadows go, so what
+ * is drawn only with them is drawn again in system colours. A switch gets an edge and a knob, in the selection colours
+ * when it is on; a filled button and desktop Play's key keep their shape with an edge; the current tab and Play's beat
+ * take the selection colours (the chosen options are in base.css). Every bar keeps an edge and fills in the text
+ * colour: the XP bar, an exercise's progress bar (Play, Read notes, Scales), the Path's Notes and rhythm bar, the hold
+ * bar in desktop Play's key (in the key's colours), Setup's difficulty and the pips of Calibration and Echo; the
+ * Learning path card's units on desktop Home are filled when done, in the selection colour when current, an edge when
+ * locked. A result's stars not earned, told apart only by their grey, are outlined. What has words on the selection
+ * colour is taken out of forced colors, as there: the plate the system draws behind words, in the page's colour, would
+ * hide them.
+ */
+@media (forced-colors: active) {
+  .switch {
+    outline: 2px solid CanvasText;
+    outline-offset: -2px;
+  }
+  .switch-knob {
+    background: CanvasText;
+  }
+  .switch.is-on {
+    background: Highlight;
+    outline-color: Highlight;
+  }
+  .switch.is-on .switch-knob {
+    background: HighlightText;
+  }
+  .btn--accent,
+  .btn--ink,
+  .btn--on-fill,
+  .keycap {
+    border: 2px solid ButtonText;
+  }
+  .nav-item.is-current .nav-pill,
+  .nav--top .nav-item.is-current {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .beats:not(.beats--analog) {
+    forced-color-adjust: none;
+  }
+  .beat {
+    color: CanvasText;
+  }
+  .beats-dot {
+    background: Highlight;
+  }
+  .beat.is-on {
+    color: HighlightText;
+  }
+  /* The count-in's ring, as the outlined circle it is in colour. */
+  .beats.is-count-in .beats-dot {
+    background: transparent;
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .beats.is-count-in .beat.is-on {
+    color: CanvasText;
+  }
+  .analog-dots span.is-on {
+    background: Highlight;
+  }
+  .xp-bar,
+  .progress,
+  .track-card-bar,
+  .path-card-seg,
+  .difficulty-bars span,
+  .pips span,
+  .echo-pips span {
+    border: 1px solid CanvasText;
+  }
+  .xp-bar > div,
+  .progress > div,
+  .track-card-bar > span,
+  .path-card-seg--done,
+  .difficulty-bars span.is-on,
+  .pips span.is-on,
+  .echo-pips span.is-on {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .path-card-seg--current {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  /* Calibrate's timing plot is drawn with fills alone: its axis and ticks in the text colour, the taps and their median
+     in the selection colour, and the last tap in the text colour, as it is in ink. */
+  .cal-axis,
+  .cal-tick {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .cal-median-line,
+  .cal-dot {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .cal-dot.is-last {
+    background: CanvasText;
+    border-color: Canvas;
+    box-shadow: 0 0 0 1.5px CanvasText;
+  }
+  /* Outside the hold bar's 5 px, which an edge inside would halve, in the colours of the key it is on. */
+  .keycap-bar {
+    outline: 1px solid ButtonText;
+  }
+  .keycap-bar > span {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+  .score-stars-row > :not(.is-on) {
+    forced-color-adjust: none;
+    color: Canvas;
+    -webkit-text-stroke: 1.5px CanvasText;
+  }
 }

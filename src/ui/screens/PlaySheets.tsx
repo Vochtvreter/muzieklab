@@ -6,6 +6,7 @@ import type { Prefs } from '../../game/storage';
 import { t } from '../../i18n';
 import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { Icon } from '../components/Icon';
+import { announce } from '../lib/announce';
 import { introFact, introName, introSection, NOTE_GLYPH, REST_GLYPH } from '../lib/intros';
 import { Link } from '../router';
 
@@ -260,6 +261,11 @@ interface PauseProps {
 }
 
 export function PauseContent(p: PauseProps): JSX.Element {
+  // Why it paused is read out as the sheet comes up with the focus on Resume, through the app's one live region
+  // (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen reader.
+  useEffect(() => {
+    if (p.interrupted) announce(t('pause.interrupted'));
+  }, [p.interrupted]);
   return (
     <>
       <div className="sheet-head">
@@ -299,7 +305,7 @@ export function PauseContent(p: PauseProps): JSX.Element {
       </div>
       <div className="sheet-note sheet-note--icon">
         <Icon name="metronome" size={18} strokeWidth={1.8} />
-        <span role={p.interrupted ? 'status' : undefined}>{t(p.interrupted ? 'pause.interrupted' : 'pause.note')}</span>
+        <span>{t(p.interrupted ? 'pause.interrupted' : 'pause.note')}</span>
       </div>
       {/* After an interruption Esc cannot restart the audio (not a user-activation key): no Esc shortcut then. */}
       <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={p.onResume} aria-keyshortcuts={p.desktop && !p.interrupted ? 'Escape' : undefined}>

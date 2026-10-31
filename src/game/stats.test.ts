@@ -1,6 +1,6 @@
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { generateExercise } from '../core/generator';
-import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteAnswer, type NoteSettings } from '../core/noteRound';
+import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteAnswer, type NoteSettings, type RoundNote } from '../core/noteRound';
 import { buildTimeline } from '../core/timeline';
 import type { JudgeResult, NoteResult } from '../core/types';
 import { cellPoints, materialLevel } from './cells';
@@ -18,7 +18,7 @@ import {
   rhythmSeconds,
   LISTEN_LEAD_IN_S,
 } from './stats';
-import { reviewOf } from './skills';
+import { levelChecks, reviewOf, skillContext } from './skills';
 import { defaultProgress, sanitizeProgress, shiftDay, type DayStats, type Progress } from './storage';
 
 const TODAY = '2026-10-25';
@@ -46,7 +46,8 @@ describe('recordRhythm', () => {
     expect(p.stats.days[TODAY]).toEqual({
       sec: Math.round(playedSeconds(tap)),
       rounds: 1,
-      acc: 84,
+      // 83.6%, rounded down as Results shows it (§6.3).
+      acc: 83,
       off: hits.reduce((s, n) => s + Math.round(n.offsetMs!), 0),
       hits: hits.length,
       cells: cellPoints(tap, r, 'normal'),
@@ -64,12 +65,38 @@ describe('recordRhythm', () => {
     expect(playedSeconds({ ...tap, settings: { ...tap.settings, countIn: 0 } })).toBeCloseTo(playedSeconds(tap), 5);
   });
 
+  it('counts a round skipped to Results only up to where the music stopped, with the count-in', () => {
+    // Stopped 4 s into the bars: those 4 s, a bar of count-in and the lead-in.
+    expect(recordRhythm(defaultProgress(), tap, r, TODAY, 'normal', null, 4).stats.days[TODAY].sec).toBe(Math.round(4 + 4 * (60 / 90) + 0.4));
+    expect(rhythmSeconds(tap, 0, 4)).toBeCloseTo(4 + 4 * (60 / 90) + 0.4, 5);
+    // Played to the end, the clock runs on past the last note: the whole length, as before.
+    expect(recordRhythm(defaultProgress(), tap, r, TODAY, 'normal', null, 999).stats.days[TODAY].sec).toBe(Math.round(playedSeconds(tap)));
+    // Echo's Done: every listen, and the part tapped back.
+    expect(rhythmSeconds(echo, 1, 2) - rhythmSeconds(echo, 1)).toBeCloseTo(2 - 16 * (60 / 90), 5);
+  });
+
+  it('counts the cells of a round skipped to Results only up to where the music stopped: the rest was never played', () => {
+    // 16 bars of quarters at 60 BPM, a note a second: the first 4 tapped Perfect, then Skip to results 4 s in. Results
+    // counts the other 60 as missed, and the skill map once did too: Quarter 6%, a weak spot.
+    const quarters = generateExercise({ ...DEFAULT_SETTINGS, hold: false, notes: ['quarter'], rests: [], bars: 16, tempo: 60 }, 1);
+    const skipped = result(quarters, (i) => (i < 4 ? ['perfect', 0] : ['miss', null]), 6.25, 0);
+    const cells = (playedTo?: number): DayStats['cells'] => recordRhythm(defaultProgress(), quarters, skipped, TODAY, 'normal', null, playedTo).stats.days[TODAY].cells;
+    expect(cells(4)).toEqual({ quarter: [400, 400] });
+    // A note the music played without a tap is still a miss.
+    expect(cells(5.5)).toEqual({ quarter: [400, 600] });
+    // Played to the end, every note counts.
+    expect(cells()).toEqual({ quarter: [400, 6400] });
+    expect(cells(999)).toEqual({ quarter: [400, 6400] });
+    // Results' accuracy stays the round's, the unplayed notes missed (§8.5).
+    expect(recordRhythm(defaultProgress(), quarters, skipped, TODAY, 'normal', null, 4).stats.days[TODAY].acc).toBe(6);
+  });
+
   it('adds up the rounds of a day', () => {
     const once = recordRhythm(defaultProgress(), tap, r, TODAY, 'normal');
     const twice = recordRhythm(once, tap, { ...r, accuracy: 60 }, TODAY, 'normal');
     const d = twice.stats.days[TODAY];
     expect(d.rounds).toBe(2);
-    expect(d.acc).toBe(84 + 60);
+    expect(d.acc).toBe(83 + 60);
     expect(d.sec).toBe(2 * once.stats.days[TODAY].sec);
     expect(d.cells.quarter?.[1]).toBe(2 * once.stats.days[TODAY].cells.quarter![1]);
     readsBack(twice);
@@ -85,6 +112,13 @@ describe('recordRhythm', () => {
     expect(p.stats.seen).toEqual({ ear: TODAY });
     expect(p.stats.echo).toEqual({ [String(materialLevel(echo))]: [1, 4] });
     readsBack(p);
+  });
+
+  it('counts a round’s accuracy rounded down, so only a flawless round adds 100', () => {
+    // 31 Perfect and a Great: 99.69%, shown as 99% on Results. 57 of 100 is 56.99999999999999 in floating point.
+    expect(recordRhythm(defaultProgress(), tap, { ...r, accuracy: 99.6875 }, TODAY, 'normal').stats.days[TODAY].acc).toBe(99);
+    expect(recordRhythm(defaultProgress(), tap, { ...r, accuracy: (57 / 100) * 100 }, TODAY, 'normal').stats.days[TODAY].acc).toBe(57);
+    expect(recordRhythm(defaultProgress(), tap, { ...r, accuracy: 100 }, TODAY, 'normal').stats.days[TODAY].acc).toBe(100);
   });
 
   it('tolerates a partial result (no offsets, no stars)', () => {
@@ -179,7 +213,7 @@ describe('recordNotes', () => {
     // Whole staff in G major (1 sharp): lines, spaces, the whole staff and keys with one sharp or flat.
     expect(readingLevels(settings, 'treble')).toEqual([1, 2, 3, 6]);
     const treble = notes.map((n, i) => ({ n, a: answers[i] })).filter((x) => x.n.clef === 'treble');
-    const acc = Math.round((treble.filter((x) => x.a.outcome === 'right').length / treble.length) * 100);
+    const acc = Math.floor((treble.filter((x) => x.a.outcome === 'right').length / treble.length) * 100 + 1e-9);
     const avg = Math.round(treble.reduce((s, x) => s + Math.min(15000, x.a.ms), 0) / treble.length);
     for (const level of [1, 2, 3, 6]) expect(p.stats.reading[`treble:${level}`]).toEqual([acc, avg]);
     expect(p.stats.reading['treble:4']).toBeUndefined();
@@ -188,6 +222,21 @@ describe('recordNotes', () => {
     const q = recordNotes(p, notes, right, settings, TODAY);
     expect(q.stats.reading['treble:1']).toEqual([100, avg]);
     readsBack(q);
+  });
+
+  it('keeps the accuracy in whole percent rounded down, so 89.5% does not reach the 90% check', () => {
+    const treble: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, clefs: ['treble'] };
+    const round = generateRound(treble, 3);
+    const many = (n: number): RoundNote[] => Array.from({ length: n }, (_, i) => round[i % round.length]);
+    const play = (right: number, n: number): Progress =>
+      recordNotes(defaultProgress(), many(n), many(n).map((_, i): NoteAnswer => ({ outcome: i < right ? 'right' : 'wrong', ms: 1000, given: null })), treble, TODAY);
+    const p = play(179, 200);
+    expect(p.stats.reading['treble:1']).toEqual([89, 1000]);
+    expect(levelChecks(skillContext(p, TODAY), 'treble', 1)[0]).toMatchObject({ done: false, now: { key: 'skills.now.percent', params: { value: 89 } } });
+    readsBack(p);
+    // A whole percent that floating point puts just under it (57 of 100 is 56.99999999999999) stays whole.
+    expect(play(57, 100).stats.reading['treble:1'][0]).toBe(57);
+    expect(levelChecks(skillContext(play(180, 200), TODAY), 'treble', 1)[0].done).toBe(true);
   });
 
   it('needs a few notes of a clef for its levels, and records nothing without answers', () => {
@@ -276,5 +325,14 @@ describe('cellTotals', () => {
     expect(cellAccuracy(t.ties)).toBe(83);
     expect(cellAccuracy(t.half)).toBeNull(); // 11 notes
     expect(cellAccuracy(t.quarter)).toBeNull();
+  });
+
+  it('rounds the accuracy down, so a cell at 84.6% does not reach the 85% check', () => {
+    expect(cellAccuracy([1015, 1200])).toBe(84);
+    expect(cellAccuracy([1020, 1200])).toBe(85);
+    expect(cellAccuracy([1164, 1200])).toBe(97);
+    const at = (half: [number, number]): Progress => ({ ...defaultProgress(), stats: { ...defaultProgress().stats, days: { [TODAY]: day({ half }) } } });
+    expect(levelChecks(skillContext(at([1015, 1200]), TODAY), 'rhythm', 1)[1]).toMatchObject({ done: false, now: { key: 'skills.now.percent', params: { value: 84 } } });
+    expect(levelChecks(skillContext(at([1020, 1200]), TODAY), 'rhythm', 1)[1].done).toBe(true);
   });
 });

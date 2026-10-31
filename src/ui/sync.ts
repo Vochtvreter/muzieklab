@@ -21,7 +21,7 @@ import { isEmptyProgress } from '../game/storage';
 import { loadSync, saveSync, type SyncState } from '../game/syncState';
 import { sessionEnded } from './account';
 import { announce } from './lib/announce';
-import { useStore, type Action, type SyncStatus } from './store';
+import { useStore, type AccountNotice, type Action, type SyncStatus } from './store';
 
 /** A change is saved this long after the last one, so a few in a row (an exercise, then its XP) are one save. */
 export const CHANGE_DELAY_MS = 1500;
@@ -39,12 +39,23 @@ export const FLUSH_MS = 5000;
 /** What the sync reads and changes: the store's latest committed state, and its dispatch. */
 export interface SyncHost {
   me(): Me | null;
+  /** What Settings → Account says now (a new password's line, kept over the first sign-in's). */
+  notice(): AccountNotice | null;
+  /** The account was signed in in another tab and taken up here: that tab says what the first sign-in did. */
+  elsewhere(): boolean;
   local(): Synced;
   dispatch(action: Action): void;
 }
 
 /** Why a sync runs. Only 'change' skips asking the account when nothing changed here. */
 export type SyncReason = 'start' | 'change' | 'online' | 'visible' | 'retry';
+
+/**
+ * What a flush before signing out found: this device's progress is on the account (or there is none), so removing it
+ * loses nothing; it is not (the save failed, or is still on its way); or it is not because the API gave no answer, so
+ * signing out cannot be done either until it does (the session ends there).
+ */
+export type Flushed = 'saved' | 'unsaved' | 'unreachable';
 
 /** A copy that came from the API, checked: the shape SavedProgress says, else null. */
 function savedOf(v: unknown): SavedProgress | null {
@@ -73,6 +84,8 @@ export class ProgressSync {
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private pulledAt = -Infinity;
   private failures = 0;
+  /** The last run got no answer from the API (offline, or no API); false again once the next one starts. */
+  private unanswered = false;
   /** Reset progress was pressed: a run that started before drops what it learnt, so the reset goes first. */
   private resetAsked = false;
 
@@ -103,8 +116,12 @@ export class ProgressSync {
     return run;
   }
 
-  /** Before signing out: saves what is not saved yet, waiting FLUSH_MS at most. */
-  async flush(ms = FLUSH_MS): Promise<void> {
+  /**
+   * Before signing out: saves what is not saved yet, waiting FLUSH_MS at most. Resolves 'saved' when this device's
+   * progress is on the account now (or it has none), so removing it from the device loses nothing; 'unreachable' when
+   * that save got no answer from the API; else 'unsaved' (it failed, or is still on its way).
+   */
+  async flush(ms = FLUSH_MS): Promise<Flushed> {
     clearTimeout(this.changeTimer);
     const done = async (): Promise<void> => {
       await this.request('change');
@@ -112,6 +129,12 @@ export class ProgressSync {
       while (this.running) await this.running;
     };
     await Promise.race([done(), sleep(ms)]);
+    const { progress } = this.local();
+    if (isEmptyProgress(progress)) return 'saved';
+    const me = this.host.me();
+    const s = me && loadSync(me.id);
+    if (s?.base && !s.pendingReset && sameValue(progress, s.base.progress)) return 'saved';
+    return !this.running && this.unanswered ? 'unreachable' : 'unsaved';
   }
 
   /** Settings → Reset progress while signed in: the account's progress is reset too, now or once it can be reached. */
@@ -164,6 +187,7 @@ export class ProgressSync {
   }
 
   private async run(reason: SyncReason): Promise<void> {
+    this.unanswered = false;
     const me = this.host.me();
     if (!me) return;
     const id = me.id;
@@ -259,11 +283,17 @@ export class ProgressSync {
     if (first) this.added(local);
   }
 
-  /** A first sign-in on a device with progress: say it is on the account now. */
+  /**
+   * A first sign-in on a device with progress: say it is on the account now. Not over a new password's line, which says
+   * the other devices were signed out (the sync line says the progress is saved). Not in a tab that took the account up
+   * from the tab it was signed in in either: that one says it. (This one's sync started before that one's had saved
+   * what it agreed with the account, so it is a first here too.)
+   */
   private added(local: Synced): void {
-    if (isEmptyProgress(local.progress)) return;
+    if (isEmptyProgress(local.progress) || this.host.notice() === 'passwordReset' || this.host.elsewhere()) return;
     this.host.dispatch({ type: 'accountNotice', notice: 'progressAdded' });
-    announce(t('settings.noticeProgressAdded'));
+    // Worded when it is read out: the merge that came with it may have switched to the account's language.
+    announce(() => t('settings.noticeProgressAdded'));
   }
 
   private failed(e: unknown, id: string): void {
@@ -278,6 +308,7 @@ export class ProgressSync {
     if (!(e instanceof ApiError)) console.error(e);
     const s = loadSync(id);
     const dirty = !s || !s.base || s.pendingReset || !sameValue(this.local(), s.base);
+    this.unanswered = err.code === 'unavailable';
     this.status(err.code === 'unavailable' ? (dirty ? 'pending' : 'saved') : 'failed');
     clearTimeout(this.retryTimer);
     const wait = Math.min(RETRY_MAX_MS, RETRY_MS * 2 ** this.failures);
@@ -297,23 +328,29 @@ export function progressSync(): ProgressSync | null {
 /** Runs the sync for the app: mounted once, inside the StoreProvider. */
 export function useProgressSync(): void {
   const { state, dispatch } = useStore();
-  const me = state.account.me;
-  const live = useRef({ me, local: syncedOf(state.prefs, state.progress) });
+  const { me, notice, elsewhere } = state.account;
+  const live = useRef({ me, notice, elsewhere, local: syncedOf(state.prefs, state.progress) });
   const sync = useRef<ProgressSync | null>(null);
   if (!sync.current) {
-    sync.current = new ProgressSync({ me: () => live.current.me, local: () => live.current.local, dispatch });
+    sync.current = new ProgressSync({
+      me: () => live.current.me,
+      notice: () => live.current.notice,
+      elsewhere: () => live.current.elsewhere,
+      local: () => live.current.local,
+      dispatch,
+    });
     engine = sync.current;
   }
   const synced = syncedOf(state.prefs, state.progress);
   // What the sync reads is the state as committed: updated before the effects below ask it to run.
   useEffect(() => {
-    live.current = { me, local: synced };
+    live.current = { me, notice, elsewhere, local: synced };
   });
 
   // Signed in (on start with a cached account, or a sign-in): sync now. Signed out: forget the account's copy.
   const id = me?.id ?? null;
   useEffect(() => {
-    live.current = { me, local: synced };
+    live.current = { me, notice, elsewhere, local: synced };
     if (id) void sync.current!.request('start');
     else sync.current!.forget();
   }, [id]);
@@ -326,7 +363,7 @@ export function useProgressSync(): void {
       first.current = false;
       return;
     }
-    live.current = { me, local: synced };
+    live.current = { me, notice, elsewhere, local: synced };
     if (id) sync.current!.changed();
   }, [state.progress, key]);
 

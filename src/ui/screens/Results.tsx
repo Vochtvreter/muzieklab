@@ -20,12 +20,12 @@ import { AchievementBadges, CodeCopy, LevelUpContent, OutcomeBadge } from '../co
 import { Sheet } from '../components/Sheet';
 import { exerciseView } from '../exerciseView';
 import { useBreakpoint, useDocTitle, useLingering } from '../hooks';
-import { starsLabel } from '../lib/format';
+import { starsLabel, wholePercent } from '../lib/format';
 import { calibrateQuery, useLearnReturn } from '../lib/learnReturn';
 import { lessonOutcome } from '../lib/lessons';
 import { describeBars } from '../lib/notation';
 import { Link, navigate } from '../router';
-import { useStore, type LastResult } from '../store';
+import { runSetup, useStore, type LastResult } from '../store';
 import { useReplay, useStartPathLesson } from './start';
 
 const COUNTS: { key: Judgement | 'extra'; tone: string }[] = [
@@ -129,7 +129,7 @@ export function Results(): JSX.Element | null {
   };
   const toSettings = (): void => {
     engine().stop();
-    dispatch({ type: 'settings', settings: ex.settings });
+    dispatch({ type: 'settings', settings: runSetup(run) });
   };
 
   const diamond = result.stars === DIAMOND;
@@ -195,7 +195,7 @@ export function Results(): JSX.Element | null {
           )}
         </div>
         {diamond && <div className="score-bonus">{t('results.allPerfect')}</div>}
-        <div className="score-pct">{t('results.accuracy', { value: Math.round(result.accuracy) })}</div>
+        <div className="score-pct">{t('results.accuracy', { value: wholePercent(result.accuracy) })}</div>
         <div className="muted-text score-sub">
           {t('results.summary')} · <b className="tone-ink">{t('xp.earned', { count: reward.xp })}</b>
         </div>
@@ -243,7 +243,7 @@ export function Results(): JSX.Element | null {
   const review = (
     <>
       <div className="card results-staff">
-        <StaffBox bars={view.bars} meter={ex.meter} barsPerRow={perRow} marks={marks}
+        <StaffBox bars={view.bars} meter={ex.meter} barsPerRow={perRow} marks={marks} shrinkToFit
           label={t(echo ? 'results.echoStaffLabel' : 'results.staffLabel', { rhythm: describeBars(view.bars, ex.meter.id) })} />
       </div>
 
@@ -255,8 +255,7 @@ export function Results(): JSX.Element | null {
             {result.extraTaps > 0 && ' · ' + t('results.extraLegend')}
           </span>
         </div>
-        <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={perRow} taps={last.taps} result={result} label={t('results.laneLabel')}
-          hold={ex.settings.hold} />
+        <LengthLane timeline={view.timeline} barTicks={ex.meter.barTicks} barsPerRow={perRow} taps={last.taps} result={result} hold={ex.settings.hold} />
       </div>
 
       {tip && (
@@ -319,7 +318,10 @@ export function Results(): JSX.Element | null {
     <ExerciseFrame className="frame--results" wide>
       <div className="page results no-scrollbar">
         <div className="screen-head">
-          <Link to={back?.to ?? '/'} query={back?.query} aria-label={back ? t('learn.backToChapter', { n: back.chapter }) : t('results.backHome')}
+          {/* A lesson goes back to the Path, as Quit does on Play and Round done's arrow after a note lesson. It leaves as
+              Quit does, so the browser's Back does not open the finished exercise again. */}
+          <Link to={run.lessonId ? '/path' : (back?.to ?? '/')} query={run.lessonId ? undefined : back?.query} leaves
+            aria-label={run.lessonId ? t('results.lessonBack') : (back?.label ?? t('results.backHome'))}
             className="icon-btn icon-btn--edge-sm">
             <Icon name="back" />
           </Link>

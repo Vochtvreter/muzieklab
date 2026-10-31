@@ -12,8 +12,9 @@ import { Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { useBreakpoint, useDocTitle } from '../../hooks';
 import { useLearnReturn } from '../../lib/learnReturn';
-import { keySignsAria, letterName, majorName, minorName } from '../../lib/noteText';
-import { Link, navigate, type Route } from '../../router';
+import { keySignsAria, letterName, majorName, minorName, spokenName } from '../../lib/noteText';
+import { keySpoken } from '../../lib/scaleText';
+import { leave, Link, type Route } from '../../router';
 import { useStore } from '../../store';
 
 export function NotesKey(): JSX.Element {
@@ -24,7 +25,8 @@ export function NotesKey(): JSX.Element {
     <KeyScreen keys={roundKeys(s)} mix={s.mixKeys && s.keys.length > 1} back="/notes" backQuery={carry} mixText={t('notes.keys.mixText')}
       onUse={(keys, mix) => {
         dispatch({ type: 'noteSettings', settings: { ...s, keys, mixKeys: mix } });
-        navigate('/notes', { replace: true, query: carry });
+        // Back to the setup's own place in the history: one Back from there leaves it.
+        leave('/notes', carry);
       }} />
   );
 }
@@ -60,21 +62,27 @@ export function KeyScreen({ keys, mix: mixed, back, backQuery, mixText, onUse }:
 
   const first = chosen[0];
   const signs = keySigns(first);
-  const summaryTitle = mix ? t('notes.keys.summaryMix', { count: chosen.length }) : t('notes.keys.summaryOne', { major: majorName(first), minor: minorName(first) });
-  const summary = mix
-    ? mixText
-    : signs.length === 0
-      ? t('notes.keys.summaryNone')
-      : t('notes.keys.summarySigns', {
-          letters: signs.map((x) => t('notes.letter.' + x.letter)).join(', '),
-          names: signs.map((x) => letterName(x.letter, x.alter)).join(', '),
-        });
+  // The summary as written, or in words for screen readers ("F sharp major"), which read a sign as a symbol or skip it.
+  const summaryOf = (spoken: boolean): [string, string] => [
+    mix
+      ? t('notes.keys.summaryMix', { count: chosen.length })
+      : t('notes.keys.summaryOne', spoken ? { major: keySpoken(first, false), minor: keySpoken(first, true) } : { major: majorName(first), minor: minorName(first) }),
+    mix
+      ? mixText
+      : signs.length === 0
+        ? t('notes.keys.summaryNone')
+        : t('notes.keys.summarySigns', {
+            letters: signs.map((x) => t('notes.letter.' + x.letter)).join(', '),
+            names: signs.map((x) => (spoken ? spokenName : letterName)(x.letter, x.alter)).join(', '),
+          }),
+  ];
+  const [summaryTitle, summary] = summaryOf(false);
 
   const item = (id: KeyId, wide = false): JSX.Element => {
     const on = chosen.includes(id);
     return (
       <button key={id} type="button" aria-pressed={on} className={'key-btn' + (on ? (mix ? ' is-on' : ' is-picked') : '') + (wide ? ' key-btn--wide' : '')}
-        aria-label={t('notes.keys.aria', { major: majorName(id), minor: minorName(id), signs: keySignsAria(id) })} onClick={() => toggle(id)}>
+        aria-label={t('notes.keys.aria', { major: keySpoken(id, false), minor: keySpoken(id, true), signs: keySignsAria(id) })} onClick={() => toggle(id)}>
         <span className="key-thumb">
           <PitchStaff clef="treble" keyId={id} notes={[]} slots={0} room={1.5} />
         </span>
@@ -90,7 +98,7 @@ export function KeyScreen({ keys, mix: mixed, back, backQuery, mixText, onUse }:
   return (
     <ExerciseFrame className="frame--setup" wide>
       <div className="page setup nkeys no-scrollbar">
-        <div className="screen-head">
+        <div className="screen-head screen-head--link">
           <Link to={back} query={backQuery} aria-label={t('notes.keys.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
@@ -130,10 +138,14 @@ export function KeyScreen({ keys, mix: mixed, back, backQuery, mixText, onUse }:
               </div>
             )}
             <div className="key-summary" aria-live="polite">
-              <b>{summaryTitle}</b> {summary}
+              <span aria-hidden="true">
+                <b>{summaryTitle}</b> {summary}
+              </span>
+              <span className="sr-only">{summaryOf(true).join(' ')}</span>
             </div>
 
-            <button type="button" className="btn btn--accent start-btn" onClick={use}>
+            <button type="button" className="btn btn--accent start-btn" onClick={use}
+              aria-label={mix ? undefined : t('notes.keys.use', { major: keySpoken(first, false) })}>
               {mix ? t('notes.keys.useMix', { count: chosen.length }) : t('notes.keys.use', { major: majorName(first) })}
             </button>
           </div>

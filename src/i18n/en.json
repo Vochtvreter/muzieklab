@@ -90,6 +90,7 @@
     "dailyAgain": "Play again",
     "dailyDone": "Done today · {accuracy}%",
     "dailyPlayLabel": "Play the daily challenge for {date}",
+    "dailyAgainLabel": "Play again: the daily challenge for {date}",
     "freeHeading": "Free practice",
     "rhythmTile": "Rhythm",
     "rhythmTileSub": "Endless exercises",
@@ -98,7 +99,7 @@
     "scalesTile": "Scales",
     "scalesTileSub": "All the keys",
     "notesPreview": "The notes so far: {names}",
-    "notesPreviewRound": "A few notes from the lesson"
+    "notesPreviewRound": "A few notes from the lesson: {clef}, {key}"
   },
   "tile": {
     "next": "next lesson, no stars yet",
@@ -114,6 +115,7 @@
     "next": "Next: lesson {lesson} · {title} · {bpm} BPM",
     "unlocks": "Opens with 2 stars on every unit {unit} lesson",
     "start": "Start lesson {id}",
+    "replay": "Play lesson {id} again",
     "playLesson": "Play lesson {id} · {title}: {stars}",
     "lockedLesson": "Lesson {id}, locked",
     "u1": {
@@ -185,7 +187,8 @@
     "trackLocked": "Locked",
     "trackStars": "Unit {unit} of {total} · {stars} / {max} ★",
     "trackStarsDone": "All done · {stars} / {max} ★",
-    "trackStarsLabel": "{stars} of {max} stars",
+    "trackStarsLabel": "Unit {unit} of {total}, {stars} of {max} stars",
+    "trackStarsDoneLabel": "All done, {stars} of {max} stars",
     "unitScore": "{stars} / {max} ★",
     "unitScoreLabel": "{stars} of {max} stars",
     "lockedLessonTitled": "Lesson {id} · {title}, locked",
@@ -332,6 +335,7 @@
       },
       "u6": {
         "title": "Mix the keys",
+        "glyph": "Mix",
         "l1": "C, G and F",
         "l2": "Up to two signs",
         "l3": "Up to three signs",
@@ -422,6 +426,7 @@
     "dottedQuarter": "dotted quarter rest",
     "eighth": "eighth rest",
     "dottedEighth": "dotted eighth rest",
+    "tripletEighth": "triplet eighth rest",
     "sixteenth": "sixteenth rest"
   },
   "notation": {
@@ -492,6 +497,7 @@
       "replay": "Replay the rhythm",
       "listenTitle": "Listen to the rhythm",
       "playing": "Playing…",
+      "interrupted": "The sound was interrupted. Press play to try again.",
       "meta": "{bars} · {meter} · {bpm} BPM",
       "playsLeft": "{count, plural, =0 {No plays left} one {# play left} other {# plays left}}",
       "start": "Tap it back",
@@ -615,7 +621,9 @@
     "copyCode": "Copy code",
     "copied": "Copied",
     "copyTitle": "Copy the exercise code: {code}",
+    "code": "Exercise code",
     "backHome": "Back to home",
+    "lessonBack": "Back to the path",
     "accuracy": "{value}%",
     "summary": "accuracy",
     "streakKept": "Streak kept · {count, plural, one {# day} other {# days}}",
@@ -656,7 +664,8 @@
     "calibrate": "Calibrate",
     "calibrateTitle": "Measure the delay of your speaker or headphones",
     "calibrated": "Calibrated. Your next exercise uses it.",
-    "laneLabel": "Note lengths compared with how long each note was held"
+    "laneLabel": "Note lengths compared with how long each note was held",
+    "laneLabelTap": "When each note starts compared with when you tapped"
   },
   "settings": {
     "title": "Settings",
@@ -744,6 +753,8 @@
     "signOutChoice": "Progress on this device",
     "signOutKeep": "Keep",
     "signOutClear": "Remove",
+    "signOutNotSaved": "Your progress isn't on your account yet, so it can't be removed from this device. Choose Keep, or try again in a moment.",
+    "signOutNotSavedLink": "Your progress isn't on your account yet, so it can't be removed from this device. Try again in a moment.",
     "resetDetailAccount": "Streak, stars and XP, on every device with your account. No undo."
   },
   "calibrate": {
@@ -769,7 +780,8 @@
     "resultLate": "Measured over {count} taps. Your taps reach Muzieklab {ms} ms after the click, so every score is shifted by that much.",
     "resultEarly": "Measured over {count} taps. Your taps reach Muzieklab {ms} ms before the click, so every score is shifted by that much.",
     "resultZero": "Measured over {count} taps. Your taps land right on the click, so no shift is needed.",
-    "tooFew": "Only {count, plural, one {# tap} other {# taps}} landed near a click. Try again and tap on every click.",
+    "tooFew": "{count, plural, =0 {No taps} one {Only # tap} other {Only # taps}} landed near a click. Try again and tap on every click.",
+    "interrupted": "The clicks were interrupted. Try again to measure from the first click.",
     "save": "Save",
     "again": "Try again"
   },
@@ -790,7 +802,8 @@
     "save": "Save",
     "saving": "Saving…",
     "passwordEmpty": "Type your password.",
-    "emailEmpty": "Type your email."
+    "emailEmpty": "Type your email.",
+    "hiddenCharacters": "Remove the tabs and other hidden characters."
   },
   "apiError": {
     "bad_request": "Something in the form isn't right. Check it and try again.",
@@ -837,6 +850,7 @@
     "submit": "Sign in",
     "busy": "Signing in…",
     "forgot": "Forgot your password? Ask the person who invited you.",
+    "sessionEnded": "You were signed out, so nothing was changed. Sign in again to go on.",
     "privacy": "Privacy"
   },
   "invite": {
@@ -849,7 +863,8 @@
     "password": "New password",
     "submit": "Create account",
     "busy": "Creating account…",
-    "home": "Home"
+    "home": "Home",
+    "signedInAs": "You're signed in as {name} on this device. Sign out first to use this link. Progress you keep on this device is added to this link's account too."
   },
   "reset": {
     "title": "New password",
@@ -877,6 +892,7 @@
     "currentPassword": "Current password",
     "saveEmail": "Save email",
     "emailSaved": "Email changed. Sign in with it from now on.",
+    "emailSame": "That's already your email.",
     "premium": "Premium",
     "premiumUntil": "Premium until {date}",
     "password": "Password",
@@ -1013,6 +1029,7 @@
     "profile": "Name and email",
     "saved": "Saved.",
     "ownRoles": "You can't change your own roles.",
+    "outranked": "This account can do things yours can't, so you can't change its name or email, or make a new link for it.",
     "premium": "Premium",
     "premiumOff": "Gives premium features (coming later).",
     "premiumUntil": "Until {date}",
@@ -1079,7 +1096,9 @@
     "days": "{count, plural, one {# day practiced} other {# days practiced}}",
     "file": "File",
     "download": "Download as a file",
-    "downloadSub": "Every entry, with the anonymous progress, as JSON."
+    "downloadSub": "Every entry, with the anonymous progress, as JSON.",
+    "downloading": "Downloading…",
+    "newest": "Showing the newest {count} of {total}. The file has them all."
   },
   "closureKind": {
     "archived": "Archived",
@@ -1168,7 +1187,6 @@
     "notReviewed": "Not reviewed yet.",
     "note": "Note for the team",
     "noteHint": "Only people who review feedback see it, not the person who sent it. Up to {max} characters.",
-    "noteBadCharacters": "Remove the tabs and other hidden characters.",
     "saveNote": "Save note",
     "actions": "Actions",
     "copy": "Copy as Markdown",
@@ -1201,11 +1219,16 @@
     "rushing": "You were rushing: on average {ms} ms early. Wait for each note.",
     "dragging": "You were dragging: on average {ms} ms late. Press a little sooner.",
     "draggingCalibrate": "Your taps came on average {ms} ms late, about the same on every note. That is often the speaker or headphones: calibrate once and it is taken off every score.",
-    "missed": "{count, plural, one {You missed # note} other {You missed # notes}}, most in bar {bar}. Read one beat ahead.",
+    "missed": "{count, plural, one {You missed # note in bar {bar}} other {You missed # notes, most in bar {bar}}}. Read one beat ahead.",
     "missedSpread": "{count, plural, one {You missed # note} other {You missed # notes}}. Read one beat ahead.",
+    "missedEcho": "{count, plural, one {You missed # note in bar {bar}} other {You missed # notes, most in bar {bar}}}. Count along as you listen, so you know where each note falls.",
+    "missedSpreadEcho": "{count, plural, one {You missed # note} other {You missed # notes}}. Count along as you listen, so you know where each note falls.",
     "extraTaps": "{count, plural, one {# extra tap} other {# extra taps}} cost points. Stay off the pad on rests.",
     "unsteady": "Your timing wandered by about {ms} ms. Count along quietly to stay steady.",
     "perfect": "Every note perfect. Try a faster tempo or more bars.",
+    "perfectBars": "Every note perfect. Try more bars.",
+    "perfectTempo": "Every note perfect. Try a faster tempo.",
+    "perfectTop": "Every note perfect, at the fastest tempo and the most bars. Try other note values, rests or extras.",
     "perfectLesson": "Every note perfect. On to the next lesson.",
     "good": "Nicely done. Keep the beat steady and try the next one."
   },
@@ -1275,8 +1298,8 @@
       "treble": "treble clef",
       "bass": "bass clef"
     },
-    "major": "{tonic} major",
-    "minor": "{tonic} minor",
+    "major": "{tonic}\u00a0major",
+    "minor": "{tonic}\u00a0minor",
     "keyPair": "{major} · {minor}",
     "keyNone": "No sharps or flats",
     "keySharps": "{count, plural, one {1 sharp: every {letter} is {name}} other {# sharps: {names}}}",
@@ -1288,7 +1311,7 @@
       "clefs": "Clefs",
       "key": "Key",
       "keyAria": "Key: {name}, {sub}. Change key",
-      "keysMix": "{count, plural, one {1 key, mixed} other {# keys, mixed}}",
+      "keysMix": "{count, plural, one {1\u00a0key, mixed} other {#\u00a0keys, mixed}}",
       "keysMixSub": "A new key every 5 notes",
       "answerWith": "Answer with",
       "inputNames": "Names",
@@ -1321,7 +1344,7 @@
         "mixed": "mixed"
       },
       "summary": "{clefs} · {input}",
-      "pool": "{count} staff positions per clef · {key}",
+      "pool": "{count}\u00a0staff positions per clef · {key}",
       "poolExtras": "{pool} · extra signs appear",
       "sound": "Hear the notes",
       "soundOn": "Piano keys as you press them, and the right note after each answer",
@@ -1452,6 +1475,8 @@
       "idleWrite": "Tap the staff where the note goes.",
       "idleWriteCheck": "Drag it or use the arrows to move it, then Check.",
       "idleHear": "Listen: first sol, then the note. Which one is it?",
+      "idleHearTap": "Tap Hear it: first sol, then the note. Which one is it?",
+      "hear": "Hear it",
       "hearAgain": "Hear it again",
       "hearSame": "the same as {sol}",
       "hearFrom": "{count, plural, one {one step} other {# steps}} {dir, select, up {above} other {below}} {sol}",
@@ -1461,6 +1486,8 @@
       "hearTimeout": "Time's up: it was {name}, {from}.",
       "writeRight": "Right: {name} is on {pos}.",
       "writeWrong": "You wrote {wrote}, on {wrotePos}; {name} goes on {pos}.",
+      "writeOctaveHigh": "Right note, wrong octave: write the lower {name}, on {pos}.",
+      "writeOctaveLow": "Right note, wrong octave: write the higher {name}, on {pos}.",
       "writeSlider": "Where {name} goes on the staff",
       "writeNone": "Not on the staff yet",
       "writeLabel": "Write",
@@ -1475,7 +1502,7 @@
       "title": "Round done",
       "back": "Back to home",
       "sub": "Read notes · {clefs} · {keys}",
-      "keysMix": "{count, plural, one {1 key} other {# keys}}",
+      "keysMix": "{count, plural, one {1\u00a0key} other {#\u00a0keys}}",
       "score": "{right} of {total, plural, one {# note} other {# notes}} right · avg {avg} s",
       "hinted": "{count} with a hint",
       "none": "No notes answered in this round.",
@@ -1485,11 +1512,13 @@
       "legendHint": "with a hint",
       "legendMissed": "missed",
       "legendSlow": "over 3 s = slow",
-      "chartLabel": "Answer time for each of the {count} notes. Average {avg} seconds. {missed, plural, =0 {No notes missed.} one {1 note missed.} other {# notes missed.}}",
+      "chartLabel": "Answer time for {count, plural, one {# note} other {each of the # notes}}. Average {avg} seconds. {missed, plural, =0 {No notes missed.} one {1 note missed.} other {# notes missed.}}",
       "needs": "Needs practice",
       "missed": "Missed",
+      "hintedGroup": "With a hint",
       "slow": "Slow",
       "missedChip": "{note}, {count, plural, one {missed once} other {missed # times}}",
+      "hintedChip": "{note}, {count, plural, one {answered with a hint} other {answered with a hint # times}}",
       "chipNote": "{name} on {pos} ({clef})",
       "times": "×{count}",
       "slowChip": "{note}, {value} seconds",
@@ -1557,6 +1586,7 @@
       "circleMinor": "Circle of fifths, minor keys",
       "majorAria": "{name}: {level, plural, =0 {no stars yet} one {1 star} other {# stars}}",
       "minorAria": "{name}: {level, plural, =0 {no form with 2 stars yet} one {1 form with 2 stars} other {# forms with 2 stars}}",
+      "formsAria": "{count, plural, =0 {No form with 2 stars yet} one {1 of 3 forms with 2 stars} other {# of 3 forms with 2 stars}}",
       "alsoAria": " (or {other})",
       "sigAria": "Key signature: {signs}",
       "noSigns": "no ♯ or ♭",
@@ -1625,6 +1655,7 @@
       "soundOff": "Silent",
       "summary": "{types} · {keys} · {direction}",
       "summaryMany": "Shuffled; a scale with mistakes comes back at the end.",
+      "summaryCircle": "In circle order; a scale with mistakes comes back at the end.",
       "summaryOne": "One scale, then a short summary.",
       "start": "Start · {count, plural, one {# scale} other {# scales}}"
     },
@@ -1642,14 +1673,21 @@
       "mistakes": "{count, plural, one {mistake} other {mistakes}}",
       "mistakesAria": "{count, plural, =0 {No mistakes} one {1 mistake} other {# mistakes}}",
       "mistakesTitle": "Mistakes",
-      "starsRule": "0 mistakes ★★★ · 1 ★★ · 2–3 ★",
+      "starsRule": {
+        "three": "0 mistakes ★★★",
+        "two": "1 ★★",
+        "one": "2–3 ★"
+      },
       "staffLabel": "Treble staff, {scale}: {notes}",
       "none": "no notes yet",
       "degreesUp": "Scale degrees going up",
       "degreesDown": "Scale degrees going down",
       "degreeAria": "Degree {degree}: {name}",
       "unknown": "not yet",
+      "now": "now",
       "piano": "Piano keyboard from {from} to {to}",
+      "keyLow": "{name}, low",
+      "keyHigh": "{name}, high",
       "signFor": "Sign for {letter}",
       "kbdPiano": "Play with A S D F G H J K L (white) and W E R T Y U I O (black)",
       "kbdNames": "Press − for ♭, 0 for ♮, = for ♯ (X for 𝄪)",
@@ -1661,11 +1699,13 @@
       "wrongStart": "Not {given}. The scale starts on its name: {scale}.",
       "wrongUp": "Not {given}. From {prev}, go up {how}.",
       "wrongDown": "Not {given}. From {prev}, go down {how}.",
+      "wrongOctaveHigh": "Right note, wrong octave: play the lower {note}.",
+      "wrongOctaveLow": "Right note, wrong octave: play the higher {note}.",
       "hintStart": "Hint: the first note is in the name: {scale}.",
       "hintUp": "Hint: from {prev} the step up is {step}, {how}.",
       "hintDown": "Hint: from {prev} the step down is {step}, {how}.",
-      "doneClean": "{scale}: done, no mistakes. {notes}",
-      "doneMistakes": "{scale}: done with {count, plural, one {1 mistake} other {# mistakes}}. {notes}",
+      "doneClean": "{scale}: done, no mistakes.",
+      "doneMistakes": "{scale}: done with {count, plural, one {1 mistake} other {# mistakes}}.",
       "hear": "Hear it so far",
       "hearAll": "Hear the scale",
       "space": "Space",
@@ -1680,7 +1720,7 @@
       "title": "Round done",
       "back": "Back to Scales",
       "sub": "Scales · {types} · {dir} · {input}",
-      "cleanAria": "{clean} of {total} scales without a mistake",
+      "cleanAria": "{clean} of {total, plural, one {# scale} other {# scales}} without a mistake",
       "score": "scales without a mistake · {count, plural, one {1 mistake} other {# mistakes}} in all",
       "none": "No scale finished in this round.",
       "listAria": "Scales in this round",
@@ -1690,7 +1730,7 @@
       "of": "of {total}",
       "majorCount": "major scales with 2+ stars.",
       "minorCount": "minor forms with 2+ stars.",
-      "reached": "{names} reached ★★ this round.",
+      "reached": "{count, plural, other {{names} reached ★★ this round.}}",
       "nothingNew": "Two stars on a scale fill its key.",
       "circleMajorAria": "Circle of fifths, major keys with 2 or more stars: {count} of {total}. New this round: {fresh}.",
       "circleMinorAria": "Circle of fifths, minor forms with 2 or more stars: {count} of {total}. New this round: {fresh}.",
@@ -1772,8 +1812,8 @@
     "next": "Next",
     "check": "Quick check",
     "checkHint": "Answer it right to mark this section read.",
-    "play": "Play",
-    "stop": "Stop",
+    "play": "Play: {name}",
+    "stop": "Stop: {name}",
     "ch1": {
       "intro": "Music moves on a steady pulse. This chapter shows how fast that pulse goes, how it is grouped into bars, and why some beats feel stronger than others. Every later chapter counts in these beats.",
       "s1": {
@@ -1799,7 +1839,7 @@
         "presto": "Presto",
         "prestoText": "very fast",
         "prestoBpm": "168–200",
-        "mark": "Sometimes the exact tempo is written as a metronome mark: ♩ = 80 means 80 quarter-note beats per minute. The Tempo setting in Practice works the same way.",
+        "mark": "Sometimes the exact tempo is written as a metronome mark: ♩ = 80 means 80 quarter-note beats per minute. The Tempo setting in Free practice works the same way.",
         "game": "In the game: the count-in clicks one bar of beats at the exercise’s tempo, so you feel the pulse before the first note. In Echo mode you hear a rhythm first and tap it back without the notation.",
         "practice": "Practice at a steady tempo",
         "check": {
@@ -1927,7 +1967,7 @@
         "placeAlt": "Two bars of 4/4 on the one-line staff: a whole rest hanging below the line, counted (1 2 3 4), then a half rest sitting on the line, counted (1 2), and a half note counted 3 (4)",
         "count": "Keep counting through every rest. Silent counts are shown in grey brackets:",
         "countAlt": "A bar of 4/4: quarter on 1, quarter rest on (2), quarter on 3, quarter rest on (4); then a half rest on (1 2) and a half note on 3 (4)",
-        "game": "In the game: let go when a note ends and stay off through the rest. With Hold notes for their length on, as in the Learning Path from unit 2, the moment you let go is judged too.",
+        "game": "In the game: let go when a note ends and stay off through the rest. With Hold notes for their length on, as in the Learning Path from unit 4, the moment you let go is judged too.",
         "practice": "Practice rests",
         "check": {
           "question": "On the one-line staff of the game, which rest hangs below the line?",
@@ -2128,7 +2168,7 @@
         "qhqPlainAlt": "A bar of 4/4: a quarter on 1, a half note on 2 held through (3), a quarter on 4",
         "qhqTied": "Written with a tie",
         "qhqTiedAlt": "A bar of 4/4: a quarter on 1, a quarter on 2 tied to a quarter on (3), a quarter on 4",
-        "game": "The game writes it the second way, with the tie, so beat 3 stays visible. Turn on Ties in Practice to get syncopation.",
+        "game": "The game writes it the second way, with the tie, so beat 3 stays visible. Turn on Ties in Free practice to get syncopation.",
         "tip": "In the game: press on the “&” or the weak beat and keep holding through the next beat. A count in grey brackets gets no new press.",
         "practice": "Practice syncopation",
         "check": {
@@ -2159,7 +2199,7 @@
         "gridAlt": "One beat, divided: two eighths counted 1 &; three triplet eighths counted 1 trip let",
         "staffAlt": "A bar of 4/4: triplet eighths marked 3, counted 1 trip let, a quarter on 2, triplet eighths counted 3 trip let, a quarter on 4",
         "compare": "Keep the beat steady: the triplet’s three notes are each a little shorter than an eighth, and the next beat comes at the same time as always.",
-        "game": "In the game: turn on Triplets under Extras in Practice. Triplets are made of eighths, so keep eighth notes on too.",
+        "game": "In the game: turn on Triplets under Extras in Free practice. Triplets are made of eighths, so keep eighth notes on too.",
         "practice": "Practice triplets",
         "check": {
           "question": "Three triplet eighths start on beat 1. How do you count them?",
@@ -2196,7 +2236,6 @@
     },
     "pulse": {
       "bpm": "{bpm} BPM",
-      "play": "Play {bpm} BPM",
       "time": "time",
       "sec": "{s} s"
     },
@@ -2572,7 +2611,7 @@
     "rankNow": "Level {level} · now",
     "rankNext": "next",
     "rankDone": "reached",
-    "skillsSub": "{total} of {max} levels · {count, plural, one {# skill} other {# skills}} · {due, plural, =0 {no review due} one {# review due} other {# reviews due}}",
+    "skillsSub": "{total}\u00a0of {max}\u00a0levels · {count, plural, one {#\u00a0skill} other {#\u00a0skills}} · {due, plural, =0 {no review due} one {#\u00a0review\u00a0due} other {#\u00a0reviews\u00a0due}}",
     "calendar": {
       "range": "{from} – {to}",
       "label": "Practice calendar, {from} to {to}. {details}.",
@@ -2606,8 +2645,8 @@
       "rise": ", rising from {first}% to {peak}% on {date}",
       "high": ", highest {peak}% on {date}",
       "today": ", {value}% today",
-      "gaps": "; no practice on {days}",
-      "gapCount": "; no practice on {count, plural, one {# day} other {# days}}",
+      "gaps": "; no rhythm rounds on {days}",
+      "gapCount": "; no rhythm rounds on {count, plural, one {# day} other {# days}}",
       "point": "{date}: {value}%",
       "empty": "No rhythm rounds in the last 14 days."
     },
@@ -2644,7 +2683,7 @@
     "minutes": {
       "title": "Minutes this week",
       "total": "{value} min",
-      "label": "Minutes practised this week: {days}; {total} minutes in total.",
+      "label": "Minutes practised this week: {days}; {total, plural, one {# minute} other {# minutes}} in total.",
       "day": "{day} {value}",
       "dayToday": "today {day} {value}",
       "bar": "{day}: {value} min",
@@ -2791,6 +2830,19 @@
         "10": "Keys and scales"
       }
     },
+    "levelSpoken": {
+      "notes": {
+        "6": "Keys with 1 sharp or 1 flat",
+        "7": "Up to 3 sharps or 3 flats",
+        "9": "Up to 5 sharps or 5 flats"
+      },
+      "scales": {
+        "3": "D and B flat major",
+        "4": "A and E flat major",
+        "5": "E and A flat major",
+        "7": "Natural minor, up to 2 sharps or 2 flats"
+      }
+    },
     "material": {
       "1": "quarter and half notes",
       "2": "rests",
@@ -2841,6 +2893,7 @@
       "read": "A round {what} at {pct}%",
       "speed": "Average answer under {seconds, number, ::.0} s",
       "major": "{tonic} major at ★★",
+      "scale": "{scale} at ★★",
       "scaleCount": "{count} {type} scales at ★★",
       "allScales": "All {count} scales at ★★★",
       "section": "Read {id} {title}"
@@ -2889,7 +2942,7 @@
       "next": "next: {name}",
       "allPassed": "every level passed",
       "rowLevel": "{name}: level {level} of {max}.",
-      "rowChecks": "{done} of {total} checks for level {n}, {next}.",
+      "rowChecks": "{done} of {total, plural, one {# check} other {# checks}} for level {n}, {next}.",
       "rowLater": "Level {n}, {next}, comes later.",
       "rowDone": "Every level passed.",
       "legendPassed": "Passed",
@@ -2899,13 +2952,14 @@
     },
     "detail": {
       "back": "Back to Skill levels",
+      "backToSkill": "Back to {name} in Skill levels",
       "of": "of {max}",
-      "meter": "Level {level} of {max}, and {done} of {total} checks for level {n}",
+      "meter": "Level {level} of {max}, and {done} of {total, plural, one {# check} other {# checks}} for level {n}",
       "meterLevel": "Level {level} of {max}",
       "next": "Next · level {n}",
       "checks": "{total, plural, one {{progress} check} other {{progress} checks}}",
       "progress": "{done} of {total}",
-      "checksDone": "{done} of {total} checks done",
+      "checksDone": "{done} of {total, plural, one {# check} other {# checks}} done",
       "done": "Done",
       "top": "Level {n}",
       "allPassed": "Every level passed",
@@ -2938,20 +2992,44 @@
       "text": "Two stars on a rhythm with sixteenths"
     },
     "tempo160": {
-      "name": "Played at 160 BPM",
+      "name": "Played at 160\u00a0BPM",
       "text": "Two stars at 160 BPM or faster"
     }
   },
   "feedback": {
     "open": "Feedback",
     "openLabel": "Feedback: mark a part of this screen",
-    "markHint": "Click the part you mean, or drag to draw a box around it. Esc cancels.",
+    "markHint": "Click the part you mean, or drag to draw a box around it. The arrow keys and Enter pick one too. Esc cancels.",
     "markHintTouch": "Tap the part you mean, or drag to draw a box around it.",
     "cancel": "Cancel",
     "title": "Feedback",
     "marked": "Marked",
     "markedArea": "Marked area",
     "markAgain": "Mark again",
+    "role": {
+      "link": "link",
+      "button": "button",
+      "heading": "heading",
+      "text": "text",
+      "field": "field",
+      "list": "list",
+      "image": "image",
+      "img": "image",
+      "drawing": "drawing",
+      "navigation": "navigation",
+      "switch": "switch",
+      "slider": "slider",
+      "group": "group",
+      "radiogroup": "radio group",
+      "radio": "radio button",
+      "listitem": "list item",
+      "progressbar": "progress bar",
+      "status": "status",
+      "alert": "alert",
+      "dialog": "dialog",
+      "alertdialog": "dialog",
+      "search": "search"
+    },
     "kindGroup": "Kind of feedback",
     "kind": {
       "bug": "Bug",
@@ -2965,6 +3043,7 @@
     "attached": "Saved for the team to review, with this screen, the marked spot, the screen size, the theme, the language and the settings. Not your progress. If it is picked up, it becomes a public GitHub issue, without your name.",
     "copy": "Copy",
     "copied": "Copied",
+    "markdown": "Markdown",
     "send": "Send",
     "sending": "Sending…",
     "saved": "Saved for review",
@@ -2996,6 +3075,21 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_19_1": {
+      "title": "Fixes from a full test of the app",
+      "tabs": "With the app open in two tabs, one tab no longer overwrites the progress, settings or sign-in the other one saved. Your theme shows from the first moment, without a flash of the other one.",
+      "pause": "Pause and Resume play the paused bar again and judge it once: a tap from just before the pause no longer counts as an extra tap, a tap in the count-in no longer plays a note missed before the pause, a note tied into that bar is no longer cut short, and the count-in shows the bar it leads into.",
+      "rhythm": "Rhythm: every lesson's exercise has the rhythm the lesson is named after, Quit in a lesson goes back to the Path, Enter or Space on a button reached with Tab presses it instead of tapping, Skip to results adds only the time played to Minutes this week, accuracy is rounded down so 100% means every note was perfect, a perfect round's tip only asks for what can still go up, Practice weak spots always plays the rhythms that are weak, with more bars when they need them, your rhythm setup is kept after a reload, a round skipped to Results counts only the notes played on the skill map, a daily best counts only when the percentage shown goes up, a press held before beat 1 no longer runs across the timing lane, Echo shows the analog metronome, gives a listen back when the app was hidden or the sound did not play and no longer tells you to read ahead, Copy code shows the code when copying is blocked, and Play carries on silently when the browser will not start sound.",
+      "staves": "Staves fit their screen: every note stays in its own bar and on the staff, with busy bars drawn smaller or fewer to a row, a whole-bar rest sits in the middle, a triplet's 3, the clef, the key signature and every sign show in full, and the final barline only ends the exercise.",
+      "fit": "Play, Read notes and Scales fit short and mid-height phones, a phone on its side and a 1280 × 800 window, Play a 1280 × 720 laptop and a short tablet too, also with the analog metronome, ledger lines, Up & down and sixteen bars, and scores and counts stay on one line.",
+      "readNotes": "Read notes: after a mistake the green button shows the right name (F♯, not F), a hinted note is one to practise, a note written an octave off says so, B♯ and C♭ sound where they are written, times have a decimal comma in Dutch, C♯ and C♭ major get their key signature tip, the mi and sol lessons no longer take strict turns, a Keys lesson always has the sign it teaches, a double tap on Check no longer skips the explanation, key names stay on one line, a Hear lesson after a reload plays its notes, Needs practice lists every note, and Home's lesson preview shows the clef and key the lesson starts with.",
+      "scales": "Scales: Enter after a click no longer plays the same key again, Hint works after a mistake, the right note in the wrong octave says so, the circle shows each key signature whole and the progress of both spellings of a key, its keys are easier to tap, Round done names both spellings, Up & down asks for one note at a time, levels 7 to 9 name the minor keys that count, the circle keeps its key after a reload, Tab goes through the piano in pitch order, a wrong answer is read out each time, and Go round the circle no longer says the scales are shuffled.",
+      "learn": "Learn: a practice link keeps your own metronome, works in a new tab and gives an exercise with what the section teaches, every setup opened from a chapter keeps the way back after Start, chapter 11's Practice opens the circle with the way back, Back returns to the section you came from in one step, a phone turned on its side keeps your place, a double click on a section chip no longer answers the quick check, chapters 9 and 10 say what they build on, tables, diagrams and long chapter names fit a narrow phone, and every chapter's subtitle shows in full.",
+      "accounts": "Accounts: an invite or new-password link opened while someone else is signed in asks to sign them out first, Sign out with Remove waits until your progress is saved to the account, so nothing is lost or added to the wrong account, a name or email address with hidden characters is refused, a field's error clears as you type, Sign out without a connection no longer points to Keep, when you were already signed out, Sign out everywhere and Delete account say that nothing was changed, and so does Sign in; and the line that your progress is on your account shows only in the tab you signed in with.",
+      "admin": "Feedback and admins: a feedback report no longer keeps anything typed into a field, such as a password, or a working invite or new-password link; the feedback sheet keeps your text when your session ends; the feedback tool marks the whole button you tap, or the field of a label, names it in your language and leaves room to scroll past it; feedback, or a leaving note, of only blank characters counts as none; an account search with a hidden character works; a new link's answer scrolls into view; an account that may only invite can no longer make a new-password link for an account with more rights; a role switch changes only that role; long names and role names fit, also in confirms; and Feedback mode reaches every device.",
+      "keyboard": "Keyboard and screen readers: focus moves to each new screen and stays on a button that is busy or that a step replaces, or when a tablet turns, every button and example has a name, sharps, flats and triplet rests are read in words, also on Progress, Scales and the Key screen, status lines are read out, the arrow keys move through the sign choices, Escape closes every confirm and sheet, every focus ring shows in full and stands out in the light theme, high-contrast mode shows chosen options, switches, the Scales stars, the Progress charts, the Read notes and Learn bars and the Calibrate plot, and a double tap or double click on Start no longer presses a button on the next screen.",
+      "misc": "Smaller fixes: a skill level's check is met only by the real accuracy, so 89.5% is not 90%, text and marks with enough contrast in light and dark, Dutch plurals and wording, one minute and one check in the singular, numbers kept with their words, long emails and narrow rows that fit, 44 px targets, Calibrate and Hear it after the sound was paused, Calibrate's Save leaves no extra step for Back and its dots stay clear of the labels, practice opened from Progress goes back to it, the logo in the header is a 44 px target, a finished Path that offers no next lesson, an address the app does not have now says it is not found instead of showing a blank page, and clear messages for a name with a tab in it or a feedback text that is too long."
+    },
     "v0_19_0": {
       "title": "Your progress at a glance",
       "try": "Open Progress",

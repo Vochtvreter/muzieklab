@@ -2,7 +2,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_SCALE_SETTINGS } from '../../../core/api';
+import { DEFAULT_SCALE_SETTINGS, type KeyId, type ScaleType } from '../../../core/api';
 import { defaultProgress, PROGRESS_KEY } from '../../../game/storage';
 import { makeScaleRun, StoreProvider, useStore } from '../../store';
 import { ScalesDone } from './ScalesDone';
@@ -19,13 +19,13 @@ window.matchMedia = (query: string) =>
 
 const TODAY = '2026-10-15';
 
-/** Plays a round of one scale without a mistake on TODAY, then shows Round done. */
-function Round(): JSX.Element | null {
+/** Plays a round of these keys (G major) with `mistakes` in each scale (none) on TODAY, then shows Round done. */
+function Round({ keys = ['G'], types = ['major'], mistakes = 0 }: { keys?: KeyId[]; types?: ScaleType[]; mistakes?: number }): JSX.Element | null {
   const { state, dispatch } = useStore();
   useEffect(() => {
-    const run = makeScaleRun({ ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys: ['G'] }, 5);
+    const run = makeScaleRun({ ...DEFAULT_SCALE_SETTINGS, keyMode: 'pick', keys, types }, 5);
     dispatch({ type: 'scaleStart', run });
-    dispatch({ type: 'scaleFinish', played: [{ scale: run.scales[0], mistakes: 0 }], today: TODAY, seconds: 30 });
+    dispatch({ type: 'scaleFinish', played: run.scales.map((scale) => ({ scale, mistakes })), today: TODAY, seconds: 30 });
   }, []);
   return state.scaleLast ? <ScalesDone /> : null;
 }
@@ -62,5 +62,78 @@ describe('Round done: an achievement the round earned', () => {
     expect(sheet.getByText('7-day streak')).toBeTruthy();
     expect(sheet.getByText('Practice on seven days in a row')).toBeTruthy();
     expect(screen.queryByText('Achievement unlocked · 7-day streak')).toBeNull();
+  });
+});
+
+// The circle draws one dot per position, but B and C♭, F♯ and G♭, D♭ and C♯ are two scales each: both are named when
+// both reach ★★ in the round, as the count beside them counts both.
+describe('Round done: the circle card', () => {
+  it('names both spellings of a position that reached two stars', () => {
+    const { unmount } = render(
+      <StoreProvider>
+        <Round keys={['F#', 'Gb', 'Db', 'C#']} />
+      </StoreProvider>,
+    );
+    expect(screen.getByText(/reached ★★ this round/).textContent).toContain('F♯\u00a0major, G♭\u00a0major, D♭\u00a0major and C♯\u00a0major reached ★★ this round.');
+    // Said in words to a screen reader.
+    expect(screen.getByRole('img', { name: /New this round: F sharp\u00a0major, G flat\u00a0major, D flat\u00a0major and C sharp\u00a0major\.$/ })).toBeTruthy();
+    unmount();
+    localStorage.clear();
+
+    render(
+      <StoreProvider>
+        <Round keys={['B', 'Cb']} types={['natural']} />
+      </StoreProvider>,
+    );
+    expect(screen.getByText(/reached ★★ this round/).textContent).toContain('G♯\u00a0minor and A♭\u00a0minor reached ★★ this round.');
+  });
+
+  // A screen reader reads a sign as a symbol or skips it: the line under the circle gave the keys with their signs, right
+  // after the circle's description had said them in words.
+  it('leaves the keys new this round to the circle\'s description, which says them in words', () => {
+    render(
+      <StoreProvider>
+        <Round keys={['F#']} />
+      </StoreProvider>,
+    );
+    expect(screen.getByText(/reached ★★ this round/).closest('[aria-hidden="true"]')).toBeTruthy();
+    expect(screen.getByRole('img', { name: /New this round: F sharp\u00a0major\.$/ })).toBeTruthy();
+  });
+});
+
+// Each scale shows its signs (D♯ harmonic minor) and is said in words, as the hub's circle and Round done's circle say
+// the keys.
+describe('Round done: the scales of the round', () => {
+  it('says each scale in words', () => {
+    render(
+      <StoreProvider>
+        <Round keys={['F#']} types={['major', 'harmonic']} />
+      </StoreProvider>,
+    );
+    const rows = within(screen.getByRole('list', { name: 'Scales in this round' })).getAllByRole('listitem');
+    const heard = (el: Element): string => {
+      const copy = el.cloneNode(true) as Element;
+      copy.querySelectorAll('[aria-hidden="true"]').forEach((x) => x.remove());
+      copy.querySelectorAll('[aria-label]').forEach((x) => x.replaceWith(x.getAttribute('aria-label') + ' '));
+      return copy.textContent ?? '';
+    };
+    const names = rows.map((r) => heard(r.querySelector('.sdone-row-head b')!)).sort();
+    expect(names).toEqual(['D sharp harmonic minor', 'F sharp major']);
+    for (const r of rows) expect(heard(r)).not.toMatch(/[♯♭]/);
+    expect(rows.map((r) => r.querySelector('.sdone-row-head b')!.querySelector('[aria-hidden="true"]')?.textContent).sort()).toEqual(['D♯ harmonic minor', 'F♯ major']);
+  });
+});
+
+// The stars a scale did not earn are outlined, as a lesson's are (★★☆), not told only by their grey: a contrast theme
+// paints every star in one colour (DESIGN.md §11), and two stars would read as three.
+describe('Round done: the stars of each scale', () => {
+  it('outlines the stars not earned', () => {
+    render(
+      <StoreProvider>
+        <Round keys={['G', 'D']} mistakes={1} />
+      </StoreProvider>,
+    );
+    const stars = within(screen.getByRole('list', { name: 'Scales in this round' })).getAllByRole('img', { name: '2 of 3 stars' });
+    expect(stars.map((s) => s.textContent)).toEqual(['★★☆', '★★☆']);
   });
 });

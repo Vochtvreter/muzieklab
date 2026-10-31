@@ -1,7 +1,8 @@
-import { generateRound, sanitizeNoteSettings, type NoteSettings } from '../core/noteRound';
+import { generateRound, sanitizeNoteSettings, type NoteSettings, type RoundNote } from '../core/noteRound';
+import { keyAlter, keySigns, letterOf } from '../core/pitch';
 import en from '../i18n/en.json';
 import nl from '../i18n/nl.json';
-import { FIRST_NOTES, KEYS_UNITS, NOTES_UNITS, PITCH_UNITS, noteLessonSettings, type NoteTrackId } from './notesPath';
+import { FIRST_NOTES, KEYS_UNITS, NOTES_UNITS, PITCH_UNITS, noteLessonSeed, noteLessonSettings, type NoteTrackId } from './notesPath';
 
 /** A message in one catalog, without the English fallback that t() and hasMessage() use. */
 const message = (catalog: object, key: string): unknown =>
@@ -66,10 +67,40 @@ describe('First notes, Read notes and Keys units (DESIGN.md §8.2)', () => {
     expect(PITCH_UNITS[0].lessons.map((l) => tasks(l.id))).toEqual([['read'], ['write'], ['read'], ['write'], ['read', 'write']]);
     for (const u of PITCH_UNITS.slice(1)) {
       expect(u.lessons.map((l) => tasks(l.id)), `unit ${u.id}`).toEqual([['read'], ['write'], ['hear'], ['read'], ['read', 'write', 'hear']]);
-      // The new note comes up more often, except in the review.
+      // The new note comes up more often, except in the review and in mi's hearing lesson (below).
       const step = FIRST_NOTES[u.id - 1].step;
-      for (const l of u.lessons.slice(0, 4)) expect(noteLessonSettings('pitch', l.id)!.stress).toEqual([step]);
+      u.lessons.slice(0, 4).forEach((l, i) => expect(noteLessonSettings('pitch', l.id)!.stress, l.id).toEqual(u.id === 2 && i === 2 ? [] : [step]));
       expect(noteLessonSettings('pitch', u.lessons[4].id)!.stress).toEqual([]);
+    }
+  });
+
+  it('cannot be passed without listening in Hear mi, where only sol and mi come', () => {
+    // A note comes at most twice in a row, so after a pair the other one is certain. With mi stressed, answering mi
+    // unless it just came twice scored 82 % on average and opened the next lesson in almost half the rounds.
+    const s = noteLessonSettings('pitch', '2.3')!;
+    expect(s.tasks).toEqual(['hear']);
+    const other = (x: number): number => (x === 30 ? 32 : 30);
+    const pair = (h: number[]): boolean => h.length >= 2 && h[h.length - 1] === h[h.length - 2];
+    // What a player who never listens can do: the feedback names every note, so the order so far is known.
+    const blind: Record<string, (h: number[]) => number> = {
+      mi: (h) => (pair(h) ? other(h[h.length - 1]) : 30),
+      sol: (h) => (pair(h) ? other(h[h.length - 1]) : 32),
+      turns: (h) => (h.length ? other(h[h.length - 1]) : 30),
+      again: (h) => (pair(h) ? other(h[h.length - 1]) : h.length ? h[h.length - 1] : 30),
+    };
+    const seeds = 2000;
+    for (const [name, guess] of Object.entries(blind)) {
+      let sum = 0;
+      let opened = 0;
+      for (let seed = 1; seed <= seeds; seed++) {
+        const steps = generateRound(s, seed).map((n) => n.step);
+        const accuracy = steps.filter((x, i) => guess(steps.slice(0, i)) === x).length / steps.length;
+        sum += accuracy;
+        // Two stars (85 %) open the next lesson.
+        if (accuracy >= 0.85) opened++;
+      }
+      expect(sum / seeds, name).toBeLessThan(0.7);
+      expect(opened / seeds, name).toBeLessThan(0.2);
     }
   });
 
@@ -93,6 +124,43 @@ describe('First notes, Read notes and Keys units (DESIGN.md §8.2)', () => {
     expect(s('4.1').keys).toEqual(['D']);
     expect(s('5.2').keys).toEqual(['Eb']);
     expect(s('6.1')).toMatchObject({ keys: ['C', 'G', 'F'], mixKeys: true });
+  });
+
+  it('asks for the sign a Keys lesson teaches in every round: B♭ in F major, F♯ in G major, a flat in Flats too', () => {
+    // Judged from the notes themselves: a note the key signature changes, and a sign next to a note that raises or
+    // lowers it. The treble staff has one B in its 11 places, and a third of 23.1's rounds had no B♭.
+    const raised = (n: RoundNote): boolean => n.sign !== null && n.alter > keyAlter(n.key, letterOf(n.step));
+    const lowered = (n: RoundNote): boolean => n.sign !== null && n.alter < keyAlter(n.key, letterOf(n.step));
+    const wanted = (s: NoteSettings, notes: RoundNote[]): string[] => [
+      ...[...new Set(notes.map((n) => n.key))]
+        .filter((k) => keySigns(k).length > 0 && !notes.some((n) => n.key === k && n.sign === null && n.alter !== 0))
+        .map((k) => 'a note of ' + k + ' with its key signature'),
+      ...(s.extras !== 'none' && !notes.some(raised) ? ['a raising sign'] : []),
+      ...(s.extras === 'both' && !notes.some(lowered) ? ['a lowering sign'] : []),
+    ];
+    for (const u of KEYS_UNITS) {
+      for (const l of u.lessons) {
+        const s = noteLessonSettings('keys', l.id)!;
+        for (let seed = 1; seed <= 200; seed++) {
+          const notes = generateRound(s, noteLessonSeed(s, seed));
+          expect(wanted(s, notes), `${l.id} seed ${seed}`).toEqual([]);
+        }
+      }
+    }
+    const f = noteLessonSettings('keys', '3.1')!;
+    expect(generateRound(f, noteLessonSeed(f, 5)).some((n) => letterOf(n.step) === 'B' && n.alter === -1)).toBe(true);
+    // Weak spots elsewhere make the B rarer still; the round is the one these weak spots draw from the seed kept.
+    const weak = { 'treble:30': 5, 'treble:31': 5, 'treble:32': 5, 'treble:33': 5, 'treble:35': 5, 'treble:36': 5 };
+    for (let seed = 1; seed <= 100; seed++) expect(wanted(f, generateRound(f, noteLessonSeed(f, seed, weak), weak)), `seed ${seed}`).toEqual([]);
+  });
+
+  it('keeps the seed of a round that already shows it, and only tries others for a lesson about a sign', () => {
+    const first = noteLessonSettings('pitch', '1.1')!;
+    for (let seed = 1; seed <= 50; seed++) expect(noteLessonSeed(first, seed)).toBe(seed);
+    const f = noteLessonSettings('keys', '3.1')!;
+    const seeds = Array.from({ length: 60 }, (_, i) => i + 1);
+    expect(seeds.filter((seed) => noteLessonSeed(f, seed) === seed).length).toBeGreaterThan(20);
+    expect(seeds.filter((seed) => noteLessonSeed(f, seed) !== seed).length).toBeGreaterThan(5);
   });
 
   it('returns fresh arrays, and null for a lesson that does not exist', () => {

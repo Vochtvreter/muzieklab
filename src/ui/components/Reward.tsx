@@ -2,12 +2,13 @@
  * v1.1 rewards: the XP bar, the daily challenge's date tile, Copy code, and the level sheet (Home's level details, and
  * the level-up after a result, which since v1.5 also lists the achievements and the personal best the run earned).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AchievementId } from '../../game/storage';
 import { UNLOCK_STARS, type LessonOutcome } from '../../game/track';
 import { levelInfo, rankOf, RANKS, type LevelInfo } from '../../game/xp';
 import { dateParts, t } from '../../i18n';
 import { useReducedMotion } from '../hooks';
+import { announce } from '../lib/announce';
 import { rich } from '../lib/format';
 import { Link } from '../router';
 import type { PersonalBest } from '../store';
@@ -109,30 +110,81 @@ export function DateTile({ day }: { day: string }): JSX.Element {
 }
 
 /**
+ * Copies text with the browser's copy command, from a text field out of sight: where the Clipboard API is missing or
+ * refused (a site permission, some in-app browsers), this often still works, from the same tap. The focus goes back.
+ */
+function copyBySelection(text: string): boolean {
+  const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.readOnly = true;
+  area.setAttribute('aria-hidden', 'true');
+  // 16 px: iOS zooms into a field with smaller text when it gets focus.
+  area.style.cssText = 'position: fixed; top: 0; left: -9999px; opacity: 0; font-size: 16px';
+  document.body.append(area);
+  area.focus({ preventScroll: true });
+  area.setSelectionRange(0, text.length);
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  }
+  area.remove();
+  back?.focus({ preventScroll: true });
+  return ok;
+}
+
+/**
  * Copy code: a quiet button that copies the exercise code (T44-HQE-RQ-4B-80-7K2QF) and says Copied for two seconds.
- * The code is not shown; its title has it.
+ * The code is not shown; its title has it. Where copying is not allowed at all, the code is shown under the button,
+ * selected, to copy with the device's own copy command (as the Copy field does).
  */
 export function CodeCopy({ code, className }: { code: string; className: string }): JSX.Element {
-  const [copied, setCopied] = useState(false);
+  const [state, setState] = useState<'idle' | 'copied' | 'selected'>('idle');
+  const field = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (!copied) return;
-    const id = window.setTimeout(() => setCopied(false), 2000);
+    if (state !== 'copied') return;
+    const id = window.setTimeout(() => setState('idle'), 2000);
     return () => window.clearTimeout(id);
-  }, [copied]);
-  const copy = (): void => {
-    const done = (): void => setCopied(true);
-    try {
-      const p = navigator.clipboard?.writeText(code);
-      if (p) p.then(done, () => undefined);
-    } catch {
-      /* no clipboard: nothing to copy to */
-    }
+  }, [state]);
+  const select = (): void => {
+    field.current?.focus();
+    field.current?.setSelectionRange(0, code.length);
   };
+  // The focus goes to the code, and the line under it is read out through the app's one live region
+  // (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen reader.
+  useEffect(() => {
+    if (state !== 'selected') return;
+    select();
+    announce(t('form.selected'));
+  }, [state]);
+  const fallback = (): void => {
+    if (copyBySelection(code)) setState('copied');
+    else if (state === 'selected') select();
+    else setState('selected');
+  };
+  const copy = (): void => {
+    const clip = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+    if (!clip?.writeText) return fallback();
+    clip.writeText(code).then(() => setState('copied'), fallback);
+  };
+  const copied = state === 'copied';
   return (
-    <button type="button" className={className + ' copy-btn' + (copied ? ' is-copied' : '')} title={t('results.copyTitle', { code })} onClick={copy}>
-      {copied ? <Icon name="check" size={18} strokeWidth={2.6} className="m-in" /> : <Icon name="copy" size={18} />}
-      <span aria-live="polite">{t(copied ? 'results.copied' : 'results.copyCode')}</span>
-    </button>
+    <>
+      <button type="button" className={className + ' copy-btn' + (copied ? ' is-copied' : '')} title={t('results.copyTitle', { code })} onClick={copy}>
+        {copied ? <Icon name="check" size={18} strokeWidth={2.6} className="m-in" /> : <Icon name="copy" size={18} />}
+        <span aria-live="polite">{t(copied ? 'results.copied' : 'results.copyCode')}</span>
+      </button>
+      {state === 'selected' && (
+        <span className="code-shown m-in">
+          <input ref={field} className="tfield-input copy-value" value={code} readOnly aria-label={t('results.code')} onFocus={(e) => e.currentTarget.select()} />
+          <span className="tfield-hint">
+            {t('form.selected')}
+          </span>
+        </span>
+      )}
+    </>
   );
 }
 

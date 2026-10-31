@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { exerciseView } from '../exerciseView';
 import { dailyChallenge, dailyTier } from '../../game/daily';
-import { generateRound, letterOf } from '../../core/api';
+import { letterOf, type Clef, type KeyId } from '../../core/api';
 import { FIRST_NOTES, noteLessonSettings } from '../../game/notesPath';
 import { lessonSettings } from '../../game/path';
 import { PATH_UNITS, type PathLesson, type PathUnit } from '../../game/tracks';
@@ -20,9 +20,9 @@ import { LessonTiles, StaffBox } from '../components/Bits';
 import { DateTile, LevelContent, StreakPill, XpBar } from '../components/Reward';
 import { Sheet } from '../components/Sheet';
 import { useBreakpoint, useDocTitle, useLingering, useToday } from '../hooks';
-import { seedFromString } from '../lib/format';
-import { continueLesson, lessonNumber, lessonPreview, unitStates } from '../lib/lessons';
-import { letterName, solfegeName } from '../lib/noteText';
+import { wholePercent } from '../lib/format';
+import { continueLesson, lessonNumber, lessonPreview, noteLessonPreview, unitStates } from '../lib/lessons';
+import { letterName, majorName, solfegeName } from '../lib/noteText';
 import { describeBars } from '../lib/notation';
 import { Link } from '../router';
 import { todayIso, useStore } from '../store';
@@ -47,8 +47,8 @@ function LevelChip({ info, onOpen, chipRef }: { info: LevelInfo; onOpen(): void;
 }
 
 /**
- * The lesson as a preview (same every visit): a bar that shows what the lesson adds, e.g. a half rest in "Half rests".
- * One bar on phones; two from tablet up, where one bar left most of the card empty.
+ * The lesson as a preview (same every visit): a bar that shows what the lesson is about, e.g. a half rest in "Half
+ * rests" (lessonPreview). One bar on phones; two from tablet up, where one bar left most of the card empty.
  */
 function LessonPreview({ lessonId, wide, count = 1 }: { lessonId: string; wide?: boolean; count?: 1 | 2 }): JSX.Element | null {
   const preview = useMemo(() => lessonPreview(lessonId), [lessonId]);
@@ -66,31 +66,39 @@ function LessonPreview({ lessonId, wide, count = 1 }: { lessonId: string; wide?:
 
 /**
  * A note lesson as a preview: in a First notes unit the notes learned so far, in the order learned, each with its name
- * and the new one highlighted; in a later unit the first notes of a round (the same every visit).
+ * and the new one highlighted; in a later unit the first notes of a round (the same every visit), in the clef and key
+ * they are read in.
  */
 function NotePreview({ lesson, wide }: { lesson: PathLesson; wide?: boolean }): JSX.Element | null {
   const { state } = useStore();
   const solfege = state.prefs.noteNames === 'solfege';
-  const settings = useMemo(() => (lesson.track === 'rhythm' ? null : noteLessonSettings(lesson.track, lesson.ref)), [lesson]);
-  const notes = useMemo((): PitchNote[] => {
-    if (!settings) return [];
+  const staff = useMemo((): { clef: Clef; key: KeyId; notes: PitchNote[] } | null => {
     if (lesson.track === 'pitch') {
-      return FIRST_NOTES.filter((n) => settings.only.includes(n.step)).map((n) => ({
+      const settings = noteLessonSettings(lesson.track, lesson.ref);
+      if (!settings) return null;
+      const notes = FIRST_NOTES.filter((n) => settings.only.includes(n.step)).map((n) => ({
         step: n.step,
         sign: null,
         label: (solfege ? solfegeName : letterName)(letterOf(n.step), 0),
       }));
+      return { clef: settings.clefs[0], key: settings.keys[0], notes };
     }
-    return generateRound(settings, seedFromString(lesson.key))
-      .slice(0, wide ? 6 : 4)
-      .map((n) => ({ step: n.step, sign: n.sign }));
-  }, [settings, lesson, solfege, wide]);
-  if (!settings || notes.length === 0) return null;
+    const round = noteLessonPreview(lesson, wide ? 6 : 4);
+    return round && { clef: round.clef, key: round.key, notes: round.notes.map((n) => ({ step: n.step, sign: n.sign })) };
+  }, [lesson, solfege, wide]);
+  if (!staff || staff.notes.length === 0) return null;
+  const { clef, key, notes } = staff;
   const isNew = lesson.track === 'pitch' ? notes.length - 1 : null;
-  const label = lesson.track === 'pitch' ? t('home.notesPreview', { names: notes.map((n) => n.label).join(', ') }) : t('home.notesPreviewRound');
+  // The notes so far leave room for the ones to come; a round's notes fill the staff (its first clef and key can have
+  // fewer than six).
+  const slots = lesson.track === 'pitch' ? Math.max(notes.length, wide ? 6 : 4) : notes.length;
+  const label =
+    lesson.track === 'pitch'
+      ? t('home.notesPreview', { names: notes.map((n) => n.label).join(', ') })
+      : t('home.notesPreviewRound', { clef: t('notes.clefLower.' + clef), key: majorName(key) });
   return (
     <div className={'preview-staff' + (wide ? ' preview-staff--wide' : '')}>
-      <PitchStaff clef={settings.clefs[0]} keyId={settings.keys[0]} notes={notes} slots={Math.max(notes.length, wide ? 6 : 4)} cursor={isNew}
+      <PitchStaff clef={clef} keyId={key} notes={notes} slots={slots} cursor={isNew}
         scale={wide ? 1.2 : 1} room={1.5} label={label} />
     </div>
   );
@@ -139,12 +147,14 @@ export function Home(): JSX.Element {
     <div className="daily-text">
       <h2 id="daily-title">{t('home.dailyTitle')}</h2>
       <div className="muted-text">{t('home.dailyMeta', { bars: t('common.bars', { count: daily.bars }) })}</div>
-      {dailyDone && <div className="daily-done">{t('home.dailyDone', { accuracy: Math.round(dailyDone.accuracy) })}</div>}
+      {dailyDone && <div className="daily-done">{t('home.dailyDone', { accuracy: wholePercent(dailyDone.accuracy) })}</div>}
     </div>
   );
-  // Outlined: Continue is the one filled button on Home.
+  // Outlined: Continue is the one filled button on Home. Its name starts with the words on it, so saying them presses it
+  // (voice control, WCAG 2.5.3).
   const dailyButton = (
-    <button type="button" className="btn btn--outline daily-btn" aria-label={t('home.dailyPlayLabel', { date: dateParts(today).long })} onClick={startDaily}>
+    <button type="button" className="btn btn--outline daily-btn" aria-label={t(dailyDone ? 'home.dailyAgainLabel' : 'home.dailyPlayLabel', { date: dateParts(today).long })}
+      onClick={startDaily}>
       {t(dailyDone ? 'home.dailyAgain' : 'home.dailyPlay')}
     </button>
   );

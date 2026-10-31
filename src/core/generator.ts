@@ -8,6 +8,7 @@ import { generateBar, type GenContext } from './bar';
 import { baseOf, formString, pickForm, randomOp, sameBar, vary } from './phrase';
 import { valueForTicks, VALUE_TICKS } from './values';
 import { rateDifficulty } from './difficulty';
+import { MAX_BARS, MAX_TEMPO } from './defaults';
 
 /** Whole-exercise attempts (§5.5); after GOOD_ENOUGH_AFTER attempts a single soft miss is accepted. */
 const ATTEMPTS = 24;
@@ -20,8 +21,8 @@ export function normaliseSettings(settings: Settings): Settings {
     meters: METER_IDS.filter((m) => settings.meters.includes(m)),
     notes: [...new Set(settings.notes)],
     rests: [...new Set(settings.rests)],
-    bars: Math.max(1, Math.min(16, Math.round(settings.bars) || 1)),
-    tempo: Math.max(40, Math.min(200, Math.round(settings.tempo) || 80)),
+    bars: Math.max(1, Math.min(MAX_BARS, Math.round(settings.bars) || 1)),
+    tempo: Math.max(40, Math.min(MAX_TEMPO, Math.round(settings.tempo) || 80)),
   };
   if (!s.meters.length) s.meters = ['4/4'];
   if (!checkSettings(s).ok) s.notes = [...new Set<NoteValue>([...s.notes, 'quarter'])];

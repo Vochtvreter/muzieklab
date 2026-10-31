@@ -9,7 +9,9 @@
  * a site with no API) → `unreachable`, and a cached account is shown as offline. While it is unreachable, GET /me is
  * asked again when such a screen opens (at most once every RECHECK_MS), when the app comes back into view
  * (visibilitychange), when the device is back online, and on Try again. Everything else that changes the account goes
- * through the functions here, so the store and the cache (muzieklab.account.v1) stay right.
+ * through the functions here, so the store and the cache (muzieklab.account.v1) stay right. An account another tab
+ * signs in or out is taken up by the store (the storage event, accountStored); a GET /me answer that was on its way
+ * meanwhile is asked again.
  */
 import { useCallback, useEffect, useMemo } from 'react';
 import type { Me, Permission } from '../../shared/api';
@@ -19,7 +21,7 @@ import { t } from '../i18n';
 import { announce } from './lib/announce';
 import { useStore, type AccountNotice, type AccountState, type Action } from './store';
 
-/** What Settings → Account says after an account change (the message's key). */
+/** What Settings → Account says after an account change (the message's key); Sign in says `sessionEnded`. */
 export const NOTICE_TEXT: Record<AccountNotice, string> = {
   signedOut: 'settings.noticeSignedOut',
   signedOutEverywhere: 'settings.noticeSignedOutEverywhere',
@@ -28,6 +30,7 @@ export const NOTICE_TEXT: Record<AccountNotice, string> = {
   welcome: 'settings.noticeWelcome',
   passwordReset: 'settings.noticePasswordReset',
   progressAdded: 'settings.noticeProgressAdded',
+  sessionEnded: 'signIn.sessionEnded',
 };
 
 /**
@@ -69,16 +72,24 @@ export function resetAccountCheck(): void {
   reach = 'unknown';
 }
 
+/** Whose account the tabs of this browser keep (muzieklab.account.v1), or null. */
+const storedId = (): string | null => loadAccount()?.id ?? null;
+
 function askMe(dispatch: (a: Action) => void): Promise<void> {
   const asked = generation;
+  // Another tab may sign in or out while this is on its way (the store takes that up): then the answer is about the
+  // session before, and saving it would hand that one back to every tab, so it is asked again.
+  const stored = storedId();
   return api.get<Me>('/me').then(
     (me) => {
       if (asked !== generation) return;
+      if (storedId() !== stored) return askMe(dispatch);
       reach = 'reachable';
       dispatch({ type: 'signedIn', me });
     },
     (e: unknown) => {
       if (asked !== generation) return;
+      if (storedId() !== stored) return askMe(dispatch);
       const err = asApiError(e);
       // 401: nobody is signed in (or the session ended). Anything else: no usable answer, keep what is cached.
       if (err.code === 'unauthenticated') {
@@ -176,7 +187,10 @@ export interface UseAccount {
   signIn(email: string, password: string): Promise<Me>;
   /** POST /auth/sign-out (this device). A session that had already ended counts as signed out too. */
   signOut(notice?: AccountNotice): Promise<void>;
-  /** POST /auth/sign-out-everywhere (every device of the account, this one too). */
+  /**
+   * POST /auth/sign-out-everywhere (every device of the account, this one too). Unlike signOut, a session that had
+   * already ended is a failure: no other device was signed out, so it rejects through handleError.
+   */
   signOutEverywhere(): Promise<void>;
   /**
    * GET /me again now (Try again, or to pick up roles an admin changed). Resolves with what the answer said: reachable,
@@ -190,7 +204,9 @@ export interface UseAccount {
   setNotice(notice: AccountNotice | null): void;
   /**
    * For a failed request on any account or admin screen: a 401 means the session ended (signed out from now on; the
-   * account screens then go to Sign in). Returns the error as an ApiError, for errorMessage / failureOf.
+   * account screens then go to Sign in, which says nothing was changed: the `sessionEnded` notice). Returns the error
+   * as an ApiError, for errorMessage / failureOf. Also once the screen is gone: the progress sync may have found the
+   * session ended first, and Sign in, there already, shows the line when this says so.
    */
   handleError(e: unknown): ApiError;
 }
@@ -222,10 +238,13 @@ export function useAccount(): UseAccount {
   const setNotice = useCallback((n: AccountNotice | null) => dispatch({ type: 'accountNotice', notice: n }), [dispatch]);
 
   // Only a 401 changes the state. No answer to one request is shown as that request's error: the screen keeps its
-  // forms (and what was typed) instead of switching to the offline layout, which only GET /me decides.
+  // forms (and what was typed) instead of switching to the offline layout, which only GET /me decides. After a 401 the
+  // screen gives way to Sign in before it can show its error, so Sign in says that nothing was changed, and it is read
+  // out: landing there signed out after Delete account would read as done. (The feedback tool stays open until it is
+  // closed, and shows its error, with Sign in in place of Send.)
   const handleError = useCallback((e: unknown): ApiError => {
     const err = asApiError(e);
-    if (err.code === 'unauthenticated') setSignedOut();
+    if (err.code === 'unauthenticated') setSignedOut('sessionEnded');
     return err;
   }, [setSignedOut]);
 
@@ -252,11 +271,12 @@ export function useAccount(): UseAccount {
       setSignedOut(n);
     },
     signOutEverywhere: async () => {
+      // Not as signOut: a session that had already ended (a new password on another device) could not end the others,
+      // so a 401 is not "signed out on every device".
       try {
         await api.post<void>('/auth/sign-out-everywhere');
       } catch (e) {
-        const err = asApiError(e);
-        if (err.code !== 'unauthenticated') throw handleError(err);
+        throw handleError(e);
       }
       setSignedOut('signedOutEverywhere');
     },

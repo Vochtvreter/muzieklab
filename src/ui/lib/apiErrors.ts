@@ -3,7 +3,7 @@
  * (apiError.<code> in the catalogs), and which field it belongs to, so a field's error sits under that field and the
  * rest go in the form's FormError.
  */
-import { ERROR_CODES, PASSWORD_MAX, PASSWORD_MIN } from '../../../shared/api';
+import { ERROR_CODES, nameHasRefusedCharacters, nameShowsNothing, PASSWORD_MAX, PASSWORD_MIN } from '../../../shared/api';
 import { ApiError, asApiError, type ClientErrorCode } from '../../api/client';
 import { t } from '../../i18n';
 
@@ -72,4 +72,20 @@ export const formError = (f: Failure | null): string | null => (f && !f.field ? 
 export function passwordLengthFailure(password: string): Failure | null {
   const n = [...password].length;
   return n < PASSWORD_MIN || n > PASSWORD_MAX ? failureOf(new ApiError(422, 'password_length')) : null;
+}
+
+/**
+ * Whether a name shows nothing, so is as good as empty (the field says to type it): spaces only, or characters that
+ * show nothing (a zero-width space). The server refuses it too, by the same rule (shared/api.ts).
+ */
+export const nameIsBlank: (name: string) => boolean = nameShowsNothing;
+
+/**
+ * A name the server would refuse for what is in it: a tab or another control character inside it (a name pasted from
+ * two spreadsheet cells has a tab, which hardly shows), or a bidi override or isolate, which turns the text after it
+ * around. Its answer names no field, so the name is checked before the request is sent: the message for the name
+ * field, or null. Around the name it is only space, which is trimmed.
+ */
+export function nameCharactersError(name: string): string | null {
+  return nameHasRefusedCharacters(name.trim()) ? t('form.hiddenCharacters') : null;
 }

@@ -1,9 +1,9 @@
 /**
  * Helpers for the admin screens (BACKEND-PLAN.md §4.3, §5.1, §5.3): the ready-made message an admin pastes into an
- * email or chat with a link, premium's last day (a calendar day) in the date field, and the one-line message the
- * accounts list shows after an account was removed on the one-account screen.
+ * email or chat with a link, premium's last day (a calendar day) in the date field, whether an account may do more than
+ * the admin, and the one-line message the accounts list shows after an account was removed on the one-account screen.
  */
-import { BUILT_IN_ROLES, isBuiltInRole, type Role } from '../../../shared/api';
+import { BUILT_IN_ROLES, isBuiltInRole, PERMISSIONS, type Permission, type Role, type RoleInfo } from '../../../shared/api';
 import { formatDateTime, t } from '../../i18n';
 
 /** Which link a message is for: an invite (7 days) or a new password (24 hours). */
@@ -42,6 +42,17 @@ export function dayOfUntil(until: string | null): string {
  */
 export function roleName(id: Role, names: Readonly<Record<Role, string>> = {}): string {
   return isBuiltInRole(id) ? t('accountRole.' + id) : (names[id] ?? id);
+}
+
+/**
+ * Whether an account with these roles may do something that `mine` (the signed-in account's permissions) does not.
+ * Then only someone who holds all of it makes it a link or changes its name or email (BACKEND-PLAN.md §4.2), and the
+ * API refuses the admin. Admin has every permission; another role has what the list (GET /admin/roles) says, and one it
+ * does not hold, or no list yet, counts for nothing: the screen then offers what the API decides on.
+ */
+export function holdsMore(roles: readonly Role[], list: readonly Pick<RoleInfo, 'id' | 'permissions'>[] | null, mine: readonly Permission[]): boolean {
+  const granted = (role: Role): readonly Permission[] => (role === 'admin' ? PERMISSIONS : (list?.find((r) => r.id === role)?.permissions ?? []));
+  return roles.some((role) => granted(role).some((p) => !mine.includes(p)));
 }
 
 /** Role ids in the API's order: the built-in ones first, as in BUILT_IN_ROLES, then the custom ones by id; each once. */

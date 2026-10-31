@@ -27,6 +27,8 @@ const LEFT = 34;
 const RIGHT = 50;
 /** More days than this are counted in a label instead of listed. */
 const LIST_DAYS = 6;
+/** The least room between the baselines of two of the timing chart's labels (10.5 and 11 px text). */
+const LABEL_ROOM = 11;
 
 type Point = { i: number; date: string; value: number; x: number; y: number };
 
@@ -230,29 +232,41 @@ function TimingChart({ data, size }: { data: TimingView; size: Breakpoint }): JS
         })
       : '';
   const right = w - RIGHT;
+  // A wider range squeezes the band's lines together (the 90 px desktop chart most): each keeps its label only clear
+  // of the labels kept before it, 0 first, and the band's word stays above the zero line, or is left out.
+  const labelled = [0, STEADY_BAND.to, STEADY_BAND.from].reduce<number[]>(
+    (kept, v) => (kept.every((k) => Math.abs(y(k) - y(v)) >= LABEL_ROOM) ? [...kept, v] : kept),
+    [],
+  );
   return (
     <div ref={ref}>
       <svg viewBox={`0 0 ${w} ${g.h}`} className="prog-chart" role="img" aria-label={label}>
         <rect x={LEFT} y={y(STEADY_BAND.to)} width={right - LEFT} height={y(STEADY_BAND.from) - y(STEADY_BAND.to)} rx={4} className="prog-band" />
-        <text x={right - 6} y={y(STEADY_BAND.to) + 14} textAnchor="end" className="prog-chart-note">
-          {t('progress.timing.band')}
-        </text>
         {[STEADY_BAND.to, 0, STEADY_BAND.from].map((v) => (
           <g key={v}>
             <line x1={LEFT} x2={right} y1={y(v)} y2={y(v)} className={v === 0 ? 'prog-zero' : 'prog-gridline'} />
-            <text x={28} y={y(v) + 4} textAnchor="end" className="prog-axis">
-              {signed(v)}
-            </text>
+            {labelled.includes(v) && (
+              <text x={28} y={y(v) + 4} textAnchor="end" className="prog-axis">
+                {signed(v)}
+              </text>
+            )}
           </g>
         ))}
-        <text x={LEFT + 6} y={TOP + 11} className="prog-chart-note">
-          {t('progress.timing.late')}
-        </text>
-        <text x={right - 6} y={g.bottom - 5} textAnchor="end" className="prog-chart-note">
-          {t('progress.timing.early')}
-        </text>
         <DayLine days={data.days} x={x} y={y} bottom={g.bottom} end={signedMs}
           title={(p) => t('progress.timing.point', { date: shortDate(p.date), value: signedMs(p.value) })} />
+        {/* Over the line: a steady one ends in the band's word at the right, a dragging one starts at the top left, a
+            rushing one ends at the bottom right. */}
+        {y(0) - y(STEADY_BAND.to) >= LABEL_ROOM && (
+          <text x={right - 6} y={Math.min(y(STEADY_BAND.to) + 14, y(0))} textAnchor="end" className="prog-chart-note prog-chart-note--band">
+            {t('progress.timing.band')}
+          </text>
+        )}
+        <text x={LEFT + 6} y={TOP + 11} className="prog-chart-note prog-chart-note--over">
+          {t('progress.timing.late')}
+        </text>
+        <text x={right - 6} y={g.bottom - 5} textAnchor="end" className="prog-chart-note prog-chart-note--over">
+          {t('progress.timing.early')}
+        </text>
         <DateAxis days={data.days} x={x} y={g.dates} />
       </svg>
     </div>

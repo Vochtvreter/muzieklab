@@ -19,6 +19,17 @@ export interface LaneInput {
    * held does not count, so drawing the hold would suggest it does.
    */
   hold?: boolean;
+  /**
+   * Draw only `rowsShown` rows from the row of bar `fromBar` (a row's first bar), the first at the top: live Play on a
+   * phone, where every row of a long exercise would push the pad off the screen. Default: every row.
+   */
+  fromBar?: number;
+  rowsShown?: number;
+  /**
+   * Live Play, also while it has no playhead (`now` null in the count-in and while paused): a press that matched no
+   * note may still match one, so it is never Results' extra tap.
+   */
+  live?: boolean;
 }
 
 /** `extra`: a press that matched no note (results only), so it never looks like a hit. */
@@ -71,6 +82,10 @@ export function layoutLane(input: LaneInput): LaneLayout {
   const X = (tickInRow: number) => PAD_X + tickInRow * unit;
   const clampTick = (t: number) => Math.min(Math.max(t, 0), endTick);
   const rowOf = (t: number) => Math.min(Math.floor(t / rowTicks), rows - 1);
+  const firstRow = Math.min(Math.floor((input.fromBar ?? 0) / per), rows - 1);
+  const endRow = Math.min(rows, firstRow + (input.rowsShown ?? rows));
+  const shown = (r: number) => r >= firstRow && r < endRow;
+  const top = (r: number) => (r - firstRow) * rowH;
 
   // Vertical metrics, relative to the top of a row.
   const eh = rowH * 0.46;
@@ -83,7 +98,7 @@ export function layoutLane(input: LaneInput): LaneLayout {
     const b = clampTick(t1);
     if (b <= a) return [];
     const out: Segment[] = [];
-    for (let r = rowOf(a); r < rows && r * rowTicks < b; r++) {
+    for (let r = Math.max(rowOf(a), firstRow); r < endRow && r * rowTicks < b; r++) {
       const s = Math.max(a, r * rowTicks);
       const e = Math.min(b, (r + 1) * rowTicks);
       if (e <= s) continue;
@@ -96,10 +111,10 @@ export function layoutLane(input: LaneInput): LaneLayout {
 
   // Beat grid, stronger at bar lines.
   const beatsPerBar = Math.round(barTicks / PPQ);
-  for (let r = 0; r < rows; r++) {
+  for (let r = firstRow; r < endRow; r++) {
     const barsInRow = Math.min(per, bars - r * per);
     for (let b = 0; b <= barsInRow * beatsPerBar; b++) {
-      shapes.push({ kind: 'grid', x: X(b * PPQ), y1: r * rowH + 2, y2: r * rowH + rowH - 4, strong: b % beatsPerBar === 0 });
+      shapes.push({ kind: 'grid', x: X(b * PPQ), y1: top(r) + 2, y2: top(r) + rowH - 4, strong: b % beatsPerBar === 0 });
     }
   }
 
@@ -108,13 +123,15 @@ export function layoutLane(input: LaneInput): LaneLayout {
     for (const s of segments(n.tick, n.tick + n.durationTicks)) {
       const x = s.x0 + (s.head ? 1 : 0);
       const w = s.x1 - (s.tail ? 1 : 0) - x;
-      shapes.push({ kind: 'note', x, y: s.row * rowH + ey, w, h: eh });
+      shapes.push({ kind: 'note', x, y: top(s.row) + ey, w, h: eh });
     }
   }
 
   const holdUntil = (tap: Tap): number => {
     if (tap.up !== null) return input.now != null ? Math.min(tap.up, input.now) : tap.up;
-    return input.now ?? timeline.totalSeconds; // still held: grows to the playhead
+    // Still held: grows to the playhead. Before there is one (a press just before beat 1, in the count-in), a mark at
+    // the press.
+    return input.now ?? tap.down;
   };
 
   const tapOnly = input.hold === false;
@@ -127,7 +144,7 @@ export function layoutLane(input: LaneInput): LaneLayout {
       const x = s.x0 + (s.head ? 1 : 0);
       let x1 = s.x1 - (s.tail ? 1 : 0);
       if (x1 < x + 2) x1 = x + 2;
-      shapes.push({ kind: 'hold', x, y: s.row * rowH + hy, w: x1 - x, h: hh, tone });
+      shapes.push({ kind: 'hold', x, y: top(s.row) + hy, w: x1 - x, h: hh, tone });
     }
   };
 
@@ -138,8 +155,9 @@ export function layoutLane(input: LaneInput): LaneLayout {
     if (!note) continue;
     const noteEnd = note.tick + note.durationTicks;
     if (nr.judgement === 'miss' || !nr.tap) {
+      // On the row the note starts on: a note tied in from a row above the window keeps its × up there.
       const s = segments(note.tick, noteEnd)[0];
-      if (s) shapes.push({ kind: 'miss', cx: (s.x0 + s.x1) / 2, cy: s.row * rowH + ey + eh / 2 });
+      if (s?.head) shapes.push({ kind: 'miss', cx: (s.x0 + s.x1) / 2, cy: top(s.row) + ey + eh / 2 });
       continue;
     }
     judgedDowns.add(nr.tap.down);
@@ -151,14 +169,14 @@ export function layoutLane(input: LaneInput): LaneLayout {
       for (const s of segments(release, noteEnd)) {
         const x = s.x0 - (s.head ? 1 : 0);
         const w = s.x1 - x - (s.tail ? 1.5 : 0);
-        if (w > 0) shapes.push({ kind: 'short', x, y: s.row * rowH + ey + 0.75, w, h: eh - 1.5 });
+        if (w > 0) shapes.push({ kind: 'short', x, y: top(s.row) + ey + 0.75, w, h: eh - 1.5 });
       }
     }
   }
 
   // Taps not (yet) judged against a note: drawn where they happened. Live: neutral, they may still match a note.
   // On results they never will: extra taps, outlined in the miss colour.
-  const extraTone: HoldTone = input.result && input.now == null ? 'extra' : 'live';
+  const extraTone: HoldTone = input.result && !input.live && input.now == null ? 'extra' : 'live';
   for (const tap of input.taps) {
     if (judgedDowns.has(tap.down)) continue;
     if (input.now != null && tap.down > input.now) continue;
@@ -168,8 +186,8 @@ export function layoutLane(input: LaneInput): LaneLayout {
   if (input.now != null) {
     const t = clampTick(toTick(input.now));
     const r = rowOf(t);
-    shapes.push({ kind: 'playhead', x: X(t - r * rowTicks), y1: r * rowH, y2: r * rowH + rowH - 2 });
+    if (shown(r)) shapes.push({ kind: 'playhead', x: X(t - r * rowTicks), y1: top(r), y2: top(r) + rowH - 2 });
   }
 
-  return { width, height: rows * rowH, shapes };
+  return { width, height: (endRow - firstRow) * rowH, shapes };
 }

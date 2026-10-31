@@ -37,9 +37,8 @@ export function AccountSection(): JSX.Element | null {
   const account = useAccount();
   const { me, api: reach, notice, setNotice } = account;
   const { state, dispatch } = useStore();
-  const [keep, setKeep] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  // After Try again found the API: the section's first row (the account, or Sign in).
+  // After the button that had the focus went (Try again found the API or saved the progress, signed out): the section's
+  // first row (the account, or Sign in).
   const refocus = useRefocus(() => document.querySelector<HTMLElement>(ACCOUNT_ROWS));
 
   // The notice is for this visit of Settings: it goes once Settings is left (not on the language switch's remount, or
@@ -52,15 +51,68 @@ export function AccountSection(): JSX.Element | null {
     },
     [setNotice],
   );
+  // A request refused because the session ended (the feedback sheet's, say) is Sign in's line, not a done line: it was
+  // read out, and here the Sign in row says enough. Gone, so a later Sign in does not show it.
+  const ended = notice === 'sessionEnded';
+  useEffect(() => {
+    if (ended) setNotice(null);
+  }, [ended, setNotice]);
 
   if (!me && reach !== 'reachable') return null;
   const offline = reach === 'unreachable';
 
+  return (
+    <Section id="account" title={t('settings.account')}>
+      {me ? (
+        <>
+          <RowLink to="/account" title={me.name} sub={me.email} />
+          {!offline && <SyncLine status={state.account.sync} onDone={refocus} />}
+          {account.can('accounts.read') && <RowLink to="/admin" title={t('settings.accounts')} sub={t('settings.accountsSub')} />}
+          {account.can('feedback.review') && <RowLink to="/admin/feedback" title={t('settings.feedbackReports')} sub={t('settings.feedbackReportsSub')} />}
+          {me.feedbackMode && account.can('feedback.give') && (
+            <SwitchRow label={t('settings.feedbackButton')} description={t('settings.feedbackButtonSub')} on={state.prefs.feedbackButton}
+              onChange={(on) => dispatch({ type: 'prefs', patch: { feedbackButton: on } })} />
+          )}
+          {reach === 'reachable' && <SignOut account={account} onSignedOut={refocus} />}
+          {offline && <OfflineNote account={account} className="row-note" onBack={refocus} />}
+        </>
+      ) : (
+        <RowLink to="/signin" title={t('settings.signIn')} sub={t('settings.signInSub')} />
+      )}
+      {notice && !ended && (
+        <div className="row-status m-in">
+          <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
+          {t(NOTICE_TEXT[notice])}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * Sign out on this device, confirmed, with the choice of what happens to this device's progress: kept (the default), or
+ * removed, for a shared device. The last change is saved first. In Settings, and on a link (an invite, a new password)
+ * opened while someone else is signed in; `onSignedOut` runs once they are. There the device is shared, and progress
+ * kept on it goes to the link's account at its first sign-in here, so the confirm opens on Remove (`removeFirst`).
+ */
+export function SignOut({ account, removeFirst = false, onSignedOut }: { account: UseAccount; removeFirst?: boolean; onSignedOut?(): void }): JSX.Element {
+  const { dispatch } = useStore();
+  const [keep, setKeep] = useState(!removeFirst);
+  const [error, setError] = useState<string | null>(null);
+
   // Keeps the confirm open with the error when signing out failed; false closes it.
   const signOut = async (): Promise<boolean> => {
     setError(null);
-    // What is not saved yet goes to the account first, so removing it from this device loses nothing.
-    await progressSync()?.flush();
+    // What is not saved yet goes to the account first, so removing it from this device loses nothing. When it could not
+    // be saved (a server error, no API, a save still on its way), Remove is refused. In Settings the line offers Keep,
+    // which loses nothing either, as this account's next sign-in here adds the device's progress again. Not on a link:
+    // there the next sign-in is the link's account, which Keep would hand this one's progress to. Nor when the API gave
+    // no answer: Keep cannot sign out then either (the session ends on the API), so the line says what Keep would.
+    const flushed = (await progressSync()?.flush()) ?? 'saved';
+    if (!keep && flushed !== 'saved') {
+      setError(t(removeFirst ? 'settings.signOutNotSavedLink' : flushed === 'unreachable' ? 'apiError.unavailable' : 'settings.signOutNotSaved'));
+      return false;
+    }
     try {
       await account.signOut();
     } catch (e) {
@@ -68,48 +120,26 @@ export function AccountSection(): JSX.Element | null {
       return false;
     }
     if (!keep) dispatch({ type: 'resetProgress' });
-    setKeep(true);
+    setKeep(!removeFirst);
+    onSignedOut?.();
     return true;
   };
 
+  // The chosen one takes the focus when the confirm opens (the row button that had it is gone), as Delete account's
+  // does, so a screen reader reads the confirm out and Escape reaches it.
   return (
-    <Section id="account" title={t('settings.account')}>
-      {me ? (
-        <>
-          <RowLink to="/account" title={me.name} sub={me.email} />
-          {!offline && <SyncLine status={state.account.sync} />}
-          {account.can('accounts.read') && <RowLink to="/admin" title={t('settings.accounts')} sub={t('settings.accountsSub')} />}
-          {account.can('feedback.review') && <RowLink to="/admin/feedback" title={t('settings.feedbackReports')} sub={t('settings.feedbackReportsSub')} />}
-          {me.feedbackMode && account.can('feedback.give') && (
-            <SwitchRow label={t('settings.feedbackButton')} description={t('settings.feedbackButtonSub')} on={state.prefs.feedbackButton}
-              onChange={(on) => dispatch({ type: 'prefs', patch: { feedbackButton: on } })} />
-          )}
-          {reach === 'reachable' && (
-            <ConfirmAction label={t('settings.signOut')} icon="quit" tone="plain" question={t('settings.signOutQuestion')} detail={t('settings.signOutDetail')}
-              confirmLabel={t('settings.signOut')} busyLabel={t('settings.signingOut')} error={error} onConfirm={async () => (await signOut()) ? undefined : false}
-              onCancel={() => {
-                setError(null);
-                setKeep(true);
-              }}>
-              <Segmented label={t('settings.signOutChoice')} className="confirm-seg" value={keep ? 'keep' : 'clear'} onChange={(v) => setKeep(v === 'keep')}
-                options={[
-                  { value: 'keep', label: t('settings.signOutKeep') },
-                  { value: 'clear', label: t('settings.signOutClear') },
-                ]} />
-            </ConfirmAction>
-          )}
-          {offline && <OfflineNote account={account} className="row-note" onBack={refocus} />}
-        </>
-      ) : (
-        <RowLink to="/signin" title={t('settings.signIn')} sub={t('settings.signInSub')} />
-      )}
-      {notice && (
-        <div className="row-status m-in">
-          <Icon name="check" size={18} strokeWidth={2.6} className="tone-good" />
-          {t(NOTICE_TEXT[notice])}
-        </div>
-      )}
-    </Section>
+    <ConfirmAction label={t('settings.signOut')} icon="quit" tone="plain" question={t('settings.signOutQuestion')} detail={t('settings.signOutDetail')}
+      confirmLabel={t('settings.signOut')} busyLabel={t('settings.signingOut')} error={error} onConfirm={async () => (await signOut()) ? undefined : false}
+      onCancel={() => {
+        setError(null);
+        setKeep(!removeFirst);
+      }}>
+      <Segmented label={t('settings.signOutChoice')} className="confirm-seg" value={keep ? 'keep' : 'clear'} onChange={(v) => setKeep(v === 'keep')} autoFocus
+        options={[
+          { value: 'keep', label: t('settings.signOutKeep') },
+          { value: 'clear', label: t('settings.signOutClear') },
+        ]} />
+    </ConfirmAction>
   );
 }
 
@@ -122,18 +152,37 @@ const SYNC_TEXT: Record<Exclude<SyncStatus, 'idle'>, string> = {
 
 /**
  * Whether the progress is on the account: saved, saving, waiting for the connection, or failed with Try again. Not a
- * live region: it changes after every exercise, and a screen reader would hear it each time.
+ * live region: it changes after every exercise, and a screen reader would hear it each time. Try again's outcome is read
+ * out, though, as OfflineNote's is: the button keeps its focus while it saves (aria-disabled, also while the line says
+ * Saving…), and is ready again if that failed too; else it goes, and `onDone` puts the focus on the account row.
  */
-function SyncLine({ status }: { status: SyncStatus }): JSX.Element | null {
+function SyncLine({ status, onDone }: { status: SyncStatus; onDone(): void }): JSX.Element | null {
+  const [busy, setBusy] = useState(false);
+  // Counts the tries that ended: the effect below then reads the status they ended on, which is in that same render.
+  const [ended, setEnded] = useState(0);
+  const mounted = useMounted();
+  useEffect(() => {
+    if (!ended) return;
+    setBusy(false);
+    if (status === 'idle') return;
+    announce(t(SYNC_TEXT[status]));
+    if (status !== 'failed') onDone();
+  }, [ended]);
   if (status === 'idle') return null;
   const failed = status === 'failed';
+  const retry = async (): Promise<void> => {
+    if (busy) return;
+    setBusy(true);
+    await progressSync()?.request('retry');
+    if (mounted.current) setEnded((n) => n + 1);
+  };
   return (
     <div className={'sync-line is-' + status}>
       <Icon name={status === 'saved' ? 'check' : failed ? 'alert' : 'clock'} size={18} strokeWidth={status === 'saved' ? 2.6 : 2}
         className={status === 'saved' ? 'tone-good' : failed ? 'tone-miss' : 'tone-muted'} />
       <span className="sync-line-text">{t(SYNC_TEXT[status])}</span>
-      {failed && (
-        <button type="button" className="small-btn" onClick={() => void progressSync()?.request('retry')}>
+      {(failed || busy) && (
+        <button type="button" className="small-btn" aria-disabled={busy || undefined} aria-busy={busy || undefined} onClick={() => void retry()}>
           {t('common.tryAgain')}
         </button>
       )}
@@ -142,15 +191,16 @@ function SyncLine({ status }: { status: SyncStatus }): JSX.Element | null {
 }
 
 /**
- * Focus for after Try again found the API: the note and its button are gone, so focus goes to `target` (what the note
- * stood for) once the screen shows the answer, not to the page. Returns the function that asks for it.
+ * Focus for after the element that had it is gone (Try again's note once the API answers, a form that closed on save,
+ * Sign out on a link page): focus goes to `target`, what replaced it, once the render that shows that is done, not to
+ * the page. Returns the function that asks for it.
  */
 export function useRefocus(target: () => HTMLElement | null | undefined): () => void {
   const [asked, setAsked] = useState(0);
   const latest = useRef(target);
   latest.current = target;
-  // After the render that shows the answer (it is dispatched before this is asked for, so it is in that render), and
-  // only while focus is lost with the button: focus that was moved on meanwhile stays where it is.
+  // After the render that shows what replaced it (that change is made before this is asked for, so it is in that
+  // render), and only while focus is lost with the element: focus that was moved on meanwhile stays where it is.
   useEffect(() => {
     if (asked && (!document.activeElement || document.activeElement === document.body)) latest.current()?.focus();
   }, [asked]);

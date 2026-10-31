@@ -1,16 +1,20 @@
 import { randomBytes } from 'node:crypto';
 import type { ClientSession } from 'mongodb';
 import { FEEDBACK_MAX, type Closure, type ClosureKind } from '../../../shared/api.js';
+import { showsNothing } from '../../../shared/feedback.js';
 import type { AccountDoc, ClosureDoc, Collections } from '../db.js';
 import { ApiError } from '../errors.js';
 
 // Deleted accounts (BACKEND-PLAN.md §3.7): one Closure for every account that is deleted, written in the deletion's
 // transaction. It keeps nothing that says whose it was, so it can stay when everything else about the account goes.
 
-/** Feedback as stored: trimmed, null when empty; more than FEEDBACK_MAX characters is bad_request. */
+/**
+ * Feedback as stored: trimmed, null when it shows nothing (only spaces, or a pasted zero-width space, as a report's
+ * description: feedback.ts, showsNothing); more than FEEDBACK_MAX characters is bad_request.
+ */
 export function validFeedback(value: string | undefined): string | null {
   const text = value?.trim() ?? '';
-  if (!text) return null;
+  if (showsNothing(text)) return null;
   if ([...text].length > FEEDBACK_MAX) throw new ApiError('bad_request', `Feedback has at most ${FEEDBACK_MAX} characters`);
   return text;
 }

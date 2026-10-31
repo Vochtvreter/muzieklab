@@ -31,6 +31,9 @@
   --on-fill: #ffffff;
   --on-fill-muted: #cfe2e2;
   --tile-overlay: rgba(255, 255, 255, 0.1);
+  /* A lesson tile not played yet on the Continue card: --on-fill-muted is 4.85:1 on the fill, but the tile's overlay
+     lightens it, and there it was 3.85:1. Light 4.59:1 on the tile, dark 5.67:1. */
+  --on-tile-muted: #ebf3f3;
   /* Rewards (stars, streak) */
   --reward: #e0a526;
   --reward-soft: #f8edd2;
@@ -52,7 +55,8 @@
   /* Feedback. Names read by src/render/theme.ts: --good = perfect/great, --gold = good (early/late) */
   --good: #1f8a5b;
   --gold: #b7791f;
-  --gold-ink: #9a6a10;
+  /* Gold words (GOOD · LATE on Play): 4.5:1 on the page and on the pad's card (--accent-soft), as --miss-ink is. */
+  --gold-ink: #835d0c;
   --miss: #c23b3b;
   /* Answer feedback fills (Read notes, Learn checks). Green text uses --good-ink: --good is only 4.3:1 on paper. */
   --good-soft: #e3f2ea;
@@ -83,7 +87,9 @@
   /* Scrollbar, focus, links */
   --scroll-thumb: #b9c3c2;
   --scroll-thumb-hover: #8a9596;
-  --focus: #e0a526;
+  /* The keyboard's focus ring borders what is behind the control: 3:1 or more against the page, a card, a track and
+     the soft accent (WCAG 1.4.11), which the reward gold (1.7–2.2:1) is not. The gold text's colour, --reward-ink. */
+  --focus: #8a6412;
   --link: #2f6669;
   --link-hover: #1f4a4c;
 
@@ -128,28 +134,18 @@
     --on-fill: #101415;
     --on-fill-muted: #1f4446;
     --tile-overlay: rgba(255, 255, 255, 0.1);
+    --on-tile-muted: #1f4446;
     --reward: #f0b429;
     --reward-soft: #3a2f14;
     --reward-ink: #f0c35a;
     --reward-star: #f0c35a;
     --reward-text: #f0c35a;
     --on-reward: #101415;
-  --diamond: #7fd8f2;
-  --diamond-hi: #f2fdff;
-  --diamond-deep: #4a9fe0;
-  --diamond-glow: rgba(127, 216, 242, 0.45);
-  --diamond-ink: #8fdcf5;
-  --diamond-on-fill-hi: #7fd8f2;
-  --diamond-on-fill: #1f8fc2;
-  --diamond-on-fill-deep: #0f4f8a;
     --diamond: #7fd8f2;
     --diamond-hi: #f2fdff;
     --diamond-deep: #4a9fe0;
     --diamond-glow: rgba(127, 216, 242, 0.45);
     --diamond-ink: #8fdcf5;
-  --diamond-on-fill-hi: #7fd8f2;
-  --diamond-on-fill: #1f8fc2;
-  --diamond-on-fill-deep: #0f4f8a;
     --diamond-on-fill-hi: #7fd8f2;
     --diamond-on-fill: #1f8fc2;
     --diamond-on-fill-deep: #0f4f8a;
@@ -209,12 +205,21 @@
   --on-fill: #101415;
   --on-fill-muted: #1f4446;
   --tile-overlay: rgba(255, 255, 255, 0.1);
+  --on-tile-muted: #1f4446;
   --reward: #f0b429;
   --reward-soft: #3a2f14;
   --reward-ink: #f0c35a;
   --reward-star: #f0c35a;
   --reward-text: #f0c35a;
   --on-reward: #101415;
+  --diamond: #7fd8f2;
+  --diamond-hi: #f2fdff;
+  --diamond-deep: #4a9fe0;
+  --diamond-glow: rgba(127, 216, 242, 0.45);
+  --diamond-ink: #8fdcf5;
+  --diamond-on-fill-hi: #7fd8f2;
+  --diamond-on-fill: #1f8fc2;
+  --diamond-on-fill-deep: #0f4f8a;
   --good: #4cc38a;
   --gold: #f0b429;
   --gold-ink: #f0c35a;

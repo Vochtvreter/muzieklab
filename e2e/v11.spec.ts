@@ -104,3 +104,30 @@ test('daily challenge on day one: short and tap only, under the lesson card', as
   await expect(page.getByRole('heading', { name: 'Daily challenge done' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Copy code' })).toHaveAttribute('title', /^Copy the exercise code: T44-[HQ]+-R-4B-(60|66|72)-/);
 });
+
+test('daily challenge: its button is named by the words on it first, Play or Play again, in English and Dutch (WCAG 2.5.3)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-27T10:00:00'));
+  await page.setViewportSize(VIEWPORTS.phone);
+  const played = { lessons: {}, practiceDays: ['2026-10-27'], daily: { day: '2026-10-27', tier: 1, stars: 2, accuracy: 80 } };
+  const cases = [
+    ['en', null, 'Play', 'Play the daily challenge for October 27'],
+    ['en', played, 'Play again', 'Play again: the daily challenge for October 27'],
+    ['nl', null, 'Spelen', 'Spelen: de uitdaging van 27 oktober'],
+    ['nl', played, 'Nog een keer', 'Nog een keer: de uitdaging van 27 oktober'],
+  ] as const;
+  await page.goto('./');
+  for (const [language, progress, words, name] of cases) {
+    await page.evaluate(
+      ({ language, progress }) => {
+        localStorage.setItem('muzieklab.prefs.v1', JSON.stringify({ language, seenHowTo: true, seenHold: true }));
+        if (progress) localStorage.setItem('muzieklab.progress.v1', JSON.stringify(progress));
+        else localStorage.removeItem('muzieklab.progress.v1');
+      },
+      { language, progress },
+    );
+    await page.reload();
+    const button = page.locator('.daily-btn');
+    await expect(button).toHaveText(words);
+    await expect(button).toHaveAccessibleName(name);
+  }
+});

@@ -12,14 +12,14 @@ sessions run it to check the test site.
 
 - **The site** (`site.spec.ts`): `/api/v1/health` answers ok with its database (and, when `SMOKE_COMMIT` is set, as that
   commit); the test site is kept out of search engines (`X-Robots-Tag: noindex`); files in `assets/` are cached for a
-  year and the page, `sw.js` and the manifest are checked on every visit; the manifest, its icons and the service
-  worker are there; an unknown path is a 404.
+  year (a missing one is not) and the page, `sw.js` and the manifest are checked on every visit; the manifest, its icons
+  and the service worker are there; an unknown path is a 404.
 - **Every screen** (`screens.spec.ts`), signed out, on a phone (390 × 844), a tablet (834 × 1194) and a desktop (1280 ×
   800), light and dark: its heading shows, nothing scrolls sideways, no button cuts its words off, no message key shows
   instead of its text, and nothing fails on the page (an error thrown, an error in the console, or a failed request).
   Then the main screens in Dutch.
 - **Offline** (`offline.spec.ts`): once the service worker is installed, the app reloads with no network and opens
-  Home, Learn, Read notes, Scales and Settings.
+  Home, Learn, Read notes, Scales and Settings; online, an address deeper than the app is still the server's 404.
 - **The main things to do** (`flows.spec.ts`): rhythm tapped on the keyboard to Results, the daily challenge, a path
   lesson, a Read notes round, a Scales round, a Learn chapter.
 - **Accounts** with the real API (`accounts.spec.ts`): the admin's own screens, looked at; an invite made on the admin
@@ -127,11 +127,15 @@ that commit.
 
 ## Known app bugs
 
-One app bug is known.
+No app bug is known.
 
-- `scales: a finished scale looks up no missing message` fails on purpose (`test.fail`): when a scale is done, Scales
-  looks up the step after the last note, and the console says `[i18n] missing message: scales.how.undefined`. Once
-  the bug is fixed the test fails, which says so: remove `test.fail`.
+One server setting is known to be missing: the deploy copies the app but not `deploy/Caddyfile`, and the server still
+has the copy from before 0.19.1, which sends a missing file in `assets/` with the year-long cache header. `caching: a
+missing file in assets/ is not kept for a year` is marked as failing (`test.fail`) until the new Caddyfile is on the
+server ([DEPLOY.md](DEPLOY.md)); then it fails as passing, and the mark comes out.
 
-Several tabs opened at once was the other one until 0.17.1 (tabs that started together each renewed the session, and
-one could sign itself out): `staying signed in: tabs opened one after another, and at once…` checks it now.
+A done scale looked up the step after its last note until 0.17.2 (the console said `[i18n] missing message:
+scales.how.undefined`): `scales: a G major round played on the computer keyboard, three stars` checks it now, as every
+test fails on a missing message. Several tabs opened at once was the other one until 0.17.1 (tabs that started together
+each renewed the session, and one could sign itself out): `staying signed in: tabs opened one after another, and at
+once…` checks it now.

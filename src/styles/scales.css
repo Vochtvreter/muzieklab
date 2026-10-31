@@ -122,12 +122,18 @@
 .circle-centre .pitch-staff {
   width: 94%;
 }
+/*
+ * Six or seven signs are wider than the gap between the inner ring's keys beside them: the row wraps between its signs,
+ * in balanced lines ("F♯ C♯ G♯" over "D♯ A♯ E♯ B♯"), instead of running under the f and c♯.
+ */
 .circle-sig {
+  max-width: 100%;
   font-family: var(--font-mono);
   font-size: max(10px, 3.35cqw);
   font-weight: 600;
   color: var(--muted);
-  white-space: nowrap;
+  text-align: center;
+  text-wrap: balance;
 }
 .circle-halo {
   position: absolute;
@@ -162,6 +168,24 @@
 .circle-key:active:not(:disabled) {
   transform: translate(-50%, -50%) scale(0.97);
 }
+/*
+ * A 44 px touch target (DESIGN.md §11) round a key drawn smaller, as on a phone. Neighbours on the outer ring are 21%
+ * of the circle apart, on the inner ring 12.7%: there, under a 390 px phone, it is only as wide as the gap to the next
+ * key, so a tap between two keys still goes to the nearer one.
+ */
+.circle-key::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, min(44px, 21cqw));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.circle-key--minor::after {
+  width: max(100%, min(44px, 12.7cqw));
+}
 .circle-key-name {
   font-weight: 700;
   font-size: 4.2cqw;
@@ -169,10 +193,11 @@
 .circle-key--minor .circle-key-name {
   font-size: 3.75cqw;
 }
+/* Fainter than the name, and still 4.5:1 or more on every fill (at 0.8 a ★★ key's was 4.2:1 in dark). */
 .circle-key-alt {
   font-size: 2.9cqw;
   font-weight: 600;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 .circle-key--minor .circle-key-alt {
   font-size: 2.65cqw;
@@ -201,12 +226,19 @@
   font-size: 3.5cqw;
   font-weight: 600;
 }
+/* A faint key is a working button (it switches the ring): its second spelling is --muted as its name is, not fainter,
+   which took it under 4.5:1 on the page and on the disc. */
+.circle-key.is-off .circle-key-alt {
+  opacity: 1;
+}
 .circle-key--minor.is-off .circle-key-name {
   font-size: 3.2cqw;
 }
 
-/* The selected key and the Practice card (phone) */
+/* The selected key and the Practice card (phone). Positioned, as .hub-sel and .hub-practise: the key said in words
+   (.sr-only) sits in it, inside the page's scroll box. */
 .hub-panel {
+  position: relative;
   padding: 14px 14px 12px;
   display: flex;
   flex-direction: column;
@@ -229,7 +261,7 @@
   font-weight: 600;
   font-size: 18px;
 }
-.hub-panel-title span {
+.hub-panel-title > span {
   font-size: 12.5px;
   color: var(--muted);
 }
@@ -303,6 +335,11 @@
   margin: 0 auto;
   gap: 20px;
   overflow: visible;
+  /*
+   * The shell's main box scrolls, not the page: the page grows with its content, so its padding stays under the last
+   * control (Go round the circle) on a short window and that control's focus ring shows whole (it lay on the box's edge).
+   */
+  flex: 1 0 auto;
 }
 .hub--tablet {
   --px: 32px;
@@ -370,6 +407,7 @@
   gap: 16px;
 }
 .hub-sel {
+  position: relative;
   flex: 1;
   min-width: 0;
   border-radius: 22px;
@@ -397,7 +435,7 @@
 .hub--desktop .hub-sel-head h2 {
   font-size: 28px;
 }
-.hub-sel-head span {
+.hub-sel-head > span {
   font-size: 13.5px;
   line-height: 1.4;
   color: var(--muted);
@@ -477,6 +515,7 @@
   margin-top: auto;
 }
 .hub-practise {
+  position: relative;
   border-radius: 22px;
   padding: 24px;
   display: flex;
@@ -497,8 +536,6 @@
 /* ---------- Setup ---------- */
 .ssetup {
   gap: 13px;
-  /* Scrolling to a control (Tab, or a script) leaves it above the sticky Start button. */
-  scroll-padding-bottom: 80px;
 }
 .ssetup > * {
   flex-shrink: 0;
@@ -545,6 +582,12 @@
   padding-right: 2px;
   font-size: 13.5px;
 }
+/* The keys: a set chosen, in a longer language ("15 toonsoorten"), is wider than a third of the control at 320 px; it
+   takes a second line instead of running out. */
+.ssetup-keys .seg-btn {
+  white-space: normal;
+  line-height: 1.2;
+}
 .ssw {
   border-radius: 14px;
   display: flex;
@@ -581,7 +624,9 @@
   font-size: 12px;
   color: var(--muted);
 }
+/* Positioned, as the keys' hint: the key said in words (.sr-only) sits in it, inside the page's scroll box. */
 .ssetup-summary {
+  position: relative;
   border-radius: 14px;
   padding: 10px 12px;
   display: flex;
@@ -594,6 +639,9 @@
 .ssetup .start-btn {
   margin-top: auto;
 }
+.ssetup .input-hint {
+  position: relative;
+}
 .ssetup .input-hint a {
   font-weight: 600;
 }
@@ -602,7 +650,9 @@
 .splay {
   gap: 12px;
 }
+/* Positioned: the scale said in words (.sr-only) sits in it, inside the page's scroll box. */
 .splay-title {
+  position: relative;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 22px;
@@ -676,30 +726,36 @@
   color: var(--accent-ink);
   box-shadow: inset 0 0 0 1.5px var(--accent);
 }
+/* The degree number takes the box's ink, not faded (4.5:1): its small size sets it apart from the note. */
 .degree-n {
   font-size: 9.5px;
   font-weight: 700;
-  opacity: 0.75;
 }
 .degree-name {
   font-weight: 700;
   font-size: 14px;
   white-space: nowrap;
 }
+/*
+ * The steps (Show the steps) are text to read, 4.5:1 or more on the phone's page and on a card: the ones still to come
+ * in --muted, a whole step passed in --accent-ink, about 1.6:1 from --muted in light and dark so the two tell apart
+ * (--accent is only 1.1–1.2:1 from it), and a half step and a step and a half passed in gold (--reward-ink: --gold-ink
+ * is 4.2:1 on --ground). The boards (ScalePlay, ScaleSpell) draw the ones still to come at #a7b1b0, under 2:1.
+ */
 .degree-step {
   flex: none;
   width: 15px;
   text-align: center;
   font-size: 11px;
   font-weight: 700;
-  color: var(--faint);
+  color: var(--muted);
 }
 .degree-step.is-known {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .degree-step.is-H,
 .degree-step.is-WH {
-  color: var(--gold-ink);
+  color: var(--reward-ink);
 }
 .degree-step.is-WH {
   font-size: 9.5px;
@@ -849,6 +905,9 @@
 .sstats .stat {
   gap: 4px;
 }
+.sstats-rule > span {
+  white-space: nowrap;
+}
 
 /*
  * Tablet: Read notes' tablet layout (.ntab in notes.css; App design canvas, NoteTablet), as Scales has no tablet board.
@@ -924,14 +983,8 @@
   }
 }
 
-/*
- * A phone browser (DESIGN.md §9, see Play in app.css): tighter gaps, and the piano gives up height so its letters stay
- * in view. On the shortest screens the staff is smaller (ScalesPlay), and so are the degrees and the sign buttons.
- */
-@media (max-width: 699.98px) and (max-height: 699.98px) and (orientation: portrait) {
-  .splay {
-    gap: 10px;
-  }
+/* A phone in portrait: the piano gives up height so its letters stay in view, only what is missing (as Read notes'). */
+@media (max-width: 699.98px) and (orientation: portrait) {
   .splay .splay-inputs {
     flex-shrink: 1;
     min-height: 0;
@@ -940,7 +993,27 @@
     min-height: 140px;
   }
 }
-@media (max-width: 699.98px) and (max-height: 599.98px) and (orientation: portrait) {
+/*
+ * A phone browser (DESIGN.md §9, see Play in app.css): tighter gaps. On the shortest screens the staff is smaller
+ * (ScalesPlay), and so are the degrees and the sign buttons. Up and down has a second degree row, so its rows are lower
+ * from the first step on.
+ */
+@media (max-width: 699.98px) and (max-height: 799.98px) and (orientation: portrait) {
+  .splay {
+    gap: 10px;
+  }
+  /* A long name stays on one line: "A♯ harmonisch mineur" at 375 px, "A♯ harmonic minor" at 320 px. */
+  .splay .splay-title {
+    font-size: 18px;
+  }
+  .splay--updown .splay-degrees {
+    gap: 4px;
+  }
+  .splay--updown .degree {
+    height: 40px;
+  }
+}
+@media (max-width: 699.98px) and (max-height: 659.98px) and (orientation: portrait) {
   .splay {
     gap: 8px;
   }
@@ -959,13 +1032,42 @@
   .splay .ssign {
     height: 64px;
   }
+  /*
+   * Up and down: the gaps and its two degree rows are lower still, the staff is drawn at 1 (ScalesPlay) with 4 px above
+   * and below it, and the sign buttons give up 8 px, so a why of two lines leaves Hint and Next scale in view beside the
+   * tallest staff, a B♭ scale's (its high B♭ with its flat), also in B♭ harmonic minor, whose eyebrow takes two lines at
+   * 375 px beside "2 mistakes". The done line leaves out its 15 notes, which the degree rows right above it show; screen
+   * readers hear them in the line said beside it (ScalesPlay's live region), as this one is hidden from them.
+   */
+  .splay--updown {
+    gap: 6px;
+  }
+  .splay--updown .splay-staff {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .splay--updown .degree {
+    height: 32px;
+  }
+  .splay--updown .ssign {
+    height: 56px;
+  }
+  .splay--updown .nfeedback-notes {
+    display: none;
+  }
 }
-/* Phone in landscape: the staff and the degrees on the left; the piano or the signs on the right. */
+/*
+ * Phone in landscape: the staff and the degrees on the left; the piano or the signs on the right. The last row holds
+ * Skip to summary (1fr, not minmax(0, 1fr)), so a column that scrolls (a phone 360 or 375 px tall) scrolls on to the
+ * page's padding under Skip, 6 px, the room its focus ring needs when Tab reaches it (DESIGN.md §9, Scrolling): Skip
+ * overflowed its row, and the scroll ended flush with its bottom edge, which cut the ring.
+ */
 @media (orientation: landscape) and (max-height: 560px) {
   .splay {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto 1fr;
     overflow-y: auto;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
   }
   .splay .play-info {
     grid-column: 1;
@@ -1010,6 +1112,33 @@
   .splay .ssign {
     height: 64px;
   }
+  /*
+   * The left column fits the screen, with Skip to summary whole (and room for its focus ring) under a why or a done line
+   * of two lines: its rows are 8 px apart, as Play's here (.splay's 12 px gap, above, overrode that), and the staff card
+   * and the feedback are as compact as Read notes' (notes.css).
+   */
+  .splay {
+    row-gap: 8px;
+  }
+  .splay .splay-staff {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .splay .nfeedback {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  /* Up and down: its two degree rows and the gaps as on the shortest phones, so the feedback stays in view under them. */
+  .splay--updown {
+    row-gap: 4px;
+  }
+  .splay--updown .splay-degrees {
+    gap: 4px;
+  }
+  .splay--updown .degree {
+    height: 32px;
+  }
 }
 
 /* ---------- Round done ---------- */
@@ -1020,7 +1149,7 @@
   font-size: 46px;
 }
 .sdone-of {
-  color: var(--faint);
+  color: var(--muted);
 }
 .sdone-list {
   border-radius: 18px;
@@ -1028,7 +1157,9 @@
   display: flex;
   flex-direction: column;
 }
+/* Positioned: the scale said in words (.sr-only) sits in it, inside the page's scroll box. */
 .sdone-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1054,7 +1185,7 @@
 .sdone-row-head b {
   font-size: 15.5px;
 }
-.sdone-row-head span {
+.sdone-row-head > span {
   font-size: 12.5px;
   font-weight: 600;
 }
@@ -1154,4 +1285,39 @@
 .cprog-total {
   font-size: 14px;
   color: var(--muted);
+}
+/*
+ * Forced colors (see app.css): the degree being answered keeps its edge, a played key its dot, and a wrong sign is
+ * marked as Read notes' wrong answers are. The circle's keys, filled by their stars, and its legend's dots take an edge
+ * for ★ (dashed) and ★★ (double) and the text colour's fill for ★★★, out of forced colors for the name on it; the
+ * selected key keeps the selection colours (base.css).
+ */
+@media (forced-colors: active) {
+  .circle-key.is-l1,
+  .hub-dot.is-l1 {
+    border: 2px dashed CanvasText;
+  }
+  .circle-key.is-l2,
+  .hub-dot.is-l2 {
+    border: 4px double CanvasText;
+  }
+  .circle-key.is-l3,
+  .hub-dot.is-l3 {
+    forced-color-adjust: none;
+    background: CanvasText;
+    color: Canvas;
+    border-color: CanvasText;
+  }
+  .degree.is-current {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .spiano-dot.is-on,
+  .piano-black .spiano-dot.is-on {
+    background: Highlight;
+  }
+  .ssign.is-wrong {
+    border: 3px dashed CanvasText;
+    text-decoration: line-through;
+  }
 }

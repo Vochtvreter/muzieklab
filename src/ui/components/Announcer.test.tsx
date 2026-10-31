@@ -34,6 +34,16 @@ describe('Announcer', () => {
     expect(region.textContent).toBe('');
   });
 
+  it('words an announcement given as a function when it says it: in the language the app switched to meanwhile', () => {
+    render(<Announcer />);
+    const region = document.getElementById('announcer')!;
+    let language = 'en';
+    act(() => announce(() => (language === 'nl' ? 'Uitgelogd.' : 'Signed out.')));
+    language = 'nl';
+    act(() => vi.advanceTimersByTime(ANNOUNCE_DELAY_MS));
+    expect(region.textContent).toBe('Uitgelogd.');
+  });
+
   it('without an Announcer, announcing does nothing', () => {
     expect(() => announce('Signed out.')).not.toThrow();
   });

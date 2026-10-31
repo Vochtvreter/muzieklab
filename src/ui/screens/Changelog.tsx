@@ -11,6 +11,7 @@ import { Segmented } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { useBreakpoint, useDocTitle, type Breakpoint } from '../hooks';
 import { countKinds, isPatch, KINDS, RELEASES, type Change, type ChangeKind, type Release } from '../lib/changelog';
+import { focusLost } from '../lib/screenFocus';
 import { Link } from '../router';
 import pkg from '../../../package.json';
 
@@ -197,6 +198,8 @@ function ChangelogDesk(): JSX.Element {
   const [sel, setSel] = useState(0);
   const page = useRef<HTMLDivElement>(null);
   const nav = useRef<HTMLElement>(null);
+  const steps = useRef<HTMLDivElement>(null);
+  const stepped = useRef(false);
   const r = RELEASES[sel];
   const newer = RELEASES[sel - 1];
   const older = RELEASES[sel + 1];
@@ -206,9 +209,17 @@ function ChangelogDesk(): JSX.Element {
     // A release picked low in the list: bring its card back into view.
     page.current?.scrollTo?.({ top: 0 });
   };
+  // Newer at the newest release and Older at the first go away: the step that is left takes the focus of the one
+  // pressed, which would otherwise fall to the page.
+  const step = (i: number) => (): void => {
+    stepped.current = true;
+    pick(i)();
+  };
   // Newer and Older move the highlight in the list: keep it in view when the list scrolls.
   useEffect(() => {
     nav.current?.querySelector('[aria-current]')?.scrollIntoView?.({ block: 'nearest' });
+    if (stepped.current && focusLost()) steps.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+    stepped.current = false;
   }, [sel]);
 
   return (
@@ -260,9 +271,9 @@ function ChangelogDesk(): JSX.Element {
             )}
           </article>
 
-          <div className="cl-steps">
+          <div ref={steps} className="cl-steps">
             {newer && (
-              <button type="button" className="cl-step" onClick={pick(sel - 1)}>
+              <button type="button" className="cl-step" onClick={step(sel - 1)}>
                 <Icon name="back" size={20} />
                 <span className="cl-step-text">
                   <span className="cl-step-label">{t('changelog.newer')}</span>
@@ -273,7 +284,7 @@ function ChangelogDesk(): JSX.Element {
               </button>
             )}
             {older && (
-              <button type="button" className="cl-step cl-step--older" onClick={pick(sel + 1)}>
+              <button type="button" className="cl-step cl-step--older" onClick={step(sel + 1)}>
                 <span className="cl-step-text">
                   <span className="cl-step-label">{t('changelog.older')}</span>
                   <b>

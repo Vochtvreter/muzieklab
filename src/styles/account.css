@@ -109,9 +109,11 @@
   flex-direction: column;
   gap: 16px;
 }
+/* "You're signed in as {name}" on another account's link: a one-word name wraps rather than running out of the card. */
 .acct-lead {
   font-size: 15px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Rows inside Settings cards (their corners: app.css, after .row-link) ---------- */
@@ -139,7 +141,8 @@
 .row-btn.is-danger > svg {
   color: var(--miss);
 }
-.row-btn:disabled {
+.row-btn:disabled,
+.row-btn[aria-disabled='true'] {
   opacity: 0.6;
 }
 .row-btn-text {
@@ -164,12 +167,15 @@
   color: var(--ink);
   text-align: left;
 }
+/* A custom role's name and description are an admin's words: a long word with no break point wraps rather than running
+   under the switch and out of the card, as in a row link. */
 .toggle-row-text {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-wrap: anywhere;
 }
 .toggle-row-text b {
   font-size: 15px;
@@ -209,12 +215,14 @@
 .info-row .ghost-btn {
   margin: 0 -10px 0 -14px;
 }
-/* A muted note or a done message as a card row (Settings → Account). */
+/* A muted note or a done message as a card row (Settings → Account). The roles in it can be an admin's words: a long
+   word with no break point wraps rather than running out of the card. */
 .row-note {
   padding: 10px 16px 12px;
   font-size: 12.5px;
   line-height: 1.35;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .row-status {
   padding: 10px 16px;
@@ -333,6 +341,10 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+/* Reviewed by a name with no space: it breaks inside the card. */
+.review-choice .tfield-hint {
+  overflow-wrap: anywhere;
 }
 /* A confirm that loses nothing (Sign out everywhere): the question in ink, not the danger red. */
 .reset-text.is-plain b {
@@ -480,6 +492,11 @@
 }
 .form-done svg {
   flex: none;
+}
+/* A message can name an account ("The invite for {name} was canceled."): a one-word name wraps in its card. */
+.form-error > span,
+.form-done > span {
+  overflow-wrap: anywhere;
 }
 .btn[aria-busy='true'] {
   opacity: 0.75;
@@ -692,9 +709,6 @@
 .acct-row .row-link-text {
   gap: 2px;
 }
-.acct-row .row-sub {
-  overflow-wrap: anywhere;
-}
 .acct-row {
   padding-top: 10px;
   padding-bottom: 10px;
@@ -733,10 +747,6 @@
   font-size: 15px;
   line-height: 1.45;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-/* A feedback report in the list (Feedback): a made-up title holds a screen's route, which has no spaces to break at. */
-.report-row b {
   overflow-wrap: anywhere;
 }
 /* One feedback report: what should change, under its label. */
@@ -868,21 +878,21 @@
   font-size: 15px;
   font-weight: 700;
 }
+/* A word too long for the card (a name with no space, a selector, the browser) breaks inside it. */
 .fact-row dd {
   margin: 0;
   font-size: 14px;
   color: var(--muted);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 /* A long value (a feedback report's marked text, its selector, the browser): under its label, read from the left. */
 .fact-row--long dd {
   flex-basis: 100%;
   text-align: left;
-  overflow-wrap: anywhere;
 }
 /* Code (a route, a selector, a version): in the mono face. */
 .fact-row .fact-mono {
   font-family: var(--font-mono);
   font-size: 13px;
-  overflow-wrap: anywhere;
 }

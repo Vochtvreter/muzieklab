@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DEFAULT_NOTE_SETTINGS } from '../core/noteRound';
 import { DEFAULT_SCALE_SETTINGS } from '../core/scaleRound';
 import { DEFAULT_SETTINGS } from '../core/defaults';
@@ -239,6 +242,12 @@ describe('prefs and progress storage', () => {
     expect(p.leniency).toBe('relaxed');
     expect(p.volumes).toEqual({ metronome: 1, rhythm: 0.8, tap: 0.5 });
     expect(p.calibrationMs).toBe(41);
+    // Settings shows the calibration's day: only a real day (yyyy-mm-dd, as Calibrate saves it), never the stored text.
+    for (const [calibratedAt, kept] of [['2026-10-12', '2026-10-12'], ['not a date', null], ['2026-13-45', null], ['2026-02-30', null], ['', null], [12, null]] as const) {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ calibrationMs: 40, calibratedAt }));
+      expect(loadPrefs().calibratedAt, String(calibratedAt)).toBe(kept);
+      expect(loadPrefs().calibrationMs).toBe(40);
+    }
 
     localStorage.setItem(
       PROGRESS_KEY,
@@ -431,5 +440,50 @@ describe('account storage (muzieklab.account.v1)', () => {
     expect(() => saveAccount(null)).not.toThrow();
     set.mockRestore();
     remove.mockRestore();
+  });
+});
+
+describe('the theme before the app runs (index.html)', () => {
+  // index.html's own script sets data-theme from the saved prefs, before the first paint, as App.tsx does after it, and
+  // the browser bar's colour too.
+  const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../index.html'), 'utf8');
+  const head = /<head>([\s\S]*?)<\/head>/.exec(html)?.[1] ?? '';
+  const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '';
+  /** The browser bar's colour on a light or a dark device: the first theme-color meta that matches, in document order. */
+  const bar = (device: 'light' | 'dark'): string | undefined =>
+    [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')]
+      .find((m) => [null, `(prefers-color-scheme: ${device})`].includes(m.getAttribute('media')))?.content;
+  const run = (saved: string | null): string | null => {
+    document.documentElement.removeAttribute('data-theme');
+    // The head as index.html has it (a script set this way does not run).
+    document.head.innerHTML = head;
+    if (saved === null) localStorage.removeItem(PREFS_KEY);
+    else localStorage.setItem(PREFS_KEY, saved);
+    new Function(script)();
+    return document.documentElement.getAttribute('data-theme');
+  };
+  afterEach(() => {
+    localStorage.clear();
+    document.head.innerHTML = '';
+  });
+
+  it('sets the theme picked in Settings, page and browser bar, and leaves System to the device', () => {
+    expect(script).toContain(PREFS_KEY);
+    expect(run(JSON.stringify(DEFAULT_PREFS))).toBeNull();
+    // Each device's own colour, which App.tsx forces for that theme too.
+    const own = { light: bar('light'), dark: bar('dark') };
+    expect(own).toEqual({ light: '#eef1f0', dark: '#101415' });
+    for (const theme of ['light', 'dark'] as const) {
+      expect(run(JSON.stringify({ ...DEFAULT_PREFS, theme }))).toBe(theme);
+      expect([bar('light'), bar('dark')], theme).toEqual([own[theme], own[theme]]);
+    }
+    expect(run(JSON.stringify({ theme: 'light' }))).toBe('light');
+  });
+
+  it('leaves it to the device when nothing usable is saved', () => {
+    for (const saved of [null, 'null', '{not json', JSON.stringify({ theme: 'blue' }), '[]']) {
+      expect(run(saved), String(saved)).toBeNull();
+      expect([bar('light'), bar('dark')], String(saved)).toEqual(['#eef1f0', '#101415']);
+    }
   });
 });

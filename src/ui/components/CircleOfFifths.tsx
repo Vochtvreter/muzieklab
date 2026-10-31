@@ -1,16 +1,17 @@
 /**
  * The Scales hub's circle of fifths (DESIGN.md §3.7): 12 positions clockwise from C, major keys on the outer ring and
  * their relative minors on the inner one. The ring in front (Major / Minor) is filled by progress; the other one is
- * drawn faint and switches when tapped. The three positions at the bottom have two spellings: tapping the selected one
- * again switches spelling. The centre shows the selected key signature. Sizes are fractions of the circle, so it scales
- * from a 320 px phone to the 520 px desktop board.
+ * drawn faint and switches when tapped. The three positions at the bottom have two spellings: each shows the one
+ * selected, else the one with more progress on the ring in front, on both rings, and tapping the selected one again
+ * switches spelling. The centre shows the selected key signature. Sizes are fractions of the circle, so it scales from a
+ * 320 px phone to the 520 px desktop board.
  */
 import type { CSSProperties } from 'react';
 import { CIRCLE, circlePosition, keySigns, majorLevel, minorLevel, type KeyId, type ScaleStars } from '../../core/api';
 import { t } from '../../i18n';
 import { PitchStaff } from '../../render/PitchStaff';
 import { keySignsAria, letterName } from '../lib/noteText';
-import { circleLabel, keyName } from '../lib/scaleText';
+import { circleLabel, keySpoken } from '../lib/scaleText';
 
 export type Ring = 'major' | 'minor';
 
@@ -36,19 +37,26 @@ export function CircleOfFifths({ tab, selected, stars, onPick, className }: Prop
   const selPos = circlePosition(selected);
   const signs = keySigns(selected);
   const sigText = signs.length ? signs.map((s) => letterName(s.letter, s.alter)).join(' ') : t('scales.hub.noSigns');
+  const levelOf = (which: Ring, k: KeyId): number => (which === 'major' ? majorLevel(stars, k) : minorLevel(stars, k));
+  // The spelling shown at each position: the selected one when it is here, else the one with more progress on the ring
+  // in front (the first on a tie), so the key is filled whichever spelling earned it, as on Round done's circle. Both
+  // rings take it, so the faint ring still holds the relative minor (C♭ over a♭), never the other spelling's (g♯).
+  const shownAt = CIRCLE.map((keys) =>
+    keys.includes(selected) ? selected : keys.reduce((best, k) => (levelOf(tab, k) > levelOf(tab, best) ? k : best)),
+  );
 
   const ring = (which: Ring): JSX.Element[] =>
     CIRCLE.map((keys, pos) => {
       const active = which === tab;
-      // The spelling shown at this position: the selected one when it is here, else the first.
-      const shown = keys.includes(selected) ? selected : keys[0];
+      const shown = shownAt[pos];
       const other = keys.find((k) => k !== shown);
-      const level = which === 'major' ? majorLevel(stars, shown) : minorLevel(stars, shown);
+      const level = levelOf(which, shown);
       const size = SIZE[which][active ? 'on' : 'off'];
       const on = active && pos === selPos;
       const style = { ...at(pos, R[which]), width: size * 100 + '%', height: size * 100 + '%' } as CSSProperties;
-      const name = keyName(shown, which === 'minor');
-      const aria = t(which === 'major' ? 'scales.hub.majorAria' : 'scales.hub.minorAria', { name, level }) + (other ? t('scales.hub.alsoAria', { other: keyName(other, which === 'minor') }) : '');
+      // Named as said ("G sharp minor"): a screen reader reads a sign as a symbol or skips it.
+      const name = keySpoken(shown, which === 'minor');
+      const aria = t(which === 'major' ? 'scales.hub.majorAria' : 'scales.hub.minorAria', { name, level }) + (other ? t('scales.hub.alsoAria', { other: keySpoken(other, which === 'minor') }) : '');
       const pick = (): void => {
         if (!active) onPick(shown, which);
         else if (on && other) onPick(other, which);
@@ -75,8 +83,10 @@ export function CircleOfFifths({ tab, selected, stars, onPick, className }: Prop
         <span className="circle-sig">{sigText}</span>
       </div>
       <div aria-hidden="true" className="circle-halo m-ease" style={haloStyle} />
-      {ring(tab === 'major' ? 'minor' : 'major')}
-      {ring(tab)}
+      {/* One order whatever the tab (the rings do not overlap): swapping them would remount all 24 keys, and a faint
+          key that switches the ring would lose the focus. */}
+      {ring('major')}
+      {ring('minor')}
     </div>
   );
 }

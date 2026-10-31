@@ -1,5 +1,5 @@
 import cookie from '@fastify/cookie';
-import Fastify, { LogController, type FastifyError, type FastifyServerOptions } from 'fastify';
+import Fastify, { LogController, type FastifyError, type FastifyReply, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import type { Db } from 'mongodb';
 import type { ApiErrorBody } from '../../shared/api.js';
 import { AttemptLimiter, DEFAULT_LIMITS, type AttemptLimits } from './auth/attempts.js';
@@ -31,6 +31,18 @@ export interface AppOptions {
 
 const PREFIX = '/api/v1';
 
+/**
+ * A URL the router cannot read (percent-encoding that is not UTF-8, a parameter over 100 characters) is answered
+ * before any route or hook runs, so Fastify's own body would go out without no-store and without a log line. It gets
+ * the API's: bad_request with its status kept (400, 414), and not the URL itself.
+ */
+function unreadableUrl(error: FastifyError, request: FastifyRequest, reply: FastifyReply): void {
+  const status = error.statusCode !== undefined && error.statusCode < 500 ? error.statusCode : 500;
+  const body: ApiErrorBody = status < 500 ? { error: 'bad_request', message: 'Not a URL the API can read' } : { error: 'internal', message: 'Something went wrong' };
+  reply.code(status).header('Cache-Control', 'no-store').send(body);
+  request.log.info(requestLine(request, reply), 'request');
+}
+
 export function buildApp({
   db,
   commit,
@@ -55,6 +67,7 @@ export function buildApp({
         coerceTypes: false,
       },
     },
+    frameworkErrors: unreadableUrl,
   });
 
   const ctx: AppContext = {

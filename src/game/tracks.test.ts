@@ -1,3 +1,4 @@
+import { hasMessage } from '../i18n';
 import { FIRST_NOTES, KEYS_UNITS, NOTES_UNITS, PITCH_UNITS } from './notesPath';
 import { UNITS } from './path';
 import { defaultProgress, type LessonProgress, type Progress } from './storage';
@@ -42,6 +43,15 @@ describe('the Learning path (DESIGN.md §8.2)', () => {
     for (const u of PATH_UNITS) u.lessons.forEach((l, i) => expect(l.id).toBe(`${u.id}.${i + 1}`));
     // Keys comes last, as it did after Read notes.
     expect(PATH_UNITS[PATH_UNITS.length - 1]).toMatchObject({ track: 'keys', ref: 6 });
+  });
+
+  // A word on a unit's node comes from the catalog, so it follows the player's language (DESIGN.md §11): only music
+  // glyphs, figures with signs ("3/4", "1♯", "3 s") and the first notes' solfège names are written as they are.
+  it('draws no word on a unit\'s node that is not a message', () => {
+    const names = FIRST_NOTES.map((n) => n.name);
+    const words = PATH_UNITS.filter((u) => /[A-Za-z]{2}/.test(u.glyph) && !names.includes(u.glyph) && !hasMessage(u.glyph));
+    expect(words.map((u) => `${u.id} ${u.glyph}`)).toEqual([]);
+    expect(PATH_UNITS[PATH_UNITS.length - 1].glyph).toBe('path.keys.u6.glyph');
   });
 
   it('keeps every lesson\'s result where it was: rhythm "1.1", others with their kind in front', () => {

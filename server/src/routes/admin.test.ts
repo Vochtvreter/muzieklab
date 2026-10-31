@@ -87,6 +87,9 @@ describe('GET /admin/accounts', () => {
     expect(await list(`?q=${encodeURIComponent('.*')}`)).toEqual([]);
     expect(await list('?q=a.k.a.')).toEqual(['bob@example.com']);
     expect(await list(`?q=${encodeURIComponent('B+)')}`)).toEqual(['bob@example.com']);
+    // A NUL (pasted) matches itself too: MongoDB cannot take it in a pattern as it is.
+    expect(await list('?q=a%00b')).toEqual([]);
+    expect(await list('?q=%00')).toEqual([]);
     expect(await list('?status=blocked')).toEqual(['bob@example.com']);
     expect(await list('?q=an&status=invited')).toEqual(['cy@example.com']);
     const bad = await t.call({ method: 'GET', url: '/api/v1/admin/accounts?status=gone', cookie: admin.cookie });
@@ -142,6 +145,33 @@ describe('PATCH /admin/accounts/:id', () => {
     expect(await collections(t.db).audit.countDocuments({ targetId: ann._id })).toBe(2);
     const bad = await patch(t, admin.cookie, ann._id.toHexString(), { roles: ['pope'] });
     expect(bad.statusCode).toBe(400);
+  });
+
+  it('gives or takes away one role in the roles the account has now, so a change made meanwhile stays', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const ann = await seedAccount(t.db, { email: 'ann@example.com', roles: ['teacher'] });
+    const id = ann._id.toHexString();
+    const actions = async () => (await collections(t.db).audit.find({ targetId: ann._id }).sort({ _id: 1 }).toArray()).map((e) => [e.action, e.details]);
+    // Teacher was given in another tab; this one only switches Editor on.
+    const added = await patch(t, admin.cookie, id, { addRoles: ['editor'] });
+    expect(added.statusCode).toBe(200);
+    expect(added.json<AccountDetail>().roles).toEqual(['editor', 'teacher']);
+    expect(await actions()).toEqual([['role.grant', { roles: ['editor'] }]]);
+    const removed = await patch(t, admin.cookie, id, { removeRoles: ['teacher'] });
+    expect(removed.json<AccountDetail>().roles).toEqual(['editor']);
+    // A role it has already, or does not have, changes nothing and writes nothing.
+    await patch(t, admin.cookie, id, { addRoles: ['editor'], removeRoles: ['teacher'] });
+    expect(await actions()).toEqual([
+      ['role.grant', { roles: ['editor'] }],
+      ['role.revoke', { roles: ['teacher'] }],
+    ]);
+    // A whole list and a change to it at once, or one role in both, say nothing clear: refused.
+    for (const payload of [{ roles: ['editor'], addRoles: ['teacher'] }, { addRoles: ['teacher'], removeRoles: ['teacher'] }, { addRoles: ['pope'] }]) {
+      const res = await patch(t, admin.cookie, id, payload);
+      expect(res.statusCode, JSON.stringify(payload)).toBe(400);
+    }
+    expect((await collections(t.db).accounts.findOne({ _id: ann._id }))?.roles).toEqual(['editor']);
   });
 
   it('blocks (signing the account out everywhere) and unblocks', async () => {
@@ -262,7 +292,10 @@ describe('PATCH /admin/accounts/:id', () => {
     expect(res.json<AccountDetail>()).toMatchObject({ name: 'Anne', email: 'anne@example.com' });
     expect((await patch(t, admin.cookie, id, { email: 'taken@example.com' })).json()).toMatchObject({ error: 'email_taken' });
     expect((await patch(t, admin.cookie, id, { email: 'nope' })).json()).toMatchObject({ error: 'email_invalid' });
+    // Another account's address with a hidden character: it would look the same in the list.
+    expect((await patch(t, admin.cookie, id, { email: '\u200Btaken@example.com' })).json()).toMatchObject({ error: 'email_invalid' });
     expect((await patch(t, admin.cookie, id, { name: '' })).statusCode).toBe(400);
+    expect((await patch(t, admin.cookie, id, { name: '\u2060\u2060' })).statusCode).toBe(400);
     const entry = await collections(t.db).audit.findOne({ targetId: ann._id, action: 'account.update' });
     expect(entry?.details).toEqual({ fields: ['name', 'email'], name: 'Anne', email: 'anne@example.com', previousEmail: 'ann@example.com' });
   });
@@ -308,6 +341,8 @@ describe('PATCH /admin/accounts/:id', () => {
       [{ name: 'Ann' }, 'accounts.invite'],
       [{ email: 'ann2@example.com' }, 'accounts.invite'],
       [{ roles: ['teacher'] }, 'roles.grant'],
+      [{ addRoles: ['teacher'] }, 'roles.grant'],
+      [{ removeRoles: ['teacher'] }, 'roles.grant'],
       [{ status: 'blocked' }, 'accounts.block'],
       [{ premium: { active: false } }, 'entitlements.grant'],
     ];
@@ -329,12 +364,44 @@ describe('PATCH /admin/accounts/:id', () => {
     }
   });
 
+  it('a link, a name or an email for an account needs every permission it has: nobody climbs to more through them', async () => {
+    const t = await makeApp(mongo);
+    const boss = await seedAccount(t.db, { email: 'admin@example.com', roles: ['admin'] });
+    const newBoss = await seedAccount(t.db, { email: 'new@example.com', roles: ['admin'], status: 'invited', password: null });
+    const teacher = await seedAccount(t.db, { email: 'tess@example.com', roles: ['teacher'] });
+    const ann = await seedAccount(t.db, { email: 'ann@example.com' });
+    const ed = await seedAccount(t.db, { email: 'ed@example.com', roles: ['editor'] });
+    const cookie = await signIn(t, 'ed@example.com');
+    const link = (id: unknown, kind: 'invite' | 'reset') => t.call({ method: 'POST', url: `/api/v1/admin/accounts/${String(id)}/${kind}-link`, cookie });
+    await withEditorPermissions(t, ['accounts.read', 'accounts.invite'], async () => {
+      // A new-password link signs its holder in as the account, with all it may do; an invite link the same, once accepted.
+      expect((await link(boss._id, 'reset')).statusCode).toBe(403);
+      expect((await link(newBoss._id, 'invite')).statusCode).toBe(403);
+      expect((await link(teacher._id, 'reset')).statusCode).toBe(403); // class.create, which the editor lacks
+      // A new email locks the account's owner out (and ends its links); a name is how others know the account.
+      for (const payload of [{ email: 'evil@example.com' }, { name: 'Not the admin' }]) {
+        expect((await patch(t, cookie, boss._id.toHexString(), payload)).statusCode, JSON.stringify(payload)).toBe(403);
+        expect((await patch(t, cookie, newBoss._id.toHexString(), payload)).statusCode, JSON.stringify(payload)).toBe(403);
+      }
+      expect(await collections(t.db).accounts.findOne({ _id: boss._id })).toMatchObject({ email: 'admin@example.com', name: 'Test person' });
+      expect(await collections(t.db).tokens.countDocuments({ createdBy: ed._id })).toBe(0);
+      // No more than the editor holds: as before.
+      expect((await link(ann._id, 'reset')).statusCode).toBe(200);
+      expect((await patch(t, cookie, ann._id.toHexString(), { name: 'Ann', email: 'ann2@example.com' })).statusCode).toBe(200);
+      expect((await patch(t, cookie, ed._id.toHexString(), { name: 'Ed' })).statusCode).toBe(200);
+    });
+    // With what the teacher has too, its link is fine.
+    await withEditorPermissions(t, ['accounts.read', 'accounts.invite', 'class.create'], async () => {
+      expect((await link(teacher._id, 'reset')).statusCode).toBe(200);
+    });
+  });
+
   it('does not let an admin change their own roles or status', async () => {
     const t = await makeApp(mongo);
     const admin = await signedInAdmin(t);
     await seedAccount(t.db, { email: 'second@example.com', roles: ['admin'] });
     const id = admin.account._id.toHexString();
-    for (const payload of [{ roles: ['admin', 'teacher'] }, { roles: [] }, { status: 'blocked' }]) {
+    for (const payload of [{ roles: ['admin', 'teacher'] }, { roles: [] }, { addRoles: ['teacher'] }, { removeRoles: ['admin'] }, { status: 'blocked' }]) {
       const res = await patch(t, admin.cookie, id, payload);
       expect(res.statusCode).toBe(409);
       expect(res.json()).toMatchObject({ error: 'own_account' });
@@ -354,7 +421,7 @@ describe('PATCH /admin/accounts/:id', () => {
     const cookie = await signIn(t, 'ed@example.com');
     const id = only._id.toHexString();
     {
-      for (const payload of [{ roles: [] }, { roles: ['teacher'] }, { status: 'blocked' }]) {
+      for (const payload of [{ roles: [] }, { roles: ['teacher'] }, { removeRoles: ['admin'] }, { status: 'blocked' }]) {
         const res = await patch(t, cookie, id, payload);
         expect(res.statusCode, JSON.stringify(payload)).toBe(409);
         expect(res.json()).toMatchObject({ error: 'last_admin' });
@@ -502,6 +569,31 @@ describe('GET /admin/closures', () => {
     const teacher = await signIn(t, 'teacher@example.com');
     expect((await t.call({ method: 'GET', url: '/api/v1/admin/closures', cookie: teacher })).statusCode).toBe(403);
     expect((await t.call({ method: 'GET', url: '/api/v1/admin/closures' })).statusCode).toBe(401);
+  });
+
+  it('shows at most 500, the newest, and says how many there are; the file asks for all of them', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const start = Date.UTC(2026, 9, 27);
+    await collections(t.db).closures.insertMany(
+      Array.from({ length: 501 }, (_, i) => ({
+        _id: i.toString(16).padStart(32, '0'),
+        day: new Date(start - i * DAY),
+        kind: 'removed' as const,
+        feedback: null,
+        archive: null,
+      })),
+    );
+    const list = (query = '') => t.call({ method: 'GET', url: '/api/v1/admin/closures' + query, cookie: admin.cookie });
+    const shown = (await list()).json<ClosureListResponse>();
+    expect(shown.closures).toHaveLength(500);
+    expect(shown.total).toBe(501);
+    expect(shown.closures[0].day).toBe('2026-10-27');
+    const all = (await list('?all=true')).json<ClosureListResponse>();
+    expect(all.closures).toHaveLength(501);
+    expect(all.total).toBe(501);
+    expect(all.closures.at(-1)?.day).toBe(new Date(start - 500 * DAY).toISOString().slice(0, 10));
+    expect((await list('?all=yes')).statusCode).toBe(400);
   });
 });
 

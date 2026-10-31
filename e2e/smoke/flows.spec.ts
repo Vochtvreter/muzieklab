@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { QUARTERS, seed, SOL_DONE, tapLate, VIEWPORTS } from '../helpers';
-import { expect, stored, test, watchOf } from './helpers';
+import { expect, stored, test } from './helpers';
 
 /**
  * The main things to do in the deployed app, quickly and signed out (docs/SMOKE.md): play rhythm on the keyboard to
@@ -76,23 +76,9 @@ async function playGMajor(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
 }
 
-/**
- * Known app bug, 0.16.0: when a scale is done, ScalesPlay looks up the step after the last note
- * (src/ui/screens/scales/ScalesPlay.tsx, `stepHow(steps[pos - 1])` with pos past the last step), so the console says
- * "[i18n] missing message: scales.how.undefined". Nothing on screen is wrong. The round is checked here with that one
- * warning let through; the test after it fails while the bug is there, and passes (turning red) once it is fixed.
- */
-const SCALES_HOW_BUG = /^\[i18n\] missing message: scales\.how\.undefined$/;
-
 test('scales: a G major round played on the computer keyboard, three stars', async ({ page }) => {
-  watchOf(page).allowConsole(SCALES_HOW_BUG);
   await playGMajor(page);
   await expect(page.getByRole('img', { name: '3 of 3 stars' })).toBeVisible();
-});
-
-test('scales: a finished scale looks up no missing message (known bug: scales.how.undefined)', async ({ page }) => {
-  test.fail(true, 'ScalesPlay looks up the step after the last note when a scale is done (0.16.0)');
-  await playGMajor(page);
 });
 
 test('learn: a chapter and one of its sections open from the list, and its quick check answers', async ({ page }) => {
@@ -105,5 +91,7 @@ test('learn: a chapter and one of its sections open from the list, and its quick
   await page.locator('.learn-chapter').evaluate((el) => el.scrollTo(0, el.scrollHeight));
   const check = page.getByRole('group', { name: 'How long does a key signature hold?' });
   await check.getByRole('button', { name: 'For the whole piece' }).click();
-  await expect(check.getByRole('status')).toHaveText(/^Right\. A key signature holds/);
+  // The verdict shows under the answers and is read out by the app's live region (#announcer).
+  await expect(check.getByText(/^Right\. A key signature holds/)).toBeVisible();
+  await expect(page.locator('#announcer')).toHaveText(/^Right\. A key signature holds/);
 });

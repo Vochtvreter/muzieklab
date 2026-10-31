@@ -1,6 +1,7 @@
 /*
  * The feedback tool (docs/FEEDBACK-LOOP.md): only in feedback mode. The button floats above the tab bar on phone and
- * in the corner on tablet and desktop; the marking layer and the marked spot sit above every screen and sheet.
+ * in the corner on tablet and desktop, and on the exercise screens at the screen's edge; the marking layer and the
+ * marked spot sit above every screen and sheet.
  */
 .fb-fab {
   position: fixed;
@@ -29,6 +30,80 @@
   padding: 0;
   justify-content: center;
 }
+/*
+ * The screens in the .shell, which comes before the tool: the page leaves room under its end for the button, so a page
+ * scrolled to its end has none of its controls under it, and what stays at the bottom (Path's Start lesson) is clear of
+ * it too. On a phone the page's padding is --pb less 12 px: 68 px, the 59 px the button stands above the tab bar and a
+ * gap; from 700 px it is --pb: the button's 16 + 44 px and a gap. As long as the tool is on, also while marking, so the
+ * page does not move under the finger.
+ */
+.shell:has(~ .fb-root) .page {
+  --pb: 80px;
+}
+@media (min-width: 700px) {
+  .shell:has(~ .fb-root) .page {
+    --pb: 72px;
+  }
+  /* Home on a desktop: its two columns have padding of their own. */
+  .shell:has(~ .fb-root) .home-desk {
+    padding-bottom: 72px;
+  }
+}
+/*
+ * Screens without the tab bar or header (an exercise, its setup and results, a form on its own) keep their controls
+ * low on the screen, under the corner: there the button is a tab on the right edge, halfway down, at every size. While
+ * an exercise is played (--high) its answers take the lower half and, on Scales, the middle, so the tab sits 30% of
+ * the way down, by the staff; a form on its own (--low) sits at the top, so it is three quarters of the way down. A
+ * phone in landscape has its answers and Start in the right-hand column: its tab is on the left edge, halfway down.
+ * The tab is 44 px wide, as every touch target, with its focus ring inside, which the screen's edge would cut. The
+ * other screens are in the .shell, which comes before the tool.
+ */
+.fb-root:not(.shell ~ .fb-root) .fb-fab {
+  top: 50%;
+  right: env(safe-area-inset-right, 0px);
+  bottom: auto;
+  width: 44px;
+  height: 52px;
+  padding: 0 0 0 6px;
+  justify-content: center;
+  border-right: 0;
+  border-radius: 26px 0 0 26px;
+  transform: translateY(-50%);
+}
+.fb-root:not(.shell ~ .fb-root) .fb-fab--high {
+  top: 30%;
+}
+.fb-root:not(.shell ~ .fb-root) .fb-fab--low {
+  top: 75%;
+}
+.fb-root:not(.shell ~ .fb-root) .fb-fab:focus-visible {
+  outline-offset: -3px;
+}
+.fb-root:not(.shell ~ .fb-root) .fb-fab span {
+  display: none;
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .fb-root:not(.shell ~ .fb-root) .fb-fab {
+    top: 50%;
+    right: auto;
+    left: env(safe-area-inset-left, 0px);
+    padding: 0 6px 0 0;
+    border-right: 1.5px solid var(--accent-ring);
+    border-left: 0;
+    border-radius: 0 26px 26px 0;
+  }
+}
+/*
+ * A portrait phone, where the staff card runs to the 16 px gutter: the card stops before the tab (44 px less the
+ * gutter, and a gap), so no note, rest or bar line of the staff, nor the current note's column, lies under it. The
+ * staves draw themselves in the room they are given. Calibrate's card too, level with the tab: its count and delay are
+ * read while tapping. As long as the tool is on, also while marking, so the staff does not move under the finger.
+ */
+@media (max-width: 699.98px) and (orientation: portrait) {
+  .frame:has(~ .fb-root) :is(.play-staff, .nplay-staff, .cal-card) {
+    margin-right: calc(32px + env(safe-area-inset-right, 0px));
+  }
+}
 
 /* Marking: the whole screen takes the pointer; a crosshair, the hint bar on top, and the box that will be marked. */
 .fb-layer {
@@ -40,11 +115,13 @@
   user-select: none;
   -webkit-user-select: none;
 }
+/* Centred by its margins, not a transform: the m-in motion it comes in with sets a transform of its own. */
 .fb-bar {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
   width: min(560px, calc(100% - 24px));
   display: flex;
   align-items: center;
@@ -56,12 +133,26 @@
   box-shadow: var(--dialog-shadow);
   cursor: default;
 }
+/* Tapped, the bar goes to the bottom edge, off what it covered (the title, the header's tabs); tapped again, back. */
+.fb-bar--low {
+  top: auto;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
 .fb-bar-text {
   flex: 1;
   min-width: 0;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.3;
+}
+/* The part the arrow keys picked. */
+.fb-bar-pick {
+  display: block;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.fb-bar-pick:not(:empty) {
+  margin-top: 4px;
 }
 .fb-box,
 .fb-spot {
@@ -160,10 +251,19 @@ textarea.fb-input:focus-visible {
 .fb-error p {
   margin: 0;
 }
+/* Copy is never narrower than its icon and longest word ("Gekopieerd" in Dutch on a 320 px phone); Send takes the rest. */
 .fb-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(min-content, 1fr) minmax(0, 1.4fr);
   gap: 10px;
+}
+/* Copy's other label, hidden in Copy's cell: the column fits the longer of the two, so a copy moves neither button. */
+.fb-copy-room,
+.fb-copy-room + .btn {
+  grid-area: 1 / 1;
+}
+.fb-copy-room {
+  visibility: hidden;
 }
 .fb-actions .btn {
   min-height: 52px;

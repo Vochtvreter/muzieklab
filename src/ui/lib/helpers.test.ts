@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Settings, type Stars, type Timeline } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, type Feasibility, type Judgement, letterOf, type NotatedSymbol, PPQ, type RoundNote, type Settings, type Stars, type Tap, type Timeline, type TimedNote } from '../../core/api';
+import { introId, lessonIntros } from '../../game/intro';
+import { ALL_LESSONS } from '../../game/path';
 import { defaultProgress, type Progress } from '../../game/storage';
 import { PATH_UNITS } from '../../game/tracks';
-import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey } from './format';
-import { continueLesson, lessonOutcome, lessonPreview, newFeatures, tileStates, unitStates } from './lessons';
+import { difficultyLevel, metersLabel, orList, signed, signedMs, starsLabel, starsText, tempoWordKey, wholePercent } from './format';
+import { barFeatures, continueLesson, lessonOutcome, lessonPreview, newFeatures, noteLessonPreview, previewFeatures, tileStates, unitStates } from './lessons';
 import { exerciseView } from '../exerciseView';
-import { beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
+import { barAt, beatAt, cursorAt, holdProgress, liveAccuracy, pressFeedback, replayedWindows, sliceTimeline, tapsBeforeBar, windowStart } from './playMath';
 import { setupHints, startBlockedKey } from './setupHints';
 import { describeBars } from './notation';
 
@@ -44,6 +46,16 @@ describe('formatting', () => {
     expect(difficultyLevel(0)).toBe(1);
     expect(difficultyLevel(5)).toBe(3);
     expect(difficultyLevel(10)).toBe(5);
+  });
+  it('shows accuracy in whole percent rounded down, so a threshold the run did not reach never shows (§6.3)', () => {
+    // 31 Perfect and 1 Great: 99.69% is no diamond's 100%; 89.69% has two stars, not the 90% of three.
+    expect(wholePercent(99.6875)).toBe(99);
+    expect(wholePercent(100)).toBe(100);
+    expect(wholePercent(89.6875)).toBe(89);
+    expect(wholePercent(94.6875)).toBe(94);
+    expect(wholePercent(0)).toBe(0);
+    // 57 of 100 is 56.99999999999999 in floating point.
+    expect(wholePercent((57 / 100) * 100)).toBe(57);
   });
   it('lists meters in order', () => {
     expect(metersLabel(['4/4', '3/4'])).toBe('3/4 · 4/4');
@@ -131,6 +143,44 @@ describe('play maths', () => {
     ]);
   });
 
+  it('drops the presses that played the replayed bar by their note, also one made just before its bar line', () => {
+    const second = { down: 1.0, up: 1.9 };
+    const early = { down: 1.98, up: 2.3 }; // the replayed bar's first note, a little early
+    const extraBefore = { down: 1.9, up: 1.92 };
+    const extraAfter = { down: 2.6, up: 2.7 };
+    const late = { down: 2.03, up: 2.2 }; // a late press for the note before the bar line (as if bar 1 began with a rest)
+    const noteOf = new Map<Tap, TimedNote>([
+      [second, TL.notes[1]],
+      [early, TL.notes[2]],
+      [late, TL.notes[1]],
+    ]);
+    expect(tapsBeforeBar([second, extraBefore, early, late, extraAfter], 1, 2, 2.8, { noteOf: (tp) => noteOf.get(tp) })).toEqual([second, extraBefore, late]);
+  });
+
+  it('drops an extra tap in the window of a replayed note too: judged again, it would take that note', () => {
+    const replayed = replayedWindows(TL, 1, 'normal');
+    // The final judge's Good windows, 120 ms here: bar 1's notes at 2 s and 3 s, not bar 0's at 1 s.
+    expect([1.87, 1.88, 2.12, 2.13, 2.95, 0.95].map(replayed)).toEqual([false, true, true, false, true, false]);
+    expect(replayedWindows(TL, 1, 'relaxed')(1.85)).toBe(true);
+    const played = { down: 1.9, up: 1.92 }; // bar 1's first note, a little early
+    const bounce = { down: 1.93, up: 2.3 }; // a second press in its window: an extra tap
+    const extra = { down: 1.5, up: 1.6 }; // an extra tap away from the replayed notes
+    const noteOf = new Map<Tap, TimedNote>([[played, TL.notes[2]]]);
+    expect(tapsBeforeBar([extra, played, bounce], 1, 2, 2.5, { noteOf: (tp) => noteOf.get(tp), inReplayedWindow: replayed })).toEqual([extra]);
+  });
+
+  it('a hold the pause cut short, on a note tied into the replayed bar, counts as held to the note’s end', () => {
+    // Tied over the bar line at 2 s and followed by a rest: the replay from bar 1 does not play it again.
+    const tied = { index: 1, bar: 0, tick: 96, onset: 1, end: 2.75, durationTicks: 168, next: 'rest' as const };
+    const held = { down: 1.0, up: 2.3 };
+    expect(tapsBeforeBar([held], 1, 2, 2.3, { noteOf: () => tied, held })).toEqual([{ down: 1.0, up: 2.75 }]);
+    // Still held when the note had ended: held too long, as played.
+    const over = { down: 1.0, up: 2.9 };
+    expect(tapsBeforeBar([over], 1, 2, 2.9, { noteOf: () => tied, held: over })).toEqual([over]);
+    // Paused again in the count-in before the replay: the hold keeps that end.
+    expect(tapsBeforeBar([{ down: 1.0, up: 2.75 }], 1, 2, 2, { noteOf: () => tied })).toEqual([{ down: 1.0, up: 2.75 }]);
+  });
+
   it('finds the beat, including the count-in', () => {
     expect(beatAt(-2, 0.5, 4, 4, 4)).toEqual({ inBar: 0, countIn: true });
     expect(beatAt(-0.1, 0.5, 4, 4, 4)).toEqual({ inBar: 3, countIn: true });
@@ -157,11 +207,24 @@ describe('play maths', () => {
     expect(windowStart(5, 4, 2, 16)).toBe(4);
   });
 
+  it('names the bar a count-in leads into, also after a pause, where the clock is still in the bar before', () => {
+    expect(barAt(-1.5, 2, 0)).toBe(0);
+    expect(barAt(3.9, 2, 0)).toBe(1);
+    // Resumed at bar 2 (from 4 s): the count-in still runs at 2.4 s, then bar 2 is played.
+    expect(barAt(2.4, 2, 2)).toBe(2);
+    expect(barAt(4, 2, 2)).toBe(2);
+    expect(barAt(6.1, 2, 2)).toBe(3);
+  });
+
   it('scores the starts so far and words the judgement', () => {
     expect(liveAccuracy([], 0)).toBeNull();
     expect(liveAccuracy([], 2)).toBe(0);
     expect(liveAccuracy(['perfect', 'great', 'good', 'miss'], 0)).toBe(65);
     expect(liveAccuracy(['perfect'], 1)).toBe(75);
+    // Rounded down as Results shows it: 31 Perfect and a Great (99.69%) are 99%, and 28 Perfect, a Good and 3 Misses
+    // (89.69%, two stars) 89%, not three stars' 90%.
+    expect(liveAccuracy([...Array<Judgement>(31).fill('perfect'), 'great'], 0)).toBe(99);
+    expect(liveAccuracy([...Array<Judgement>(28).fill('perfect'), 'good', 'miss', 'miss', 'miss'], 0)).toBe(89);
     expect(pressFeedback({ index: 0, judgement: 'good', offsetMs: 90 })).toEqual({ key: 'judge.goodLate', tone: 'gold' });
     expect(pressFeedback({ index: 0, judgement: 'good', offsetMs: -90 }).key).toBe('judge.goodEarly');
     expect(pressFeedback({ index: null, judgement: 'extra', offsetMs: null }).key).toBe('judge.extra');
@@ -253,6 +316,26 @@ describe('staff text alternative', () => {
     );
     expect(label).toBe('Rhythm in 4/4. Bar 1: dotted quarter note, eighth note, half rest.');
   });
+
+  it('reads a rest inside a triplet as a triplet rest, as the bracket over it draws it', () => {
+    const tuplet = { num: 3, den: 2, id: 0 } as const;
+    const label = describeBars(
+      [
+        {
+          symbols: [
+            { value: 'eighth', dots: 0, kind: 'note', tieToNext: false, start: 0, duration: 16, onsetIndex: 0, tuplet },
+            { value: 'eighth', dots: 0, kind: 'rest', tieToNext: false, start: 16, duration: 16, onsetIndex: -1, tuplet },
+            { value: 'eighth', dots: 0, kind: 'note', tieToNext: false, start: 32, duration: 16, onsetIndex: 1, tuplet },
+            { value: 'eighth', dots: 0, kind: 'rest', tieToNext: false, start: 48, duration: 24, onsetIndex: -1 },
+            { value: 'eighth', dots: 0, kind: 'note', tieToNext: false, start: 72, duration: 24, onsetIndex: 2 },
+            { value: 'half', dots: 0, kind: 'note', tieToNext: false, start: 96, duration: 96, onsetIndex: 3 },
+          ],
+        },
+      ],
+      '4/4',
+    );
+    expect(label).toBe('Rhythm in 4/4. Bar 1: triplet eighth note, triplet eighth rest, triplet eighth note, eighth rest, eighth note, half note.');
+  });
 });
 
 describe('lesson preview', () => {
@@ -269,5 +352,90 @@ describe('lesson preview', () => {
 
   it('is the same every visit', () => {
     expect(lessonPreview('4.1')!.run.exercise.seed).toBe(lessonPreview('4.1')!.run.exercise.seed);
+  });
+
+  // A phone shows that one bar: it has what the title names, not just something new over the lesson before (3.4's half
+  // rest is new over 3.3 too, 7.2 adds no symbol, 4.3 adds half rests as well as half notes, 2.4 only quarter rests,
+  // and 3.2's half rest never fits a three-four exercise).
+  const is = (kind: NotatedSymbol['kind'], value: NotatedSymbol['value'], dots = 0) => (s: NotatedSymbol) =>
+    s.kind === kind && s.value === value && s.dots === dots;
+  const tie = (s: NotatedSymbol): boolean => s.tieToNext;
+  const rest = (s: NotatedSymbol): boolean => s.kind === 'rest';
+  it.each([
+    ['2.4', 'Quarter and half rests', [is('rest', 'quarter'), is('rest', 'half')]],
+    ['3.2', 'Rests in three-four', [rest]],
+    ['3.4', 'Whole rests', [is('rest', 'whole')]],
+    ['4.3', 'Eighths with half notes', [is('note', 'eighth'), is('note', 'half')]],
+    ['5.3', 'Eighth rests in two-four', [is('rest', 'eighth')]],
+    ['6.3', 'Ties in three-four', [tie]],
+    ['6.4', 'Ties and rests', [tie, rest]],
+    ['7.2', 'Dotted halves in four-four', [is('note', 'half', 1)]],
+    ['7.3', 'Dotted quarter + eighth', [is('note', 'quarter', 1), is('note', 'eighth')]],
+    ['7.4', 'Dotted quarters in three-four', [is('note', 'quarter', 1)]],
+  ])('%s %s: its bar shows what the lesson is about', (id, _title, checks) => {
+    const p = lessonPreview(id)!;
+    const bar = exerciseView(p.run.exercise)!.bars[p.bar];
+    for (const check of checks) expect(bar.symbols.some(check)).toBe(true);
+  });
+
+  it('8.3 Eighth and two sixteenths: its bar has an eighth and two sixteenths that fill a beat', () => {
+    const p = lessonPreview('8.3')!;
+    const s = exerciseView(p.run.exercise)!.bars[p.bar].symbols;
+    const figure = [is('note', 'eighth'), is('note', 'sixteenth'), is('note', 'sixteenth')];
+    expect(s.some((x, i) => x.start % PPQ === 0 && figure.every((check, k) => s[i + k] !== undefined && check(s[i + k])))).toBe(true);
+  });
+
+  // A unit review names nothing: its bar shows what it can of the unit's symbols. Every other lesson's shows all of
+  // what it is about, so a lesson that adds what its exercises never have (3.2's half rest in three-four) says so in
+  // `preview`.
+  it('every lesson but the unit reviews shows all of what it is about', () => {
+    for (const { lesson } of ALL_LESSONS.filter(({ lesson }) => !lesson.id.endsWith('.5'))) {
+      const p = lessonPreview(lesson.id)!;
+      const shown = barFeatures(exerciseView(p.run.exercise)!.bars[p.bar]);
+      expect(previewFeatures(lesson.id).filter((k) => !shown.has(k)), lesson.id).toEqual([]);
+    }
+  });
+
+  it('every lesson shows the symbols it is the first in the path to use (game/intro.ts)', () => {
+    for (const { lesson } of ALL_LESSONS) {
+      const ids = lessonIntros(lesson.id).map(introId).filter((x) => !x.startsWith('meter:'));
+      const p = lessonPreview(lesson.id)!;
+      const shown = new Set(
+        exerciseView(p.run.exercise)!.bars[p.bar].symbols.flatMap((s) => [s.kind + ':' + s.value, ...(s.dots ? ['dotted'] : []), ...(s.tieToNext ? ['ties'] : [])]),
+      );
+      expect(ids.filter((x) => !shown.has(x)), lesson.id).toEqual([]);
+    }
+  });
+});
+
+describe('note lesson preview', () => {
+  // Home draws the notes on one staff: a round that starts in another clef or key than the lesson's first (18.2 starts
+  // in bass clef, 26.3 in E♭ major) drew bass notes under a treble staff, and a B♭ with no flat as a B.
+  const lessons = PATH_UNITS.flatMap((u) => u.lessons).filter((l) => l.track === 'notes' || l.track === 'keys');
+  it.each([4, 6])('draws up to %i notes, at least 4, each in the clef and key of its staff', (count) => {
+    for (const lesson of lessons) {
+      const p = noteLessonPreview(lesson, count)!;
+      expect(p.notes.length, lesson.id).toBeGreaterThanOrEqual(4);
+      expect(p.notes.length, lesson.id).toBeLessThanOrEqual(count);
+      for (const n of p.notes) expect([n.clef, n.key], lesson.id).toEqual([p.clef, p.key]);
+    }
+  });
+
+  it('is the first notes of the round, the same every visit', () => {
+    const lesson = lessons.find((l) => l.id === '18.2')!;
+    for (const l of lessons) expect(noteLessonPreview(l, 4)!.notes, l.id).toEqual(noteLessonPreview(l, 6)!.notes.slice(0, 4));
+    expect(noteLessonPreview(lesson, 4)!.clef).toBe('bass');
+    expect(noteLessonPreview(PATH_UNITS[0].lessons[0], 4)).toBeNull();
+  });
+
+  it("shows the sign a Keys lesson is about in a phone's four notes: B♭ in 23.1, a sharp and a flat in 21.2", () => {
+    const shown = (id: string): RoundNote[] => noteLessonPreview(lessons.find((l) => l.id === id)!, 4)!.notes;
+    // The phone's Continue card for 23.1 (B flat in the key) drew E5 C5 F5 D4.
+    expect(shown('23.1').some((n) => letterOf(n.step) === 'B' && n.alter === -1)).toBe(true);
+    expect(shown('22.1').some((n) => letterOf(n.step) === 'F' && n.alter === 1)).toBe(true);
+    expect(shown('21.2').some((n) => n.sign === -1) && shown('21.2').some((n) => n.sign === 1)).toBe(true);
+    for (const lesson of lessons.filter((l) => l.track === 'keys')) {
+      expect(shown(lesson.id).some((n) => n.alter !== 0 || n.sign !== null), lesson.id).toBe(true);
+    }
   });
 });

@@ -45,6 +45,17 @@ test('caching: hashed files are kept for a year; the page, service worker and ma
   }
 });
 
+test('caching: a missing file in assets/ is not kept for a year (known: the server needs the new Caddyfile)', async ({ request }) => {
+  // The deploy copies the app, not the server's settings: until deploy/Caddyfile from 0.19.1 is on the server
+  // (docs/DEPLOY.md), Caddy still sends the year with a 404 in assets/. Once this passes, remove test.fail (docs/SMOKE.md).
+  test.fail(true, 'the server still has the Caddyfile from before 0.19.1');
+  // A name in assets/ that is not there (asked for during a deploy, or one a rollback brings back) is not kept for a
+  // year: a browser would not ask again once it is there.
+  const missing = await request.get(SITE + 'assets/no-such-file-' + Date.now().toString(36) + '.js');
+  expect(missing.status()).toBe(404);
+  expect(missing.headers()['cache-control'] ?? '', 'a missing file in assets/').not.toContain('immutable');
+});
+
 test('the manifest and the service worker are served, with every icon', async ({ request }) => {
   const res = await request.get(SITE + 'manifest.webmanifest');
   expect(res.headers()['content-type']).toContain('application/manifest+json');

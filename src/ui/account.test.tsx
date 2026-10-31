@@ -3,9 +3,12 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Me } from '../../shared/api';
 import { RENEWED_KEY } from '../api/client';
-import { ACCOUNT_KEY } from '../game/storage';
+import { ACCOUNT_KEY, PROGRESS_KEY } from '../game/storage';
+import { SYNC_KEY } from '../game/syncState';
 import { keepSignedIn, RECHECK_MS, RENEW_MS, resetAccountCheck, useAccount, type UseAccount } from './account';
+import { listenToAnnouncements, spoken } from './lib/announce';
 import { StoreProvider } from './store';
+import { progressSync, useProgressSync } from './sync';
 
 const ME: Me = {
   id: '6718f0c2a1b2c3d4e5f60002',
@@ -20,6 +23,16 @@ const ME: Me = {
   feedbackMode: false,
 };
 
+/** Someone else, signed in on this browser in another tab. */
+const BRAM: Me = { ...ME, id: '6718f0c2a1b2c3d4e5f60009', email: 'bram@example.com', name: 'Bram Smit', roles: [], permissions: ['self.manage'] };
+
+/** Another tab of the app saved (or forgot) the account: the tabs of a browser share its storage. */
+const storedElsewhere = (me: Me | null): void => {
+  if (me) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(me));
+  else localStorage.removeItem(ACCOUNT_KEY);
+  window.dispatchEvent(new StorageEvent('storage', { key: ACCOUNT_KEY }));
+};
+
 const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -30,6 +43,34 @@ function Probe(): JSX.Element {
   return <p data-testid="probe">{`${latest.api} ${latest.me?.name ?? 'nobody'}`}</p>;
 }
 const shown = (): string => screen.getByTestId('probe').textContent ?? '';
+
+/** The progress sync, as the app mounts it. */
+function Synced(): null {
+  useProgressSync();
+  return null;
+}
+
+/**
+ * The API for the tests with the progress sync: GET /me answers `me` (nobody: 401), and the account has no progress
+ * yet and takes the first save. Once `ended` is set, the session has ended: every request, a renewal too, gets a 401.
+ */
+function syncApi(me: Me | null): { ended: boolean; calls: string[] } {
+  const api = { ended: false, calls: [] as string[] };
+  fetchMock.mockImplementation(async (url: string, init: RequestInit = {}) => {
+    const call = `${init.method ?? 'GET'} ${url.replace('/api/v1', '')}`;
+    api.calls.push(call);
+    const refused = json(401, { error: 'unauthenticated', message: '' });
+    if (api.ended) return refused;
+    if (call === 'GET /me') return me ? json(200, me) : refused;
+    if (call === 'GET /progress') return json(200, { rev: 0, data: null, resetAt: null, updatedAt: null });
+    if (call === 'PUT /progress') {
+      const { prefs, progress } = JSON.parse(String(init.body)) as { prefs: object; progress: object };
+      return json(200, { rev: 1, data: { prefs, progress }, resetAt: null, updatedAt: '2026-10-25T10:00:00.000Z' });
+    }
+    return json(404, { error: 'not_found', message: call });
+  });
+  return api;
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -224,6 +265,83 @@ describe('useAccount', () => {
     expect(shown()).toBe('reachable nobody');
   });
 
+  it('a request the session had ended for signs out with a line for Sign in: nothing was changed, sign in again', async () => {
+    const said: string[] = [];
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
+    fetchMock.mockResolvedValueOnce(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    const { ApiError } = await import('../api/client');
+    act(() => {
+      latest.handleError(new ApiError(401, 'unauthenticated'));
+    });
+    expect(shown()).toBe('reachable nobody');
+    // Delete account ends signed out too: without the line, Sign in reads as if the account was deleted.
+    expect(latest.notice).toBe('sessionEnded');
+    expect(said).toEqual(['You were signed out, so nothing was changed. Sign in again to go on.']);
+    stop();
+  });
+
+  it('keeps that line when the progress sync finds the session ended too, before the screen shows the sign-out', async () => {
+    const api = syncApi(ME);
+    render(
+      <StoreProvider>
+        <Synced />
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(localStorage.getItem(SYNC_KEY)).not.toBeNull());
+    const { ApiError } = await import('../api/client');
+    // Delete account's 401, then the sync's (the app back online), both before React renders: the sync still sees the
+    // account it was started for, and signs out again.
+    api.ended = true;
+    await act(async () => {
+      latest.handleError(new ApiError(401, 'unauthenticated'));
+      await progressSync()!.request('online');
+    });
+    expect(api.calls.slice(-2)).toEqual(['GET /progress', 'POST /auth/refresh']);
+    expect(shown()).toBe('reachable nobody');
+    expect(latest.notice).toBe('sessionEnded');
+  });
+
+  it('sign out everywhere on a session that had already ended: refused, so it never says every device was signed out', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    // The session ended on another device (a new password there): the request and the renewal it tries are refused,
+    // so no other device was signed out.
+    fetchMock.mockImplementation(async () => json(401, { error: 'unauthenticated', message: '' }));
+    await act(async () => {
+      await expect(latest.signOutEverywhere()).rejects.toMatchObject({ code: 'unauthenticated' });
+    });
+    expect(shown()).toBe('reachable nobody');
+    expect(latest.notice).toBe('sessionEnded');
+  });
+
+  it('sign out everywhere that worked says so', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await act(async () => {
+      await latest.signOutEverywhere();
+    });
+    expect(shown()).toBe('reachable nobody');
+    expect(latest.notice).toBe('signedOutEverywhere');
+  });
+
   it('drops an answer to GET /me that a sign-in overtook', async () => {
     let answer: (r: Response) => void = () => undefined;
     fetchMock.mockImplementationOnce(() => new Promise<Response>((resolve) => (answer = resolve)));
@@ -240,6 +358,80 @@ describe('useAccount', () => {
       answer(json(401, { error: 'unauthenticated', message: '' }));
     });
     expect(shown()).toBe('reachable Ann de Vries');
+  });
+
+  it('takes up the account another tab signed in or out, so this one never shows or changes the one before', async () => {
+    fetchMock.mockResolvedValue(json(200, ME));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable Ann de Vries'));
+    act(() => storedElsewhere(null));
+    expect(shown()).toBe('reachable nobody');
+    expect(latest.notice).toBeNull();
+    act(() => storedElsewhere(BRAM));
+    expect(shown()).toBe('reachable Bram Smit');
+    expect(latest.can('accounts.read')).toBe(false);
+    // A new name there: the same account, as it is now.
+    act(() => storedElsewhere({ ...BRAM, name: 'Bram S.' }));
+    expect(shown()).toBe('reachable Bram S.');
+    // The other tab's answers: nothing was asked here again, and nothing saved back.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null')?.name).toBe('Bram S.');
+    // Signed out there, then signed in and out here: the account is forgotten, as after any sign-out.
+    act(() => storedElsewhere(null));
+    act(() => latest.setMe(ME));
+    expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null')?.id).toBe(ME.id);
+    act(() => latest.setSignedOut());
+    expect(shown()).toBe('reachable nobody');
+    expect(localStorage.getItem(ACCOUNT_KEY)).toBeNull();
+  });
+
+  it('syncs the account another tab signed in, without the first sign-in’s line: that tab says it', async () => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ xp: 25, practiceDays: ['2026-10-24'], lessons: { '1.1': { stars: 3, bestAccuracy: 90 } } }));
+    const api = syncApi(null);
+    const said: string[] = [];
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
+    render(
+      <StoreProvider>
+        <Synced />
+        <Probe />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(shown()).toBe('reachable nobody'));
+    // Signed in there, before that tab's first sync saved what it agreed with the account: this one's sync is a first too.
+    act(() => storedElsewhere(ME));
+    await waitFor(() => expect(localStorage.getItem(SYNC_KEY)).not.toBeNull());
+    expect(api.calls).toContain('PUT /progress');
+    expect(latest.notice).toBeNull();
+    expect(said).toEqual([]);
+    // Signed out, and in again here: this tab's own first sign-in says it.
+    act(() => latest.setSignedOut());
+    act(() => latest.setMe(ME));
+    await waitFor(() => expect(latest.notice).toBe('progressAdded'));
+    expect(said).toEqual(['The progress on this device is on your account now too.']);
+    stop();
+  });
+
+  it('asks GET /me again when another tab signed in as someone else while it was on its way', async () => {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(ME));
+    let answer: (r: Response) => void = () => undefined;
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((resolve) => (answer = resolve)));
+    render(
+      <StoreProvider>
+        <Probe />
+      </StoreProvider>,
+    );
+    act(() => storedElsewhere(BRAM));
+    expect(shown()).toBe('unknown Bram Smit');
+    // The answer is about the session before (Ann's): it is not taken, and the next one is.
+    fetchMock.mockResolvedValueOnce(json(200, BRAM));
+    await act(async () => answer(json(200, ME)));
+    await waitFor(() => expect(shown()).toBe('reachable Bram Smit'));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null')?.id).toBe(BRAM.id);
   });
 
   describe('after no answer, asks again', () => {

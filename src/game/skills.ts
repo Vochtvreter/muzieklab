@@ -14,7 +14,7 @@
  * Texts are message keys with params (Label): render them with `t(label.key, translateParams(label.params))`, which
  * also translates params that are message keys (a cell, a level or a section name). Pure.
  */
-import { KEYS, type Clef, type KeyId } from '../core/pitch';
+import { KEYS, type Alter, type Clef, type KeyId, type Letter } from '../core/pitch';
 import type { NoteSettings } from '../core/noteRound';
 import { ALL_SCALES, CIRCLE_ORDER, scaleId, type ScaleType } from '../core/scale';
 import { SHOWN_STARS, type Settings } from '../core/types';
@@ -33,6 +33,11 @@ export interface Label {
 /** One check of a level. */
 export interface Check {
   label: Label;
+  /**
+   * The scale's tonic when the label names one (its `tonic` param, "B♭"), so a screen reader can be given it in words
+   * ("B flat major at ★★"): a reader says a sign as a symbol or skips it.
+   */
+  tonic?: { letter: Letter; alter: Alter };
   done: boolean;
   /** Where the player is now ("now 72%", "now 1 of 4", "now 2.2 s", "now 1 star"), or null with nothing to show yet. */
   now: Label | null;
@@ -187,11 +192,11 @@ function readingChecks(ctx: SkillContext, clef: Clef, n: number): Check[] {
   return checks;
 }
 
-/** "B♭": a major key's tonic as written (letters and signs read the same in every catalog so far). */
-const tonicText = (key: KeyId): string => {
-  const t = KEYS[key].major;
-  return t.letter + (t.alter > 0 ? '♯' : t.alter < 0 ? '♭' : '');
-};
+/** A major key's tonic, or its relative minor's. */
+const tonicOf = (key: KeyId, minor = false): { letter: Letter; alter: Alter } => (minor ? KEYS[key].minor : KEYS[key].major);
+
+/** "B♭": a tonic as written (letters and signs read the same in every catalog). */
+const tonicText = (t: { letter: Letter; alter: Alter }): string => t.letter + (t.alter > 0 ? '♯' : t.alter < 0 ? '♭' : '');
 
 function scaleChecks(ctx: SkillContext, n: number): Check[] {
   const stars = ctx.progress.scales.stars;
@@ -199,7 +204,8 @@ function scaleChecks(ctx: SkillContext, n: number): Check[] {
   if (n <= MAJOR_LEVELS.length) {
     return MAJOR_LEVELS[n - 1].map((key) => {
       const s = of(key, 'major');
-      return { label: label('skills.check.major', { tonic: tonicText(key) }), done: s >= 2, now: nowStars(s), w: ratio(s, 2) };
+      const tonic = tonicOf(key);
+      return { label: label('skills.check.major', { tonic: tonicText(tonic) }), tonic, done: s >= 2, now: nowStars(s), w: ratio(s, 2) };
     });
   }
   const count = (keys: readonly KeyId[], type: ScaleType): Check => {
@@ -207,7 +213,15 @@ function scaleChecks(ctx: SkillContext, n: number): Check[] {
     return { label: label('skills.check.scaleCount', { count: keys.length, type: `scales.typeLower.${type}` }), done: k === keys.length, now: nowCount(k, keys.length), w: ratio(k, keys.length) };
   };
   if (n === 6) return [count(CIRCLE_ORDER, 'major')];
-  if (n < SKILL_LEVELS) return [count(MINOR_KEYS, MINOR_LEVEL_TYPE[n])];
+  // One check per scale, as for levels 1–5: only these five count, so the check names each ("A harmonic minor").
+  if (n < SKILL_LEVELS) {
+    const type = MINOR_LEVEL_TYPE[n];
+    return MINOR_KEYS.map((key) => {
+      const s = of(key, type);
+      const tonic = tonicOf(key, true);
+      return { label: label('skills.check.scale', { scale: `scales.name.${type}`, tonic: tonicText(tonic) }), tonic, done: s >= 2, now: nowStars(s), w: ratio(s, 2) };
+    });
+  }
   const k = ALL_SCALES.filter((s) => (stars[scaleId(s)] ?? 0) >= 3).length;
   return [{ label: label('skills.check.allScales', { count: ALL_SCALES.length }), done: k === ALL_SCALES.length, now: nowCount(k, ALL_SCALES.length), w: ratio(k, ALL_SCALES.length) }];
 }

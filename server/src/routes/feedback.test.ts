@@ -2,6 +2,7 @@ import { Collection, ObjectId } from 'mongodb';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AccountExport, AuditListResponse, Me } from '../../../shared/api.js';
 import {
+  FEEDBACK_DESCRIPTION_MAX,
   FEEDBACK_NOTE_MAX,
   type FeedbackDetail,
   type FeedbackListResponse,
@@ -137,6 +138,92 @@ describe('POST /feedback', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('keeps no invite or new-password token from the address: whoever has one can claim the account', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const token = 'Ab3_x-'.repeat(7) + 'Z';
+    for (const kind of ['invite', 'reset']) {
+      const id = await sent(t, admin.cookie, { ...report, context: { ...report.context, url: `https://test.vivanova.app/#/${kind}/${token}`, route: `/${kind}/${token}` } });
+      const res = await t.call({ method: 'GET', url: DETAIL(id), cookie: admin.cookie });
+      expect(res.body).not.toContain(token);
+      expect(res.json<FeedbackDetail>().report.context).toMatchObject({ url: `https://test.vivanova.app/#/${kind}/:token`, route: `/${kind}/:token` });
+    }
+    expect((await list(t, admin.cookie)).body).not.toContain(token);
+  });
+
+  it('shows none either from a report kept with its token, before the API left it out', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const token = 'Zq9-_x'.repeat(7) + 'A';
+    const _id = new ObjectId();
+    await collections(t.db).feedback.insertOne({
+      _id,
+      ...report,
+      context: { ...report.context, url: `https://test.vivanova.app/#/reset/${token}`, route: `/reset/${token}` },
+      status: 'new',
+      authorId: admin.account._id,
+      createdAt: t.clock.now(),
+      note: '',
+      reviewerId: null,
+      reviewedAt: null,
+    });
+    const listed = await list(t, admin.cookie);
+    expect(listed.body).not.toContain(token);
+    expect(listed.json<FeedbackListResponse>().reports[0].route).toBe('/reset/:token');
+    const detail = await t.call({ method: 'GET', url: DETAIL(_id.toHexString()), cookie: admin.cookie });
+    expect(detail.body).not.toContain(token);
+    expect(detail.json<FeedbackDetail>()).toMatchObject({ route: '/reset/:token', report: { context: { url: 'https://test.vivanova.app/#/reset/:token', route: '/reset/:token' } } });
+    // Nor its author's download of their data.
+    const own = await t.call({ method: 'GET', url: '/api/v1/me/export', cookie: admin.cookie });
+    expect(own.statusCode).toBe(200);
+    expect(own.body).not.toContain(token);
+  });
+
+  it('keeps no token or typed field value from the marked part either: not from an app that sent them, nor a report kept before', async () => {
+    const t = await makeApp(mongo);
+    const admin = await signedInAdmin(t);
+    const token = 'Kp7-_q'.repeat(7) + 'B';
+    // An admin's link card, as an app sent it before it left these out: React keeps what was typed in a field in its
+    // value attribute, and the markup may be cut in the middle of one.
+    const target = {
+      ...report.target,
+      label: `text “https://test.vivanova.app/#/reset/${token}”`,
+      text: `Hi Ann, here's a link: https://test.vivanova.app/#/reset/${token} — it works until Friday.`,
+      html:
+        `<div class="card"><input id=":r4:" class="tfield-input" type="password" placeholder="a > b" value="pw-secret-1">` +
+        `<input readonly="" value="https://test.vivanova.app/#/invite/${token}"><textarea readonly="">Hi Ann pw-secret-2</textarea>` +
+        `<a href="#/invite/${token}">Open</a><input type="text" value="pw-secret-3…`,
+    };
+    const id = await sent(t, admin.cookie, { ...report, target });
+    const stored = await collections(t.db).feedback.findOne({ _id: new ObjectId(id) });
+    expect(JSON.stringify(stored)).not.toMatch(new RegExp(`${token.slice(0, 12)}|pw-secret`));
+    expect(stored?.target).toMatchObject({
+      text: "Hi Ann, here's a link: https://test.vivanova.app/#/reset/:token — it works until Friday.",
+      html: '<div class="card"><input id=":r4:" class="tfield-input" type="password" placeholder="a > b"><input readonly=""><textarea readonly=""></textarea><a href="#/invite/:token">Open</a><input type="text"',
+    });
+    const kept = new ObjectId();
+    await collections(t.db).feedback.insertOne({
+      _id: kept,
+      ...report,
+      target,
+      status: 'new',
+      authorId: admin.account._id,
+      createdAt: t.clock.now(),
+      note: '',
+      reviewerId: null,
+      reviewedAt: null,
+    });
+    for (const res of [
+      await list(t, admin.cookie),
+      await t.call({ method: 'GET', url: DETAIL(id), cookie: admin.cookie }),
+      await t.call({ method: 'GET', url: DETAIL(kept.toHexString()), cookie: admin.cookie }),
+      await t.call({ method: 'GET', url: '/api/v1/me/export', cookie: admin.cookie }),
+    ]) {
+      expect(res.statusCode).toBe(200);
+      expect(res.body).not.toMatch(new RegExp(`${token.slice(0, 12)}|pw-secret`));
+    }
+  });
+
   it('needs feedback.give: admins have it, and other roles once an admin gives it', async () => {
     const t = await makeApp(mongo);
     await seedAccount(t.db, { email: 'ted@example.com', roles: ['teacher'] });
@@ -154,6 +241,15 @@ describe('POST /feedback', () => {
     const prefs = (value: unknown) => ({ ...report, context: { ...report.context, prefs: value } });
     for (const payload of [
       { ...report, description: '   ' },
+      // Characters that show nothing (a paste): a zero-width space; a word joiner, a line break and a Hangul filler; a
+      // blank Braille pattern and a soft hyphen; the interlinear annotation characters.
+      { ...report, description: '\u200b' },
+      { ...report, description: ' \u2060\n\u3164 ' },
+      { ...report, description: '\u2800\u00ad' },
+      { ...report, description: '\ufff9' },
+      { ...report, description: ' \ufffa\ufffb\n' },
+      // Longer than the app's field lets anyone type.
+      { ...report, description: 'x'.repeat(FEEDBACK_DESCRIPTION_MAX + 1) },
       { ...report, kind: 'rant' },
       { ...report, labels: ['status:approved'] },
       { ...report, status: 'accepted' },
@@ -171,6 +267,8 @@ describe('POST /feedback', () => {
     expect(await collections(t.db).feedback.countDocuments()).toBe(0);
     // Dots and dollars inside keys and values are only text.
     expect((await send(t, admin.cookie, prefs({ 'a.b': '$1', price$: 2 }))).statusCode).toBe(200);
+    expect((await send(t, admin.cookie, { ...report, description: 'x'.repeat(FEEDBACK_DESCRIPTION_MAX) })).statusCode).toBe(200);
+    expect((await send(t, admin.cookie, { ...report, description: '\u200bStart is hidden.' })).statusCode).toBe(200);
   });
 
   it(`takes at most ${FEEDBACK_PER_HOUR} reports an hour from one account`, async () => {

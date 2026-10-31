@@ -1,13 +1,17 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { DEFAULT_NOTE_SETTINGS, generateRound } from '../src/core/noteRound';
+import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteSettings } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
+import { pianoWindow, scaleNotes, type Scale } from '../src/core/scale';
+import { noteLessonSettings } from '../src/game/notesPath';
+import { lessonSettings } from '../src/game/path';
 import { CHAPTERS } from '../src/ui/learn/chapters';
-import type { Me } from '../shared/api';
+import type { Me, RoleInfo } from '../shared/api';
 import type { FeedbackReport } from '../shared/feedback';
 import {
-  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectNoClippedLabels, expectNoOverlap, expectNoPageScroll,
-  expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi, pad, pathUpTo,
-  QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
+  ACCOUNTS, accountDetail, ADMIN, adminApi, announcer, apiError, calibrateAlong, ME_ADMIN, expectClickable, expectFieldsFit, expectFits, expectFocusRing, expectHitHeight, expectNoClippedLabels, expectNoOverlap,
+  expectNoPageScroll, expectNoSideScroll, expectNotSqueezed, expectScrollbarAtEdge, expectStavesFit, expectTouchHeight, FEEDBACK, feedbackServer, INVITE_LINK_CREATED, ME_MEMBER, MEMBER, mockApi,
+  pad, pathUpTo,
+  QUARTERS, RESET_LINK_CREATED, seed, seedAccount, signedInAs, SIGNED_OUT, SOL_DONE, tabTo, tapLate, TOKEN, VIEWPORTS, type MockRoutes, type ViewportName,
 } from './helpers';
 import { emptyProgress, PROGRESS_CLOCK, PROGRESS_PREFS, richProgress } from './progressFixture';
 
@@ -37,6 +41,14 @@ async function expectEvenChipRows(page: Page, where = '', group = 'Status'): Pro
 
 /** An invite link that works (POST /auth/invite/check), for the account screens. */
 const INVITE_LINK = { email: 'lies@example.com', name: 'Lies Bakker', expiresAt: '2026-10-29T10:00:00.000Z' };
+
+/**
+ * Admins name and describe custom roles: a one-word name of 80 characters (the most it may be) and a one-word
+ * description, each wider than the words of the row or note that shows them, at every size.
+ */
+const LONG_ROLE: RoleInfo = { id: 'coordinators', name: 'Muziekschoolleerkrachtencoördinatorenvergaderingsvoorzittersplaatsvervangerschap',
+  description: 'Leerkrachtencoördinatorenvergaderingsvoorzittersplaatsvervangersbevoegdhedenoverzichtsbeheerderstoegangsrechtenbeheer',
+  permissions: ['accounts.read'], builtIn: false, accounts: 1 };
 
 /**
  * Known layout bugs from the MVP QA, fixed in the follow-up layout PR. `test.fail` keeps CI green while they are open
@@ -90,12 +102,29 @@ async function failedSecondLink(page: Page, button: string, alert: string): Prom
 }
 
 /**
- * A feedback report's facts (the label, and its value beside or under it) and its description stay inside their cards:
- * a long value (the selector, the browser, a word with no spaces) wraps instead of running out of the card or being cut.
+ * A row link's words stay in their column, left of the chevron (a switch row's, `.toggle-row-text`, left of its
+ * switch; a note's, `.row-note`, in its card): a long name or email with no break point wraps instead of running under
+ * the chevron and out of the card.
+ */
+async function expectWordsInRow(row: Locator, column = '.row-link-text'): Promise<void> {
+  await row.evaluate(() => document.fonts.ready.then(() => undefined));
+  const m = await row.evaluate((el, column) => {
+    const text = el.querySelector(column)!;
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    return { words: Math.max(...[...range.getClientRects()].map((r) => r.right)), column: text.getBoundingClientRect().right };
+  }, column);
+  expect(m.words, 'the words run out of their column').toBeLessThanOrEqual(m.column + 0.5);
+}
+
+/**
+ * A feedback report's facts (the label, and its value beside or under it), its description and who reviewed it stay
+ * inside their cards: a long value (the selector, the browser, a word with no spaces) wraps instead of running out of
+ * the card or being cut.
  */
 async function expectFactsInCards(page: Page): Promise<void> {
   const out = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('.facts dt, .facts dd, .report-quote')]
+    [...document.querySelectorAll<HTMLElement>('.facts dt, .facts dd, .report-quote, .review-choice .tfield-hint')]
       .filter((el) => el.offsetParent !== null)
       .flatMap((el) => {
         const card = el.closest('.set-card')?.getBoundingClientRect();
@@ -110,31 +139,476 @@ async function expectFactsInCards(page: Page): Promise<void> {
 }
 
 /**
- * Calibrates on the keyboard: the first press starts the 16 clicks (90 BPM, the first 1 s later), then one press on each
- * click. As in tapLate, each key event carries its own time stamp.
+ * The counts under Learn's rhythm examples stay apart (DESIGN.md §9.1): no two side by side overlap, also on a 320 px
+ * phone and in Dutch ("en" for "&"), where the staff is drawn smaller to make room.
  */
-async function calibrateAlong(page: Page): Promise<void> {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        const key = (type: string, at: number): void => {
-          const ev = new KeyboardEvent(type, { key: 'j', code: 'KeyJ', bubbles: true });
-          Object.defineProperty(ev, 'timeStamp', { value: at });
-          window.dispatchEvent(ev);
-        };
-        const t0 = performance.now();
-        key('keydown', t0);
-        key('keyup', t0 + 80);
-        const clicks = Array.from({ length: 16 }, (_, k) => t0 + 1000 + (k * 60_000) / 90);
-        for (const at of clicks) {
-          window.setTimeout(() => {
-            key('keydown', at);
-            key('keyup', at + 80);
-          }, at + 80 - performance.now());
-        }
-        window.setTimeout(resolve, clicks[15] + 200 - performance.now());
+async function expectCountsApart(page: Page): Promise<void> {
+  await expect.poll(() => page.locator('.learn-rhythm:not(:has(svg))').count(), { message: 'every example is drawn' }).toBe(0);
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.locator('.learn-rhythm').evaluateAll((els) =>
+    els.flatMap((el, k) => {
+      const counts = [...el.querySelectorAll('.staff-counts text')].map((t) => ({ r: t.getBoundingClientRect(), text: t.textContent ?? '' }));
+      return counts.flatMap((c, i) => {
+        const a = counts[i - 1];
+        const over = a && Math.abs(a.r.top - c.r.top) < 1 ? a.r.right - c.r.left : 0;
+        return over > 0.5 ? [`example ${k + 1}: "${a.text}" and "${c.text}" overlap by ${over.toFixed(1)} px`] : [];
+      });
+    }),
+  );
+  expect(out, 'counts that overlap').toEqual([]);
+}
+
+/**
+ * Learn's tables and diagrams keep their words apart (DESIGN.md §9.1), also on a 320 px phone and in Dutch: a table
+ * row's name stays in its column, clear of its value (5.2's "Gepunteerde" ran over "2 + 1 = 3 tellen"); each beat's
+ * word in 1.3 stays in its column ("halfzwaar" ran into "licht"); a step pattern or a row of letters stays on one line
+ * inside its card (11.4's "W H W W W W" left its "H" alone below); each count of a beat grid stays in its cell
+ * (5.3's Dutch "(en)" ran over its outline); and the counts under a rhythm that meet letter to letter stay apart (7.1's
+ * "trip let" read as "triplet").
+ */
+async function expectLearnWordsApart(page: Page, where = ''): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.evaluate(() => {
+    const lines = (el: Element): DOMRect[] => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return [...range.getClientRects()].filter((r) => r.width > 0);
+    };
+    const left = (el: Element): number => Math.min(...lines(el).map((r) => r.left));
+    const right = (el: Element): number => Math.max(...lines(el).map((r) => r.right));
+    const table = [...document.querySelectorAll('.learn-table-row')].flatMap((row) => {
+      const text = row.querySelector('.learn-table-text')!;
+      const value = row.querySelector('.learn-table-value');
+      const name = text.querySelector('b')!.textContent;
+      if (right(text) > text.getBoundingClientRect().right + 0.5) return [`table: "${name}" runs out of its column`];
+      return value && right(text) > left(value) - 2 ? [`table: "${name}" runs into "${value.textContent}"`] : [];
+    });
+    const beats = [...document.querySelectorAll('.learn-accent-row')].flatMap((row) => {
+      const words = [...row.querySelectorAll('.learn-accent > span:last-child')];
+      return words.flatMap((word, i) => {
+        if (right(word) > word.parentElement!.getBoundingClientRect().right + 0.5) return [`beats: "${word.textContent}" runs out of its column`];
+        return words[i + 1] && right(word) > left(words[i + 1]) - 2 ? [`beats: "${word.textContent}" runs into "${words[i + 1].textContent}"`] : [];
+      });
+    });
+    const values = [...document.querySelectorAll('.learn-example-head .mono-accent, .learn-sig .mono-accent')].flatMap((value) => {
+      const card = value.closest('.learn-section')!;
+      const inside = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).paddingRight);
+      if (new Set(lines(value).map((r) => Math.round(r.top))).size > 1) return [`"${value.textContent}" breaks onto a second line`];
+      return right(value) > inside + 0.5 ? [`"${value.textContent}" runs out of its card`] : [];
+    });
+    const grid = [...document.querySelectorAll('.learn-grid-cell')].flatMap((cell) => {
+      const box = cell.getBoundingClientRect();
+      return left(cell) < box.left + 1 || right(cell) > box.right - 1 ? [`beat grid: "${cell.textContent}" runs over its cell`] : [];
+    });
+    // The counts under a rhythm: two that meet letter to letter keep a gap ("trip" and "let", 1–2 px apart under 390 px,
+    // read as one word, "triplet").
+    const counts = [...document.querySelectorAll('.learn-rhythm .staff-counts')].flatMap((row) => {
+      const words = [...row.querySelectorAll('text')].map((word) => ({ text: word.textContent ?? '', box: word.getBoundingClientRect() }));
+      return words.flatMap((word, i) => {
+        const next = words[i + 1];
+        const meet = next && Math.abs(next.box.top - word.box.top) < 1 && /\p{L}$/u.test(word.text) && /^\p{L}/u.test(next.text);
+        return meet && next.box.left - word.box.right < 2.5 ? [`counts: "${word.text}" runs into "${next.text}"`] : [];
+      });
+    });
+    // A chapter's title in the previous / next cards wraps inside the card's padding (Dutch "herstellingstekens" ran
+    // 10 px into it at 320 px).
+    const nav = [...document.querySelectorAll('.learn-nav-link b')].flatMap((title) => {
+      const card = title.closest('.learn-nav-link')!;
+      const box = card.getBoundingClientRect();
+      const style = getComputedStyle(card);
+      return left(title) < box.left + parseFloat(style.paddingLeft) - 0.5 || right(title) > box.right - parseFloat(style.paddingRight) + 0.5
+        ? [`chapter link: "${title.textContent}" runs into its card's padding`]
+        : [];
+    });
+    return [...table, ...beats, ...values, ...grid, ...counts, ...nav];
+  });
+  expect(out, `${where} Learn words that run into each other`.trim()).toEqual([]);
+}
+
+/**
+ * A side menu that scrolls on its own (DESIGN.md §9 Scrolling) shows the whole focus ring of each item, from the first
+ * to the last with Tab and back with Shift+Tab. Tab scrolls the menu just far enough to show the item's box, and the
+ * ring lies outside it (Learn's 11.5 lost its bottom edge on a 1280 × 800 screen).
+ */
+async function expectRingsInSideMenu(menu: Locator): Promise<void> {
+  const items = menu.locator('a, button');
+  const n = await items.count();
+  await items.first().focus();
+  for (const key of [...Array<string>(n - 1).fill('Tab'), ...Array<string>(n - 1).fill('Shift+Tab')]) {
+    await menu.page().keyboard.press(key);
+    const cut = await menu.evaluate((box) => {
+      const el = document.activeElement!;
+      if (!box.contains(el)) return 'the focus left the menu';
+      const style = getComputedStyle(el);
+      const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+      const r = el.getBoundingClientRect();
+      const top = box.getBoundingClientRect().top + box.clientTop;
+      return r.top - ring < top - 0.5 || r.bottom + ring > top + box.clientHeight + 0.5 ? `${el.textContent}: its ring is cut off` : null;
+    });
+    expect(cut, key).toBeNull();
+  }
+}
+
+/**
+ * A page that scrolls (DESIGN.md §9 Scrolling) shows the whole focus ring of each control on it, from the first to the
+ * last with Tab and back with Shift+Tab. Tab scrolls the page just far enough to show the control's box, and the ring
+ * lies outside it: Settings' Privacy row lost the bottom edge of its ring, and the language buttons the top edge on the
+ * way back up. No box around the control cuts the ring off, on any side. The controls are those in the shell's main
+ * box, which is what scrolls on some screens (the Scales hub on a phone on its side, desktop Home).
+ */
+async function expectRingsOnPage(page: Page): Promise<void> {
+  await page.locator('main.shell-main').locator('a[href], button:not(:disabled)').first().focus();
+  const check = (): Promise<string | null> =>
+    page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el?.closest('main.shell-main')) return 'left';
+      if (!el.matches(':focus-visible')) return null;
+      const style = getComputedStyle(el);
+      const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+      const r = el.getBoundingClientRect();
+      for (let box = el.parentElement; box; box = box.parentElement) {
+        const o = getComputedStyle(box);
+        const b = box.getBoundingClientRect();
+        const [left, top] = [b.left + box.clientLeft, b.top + box.clientTop];
+        const cut =
+          (o.overflowX !== 'visible' && (r.left - ring < left - 0.5 || r.right + ring > left + box.clientWidth + 0.5)) ||
+          (o.overflowY !== 'visible' && (r.top - ring < top - 0.5 || r.bottom + ring > top + box.clientHeight + 0.5));
+        if (cut) return `${(el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 40)}: its ring is cut off by ${box.tagName.toLowerCase()}.${box.className}`;
+      }
+      return null;
+    });
+  for (const key of ['Tab', 'Shift+Tab']) {
+    for (let i = 0; i < 200; i++) {
+      await page.keyboard.press(key);
+      const cut = await check();
+      if (cut === 'left') break;
+      expect(cut, key).toBeNull();
+    }
+  }
+}
+
+/**
+ * A screen's head keeps its title whole beside what is next to it (DESIGN.md §9): the title's words fit its box, and
+ * nothing in the head runs past its right edge (Dutch on a 320 px phone: "Toonladders" beside "Over toonladders", and
+ * Progress's streak chip beside "Voortgang").
+ */
+async function expectHeadFits(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.screen-head, .prog-title-row')]
+      .filter((head) => head.offsetParent !== null)
+      .flatMap((head) => {
+        const right = head.getBoundingClientRect().right;
+        return [...head.querySelectorAll<HTMLElement>(':scope > *, .screen-title')].flatMap((el) => {
+          const name = (el.textContent ?? '').trim() || el.tagName.toLowerCase();
+          if (el.scrollWidth > el.clientWidth + 1) return [`${name}: runs out of its box`];
+          return el.getBoundingClientRect().right > right + 0.5 ? [`${name}: runs past the head`] : [];
+        });
       }),
   );
+  expect(out, 'screen heads').toEqual([]);
+}
+
+/**
+ * A number stays on the line of the word after it where a Progress line wraps: an achievement's name in its narrow
+ * column ("Played at 160" over "BPM" once) and the Skill levels link ("· 1" over "review due", Dutch "· 6" over
+ * "vaardigheden").
+ */
+async function expectCountsWithWords(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.prog-badge-name, .prog-skills-text > span')]
+      .filter((el) => el.offsetParent !== null)
+      .flatMap((el) => {
+        const split: string[] = [];
+        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let node = walk.nextNode() as Text | null; node; node = walk.nextNode() as Text | null) {
+          // The number's last digit and the first letter of the word after it: on one line, or the number ends a line.
+          for (const m of node.data.matchAll(/\d+\s(?=\S)/g)) {
+            const top = (at: number): number => {
+              const range = document.createRange();
+              range.setStart(node, at);
+              range.setEnd(node, at + 1);
+              return range.getBoundingClientRect().top;
+            };
+            const end = m.index + m[0].length;
+            if (Math.abs(top(end - 2) - top(end)) > 1) split.push(`"${el.textContent}": ${m[0].trim()} ends a line`);
+          }
+        }
+        return split;
+      }),
+  );
+  expect(out, 'numbers split from their words').toEqual([]);
+}
+
+/**
+ * What's new keeps its words in their boxes: each kind chip holds its word (Dutch OPGELOST is longer than FIXED), each
+ * row of the desktop list holds its title and line (in Dutch a line on two lines ran into the next row), and the
+ * latest card's title keeps clear of the staff drawing in its corner.
+ */
+async function expectChangelogFits(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const out = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll<HTMLElement>('.cl-kind')]
+      .filter((el) => el.getClientRects().length && el.scrollWidth > el.clientWidth + 1)
+      .map((el) => `chip ${el.textContent}: wider than its box`);
+    const rows = [...document.querySelectorAll<HTMLElement>('.cl-nav-item')].flatMap((el) => {
+      const r = el.getBoundingClientRect();
+      const text = el.querySelector('.cl-release-text')!.getBoundingClientRect();
+      return text.top < r.top - 0.5 || text.bottom > r.bottom + 0.5 ? [`row ${el.querySelector('.cl-ver')!.textContent}: its text runs out of the row`] : [];
+    });
+    const staff = document.querySelector('.cl-card-staff')?.getBoundingClientRect();
+    const head = document.querySelector<HTMLElement>('.cl-card--latest .cl-card-head');
+    const end = head ? head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight) : 0;
+    return [...chips, ...rows, ...(staff && end > staff.left + 0.5 ? [`the latest title can run ${(end - staff.left).toFixed(0)} px under the staff`] : [])];
+  });
+  expect(out, "what's new").toEqual([]);
+}
+
+/** Nothing on a staff is cut off at the top of its svg, such as a triplet's 3 over the first row. */
+async function expectStaffNotCut(svg: Locator): Promise<void> {
+  const top = (): Promise<number> =>
+    svg.evaluate((el) => Math.min(...[...el.querySelectorAll('path, rect')].map((p) => (p as SVGGraphicsElement).getBBox().y)));
+  await expect.poll(top, { message: 'the top of the notation, in the svg' }).toBeGreaterThanOrEqual(0);
+}
+
+/**
+ * Every bar of a rhythm staff has room for its notes (DESIGN.md §9): each note, with its dot and flag, ends before the
+ * bar line that closes its bar, and nothing runs past the drawing's edge, where the svg cuts it off.
+ */
+async function expectBarsFit(svg: Locator): Promise<void> {
+  const wrong = (): Promise<string[]> =>
+    svg.evaluate((el) => {
+      const right = (g: Element): number => {
+        const b = (g as SVGGraphicsElement).getBBox();
+        return b.x + b.width;
+      };
+      const width = (el as SVGSVGElement).viewBox.baseVal.width;
+      const out = new Set<string>();
+      let bar = 0;
+      let lines = 0;
+      let line = width;
+      for (const g of el.children) {
+        if (g.matches('.vf-stave')) [bar, lines] = [bar + 1, 0];
+        // Each stave draws the bar line that opens its bar, then the one closing it (the final barline: its thin line).
+        else if (g.matches('.vf-stavebarline') && ++lines === 2) line = Number(g.querySelector('rect')?.getAttribute('x'));
+        else if (g.matches('.vf-stavenote') && right(g) >= line) out.add(`bar ${bar}: a note runs into its bar line`);
+        if (g.matches('.vf-stavenote, .vf-beam, .vf-tuplet') && right(g) > width) out.add(`bar ${bar}: cut off at the staff's edge`);
+      }
+      return [...out];
+    });
+  await expect.poll(wrong, { message: 'notes outside their bars' }).toEqual([]);
+}
+
+/** A free-practice run that Play restores (sessionStorage): the same exercise every time for one seed. */
+async function seedRun(page: Page, settings: object, runSeed: number, prefs: object = {}): Promise<void> {
+  await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap', ...prefs } });
+  await page.addInitScript((run) => sessionStorage.setItem('muzieklab.run.v1', JSON.stringify(run)), { settings, seed: runSeed, lessonId: null, daily: null });
+}
+
+/**
+ * Each key's names on the Key screen fit beside its key signature (DESIGN.md §11): the bold major name and the minor
+ * name under it end inside their box, before the button's padding ("C♭ majeur" once ran into the border at 320 px).
+ */
+async function expectKeyNamesFit(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const over = await page.locator('.key-btn-text > *').evaluateAll((els) =>
+    els.filter((el) => el.scrollWidth > el.clientWidth).map((el) => `${el.textContent}: ${el.scrollWidth} px in ${el.clientWidth}`),
+  );
+  expect(over, 'key names wider than their box').toEqual([]);
+}
+
+/**
+ * The Scales hub's key signature, under the small staff in the circle's centre, reads whole: no sign of it sits under a
+ * key of the inner ring or the selected key's halo (seven signs once ran under the minor ring's f and c♯).
+ */
+async function expectSigUncovered(page: Page): Promise<void> {
+  // Once the halo has moved to the new key (it slides across the centre) and the keys have their new size.
+  await page.evaluate(() => Promise.all([document.fonts.ready, ...document.getAnimations().map((a) => a.finished)]).then(() => undefined));
+  const covered = await page.locator('.circle-sig').evaluate((sig) => {
+    sig.scrollIntoView({ block: 'center' });
+    const text = sig.firstChild as Text;
+    const out: string[] = [];
+    for (let i = 0; i < text.length; i++) {
+      if (text.data[i] === ' ') continue;
+      const range = document.createRange();
+      range.setStart(text, i);
+      range.setEnd(text, i + 1);
+      const r = range.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (top?.closest('.circle-key, .circle-halo')) out.push(`${text.data[i]} (${i})`);
+    }
+    return out;
+  });
+  expect(covered, 'signs under a key of the circle').toEqual([]);
+}
+
+/**
+ * A piano's keys come low to high in the page, as they are drawn, so Tab and a screen reader go along the keyboard: the
+ * black keys came after all the white ones. A pressed white key (scaled a little) stays under the black keys beside it.
+ */
+async function expectPitchOrder(keys: Locator): Promise<void> {
+  const mids = await keys.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => r.left + r.width / 2));
+  for (let i = 1; i < mids.length; i++) expect(mids[i], `key ${i + 1} is right of key ${i}`).toBeGreaterThan(mids[i - 1]);
+  const covered = await keys.evaluateAll((els) => {
+    const out: string[] = [];
+    for (const black of els.filter((el) => el.classList.contains('piano-black'))) {
+      const white = black.nextElementSibling;
+      if (!white) continue;
+      white.setAttribute('style', 'transform: scale(0.97); transition: none');
+      const r = black.getBoundingClientRect();
+      const top = document.elementFromPoint(r.right - 3, r.top + r.height / 2);
+      if (top !== black && !black.contains(top)) out.push(black.getAttribute('aria-label') ?? '');
+      white.removeAttribute('style');
+    }
+    return out;
+  });
+  expect(covered, 'black keys a pressed white key covers').toEqual([]);
+}
+
+/**
+ * Every key of the circle, on both rings, takes taps 44 px across and down through its middle (DESIGN.md §11), or,
+ * where its ring has no room for that (the inner ring on a phone under 390 px wide), as far as the next key; and its
+ * middle is its own. Counted px by px, as expectHitHeight does.
+ */
+async function expectCircleTargets(page: Page): Promise<void> {
+  await page.evaluate(() => Promise.all([document.fonts.ready, ...document.getAnimations().map((a) => a.finished)]).then(() => undefined));
+  const short = await page.locator('.circle').evaluate((circle) => {
+    const out: string[] = [];
+    for (const ring of ['major', 'minor']) {
+      const keys = [...circle.querySelectorAll<HTMLElement>('.circle-key--' + ring)];
+      keys.forEach((key, i) => {
+        key.scrollIntoView({ block: 'center', inline: 'center' });
+        const mid = (el: Element): { x: number; y: number } => {
+          const r = el.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        };
+        const c = mid(key);
+        const next = mid(keys[(i + 1) % keys.length]);
+        const need = Math.min(44, Math.floor(Math.hypot(next.x - c.x, next.y - c.y)));
+        const on = (x: number, y: number): boolean => {
+          const top = document.elementFromPoint(x, y);
+          return !!top && (top === key || key.contains(top));
+        };
+        let across = 0;
+        let down = 0;
+        for (let d = -40; d < 40; d++) {
+          if (on(c.x + d + 0.5, c.y)) across++;
+          if (on(c.x, c.y + d + 0.5)) down++;
+        }
+        const name = key.getAttribute('aria-label')!.split(':')[0];
+        if (!on(c.x, c.y)) out.push(`${ring} ${name}: its middle is another's`);
+        else if (Math.min(across, down) < need - 1) out.push(`${ring} ${name}: ${Math.min(across, down)} px of ${need}`);
+      });
+    }
+    return out;
+  });
+  expect(short, 'circle keys that take taps over too small an area').toEqual([]);
+}
+
+/**
+ * The computer keys that answer a scale up and down: the piano's (A S D … on the white keys, W E R … on the black) or
+ * the signs' (− 0 = X).
+ */
+function upDownKeys(s: Scale, input: string): string[] {
+  const w = pianoWindow(s);
+  return scaleNotes(s, 'upDown').map((n) =>
+    input !== 'piano' ? ['-', '0', '=', 'x'][n.alter + 1] : w.whites.includes(n.midi) ? 'ASDFGHJKL'[w.whites.indexOf(n.midi)] : 'WERTYUIO'[w.blacks.find((b) => b.midi === n.midi)!.after - 1],
+  );
+}
+
+/**
+ * A Scales round of one scale up and down, just started, answered to the end: the first note wrong, a Hint, the second
+ * note wrong (a why of two lines on a phone), then the rest, and the done line with all 15 notes. Each time the
+ * feedback changes, a portrait phone or tablet fits with the answer buttons in view (DESIGN.md §9), so does a desktop
+ * window 800 px tall or more, and a phone in landscape fits too, with the feedback and Skip to summary whole in its left
+ * column and room under Skip for its focus ring.
+ */
+async function answerUpAndDown(page: Page, name: ViewportName, scale: Scale, input: string, words: { hint: string; next: RegExp; skip: string }): Promise<void> {
+  const { width, height } = VIEWPORTS[name];
+  const portrait = width < 1100 && height > width;
+  const landscape = width < 1100 && height < width;
+  // Desktop fits from 800 px tall; a laptop's shorter window scrolls (DESIGN.md §9).
+  const desk = width >= 1100 && height >= 800;
+  const inPlace = { scroll: !portrait };
+  const feedback = page.locator('.nfeedback');
+  const hint = page.getByRole('button', { name: words.hint, exact: true });
+  const check = async (): Promise<void> => {
+    if (portrait || desk) await expectFits(page);
+    // A phone on its side fits too, with the feedback and Skip to summary in its left column.
+    if (landscape) {
+      await expectFits(page);
+      await expect(feedback, 'the feedback is in view').toBeInViewport({ ratio: 1 });
+      await expectSkipWhole(page, words.skip);
+    }
+    if (input !== 'piano') await expectClickable(hint, inPlace);
+  };
+  const keys = upDownKeys(scale, input);
+  const wrong = (k: string): string => (input === 'piano' ? (k === 'A' ? 'S' : 'A') : k === '-' ? '0' : '-');
+  await page.keyboard.press(wrong(keys[0]));
+  await expect(feedback).toHaveClass(/is-wrong/);
+  await check();
+  if (input !== 'piano') {
+    await hint.click();
+    await expect(feedback).toHaveClass(/is-hint/);
+    await check();
+  }
+  await page.keyboard.press(keys[0]);
+  await page.keyboard.press(wrong(keys[1]));
+  await expect(feedback).toHaveClass(/is-wrong/);
+  await check();
+  for (const k of keys.slice(1)) await page.keyboard.press(k);
+  await expect(feedback).toHaveClass(/is-right/);
+  // The done line names the 15 notes (where the degree rows show them instead, not on screen; screen readers hear them
+  // in the line said, beside it).
+  await expect(feedback.locator('.nfeedback-notes')).toHaveText(/^(\S+ ){14}\S+$/);
+  await expect(page.locator('.nfeedback + [aria-live]')).toHaveText(/\. ([^,]+, ){14}[^,]+$/);
+  await check();
+  // With its mistakes the scale comes back at the end of the round: the main button is Next scale.
+  await expectClickable(page.getByRole('button', { name: words.next }), inPlace);
+}
+
+/**
+ * Skip to summary is whole on the screen without scrolling, with room under it for its focus ring (3 px, 2 px away): in
+ * a phone's landscape column Scales ran past the screen and cut it, and Tab scrolled it flush with the edge.
+ */
+async function expectSkipWhole(page: Page, label = 'Skip to summary'): Promise<void> {
+  const skip = page.getByRole('button', { name: label });
+  await expectClickable(skip, { scroll: false });
+  const room = await skip.evaluate((el) => el.closest('.page')!.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom);
+  expect(room, 'room under Skip to summary for its focus ring').toBeGreaterThanOrEqual(5);
+}
+
+/**
+ * A phone 360 px tall on its side (740 × 360) still scrolls Scales' left column a little (DESIGN.md §9): Tab to Skip to
+ * summary scrolls it to its end, with room under Skip for its focus ring. The scroll ended flush with Skip's bottom
+ * edge, which cut the ring's lower 5 px. The test's own size again after.
+ */
+async function expectSkipRingOnShorterPhone(page: Page, label = 'Skip to summary'): Promise<void> {
+  const size = page.viewportSize()!;
+  await page.setViewportSize({ width: 740, height: 360 });
+  const skip = page.getByRole('button', { name: label });
+  await tabTo(page, skip);
+  const room = await skip.evaluate((el) => Math.min(el.closest('.page')!.getBoundingClientRect().bottom, window.innerHeight) - el.getBoundingClientRect().bottom);
+  expect(room, 'room under Skip to summary for its focus ring at 740 × 360').toBeGreaterThanOrEqual(5);
+  await skip.blur();
+  await page.setViewportSize(size);
+}
+
+/**
+ * Tablet Play with 16 bars on a tablet on its side in Safari, under its bars: a 9.7" iPad (1024 × 694) and a 10.2" one
+ * (1080 × 736) get the tablet layout, under 760 px tall. Two staff rows, a timing lane of four and the pad fit, with Skip
+ * to results in view; it was under the window's edge, where nothing scrolls (DESIGN.md §9).
+ */
+async function expectShortTabletFits(page: Page): Promise<void> {
+  for (const size of [{ width: 1080, height: 736 }, { width: 1024, height: 694 }]) {
+    await page.setViewportSize(size);
+    await expect(page.locator('.tplay-staff')).toBeInViewport({ ratio: 1 });
+    await expectClickable(pad(page), { scroll: false });
+    await expectTouchHeight(pad(page));
+    await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+    await expectFits(page);
+  }
 }
 
 /** Every screen's main action can be reached and tapped, at every supported size, with no sideways scroll. */
@@ -146,11 +620,16 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
     const tabletLayout = VIEWPORTS[name].width >= 700 && !desktopLayout;
     /**
      * Phone and tablet in portrait, a phone browser's short screen too: Read notes and Scales fit, so their controls are
-     * checked where they are, without scrolling (DESIGN.md §9). A phone in landscape lays them out in two columns whose
-     * left one may scroll; desktop has its own layout.
+     * checked where they are, without scrolling (DESIGN.md §9). A phone in landscape lays them out in two columns, which
+     * the tests that need it check on their own (`name === 'phone-landscape'`); desktop has its own layout.
      */
     const portraitLayout = !desktopLayout && VIEWPORTS[name].height > VIEWPORTS[name].width;
     const inPlace = { scroll: !portraitLayout };
+    /**
+     * Desktop Read notes and Scales fit a window 800 px tall or more (1280 × 800, a tablet on its side); a laptop's
+     * shorter one scrolls (DESIGN.md §9, Short desktop windows).
+     */
+    const deskFits = desktopLayout && VIEWPORTS[name].height >= 800;
 
     test('home: start the first lesson and free practice', async ({ page }) => {
       known(name, 'home');
@@ -169,7 +648,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('link', { name: /^Read notes/ }));
       await expectClickable(page.getByRole('link', { name: /^Scales/ }));
       // Tablet and desktop: the tabs sit in a top header (DESIGN.md §9), on desktop too, not in a sidebar.
-      if (VIEWPORTS[name].width >= 700) await expect(page.getByRole('banner').getByRole('navigation', { name: 'Main' })).toBeVisible();
+      if (VIEWPORTS[name].width >= 700) {
+        await expect(page.getByRole('banner').getByRole('navigation', { name: 'Main' })).toBeVisible();
+        // The brand beside them is a link Home too: as tall a tap as theirs, though its word is 24 px.
+        await expectHitHeight(page.getByRole('banner').getByRole('link', { name: 'Muzieklab' }));
+      }
       // Tablet: the staff box keeps the height of its one line of notes instead of stretching down the tall screen.
       if (tabletLayout) expect((await page.locator('.continue-staff').boundingBox())!.height).toBeLessThan(200);
       await expectNoOverlap(page.locator('.continue-card'), page.locator('.free'));
@@ -209,6 +692,76 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test("home: the level sheet's rank ladder has a › between ranks, never at the start of a line or on the current rank's pill", async ({ page }) => {
+      test.skip(desktopLayout, 'desktop has the level card instead of the chip and its sheet');
+      for (const language of ['en', 'nl'] as const) {
+        // Level 8, Groove: the current rank in the middle of a ladder that wraps on a phone.
+        await seed(page, { progress: { xp: 1780 }, prefs: { language } });
+        await page.goto('about:blank');
+        await page.goto('./');
+        await page.locator('.level-chip').click();
+        const ranks = page.getByRole('dialog').locator('.ranks');
+        await expect(ranks.locator('[aria-current="step"]')).toHaveText('Groove');
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const wrong = await ranks.evaluate((ol) => {
+          const out: string[] = [];
+          const items = [...ol.children] as HTMLElement[];
+          items.forEach((li, i) => {
+            // Nothing but its words in a rank's box (the pill of the current one): a › drawn in it before them starts
+            // the line it wraps to, and sits on the pill.
+            const s = getComputedStyle(li);
+            const box = li.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(li);
+            const words = range.getBoundingClientRect();
+            const before = words.left - box.left - parseFloat(s.paddingLeft);
+            const after = box.right - parseFloat(s.paddingRight) - words.right;
+            if (before > 1 || after > 1) out.push(`${li.textContent}: ${Math.round(before)} px before its words, ${Math.round(after)} px after them`);
+            const sep = getComputedStyle(li, '::after').content;
+            if (i < items.length - 1 && !sep.includes('›')) out.push(`${li.textContent}: no › after it`);
+          });
+          return out;
+        });
+        expect(wrong, `${language}: the ladder's ranks`).toEqual([]);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
+    });
+
+    test('home: the daily challenge card once it is played, in English and Dutch: every word inside its column', async ({ page }) => {
+      known(name, 'home-daily-done');
+      await page.clock.setFixedTime(new Date('2026-10-27T10:00:00'));
+      // 31 Perfect and 1 Great: 99.69% shows 99%, rounded down, as 100% is only the diamond's (§6.3).
+      const progress = { lessons: {}, practiceDays: ['2026-10-27'], daily: { day: '2026-10-27', tier: 1, stars: 4, accuracy: 99.6875 } };
+      for (const [language, again, done] of [['en', 'Play again', 'Done today · 99%'], ['nl', 'Nog een keer', 'Vandaag gedaan · 99%']] as const) {
+        await seed(page, { prefs: { language }, progress });
+        await page.goto('./');
+        await expect(page.locator('.daily-done')).toHaveText(done);
+        // The longer label: at 320 px it left the text a column of 62 px (40 px in Dutch), narrower than its words.
+        await expect(page.locator('.daily-btn')).toHaveText(again);
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const past = await page.locator('.daily-text').evaluate((col) => {
+          const right = col.getBoundingClientRect().right;
+          const words: string[] = [];
+          const walk = document.createTreeWalker(col, NodeFilter.SHOW_TEXT);
+          for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+            for (const m of (n.textContent ?? '').matchAll(/\S+/g)) {
+              const r = document.createRange();
+              r.setStart(n, m.index!);
+              r.setEnd(n, m.index! + m[0].length);
+              if (r.getBoundingClientRect().right > right + 1) words.push(m[0]);
+            }
+          }
+          return words;
+        });
+        expect(past, `${language}: words past the text column`).toEqual([]);
+        await expectNoOverlap(page.locator('.daily-text'), page.locator('.daily-btn'));
+        await expectNotSqueezed(page.locator('.daily-card'));
+        await expectClickable(page.locator('.daily-btn'));
+        await expectNoSideScroll(page);
+      }
+    });
+
     test('home and path: lesson stars, with the diamond as four diamond stars', async ({ page }) => {
       known(name, 'home-stars');
       // Sol's unit passed; rhythm unit 1 (the path's unit 2) with a diamond, a 4th star and two stars.
@@ -234,6 +787,56 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('home: a note lesson that starts in another clef and key shows its notes on their own staff', async ({ page }) => {
+      known(name, 'home-note-preview');
+      // Lesson 25.3 reads B♭ and E♭ major in both clefs, and its round starts with bass notes in E♭: the card drew them
+      // under a treble staff in B♭, the lesson's first clef and key.
+      await seed(page, { progress: { lessons: pathUpTo('25.2') }, prefs: { seenHowTo: true, seenHold: true } });
+      await page.goto('./');
+      await expect(page.getByText('Continue · Unit 25 · Lesson 3 of 5', { exact: true })).toBeVisible();
+      await expect(page.locator('.continue-card').getByRole('img', { name: 'A few notes from the lesson: bass clef, E♭ major' })).toBeVisible();
+      await expectStavesFit(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('path: a unit of four-star lessons keeps its stars in its column', async ({ page }) => {
+      known(name, 'path-stars');
+      // Four stars (the diamond, or the 4th star) are wider than three: a unit's five do not fit on one line at 320 px.
+      const four = { stars: 4, bestAccuracy: 97 };
+      const diamond = { stars: 5, bestAccuracy: 100 };
+      await seed(page, { progress: { lessons: { ...SOL_DONE, '1.1': diamond, '1.2': diamond, '1.3': four, '1.4': diamond, '1.5': four } }, prefs: { seenHowTo: true, seenHold: true } });
+      await page.goto('./#/path');
+      await expect(page.getByRole('button', { name: /^Play lesson 2\.5 · / })).toBeVisible();
+      const out = await page.locator('.unit-stars').evaluateAll((rows) =>
+        rows.flatMap((row) => {
+          const right = row.closest('.unit-body')!.getBoundingClientRect().right;
+          return [...row.children].filter((el) => el.getBoundingClientRect().right > right + 1).map((el) => el.getAttribute('aria-label'));
+        }),
+      );
+      expect(out, 'stars past their unit').toEqual([]);
+      // A tap on a lesson's stars opens that lesson, and so does one halfway down to a second line: the lines are 30 px
+      // apart, so one line's 44 px area (4 px above its stars, 25 px below) never lies over the other's.
+      const last = page.getByRole('button', { name: /^Play lesson 2\.5 · / });
+      await last.scrollIntoViewIfNeeded();
+      const missed = await last.locator('xpath=..').evaluate((row) => {
+        const stars = [...row.querySelectorAll<HTMLElement>('button.lesson-stars')];
+        return stars.flatMap((el) => {
+          const r = el.getBoundingClientRect();
+          const below = stars.map((o) => o.getBoundingClientRect()).find((o) => o.top > r.bottom);
+          const x = r.left + r.width / 2;
+          const ys = [r.top + 1, r.bottom - 1, ...(below ? [(r.bottom + below.top) / 2 - 1] : [])];
+          return ys
+            .filter((y) => document.elementFromPoint(x, y)?.closest('.lesson-stars') !== el)
+            .map((y) => `${el.getAttribute('aria-label')} at ${Math.round(y - r.top)} px`);
+        });
+      });
+      expect(missed, 'taps that open another lesson').toEqual([]);
+      // Each lesson's stars are a 44 px tap under their unit's head, which keeps its own 44 px and opens the unit.
+      for (const stars of await page.locator('button.lesson-stars').all()) await expectHitHeight(stars);
+      for (const head of await page.locator('button.unit-head[aria-expanded="false"]').all()) await expectHitHeight(head);
+      await expectNoSideScroll(page);
+    });
+
     test('setup: start button', async ({ page }) => {
       known(name, 'setup');
       await page.goto('./#/setup');
@@ -241,8 +844,76 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }));
       // Only the time signatures that can be played: no disabled "6/8 soon" chip.
       await expect(page.getByRole('button', { name: /6\/8/ })).toHaveCount(0);
+      await expectTouchHeight(page.getByRole('button', { name: 'More options' }));
       // Tablet and desktop: the options on the left, the preview and Start in a side panel beside them.
       if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
+      await expectNoSideScroll(page);
+
+      // With Triplets on, the preview keeps room for a 3 whether its bar has a triplet or not (80 + 12): every change of
+      // the settings draws a new bar, and the card keeps one height.
+      await seed(page, { progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, meters: ['2/4'], notes: ['quarter', 'eighth'], triplets: true, bars: 4 } } });
+      await page.reload();
+      const preview = page.locator('.preview-card svg:has(.vf-stave)');
+      for (const next of ['Echo', 'Tap', 'Echo', 'Tap', 'Echo', 'Tap', 'Echo', 'Tap']) {
+        await expect(preview).toHaveAttribute('viewBox', /^0 0 [\d.]+ 92$/);
+        await expectStaffNotCut(preview);
+        await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: next }).click();
+      }
+      await expectNoSideScroll(page);
+    });
+
+    test('setup: More options keeps each label whole, clear of its control, in English and Dutch', async ({ page }) => {
+      known(name, 'setup-more');
+      for (const language of ['en', 'nl']) {
+        await seed(page, { prefs: { language } });
+        await page.goto('./#/setup');
+        // Open, or still open from the round before.
+        const toggle = page.locator('.more-toggle');
+        if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+        await expect(page.locator('#setup-more')).toHaveCSS('opacity', '1');
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        // At 320 px the labels were squeezed to 30 px beside the 238 px controls, which painted over them (Metron…).
+        const covered = await page.locator('.more-row').evaluateAll((rows) =>
+          rows.flatMap((row) => {
+            const label = row.querySelector('.more-label')!;
+            const text = document.createRange();
+            text.selectNodeContents(label);
+            const [t, c] = [text.getBoundingClientRect(), row.querySelector('.seg')!.getBoundingClientRect()];
+            const over = t.right > c.left + 0.5 && t.left < c.right && t.bottom > c.top && t.top < c.bottom;
+            return label.scrollWidth > label.clientWidth + 1 || over ? [label.textContent] : [];
+          }),
+        );
+        expect(covered, `${language}: labels cut off or under their controls`).toEqual([]);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
+    });
+
+    test('setup: the tempo value stays whole, and the Bars and Tempo labels level', async ({ page }) => {
+      known(name, 'setup-tempo');
+      await page.goto('./#/setup');
+      const tempo = page.locator('#tempo');
+      for (const bpm of ['40', '112', '200']) {
+        await tempo.fill(bpm);
+        await expect(page.locator('.label-value')).toContainText(`${bpm} BPM`);
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const m = await page.evaluate(() => {
+          const value = document.querySelector('.label-value')!;
+          const text = document.createRange();
+          text.selectNodeContents(value);
+          const box = (sel: string): DOMRect => document.querySelector(sel)!.getBoundingClientRect();
+          return {
+            lines: new Set([...text.getClientRects()].map((r) => Math.round(r.top))).size,
+            labels: Math.abs(box('#bars-label').top - box('label[for=tempo]').top),
+            over: value.getBoundingClientRect().right - box('.bars-tempo .field--grow').right,
+          };
+        });
+        // At 320 px "112 BPM · Moderato" does not fit beside Tempo: it takes a line of its own, whole, not "112 BPM ·" and
+        // "Moderato" with the Bars label pushed down beside it.
+        expect(m.lines, `${bpm} BPM on one line`).toBe(1);
+        expect(m.labels, 'Bars and Tempo level').toBeLessThanOrEqual(1);
+        expect(m.over, 'the value inside its column').toBeLessThanOrEqual(1);
+      }
       await expectNoSideScroll(page);
     });
 
@@ -254,6 +925,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Got it' }));
       // Before the path teaches holding, Echo is tap only too: How to play does not ask to hold.
       await expect(page.getByRole('dialog', { name: 'How to play' }).getByText(/Only when each note starts counts/)).toBeVisible();
+      // Esc closes it at every size, as Play's How to play (a keyboard on a phone or tablet too), and ? opens it again.
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem('muzieklab.prefs.v1') ?? '{}').seenEchoHowTo)).toBe(true);
+      await page.keyboard.press('?');
+      await expectClickable(page.getByRole('button', { name: 'Got it' }));
       await page.getByRole('button', { name: 'Got it' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await expectClickable(page.getByRole('button', { name: 'Play the rhythm' }), { scroll: false });
@@ -275,6 +952,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.getByRole('img', { name: 'Beats 1 to 4' })).toBeVisible();
         if (tabletLayout) expect((await pad(page).boundingBox())!.height, 'the pad fills the tablet').toBeGreaterThan(300);
       }
+      // Audio that never starts: the listen is given back within a second, and its title says why (two lines on a
+      // phone), with the card and the pad still in view (ios-background.spec.ts checks the listen itself).
+      await page.evaluate(() => Object.defineProperty(AudioContext.prototype, 'state', { configurable: true, get: () => 'suspended' }));
+      await page.getByRole('button', { name: 'Play the rhythm' }).click();
+      await expect(page.getByRole('heading', { name: 'The sound was interrupted. Press play to try again.' })).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText('2 plays left')).toBeVisible();
+      await expectNotSqueezed(page.locator('.echo-card'));
+      await expectNoClippedLabels(page);
+      if (!desktopLayout) {
+        await expect(pad(page)).toBeInViewport({ ratio: 1 });
+        await expectFits(page);
+      }
       await expectNoSideScroll(page);
     });
 
@@ -285,13 +974,48 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('path: all done, its button plays the last lesson again and says so, as Home does, in English and Dutch', async ({ page }) => {
+      known(name, 'path-done');
+      for (const [language, again, done] of [
+        ['en', 'Play lesson 26.5 again', 'All done · 260 / 390 ★'],
+        ['nl', 'Speel les 26.5 nog een keer', 'Alles klaar · 260 / 390 ★'],
+      ] as const) {
+        await seed(page, { progress: { lessons: pathUpTo('26.5') }, prefs: { language } });
+        await page.goto('about:blank');
+        await page.goto('./#/path');
+        await expect(page.locator('.track-info').getByText(done)).toBeVisible();
+        await expectClickable(page.getByRole('button', { name: again }));
+        await expect(page.getByRole('button', { name: /^(Start lesson|Begin les)/ })).toHaveCount(0);
+        // The last unit's node: its word from the catalog (Mix is Dutch too), not its message key.
+        await expect(page.locator('.units > li').last().locator('.unit-node')).toHaveText('Mix');
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
+    });
+
     test('path: one path, a unit open with its lessons by name, notes and rhythm taking turns', async ({ page }) => {
       known(name, 'path-tracks');
       await page.goto('./#/path');
       // One path since 0.11.0: no switcher.
       await expect(page.getByRole('group', { name: 'Paths' })).toHaveCount(0);
       await expect(page.getByText('Unit 1 of 26 · 0 / 390 ★')).toBeVisible();
-      await expectClickable(page.getByRole('link', { name: 'Theory: Learn' }));
+      // A screen reader hears the unit too, not only the stars.
+      await expect(page.getByRole('img', { name: 'Unit 1 of 26, 0 of 390 stars' })).toBeVisible();
+      const theory = page.getByRole('link', { name: 'Theory: Learn' });
+      await expectClickable(theory);
+      await expectTouchHeight(theory);
+      // Its ring, beyond the 32 px line, stays clear of the stars when the line wraps (320 px), and is lifted above the
+      // units under it, whose current node's halo would paint over it.
+      await expectFocusRing(theory);
+      const ringHits = await theory.evaluate((node) => {
+        const style = getComputedStyle(node);
+        const ring = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+        const r = node.getBoundingClientRect();
+        const s = node.parentElement!.firstElementChild!.getBoundingClientRect();
+        if (s.bottom > r.top - ring && s.top < r.bottom + ring && s.right > r.left - ring && s.left < r.right + ring) return 'the stars';
+        return style.position === 'static' || style.zIndex === 'auto' ? 'the units (it is not lifted)' : null;
+      });
+      expect(ringHits, 'the focus ring runs into').toBeNull();
       // The current unit is open: sol's lessons by name, the first one to play.
       const sol = page.getByRole('button', { name: /^1 · Sol: the G line/ });
       await expect(sol).toHaveAttribute('aria-expanded', 'true');
@@ -329,6 +1053,27 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByText('Fair timing for most players.')).toBeVisible();
       await expect(page.getByText('Metronome', { exact: true })).toHaveCount(1);
       await expectClickable(page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }));
+      // The Beat counter preview keeps its tempo on one line, as on Play, inside the preview (it broke after "=" at 320 px).
+      for (const look of ['Digital', 'Analog']) {
+        await page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: look }).click();
+        const tempo = await page.locator('.look-preview-tempo').evaluate((el) => {
+          const h = el.getBoundingClientRect().height;
+          el.style.whiteSpace = 'nowrap';
+          const one = el.getBoundingClientRect().height;
+          el.style.whiteSpace = '';
+          const box = el.parentElement!;
+          const pad = parseFloat(getComputedStyle(box).paddingRight);
+          return { wraps: h > one + 1, past: el.getBoundingClientRect().right - (box.getBoundingClientRect().right - pad) };
+        });
+        expect(tempo.wraps, `${look}: the preview's tempo breaks over two lines`).toBe(false);
+        expect(tempo.past, `${look}: the preview's tempo runs past its padding`).toBeLessThanOrEqual(0.5);
+      }
+      // The test site's branch after the version (VITE_DEPLOY_BRANCH, which this build has not), put in as Settings.tsx
+      // renders it: a short name shows in full beside the status, at every size (it was squeezed to nothing).
+      await page.locator('.about-version').evaluate((el) => el.insertAdjacentHTML('beforeend', '<span class="mono-muted about-branch">test</span>'));
+      const branch = page.locator('.about-branch');
+      expect(await branch.evaluate((el) => el.scrollWidth - el.clientWidth), 'the branch name is cut').toBeLessThanOrEqual(1);
+      await expectNoOverlap(branch, page.locator('.offline'));
       await expectClickable(page.getByRole('button', { name: 'Reset progress' }));
       const sections = page.getByRole('navigation', { name: 'Settings sections' });
       if (desktopLayout || tabletLayout) {
@@ -356,14 +1101,38 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/settings');
       const group = page.getByRole('group', { name: 'App language' });
       await expectClickable(group.getByRole('button', { name: 'Nederlands' }));
-      await group.getByRole('button', { name: 'Nederlands' }).click();
+      await group.getByRole('button', { name: 'Nederlands' }).focus();
+      await page.keyboard.press('Enter');
       await expect(page.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('lang', 'nl');
-      // The switch remounts the screen; the thumb still slides over from English like the other rows.
-      const thumb = page.getByRole('group', { name: 'Taal van de app' }).locator('.seg-thumb');
-      await expect(thumb).toHaveCSS('animation-name', 'm-slide-a');
+      // The switch remounts the screen; the thumb still slides over from English like the other rows, and the focus
+      // stays on the language control.
+      const nl = page.getByRole('group', { name: 'Taal van de app' });
+      await expect(nl.locator('.seg-thumb')).toHaveCSS('animation-name', 'm-slide-a');
+      await expect(nl.getByRole('button', { name: 'Nederlands' })).toBeFocused();
+      await page.keyboard.press('Shift+Tab');
+      await expect(nl.getByRole('button', { name: 'English' })).toBeFocused();
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      // Reset progress: the question and its line across the confirm, then Cancel and the verb under them (DESIGN.md,
+      // Destructive confirm). Beside the buttons, the Dutch words got a column a word or two wide.
+      const reset = page.getByRole('button', { name: 'Voortgang wissen' });
+      await expectClickable(reset);
+      await reset.click();
+      const confirm = page.getByRole('alertdialog', { name: 'Alle voortgang wissen?' });
+      const text = (await confirm.locator('.reset-text').boundingBox())!;
+      expect(text.width, 'the question is as wide as the confirm').toBeGreaterThanOrEqual((await confirm.boundingBox())!.width - 1);
+      for (const name of ['Annuleren', 'Wissen']) {
+        const button = confirm.getByRole('button', { name, exact: true });
+        expect((await button.boundingBox())!.y, `${name} is under the question`).toBeGreaterThanOrEqual(text.y + text.height - 1);
+        await expectTouchHeight(button);
+      }
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      // Escape closes it, with the focus back on the row button.
+      await page.keyboard.press('Escape');
+      await expect(confirm).toHaveCount(0);
+      await expect(reset).toBeFocused();
       await page.reload();
       await expect(page.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
       await page.getByRole('group', { name: 'Taal van de app' }).getByRole('button', { name: 'English' }).click();
@@ -376,6 +1145,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('link', { name: /^What's new/ }).click();
       await expect(page.getByRole('heading', { level: 1, name: "What's new" })).toBeVisible();
       await expectClickable(page.getByRole('link', { name: 'Back to settings' }));
+      await expectChangelogFits(page);
       if (desktopLayout) {
         // Desktop: the releases on the left, the chosen one beside them (the MVP canvas's Desktop · What's new).
         const list = page.getByRole('navigation', { name: 'Releases' });
@@ -388,6 +1158,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.getByRole('button', { name: /^Older 0\.2\.2/ }).click();
         await expect(page.getByRole('heading', { level: 2, name: 'Four-star Results' })).toBeVisible();
         await expectClickable(page.getByRole('button', { name: /^Newer 0\.3\.0/ }));
+        await expectRingsInSideMenu(list);
       } else {
         await expectNotSqueezed(page.locator('.cl-latest'));
         // Tablet uses the full width under the header, as on the board, not the 640 px column.
@@ -400,12 +1171,31 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('scrolling pages: Tab shows the whole focus ring of a control it scrolls to the top or bottom edge', async ({ page }) => {
+      known(name, 'page-rings');
+      // The Scales hub and Home scroll the shell's main box on a phone on its side and a laptop, not the page; the Path's
+      // page does not scroll on a phone (its units do), and Start lesson sits at its bottom edge.
+      for (const hash of ['#/settings', '#/changelog', '#/learn', '#/learn/2', '#/scales', '#/path', '#/']) {
+        await page.goto('./' + hash);
+        await expect(page.locator('main.shell-main').locator('a[href], button').first()).toBeVisible();
+        await expectRingsOnPage(page);
+      }
+    });
+
     test('calibration: pad and the timing plot without scrolling', async ({ page }) => {
       known(name, 'calibration');
       await page.goto('./#/calibrate');
       await expectClickable(pad(page), { scroll: false });
       await expectTouchHeight(pad(page));
-      await expect(page.getByRole('img', { name: /taps? measured/ })).toBeInViewport();
+      const plot = page.getByRole('img', { name: /taps? measured/ });
+      await expect(plot).toBeInViewport();
+      // The early and late labels in the plot's top corners end above the highest a dot stacks, 16 px down (plotDots):
+      // a stack of taps past ±100 ms at the axis' end ran over them.
+      const top = (await plot.boundingBox())!.y;
+      for (const side of await page.locator('.cal-side').all()) {
+        const box = (await side.boundingBox())!;
+        expect(box.y + box.height - top, (await side.textContent()) ?? '').toBeLessThanOrEqual(16);
+      }
       await expectFits(page);
       await expectNoSideScroll(page);
     });
@@ -494,6 +1284,123 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('results: where copying is not allowed, Copy code shows the code selected, to copy by hand', async ({ page }) => {
+      known(name, 'results-copy-refused');
+      // The clipboard refuses (a site permission, some in-app browsers), and so does the copy command.
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new DOMException('denied', 'NotAllowedError')) } });
+        document.execCommand = () => false;
+      });
+      await seedRun(page, QUARTERS, 3);
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      const copy = page.getByRole('button', { name: 'Copy code' });
+      await expectClickable(copy);
+      await copy.click();
+      const field = page.getByRole('textbox', { name: 'Exercise code' });
+      await expect(field).toHaveValue(/^T44-Q-R-1B-120-/);
+      await expect(field).toBeFocused();
+      expect(await field.evaluate((el: HTMLInputElement) => el.selectionEnd! - el.selectionStart!)).toBe((await field.inputValue()).length);
+      // The line under it is plain text, read out through the app's one live region as the focus lands on the code.
+      await expect(page.locator('.code-shown').getByText(/^Selected\./)).toBeVisible();
+      await expect(announcer(page)).toHaveText(/^Selected\./);
+      await expect(page.getByRole('status')).toHaveCount(0);
+      await expectClickable(field);
+      // On a line under Copy code: in the side panel on tablet and desktop, at the bottom on a phone, the buttons in view.
+      if (VIEWPORTS[name].width >= 700) await expect(page.locator('.wide-side').getByRole('textbox', { name: 'Exercise code' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'New exercise' }));
+      await expectNoOverlap(field, page.locator('.results-main'));
+      await expectNoSideScroll(page);
+    });
+
+    test("results: a triplet's 3 over the first row is drawn in full, and the exercise ends with the final barline", async ({ page }) => {
+      known(name, 'results-triplets');
+      // Four bars of 4/4 with triplets in bars 1 and 3 (seed 111). Desktop Play has no Skip link: skip on a phone.
+      await seedRun(page, { ...QUARTERS, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'], dotted: true, ties: true, triplets: true, bars: 4, tempo: 80 }, 111);
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      const staff = page.locator('.results-staff svg:has(.vf-stave)');
+      await expect(staff).toBeVisible();
+      await expectStaffNotCut(staff);
+      await expect(staff.locator('rect[width="3"]')).toHaveCount(1);
+      // On a 320 px phone bar 1's last quarter note ran into its bar line.
+      await expectBarsFit(staff);
+      await expectNoSideScroll(page);
+    });
+
+    test("play and results: a busy bar's notes stay inside it, clear of its bar line and the staff's edge", async ({ page }) => {
+      known(name, 'busy-bars');
+      // Lesson 8.5 (Unit 8 review) with seed 150: bars 3 and 7 have twelve symbols each (eleven notes and a rest), and
+      // at full size bar 3 needs more room than its share of the row on a phone, on tablet Play and on desktop Results.
+      // The staff is drawn smaller instead.
+      await seedRun(page, lessonSettings('8.5'), 150);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      const play = page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)');
+      await expect(play).toBeVisible();
+      await expectBarsFit(play);
+      // Desktop Play has no Skip link: skip on a phone.
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      const results = page.locator('.results-staff svg:has(.vf-stave)');
+      await expect(results).toBeVisible();
+      await expectBarsFit(results);
+      await expectNoSideScroll(page);
+    });
+
+    test('play and results: a bar whose notes do not fit even drawn smaller gets a row with fewer bars', async ({ page }) => {
+      known(name, 'busy-sixteenths');
+      // Setup's Busy sixteenths with seed 6: the last bar has fourteen notes, which ran over the final barline on a phone
+      // even at 0.75, the smallest the staff is drawn. A phone in portrait draws one bar a row instead (Play: two rows,
+      // bars 1–2), as large as it then fits; in landscape, on tablet and on desktop the notes fit and the rows keep their
+      // bars. Play still fits without scrolling.
+      await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth', 'sixteenth'], rests: ['quarter'], density: 'busy', bars: 4, tempo: 80 }, 6);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      const play = page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)');
+      await expect(play).toBeVisible();
+      await expectBarsFit(play);
+      await expect(play.locator('.vf-stave')).toHaveCount(portraitLayout && !tabletLayout ? 2 : 4);
+      await expectFits(page);
+      // Made a phone during the exercise (Split View, a desktop window made narrow): the phone's layout draws a new staff,
+      // which is measured again, so it shows one bar a row there too. Desktop Play has no Skip link: skip on the phone.
+      await page.setViewportSize(VIEWPORTS.phone);
+      await expectBarsFit(play);
+      await expect(play.locator('.vf-stave')).toHaveCount(2);
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await page.setViewportSize(VIEWPORTS[name]);
+      const results = page.locator('.results-staff svg:has(.vf-stave)');
+      await expect(results).toBeVisible();
+      await expectBarsFit(results);
+      await expectNoSideScroll(page);
+    });
+
+    test('play: a busy bar keeps its notes inside it when a phone becomes this size during the exercise', async ({ page }) => {
+      known(name, 'busy-sixteenths-resize');
+      // Busy sixteenths with seed 7: bar 3 has sixteen sixteenths. Opened on a phone (two bars a row, drawn smaller), then
+      // made this size (a foldable unfolded, Split View made wider): tablet and desktop draw a new staff, which is measured
+      // again. All four bars show there, three a row on tablet and four on desktop. Measured on the phone's staff, which
+      // was gone, tablet Play kept one bar a row, or drew four and ran bar 3 into bar 4.
+      await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth', 'sixteenth'], rests: ['quarter'], density: 'busy', bars: 4, tempo: 80 }, 7);
+      await page.setViewportSize(VIEWPORTS.phone);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      const play = page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)');
+      await expect(play).toBeVisible();
+      await expectBarsFit(play);
+      await page.setViewportSize(VIEWPORTS[name]);
+      if (VIEWPORTS[name].width >= 700) await expect(play.locator('.vf-stave')).toHaveCount(4);
+      await expectBarsFit(play);
+      await expectFits(page);
+    });
+
     test('results: a steady late tapper is told about latency, with Calibrate', async ({ page }) => {
       known(name, 'results-latency');
       test.setTimeout(60_000);
@@ -532,9 +1439,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('link', { name: 'Back to results' })).toHaveAttribute('href', '#/results?from=1.1');
 
       // Calibrated from the tip: Save returns to the same run, whose tip is still about how it was played. In place of
-      // Calibrate, one line says the next exercise uses the calibration.
+      // Calibrate, one line says the next exercise uses the calibration. Save takes the focus from the pad it replaces.
+      await pad(page).focus();
       await calibrateAlong(page);
       const save = page.getByRole('button', { name: 'Save' });
+      await expect(save).toBeFocused();
       await expectClickable(save);
       await expectNoSideScroll(page);
       await save.click();
@@ -621,13 +1530,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         const [m, s] = [(await main.boundingBox())!, (await side.boundingBox())!];
         expect(s.x, 'the side panel is right of the main column').toBeGreaterThanOrEqual(m.x + m.width);
         expect(s.y < m.y + m.height && m.y < s.y + s.height, 'the side panel is beside the main column').toBe(true);
-        await expect(main.getByRole('img', { name: /^Answer time for each of the / })).toBeVisible();
+        await expect(main.getByRole('img', { name: /^Answer time for 1 note\. / })).toBeVisible();
         await expect(side.locator('.score-pct')).toBeVisible();
         await expectClickable(side.getByRole('button', { name: 'New round' }));
         await expectClickable(side.getByRole('link', { name: 'Change setup' }));
       } else {
         await expect(page.locator('.wide')).toHaveCount(0);
       }
+      // The score line breaks where it has to, but never inside the XP ("+14" / "XP" in the tablet's side panel): even
+      // with no room at all, the XP stays one piece.
+      const xp = page.locator('.score-sub b');
+      await expect(xp).toHaveText(/^\+\d+ XP$/);
+      const xpLines = await xp.evaluate((el) => {
+        const line = el.parentElement!;
+        line.style.width = '0';
+        const n = el.getClientRects().length;
+        line.style.width = '';
+        return n;
+      });
+      expect(xpLines, 'the XP on one line').toBe(1);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -689,6 +1610,13 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (portraitLayout) await expectFits(page);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      // At either end of the range, the note and the cursor's box round it are drawn whole, on a staff of one size.
+      for (const [button, end] of [['Higher', 'aria-valuemax'], ['Lower', 'aria-valuemin']]) {
+        const to = (await staff.getAttribute(end))!;
+        while ((await staff.getAttribute('aria-valuenow')) !== to) await page.getByRole('button', { name: button }).click();
+        await expectStavesFit(page);
+        expect((await staff.locator('svg').boundingBox())!.height, `the staff's height with the note at its ${end}`).toBeCloseTo(svg.height, 1);
+      }
       await page.getByRole('button', { name: 'Check' }).click();
       await expect(page.locator('.nfeedback')).toHaveText(/^(Right|You wrote)/);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
@@ -711,10 +1639,43 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('path lesson: a timed write after a wrong note, and a hear, fit with Skip to summary, on a phone on its side too', async ({ page }) => {
+      known(name, 'notes-write-hear-fit');
+      // Writing draws the staff bigger and a hear round adds Hear it again to the staff card: in a phone's landscape
+      // column, with lesson 1.4's timer bar and a why of two lines under it, the page scrolled and cut Skip to summary.
+      const fits = portraitLayout || name === 'phone-landscape';
+      const skip = page.getByRole('button', { name: 'Skip to summary' });
+      await seed(page, { progress: { lessons: pathUpTo('1.3') }, prefs: { seenHowTo: true, seenHold: true, noteNames: 'letters' } });
+      await page.goto('./#/path');
+      await page.getByRole('button', { name: 'Start lesson 1.4' }).click();
+      await expect(page.getByRole('slider', { name: /goes on the staff$/ })).toBeVisible();
+      if (fits) await expectFits(page);
+      // Four steps up from where the note starts is the top space, E: wrong, for sol.
+      for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowUp');
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.nfeedback')).toHaveText(/^You wrote E/);
+      if (fits) {
+        await expectFits(page);
+        await expectClickable(skip, { scroll: false });
+      }
+      // A new page load, so the app reads the progress seeded now (the later script runs last).
+      await seed(page, { progress: { lessons: pathUpTo('3.2') }, prefs: { seenHowTo: true, seenHold: true, noteNames: 'letters' } });
+      await page.goto('about:blank');
+      await page.goto('./#/path');
+      await page.getByRole('button', { name: 'Start lesson 3.3' }).click();
+      await expect(page.getByRole('button', { name: 'Hear it again' })).toBeVisible();
+      if (fits) {
+        await expectFits(page);
+        await expectClickable(skip, { scroll: false });
+      }
+    });
+
     test('read notes: setup, key and start', async ({ page }) => {
       known(name, 'notes-setup');
       await page.goto('./#/notes');
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
+      // The Range chips' "+2 ledger lines" fits a third of a 320 px phone on two lines.
+      await expectNoClippedLabels(page);
       if (desktopLayout || tabletLayout) await expectBeside(page.locator('.wide-main'), page.locator('.wide-side'));
       await page.getByRole('link', { name: /^Key: / }).click();
       // The Key screen takes the setup's place on the hashchange, a moment after the click: wait for it, or the setup
@@ -732,7 +1693,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
       // The last row of keys is reachable above the sticky Use button once the list is scrolled to its end.
       await page.locator('.nkeys').evaluate((el) => el.scrollTo(0, el.scrollHeight));
-      await expectClickable(page.getByRole('button', { name: /^C♯ major or A♯ minor/ }), { scroll: false });
+      await expectClickable(page.getByRole('button', { name: /^C sharp major or A sharp minor/ }), { scroll: false });
       await expectClickable(page.getByRole('button', { name: /^Use / }));
       await expectNoSideScroll(page);
     });
@@ -742,6 +1703,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/notes');
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /staff in C major/ })).toBeVisible();
+      await expectStavesFit(page);
       const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
       await expect(names).toHaveCount(7);
       // Everything in view without scrolling, in a phone browser too (DESIGN.md §9).
@@ -766,6 +1728,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
       await expect(keys).toHaveCount(12);
+      await expectPitchOrder(keys);
       for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i), inPlace);
       await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
@@ -776,7 +1739,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.locator('.nfeedback')).toHaveText(/^.+\. This note is|^This is /);
       await expectClickable(keys.nth(0), inPlace);
       await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
-      if (portraitLayout) await expectFits(page);
+      if (portraitLayout || deskFits) await expectFits(page);
       await expectScrollbarAtEdge(page);
       if (tablet) {
         // A smaller tablet window (700 × 1000): the piano gives up height, and everything still fits.
@@ -795,6 +1758,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: 'Sharps ♯' }).click();
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /staff in C major/ })).toBeVisible();
+      await expectStavesFit(page);
       for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }), inPlace);
       const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
       for (let i = 0; i < 7; i++) await expectClickable(names.nth(i), inPlace);
@@ -810,19 +1774,211 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('read notes: seven sharps and extra signs, every note in its own bar on the staff', async ({ page }) => {
+      known(name, 'notes-wide-key');
+      // C♯ major's signature takes the most room, and extra signs put a sharp, flat or natural before most notes.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['C#'], extras: 'both' };
+      const seed = 28;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      await expect(page.getByRole('img', { name: /staff in C♯ major/ })).toBeVisible();
+      const bars = VIEWPORTS[name].width >= 1100 ? 8 : 6;
+      await expect(page.locator('.nplay-staff-svg .vf-stavenote')).toHaveCount(bars);
+      await expectStavesFit(page);
+      await expectNoSideScroll(page);
+      // The cursor on every note of the page (notes 2 and 3 carry a natural) and on the next page's first: it stays in
+      // its note's bar, and the staff keeps its size from note to note and page to page (on a phone the next page has
+      // no natural, and a staff sized for its own notes only would be drawn bigger).
+      const size = (): Promise<(string | null)[]> => page.locator('.nplay-staff-svg svg').evaluate((svg) => [svg.getAttribute('width'), svg.getAttribute('height')]);
+      const first = await size();
+      for (const [i, n] of generateRound(settings, seed).slice(0, bars).entries()) {
+        const wrong = letterOf(n.step) === 'C' ? 'D' : 'C';
+        await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${wrong}(,|$)`) }).click();
+        await page.getByRole('button', { name: /^Next note/ }).click();
+        await expect(page.getByRole('img', { name: new RegExp(`Note ${i + 2} of 20 is highlighted`) })).toBeVisible();
+        await expectStavesFit(page);
+        expect(await size(), `the staff's size at note ${i + 2}`).toEqual(first);
+      }
+    });
+
+    test('read notes: a flat over the staff is drawn whole, and the screen fits', async ({ page }) => {
+      known(name, 'notes-sign-above');
+      // B♭ major with extra signs, seed 59: the first note is G♭5, whose flat reaches more than two spaces over the staff.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['Bb'], extras: 'both' };
+      const [first] = generateRound(settings, 59);
+      expect([first.step, first.sign], 'the first note is G♭5 with its flat').toEqual([39, -1]);
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 59, focus: [] });
+      await page.goto('./#/notes/play');
+      await expect(page.getByRole('img', { name: /staff in B♭ major/ })).toBeVisible();
+      await expectStavesFit(page);
+      for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      if (portraitLayout) await expectFits(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: ledger lines with a key signature and a timer fit, on the piano and with the name buttons', async ({ page }) => {
+      known(name, 'notes-ledger');
+      // The ranges with ledger lines draw a taller staff, a key with a signature makes the idle line two lines long,
+      // and the timer adds its bar: on a short phone the staff is drawn smaller, so the answer controls stay in view.
+      const rounds: Partial<NoteSettings>[] = [
+        { input: 'piano', range: 'ledger2', keys: ['G'], timer: 5 },
+        { input: 'piano', range: 'ledger1', keys: ['G'], timer: 5 },
+        { input: 'names', range: 'ledger2', keys: ['G'], extras: 'both', timer: 5 },
+      ];
+      for (const round of rounds) {
+        const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, ...round };
+        await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 4242, focus: [] });
+        await page.goto('./#/notes/play');
+        // A fresh load, so the app reads the round just seeded (a new hash alone keeps the app and its round).
+        await page.reload();
+        await expect(page.getByRole('img', { name: /staff in G major/ })).toBeVisible();
+        // Within the note's 5 s: the idle line, then the hint, each two lines long on a phone.
+        if (portraitLayout || deskFits) await expectFits(page);
+        await page.getByRole('button', { name: 'Hint' }).dispatchEvent('click');
+        await expect(page.locator('.nfeedback')).toHaveClass(/is-hint/);
+        if (portraitLayout || deskFits) await expectFits(page);
+        if (round.input === 'piano') {
+          const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+          await expect(keys).toHaveCount(12);
+          for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i), inPlace);
+          // The black keys stay a touch target when the piano gives up height.
+          await expectTouchHeight(page.locator('.piano-black').first());
+        } else {
+          for (const sign of ['flat', 'natural', 'sharp']) await expectClickable(page.getByRole('radio', { name: sign }), inPlace);
+          const names = page.getByRole('group', { name: 'Note names' }).getByRole('button');
+          for (let i = 0; i < 7; i++) await expectClickable(names.nth(i), inPlace);
+        }
+        await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+        await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+        await expectTouchHeight(page.getByRole('button', { name: 'Hint' }));
+        await expectStavesFit(page);
+      }
+      // G♭ major with a timer, seed 1234: the first note is a treble G♭ below the second ledger line, and the natural
+      // key for it says why in three lines on a phone ("That was G♭ (sol♭): the space below the second ledger line is
+      // G, and the flat in the key signature makes it G♭ (sol♭)."), under the timer's bar.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano', range: 'ledger2', keys: ['Gb'], clefs: ['treble', 'bass'], extras: 'both', count: 30, playNotes: false, timer: 5 };
+      const [first] = generateRound(settings, 1234);
+      expect([first.clef, first.step, first.alter, first.sign], 'the first note is a treble G♭ from the key signature').toEqual(['treble', 25, -1, null]);
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 1234, focus: [] });
+      await page.goto('./#/notes/play');
+      await page.reload();
+      await expect(page.getByRole('img', { name: /staff in G♭ major/ })).toBeVisible();
+      await page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button', { name: /^G, sol/ }).dispatchEvent('click');
+      await expect(page.locator('.nfeedback')).toHaveText(/^That was G♭ \(sol♭\): .+ is G, and the flat in the key signature makes it G♭/);
+      if (portraitLayout || deskFits) await expectFits(page);
+      // On desktop too, Next note is in the window without a scroll (at 1280 × 800 it was below it).
+      if (deskFits) await expect(page.getByRole('button', { name: /^Next note/ })).toBeInViewport({ ratio: 1 });
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      await expectStavesFit(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes lesson in a key: the count stays on one line beside a long eyebrow, and the round fits', async ({ page }) => {
+      known(name, 'notes-lesson-key');
+      // Lesson 22.3 (Keys, G major in both clefs, on the piano): "Lesson 22.3 · Treble clef · G major" over the
+      // question and the two-line idle line. Seed 27 starts on F♯ in the treble clef.
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), {
+        settings: noteLessonSettings('keys', '2.3'),
+        seed: 27,
+        focus: [],
+        lesson: { track: 'keys', id: '2.3' },
+      });
+      await page.goto('./#/notes/play');
+      await expect(page.getByRole('img', { name: /staff in G major/ })).toBeVisible();
+      await expect(page.getByText('Mind the key signature.', { exact: false })).toBeVisible();
+      // Phone and tablet show the count beside the eyebrow: "0 / 0" on one line (20 px), however long the eyebrow.
+      if (!desktopLayout) expect((await page.locator('.nplay-score-n').boundingBox())!.height, 'the count on one line').toBeLessThan(30);
+      const keys = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+      for (let i = 0; i < 12; i++) await expectClickable(keys.nth(i), inPlace);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      if (portraitLayout) await expectFits(page);
+      // The mistake this lesson trains, F for F♯: three lines of why on a phone ("That was F♯ (fa♯): the top line is F,
+      // and the sharp in the key signature makes it F♯ (fa♯)."). A 320 px phone leaves out "Any octave counts" for it.
+      await page.getByRole('button', { name: /^F, fa(, key |$)/ }).dispatchEvent('click');
+      await expect(page.locator('.nfeedback')).toHaveText(/^That was F♯ \(fa♯\): the top line is F, and the sharp/);
+      await expect(page.getByText('Any octave counts')).toBeAttached();
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), inPlace);
+      if (portraitLayout) await expectFits(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: the score stays on one line once ten notes are answered', async ({ page }) => {
+      known(name, 'notes-score');
+      // "10 / 10" is as wide as the widest score, 50 notes' "50 / 50". On desktop's Correct card it broke after the
+      // slash from the tenth note on ("9 /" over "12").
+      const settings = { ...DEFAULT_NOTE_SETTINGS, playNotes: false };
+      const seed = 4242;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      for (const [i, n] of generateRound(settings, seed).slice(0, 10).entries()) {
+        await expect(page.getByRole('img', { name: new RegExp(`Note ${i + 1} of 20 is highlighted`) })).toBeVisible();
+        await page.keyboard.press(letterOf(n.step).toLowerCase());
+        await expect(page.getByRole('img', { name: `${i + 1} of ${i + 1} correct` })).toBeAttached();
+      }
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      // The score's lines, and how far it runs past its card's padding (desktop: the stat card; else the line it is on).
+      const fit = await page.locator(desktopLayout ? '.nstats .nstat-big' : '.nplay-score-n').first().evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const rects = [...range.getClientRects()];
+        const card = el.closest('.card') ?? el.parentElement!;
+        const right = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).paddingRight);
+        return { text: el.textContent, lines: new Set(rects.map((r) => Math.round(r.top))).size, over: Math.max(...rects.map((r) => r.right)) - right };
+      });
+      expect(fit.text).toBe('10 / 10');
+      expect(fit.lines, 'the score on one line').toBe(1);
+      expect(fit.over, 'the score inside its card').toBeLessThanOrEqual(0.5);
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: round done by sign, each count on one line beside a long label', async ({ page }) => {
+      known(name, 'notes-done-sign');
+      // C♯ major: every note is in the key signature's group, whose label names all seven sharps, and a note answered
+      // without its sharp brings the By sign card with its tip.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['C#'], count: 10, playNotes: false };
+      const seed = 4242;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      const [first] = generateRound(settings, seed);
+      await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${letterOf(first.step)}(,|$)`) }).click();
+      await expect(page.locator('.nfeedback')).toHaveText(/^Right (line|space), but C♯\u00a0major has/);
+      await page.getByRole('button', { name: 'Skip to summary' }).click();
+      await expect(page.getByText('F♯, C♯, G♯, D♯, A♯, E♯ and B♯ from the key signature', { exact: true })).toBeVisible();
+      // "0 / 1" stays whole beside the label, which wraps on a phone.
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const lines = await page.locator('.nsign-head > :last-child').evaluateAll((els) =>
+        els.map((el) => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+        }),
+      );
+      expect(lines, 'the lines of each count').toEqual([1]);
+      await expectNoSideScroll(page);
+    });
+
     test('read notes: round done with the missed notes on small staves, named as the player reads them', async ({ page }) => {
       known(name, 'notes-done-chips');
-      // A known round (treble, C major, on the staff): the first three notes answered with a wrong letter.
+      // A known round (treble, C major, on the staff): the first three notes answered with a wrong letter, then one
+      // right after a Hint. A note missed before that comes back is missed again: answered with a hint, it would be
+      // left out of With a hint, as it is under Missed already.
       const settings = { ...DEFAULT_NOTE_SETTINGS, count: 10 };
       const seed = 4242;
       await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
       await page.goto('./#/notes/play');
-      const notes = generateRound(settings, seed).slice(0, 3);
-      for (const n of notes) {
-        const wrong = letterOf(n.step) === 'C' ? 'D' : 'C';
+      const missed = new Set<number>();
+      for (const [i, n] of generateRound(settings, seed).entries()) {
+        const hinted = i >= 3 && !missed.has(n.step);
+        const letter = hinted ? letterOf(n.step) : letterOf(n.step) === 'C' ? 'D' : 'C';
+        if (hinted) await page.getByRole('button', { name: 'Hint' }).click();
+        else missed.add(n.step);
         // "C", or "C, key C" with the computer keys shown.
-        await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${wrong}(,|$)`) }).click();
+        await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${letter}(,|$)`) }).click();
         await page.getByRole('button', { name: /^Next note/ }).click();
+        if (hinted) break;
       }
       await page.getByRole('button', { name: 'Skip to summary' }).click();
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
@@ -830,6 +1986,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(chips.first()).toHaveAccessibleName(/^[A-G] on the .+ \(treble clef\), missed (once|\d times)$/);
       await expect(chips.first()).toHaveText(/^[A-G]/);
       await expect(chips.first().locator('.pitch-staff svg')).toBeVisible();
+      // The With a hint row, between Missed and Slow: its label takes two lines in the label column.
+      const hintedChip = page.getByRole('list', { name: 'With a hint' }).getByRole('listitem').first();
+      await expect(hintedChip).toHaveAccessibleName(/^[A-G] on the .+ \(treble clef\), answered with a hint$/);
+      await expect(hintedChip.locator('.pitch-staff svg')).toBeVisible();
       await expectNotSqueezed(page.locator('.ncard').nth(1));
       await expectClickable(page.getByRole('button', { name: 'Practice missed notes' }));
       // Tablet and desktop: the chips in the main column, Practice missed notes in the side panel.
@@ -838,6 +1998,41 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(page.locator('.wide-side').getByRole('button', { name: 'Practice missed notes' }));
         await expectNoOverlap(page.locator('.wide-main'), page.locator('.wide-side'));
       }
+      await expectNoSideScroll(page);
+    });
+
+    test('read notes: round done lists every note missed, its chips wrapping inside the card', async ({ page }) => {
+      known(name, 'notes-done-many');
+      // Twenty notes, each named a letter too high: more notes missed than the six the card once showed, while Practice
+      // missed notes drilled them all.
+      const settings = { ...DEFAULT_NOTE_SETTINGS, count: 20, playNotes: false };
+      const seed = 7;
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed, focus: [] });
+      await page.goto('./#/notes/play');
+      const notes = generateRound(settings, seed);
+      const letters = 'ABCDEFG';
+      const feedback = page.locator('.nfeedback');
+      for (const [i, n] of notes.entries()) {
+        await page.keyboard.press(letters[(letters.indexOf(letterOf(n.step)) + 1) % 7].toLowerCase());
+        await expect(feedback).toHaveText(/^That was /);
+        await page.keyboard.press('Enter');
+        if (i < notes.length - 1) await expect(feedback).not.toHaveText(/^That was /);
+      }
+      await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
+      const missed = new Set(notes.map((n) => `${n.step}:${n.alter}`)).size;
+      expect(missed).toBeGreaterThan(6);
+      const list = page.getByRole('list', { name: 'Missed' });
+      await expect(list.getByRole('listitem')).toHaveCount(missed);
+      const card = (await page.locator('.ncard').filter({ has: list }).boundingBox())!;
+      for (const chip of await list.getByRole('listitem').all()) {
+        const b = (await chip.boundingBox())!;
+        expect(b.x + b.width, 'a chip inside its card').toBeLessThanOrEqual(card.x + card.width + 0.5);
+      }
+      // The row's name stays beside its first chips, not halfway down the rows they wrap to.
+      const label = (await page.locator('.nchips-row').filter({ has: list }).locator('.nchips-label').boundingBox())!;
+      const first = (await list.getByRole('listitem').first().boundingBox())!;
+      expect(Math.abs(label.y + label.height / 2 - (first.y + first.height / 2)), 'Missed beside the first chips').toBeLessThanOrEqual(1);
+      await expectClickable(page.getByRole('button', { name: 'Practice missed notes' }));
       await expectNoSideScroll(page);
     });
 
@@ -850,8 +2045,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const nav = wide ? page.getByRole('banner').getByRole('navigation', { name: 'Main' }) : page.getByRole('navigation', { name: 'Main' });
       await expect(nav.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
       await expectClickable(page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Minor' }));
+      // The keys are named as said (F sharp major), as a screen reader would not read F♯ right.
       const circle = page.getByRole('group', { name: 'Circle of fifths, major keys' });
-      for (const key of ['C major', 'F♯ major', 'B major', 'D♭ major']) await expectClickable(circle.getByRole('button', { name: new RegExp('^' + key) }));
+      for (const key of ['C major', 'F sharp major', 'B major', 'D flat major']) await expectClickable(circle.getByRole('button', { name: new RegExp('^' + key) }));
       await circle.getByRole('button', { name: /^D major/ }).click();
       await expect(page.getByRole('button', { name: 'Practice D major' })).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'Practice D major' }));
@@ -860,12 +2056,34 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (wide) await expectNoOverlap(page.locator('.hub-circle-col'), page.locator('.hub-sel'));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      await expectCircleTargets(page);
       // Minor: the inner ring comes to the front; tapping the selected bottom key again switches its spelling.
       await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Minor' }).click();
       const minor = page.getByRole('group', { name: 'Circle of fifths, minor keys' });
-      await minor.getByRole('button', { name: /^B♭ minor/ }).click();
-      await minor.getByRole('button', { name: /^B♭ minor/ }).click();
-      await expect(page.getByRole('button', { name: 'Practice A♯ minor' })).toBeVisible();
+      await expectCircleTargets(page);
+      // A phone's one row of stars for a minor key counts its forms with two stars, as the circle fills it.
+      if (!wide) await expect(page.getByRole('region', { name: 'Selected key' }).getByRole('img')).toHaveAccessibleName('No form with 2 stars yet');
+      await minor.getByRole('button', { name: /^B flat minor/ }).click();
+      await minor.getByRole('button', { name: /^B flat minor/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice A sharp minor' })).toBeVisible();
+      // A key with a sign is said in words (A sharp minor), in text for screen readers only that stays inside the page.
+      await expectNoPageScroll(page);
+      // Seven sharps, seven flats and six sharps read whole between the inner ring's keys, and so do C♯ major's seven
+      // sharps between the faint minor keys.
+      await expectSigUncovered(page);
+      await minor.getByRole('button', { name: /^G sharp minor/ }).click();
+      await minor.getByRole('button', { name: /^G sharp minor/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice A flat minor' })).toBeVisible();
+      await expectSigUncovered(page);
+      await minor.getByRole('button', { name: /^D sharp minor/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice D sharp minor' })).toBeVisible();
+      await expectSigUncovered(page);
+      await page.getByRole('group', { name: 'Major or minor' }).getByRole('button', { name: 'Major' }).click();
+      const major = page.getByRole('group', { name: 'Circle of fifths, major keys' });
+      await major.getByRole('button', { name: /^D flat major/ }).click();
+      await major.getByRole('button', { name: /^D flat major/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice C sharp major' })).toBeVisible();
+      await expectSigUncovered(page);
       await expectNoSideScroll(page);
     });
 
@@ -895,12 +2113,20 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('button', { name: /^Start · / }).click();
       const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
       await expect(keys).toHaveCount(15);
+      await expectPitchOrder(keys);
       // The whole piano with its letters in view without scrolling, in a phone browser too (DESIGN.md §9).
       for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i), inPlace);
       await expect(page.locator('.spiano .piano-label')).toHaveText(['G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A']);
       if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
       await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
       if (portraitLayout) await expectFits(page);
+      // A phone on its side: the staff, the degrees, the feedback and Skip to summary fit its left column, and where a
+      // shorter one scrolls it, Tab leaves room under Skip for its focus ring.
+      if (name === 'phone-landscape') {
+        await expectFits(page);
+        await expectSkipWhole(page);
+        await expectSkipRingOnShorterPhone(page);
+      }
       // Tablet (Read notes' NoteTablet pattern): the exercise header, the degrees in the staff card, a tall piano.
       if (tabletLayout && portraitLayout) {
         await expect(page.locator('.dplay-head--tablet .brand')).toBeVisible();
@@ -908,6 +2134,29 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(page.getByRole('link', { name: 'Quit' }), inPlace);
         await expect(page.locator('.stab-staff').getByRole('list', { name: 'Scale degrees going up' })).toBeVisible();
         expect((await keys.first().boundingBox())!.height, 'a tall piano').toBeGreaterThanOrEqual(200);
+      }
+      // Desktop: the Mistakes card's stars rule breaks only after a "·", never inside a part ("2–3" over "★"), even
+      // with no room at all.
+      if (desktopLayout) {
+        const rule = page.locator('.sstats .nstat-text');
+        await expect(rule).toHaveText(/^0 mistakes ★★★\s· 1 ★★\s· 2–3 ★$/);
+        const lines = await rule.evaluate((el) => {
+          el.style.width = '0';
+          const byTop = new Map<number, string>();
+          const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          for (let node = walk.nextNode() as Text | null; node; node = walk.nextNode() as Text | null) {
+            for (let i = 0; i < node.length; i++) {
+              const range = document.createRange();
+              range.setStart(node, i);
+              range.setEnd(node, i + 1);
+              const r = range.getClientRects()[0];
+              if (r) byTop.set(Math.round(r.top), (byTop.get(Math.round(r.top)) ?? '') + node.data[i]);
+            }
+          }
+          el.style.width = '';
+          return [...byTop.values()].map((line) => line.replace(/\s+/g, ' ').trim());
+        });
+        expect(lines, 'the lines of the stars rule').toEqual(['0 mistakes ★★★ ·', '1 ★★ ·', '2–3 ★']);
       }
       // Nothing to hear or start over before the first note.
       await expect(page.getByRole('button', { name: /^Hear it so far/ })).toBeHidden();
@@ -924,10 +2173,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.locator('.nfeedback')).toHaveText(/^G major: done, no mistakes/);
       await expectClickable(page.getByRole('button', { name: /^Hear the scale/ }));
       await expectClickable(page.getByRole('button', { name: /^See the round/ }));
+      if (name === 'phone-landscape') {
+        await expectFits(page);
+        await expectSkipWhole(page);
+      }
       await expectNoSideScroll(page);
       await page.getByRole('button', { name: /^See the round/ }).click();
       await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
-      await expect(page.getByLabel('1 of 1 scales without a mistake')).toBeVisible();
+      await expect(page.getByLabel('1 of 1 scale without a mistake')).toBeVisible();
       await expectClickable(page.getByRole('button', { name: 'New round' }));
       await expectClickable(page.getByRole('link', { name: 'Change setup' }));
       // Tablet and desktop: the scales and the circle on the left; the score and the actions in the side panel beside them.
@@ -939,14 +2192,115 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         expect(s.y < m.y + m.height && m.y < s.y + s.height, 'the side panel is beside the main column').toBe(true);
         await expect(main.getByRole('list', { name: 'Scales in this round' })).toBeVisible();
         await expect(main.locator('.cprog')).toBeVisible();
-        await expect(side.getByLabel('1 of 1 scales without a mistake')).toBeVisible();
+        await expect(side.getByLabel('1 of 1 scale without a mistake')).toBeVisible();
         await expectClickable(side.getByRole('button', { name: 'New round' }));
         await expectClickable(side.getByRole('link', { name: 'Change setup' }));
       } else {
         await expect(page.locator('.wide')).toHaveCount(0);
       }
+      // The score line never breaks inside the XP ("+56" / "XP" in the tablet's side panel), as on Read notes.
+      const xp = page.locator('.score-sub b');
+      await expect(xp).toHaveText(/^\+\d+ XP$/);
+      const xpLines = await xp.evaluate((el) => {
+        const line = el.parentElement!;
+        line.style.width = '0';
+        const n = el.getClientRects().length;
+        line.style.width = '';
+        return n;
+      });
+      expect(xpLines, 'the XP on one line').toBe(1);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+    });
+
+    test('scales: C♯ major and B♭ major with their signs and A♯ melodic minor with the key signature fit on the staff, the cursor too', async ({ page }) => {
+      known(name, 'scales-staff-fit');
+      // The computer keys of the Scales piano: A S D … on the white keys, W E R … on the black keys between them.
+      const keysFor = (s: Scale): string[] => {
+        const w = pianoWindow(s);
+        return scaleNotes(s).map((n) => (w.whites.includes(n.midi) ? 'ASDFGHJKL'[w.whites.indexOf(n.midi)] : 'WERTYUIO'[w.blacks.find((b) => b.midi === n.midi)!.after - 1]));
+      };
+      // B♭ major's last flat (B♭5) reaches highest over the staff, C♯ major's first sharp (C♯4) lowest under it.
+      const scales = [
+        { scale: { key: 'C#', type: 'major' } as Scale, write: 'signs', done: /^C♯ major: done/ },
+        { scale: { key: 'Bb', type: 'major' } as Scale, write: 'signs', done: /^B♭ major: done/ },
+        { scale: { key: 'C#', type: 'melodic' } as Scale, write: 'keySig', done: /^A♯ melodic minor: done/ },
+      ];
+      for (const { scale, write, done } of scales) {
+        await seed(page, {
+          progress: { scales: { settings: { keyMode: 'one', keys: [scale.key], types: [scale.type], input: 'piano', direction: 'up', write, showSteps: true, playNotes: false }, stars: {} } },
+        });
+        await page.goto('./#/scales/setup');
+        // A fresh load, so the app reads the settings just seeded (a new hash alone keeps the app and its settings).
+        await page.reload();
+        await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+        // The staff keeps one size while the notes come in.
+        const staff = page.locator('.splay-staff-svg svg');
+        const size = (): Promise<(string | null)[]> => staff.evaluate((svg) => [svg.getAttribute('width'), svg.getAttribute('height')]);
+        await expect(staff).toBeVisible();
+        const first = await size();
+        const keys = keysFor(scale);
+        // Seven notes in: the seventh and the eighth note's place are inside the staff.
+        for (const k of keys.slice(0, 7)) await page.keyboard.press(k);
+        await expect(page.locator('.splay-staff-svg .vf-stavenote')).toHaveCount(7);
+        await expectStavesFit(page);
+        expect(await size(), 'the staff after seven notes').toEqual(first);
+        await page.keyboard.press(keys[7]);
+        await expect(page.locator('.nfeedback')).toHaveText(done);
+        await expect(page.locator('.splay-staff-svg .vf-stavenote')).toHaveCount(8);
+        await expectStavesFit(page);
+        expect(await size(), 'the staff when done').toEqual(first);
+        // The staff taller by the room for its signs, the screen still fits, on a phone on its side too.
+        if (portraitLayout || name === 'phone-landscape') await expectFits(page);
+        if (name === 'phone-landscape') {
+          await expectSkipWhole(page);
+          await expectSkipRingOnShorterPhone(page);
+        }
+      }
+    });
+
+    test('scales: up and down fits with its second degree row, on the piano and with the signs', async ({ page }) => {
+      known(name, 'scales-up-down');
+      // Up and down adds the way back as a second degree row (DESIGN.md §3.7): G major on the piano, A♯ harmonic minor
+      // with the signs, whose long name and four sign buttons take the most room on a 320 px phone, G♯ harmonic minor,
+      // whose done line names all 15 notes, and B♭ harmonic minor: its high B♭ with its flat makes the tallest staff (as
+      // in every B♭ scale), under an eyebrow that takes two lines at 375 px beside "2 mistakes".
+      const rounds = [
+        { keys: ['G'], types: ['major'], input: 'piano', title: 'G major', signs: 0 },
+        { keys: ['C#'], types: ['harmonic'], input: 'names', title: 'A♯ harmonic minor', signs: 4 },
+        { keys: ['B'], types: ['harmonic'], input: 'names', title: 'G♯ harmonic minor', signs: 4 },
+        { keys: ['Db'], types: ['harmonic'], input: 'names', title: 'B♭ harmonic minor', signs: 3 },
+      ];
+      for (const { title, signs: signCount, ...round } of rounds) {
+        await seed(page, { progress: { scales: { settings: { keyMode: 'one', direction: 'upDown', write: 'signs', showSteps: true, playNotes: false, ...round }, stars: {} } } });
+        await page.goto('./#/scales/setup');
+        // A fresh load, so the app reads the settings just seeded.
+        await page.reload();
+        await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+        await expect(page.getByText(title, { exact: true })).toBeVisible();
+        await expect(page.getByRole('list', { name: 'Scale degrees going down' })).toBeVisible();
+        if (round.input === 'piano') {
+          const keys = page.getByRole('group', { name: /^Piano keyboard from G to A/ }).getByRole('button');
+          for (let i = 0; i < 15; i++) await expectClickable(keys.nth(i), inPlace);
+          if (portraitLayout) for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
+        } else {
+          // Four signs where the scale has a double sharp (A♯ and G♯ harmonic minor), three for B♭ harmonic minor.
+          const signs = page.getByRole('group', { name: /^Sign for / }).getByRole('button');
+          await expect(signs).toHaveCount(signCount);
+          for (let i = 0; i < signCount; i++) await expectClickable(signs.nth(i), inPlace);
+          await expectClickable(page.getByRole('button', { name: 'Hint' }), inPlace);
+          await expectTouchHeight(signs.first());
+        }
+        await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), inPlace);
+        if (portraitLayout || deskFits) await expectFits(page);
+        if (name === 'phone-landscape') {
+          await expectSkipWhole(page);
+          await expectSkipRingOnShorterPhone(page);
+        }
+        // Each line the feedback says on the way, from why the first note is wrong to the done line, stays in view.
+        await answerUpAndDown(page, name, { key: round.keys[0], type: round.types[0] } as Scale, round.input, { hint: 'Hint', next: /^Next scale/, skip: 'Skip to summary' });
+        await expectNoSideScroll(page);
+      }
     });
 
     test('scales: spell E harmonic minor with the signs', async ({ page }) => {
@@ -974,6 +2328,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('group', { name: 'Sign for F' }).getByRole('button', { name: /^F sharp/ }).click();
       await page.getByRole('group', { name: 'Sign for G' }).getByRole('button').nth(2).click();
       await expect(page.locator('.nfeedback')).toHaveText(/^Not G♯\. From F♯, go up a half step/);
+      // A why of two lines in a phone's landscape column: the screen still fits, with Skip to summary whole under it.
+      if (portraitLayout || name === 'phone-landscape') await expectFits(page);
+      if (name === 'phone-landscape') {
+        await expectSkipWhole(page);
+        await expectSkipRingOnShorterPhone(page);
+      }
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
@@ -991,6 +2351,12 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         ['1.1', '1.3'].map((id) => [...document.querySelectorAll('a')].find((el) => el.textContent?.trim().startsWith(id))!.getBoundingClientRect().y),
       );
       expect(third === first, 'sections in two columns').toBe(layout !== 'phone');
+      // Subtitles wrap rather than end in "…", and a chapter's ring shows around it (its card once cut it off).
+      await expectNoClippedLabels(page);
+      await expectFocusRing(page.getByRole('button', { name: /^2\s*Note values/ }));
+      // So does a section's, also at the top of a column (the open chapter's inner box once cut off its top edge).
+      await expectFocusRing(page.getByRole('link', { name: /^1\.1/ }));
+      await expectFocusRing(page.getByRole('link', { name: /^1\.3/ }));
       // Opening chapter 10 closes chapter 1.
       const ch10 = page.getByRole('button', { name: /^10\s*Key signatures/ });
       await expectClickable(ch10);
@@ -1001,20 +2367,32 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
 
       await page.getByRole('link', { name: /^10\.2/ }).click();
       await expect(page.getByRole('heading', { name: /10\.2\s*The order of sharps and flats/ })).toBeInViewport();
+      // A link into the chapter at ?s= gives the section focus too (on phone this list is the only way to jump).
+      await expect(page.locator('#s10-2')).toBeFocused();
       // Jumping to a section: section chips on tablet, the chapter sidebar on desktop, the chapter list on phone.
       const jump = page.getByRole('navigation', { name: 'Sections' });
       await expect(jump).toHaveCount(layout === 'phone' ? 0 : 1);
       if (layout === 'desktop') await expectNoOverlap(page.locator('.learn-side'), page.locator('.learn-main'));
+      // The Learn link over the title is a 44 px tap; so are the section chips (every tablet size here is a touch
+      // screen), as the sidebar's rows are on one.
+      if (layout !== 'phone') await expectHitHeight(page.locator('a.learn-crumb'));
+      if (layout === 'tablet') for (const chip of await jump.getByRole('link').all()) await expectTouchHeight(chip);
       if (layout !== 'phone') {
         await expectClickable(jump.getByRole('link', { name: /Naming the key/ }));
         await jump.getByRole('link', { name: /Naming the key/ }).click();
         await expect(page.getByRole('heading', { name: /10\.3\s*Naming the key/ })).toBeInViewport();
+        // Focus goes along, so Tab goes on in the section and does not scroll back up to the link.
+        await expect(page.locator('#s10-3')).toBeFocused();
+        await page.keyboard.press('Tab');
+        expect(await page.evaluate(() => !!document.activeElement?.closest('#s10-3')), 'Tab stays in 10.3').toBe(true);
       }
       if (layout === 'desktop') {
         await expectClickable(jump.getByRole('link', { name: 'Quick check' }));
         await jump.getByRole('link', { name: 'Quick check' }).click();
         await expect(page.getByRole('button', { name: 'D', exact: true })).toBeInViewport();
+        await expect(page.locator('#scheck')).toBeFocused();
         await expectClickable(page.locator('.learn-side').getByRole('link', { name: /Notes on the staff/ }));
+        await expectFocusRing(page.locator('.learn-side').getByRole('link', { name: /Notes on the staff/ }));
       }
       await expectClickable(page.getByRole('link', { name: 'Practice keys up to three signs →' }));
       await expectClickable(page.getByRole('link', { name: /Previous\s*9 · Sharps, flats and naturals/ }));
@@ -1028,6 +2406,33 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('link', { name: /Next\s*10 · Key signatures/ }));
       await expectNoSideScroll(page);
     });
+
+    // Phone and tablet have no chapter sidebar. One test per chapter, as each tabs through some 20 links and back.
+    if (desktopLayout) {
+      test("learn: the chapter sidebar shows the open chapter's sections, and the chapter stays at its top", async ({ page }) => {
+        // On a short screen the sidebar scrolls on its own: it once opened at its top, with the open chapter (the last
+        // of the list for 9 to 11) below its bottom edge.
+        for (const c of CHAPTERS) {
+          await page.goto(`./#/learn/${c.n}`);
+          await expect(page.getByRole('heading', { level: 1 })).toContainText(String(c.n));
+          const open = page.locator('.learn-side-chapter');
+          await expect(open.locator('a')).toHaveCount(c.sections.length + 1);
+          for (const item of [open.locator('.learn-side-title'), ...(await open.locator('a').all())]) {
+            await expect(item, `chapter ${c.n}: ${await item.textContent()}`).toBeInViewport({ ratio: 1 });
+          }
+          expect(await page.locator('.learn-chapter').evaluate((el) => el.scrollTop), `chapter ${c.n} opens at its top`).toBe(0);
+        }
+      });
+
+      for (const c of CHAPTERS) {
+        test(`learn: Tab through chapter ${c.n}'s sidebar shows each link's whole focus ring`, async ({ page }) => {
+          known(name, `learn-side-ring-${c.n}`);
+          await page.goto(`./#/learn/${c.n}`);
+          await expect(page.getByRole('heading', { level: 1 })).toContainText(String(c.n));
+          await expectRingsInSideMenu(page.locator('.learn-side'));
+        });
+      }
+    }
 
     test('learn: rhythm chapters count under the notes, the note tree switches, words answer the quick check', async ({ page }) => {
       known(name, 'learn-rhythm');
@@ -1043,17 +2448,35 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/learn/2?s=2.2');
       const tree = page.locator('.learn-tree');
       await expect(tree.getByText(/^sixteenth note$/i)).toBeVisible();
+      // Each row's last note or rest ends before the final bar line, also the sixteenths on a 320 px phone.
+      const clear = (): Promise<number> =>
+        tree.locator('.learn-tree-row svg:has(.vf-stave)').evaluateAll((svgs) =>
+          Math.min(...svgs.map((svg) => {
+            const notes = svg.querySelectorAll('g.vf-stavenote');
+            const bar = Math.max(...[...svg.querySelectorAll('rect[width="1"]')].map((r) => r.getBoundingClientRect().left));
+            return bar - notes[notes.length - 1].getBoundingClientRect().right;
+          })),
+        );
+      await expect.poll(clear, { message: 'room between the last note and the final bar line' }).toBeGreaterThan(0);
       await expectClickable(tree.getByRole('button', { name: 'Rests' }));
       await tree.getByRole('button', { name: 'Rests' }).click();
       await expect(tree.getByText(/^sixteenth rest$/i)).toBeVisible();
+      await expect.poll(clear, { message: 'room between the last rest and the final bar line' }).toBeGreaterThan(0);
       await expectNoSideScroll(page);
+
+      // The counts stay apart: 3.2's Write example, 5.1–5.3 and 7.1's triplets were the tightest on a 320 px phone.
+      for (const n of [3, 5, 7]) {
+        await page.goto(`./#/learn/${n}`);
+        await expect(page.getByRole('heading', { level: 1 })).toContainText(String(n));
+        await expectCountsApart(page);
+      }
 
       // Answers in words get a row each and stay clickable.
       await page.goto('./#/learn/5?s=check');
-      const right = page.getByRole('button', { name: 'A quarter tied to an eighth' });
+      const right = page.getByRole('button', { name: 'A quarter tied to an eighth', exact: true });
       await expectClickable(right);
       await right.click();
-      await expect(page.getByRole('status')).toContainText('Right.');
+      await expect(page.locator('.learn-check .nfeedback')).toContainText('Right.');
       await expectClickable(page.getByRole('link', { name: /Next\s*6 · Off the beat/ }));
       await expectNoSideScroll(page);
     });
@@ -1066,11 +2489,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       // A wrong answer gives a hint, not the answer, and the section stays unread.
       await expectClickable(check.getByRole('button', { name: 'An eighth (½ beat)' }));
       await check.getByRole('button', { name: 'An eighth (½ beat)' }).click();
-      await expect(check.getByRole('status')).toHaveText(/^Not quite\. Start from the quarter note/);
+      // Shown under the answers, and read out by the app's live region.
+      await expect(check.locator('.nfeedback')).toHaveText(/^Not quite\. Start from the quarter note/);
+      await expect(page.locator('#announcer')).toHaveText(/^Not quite\. Start from the quarter note/);
       await expect(check.locator('.learn-answer.is-right')).toHaveCount(0);
       await expect(check.getByText('✓ read')).toHaveCount(0);
       await check.getByRole('button', { name: 'A sixteenth (¼ beat)' }).click();
-      await expect(check.getByRole('status')).toHaveText(/^Right\. Each flag halves the note/);
+      await expect(check.locator('.nfeedback')).toHaveText(/^Right\. Each flag halves the note/);
+      await expect(page.locator('#announcer')).toHaveText(/^Right\. Each flag halves the note/);
       await expect(check.getByText('✓ read')).toBeVisible();
       await expectClickable(page.getByRole('link', { name: 'Practice whole, half and quarter notes →' }));
       await expectNoSideScroll(page);
@@ -1092,6 +2518,8 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.locator('.learn-check--section')).toHaveCount(c.sections.length);
         await expect(page.locator('.learn-practice')).toHaveCount(c.sections.filter((s) => s.practice).length);
         await expectNoSideScroll(page);
+        await expectStavesFit(page);
+        await expectLearnWordsApart(page);
         if (c.sections.some((s) => s.practice)) await expectClickable(page.locator('.learn-practice').last());
         await expectClickable(page.getByRole('link', { name: 'Back to all chapters' }));
       }
@@ -1101,24 +2529,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       known(name, 'learn-sound');
       await page.goto('./#/learn/1');
       const pulse = page.getByRole('group', { name: /^Four seconds of beats/ });
-      await expectClickable(pulse.getByRole('button', { name: 'Play 60 BPM' }));
-      await pulse.getByRole('button', { name: 'Play 60 BPM' }).click();
-      await expect(pulse.getByRole('button', { name: 'Stop' })).toBeVisible();
-      // Starting another example stops the first.
-      const bars = page.locator('#s1-2').getByRole('button', { name: 'Play', exact: true }).first();
+      await expectClickable(pulse.getByRole('button', { name: 'Play: 60 BPM' }));
+      await pulse.getByRole('button', { name: 'Play: 60 BPM' }).click();
+      await expect(pulse.getByRole('button', { name: 'Stop: 60 BPM' })).toBeVisible();
+      // Starting another example stops the first. Each button names its example.
+      const bars = page.locator('#s1-2').getByRole('button', { name: /^Play: Two bars of 4\/4/ });
       await expectClickable(bars);
       await bars.click();
-      await expect(pulse.getByRole('button', { name: 'Play 60 BPM' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(1);
+      await expect(pulse.getByRole('button', { name: 'Play: 60 BPM' })).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Stop: / })).toHaveCount(1);
+      await expect(page.locator('#s1-2').getByRole('button', { name: /^Stop: Two bars of 4\/4/ })).toBeVisible();
       await expectNoSideScroll(page);
 
       // Opening another chapter stops it. A scale plays, and so do the piano's marked keys and each key.
       await page.goto('./#/learn/11?s=11.1');
       await expect(page.getByRole('heading', { level: 1, name: /Scales/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /^Stop: / })).toHaveCount(0);
       const scale = page.locator('#s11-1');
-      await expect(scale.getByRole('button', { name: 'Play', exact: true })).toHaveCount(2);
-      await expectClickable(scale.getByRole('button', { name: 'Play', exact: true }).first());
+      await expect(scale.getByRole('button', { name: /^Play: / })).toHaveCount(2);
+      await expectClickable(scale.getByRole('button', { name: 'Play: C major' }));
       const piano = scale.getByRole('group', { name: /^One piano octave/ });
       await expectClickable(piano.getByRole('button', { name: 'E', exact: true }));
       await expectClickable(piano.getByRole('button', { name: 'F sharp or G flat' }));
@@ -1192,6 +2621,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('img', { name: /^Minutes practised this week: .*; 51 minutes in total\.$/ })).toBeVisible();
       await expect(page.getByRole('listitem', { name: 'Ties: 78%, weak spot' })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Achievements' }).getByText('3 earned')).toBeVisible();
+      await expectCountsWithWords(page);
       const practice = page.getByRole('link', { name: 'Practice weak spots' });
       await expectClickable(practice);
       await expectTouchHeight(practice);
@@ -1300,7 +2730,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const practice = page.getByRole('link', { name: 'Practice weak spots' });
       await expectClickable(practice);
       await practice.click();
-      await expect(page).toHaveURL(/#\/setup$/);
+      await expect(page).toHaveURL(/#\/setup\?from=progress$/);
       await expect(page.getByRole('heading', { level: 1, name: 'Free practice' })).toBeVisible();
       // The weak spots, ties (78%) and the dotted quarter + eighth (72%): ties and dotted notes on, with quarters and
       // eighths, ready to start.
@@ -1310,6 +2740,43 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByRole('button', { name: 'Eighth note', exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
       await expectNoSideScroll(page);
+      // Its back arrow returns to Progress.
+      await page.getByRole('link', { name: 'Back to Progress' }).click();
+      await expect(page).toHaveURL(/#\/progress$/);
+      await expect(page.getByRole('heading', { level: 1, name: 'Progress' })).toBeVisible();
+    });
+
+    test('progress and skill levels: the setups and the Scales tab their buttons open go back to them, Progress current', async ({ page }) => {
+      known(name, 'progress-back');
+      const progressTab = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Progress', exact: true });
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      await seed(page, { progress: richProgress(), prefs: PROGRESS_PREFS });
+      await page.goto('./#/progress');
+      const show = (view: string) => page.getByRole('group', { name: 'Show progress for' }).getByRole('button', { name: view, exact: true }).click();
+      await show('Notes');
+      await page.getByRole('link', { name: 'Read notes', exact: true }).click();
+      await expect(page).toHaveURL(/#\/notes\?from=progress$/);
+      await page.getByRole('link', { name: 'Back to Progress' }).click();
+      await expect(page).toHaveURL(/#\/progress$/);
+      await show('Scales');
+      await page.getByRole('link', { name: 'Open the circle of fifths' }).click();
+      await expect(page).toHaveURL(/#\/scales\?from=progress$/);
+      await expect(progressTab).toHaveAttribute('aria-current', 'page');
+      await page.getByRole('link', { name: 'Back to Progress' }).click();
+      await expect(page).toHaveURL(/#\/progress$/);
+
+      // A skill's button goes back to the skill, Focus next to Skill levels.
+      await page.goto('./#/progress/skills/scales');
+      await page.getByRole('link', { name: 'Practice scales' }).click();
+      await expect(page).toHaveURL(/#\/scales\?from=skills\.scales$/);
+      await expect(progressTab).toHaveAttribute('aria-current', 'page');
+      await page.getByRole('link', { name: 'Back to Scales in Skill levels' }).click();
+      await expect(page).toHaveURL(/#\/progress\/skills\/scales$/);
+      await page.goto('./#/progress/skills');
+      await page.getByRole('region', { name: 'Focus next' }).getByRole('link', { name: 'Read bass notes' }).click();
+      await expect(page).toHaveURL(/#\/notes\?from=skills$/);
+      await page.getByRole('link', { name: 'Back to Skill levels' }).click();
+      await expect(page).toHaveURL(/#\/progress\/skills$/);
     });
 
     test('skill levels: list and one skill', async ({ page }) => {
@@ -1336,6 +2803,10 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectClickable(row);
         await expectTouchHeight(row);
       }
+      // A level's name with a sign is said in words, as the Scales hub says its keys; the row shows the sign.
+      const scales = page.getByRole('link', { name: /^Scales: level 3 of 10\. .*, A and E flat major\./ });
+      await expect(scales).toBeVisible();
+      await expect(scales).toContainText('next: A and E♭ major');
       const focus = page.getByRole('region', { name: 'Focus next' });
       await expect(focus.getByText(/is your lowest skill/)).toHaveText('Bass clef is your lowest skill: level 3, 2 levels behind treble clef.');
       await expectClickable(focus.getByRole('link', { name: 'Read bass notes' }));
@@ -1404,7 +2875,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       if (!name.startsWith('desktop') && !name.startsWith('laptop')) await expectClickable(pad(page), { scroll: false });
       // A phone in landscape has no Skip link: the pad takes the right column.
       if (portraitLayout) await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
-      if (!desktopLayout) await expectFits(page);
+      await expectFits(page);
       // Tablet (App design canvas, PlayTablet): the exercise header with the brand, Pause and Quit, the count and combo
       // cards, and a big pad. A phone on its side keeps the phone layout in two columns.
       if (tabletLayout && portraitLayout) {
@@ -1421,27 +2892,35 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('play: eight bars fit, with the staff, the lane, the beat counter, the pad and Skip in view', async ({ page }) => {
-      known(name, 'play-eight-bars');
-      // Lessons go up to 8 bars: the staff shows two rows and the timing lane two, the tallest Play gets.
-      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, notes: ['quarter', 'eighth', 'half'], bars: 8, tempo: 60 } } });
+    test('play: sixteen bars fit, with the staff, the lane, the beat counter, the pad and Skip in view', async ({ page }) => {
+      known(name, 'play-sixteen-bars');
+      // The most Setup allows, holding each note: the staff shows a window of two rows. On a phone the timing lane shows
+      // two rows of four bars, from the row being played (all four rows pushed Skip off a short phone); tablet and
+      // desktop draw every bar. Desktop Play does not scroll either, on a 1280 × 720 laptop too (DESIGN.md §9 Scrolling).
+      await seed(page, {
+        prefs: { seenHowTo: true, seenHold: true, holdMode: 'hold', holdEarly: 'tap' },
+        progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, hold: true, notes: ['quarter', 'eighth', 'half'], bars: 16, tempo: 60 } },
+      });
       await page.goto('./#/setup');
       await page.getByRole('button', { name: /^Start · / }).click();
       await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
       await expect(page.locator('.staff-fallback')).toHaveCount(0);
-      // A phone in landscape scrolls the staff card in its own column; the pad is beside it.
+      // A phone in landscape keeps the phone layout. It scrolls the staff card in its own column; the pad is beside it.
       const tablet = tabletLayout && portraitLayout;
+      await expect(page.locator('.lane-head')).toContainText(desktopLayout || tablet ? 'bars 1–16' : 'bars 1–8');
       if (portraitLayout) {
         await expect(page.locator(tablet ? '.tplay-staff' : '.play-staff')).toBeInViewport({ ratio: 1 });
         await expect(page.getByRole('img', { name: 'Note lengths compared with how long each note was held' })).toBeInViewport({ ratio: 1 });
         await expect(page.locator('.beats')).toBeInViewport({ ratio: 1 });
         await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+        // Skip ends at the page's bottom edge on a phone under 800 px tall, and Play does not scroll: its ring shows whole.
+        await expectFocusRing(page.getByRole('button', { name: 'Skip to results' }));
       }
       if (!desktopLayout) {
         await expectClickable(pad(page), { scroll: false });
         await expectTouchHeight(pad(page));
-        await expectFits(page);
       }
+      await expectFits(page);
       if (tablet) {
         // Tablet: four bars a row. A smaller tablet window (700 × 1000, a tablet-wide window on a laptop) still fits,
         // with the pad tall enough.
@@ -1452,7 +2931,36 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         expect((await pad(page).boundingBox())!.height).toBeGreaterThan(150);
         await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
         await expectFits(page);
+        await expectShortTabletFits(page);
       }
+      if (desktopLayout) {
+        // A 1366 × 768 laptop's window (1366 × 657 under Chrome's bars): the spacing tightens once more, and the pad and
+        // the stat cards still fit under the staff.
+        await page.setViewportSize({ width: 1366, height: 657 });
+        await expect(page.locator('.dpad')).toBeInViewport({ ratio: 1 });
+        await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
+        await expectFits(page);
+      }
+      await expectNoSideScroll(page);
+    });
+
+    test("play: a window of a longer exercise ends with a plain bar line, and keeps room for a triplet's 3", async ({ page }) => {
+      known(name, 'play-window');
+      // Eight bars of 2/4 with a triplet only in bar 8 (seed 2), at 60 BPM: the window stays on bars 1–4 for 6 s.
+      await seedRun(page, { ...QUARTERS, meters: ['2/4'], notes: ['quarter', 'eighth'], triplets: true, bars: 8, tempo: 60 }, 2);
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+      const staff = page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)');
+      // Two bars a row show bars 1–4: the exercise goes on, so the last ends with a plain bar line. Four a row show all 8.
+      const shown = await staff.locator('.vf-stave').count();
+      expect([4, 8]).toContain(shown);
+      await expect(staff.locator('rect[width="3"]')).toHaveCount(shown === 8 ? 1 : 0);
+      // Room above for the 3 although bars 1–4 have no triplet: the staff keeps one height (2 × 86 + 12 − 6) as it moves.
+      await expect(staff).toHaveAttribute('viewBox', /^0 0 [\d.]+ 178$/);
+      await expectStaffNotCut(staff);
+      // The taller staff still fits without scrolling: on the shortest phone (375 × 553) the pad gives up the room.
+      await expectFits(page);
       await expectNoSideScroll(page);
     });
 
@@ -1509,6 +3017,184 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       }
       await expectNoSideScroll(page);
     });
+
+    test('echo with the analog metronome: the pendulum while listening, as while tapping back', async ({ page }) => {
+      known(name, 'echo-analog');
+      await seed(page, {
+        prefs: { seenHowTo: true, seenHold: true, seenEchoHowTo: true, holdMode: 'tap', metronomeLook: 'analog' },
+        progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, mode: 'echo' } },
+      });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      const play = page.getByRole('button', { name: 'Play the rhythm' });
+      await expectClickable(play, { scroll: false });
+      // Where Play has it: the Count card on tablet and desktop, under the card on a phone. No digits beside it.
+      const count = page.locator(desktopLayout ? '.dstats' : tabletLayout && portraitLayout ? '.tplay-count' : '.play');
+      await expect(count.locator('.beats--analog')).toBeVisible();
+      await expect(page.locator('.dbeats, .beats:not(.beats--analog)')).toHaveCount(0);
+      if (!desktopLayout) {
+        // The taller pendulum leaves the listen card and the pad in view, also in a phone browser (DESIGN.md §9).
+        await expect(pad(page)).toBeInViewport({ ratio: 1 });
+        await expectFits(page);
+      }
+      await play.click();
+      // It swings while the rhythm plays.
+      const rod = page.locator('.beats--analog .analog-rod');
+      await expect.poll(() => rod.getAttribute('transform'), { timeout: 4000 }).not.toMatch(/^rotate\(0\.00 /);
+      await expect(page.locator('.dbeats, .beats:not(.beats--analog)')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Tap it back' }).click({ timeout: 15_000 });
+      await expect(page.locator('.beats--analog')).toBeVisible();
+      await expect(page.locator('.dbeats, .beats:not(.beats--analog)')).toHaveCount(0);
+      await expectNoSideScroll(page);
+    });
+
+    test('play with the analog metronome: sixteen bars fit, with the pendulum, the pad and Skip in view', async ({ page }) => {
+      known(name, 'play-analog-tall');
+      // The pendulum is taller than the digits, with the most bars Setup allows. Tablet and desktop draw the timing lane's
+      // every bar, four rows under the staff; a phone two rows, around the bars being played.
+      await seed(page, {
+        prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap', metronomeLook: 'analog' },
+        progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, notes: ['quarter', 'eighth', 'half'], bars: 16, tempo: 60 } },
+      });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.locator('.beats--analog')).toBeVisible();
+      if (portraitLayout) {
+        await expect(page.locator('.beats--analog')).toBeInViewport({ ratio: 1 });
+        await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+      }
+      if (desktopLayout) {
+        // The key-cap pad and the four stat cards, the Metronome switch last, all in the window, in a 1366 × 768
+        // laptop's window too (1366 × 657 under Chrome's bars).
+        await expect(page.locator('.dpad')).toBeInViewport({ ratio: 1 });
+        await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
+        await expectFits(page);
+        await page.setViewportSize({ width: 1366, height: 657 });
+        await expect(page.locator('.dpad')).toBeInViewport({ ratio: 1 });
+        await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
+      } else {
+        await expectClickable(pad(page), { scroll: false });
+        await expectTouchHeight(pad(page));
+      }
+      // Every row of the timing lane in view: in a phone's landscape column the staff card scrolls inside itself, and the
+      // pendulum's row pushed the lane's lower row, the one played last, out of it.
+      await expect(page.getByRole('img', { name: 'When each note starts compared with when you tapped' })).toBeInViewport({ ratio: 1 });
+      await expectFits(page);
+      if (tabletLayout && portraitLayout) await expectShortTabletFits(page);
+      await expectNoSideScroll(page);
+    });
+
+    test("play with the analog metronome: sixteen bars with the room for a triplet's 3 fit too", async ({ page }) => {
+      known(name, 'play-analog-triplets');
+      // The staff keeps 4 px more above it for the 3 (178, not 174): at 1280 × 800 and 1180 × 820 the page scrolled 2 px,
+      // and in a phone's landscape column the timing lane's lower row ran 2 px out of the staff card.
+      await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth'], triplets: true, bars: 16, tempo: 60 }, 1, { metronomeLook: 'analog' });
+      await page.goto('./#/play');
+      await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+      await expect(page.locator('.beats--analog')).toBeVisible();
+      await expect(page.locator('.play-staff, .tplay-staff, .dplay-staff').locator('svg:has(.vf-stave)')).toHaveAttribute('viewBox', /^0 0 [\d.]+ 178$/);
+      if (desktopLayout) await expect(page.locator('.dstats .card').last()).toBeInViewport({ ratio: 1 });
+      else await expectClickable(pad(page), { scroll: false });
+      await expect(page.getByRole('img', { name: 'When each note starts compared with when you tapped' })).toBeInViewport({ ratio: 1 });
+      await expectFits(page);
+      if (tabletLayout && portraitLayout) await expectShortTabletFits(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('play: the pause menu shows all four rows', async ({ page }) => {
+      known(name, 'play-pause');
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.getByRole('img', { name: /^Count-in, beat/ })).toBeAttached({ timeout: 3000 });
+      await page.getByRole('button', { name: /^Pause/ }).click();
+      const sheet = page.getByRole('dialog', { name: 'Paused' });
+      await expect(sheet.getByRole('button', { name: 'Resume' })).toBeVisible();
+      // A sheet taller than the screen (a phone on its side) scrolls; the menu never cuts off its own last row.
+      await expectNotSqueezed(page.locator('.menu'));
+      const [menu, quit] = [(await page.locator('.menu').boundingBox())!, (await sheet.getByRole('button', { name: 'Quit practice' }).boundingBox())!];
+      expect(quit.y + quit.height, 'Quit practice ends inside the menu').toBeLessThanOrEqual(menu.y + menu.height + 1);
+      for (const row of ['Restart exercise', 'How to play', 'Practice settings', 'Quit practice']) await expectClickable(sheet.getByRole('button', { name: new RegExp('^' + row) }));
+      await expectClickable(sheet.getByRole('button', { name: 'Resume' }));
+    });
+
+    test('play: closing How to play hands focus to Pause, so Tab stays on the screen and does not pause', async ({ page }) => {
+      known(name, 'play-sheet-focus');
+      await seed(page, { prefs: { holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 8, tempo: 60 } } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.getByRole('button', { name: 'Got it' })).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /^Pause( Esc)?$/ })).toBeFocused();
+      // The next Tab stays on Play: focus left on the page went past the screen's end, out of the window, which pauses.
+      await page.keyboard.press('Tab');
+      expect(await page.evaluate(() => document.hasFocus() && document.activeElement !== document.body)).toBe(true);
+      await page.waitForTimeout(300);
+      await expect(page.getByRole('dialog', { name: 'Paused' })).toHaveCount(0);
+    });
+
+    test('pause: each menu row shows its whole focus ring, not cut off by the menu or painted over by the next row', async ({ page }) => {
+      known(name, 'pause-focus');
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, holdMode: 'tap' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 8, tempo: 60 } } });
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      if (desktopLayout) await page.keyboard.press('Escape');
+      else await page.getByRole('button', { name: 'Pause', exact: true }).click();
+      const menu = page.getByRole('dialog', { name: 'Paused' }).locator('.menu');
+      await expect(menu).toBeVisible();
+      for (const row of await menu.getByRole('button').all()) {
+        await expectFocusRing(row);
+        const over = await row.evaluate((node) => {
+          const style = getComputedStyle(node);
+          const ring = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+          const r = node.getBoundingClientRect();
+          // A later row that reaches into the ring paints over it, unless the focused row is lifted above it.
+          const lifted = style.position !== 'static' && style.zIndex !== 'auto';
+          let next = node.nextElementSibling;
+          for (; next; next = next.nextElementSibling) {
+            const b = next.getBoundingClientRect();
+            if (b.top < r.bottom + ring && b.bottom > r.top - ring && b.left < r.right + ring && b.right > r.left - ring) break;
+          }
+          return next && !lifted ? (next.textContent ?? '').trim() : null;
+        });
+        expect(over, 'the focus ring is painted over by').toBeNull();
+      }
+    });
+
+    /**
+     * Phones: Setup's Start (Use … on the key lists) stays at the bottom of the screen while the page scrolls under it,
+     * and a control reached with Tab is scrolled above it, not left under it (scroll-padding-bottom, DESIGN.md §6.4).
+     */
+    if (portraitLayout && !tabletLayout) {
+      for (const [hash, more] of [['#/setup', false], ['#/setup', true], ['#/notes', false], ['#/notes/key', false], ['#/scales/setup', false], ['#/scales/key', false]] as const) {
+        test(`${hash}${more ? ' with More options' : ''}: Tab never leaves a control under the sticky Start button`, async ({ page }) => {
+          known(name, 'tab-above-start' + hash);
+          await page.goto('./' + hash);
+          await page.evaluate(() => document.fonts.ready.then(() => undefined));
+          if (more) {
+            await page.getByRole('button', { name: 'More options' }).click();
+            await expect(page.locator('#setup-more')).toHaveCSS('opacity', '1');
+          }
+          const start = page.locator('.page .start-btn');
+          for (let i = 0; i < 80; i++) {
+            await page.keyboard.press('Tab');
+            const where = await page.evaluate(() => {
+              const el = document.activeElement as HTMLElement | null;
+              const btn = document.querySelector('.page .start-btn');
+              if (!el || !btn || !el.closest('.page')) return 'outside';
+              if (el === btn) return 'start';
+              const r = el.getBoundingClientRect();
+              const covered = r.bottom > btn.getBoundingClientRect().top + 1;
+              return covered ? 'covered: ' + (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim() : 'ok';
+            });
+            if (where === 'start') break;
+            expect(where, 'a focused control under the Start button').not.toMatch(/^covered/);
+          }
+          await expect(start).toBeFocused();
+        });
+      }
+    }
 
     /**
      * Accounts, and the admin's Feedback reports (no board yet: built from Settings' design language). The API is mocked;
@@ -1600,6 +3286,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('settings and the accounts list with a long name and email: they wrap inside the row', async ({ page }) => {
+        known(name, 'settings-long-email');
+        // No break point in 65 characters, as some real addresses have, and a one-word name of 62 (up to 80 may be): each
+        // wider than the row's words at every size, a desktop's too, so neither fits without wrapping.
+        const long = { name: 'Wilhelminaalexandrinejohannesmariavandenbroeckevanoranjenassau', email: 'averyveryverylongemailaddressforateacheratschool1@example.invalid' };
+        const me = { ...ME_ADMIN, ...long };
+        await mockApi(page, adminApi(ACCOUNTS.map((a) => (a.id === me.id ? { ...a, ...long } : a)), me));
+        await page.goto('./#/settings');
+        const row = account(page).getByRole('link', { name: new RegExp('^' + long.name) });
+        await expect(row).toContainText(long.email);
+        await expectWordsInRow(row);
+        await expectNoSideScroll(page);
+        await account(page).getByRole('link', { name: /^Accounts/ }).click();
+        const own = page.locator('a.acct-row').filter({ hasText: long.email });
+        await expect(own).toContainText(long.name + ' (you)');
+        await expectWordsInRow(own);
+        await expectNoSideScroll(page);
+      });
+
       test('settings and account with no answer from the API: the note, and Try again in reach', async ({ page }) => {
         known(name, 'account-offline');
         await seedAccount(page, ME_MEMBER);
@@ -1647,6 +3352,25 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('sign in after a request found the session ended: the line over the form, and the form in reach', async ({ page }) => {
+        known(name, 'signin-ended');
+        await mockApi(page, { ...MEMBER, 'GET /me/export': apiError('unauthenticated', 401) });
+        await page.goto('./#/account');
+        await page.getByRole('button', { name: /^Download my data/ }).click();
+        await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+        const line = page.locator('.hint-box');
+        await expect(line).toHaveText('You were signed out, so nothing was changed. Sign in again to go on.');
+        await expectNotSqueezed(line);
+        await expectNoOverlap(line, page.locator('.acct-head'));
+        await expectNoOverlap(line, page.locator('.acct-form'));
+        await expectClickable(page.getByLabel('Email'));
+        await expectClickable(page.getByLabel('Password', { exact: true }));
+        await expectClickable(page.getByRole('button', { name: 'Sign in' }));
+        await expectFieldsFit(page);
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
       test('accept invite: the name, a new password and Create account', async ({ page }) => {
         known(name, 'invite');
         await mockApi(page, { ...SIGNED_OUT, 'POST /auth/invite/check': { json: INVITE_LINK }, 'POST /auth/invite/accept': apiError('password_common', 422) });
@@ -1675,6 +3399,45 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectTouchHeight(page.getByRole('link', { name: 'Home', exact: true }));
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
+      });
+
+      test('accept invite with someone else signed in: who is, and Sign out with its choice in reach', async ({ page }) => {
+        known(name, 'invite-signed-in');
+        await seedAccount(page, ME_MEMBER);
+        await mockApi(page, { ...MEMBER, 'POST /auth/invite/check': { json: INVITE_LINK } });
+        await page.goto('./#/invite/' + TOKEN);
+        await expect(page.getByRole('heading', { level: 1, name: 'Welcome, Lies Bakker' })).toBeVisible();
+        const note = page.getByText("You're signed in as Sam Jansen on this device. Sign out first to use this link. Progress you keep on this device is added to this link's account too.");
+        await expect(note).toBeVisible();
+        await expect(mainNav(page)).toHaveCount(0);
+        const signOut = page.getByRole('button', { name: 'Sign out' });
+        await expectClickable(signOut);
+        await expectTouchHeight(signOut);
+        await expectNoOverlap(note, signOut);
+        await signOut.click();
+        const confirm = page.getByRole('alertdialog', { name: 'Sign out on this device?' });
+        for (const label of ['Keep', 'Remove', 'Cancel', 'Sign out']) {
+          await expectClickable(confirm.getByRole('button', { name: label }));
+          await expectTouchHeight(confirm.getByRole('button', { name: label }));
+        }
+        await expectNotSqueezed(page.locator('.set-card'));
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      });
+
+      test('invite and new password links with someone signed in whose name is one long word: the note wraps in its card', async ({ page }) => {
+        known(name, 'link-signed-in-long-name');
+        // As long as a name may be (80 characters), in the widest letter, with no space to break at.
+        const long = { ...ME_MEMBER, name: 'W'.repeat(80) };
+        await seedAccount(page, long);
+        await mockApi(page, { ...signedInAs(long), 'POST /auth/invite/check': { json: INVITE_LINK }, 'POST /auth/reset/check': { json: INVITE_LINK } });
+        for (const hash of ['#/invite/' + TOKEN, '#/reset/' + TOKEN]) {
+          await page.goto('./' + hash);
+          const card = page.locator('.set-card');
+          await expect(card.locator('.acct-lead')).toContainText(long.name);
+          await expectWordsInRow(card, '.acct-lead');
+          await expectNoSideScroll(page);
+        }
       });
 
       test('new password: one field and Save password', async ({ page }) => {
@@ -1872,6 +3635,55 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('admin one account and invite with a long one-word role: its name and description wrap left of the switch', async ({ page }) => {
+        known(name, 'admin-long-role');
+        const sam = { ...ACCOUNTS[1], roles: [LONG_ROLE.id] };
+        await mockApi(page, { ...adminApi(ACCOUNTS.map((a) => (a.id === sam.id ? sam : a))), 'GET /admin/roles': { json: { roles: [LONG_ROLE] } } });
+        for (const hash of ['#/admin/account/' + sam.id, '#/admin/invite']) {
+          await page.goto('./' + hash);
+          const row = page.getByRole('switch', { name: LONG_ROLE.name });
+          await expect(row).toBeVisible();
+          await expectWordsInRow(row, '.toggle-row-text');
+          await expectNoSideScroll(page);
+        }
+      });
+
+      test('admin one account with a long one-word name: Block, Delete and Cancel invite, and the list\'s line after, wrap in their cards', async ({ page }) => {
+        known(name, 'admin-long-name');
+        // As long as a name may be (80 characters), in the widest letter, with no space to break at.
+        const long = 'W'.repeat(80);
+        const lies = { ...ACCOUNTS[0], name: long };
+        const sam = { ...ACCOUNTS[1], name: long };
+        await mockApi(page, { ...adminApi([lies, sam, ...ACCOUNTS.slice(2)]), 'DELETE /admin/accounts/:id': { status: 204 } });
+        await page.goto('./#/admin/account/' + sam.id);
+        for (const [button, question] of [[/^Block/, `Block ${long}?`], [/^Delete account/, `Delete ${long}'s account?`]] as const) {
+          await page.getByRole('button', { name: button }).click();
+          const confirm = page.getByRole('alertdialog', { name: question });
+          await expectWordsInRow(confirm, '.reset-text');
+          await expectNoSideScroll(page);
+          await confirm.getByRole('button', { name: 'Cancel' }).click();
+        }
+        await page.goto('./#/admin/account/' + lies.id);
+        await page.getByRole('button', { name: /^Cancel invite/ }).click();
+        const confirm = page.getByRole('alertdialog', { name: `Cancel the invite for ${long}?` });
+        await expectWordsInRow(confirm, '.reset-text');
+        await confirm.getByRole('button', { name: 'Cancel invite' }).click();
+        await expect(page.locator('.acct-card--status')).toHaveText(`The invite for ${long} was canceled.`);
+        await expectWordsInRow(page.locator('.page'), '.acct-card--status');
+        await expectNoSideScroll(page);
+      });
+
+      test('own account with a long one-word role: the roles line under Profile wraps in its card', async ({ page }) => {
+        known(name, 'account-long-role');
+        // The member who has the role sees the name an admin gave it.
+        await mockApi(page, signedInAs({ ...ME_MEMBER, roles: [LONG_ROLE.id], roleNames: { [LONG_ROLE.id]: LONG_ROLE.name } }));
+        await page.goto('./#/account');
+        const profile = page.getByRole('region', { name: 'Profile' });
+        await expect(profile.locator('.row-note')).toContainText(LONG_ROLE.name);
+        await expectWordsInRow(profile, '.row-note');
+        await expectNoSideScroll(page);
+      });
+
       test('admin one account: a second password link that fails, with the earlier one dimmed in its place', async ({ page }) => {
         known(name, 'admin-account-link-failed');
         await failedSecondLink(page, 'New password link',
@@ -2053,6 +3865,18 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoSideScroll(page);
       });
 
+      test('admin one feedback report: a long one-word name, of who sent it and who reviewed it, wraps inside its card', async ({ page }) => {
+        // As long as a name may be (80 characters), in the widest letter, with no space to break at.
+        const long = { id: ME_MEMBER.id, name: 'W'.repeat(80) };
+        const report = { ...FEEDBACK[3], author: long, reviewer: long };
+        await mockApi(page, { ...ADMIN, ...feedbackServer([report]).routes });
+        await page.goto('./#/admin/feedback/' + report.id);
+        await expect(page.getByRole('region', { name: 'Sent', exact: true })).toContainText(long.name);
+        await expect(page.getByRole('region', { name: 'Review', exact: true })).toContainText('Reviewed by ' + long.name);
+        await expectFactsInCards(page);
+        await expectNoSideScroll(page);
+      });
+
       test('admin feedback: no access, a list that does not come, no reports yet, and a report that is gone', async ({ page }) => {
         known(name, 'admin-feedback-states');
         const api = await mockApi(page, { ...MEMBER, ...feedbackServer().routes });
@@ -2115,6 +3939,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       ['#/calibrate', 'Timing kalibreren', 'Tikpad'],
       ['#/notes', 'Noten lezen', 'Start · '],
       ['#/notes/key', 'Toonsoort', 'Kies '],
+      ['#/scales/key', 'Toonsoort', 'Kies '],
       ['#/learn', 'Leren', ''],
       ['#/learn/1', 'Puls en maat', ''],
       ['#/learn/2', 'Notenwaarden', 'Rusten'],
@@ -2148,10 +3973,52 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
           });
           expect(width, 'the start prompt fits on screen').toBeLessThanOrEqual(VIEWPORTS[name].width - 32);
         }
+        if (hash.startsWith('#/learn/')) {
+          await expectCountsApart(page);
+          await expectLearnWordsApart(page);
+        }
+        if (hash.endsWith('/key')) await expectKeyNamesFit(page);
+        if (hash === '#/changelog') {
+          // The latest release first, then one with a fix (its chips are in the list on a phone, on the card on desktop).
+          await expectChangelogFits(page);
+          await page.getByRole('button', { name: /^0\.17\.1/ }).click();
+          await expectChangelogFits(page);
+        }
+        await expectHeadFits(page);
         await expectNoClippedLabels(page);
         await expectNoSideScroll(page);
       });
     }
+
+    test('#/scales/setup with 15 keys chosen: the keys fit their control', async ({ page }) => {
+      known(name, 'nl#/scales/setup-pick');
+      // "15 toonsoorten" is wider than a third of the control at 320 px: it takes a second line instead of running out.
+      const keys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'];
+      await seed(page, { progress: { scales: { settings: { keyMode: 'pick', keys, types: ['major'], input: 'piano', direction: 'up', write: 'signs', showSteps: true, playNotes: false }, stars: {} } } });
+      await page.goto('./#/scales/setup');
+      // A fresh load, so the app reads the settings just seeded.
+      await page.reload();
+      await expect(page.getByRole('group', { name: 'Toonsoorten' }).getByRole('button', { name: '15 toonsoorten' })).toHaveAttribute('aria-pressed', 'true');
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('scales: G♯ harmonic minor up and down, answered to the end, fits', async ({ page }) => {
+      known(name, 'nl-scales-up-down');
+      // The longest Dutch lines: why a note is wrong, the Tip and the done line with all 15 notes, beside the tallest
+      // staff of the long scales (G♯ harmonisch mineur), with the signs and on the piano.
+      for (const input of ['names', 'piano']) {
+        await seed(page, { progress: { scales: { settings: { keyMode: 'one', keys: ['B'], types: ['harmonic'], input, direction: 'upDown', write: 'signs', showSteps: true, playNotes: false }, stars: {} } } });
+        await page.goto('./#/scales/setup');
+        // A fresh load, so the app reads the settings just seeded.
+        await page.reload();
+        await page.getByRole('button', { name: 'Start · 1 ladder' }).click();
+        await expect(page.getByText('G♯ harmonisch mineur', { exact: true })).toBeVisible();
+        await answerUpAndDown(page, name, { key: 'B', type: 'harmonic' }, input, { hint: 'Tip', next: /^Volgende ladder/, skip: 'Naar de samenvatting' });
+        await expectNoClippedLabels(page);
+        await expectNoSideScroll(page);
+      }
+    });
 
     test('#/progress with the sample player: every view, Skill levels and one skill', async ({ page }) => {
       known(name, 'nl#/progress-rich');
@@ -2160,6 +4027,9 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.goto('./#/progress');
       await expect(page).toHaveTitle(/^Voortgang/);
       await expect(page.getByText('25 van 60 niveaus · 6 vaardigheden · 1 te herhalen')).toBeVisible();
+      // The streak chip beside "Voortgang" (under it on a 320 px phone), and the achievements' names.
+      await expectHeadFits(page);
+      await expectCountsWithWords(page);
       for (const view of ['Ritme', 'Noten', 'Toonladders']) {
         const button = page.getByRole('group', { name: 'Voortgang tonen voor' }).getByRole('button', { name: view, exact: true });
         await button.click();
@@ -2175,6 +4045,41 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await page.getByRole('link', { name: /^Ritme lezen: niveau 6 van 10\./ }).click();
       await expect(page.getByRole('heading', { level: 1, name: 'Ritme lezen' })).toBeVisible();
       await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('#/progress Scales: the minor scales\' column heads stay apart, and each key on one line', async ({ page }) => {
+      known(name, 'nl#/progress-minors');
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      // The widest key names ("A♯ mineur") give the forms' columns the least room; Natuurlijk Harmonisch Melodisch ran
+      // together on a 320 px phone.
+      const progress = richProgress();
+      for (const key of ['A#', 'G#', 'D#', 'Bb', 'Eb', 'Ab']) progress.scales.stars[key + '-natural'] = 1;
+      await seed(page, { progress, prefs: { ...PROGRESS_PREFS, language: 'nl' } });
+      await page.goto('./#/progress');
+      await page.getByRole('group', { name: 'Voortgang tonen voor' }).getByRole('button', { name: 'Toonladders', exact: true }).click();
+      const table = page.locator('.prog-minors');
+      await expect(table.locator('tbody tr')).toHaveCount(10);
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const out = await table.evaluate((el) => {
+        const lines = (x: Element): DOMRect[] => {
+          const range = document.createRange();
+          range.selectNodeContents(x);
+          return [...range.getClientRects()].filter((r) => r.width > 0);
+        };
+        const heads = [...el.querySelectorAll('thead th')];
+        const apart = heads.slice(1).flatMap((th, i) => {
+          const gap = Math.min(...lines(th).map((r) => r.left)) - Math.max(...lines(heads[i]).map((r) => r.right));
+          return gap < 4 ? [`"${heads[i].textContent}" and "${th.textContent}" are ${gap.toFixed(1)} px apart`] : [];
+        });
+        const keys = [...el.querySelectorAll('tbody th')].flatMap((th) =>
+          new Set(lines(th).map((r) => Math.round(r.top))).size > 1 ? [`"${th.textContent}" takes two lines`] : [],
+        );
+        const card = el.closest('.prog-card')!;
+        const inside = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).paddingRight);
+        return [...apart, ...keys, ...(el.getBoundingClientRect().right > inside + 0.5 ? ['the table runs out of its card'] : [])];
+      });
+      expect(out, 'the minor scales table').toEqual([]);
       await expectNoSideScroll(page);
     });
 
@@ -2343,6 +4248,11 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('radio', { name: 'kruis' }));
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
+      // On the piano, the key labels' switch beside "Elk octaaf telt": "Geen namen" fits its segment at every size.
+      await page.getByRole('group', { name: 'Antwoord met' }).getByRole('button', { name: 'Piano' }).click();
+      await expect(page.getByRole('group', { name: 'Namen op de toetsen' })).toBeVisible();
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
     });
   });
 }
@@ -2365,6 +4275,502 @@ test.describe('the status filter at every phone width', () => {
         await expectNoSideScroll(page);
       });
     }
+  }
+});
+
+test.describe("Learn's tables and diagrams at every phone width", () => {
+  // The fixed sizes miss widths in between: Dutch "halfzwaar" ran into "licht" up to 360 px, a common Android width.
+  // One test per chapter, so they run side by side.
+  for (const language of ['en', 'nl']) {
+    for (const c of CHAPTERS) {
+      test(`${language}: chapter ${c.n}'s words stay apart from 320 to 699 px`, async ({ page }) => {
+        await seed(page, { prefs: { language, seenHowTo: true, seenHold: true } });
+        await page.setViewportSize({ width: 320, height: 800 });
+        await page.goto(`./#/learn/${c.n}`);
+        await expect(page.locator('.learn-section')).toHaveCount(c.sections.length);
+        for (let width = 320; width < 700; width += 10) {
+          await page.setViewportSize({ width, height: 800 });
+          await expectLearnWordsApart(page, `${width} px:`);
+        }
+      });
+    }
+  }
+});
+
+/**
+ * Exercise screens fit a portrait phone at every height, not only at the sizes in VIEWPORTS (DESIGN.md §9, Phone
+ * browsers). Between the short-screen steps, on phones 600–660 and 700–800 px tall (an iPhone Pro Max in Safari is
+ * 430 × 739, an iPhone mini 375 × 629, Android phones in Chrome 360 × 640 to 412 × 732), Play, Read notes and Scales ran
+ * past the screen and cut off Skip, Hint and Next note. Each screen is started once and the window resized.
+ */
+test.describe('exercise screens at phone heights between the steps', () => {
+  test.use({ hasTouch: true, viewport: VIEWPORTS.phone });
+  const SIZES = [[390, 720], [430, 739], [360, 700], [412, 790], [390, 661], [320, 661], [375, 629], [414, 622], [360, 640]] as const;
+  const each = async (page: Page, check: () => Promise<void>): Promise<void> => {
+    for (const [width, height] of SIZES) {
+      await page.setViewportSize({ width, height });
+      await test.step(`${width} × ${height}`, check);
+    }
+  };
+
+  test('play: eight bars with the pendulum, the pad and Skip in view', async ({ page }) => {
+    await seedRun(page, { ...QUARTERS, notes: ['quarter', 'eighth'], rests: ['quarter'], bars: 8, tempo: 60 }, 3, { metronomeLook: 'analog' });
+    await page.goto('./#/play');
+    await page.getByRole('dialog', { name: 'Ready?' }).getByRole('button', { name: /^Start/ }).click();
+    await expect(page.locator('.beats--analog')).toBeVisible();
+    await each(page, async () => {
+      await expectFits(page);
+      await expectClickable(pad(page), { scroll: false });
+      await expectTouchHeight(pad(page));
+      await expectClickable(page.getByRole('button', { name: 'Skip to results' }), { scroll: false });
+      await expectFocusRing(page.getByRole('button', { name: 'Skip to results' }));
+    });
+  });
+
+  test('read notes: two ledger lines on the piano and a why of three lines, Hint and Next note in view', async ({ page }) => {
+    // G♭ major, seed 1234, as in "ledger lines with a key signature and a timer fit": the natural key for the first
+    // note says why in three lines on a phone.
+    const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano', range: 'ledger2', keys: ['Gb'], clefs: ['treble', 'bass'], extras: 'both', count: 30, playNotes: false, timer: 5 };
+    await seed(page, { prefs: { seenHowTo: true, seenHold: true, noteNames: 'letters' } });
+    await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 1234, focus: [] });
+    await page.goto('./#/notes/play');
+    await page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button', { name: /^G, sol/ }).dispatchEvent('click');
+    await expect(page.locator('.nfeedback')).toHaveText(/^That was G♭ \(sol♭\)/);
+    await each(page, async () => {
+      await expectFits(page);
+      await expectClickable(page.getByRole('button', { name: 'Hint' }), { scroll: false });
+      await expectClickable(page.getByRole('button', { name: /^Next note/ }), { scroll: false });
+      await expectTouchHeight(page.locator('.piano-black').first());
+    });
+  });
+
+  test('scales: up and down on the piano, its letters and Skip in view', async ({ page }) => {
+    await seed(page, {
+      prefs: { seenHowTo: true, seenHold: true },
+      progress: { scales: { settings: { keyMode: 'one', keys: ['Bb'], types: ['harmonic'], input: 'piano', direction: 'upDown', write: 'signs', showSteps: true, playNotes: false }, stars: {} } },
+    });
+    await page.goto('./#/scales/setup');
+    await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+    await expect(page.getByRole('list', { name: 'Scale degrees going down' })).toBeVisible();
+    await each(page, async () => {
+      await expectFits(page);
+      for (const label of await page.locator('.spiano .piano-label').all()) await expect(label).toBeInViewport({ ratio: 1 });
+      await expectClickable(page.getByRole('button', { name: 'Skip to summary' }), { scroll: false });
+    });
+  });
+});
+
+/**
+ * Desktop Read notes from 1100 px, where the desktop layout starts, to the 1180 px of a tablet on its side (DESIGN.md
+ * §9, Short desktop windows). Beside the 304 px stats column the answer card is narrowest there: the keyboard hint
+ * dropped under the do re mi · A B C · Piano switch (up to 1110 px on the piano, 1130 px with the name buttons in
+ * Dutch), the card grew by a line, and two ledger lines with a timer scrolled the page.
+ */
+test.describe('desktop Read notes at widths under 1180 px', () => {
+  test.use({ viewport: VIEWPORTS.desktop });
+  const WIDTHS = [1100, 1110, 1120, 1130, 1140, 1160, 1180];
+  for (const language of ['en', 'nl']) {
+    test(`${language}: the keyboard hint stays beside the switch, and the round fits`, async ({ page }) => {
+      // G♭ major with a timer, seed 1234, as in "ledger lines with a key signature and a timer fit": a treble G♭ below
+      // the second ledger line, which the natural key answers wrong, with a why of two lines.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano', range: 'ledger2', keys: ['Gb'], clefs: ['treble', 'bass'], extras: 'both', count: 30, playNotes: false, timer: 5 };
+      await seed(page, { prefs: { language, seenHowTo: true, seenHold: true, noteNames: 'letters' } });
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 1234, focus: [] });
+      await page.goto('./#/notes/play');
+      const head = page.locator('.nanswer-head');
+      const modes = head.locator('.nmode');
+      await expect(modes).toBeVisible();
+      // First, while the note's 5 s run, the natural G for G♭ (the G of A S D F G H J): the why of two lines under the
+      // timer's bar and the two ledger lines (a time-out would say less). The switch and the hint stay as they were.
+      await page.keyboard.press('g');
+      await expect(page.locator('.nfeedback')).toHaveText(language === 'nl' ? /^Dat was G♭ \(sol♭\)/ : /^That was G♭ \(sol♭\)/);
+      const expectBeside = async (where: string): Promise<void> => {
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        for (const width of WIDTHS) {
+          await page.setViewportSize({ width, height: 800 });
+          const [row, mode, hint] = [(await head.boundingBox())!, (await modes.boundingBox())!, (await head.locator('.muted-text').boundingBox())!];
+          expect(hint.y, `${where} at ${width} px: the hint beside the switch`).toBeLessThan(mode.y + mode.height);
+          expect(hint.height, `${where} at ${width} px: the hint on one line`).toBeLessThan(24);
+          expect(hint.x + hint.width, `${where} at ${width} px: the hint inside the card`).toBeLessThanOrEqual(row.x + row.width + 0.5);
+        }
+        await expectNoClippedLabels(page);
+      };
+      await expect(page.locator('.piano')).toBeVisible();
+      await expectBeside('the piano');
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 800 });
+        await test.step(`${width} × 800`, async () => {
+          await expectFits(page);
+          await expect(page.locator('.nanswer')).toBeInViewport({ ratio: 1 });
+        });
+      }
+      // The name buttons' hint is the longest, in Dutch ("Typ de letter; druk eerst op = voor ♯, 0 voor ♮ of − voor ♭").
+      await modes.getByRole('button', { name: 'A B C' }).click();
+      await expect(page.locator('.name-grid')).toBeVisible();
+      await expectBeside('the name buttons');
+    });
+  }
+});
+
+/**
+ * In forced colors, whether each element is drawn and whether two look the same, by its computed (forced) colours: its
+ * fill (none when it is the page's), its edge, its ring and its text colour; and whether each is filled with a given
+ * system colour. A selector may end in ::before.
+ */
+function forcedLooks(page: Page): {
+  expectDrawn(where: string, selectors: string[]): Promise<void>;
+  expectDistinct(where: string, selectors: string[]): Promise<void>;
+  expectFill(where: string, selectors: string[], system: string): Promise<void>;
+} {
+  /** How each element is drawn; null when there is none on the screen. */
+  const looks = (selectors: string[]): Promise<(string | null)[]> =>
+    page.evaluate((sels) => {
+      const ground = getComputedStyle(document.body).backgroundColor;
+      return sels.map((sel) => {
+        const [box, pseudo] = sel.split(/(?=::before$)/);
+        const el = document.querySelector(box);
+        if (!el) return null;
+        const s = getComputedStyle(el, pseudo ?? null);
+        const fill = s.backgroundColor === ground || /^rgba\(.*, 0\)$|transparent/.test(s.backgroundColor) ? 'none' : s.backgroundColor;
+        const edge = s.borderTopStyle === 'none' || parseFloat(s.borderTopWidth) === 0 ? 'none' : `${s.borderTopStyle} ${s.borderTopWidth} ${s.borderTopColor}`;
+        const ring = s.outlineStyle === 'none' ? 'none' : `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor}`;
+        return `fill ${fill}, edge ${edge}, ring ${ring}, text ${s.color}`;
+      });
+    }, selectors);
+  return {
+    /** Each is on the screen and drawn: a fill, an edge or a ring. */
+    async expectDrawn(where, selectors) {
+      const all = await looks(selectors);
+      selectors.forEach((sel, i) => {
+        expect(all[i], `${where}: ${sel} is on the screen`).not.toBeNull();
+        expect(all[i], `${where}: ${sel} is drawn`).not.toMatch(/^fill none, edge none, ring none/);
+      });
+    },
+    /** Each is on the screen, and no two look the same. */
+    async expectDistinct(where, selectors) {
+      const all = await looks(selectors);
+      selectors.forEach((sel, i) => expect(all[i], `${where}: ${sel} is on the screen`).not.toBeNull());
+      for (let i = 0; i < selectors.length; i++) {
+        for (let j = i + 1; j < selectors.length; j++) expect(all[i], `${where}: ${selectors[i]} looks like ${selectors[j]}`).not.toBe(all[j]);
+      }
+    },
+    /**
+     * Each is on the screen and filled with the system colour (CanvasText, Highlight, …): the fill a probe that the
+     * browser does not force computes for it.
+     */
+    async expectFill(where, selectors, system) {
+      const { want, fills } = await page.evaluate(
+        ({ sels, system }) => {
+          const probe = document.createElement('div');
+          probe.style.cssText = `forced-color-adjust: none; background: ${system};`;
+          document.body.append(probe);
+          const want = getComputedStyle(probe).backgroundColor;
+          probe.remove();
+          const fills = sels.map((sel) => {
+            const [box, pseudo] = sel.split(/(?=::before$)/);
+            const el = document.querySelector(box);
+            return el ? getComputedStyle(el, pseudo ?? null).backgroundColor : null;
+          });
+          return { want, fills };
+        },
+        { sels: selectors, system },
+      );
+      selectors.forEach((sel, i) => {
+        expect(fills[i], `${where}: ${sel} is on the screen`).not.toBeNull();
+        expect(fills[i], `${where}: ${sel} is filled in ${system}`).toBe(want);
+      });
+    },
+  };
+}
+
+/**
+ * Forced colors (a Windows contrast theme) paint every background in the page's colour and all text and borders in one
+ * colour (DESIGN.md §11). A state shown only by a fill or a colour then disappears; each must still show: the chosen
+ * option of every group beside one that is not chosen, a switch's knob and edge, a filled button's shape, Play's beat,
+ * Read notes' right and wrong answers, a piano's black keys and the Learn piano's marked keys. Compared by what the
+ * browser paints (the computed colours are the forced ones).
+ */
+test.describe('forced colors (a contrast theme)', () => {
+  test.use({ viewport: VIEWPORTS.phone, hasTouch: true });
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`${scheme}: the chosen options, the switches, the filled buttons, the beat and the answers still show`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, forcedColors: 'active' });
+      await seed(page, { prefs: { seenHowTo: true, seenHold: true, noteNames: 'letters' }, progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, bars: 4, tempo: 60 } } });
+      const lost = (): Promise<string[]> =>
+        page.evaluate(() => {
+          const look = (el: Element): string => {
+            const s = getComputedStyle(el);
+            return [s.backgroundColor, s.color, s.borderTopColor, s.borderTopStyle, s.borderTopWidth, s.outlineStyle, s.textDecorationLine].join(' ');
+          };
+          const ground = getComputedStyle(document.body).backgroundColor;
+          const out: string[] = [];
+          // Each chosen option beside one of its group that is not chosen (a segment, a chip, a sign, a key on the circle).
+          for (const on of document.querySelectorAll('[aria-pressed=true], [role=radio][aria-checked=true]')) {
+            const others = on.matches('[role=radio]') ? '[role=radio][aria-checked=false]' : '[aria-pressed=false]';
+            let off: Element | null = null;
+            for (let box = on.parentElement, up = 0; box && !off && up < 3; box = box.parentElement, up++) off = box.querySelector(others);
+            const name = on.getAttribute('aria-label') || on.textContent;
+            if (off && look(on) === look(off)) out.push(`${name}: the chosen option looks like the others`);
+          }
+          for (const track of document.querySelectorAll('.switch')) {
+            const knob = getComputedStyle(track.querySelector('.switch-knob')!);
+            const s = getComputedStyle(track);
+            if (knob.backgroundColor === s.backgroundColor) out.push('a switch: its knob is not drawn');
+            if (s.backgroundColor === ground && s.outlineStyle === 'none' && s.borderTopStyle === 'none') out.push('a switch: its track is not drawn');
+          }
+          for (const btn of document.querySelectorAll('.btn--accent, .btn--ink')) {
+            const s = getComputedStyle(btn);
+            if (s.backgroundColor === ground && s.borderTopStyle === 'none') out.push(`${btn.textContent}: drawn as plain text`);
+          }
+          // The beat's circle, filled, or a ring in the count-in.
+          const dot = document.querySelector('.beats-dot');
+          const fill = dot && getComputedStyle(dot);
+          if (fill && (fill.backgroundColor === ground || /, 0\)$/.test(fill.backgroundColor)) && fill.outlineStyle === 'none') out.push("Play's beat is not marked");
+          for (const kind of ['.name-btn', '.piano-white', '.piano-black']) {
+            const plain = document.querySelector(`${kind}:not(.is-right):not(.is-wrong):not(.is-marked)`);
+            for (const mark of ['is-right', 'is-wrong', 'is-marked']) {
+              const el = document.querySelector(`${kind}.${mark}`);
+              if (el && plain && look(el) === look(plain)) out.push(`${kind} ${mark}: looks like the others`);
+            }
+          }
+          // A piano's black key, drawn only with its fill: it must differ from the page or have an edge.
+          for (const key of document.querySelectorAll('.piano-black')) {
+            const s = getComputedStyle(key);
+            const filled = s.backgroundColor !== ground && !/, 0\)$|transparent/.test(s.backgroundColor);
+            if (!filled && (s.borderTopStyle === 'none' || parseFloat(s.borderTopWidth) === 0) && s.outlineStyle === 'none') {
+              out.push(`${key.getAttribute('aria-label')}: the black key is not drawn`);
+            }
+          }
+          return out;
+        });
+      for (const hash of ['#/setup', '#/settings', '#/notes', '#/scales']) {
+        await page.goto('./' + hash);
+        await expect(page.locator('.page').getByRole('button').first()).toBeVisible();
+        await expect.poll(lost, hash).toEqual([]);
+      }
+      // Read notes: a wrong name marks it and the right one.
+      const settings: NoteSettings = { ...DEFAULT_NOTE_SETTINGS };
+      const [first] = generateRound(settings, 7);
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings, seed: 7, focus: [] });
+      // A new page load, so the app reads the round just seeded (from the app, a new hash alone keeps its state).
+      await page.goto('about:blank');
+      await page.goto('./#/notes/play');
+      const wrong = letterOf(first.step) === 'C' ? 'D' : 'C';
+      await page.getByRole('group', { name: 'Note names' }).getByRole('button', { name: new RegExp(`^${wrong}(,|$)`) }).click();
+      await expect(page.locator('.name-btn.is-wrong')).toHaveCount(1);
+      await expect(page.locator('.name-btn.is-right')).toHaveCount(1);
+      await expect.poll(lost, 'Read notes').toEqual([]);
+      // Read notes on the piano: its black keys, and a wrong black key and the right white one marked. In C major with
+      // no signs every note is a white key, so the first black key is wrong.
+      const piano: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, input: 'piano' };
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings: piano, seed: 7, focus: [] });
+      await page.goto('about:blank');
+      await page.goto('./#/notes/play');
+      const black = page.locator('.piano-black');
+      await expect(black).toHaveCount(5);
+      await expect.poll(lost, 'the piano').toEqual([]);
+      await black.first().click();
+      await expect(page.locator('.piano-black.is-wrong')).toHaveCount(1);
+      await expect(page.locator('.piano-white.is-right')).toHaveCount(1);
+      await expect.poll(lost, 'the piano, answered').toEqual([]);
+      // Learn's piano diagram: the half steps' keys (E, F, B, C) are marked.
+      await page.goto('./#/learn/9?s=9.2');
+      await expect(page.locator('.piano-white.is-marked')).toHaveCount(4);
+      await expect.poll(lost, "Learn's piano").toEqual([]);
+      // Play's beat counter: its ring in the count-in, then its circle on bar 1.
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.locator('.beats.is-count-in')).toHaveCount(1);
+      expect(await lost(), 'the count-in').toEqual([]);
+      await expect(page.getByRole('img', { name: /^Counting beat 1 / })).toBeVisible({ timeout: 8000 });
+      expect(await lost(), 'bar 1').toEqual([]);
+      // Scales on the piano: D major's F♯ and C♯ are black keys.
+      await seed(page, {
+        prefs: { seenHowTo: true, seenHold: true },
+        progress: { scales: { settings: { keyMode: 'one', keys: ['D'], types: ['major'], input: 'piano', direction: 'up', write: 'signs', showSteps: true, playNotes: false }, stars: {} } },
+      });
+      await page.goto('about:blank');
+      await page.goto('./#/scales/setup');
+      await page.getByRole('button', { name: 'Start · 1 scale' }).click();
+      await expect(page.locator('.spiano .piano-black').first()).toBeVisible();
+      await expect.poll(lost, 'the Scales piano').toEqual([]);
+    });
+
+    test(`${scheme}: the stars not earned, the circle's levels, Progress's calendar, bars and meters, and the XP bar still show`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, forcedColors: 'active' });
+      await page.clock.setFixedTime(PROGRESS_CLOCK);
+      // The boards' sample player: C, G and F major at ★★★, D and B♭ at ★★, A and E♭ at ★; a streak, missed days, XP.
+      await seed(page, { progress: richProgress(), prefs: { ...PROGRESS_PREFS, seenHowTo: true, seenHold: true, seenEchoHowTo: true } });
+      const { expectDrawn, expectDistinct } = forcedLooks(page);
+
+      // The Scales hub: each level of the circle (none, ★, ★★, ★★★) and its legend's dots; the selected key's stars.
+      await page.goto('./#/scales');
+      const circle = page.getByRole('group', { name: 'Circle of fifths, major keys' });
+      await circle.getByRole('button', { name: /^D major/ }).click();
+      await expect(page.getByRole('button', { name: 'Practice D major' })).toBeVisible();
+      const key = (level: number): string => `.circle-key--major.is-l${level}:not(.is-sel)`;
+      await expectDistinct('the circle', [key(0), key(1), key(2), key(3)]);
+      await expectDrawn("the circle's legend", ['.hub-dot.is-l1', '.hub-dot.is-l2', '.hub-dot.is-l3']);
+      await expectDistinct("the circle's legend", ['.hub-dot.is-l1', '.hub-dot.is-l2', '.hub-dot.is-l3']);
+      // D major's two stars of three: the third is drawn outlined, not as a star in another colour.
+      await expect(page.getByRole('img', { name: '2 of 3 stars' }).first()).toHaveText('★★☆');
+
+      // Progress: the streak calendar's days and its legend, the XP bar and the skill map's bands.
+      await page.goto('./#/progress');
+      await expect(page.locator('.prog-cal')).toBeVisible();
+      const day = (state: string): string => `.prog-cal-day.is-${state}:not(.is-now)`;
+      await expectDistinct('the calendar', [day('streak'), day('practised'), day('missed'), day('future')]);
+      const swatch = (state: string): string => `.prog-streak .prog-swatch.is-${state}`;
+      await expectDrawn("the calendar's legend", [swatch('streak'), swatch('practised'), swatch('missed'), swatch('now'), '.prog-streak-dot']);
+      await expectDistinct("the calendar's legend", [swatch('streak'), swatch('practised'), swatch('missed')]);
+      await expectDrawn('the XP bar', ['.prog-xp', '.prog-xp > div']);
+      await expectDistinct('the XP bar', ['.prog-xp', '.prog-xp > div']);
+      await expectDistinct('the skill map', ['.prog-cell.is-high', '.prog-cell.is-mid', '.prog-cell.is-weak', '.prog-cell.is-locked']);
+      await expectDrawn("the skill map's legend", ['.prog-map-legend .prog-swatch.is-high', '.prog-map-legend .prog-swatch.is-mid', '.prog-map-legend .prog-swatch.is-weak']);
+      await expectDistinct("the skill map's legend", ['.prog-map-legend .prog-swatch.is-high', '.prog-map-legend .prog-swatch.is-mid', '.prog-map-legend .prog-swatch.is-weak']);
+      await expectDistinct('the achievements', ['.prog-badge.is-earned .prog-badge-icon', '.prog-badge:not(.is-earned) .prog-badge-icon']);
+      await page.getByRole('group', { name: 'Show progress for' }).getByRole('button', { name: 'Notes' }).click();
+      await expectDrawn('accuracy per clef', ['.prog-clef .prog-meter', '.prog-clef .prog-meter > span']);
+      await expectDistinct('accuracy per clef', ['.prog-clef .prog-meter', '.prog-clef .prog-meter > span']);
+      await page.getByRole('group', { name: 'Show progress for' }).getByRole('button', { name: 'Scales' }).click();
+      await expectDrawn('the major scales', ['.prog-track', '.prog-track > div']);
+      await expectDistinct('the major scales', ['.prog-track', '.prog-track > div', '.prog-major.is-2', '.prog-major.is-0']);
+
+      // Skill levels: each skill's ten segments (passed, the next one's part, still to come) and the legend.
+      await page.goto('./#/progress/skills');
+      await expect(page.locator('.skill-seg').first()).toBeVisible();
+      await expectDrawn('the level meters', ['.skill-seg', '.skill-seg-fill:not(.is-part)', '.skill-seg-fill.is-part', '.skill-swatch:not(.is-part)', '.skill-swatch.is-part']);
+      await expectDistinct('the level meters', ['.skill-seg-fill:not(.is-part)', '.skill-seg-fill.is-part']);
+      await expectDistinct("the meters' legend", ['.skill-swatch:not(.is-part)', '.skill-swatch.is-part']);
+      // One skill: its meter, the checks' marks and bars, the 12 weeks' bars, and its ladder.
+      await page.goto('./#/progress/skills/treble');
+      await expect(page.locator('.skill-hist')).toBeVisible();
+      await expectDrawn('Treble clef', ['.skill-bar', '.skill-check-mark', '.skill-check-bar', '.skill-check-bar > span', '.skill-hist > span:not(.is-now)', '.skill-hist > span.is-now']);
+      await expectDistinct("Treble clef's weeks", ['.skill-hist > span:not(.is-now)', '.skill-hist > span.is-now']);
+      await expectDistinct("Treble clef's levels", ['.skill-ladder li.is-passed .skill-ladder-n', '.skill-ladder li.is-next .skill-ladder-n', '.skill-ladder li.is-later .skill-ladder-n']);
+
+      // Home's level sheet: the XP bar.
+      await page.goto('./#/');
+      await page.locator('.level-chip').click();
+      await expectDrawn("the level sheet's XP bar", ['.xp-bar', '.xp-bar > div']);
+      await expectDistinct("the level sheet's XP bar", ['.xp-bar', '.xp-bar > div']);
+
+      // Learn: the tab's progress bar (chapters 1–4 read), 1.1's beats on their time line and the play buttons' circles,
+      // 1.3's strong, medium and weak beats, and 5.3's beat grid, whose held counts ("(&)") are outlined otherwise.
+      await page.goto('./#/learn');
+      await expectDrawn('the Learn progress bar', ['.learn-progress-bar', '.learn-progress-bar > div']);
+      await expectDistinct('the Learn progress bar', ['.learn-progress-bar', '.learn-progress-bar > div']);
+      await page.goto('./#/learn/1?s=1.1');
+      await expect(page.locator('.learn-pulse-dot').first()).toBeVisible();
+      await expectDrawn('the 1.1 pulse', ['.learn-pulse-dot', '.learn-pulse-row:not(.learn-pulse-axis) .learn-pulse-track::before', '.learn-play-dot']);
+      await expectDistinct('the 1.1 pulse', ['.learn-pulse-dot', '.learn-play-dot']);
+      const accent = (level: string): string => `.learn-accent${level} .learn-accent-bar`;
+      await expectDrawn('the 1.3 beats', [accent('.is-strong'), accent('.is-medium'), accent('.is-weak')]);
+      await expectDistinct('the 1.3 beats', [accent('.is-strong'), accent('.is-weak')]);
+      await page.goto('./#/learn/5?s=5.3');
+      await expect(page.locator('.learn-grid-cell.is-held').first()).toBeVisible();
+      await expectDrawn('the beat grid', ['.learn-grid-cell:not(.is-held)', '.learn-grid-cell.is-held']);
+      await expectDistinct('the beat grid', ['.learn-grid-cell:not(.is-held)', '.learn-grid-cell.is-held']);
+
+      // Read notes with a time per note: the time left under the staff and the round's progress beside the ✕; on Round
+      // done, the time chart's legend, whose dots are its bars' colours, and the bars by sign. In G major, seed 1, the
+      // first note is an F♯ from the key signature, answered F, the second one has no sign and is answered right.
+      const timed: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['G'], timer: 5, count: 10, playNotes: false };
+      const [fromKey, plain] = generateRound(timed, 1);
+      await page.addInitScript((run) => sessionStorage.setItem('muzieklab.noteRun.v1', JSON.stringify(run)), { settings: timed, seed: 1, focus: [] });
+      await page.goto('about:blank');
+      await page.goto('./#/notes/play');
+      const names = page.getByRole('group', { name: 'Note names' });
+      await names.getByRole('button', { name: new RegExp(`^${letterOf(fromKey.step)}(,|$)`) }).click();
+      await expect(page.locator('.nfeedback')).toHaveClass(/is-wrong/);
+      await expectDrawn('Read notes', ['.ntimer', '.ntimer > div', '.progress', '.progress > div']);
+      await expectDistinct('Read notes', ['.ntimer', '.ntimer > div']);
+      await expectDistinct('Read notes', ['.progress', '.progress > div']);
+      await page.getByRole('button', { name: /^Next note/ }).click();
+      await names.getByRole('button', { name: new RegExp(`^${letterOf(plain.step)}(,|$)`) }).click();
+      await expect(page.locator('.nfeedback')).toHaveClass(/is-right/);
+      await page.getByRole('button', { name: 'Skip to summary' }).click();
+      await expect(page.locator('.nchart')).toBeVisible();
+      await expect(page.locator('.nsign-bar')).toHaveCount(2);
+      await expectDrawn('the bars by sign', ['.nsign-bar', '.nsign-bar > div']);
+      await expectDistinct('the bars by sign', ['.nsign-bar', '.nsign-bar > div']);
+      await expectDrawn("the time chart's legend", ['.nlegend-dot.is-right', '.nlegend-dot.is-hint', '.nlegend-dot.is-missed']);
+      await expectDistinct("the time chart's legend", ['.nlegend-dot.is-right', '.nlegend-dot.is-hint', '.nlegend-dot.is-missed']);
+      const bars = await page.locator('.nchart-bar').evaluateAll((els) => els.map((el) => getComputedStyle(el).fill));
+      const dots = await page.locator('.nlegend-dot').evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
+      for (const fill of bars) expect(dots, "the bars' colours are the legend's").toContain(fill);
+
+      // Results: Skip, so none of the three stars is earned; each is outlined, not filled in the text's colour as an
+      // earned one is. Setup's difficulty and Play's progress bar, before.
+      await page.goto('./#/setup');
+      await expect(page.locator('.difficulty-bars')).toBeAttached();
+      const level = ['.difficulty-bars span.is-on', '.difficulty-bars span:not(.is-on)'];
+      await expectDrawn("Setup's difficulty", level);
+      await expectDistinct("Setup's difficulty", level);
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expectDrawn('Play', ['.progress', '.progress > div']);
+      await expectDistinct('Play', ['.progress', '.progress > div']);
+      await page.getByRole('button', { name: 'Skip to results' }).click();
+      await expect(page.getByRole('img', { name: '0 of 3 stars' })).toBeVisible();
+      const off = await page.locator('.score-stars-row > span').evaluateAll((stars) =>
+        stars.map((star) => {
+          const s = getComputedStyle(star);
+          return s.color !== getComputedStyle(document.body).color && parseFloat(s.webkitTextStrokeWidth) > 0;
+        }),
+      );
+      expect(off, 'the stars not earned, outlined').toEqual([true, true, true]);
+
+      // Desktop: Home's Learning path card (units done, the current one, locked ones), the Path's Notes and rhythm bar,
+      // and Play's key and the hold bar in it.
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto('./#/');
+      await expect(page.locator('.path-card-bar')).toBeVisible();
+      const units = ['.path-card-seg--done', '.path-card-seg--current', '.path-card-seg--locked'];
+      await expectDrawn("Home's Learning path card", units);
+      await expectDistinct("Home's Learning path card", units);
+      await page.goto('./#/path');
+      await expect(page.locator('.track-card-bar')).toBeVisible();
+      await expectDrawn("the Path's bar", ['.track-card-bar', '.track-card-bar > span']);
+      await expectDistinct("the Path's bar", ['.track-card-bar', '.track-card-bar > span']);
+      await page.goto('./#/setup');
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await expect(page.locator('.keycap')).toBeVisible();
+      await expectDrawn("Play's key", ['.keycap', '.keycap-bar', '.keycap-bar > span']);
+      await expectDistinct("Play's key", ['.keycap-bar', '.keycap-bar > span']);
+
+      // Echo: the pips of the plays left, one used.
+      await page.goto('./#/setup');
+      await page.getByRole('group', { name: 'Mode' }).getByRole('button', { name: 'Echo' }).click();
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await page.getByRole('button', { name: 'Play the rhythm' }).click();
+      await expect(page.locator('.echo-pips span:not(.is-on)')).toHaveCount(1);
+      const pips = ['.echo-pips span.is-on', '.echo-pips span:not(.is-on)'];
+      await expectDrawn('Echo', pips);
+      await expectDistinct('Echo', pips);
+    });
+
+    // Not in the test above: its fixed clock moves the taps' time stamps off the audio clock's clicks.
+    test(`${scheme}: Calibrate's pips and timing plot still show`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, forcedColors: 'active' });
+      const { expectDrawn, expectDistinct, expectFill } = forcedLooks(page);
+      await page.goto('./#/calibrate');
+      await expect(page.locator('.pips')).toBeAttached();
+      const ticks = ['.cal-tick--end', '.cal-tick:not(.cal-tick--end):not(.cal-tick--zero)', '.cal-tick--zero'];
+      await expectDrawn('Calibrate', ['.pips span', '.cal-axis', ...ticks]);
+      await expectFill('Calibrate', ['.cal-axis', ...ticks], 'CanvasText');
+      // Six taps in, still measuring: the pips counted, the line at the median (from three taps), and the taps' dots, the
+      // last one in the text colour (it is in ink). Right after the audio starts a synthetic tap can miss its click, so
+      // three of the six are enough.
+      await pad(page).focus();
+      await calibrateAlong(page, 6);
+      await expect.poll(() => page.locator('.cal-dot').count()).toBeGreaterThanOrEqual(3);
+      await expect(page.locator('.cal-dot.is-last')).toHaveCount(1);
+      await expectDrawn("Calibrate's taps", ['.pips span.is-on', '.cal-median-line', '.cal-dot:not(.is-last)', '.cal-dot.is-last']);
+      await expectFill("Calibrate's taps", ['.cal-median-line', '.cal-dot:not(.is-last)'], 'Highlight');
+      await expectFill("Calibrate's last tap", ['.cal-dot.is-last'], 'CanvasText');
+      await expectDistinct("Calibrate's pips", ['.pips span.is-on', '.pips span:not(.is-on)']);
+      await expectDistinct("Calibrate's dots", ['.cal-dot:not(.is-last)', '.cal-dot.is-last']);
+    });
   }
 });
 
@@ -2437,6 +4843,43 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       expect(report).toMatchObject({ kind: 'change', description: 'Say what each leniency does in milliseconds too.', context: { route: '/settings' } });
       expect(report.context.viewport).toMatchObject({ width: VIEWPORTS[name].width, height: VIEWPORTS[name].height });
       expect(report.target.text).toContain('Fair timing for most players.');
+      // The box with the scroll offset finds the spot again on the page scrolled back to its top: the page scrolls in
+      // .page, not the window.
+      const foundAgain = async (sent: FeedbackReport): Promise<void> => {
+        const top = await page.evaluate((selector) => {
+          const el = document.querySelector(selector)!;
+          for (let n = el.parentElement; n; n = n.parentElement) n.scrollTop = 0;
+          return el.getBoundingClientRect().y;
+        }, sent.target.selector);
+        expect(Math.abs(sent.target.rect.y + sent.target.scroll.y - top), `box y ${sent.target.rect.y} + scroll ${sent.target.scroll.y}`).toBeLessThan(2);
+      };
+      await foundAgain(report);
+
+      // Settings' side column on a wider screen stays put while the page scrolls (position: sticky), so the page's
+      // scroll is left out of its offset; on a phone in landscape it scrolls with the page, and that scroll counts.
+      const side = page.locator('.set-side');
+      if (await side.count()) {
+        const item = side.getByRole('button', { name: 'Sound' });
+        // Scrolled as far down as the page goes with the item in view.
+        await page.locator('.page').evaluate((n) => {
+          n.scrollTop = n.scrollHeight;
+        });
+        await item.scrollIntoViewIfNeeded();
+        const scrolledBy = await page.locator('.page').evaluate((n) => n.scrollTop);
+        const sticky = await side.evaluate((n) => getComputedStyle(n).position === 'sticky');
+        await done.getByRole('button', { name: 'Mark another' }).click();
+        await expect(page.getByRole('dialog', { name: /part you mean/ })).toBeVisible();
+        const s = (await item.boundingBox())!;
+        await page.mouse.click(s.x + s.width / 2, s.y + s.height / 2);
+        await form.getByLabel('What should change?').fill('Show which section is on screen.');
+        await form.getByRole('button', { name: 'Send', exact: true }).click();
+        await expect(done).toBeVisible();
+        const inSide = api.callsTo('POST /feedback')[1].body as FeedbackReport;
+        expect(await page.evaluate((selector) => !!document.querySelector(selector)?.closest('.set-side'), inSide.target.selector)).toBe(true);
+        expect(scrolledBy).toBeGreaterThan(0);
+        expect(inSide.target.scroll).toEqual({ x: 0, y: sticky ? 0 : scrolledBy });
+        await foundAgain(inSide);
+      }
 
       // Mark another, drawing a box this time.
       await done.getByRole('button', { name: 'Mark another' }).click();
@@ -2452,10 +4895,483 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await form.getByRole('button', { name: 'Close' }).click();
       await expect(form).toHaveCount(0);
       await expect(fab).toBeVisible();
+      // The focus is back on the button that opened the tool, so the keyboard and a screen reader keep their place.
+      await expect(fab).toBeFocused();
       await expectNoSideScroll(page);
+    });
+
+    test('in Dutch: Kopiëren beside Versturen keeps its icon whole and inside the button, and so does its check on Gekopieerd, which moves neither button', async ({ page, context }) => {
+      // The longest labels of the two buttons: on a narrow phone the copy icon was squeezed to a sliver, and the check
+      // was gone; with the icon whole, icon and word ran past the button's padding onto its border.
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await seed(page, { prefs: { language: 'nl' } });
+      await page.goto('./#/settings');
+      await page.getByRole('button', { name: 'Feedback: markeer een deel van dit scherm' }).click();
+      await page.mouse.click(VIEWPORTS[name].width / 2, VIEWPORTS[name].height / 2);
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      await form.getByLabel('Wat moet er anders?').fill('Zeg ook in milliseconden wat elke speelruimte doet.');
+      await form.evaluate(() => document.fonts.ready.then(() => undefined));
+      const button = (label: string): Locator => form.getByRole('button', { name: label, exact: true });
+      const icon = (label: string): Promise<number> => button(label).locator('svg').evaluate((svg) => svg.getBoundingClientRect().width);
+      /** How far the icon and the word reach past the button's padding on either side (0 or less: inside it). */
+      const out = (label: string): Promise<number> =>
+        button(label).evaluate((b) => {
+          const cs = getComputedStyle(b);
+          const r = b.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(b);
+          const c = range.getBoundingClientRect();
+          return Math.max(
+            r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth) - c.left,
+            c.right - (r.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth)),
+          );
+        });
+      /** Where the button sits across the row, and how wide it is. */
+      const place = async (label: string): Promise<number[]> => {
+        const b = (await button(label).boundingBox())!;
+        return [b.x, b.width];
+      };
+      expect(await icon('Kopiëren'), 'the copy icon').toBeCloseTo(18, 0);
+      expect(await out('Kopiëren'), 'the copy icon and Kopiëren inside the button').toBeLessThanOrEqual(0.5);
+      const before = [await place('Kopiëren'), await place('Versturen')];
+      await button('Kopiëren').click();
+      await expect(button('Gekopieerd')).toBeVisible();
+      expect(await icon('Gekopieerd'), 'the check').toBeCloseTo(18, 0);
+      expect(await out('Gekopieerd'), 'the check and Gekopieerd inside the button').toBeLessThanOrEqual(0.5);
+      expect([await place('Gekopieerd'), await place('Versturen')], 'Copy and Send stay where they were').toEqual(before);
+      await expectNoClippedLabels(page);
+    });
+
+    test('without the tab bar or header the button is a tab at the edge, on none of the controls that stay put', async ({ page }) => {
+      const vp = VIEWPORTS[name];
+      await mockApi(page, {
+        ...ADMIN,
+        ...feedbackServer().routes,
+        'POST /auth/reset/check': { json: { email: ME_ADMIN.email, name: ME_ADMIN.name, expiresAt: '2026-10-29T10:00:00.000Z' } },
+      });
+      await seedAccount(page, ME_ADMIN);
+      const fab = page.getByRole('button', { name: FAB });
+      // A phone in landscape has its answers and Start in the right-hand column: there the tab is on the left edge.
+      const left = vp.width > vp.height && vp.height <= 560;
+      /** The tab is on screen, at its edge and as large as a touch target, and no part of these controls lies under it. */
+      const clearOf = async (controls: Locator): Promise<void> => {
+        await expectClickable(fab, { scroll: false });
+        const f = (await fab.boundingBox())!;
+        expect(Math.round(left ? f.x : vp.width - f.x - f.width), 'at the edge').toBe(0);
+        expect(Math.min(f.width, f.height), 'a touch target').toBeGreaterThanOrEqual(44);
+        const boxes = await controls.evaluateAll((els) =>
+          els.map((el) => ({ ...el.getBoundingClientRect().toJSON(), name: el.getAttribute('aria-label') || el.textContent?.trim() || el.getAttribute('class') || el.tagName.toLowerCase() }) as DOMRect & { name: string }),
+        );
+        expect(boxes.length).toBeGreaterThan(0);
+        for (const r of boxes) {
+          const over = r.x < f.x + f.width && f.x < r.x + r.width && r.y < f.y + f.height && f.y < r.y + r.height;
+          expect(over, `the Feedback button is on “${r.name}”`).toBe(false);
+        }
+      };
+      const piano = page.getByRole('group', { name: /^Piano keyboard/ }).getByRole('button');
+      const skip = page.getByRole('button', { name: /^Skip to (summary|results)/ });
+      // Setup's Start, which stays in place while the rest scrolls.
+      await page.goto('./#/notes');
+      await clearOf(page.getByRole('button', { name: /^Start · / }));
+      await page.getByRole('button', { name: /^Start · / }).click();
+      // Nor the staff: its last note, often the one to name, is read there.
+      await clearOf(page.locator('.nplay-staff svg'));
+      await clearOf(page.getByRole('group', { name: 'Note names' }).getByRole('button'));
+      await clearOf(page.getByRole('group', { name: 'Answer with' }).getByRole('button'));
+      await page.getByRole('group', { name: 'Answer with' }).getByRole('button', { name: 'Piano' }).click();
+      await clearOf(piano);
+      await clearOf(page.getByRole('button', { name: /^(Hint|Next note)/ }));
+      await clearOf(skip);
+      // Scales: Hear it so far and Start over come in the middle of the screen with the first note.
+      await page.goto('./#/scales/setup');
+      await clearOf(page.getByRole('button', { name: /^Start · / }));
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await clearOf(page.locator('.nplay-staff svg'));
+      await clearOf(piano);
+      // Hidden in their place until then, so out of the accessibility tree.
+      const tools = page.getByRole('button', { name: /^(Hear it so far|Start over)/ });
+      for (let i = 0; (await tools.count()) === 0; i++) await piano.nth(i).click();
+      await clearOf(tools);
+      await clearOf(piano);
+      await clearOf(skip);
+      // Its results.
+      await skip.first().click();
+      await clearOf(page.getByRole('button', { name: /^(New round|Change setup)/ }));
+      // The rhythm exercise: How to play, the pad, Pause and Skip.
+      await page.goto('./#/setup');
+      await clearOf(page.getByRole('button', { name: /^Start · / }));
+      await page.getByRole('button', { name: /^Start · / }).click();
+      await clearOf(page.getByRole('button', { name: 'Got it' }));
+      await page.getByRole('button', { name: 'Got it' }).click();
+      await clearOf(page.locator(':is(.play-staff, .tplay-staff, .dplay-staff) svg'));
+      await clearOf(page.getByRole('button', { name: /^(Tap pad|Pause)$/ }));
+      // Calibrate: the count and the delay, read while tapping, the pips and the pad.
+      await page.goto('./#/calibrate');
+      await clearOf(page.locator('.cal-stats > .cal-stat, .pips, .cal .pad'));
+      // A form on its own: the account's own new-password link.
+      await page.goto('./#/reset/' + TOKEN);
+      await expect(page.getByLabel('New password')).toBeVisible();
+      await clearOf(page.locator('form').getByRole('button').or(page.getByLabel('New password')));
+      // A screen with the tab bar or the header keeps it in the bottom-right corner (on a phone, above the tab bar).
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      const corner = async (): Promise<number[]> => {
+        const f = (await fab.boundingBox())!;
+        return [vp.width - (f.x + f.width), vp.height - (f.y + f.height)];
+      };
+      await expect.poll(async () => (await corner()).every((gap) => gap >= 0 && gap <= 80), 'in the bottom-right corner').toBe(true);
+    });
+
+    test('with the tab bar or header, a page scrolled to its end has room under it: the button is on none of its controls', async ({ page }) => {
+      await mockApi(page, { ...adminApi(), ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      const fab = page.getByRole('button', { name: FAB });
+      /** The controls a tap on the button would hit instead: shown where it is, with every box that scrolls at its end. */
+      const underIt = (): Promise<string[]> =>
+        page.evaluate(() => {
+          for (const el of document.querySelectorAll('*')) {
+            if (['auto', 'scroll'].includes(getComputedStyle(el).overflowY)) el.scrollTop = el.scrollHeight;
+          }
+          const button = document.querySelector<HTMLElement>('.fb-fab')!;
+          const f = button.getBoundingClientRect();
+          button.style.visibility = 'hidden';
+          const hit: string[] = [];
+          for (const el of document.querySelectorAll('a[href], button, input, select, textarea, summary, [role="button"], [role="switch"], [role="slider"]')) {
+            if (el.closest('[data-feedback-ui]')) continue;
+            const r = el.getBoundingClientRect();
+            const [x0, x1, y0, y1] = [Math.max(r.left, f.left), Math.min(r.right, f.right), Math.max(r.top, f.top), Math.min(r.bottom, f.bottom)];
+            let shown = false;
+            for (let x = x0 + 1; x < x1 && !shown; x += 4) {
+              for (let y = y0 + 1; y < y1 && !shown; y += 4) {
+                const top = document.elementFromPoint(x, y);
+                shown = !!top && (top === el || el.contains(top));
+              }
+            }
+            if (shown) hit.push(`${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 40)} (${Math.round(x1 - x0)} × ${Math.round(y1 - y0)})`);
+          }
+          button.style.visibility = '';
+          return hit;
+        });
+      const found: Record<string, string[]> = {};
+      for (const hash of ['#/', '#/path', '#/learn', '#/learn/1', '#/progress', '#/progress/skills', '#/settings', '#/changelog', '#/account', '#/privacy', '#/admin', '#/admin/invite', '#/admin/deleted', '#/admin/feedback']) {
+        await page.goto('./' + hash);
+        await expectClickable(fab, { scroll: false });
+        // Once its answers have come and the screen is filled in.
+        await page.waitForLoadState('networkidle');
+        const hit = await underIt();
+        if (hit.length) found[hash] = hit;
+      }
+      expect(found, 'controls under the Feedback button').toEqual({});
+    });
+
+    test('the tab at the screen edge shows its whole focus ring', async ({ page }) => {
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/setup');
+      const fab = page.getByRole('button', { name: FAB });
+      await expectFocusRing(fab);
+      // Drawn inside the tab, which touches the screen's edge: none of it falls off the screen.
+      const off = await fab.evaluate((el) => {
+        const style = getComputedStyle(el);
+        const ring = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+        const r = el.getBoundingClientRect();
+        return r.left - ring < 0 || r.right + ring > window.innerWidth;
+      });
+      expect(off, 'the focus ring falls off the screen').toBe(false);
+    });
+
+    test('a tap or a short drag marks the spot and nothing else: the form opening under the finger is not pressed', async ({ page }) => {
+      const vp = VIEWPORTS[name];
+      test.skip(vp.width >= 1100, 'a mouse, or a tablet in landscape, where the form is a dialog beside the spot');
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/');
+      const fab = page.getByRole('button', { name: FAB });
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      // Where the form's controls are, opened with a mouse, which sends no click of its own after the press.
+      await fab.click();
+      await page.mouse.click(vp.width / 2, vp.height / 2);
+      await expect(form).toBeVisible();
+      // Once it has slid in; the controls in view.
+      await page.waitForTimeout(400);
+      const spots = await form.locator('button, input').evaluateAll((els) =>
+        els
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            return { name: el.getAttribute('aria-label') ?? el.textContent ?? el.tagName, x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          })
+          .filter((p) => p.y > 0 && p.y < window.innerHeight),
+      );
+      expect(spots.length).toBeGreaterThan(2);
+      await page.keyboard.press('Escape');
+      await expect(form).toHaveCount(0);
+      // A drag of 10 px, which marks a box: shorter than a touch screen's tap slop, so it still sends a click after it.
+      const cdp = await page.context().newCDPSession(page);
+      const shortDrag = async (x: number, y: number): Promise<void> => {
+        const to = x + 10 < vp.width ? x + 10 : x - 10;
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: to, y }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      };
+      for (const spot of spots) {
+        for (const [how, mark] of [['a tap', (x: number, y: number) => page.touchscreen.tap(x, y)], ['a short drag', shortDrag]] as const) {
+          await fab.click();
+          const bar = (await page.locator('.fb-bar').boundingBox())!;
+          if (spot.y >= bar.y - 4 && spot.y <= bar.y + bar.height + 4) {
+            await page.keyboard.press('Escape');
+            continue;
+          }
+          const where = `${how} where “${spot.name}” opens`;
+          await mark(spot.x, spot.y);
+          await expect(form, where).toBeVisible();
+          await page.waitForTimeout(300);
+          await expect(form, where).toBeVisible();
+          if (how === 'a tap') await expect(form.locator('.fb-marked'), where).not.toContainText('Marked area');
+          else await expect(form.locator('.fb-marked'), where).toContainText('Marked area');
+          await expect(page.getByRole('dialog', { name: /part you mean/ })).toHaveCount(0);
+          await expect(form.getByLabel('What should change?'), where).toBeFocused();
+          await expect(form.getByRole('button', { name: 'Change' }), where).toHaveAttribute('aria-pressed', 'true');
+          await page.keyboard.press('Escape');
+          await expect(form, where).toHaveCount(0);
+          await expect(fab).toBeFocused();
+        }
+      }
+    });
+
+    test('the hint bar moves off what it covers when tapped, and that part can then be marked', async ({ page }) => {
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await page.getByRole('button', { name: FAB }).click();
+      const bar = page.locator('.fb-bar');
+      await expect(bar).toBeVisible();
+      // The screen's title on a phone, the header's tabs on a wider screen: something the bar lies over, once it has
+      // slid in.
+      const under = (): Promise<{ name: string; x: number; y: number } | null> =>
+        page.evaluate(() => {
+          const b = document.querySelector('.fb-bar')!.getBoundingClientRect();
+          for (const el of document.querySelectorAll('main h1, nav a')) {
+            const r = el.getBoundingClientRect();
+            if (r.width && r.x < b.right && b.x < r.right && r.y < b.bottom && b.y < r.bottom) return { name: el.textContent ?? '', x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          }
+          return null;
+        });
+      await expect.poll(under, 'a title or tab under the hint bar').not.toBeNull();
+      const hidden = await under();
+      await bar.locator('#fb-hint').click();
+      await expect(bar).toHaveClass(/fb-bar--low/);
+      const off = async (): Promise<boolean> => {
+        const b = (await bar.boundingBox())!;
+        return hidden!.y < b.y || hidden!.y > b.y + b.height;
+      };
+      await expect.poll(off, 'the bar is off it').toBe(true);
+      await page.mouse.click(hidden!.x, hidden!.y);
+      await expect(page.getByRole('dialog', { name: 'Feedback' }).locator('.fb-marked')).toContainText(`“${hidden!.name}”`);
+    });
+
+    test('the hint bar comes in centred and on screen: it only fades in and drops 4 px', async ({ page }) => {
+      await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await page.getByRole('button', { name: FAB }).click();
+      await expect(page.locator('.fb-bar')).toBeVisible();
+      // Its way in, held at each moment: where the bar is then.
+      const frames = await page.evaluate(() => {
+        const bar = document.querySelector('.fb-bar')!;
+        const [motion] = bar.getAnimations();
+        motion.pause();
+        return [0, 50, 110, 220].map((t) => {
+          motion.currentTime = t;
+          const r = bar.getBoundingClientRect();
+          return { t, centre: r.left + r.width / 2, left: r.left, right: r.right, width: window.innerWidth };
+        });
+      });
+      for (const f of frames) {
+        expect(Math.abs(f.centre - f.width / 2), `centred at ${f.t} ms`).toBeLessThanOrEqual(1);
+        expect(f.left, `on screen at ${f.t} ms`).toBeGreaterThanOrEqual(0);
+        expect(f.right, `on screen at ${f.t} ms`).toBeLessThanOrEqual(f.width);
+      }
+    });
+
+    test('the box with its scroll offset finds Start again, sticky as it is, on the page scrolled to its top', async ({ page }) => {
+      const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+      await seedAccount(page, ME_ADMIN);
+      await page.goto('./#/setup');
+      const start = page.getByRole('button', { name: /^Start · / });
+      await expect(start).toBeVisible();
+      // Scrolled to its end: the side panel (from 700 px) or the Start bar (phone) moved up as far as it goes.
+      await page.locator('.page').evaluate((n) => {
+        n.scrollTop = n.scrollHeight;
+      });
+      await page.getByRole('button', { name: FAB }).click();
+      const r = (await start.boundingBox())!;
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+      const form = page.getByRole('dialog', { name: 'Feedback' });
+      await expect(form.locator('.fb-marked')).toContainText('Start');
+      await form.getByLabel('What should change?').fill('Start could say how long it takes.');
+      await form.getByRole('button', { name: 'Send', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Saved for review' })).toBeVisible();
+      const sent = api.callsTo('POST /feedback')[0].body as FeedbackReport;
+      const top = await page.evaluate((selector) => {
+        const el = document.querySelector(selector)!;
+        for (let n = el.parentElement; n; n = n.parentElement) n.scrollTop = 0;
+        return el.getBoundingClientRect().y;
+      }, sent.target.selector);
+      expect(Math.abs(sent.target.rect.y + sent.target.scroll.y - top), `box y ${sent.target.rect.y} + scroll ${sent.target.scroll.y}`).toBeLessThan(2);
     });
   });
 }
+
+test.describe('feedback: the keyboard, and the marked part’s name', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('Tab stays in the marking layer; the arrow keys pick a part, the bar names it, and Enter marks it', async ({ page }) => {
+    await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    const fab = page.getByRole('button', { name: FAB });
+    await fab.focus();
+    await page.keyboard.press('Enter');
+    const layer = page.getByRole('dialog', { name: /part you mean/ });
+    await expect(layer).toBeVisible();
+    for (const key of ['Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab']) {
+      await page.keyboard.press(key);
+      expect(await layer.evaluate((l) => l.contains(document.activeElement)), `focus in the layer after ${key}`).toBe(true);
+    }
+    // Down to the screen's title, named in the bar, and marked with Enter.
+    const pick = layer.locator('.fb-bar-pick');
+    for (let i = 0; i < 40 && (await pick.textContent()) !== 'heading “Settings”'; i++) await page.keyboard.press('ArrowDown');
+    await expect(pick).toHaveText('heading “Settings”');
+    await expect(layer.locator('.fb-box')).toBeVisible();
+    await page.keyboard.press('Enter');
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    await expect(form.locator('.fb-marked')).toContainText('heading “Settings”');
+    await expect(form.getByLabel('What should change?')).toBeFocused();
+  });
+
+  test('a part with lines of its own is named with them apart: “1 Pulse and meter Beat, …”', async ({ page }) => {
+    const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/learn');
+    const row = page.locator('.chapter-row').first();
+    await expect(row).toBeVisible();
+    await page.getByRole('button', { name: FAB }).click();
+    // A spot on the row itself, between its parts.
+    const spot = await row.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      for (let x = r.right - 2; x > r.left; x -= 4) for (let y = r.top + 4; y < r.bottom; y += 4) if (document.elementsFromPoint(x, y).find((e) => !e.closest('[data-feedback-ui]')) === el) return { x, y };
+      return null;
+    });
+    expect(spot).not.toBeNull();
+    await page.mouse.click(spot!.x, spot!.y);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    await expect(form.locator('.fb-marked')).toContainText('button “1 Pulse and meter Beat, tempo');
+    await form.getByLabel('What should change?').fill('The chapter row reads well.');
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Saved for review' })).toBeVisible();
+    const sent = api.callsTo('POST /feedback')[0].body as FeedbackReport;
+    expect(sent.target.label + sent.target.text).not.toMatch(/\dPulse|meterBeat/);
+  });
+
+  test('a click on a control’s icon or word marks the control; a field is named by its label, without what was typed', async ({ page }) => {
+    const api = await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    /** Marks the spot at the centre of `el`: the name the form gives it. */
+    const markAt = async (el: Locator): Promise<string> => {
+      const r = (await el.boundingBox())!;
+      await page.getByRole('button', { name: FAB }).click();
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+      return (await form.locator('.fb-marked-text .mono-muted').textContent()) ?? '';
+    };
+    const close = async (): Promise<void> => {
+      await page.keyboard.press('Escape');
+      await expect(form).toHaveCount(0);
+    };
+    await page.goto('./#/settings');
+    expect(await markAt(page.getByRole('link', { name: /^Ann de Vries/ }).locator('svg.row-chevron'))).toMatch(/^link “Ann de Vries/);
+    // The marked box is the row's, not the chevron's.
+    const row = (await page.getByRole('link', { name: /^Ann de Vries/ }).boundingBox())!;
+    expect((await page.locator('.fb-spot').boundingBox())!.width).toBeCloseTo(row.width, 0);
+    await close();
+    await page.goto('./#/notes');
+    expect(await markAt(page.locator('.clef-btn b', { hasText: 'Bass' }))).toMatch(/^button “.*Bass F clef”$/);
+    await close();
+    await page.goto('./#/account');
+    const field = page.getByLabel('New password');
+    await field.fill('pw-secret-e2e');
+    // A click on the field's label marks the field, with the field's box.
+    expect(await markAt(page.locator('label.tfield-label', { hasText: /^New password$/ }))).toBe('field “New password”');
+    const [spot, box] = await Promise.all([page.locator('.fb-spot').boundingBox(), field.boundingBox()]);
+    expect(spot!.width).toBeCloseTo(box!.width, 0);
+    expect(spot!.height).toBeCloseTo(box!.height, 0);
+    await close();
+    expect(await markAt(field)).toBe('field “New password”');
+    await form.getByLabel('What should change?').fill('The rules are hard to read.');
+    await form.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Saved for review' })).toBeVisible();
+    const sent = api.callsTo('POST /feedback')[0].body as FeedbackReport;
+    expect(sent.target.label).toBe('field “New password”');
+    expect(JSON.stringify(sent)).not.toContain('pw-secret');
+  });
+
+  test('a click on the staff a lesson’s note is written on marks its slider, as the arrow keys pick it', async ({ page }) => {
+    await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    // Lesson 3.2 writes mi (and sol) on the staff.
+    await seed(page, { progress: { lessons: pathUpTo('3.1') }, prefs: { seenHowTo: true, seenHold: true } });
+    await page.goto('./#/path');
+    await page.getByRole('button', { name: 'Start lesson 3.2' }).click();
+    const staff = page.getByRole('slider', { name: /goes on the staff$/ });
+    await expect(staff).toBeVisible();
+    const name = `slider “${await staff.getAttribute('aria-label')}”`;
+    const r = (await staff.boundingBox())!;
+    await page.getByRole('button', { name: FAB }).click();
+    // The arrow keys pick the slider, not the staff drawing inside it.
+    const layer = page.getByRole('dialog', { name: /part you mean/ });
+    const pick = layer.locator('.fb-bar-pick');
+    for (let i = 0; i < 40 && (await pick.textContent()) !== name; i++) await page.keyboard.press('ArrowDown');
+    await expect(pick).toHaveText(name);
+    // A click on the drawing marks the same, with the slider's box.
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    await expect(form.locator('.fb-marked-text .mono-muted')).toHaveText(name);
+    const spot = (await page.locator('.fb-spot').boundingBox())!;
+    expect(spot.width).toBeCloseTo(r.width, 0);
+    expect(spot.height).toBeCloseTo(r.height, 0);
+  });
+});
+
+test.describe('feedback: marking a staff drawing', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('logs no errors: its long path is cut in a copy outside the page', async ({ page }) => {
+    // Errors the page logs; not a request the mocked API leaves unanswered (a 404), which the browser logs too.
+    const errors: string[] = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(m.text());
+    });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await mockApi(page, { ...ADMIN, ...feedbackServer().routes });
+    await seedAccount(page, ME_ADMIN);
+    await page.goto('./#/');
+    const staff = page.locator('main svg').first();
+    await expect(staff).toBeVisible();
+    // A path longer than the report's markup keeps of a value.
+    expect(await staff.evaluate((svg) => Math.max(...[...svg.querySelectorAll('path')].map((p) => p.getAttribute('d')?.length ?? 0)))).toBeGreaterThan(120);
+    // A click on the drawing, on one of its lines or notes too, marks the whole staff picture, as the arrow keys pick it.
+    const r = (await staff.boundingBox())!;
+    await page.getByRole('button', { name: FAB }).click();
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+    await expect(page.getByRole('dialog', { name: 'Feedback' }).locator('.fb-marked')).toContainText('image “The notes so far');
+    expect(errors).toEqual([]);
+  });
+});
 
 test.describe('feedback: when saving fails, Review it, and hiding the button', () => {
   test.use({ serviceWorkers: 'block' });
@@ -2512,6 +5428,7 @@ test.describe('feedback: when saving fails, Review it, and hiding the button', (
     expect(server.reports()[0]).toMatchObject({ status: 'new', kind: 'bug', description: 'Start lesson does nothing on the first tap.', author: { name: tester.name } });
     await page.keyboard.press('Escape');
     await expect(done).toHaveCount(0);
+    await expect(fab).toBeFocused();
 
     // Hidden on this device, and back from Settings → Account.
     await markStart(page);
@@ -2522,6 +5439,54 @@ test.describe('feedback: when saving fails, Review it, and hiding the button', (
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await toggle.click();
     await expect(fab).toBeVisible();
+  });
+
+  test('a session that ended meanwhile (a new password on another device): the form says so and keeps what was typed, and Sign in says nothing was changed', async ({ page }) => {
+    await mockApi(page, { ...ADMIN, ...feedbackServer().routes, 'POST /feedback': apiError('unauthenticated', 401), 'POST /auth/refresh': apiError('unauthenticated', 401) });
+    await seedAccount(page, ME_ADMIN);
+    const form = page.getByRole('dialog', { name: 'Feedback' });
+    /** Send is refused: the sheet says why, keeps what was typed, and has Sign in, with the focus, in place of Send. */
+    const sendSignedOut = async (text: string): Promise<void> => {
+      await form.getByLabel('What should change?').fill(text);
+      await form.getByRole('button', { name: 'Send', exact: true }).click();
+      await expect(form.getByRole('alert')).toHaveText("You're signed out. Sign in again to go on.");
+      await expect(form.getByLabel('What should change?')).toHaveValue(text);
+      await expect(form.getByRole('button', { name: 'Send', exact: true })).toHaveCount(0);
+      await expect(form.getByRole('link', { name: 'Sign in' })).toBeFocused();
+      await expectNoOverlap(form.getByRole('alert'), form.getByRole('link', { name: 'Sign in' }));
+    };
+    /** Sign in closes the tool, and Sign in says nothing was changed. */
+    const followSignIn = async (): Promise<void> => {
+      await form.getByRole('link', { name: 'Sign in' }).click();
+      await expect(page).toHaveURL(/#\/signin$/);
+      await expect(page.locator('.hint-box')).toHaveText('You were signed out, so nothing was changed. Sign in again to go on.');
+      await expect(form).toHaveCount(0);
+      await expect(page.getByRole('button', { name: FAB })).toHaveCount(0);
+    };
+
+    await page.goto('./#/');
+    await markStart(page);
+    await sendSignedOut('Start lesson does nothing on the first tap.');
+    await expect(form.getByRole('button', { name: 'Bug' })).toHaveAttribute('aria-pressed', 'true');
+    // Closed instead, the tool goes: nobody is signed in any more.
+    await page.keyboard.press('Escape');
+    await expect(form).toHaveCount(0);
+    await expect(page.getByRole('button', { name: FAB })).toHaveCount(0);
+
+    // Signed in again (the reload seeds the account), on Home: Sign in from the sheet.
+    await page.reload();
+    await markStart(page);
+    await sendSignedOut('Start lesson does nothing on the first tap.');
+    await followSignIn();
+
+    // And over Settings, which puts Sign in's line away as soon as the refusal comes.
+    await page.goto('./#/settings');
+    await page.reload();
+    await page.getByRole('button', { name: FAB }).click();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await sendSignedOut('The account row says nothing about the session.');
+    await followSignIn();
   });
 
   test('an admin goes from the saved report to it: Review it closes the tool and opens the report', async ({ page }) => {

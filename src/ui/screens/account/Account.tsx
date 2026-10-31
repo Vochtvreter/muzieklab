@@ -10,6 +10,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { FEEDBACK_MAX, PASSWORD_MIN, type Me } from '../../../../shared/api';
+import { showsNothing } from '../../../../shared/feedback';
 import { api, downloadExport, EXPORT_FILE } from '../../../api/client';
 import { formatDay, t } from '../../../i18n';
 import { useAccount, type UseAccount } from '../../account';
@@ -19,8 +20,8 @@ import { Section } from '../../components/Rows';
 import { SubPage } from '../../components/SubPage';
 import { useMounted } from '../../hooks';
 import { rolesText } from '../../lib/admin';
-import { errorMessage, failureOf, fieldError, formError, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
-import { navigate } from '../../router';
+import { errorMessage, failureOf, fieldError, formError, nameCharactersError, nameIsBlank, passwordLengthFailure, type Failure } from '../../lib/apiErrors';
+import { leave, navigate } from '../../router';
 import { OfflineNote, useRefocus } from './AccountSection';
 
 const NAME_MAX = 80;
@@ -28,9 +29,17 @@ const NAME_MAX = 80;
 export function AccountScreen(): JSX.Element {
   const account = useAccount();
   const { me, api: reach } = account;
+  // Set once Sign out everywhere or Delete account is done: the account is gone, and the screen goes to Settings, not
+  // to Sign in, while the Back that leave() starts is on its way.
+  const leaving = useRef(false);
   useEffect(() => {
-    if (reach === 'reachable' && !me) navigate('/signin', { replace: true });
+    if (reach === 'reachable' && !me && !leaving.current) navigate('/signin', { replace: true });
   }, [reach, me]);
+  // Back to Settings, if it was opened from there (leave): Back then goes on to the screen before Settings.
+  const done = (): void => {
+    leaving.current = true;
+    leave('/settings');
+  };
   const offline = reach === 'unreachable';
   // After Try again found the API: the start of the profile, which can be changed again.
   const refocus = useRefocus(() => document.getElementById('h-profile'));
@@ -56,11 +65,11 @@ export function AccountScreen(): JSX.Element {
                 <PasswordForm me={me} account={account} />
               </Section>
               <Section id="devices" title={t('account.devices')}>
-                <SignOutEverywhere account={account} />
+                <SignOutEverywhere account={account} onDone={done} />
               </Section>
               <Section id="data" title={t('account.data')}>
                 <Download account={account} />
-                <DeleteAccount account={account} />
+                <DeleteAccount account={account} onDone={done} />
               </Section>
             </>
           )}
@@ -87,13 +96,14 @@ function Info({ label, value, children }: { label: string; value: string; childr
 }
 
 /**
- * The name, saved with its own Save button (PATCH /me). Only an empty name is the field's error; a request that fails
- * (no answer, a server error) is the form's, so a valid name is never marked invalid.
+ * The name, saved with its own Save button (PATCH /me). Only an empty name, or one with a tab in it, is the field's
+ * error; a request that fails (no answer, a server error) is the form's, so a valid name is never marked invalid.
  */
 function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
   const [name, setName] = useState(me.name);
   const [busy, setBusy] = useState(false);
   const [empty, setEmpty] = useState(false);
+  const [badName, setBadName] = useState<string | null>(null);
   const [fail, setFail] = useState<Failure | null>(null);
   const [saved, setSaved] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -105,8 +115,11 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
   const submit = async (): Promise<void> => {
     setSaved(false);
     setFail(null);
-    setEmpty(!name.trim());
-    if (!name.trim()) {
+    const bad = nameCharactersError(name);
+    const blank = nameIsBlank(name);
+    setEmpty(blank);
+    setBadName(bad);
+    if (blank || bad) {
       nameRef.current?.focus();
       return;
     }
@@ -117,7 +130,10 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
       account.setMe(next);
       if (mounted.current) setSaved(true);
     } catch (e) {
-      if (mounted.current) setFail(failureOf(account.handleError(e)));
+      // A 401 signs out also once the screen is gone (the progress sync found the session ended first): Sign in then
+      // says nothing was changed.
+      const f = failureOf(account.handleError(e));
+      if (mounted.current) setFail(f);
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -128,7 +144,10 @@ function NameForm({ me, account }: Part & { me: Me }): JSX.Element {
       <TextField label={t('account.name')} autoComplete="name" name="name" value={name} onChange={(v) => {
         setName(v);
         setSaved(false);
-      }} maxLength={NAME_MAX} inputRef={nameRef} error={empty ? t('account.nameEmpty') : null} />
+        // The field's error goes with the edit: typed back to the saved name, Save cannot be pressed to clear it.
+        setEmpty(false);
+        setBadName(null);
+      }} maxLength={NAME_MAX} inputRef={nameRef} error={empty ? t('account.nameEmpty') : badName} />
       <FormError error={fail?.message} />
       <div className="form-actions">
         {saved && <FormDone>{t('account.nameSaved')}</FormDone>}
@@ -146,11 +165,15 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState<Failure | null>(null);
   const [empty, setEmpty] = useState<{ email?: boolean; password?: boolean }>({});
+  // The address the account has already: nothing would change, so nothing is sent.
+  const [same, setSame] = useState(false);
   const [saved, setSaved] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const mounted = useMounted();
+  // Saved: the form goes with the focus in it, so the focus goes back to Change email once that is there again.
+  const refocusOpener = useRefocus(() => opener.current);
 
   const close = (): void => {
     setOpen(false);
@@ -158,6 +181,7 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
     setPassword('');
     setFail(null);
     setEmpty({});
+    setSame(false);
     requestAnimationFrame(() => opener.current?.focus());
   };
   const submit = async (): Promise<void> => {
@@ -166,7 +190,15 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
     setEmpty(missing);
     setFail(null);
     if (missing.email || missing.password) {
+      setSame(false);
       (missing.email ? emailRef : passwordRef).current?.focus();
+      return;
+    }
+    // Compared as the server keeps an email (trimmed, in lower case), which answers such a change without changing it.
+    const unchanged = email.trim().toLowerCase() === me.email.toLowerCase();
+    setSame(unchanged);
+    if (unchanged) {
+      emailRef.current?.focus();
       return;
     }
     setBusy(true);
@@ -178,9 +210,10 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
       setEmail('');
       setPassword('');
       setSaved(true);
+      refocusOpener();
     } catch (e) {
-      if (!mounted.current) return;
       const f = failureOf(account.handleError(e));
+      if (!mounted.current) return;
       setFail(f);
       if (f.field === 'email') emailRef.current?.focus();
       else if (f.field === 'currentPassword') passwordRef.current?.focus();
@@ -211,7 +244,7 @@ function EmailRow({ me, account, offline }: Part & { me: Me; offline: boolean })
           if (e.key === 'Escape' && !busy) close();
         }}>
           <TextField label={t('account.newEmail')} type="email" autoComplete="email" inputMode="email" name="email" value={email} onChange={setEmail}
-            inputRef={emailRef} autoFocus error={empty.email ? t('form.emailEmpty') : fieldError(fail, 'email')} />
+            inputRef={emailRef} autoFocus error={empty.email ? t('form.emailEmpty') : same ? t('account.emailSame') : fieldError(fail, 'email')} />
           <PasswordField label={t('account.currentPassword')} autoComplete="current-password" name="password" value={password} onChange={setPassword}
             inputRef={passwordRef} error={empty.password ? t('form.passwordEmpty') : fieldError(fail, 'currentPassword')} />
           <FormError error={formError(fail)} />
@@ -270,8 +303,8 @@ function PasswordForm({ me, account }: Part & { me: Me }): JSX.Element {
       setNext('');
       setDone(true);
     } catch (e) {
-      if (!mounted.current) return;
       const f = failureOf(account.handleError(e));
+      if (!mounted.current) return;
       setFail(f);
       if (f.field === 'currentPassword') currentRef.current?.focus();
       else if (f.field === 'password') nextRef.current?.focus();
@@ -297,7 +330,7 @@ function PasswordForm({ me, account }: Part & { me: Me }): JSX.Element {
 }
 
 /** Sign out everywhere, confirmed; then Settings says so. */
-function SignOutEverywhere({ account }: Part): JSX.Element {
+function SignOutEverywhere({ account, onDone }: Part & { onDone(): void }): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   return (
     <ConfirmAction label={t('account.signOutEverywhere')} sub={t('account.signOutEverywhereSub')} icon="quit" tone="plain"
@@ -307,7 +340,7 @@ function SignOutEverywhere({ account }: Part): JSX.Element {
         setError(null);
         try {
           await account.signOutEverywhere();
-          navigate('/settings', { replace: true });
+          onDone();
           return true;
         } catch (e) {
           setError(errorMessage(e));
@@ -331,7 +364,8 @@ function Download({ account }: Part): JSX.Element {
       await downloadExport();
       if (mounted.current) setDone(true);
     } catch (e) {
-      if (mounted.current) setError(errorMessage(account.handleError(e)));
+      const message = errorMessage(account.handleError(e));
+      if (mounted.current) setError(message);
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -355,7 +389,7 @@ function Download({ account }: Part): JSX.Element {
  * the progress and prefs on the account: kept as an anonymous copy (the default), or deleted too. The line under the
  * choice says what the chosen one does. Feedback is optional and kept without a name either way.
  */
-function DeleteAccount({ account }: Part): JSX.Element {
+function DeleteAccount({ account, onDone }: Part & { onDone(): void }): JSX.Element {
   const [password, setPassword] = useState('');
   const [removeData, setRemoveData] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -380,9 +414,10 @@ function DeleteAccount({ account }: Part): JSX.Element {
           return false;
         }
         try {
-          await api.del<void>('/me', { password, removeData, feedback: feedback.trim() || undefined });
+          // Feedback that shows nothing (a pasted zero-width space) is none, as the API takes it too.
+          await api.del<void>('/me', { password, removeData, feedback: showsNothing(feedback) ? undefined : feedback.trim() });
           account.setSignedOut(removeData ? 'deleted' : 'deletedKept');
-          navigate('/settings', { replace: true });
+          onDone();
           return true;
         } catch (e) {
           const f = failureOf(account.handleError(e));

@@ -3,11 +3,13 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { levelStart } from '../../game/xp';
 import { setLocale } from '../../i18n';
-import { AchievementBadges, LevelContent, LevelUpContent } from './Reward';
+import { listenToAnnouncements, spoken } from '../lib/announce';
+import { AchievementBadges, CodeCopy, LevelContent, LevelUpContent } from './Reward';
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   setLocale('en');
 });
 
@@ -105,5 +107,77 @@ describe('AchievementBadges (a summary screen, a run without a level)', () => {
     expect(badge.className).toBe('badge badge--gold');
     expect(badge.getAttribute('title')).toBe('A whole bar with every note Perfect');
     expect(screen.getByText('Achievement unlocked · Played at 160 BPM')).toBeTruthy();
+  });
+});
+
+describe('CodeCopy (Results)', () => {
+  const code = 'T44-HQ-R-4B-66-XN-603QC0';
+  const refused = (): void => {
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(() => Promise.reject(new DOMException('denied', 'NotAllowedError'))) } });
+  };
+
+  it('copies the code and says Copied for 2 seconds', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    render(<CodeCopy code={code} className="ghost-btn" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
+    });
+    expect(writeText).toHaveBeenCalledWith(code);
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(screen.getByRole('button', { name: 'Copy code' })).toBeTruthy();
+  });
+
+  it('copies another way when the clipboard refuses, and gives the focus back to the button', async () => {
+    refused();
+    let copied = '';
+    document.execCommand = vi.fn(() => {
+      copied = String(document.getSelection()) || (document.activeElement as HTMLTextAreaElement).value;
+      return true;
+    });
+    render(<CodeCopy code={code} className="ghost-btn" />);
+    const button = screen.getByRole('button', { name: 'Copy code' });
+    button.focus();
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(copied).toBe(code);
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy();
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('shows the code selected, to copy by hand, when copying is not allowed at all', async () => {
+    for (const block of [refused, () => vi.stubGlobal('navigator', { ...navigator, clipboard: undefined })]) {
+      block();
+      document.execCommand = vi.fn(() => false);
+      const said: string[] = [];
+      const stop = listenToAnnouncements((text) => said.push(spoken(text)));
+      render(<CodeCopy code={code} className="ghost-btn" />);
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
+      });
+      const field = screen.getByRole('textbox', { name: 'Exercise code' }) as HTMLInputElement;
+      expect(field.value).toBe(code);
+      expect(field.readOnly).toBe(true);
+      expect(document.activeElement).toBe(field);
+      expect(field.selectionEnd! - field.selectionStart!).toBe(code.length);
+      // The line under it is read out through the app's live region, not as a status inserted with its text.
+      expect(screen.getByText("Selected. Copy it with your device's copy command.")).toBeTruthy();
+      expect(screen.queryByRole('status')).toBeNull();
+      expect(said).toEqual(["Selected. Copy it with your device's copy command."]);
+      // Copy code again: the code is selected again, and the line is not said a second time.
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
+      });
+      expect(document.activeElement).toBe(field);
+      expect(said).toHaveLength(1);
+      stop();
+      cleanup();
+    }
   });
 });

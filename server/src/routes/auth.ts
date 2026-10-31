@@ -71,9 +71,9 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
    */
   app.post('/auth/refresh', { config: { public: true } }, async (request, reply) => {
     const token = refreshToken(request, ctx.cookies);
-    if (!token) throw new ApiError('unauthenticated', 'Not signed in');
-    const result = await refreshSession(c, token, ctx.now());
-    if (result.outcome === 'rotated' || result.outcome === 'raced') {
+    // No refresh cookie, or one that is not a token, is refused as an unknown token is: with the cookies cleared.
+    const result = token ? await refreshSession(c, token, ctx.now()) : null;
+    if (result?.outcome === 'rotated' || result?.outcome === 'raced') {
       const active = await c.accounts.countDocuments({ _id: result.session.accountId, status: 'active' }, { limit: 1 });
       if (active > 0) {
         setSessionCookies(reply, ctx.cookies, result.tokens);
@@ -82,7 +82,7 @@ export const authRoutes: FastifyPluginAsync<{ ctx: AppContext }> = async (app, {
       // Blocked or deleted behind its back: the session goes with it.
       await c.sessions.deleteOne({ _id: result.session._id });
     }
-    if (result.outcome === 'reused') {
+    if (result?.outcome === 'reused') {
       request.log.warn({ accountId: result.session.accountId.toHexString() }, 'a swapped refresh token came back: session ended');
     }
     clearSessionCookies(reply, ctx.cookies);

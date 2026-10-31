@@ -5,7 +5,7 @@
  * page for someone reading it line by line.
  */
 import { useEffect, useState } from 'react';
-import { listenToAnnouncements } from '../lib/announce';
+import { listenToAnnouncements, spoken } from '../lib/announce';
 
 /** From clearing the region to setting the new text. */
 export const ANNOUNCE_DELAY_MS = 100;
@@ -22,7 +22,7 @@ export function Announcer(): JSX.Element {
       window.clearTimeout(clear);
       setText('');
       show = window.setTimeout(() => {
-        setText(next);
+        setText(spoken(next));
         clear = window.setTimeout(() => setText(''), ANNOUNCE_KEEP_MS);
       }, ANNOUNCE_DELAY_MS);
     });

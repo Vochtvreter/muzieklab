@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { formatDay, setLocale } from '../../i18n';
-import { clearListNotice, dayOfUntil, linkMessage, peekListNotice, roleName, rolesText, setListNotice, sortRoles, today } from './admin';
+import { PERMISSIONS, type Permission } from '../../../shared/api';
+import { clearListNotice, dayOfUntil, holdsMore, linkMessage, peekListNotice, roleName, rolesText, setListNotice, sortRoles, today } from './admin';
 
 afterEach(() => {
   setLocale('en');
@@ -91,5 +92,28 @@ describe('the list notice', () => {
     expect(peekListNotice()).toBe("Piet Visser's account was deleted.");
     clearListNotice();
     expect(peekListNotice()).toBeNull();
+  });
+});
+
+describe('holdsMore', () => {
+  const list = [
+    { id: 'teacher', permissions: ['class.create'] as Permission[] },
+    { id: 'support', permissions: ['accounts.read', 'accounts.invite'] as Permission[] },
+  ];
+  const support: Permission[] = ['self.manage', 'progress.own', 'class.join', 'accounts.read', 'accounts.invite'];
+
+  it('is true for an account whose roles give a permission the admin lacks: an admin, a teacher', () => {
+    expect(holdsMore(['admin'], list, support)).toBe(true);
+    expect(holdsMore(['admin'], null, support)).toBe(true);
+    expect(holdsMore(['teacher'], list, support)).toBe(true);
+    expect(holdsMore(['support', 'teacher'], list, support)).toBe(true);
+  });
+
+  it('is false when the admin holds all of it, or for a role the list does not know (yet)', () => {
+    expect(holdsMore([], list, support)).toBe(false);
+    expect(holdsMore(['support'], list, support)).toBe(false);
+    expect(holdsMore(['admin'], list, [...PERMISSIONS])).toBe(false);
+    expect(holdsMore(['teacher'], null, support)).toBe(false);
+    expect(holdsMore(['gone-role'], list, support)).toBe(false);
   });
 });

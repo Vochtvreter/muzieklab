@@ -91,7 +91,28 @@ export type Block =
  * What a section's practice link starts: a Read notes round or a rhythm exercise straight away, or the Scales setup,
  * set up for the section.
  */
-export type Practice = { notes: Partial<NoteSettings> } | { rhythm: Partial<Settings> } | { scales: Partial<ScaleSettings> };
+export type Practice = { notes: Partial<NoteSettings> } | RhythmPractice | { scales: Partial<ScaleSettings> };
+
+export interface RhythmPractice {
+  rhythm: Partial<Settings>;
+  /**
+   * What every exercise must show besides the extra the preset turns on, where the preset alone does not make sure of
+   * what the section teaches (ids of game/intro.ts, SHOW_IDS): 5.3's 'dotted:eighth', where a dotted quarter has a dot
+   * too; 'rest' for any rest. Where no seed tried shows them all, the start keeps the exercise closest to it, so the
+   * title's figure goes first (4.1's eighth pair before its eighth rest). Only what an exercise can have with any bars
+   * and density: a whole note beside a half and a quarter needs 2 bars. A silent bar ('rest:whole', 3.2) needs 3, and
+   * a run of fewer does not look for it (makeRunShowing).
+   */
+  shows?: string[];
+}
+
+/**
+ * What a rhythm practice link's exercise must show (makeRunShowing in ui/store.tsx): the extra its preset turns on
+ * (5.1's tie, which the generator only makes likely), and the section's own `shows`.
+ */
+export function practiceShows(p: RhythmPractice): string[] {
+  return [...(['dotted', 'ties', 'triplets'] as const).filter((k) => p.rhythm[k]), ...(p.shows ?? [])];
+}
 
 export interface Section {
   /** "9.3": chapter and section number. */
@@ -133,8 +154,9 @@ const C_ONLY: Partial<NoteSettings> = { keys: ['C'], mixKeys: false, extras: 'no
 
 /**
  * Every rhythm practice link spells out all musical settings, so nothing from the player's last setup leaks in;
- * tempo, bars and the metronome stay theirs. The link starts the exercise straight away, in Tap mode: Echo would hide
- * the notation the section is about.
+ * tempo, bars and the metronome stay theirs (a `ties` preset plays 2 bars at Bars 1, as no exercise of 1 bar has a tie:
+ * makeRunShowing in ui/store.tsx). The link starts the exercise straight away, in Tap mode: Echo would hide the
+ * notation the section is about.
  */
 const RHYTHM: Partial<Settings> = { mode: 'tap', meters: ['4/4'], notes: ['half', 'quarter'], rests: ['quarter'], dotted: false, ties: false, triplets: false };
 
@@ -192,7 +214,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'text', text: 'middle' },
           { kind: 'tip', text: 'game' },
         ],
-        practice: { rhythm: { ...RHYTHM, meters: ['3/4', '4/4'], metronome: 'accent' } },
+        practice: { rhythm: { ...RHYTHM, meters: ['3/4', '4/4'] } },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
@@ -257,7 +279,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'rhythm', meter: '4/4', bars: ['q qr q qr', 'hr h'], alt: 'countAlt' },
           { kind: 'tip', text: 'game' },
         ],
-        practice: { rhythm: { ...RHYTHM, rests: ['half', 'quarter'] } },
+        practice: { rhythm: { ...RHYTHM, rests: ['half', 'quarter'] }, shows: ['rest'] },
       },
       {
         id: '3.2',
@@ -273,7 +295,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'rhythm', meter: '4/4', bars: ['8.r 16 q qr 8r 8'], alt: 'dottedAlt' },
           { kind: 'text', text: 'noTie' },
         ],
-        practice: { rhythm: { ...RHYTHM, meters: ['2/4', '3/4', '4/4'], rests: ['whole', 'half', 'quarter'] } },
+        practice: { rhythm: { ...RHYTHM, meters: ['2/4', '3/4', '4/4'], rests: ['whole', 'half', 'quarter'] }, shows: ['rest', 'rest:whole'] },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
@@ -293,7 +315,7 @@ export const CHAPTERS: Chapter[] = [
           { kind: 'text', text: 'rest' },
           { kind: 'rhythm', meter: '4/4', bars: ['q 8 8r 8r 8 q'], alt: 'restAlt' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'] } },
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth'], rests: ['quarter', 'eighth'] }, shows: ['figure:eighth-pair', 'rest:eighth'] },
       },
       {
         id: '4.2',
@@ -320,7 +342,7 @@ export const CHAPTERS: Chapter[] = [
           },
           { kind: 'rhythm', meter: '4/4', bars: ['[16 16 16 16] [8 8] [8 16 16] q'], alt: 'staffAlt' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'] } },
+        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'] }, shows: ['note:sixteenth', 'figure:four-sixteenths'] },
       },
       {
         id: '4.3',
@@ -340,7 +362,7 @@ export const CHAPTERS: Chapter[] = [
           },
           { kind: 'tip', text: 'game' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth', 'sixteenth'], rests: ['quarter', 'eighth'] } },
+        practice: { rhythm: { ...RHYTHM, notes: ['half', 'quarter', 'eighth', 'sixteenth'], rests: ['quarter', 'eighth'] }, shows: ['note:eighth', 'note:sixteenth'] },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 1 },
@@ -407,7 +429,7 @@ export const CHAPTERS: Chapter[] = [
           },
           { kind: 'rhythm', meter: '4/4', bars: ['[8. 16] [8. 16] q q'], alt: 'staffAlt' },
         ],
-        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'], dotted: true } },
+        practice: { rhythm: { ...RHYTHM, notes: ['quarter', 'eighth', 'sixteenth'], dotted: true }, shows: ['dotted:eighth'] },
       },
     ],
     quiz: { answers: [{ text: 'a1' }, { text: 'a2' }, { text: 'a3' }], right: 0 },
@@ -552,6 +574,7 @@ export const CHAPTERS: Chapter[] = [
   },
   {
     n: 9,
+    builds: [8],
     practice: 'notes',
     sections: [
       {
@@ -596,6 +619,7 @@ export const CHAPTERS: Chapter[] = [
   },
   {
     n: 10,
+    builds: [8, 9],
     practice: 'notes',
     sections: [
       {

@@ -1,12 +1,17 @@
-import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type ScaleSettings } from '../core/api';
+import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, generateExercise, scaleId, type JudgeResult, type NoteResult, type NoteValue, type ScaleSettings } from '../core/api';
+import { noteCells } from '../game/cells';
 import { exerciseHas, introId, lessonIntros } from '../game/intro';
 import { noteLessonSettings } from '../game/notesPath';
-import { lessonSettings } from '../game/path';
+import { ALL_LESSONS, lessonSettings } from '../game/path';
 import { PATH_UNITS } from '../game/tracks';
-import { defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type DayStats, type Prefs, type Progress } from '../game/storage';
-import { CHAPTERS } from './learn/chapters';
+import { CELL_IDS, defaultProgress, defaultStats, DEFAULT_PREFS, sanitizeProgress, shiftDay, type CellId, type DayStats, type Prefs, type Progress } from '../game/storage';
+import { weakSpotsSettings, weakSpotsShows } from '../game/weakSpots';
+import { CHAPTERS, practiceShows } from './learn/chapters';
 import type { Me } from '../../shared/api';
-import { makeLessonRun, makeNoteRun, makeRun, makeScaleRun, practiceHold, practiceHoldPatch, practiceSettings, reducer, runSettings, type Action, type AppState } from './store';
+import {
+  makeLessonRun, makeNoteRun, makeRun, makeRunShowing, makeScaleRun, NOTE_RUN_KEY, practiceHold, practiceHoldPatch, practiceSettings, reducer, restoreNoteRun, runSettings, runSetup, type Action,
+  type AppState,
+} from './store';
 
 const exercise = generateExercise({ ...DEFAULT_SETTINGS, bars: 1 }, 1);
 const state = (): AppState => ({
@@ -22,7 +27,7 @@ const state = (): AppState => ({
   scaleHub: { tab: 'major', key: 'G' },
   scaleRun: null,
   scaleLast: null,
-  account: { me: null, api: 'unknown', notice: null, sync: 'idle' },
+  account: { me: null, api: 'unknown', notice: null, sync: 'idle', elsewhere: false },
 });
 const result = (judgements: NoteResult['judgement'][], accuracy = 80, stars: JudgeResult['stars'] = 2): JudgeResult =>
   ({
@@ -177,6 +182,19 @@ describe('reducer: Read notes', () => {
     const r = reducer(reducer(s, { type: 'learnRead', ids: ['8.2', '8.1'], today: '2026-10-22' }), { type: 'learnRead', ids: ['8.1'], today: '2026-10-22' });
     expect(r.progress.learnRead).toEqual(['8.1', '8.2']);
   });
+
+  it('a round brought back after a reload is the same round, waiting for a tap before it sounds (a note to hear)', () => {
+    const settings = noteLessonSettings('pitch', '3.3')!;
+    const lessonRun = makeNoteRun(settings, 11, {}, [], { track: 'pitch', id: '3.3' });
+    expect(lessonRun.needsGesture).toBeUndefined();
+    const saved: Record<string, string> = { [NOTE_RUN_KEY]: JSON.stringify({ settings, seed: 11, focus: [], lesson: lessonRun.lesson }) };
+    vi.stubGlobal('sessionStorage', { getItem: (k: string) => saved[k] ?? null });
+    const back = restoreNoteRun({});
+    vi.unstubAllGlobals();
+    expect(back?.notes).toEqual(lessonRun.notes);
+    expect(back?.notes[0].task).toBe('hear');
+    expect(back?.needsGesture).toBe(true);
+  });
 });
 
 describe('reducer: scales', () => {
@@ -222,6 +240,13 @@ describe('reducer: scales', () => {
     expect(picked.scaleSettings.keys).toEqual(['G', 'D', 'A']);
     expect(picked.scaleHub).toEqual({ tab: 'major', key: 'F' });
   });
+
+  it('round the circle too, which plays all 15 whatever its keys: a reload comes back to the key picked', () => {
+    const circle: ScaleSettings = { ...DEFAULT_SCALE_SETTINGS, keyMode: 'circle', keys: ['C'] };
+    const next = reducer({ ...state(), scaleSettings: circle }, { type: 'scaleHub', hub: { tab: 'major', key: 'F#' } });
+    expect(next.scaleSettings).toEqual({ ...circle, keys: ['F#'] });
+    expect(next.progress.scales.settings).toEqual({ ...circle, keys: ['F#'] });
+  });
 });
 
 describe('reducer: reset progress', () => {
@@ -232,6 +257,68 @@ describe('reducer: reset progress', () => {
     expect(reset.settings).toEqual({ ...DEFAULT_SETTINGS, hold: false });
     expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdEarly: 'hold' } }, { type: 'resetProgress' }).settings.hold).toBe(true);
     expect(reducer({ ...custom, prefs: { ...DEFAULT_PREFS, holdMode: 'tap', holdEarly: 'hold' } }, { type: 'resetProgress' }).settings.hold).toBe(false);
+  });
+});
+
+describe('reducer: the free-practice setup', () => {
+  it('is saved with the progress as it is edited, as the Read notes and Scales setups are, so a reload keeps it', () => {
+    const edited = reducer(state(), { type: 'settings', settings: { ...DEFAULT_SETTINGS, meters: ['3/4'], bars: 6 } });
+    expect(edited.progress.lastSettings).toEqual({ ...DEFAULT_SETTINGS, meters: ['3/4'], bars: 6 });
+    expect(sanitizeProgress(JSON.parse(JSON.stringify(edited.progress)))).toEqual(edited.progress);
+  });
+
+  it("keeps what Practice weak spots asks its Start to show, until the setup is changed by hand or started", () => {
+    const preset = reducer(state(), { type: 'settings', settings: { ...DEFAULT_SETTINGS, dotted: true, bars: 2 }, shows: ['cell:dottedHalf'] });
+    expect(preset.setupShows).toEqual(['cell:dottedHalf']);
+    expect(reducer(preset, { type: 'settings', settings: { ...preset.settings, tempo: 90 } }).setupShows).toBeUndefined();
+    expect(reducer(preset, { type: 'start', run: makeRun(preset.settings, 1, null)! }).setupShows).toBeUndefined();
+  });
+});
+
+describe('reducer: another tab saved', () => {
+  const notes = { ...DEFAULT_NOTE_SETTINGS, clefs: ['treble' as const, 'bass' as const] };
+  const scales: ScaleSettings = { ...DEFAULT_SCALE_SETTINGS, keyMode: 'one', keys: ['D'] };
+  const stored = (progress: Partial<Progress> = {}, prefs: Partial<Prefs> = {}): { prefs: Prefs; progress: Progress } => ({
+    prefs: { ...DEFAULT_PREFS, ...prefs },
+    progress: { ...defaultProgress(), ...progress },
+  });
+
+  it('takes up the prefs and progress another tab saved, so this tab does not save its older copy over them', () => {
+    const other = stored({ xp: 25, lessons: { 'notes:1.1': { stars: 3, bestAccuracy: 100 } }, practiceDays: ['2026-10-26'] }, { theme: 'dark' });
+    const next = reducer({ ...state(), prefs: { ...DEFAULT_PREFS, leniency: 'strict' } }, { type: 'storageChanged', ...other });
+    expect(next.prefs).toBe(other.prefs);
+    expect(next.progress).toBe(other.progress);
+    // What this tab does next adds to it.
+    const toggled = reducer(next, { type: 'noteSettings', settings: notes });
+    expect(toggled.progress).toMatchObject({ xp: 25, lessons: { 'notes:1.1': { stars: 3 } }, practiceDays: ['2026-10-26'] });
+  });
+
+  it('the setups follow the ones the other tab saved, and stay as they are when it saved the same', () => {
+    const edited = { ...state(), settings: { ...DEFAULT_SETTINGS, tempo: 100 } };
+    const other = stored({ notes: { settings: notes, weak: {} }, scales: { settings: scales, stars: {} }, lastSettings: { ...DEFAULT_SETTINGS, tempo: 132 } });
+    const next = reducer(edited, { type: 'storageChanged', ...other });
+    expect(next.noteSettings).toEqual(notes);
+    expect(next.scaleSettings).toEqual(scales);
+    expect(next.scaleHub).toEqual({ tab: 'major', key: 'D' });
+    expect(next.settings).toEqual({ ...DEFAULT_SETTINGS, tempo: 132, hold: false });
+    // Only the XP changed there: the setup being edited here stays.
+    const xp = reducer(edited, { type: 'storageChanged', ...stored({ xp: 40 }) });
+    expect(xp.progress.xp).toBe(40);
+    expect(xp.settings).toBe(edited.settings);
+    expect(xp.noteSettings).toBe(edited.noteSettings);
+    expect(xp.scaleHub).toBe(edited.scaleHub);
+  });
+
+  it('what this tab has already (its own save, read back) changes nothing', () => {
+    const s = state();
+    expect(reducer(s, { type: 'storageChanged', prefs: { ...s.prefs }, progress: JSON.parse(JSON.stringify(s.progress)) })).toBe(s);
+  });
+
+  it('a reset in another tab resets this one, setups included', () => {
+    const played = reducer(state(), { type: 'noteSettings', settings: notes });
+    const next = reducer(played, { type: 'storageChanged', ...stored() });
+    expect(next.progress).toEqual(defaultProgress());
+    expect(next.noteSettings).toEqual(DEFAULT_NOTE_SETTINGS);
   });
 });
 
@@ -314,10 +401,197 @@ describe('makeLessonRun', () => {
     }
   });
 
+  it('a lesson starts with an exercise that shows what it is about, also when nothing in it is new (7.4 the dotted quarter, 6.2 the tie, 8.3 its figure)', () => {
+    // Without the search most 7.4 exercises would have no dotted quarter: their dotted half is the dotted value.
+    const s74 = lessonSettings('7.4');
+    expect(seeds.filter((seed) => !exerciseHas(makeRun(s74, seed, '7.4')!.exercise, ['dotted:quarter'])).length).toBeGreaterThan(seeds.length / 3);
+    const s62 = lessonSettings('6.2');
+    expect(seeds.filter((seed) => !exerciseHas(makeRun(s62, seed, '6.2')!.exercise, ['ties'])).length).toBeGreaterThan(seeds.length / 10);
+    // Nor would about half of 8.3's have an eighth and two sixteenths in one beat.
+    const s83 = lessonSettings('8.3');
+    expect(seeds.filter((seed) => !exerciseHas(makeRun(s83, seed, '8.3')!.exercise, ['figure:eighth-sixteenths'])).length).toBeGreaterThan(seeds.length / 3);
+    for (const seed of seeds) expect(exerciseHas(makeLessonRun(s83, seed, '8.3')!.exercise, ['figure:eighth-sixteenths']), `8.3, seed ${seed}`).toBe(true);
+    for (const { lesson } of ALL_LESSONS) {
+      const settings = lessonSettings(lesson.id);
+      // What the title names (its `preview`: 7.4's dotted quarter, 8.3's figure), and the dot or the tie its unit is about.
+      const about = [...(lesson.preview ?? []), ...(['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k])];
+      for (const seed of seeds.slice(0, 30)) {
+        expect(exerciseHas(makeLessonRun(settings, seed, lesson.id)!.exercise, [...ids(lesson.id), ...about]), `${lesson.id}, seed ${seed}`).toBe(true);
+      }
+    }
+  });
+
   it('keeps the first seed when the exercise already shows it all, or the lesson introduces nothing', () => {
     for (const lessonId of ['1.1', '1.3', '1.2', '3.1']) {
       for (const seed of seeds.slice(0, 20)) expect(makeLessonRun(lessonSettings(lessonId), seed, lessonId)!.exercise.seed).toBe(seed);
     }
+  });
+});
+
+describe('makeRunShowing', () => {
+  const seeds = Array.from({ length: 150 }, (_, i) => (Math.imul(i + 1, 2654435761) >>> 1) || 1);
+  /** Each Learn section's rhythm practice: its settings over the default setup, and what its start asks for. */
+  const rhythm = CHAPTERS.flatMap((c) => c.sections).flatMap((s) =>
+    s.practice && 'rhythm' in s.practice ? [{ id: s.id, settings: { ...DEFAULT_SETTINGS, ...s.practice.rhythm }, shows: practiceShows(s.practice) }] : [],
+  );
+
+  it("a Learn section's rhythm practice shows what the section teaches, with any bars and density: 5.1 a tie, 5.3 a dotted eighth", () => {
+    // What each section's title and text teach. 1.2's and 1.3's meters come one to an exercise.
+    const teaches: Record<string, string[]> = {
+      '1.1': ['note:quarter'],
+      '1.2': [],
+      '1.3': [],
+      '2.1': [],
+      '3.1': ['rest'],
+      '3.2': ['rest'],
+      '4.1': ['figure:eighth-pair', 'rest:eighth'],
+      '4.2': ['note:sixteenth', 'figure:four-sixteenths'],
+      '4.3': ['note:eighth', 'note:sixteenth'],
+      '5.1': ['ties'],
+      '5.2': ['dotted'],
+      '5.3': ['dotted:eighth'],
+      '6.1': ['ties'],
+      '7.1': ['triplets'],
+    };
+    expect(rhythm.map((r) => r.id)).toEqual(Object.keys(teaches));
+    // What fits only from so many bars, and is then in every exercise: 2.1's whole, half and quarter notes together from
+    // 2, 3.2's silent bar (one whole rest) from 3 (below).
+    const fromBars: Record<string, [number, string[]]> = { '2.1': [2, ['note:whole', 'note:half', 'note:quarter']], '3.2': [3, ['rest:whole']] };
+    // What 200 seeds do not always find with Bars at 1 and Sparse notes, where the start keeps the exercise that comes
+    // closest, with the rest of it: 4.1's eighth rest and 4.2's four sixteenths in one beat (about 1 start in 4 to 1 in 2
+    // lacks them).
+    const gaps: Record<string, string> = { '4.1': 'rest:eighth', '4.2': 'figure:four-sixteenths' };
+    // The player's own bars, density and amount of rests stay (the preset leaves them): each of them, on fewer seeds.
+    const players = [
+      ...[1, 2, 4].map((bars) => ({ bars, density: 'balanced' as const, restAmount: 'some' as const, starts: seeds.slice(0, 60) })),
+      ...[1, 4].flatMap((bars) =>
+        (['sparse', 'busy'] as const).flatMap((density) => (['few', 'many'] as const).map((restAmount) => ({ bars, density, restAmount, starts: seeds.slice(0, 10) }))),
+      ),
+    ];
+    for (const { id, settings, shows } of rhythm) {
+      // It asks for the extra the preset turns on, and for what the section names.
+      expect(shows, id).toEqual(expect.arrayContaining((['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k])));
+      const [from, more] = fromBars[id] ?? [Infinity, []];
+      for (const { starts, ...player } of players) {
+        // Not 5.2's dot with Bars at 1 and Busy notes: the generator makes one in about 1 exercise of 100 there, which
+        // 200 seeds miss in about 1 start in 4.
+        if (id === '5.2' && player.bars === 1 && player.density === 'busy') continue;
+        const s = { ...settings, ...player };
+        const gap = player.bars === 1 && player.density === 'sparse' ? gaps[id] : undefined;
+        const want = [...teaches[id], ...shows, ...more].filter((x) => (player.bars >= from || !more.includes(x)) && x !== gap);
+        for (const seed of starts) {
+          const run = makeRunShowing(s, seed, shows)!;
+          const at = `${id}, ${player.bars} bars ${player.density} ${player.restAmount}, seed ${seed}`;
+          expect(exerciseHas(run.exercise, want), at).toBe(true);
+          expect(run).toMatchObject({ lessonId: null, daily: null });
+          // Kept for Next, which shows it too.
+          expect(run.shows ?? [], at).toEqual(shows);
+          // The settings asked for, but for a tie with Bars at 1 (below).
+          if (!s.ties || s.bars > 1) expect(run.exercise.settings, at).toEqual(s);
+        }
+      }
+    }
+    // Without the search about one 5.1 exercise in four has no tie: ties across the bar line are a chance, and an
+    // eighth, quarter, eighth syncopates without one. About one 5.3 exercise in six has no dotted eighth, only a dotted
+    // quarter, and most of 3.2's have no silent bar.
+    const plain = (id: string, ids: string[]): number => {
+      const { settings } = rhythm.find((r) => r.id === id)!;
+      return seeds.filter((seed) => !exerciseHas(makeRun(settings, seed, null)!.exercise, ids)).length;
+    };
+    expect(plain('5.1', ['ties'])).toBeGreaterThan(seeds.length / 10);
+    expect(plain('5.3', ['dotted:eighth'])).toBeGreaterThan(seeds.length / 10);
+    expect(plain('3.2', ['rest:whole'])).toBeGreaterThan(seeds.length / 2);
+  });
+
+  it("a silent bar needs three bars: 3.2's practice has one from 3 bars, and with fewer does not look for it", () => {
+    const { settings, shows } = rhythm.find((r) => r.id === '3.2')!;
+    expect(shows).toEqual(['rest', 'rest:whole']);
+    for (const bars of [1, 2, 3]) {
+      const player = { ...settings, bars };
+      // No exercise of 1 or 2 bars has one, from any seed: the first bar opens with a note and the last ends on one.
+      if (bars < 3) expect(seeds.some((seed) => exerciseHas(makeRun(player, seed, null)!.exercise, ['rest:whole']))).toBe(false);
+      for (const seed of seeds.slice(0, 30)) {
+        const run = makeRunShowing(player, seed, shows)!;
+        const at = `${bars} bars, seed ${seed}`;
+        expect(exerciseHas(run.exercise, bars < 3 ? ['rest'] : shows), at).toBe(true);
+        // With fewer it looks only for a rest, so a start stays fast.
+        if (bars < 3) expect(run.exercise, at).toEqual(makeRunShowing(player, seed, ['rest'])!.exercise);
+        // The player's bars, also in the setup, and Next asks for it again.
+        expect(run.exercise.settings, at).toEqual(player);
+        expect(runSetup(run)).toEqual(player);
+        expect(run.shows).toEqual(shows);
+      }
+    }
+  });
+
+  it('keeps the exercise that comes closest when no seed shows it all, the first symbols first', () => {
+    // 4.1's notes never make a sixteenth, and with Bars at 1 and Sparse notes many of its exercises lack an eighth pair
+    // or an eighth rest: the start keeps one with the pair, the first asked for.
+    const s = { ...rhythm.find((r) => r.id === '4.1')!.settings, bars: 1, density: 'sparse' as const };
+    for (const seed of seeds.slice(0, 10)) {
+      const run = makeRunShowing(s, seed, ['figure:eighth-pair', 'rest:eighth', 'note:sixteenth'])!;
+      expect(exerciseHas(run.exercise, ['figure:eighth-pair']), `seed ${seed}`).toBe(true);
+      expect(exerciseHas(run.exercise, ['note:sixteenth'])).toBe(false);
+    }
+  });
+
+  it("a tie needs two bars: with Bars at 1 5.1's and 6.1's practice plays 2 and shows one, and the setup keeps 1", () => {
+    const tied = rhythm.filter((r) => r.settings.ties);
+    expect(tied.map((r) => r.id)).toEqual(['5.1', '6.1']);
+    for (const { id, settings } of tied) {
+      for (const bars of [1, 2, 4]) {
+        const player = { ...settings, bars };
+        // No exercise of 1 bar has a tie, from any seed.
+        if (bars === 1) expect(seeds.some((seed) => exerciseHas(makeRun(player, seed, null)!.exercise, ['ties']))).toBe(false);
+        for (const seed of seeds) {
+          const run = makeRunShowing(player, seed, ['ties'])!;
+          expect(exerciseHas(run.exercise, ['ties']), `${id}, ${bars} bars, seed ${seed}`).toBe(true);
+          expect(run.exercise.settings).toEqual({ ...player, bars: Math.max(bars, 2) });
+          // Only that run: the free-practice setup it saves, and Setup opened from it, keep the player's bars.
+          expect(reducer(state(), { type: 'start', run }).progress.lastSettings, `${id}, ${bars} bars`).toEqual(player);
+          expect(runSetup(run)).toEqual(player);
+        }
+      }
+    }
+  });
+
+  it("Practice weak spots' start has a note of each weak cell, also several, and with eighths and sixteenths on", () => {
+    const weak = (ids: CellId[]) => CELL_IDS.map((c) => ({ id: c, accuracy: ids.includes(c) ? 60 : c === 'quarter' ? 95 : null, locked: false }));
+    const has = (run: { exercise: Parameters<typeof noteCells>[0] }, ids: CellId[]): boolean => {
+      const cells = noteCells(run.exercise);
+      return ids.every((id) => cells.some((c) => c.includes(id)));
+    };
+    const bases: NoteValue[][] = [['half', 'quarter'], ['quarter', 'eighth'], ['half', 'quarter', 'eighth'], ['half', 'quarter', 'eighth', 'sixteenth']];
+    // Each cell a 1-bar exercise seldom has, and several of them: 2 bars once had ties and a dotted half together in 2
+    // starts of 5, and all four in none. The preset gives them more bars (weakSpotsSettings), and the start looks for
+    // the cells themselves: a dotted half tied on counts for ties.
+    const weakSets: CellId[][] = [['ties'], ['dottedHalf'], ['dottedQE'], ['rests'], ['ties', 'dottedHalf'], ['dottedHalf', 'dottedQE'], ['ties', 'dottedHalf', 'dottedQE', 'rests']];
+    for (const notes of bases) {
+      for (const ids of weakSets) {
+        const settings = weakSpotsSettings({ ...DEFAULT_SETTINGS, notes, rests: [], bars: 1 }, weak(ids))!;
+        const shows = weakSpotsShows(weak(ids));
+        const at = `${ids.join('+')}, ${notes.join('+')}`;
+        for (const seed of seeds.slice(0, 20)) {
+          const run = makeRunShowing(settings, seed, shows)!;
+          // The preset's own settings and Bars, and Next looks for the cells again.
+          expect(run.exercise.settings, at).toEqual(settings);
+          expect(run.shows, at).toEqual(shows);
+          expect(has(run, ids), `${at}, seed ${seed}`).toBe(true);
+        }
+      }
+    }
+    // Without the search most of them had none: the generator counts a dotted quarter as its dotted note, and an
+    // off-beat eighth as its syncopation.
+    const plain = (notes: NoteValue[], id: CellId): number => {
+      const settings = weakSpotsSettings({ ...DEFAULT_SETTINGS, notes, rests: [], bars: 1 }, weak([id]))!;
+      return seeds.filter((seed) => !has(makeRun(settings, seed, null)!, [id])).length;
+    };
+    expect(plain(['half', 'quarter', 'eighth'], 'dottedHalf')).toBeGreaterThan(seeds.length / 2);
+    expect(plain(['quarter', 'eighth'], 'ties')).toBeGreaterThan(seeds.length / 2);
+  }, 60_000);
+
+  it('keeps the first seed when there is nothing to show', () => {
+    for (const seed of seeds.slice(0, 20)) expect(makeRunShowing(DEFAULT_SETTINGS, seed, [])).toEqual(makeRun(DEFAULT_SETTINGS, seed, null));
   });
 });
 
@@ -337,20 +611,30 @@ const ME: Me = {
 describe('reducer: account', () => {
   it('starts unknown, and a signed-in answer makes the API reachable', () => {
     const next = reducer(state(), { type: 'signedIn', me: ME });
-    expect(next.account).toEqual({ me: ME, api: 'reachable', notice: null, sync: 'idle' });
+    expect(next.account).toEqual({ me: ME, api: 'reachable', notice: null, sync: 'idle', elsewhere: false });
   });
 
   it('signing out forgets the account and can leave a notice for Settings', () => {
     const inState = reducer(state(), { type: 'signedIn', me: ME });
     const out = reducer(inState, { type: 'signedOut', notice: 'deleted' });
-    expect(out.account).toEqual({ me: null, api: 'reachable', notice: 'deleted', sync: 'idle' });
+    expect(out.account).toEqual({ me: null, api: 'reachable', notice: 'deleted', sync: 'idle', elsewhere: false });
     expect(reducer(out, { type: 'accountNotice', notice: null }).account.notice).toBeNull();
   });
 
+  it('a sign-out with no line, once signed out, keeps the line there was (the sync’s 401 right after Delete account’s)', () => {
+    const inState = reducer(state(), { type: 'signedIn', me: ME, notice: 'welcome' });
+    expect(reducer(inState, { type: 'signedOut' }).account.notice).toBeNull();
+    for (const notice of ['sessionEnded', 'deleted'] as const) {
+      const out = reducer(inState, { type: 'signedOut', notice });
+      expect(reducer(out, { type: 'signedOut' }).account).toEqual(out.account);
+      expect(reducer(out, { type: 'signedOut', notice: 'signedOut' }).account.notice).toBe('signedOut');
+    }
+  });
+
   it('no answer keeps the cached account, shown as offline', () => {
-    const cached: AppState = { ...state(), account: { me: ME, api: 'unknown', notice: null, sync: 'idle' } };
+    const cached: AppState = { ...state(), account: { me: ME, api: 'unknown', notice: null, sync: 'idle', elsewhere: false } };
     const next = reducer(cached, { type: 'apiUnreachable' });
-    expect(next.account).toEqual({ me: ME, api: 'unreachable', notice: null, sync: 'idle' });
+    expect(next.account).toEqual({ me: ME, api: 'unreachable', notice: null, sync: 'idle', elsewhere: false });
     expect(reducer(next, { type: 'apiUnreachable' })).toBe(next);
   });
 
@@ -360,6 +644,17 @@ describe('reducer: account', () => {
     const renamed = reducer(inState, { type: 'signedIn', me: { ...ME, name: 'Sam J.' } });
     expect(renamed.account.me?.name).toBe('Sam J.');
     expect(renamed.account.notice).toBeNull();
+  });
+
+  it('an account another tab signed in stays marked as that tab’s, until a sign-in or out here', () => {
+    const taken = reducer(state(), { type: 'accountStored', me: ME });
+    expect(taken.account.elsewhere).toBe(true);
+    // GET /me answering here, or a new name: the same sign-in.
+    expect(reducer(taken, { type: 'signedIn', me: { ...ME, name: 'Sam J.' } }).account.elsewhere).toBe(true);
+    expect(reducer(taken, { type: 'accountStored', me: { ...ME, name: 'Sam J.' } }).account.elsewhere).toBe(true);
+    const out = reducer(taken, { type: 'signedOut' });
+    expect(out.account.elsewhere).toBe(false);
+    expect(reducer(out, { type: 'signedIn', me: ME }).account.elsewhere).toBe(false);
   });
 
   it('resetting progress keeps the account', () => {
@@ -386,6 +681,15 @@ describe('reducer: the Progress tab’s figures', () => {
     expect(Object.keys(d.cells).length).toBeGreaterThan(0);
     expect(next.progress.stats.seen).toEqual({ rhythm: TODAY });
     readsBack(next.progress);
+  });
+
+  it('a round skipped to Results adds the seconds played, not the whole exercise', () => {
+    const long = generateExercise({ ...DEFAULT_SETTINGS, bars: 16, tempo: 40 }, 3);
+    const whole = reducer(withRun({ exercise: long }), finish()).progress.stats.days[TODAY].sec;
+    // 16 bars of 4/4 at 40 BPM, a bar of count-in and the lead-in.
+    expect(whole).toBe(Math.round(64 * 1.5 + 6 + 0.4));
+    // Skipped 3 s into the bars.
+    expect(reducer(withRun({ exercise: long }), finish({ playedTo: 3 })).progress.stats.days[TODAY].sec).toBe(Math.round(3 + 6 + 0.4));
   });
 
   it('a run left to play out adds no figures', () => {
@@ -489,17 +793,27 @@ describe('reducer: achievements, skill levels and personal bests', () => {
 
   it('reports a new personal best on a lesson played before, by its Learning path number, and the daily’s', () => {
     const played = { ...defaultProgress(), lessons: { '1.1': { stars: 2 as const, bestAccuracy: 78 } } };
-    expect(reducer(withRun({ lessonId: '1.1' }, played), finish({ result: result(['perfect'], 84.4, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 84 });
+    expect(reducer(withRun({ lessonId: '1.1' }, played), finish({ result: result(['perfect'], 84.6, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 84 });
     expect(reducer(withRun({ lessonId: '1.1' }, played), finish({ result: result(['perfect'], 70, 1) })).last?.reward.best).toBeNull();
-    // Beaten as shown, in whole %: 87.45% after 87.4% is still 87%, no new best; 87.5% shows 88%.
+    // Beaten as shown, in whole % rounded down (§6.3): 87.9% after 87.4% is still 87%, no new best; 88% is.
     const close = { ...defaultProgress(), lessons: { '1.1': { stars: 2 as const, bestAccuracy: 87.4 } } };
-    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 87.45, 2) })).last?.reward.best).toBeNull();
-    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 87.5, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 88 });
+    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 87.9, 2) })).last?.reward.best).toBeNull();
+    expect(reducer(withRun({ lessonId: '1.1' }, close), finish({ result: result(['perfect'], 88, 2) })).last?.reward.best).toEqual({ kind: 'lesson', lesson: '2.1', accuracy: 88 });
     // The first play of a lesson is no personal best.
     expect(reducer(withRun({ lessonId: '1.1' }), finish({ result: result(['perfect'], 90, 3) })).last?.reward.best).toBeNull();
-    const daily = reducer(withRun({ daily: TODAY }), finish({ result: result(['perfect'], 88, 2) })).last?.reward;
-    expect(daily).toMatchObject({ dailyBest: true, best: { kind: 'daily', accuracy: 88 } });
+    const daily = reducer(withRun({ daily: TODAY }), finish({ result: result(['perfect'], 99.6875, 4) })).last?.reward;
+    expect(daily).toMatchObject({ dailyBest: true, best: { kind: 'daily', accuracy: 99 } });
     expect(reducer(state(), finish()).last?.reward).toMatchObject({ achievements: [], best: null });
+  });
+
+  it('the daily’s best is beaten as shown too, in whole % rounded down: 97.7% after 97.3% is no new best', () => {
+    const close = { ...defaultProgress(), dailyBest: 97.27 };
+    const same = reducer(withRun({ daily: TODAY }, close), finish({ result: result(['perfect'], 97.73, 3) }));
+    expect(same.last?.reward).toMatchObject({ dailyBest: false, best: null });
+    // The best kept keeps its fraction (§6.3).
+    expect(same.progress.dailyBest).toBe(97.73);
+    const better = reducer(withRun({ daily: TODAY }, close), finish({ result: result(['perfect'], 98, 3) }));
+    expect(better.last?.reward).toMatchObject({ dailyBest: true, best: { kind: 'daily', accuracy: 98 } });
   });
 
   it('a note lesson played before reports its personal best too', () => {

@@ -1,8 +1,9 @@
 /**
- * How the focused control got its focus: with Tab, or with a click or tap. Space and Enter on a control the player
- * tabbed to belong to that control; after a click they stay the exercise's shortcuts (on Scales, Space is Hear it so
- * far), so a piano key that kept its focus is not pressed again. The browser's :focus-visible cannot tell the two
- * apart: Chromium turns it on for a clicked button as soon as any key is pressed.
+ * How the focused control got its focus: with Tab, or with a click or tap (or from the exercise, which hands it on).
+ * Space and Enter on a control the player tabbed to belong to that control; after a click they stay the exercise's
+ * shortcuts (on Scales, Space is Hear it so far), so a piano key that kept its focus is not pressed again. The
+ * browser's :focus-visible cannot tell the two apart: Chromium turns it on for a clicked button as soon as any key is
+ * pressed.
  */
 let tabbed = false;
 if (typeof window !== 'undefined') {
@@ -12,6 +13,15 @@ if (typeof window !== 'undefined') {
   window.addEventListener('pointerdown', () => {
     tabbed = false;
   }, true);
+}
+
+/**
+ * The focus was handed on by a script (screenFocus.ts, useFocusHandOff, a sheet giving it back as it closes): the Tab
+ * was to the control it came from, so Space and Enter are the exercise's again, as after a click, and the next one does
+ * not press the control it went to. The next Tab gives them back to the control.
+ */
+export function forgetTab(): void {
+  tabbed = false;
 }
 
 /** Controls that Space presses; Enter also follows a link (Space on a link scrolls the page, so it stays a shortcut). */

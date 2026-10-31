@@ -24,6 +24,12 @@ export function keyName(key: KeyId, minor: boolean): string {
   return t(minor ? 'notes.minor' : 'notes.major', { tonic: letterName(n.letter, n.alter) });
 }
 
+/** For screen readers: "D major", "G sharp minor". */
+export function keySpoken(key: KeyId, minor: boolean): string {
+  const n = minor ? KEYS[key].minor : KEYS[key].major;
+  return t(minor ? 'notes.minor' : 'notes.major', { tonic: spokenName(n.letter, n.alter) });
+}
+
 /** The tonic alone, as on the circle: "F♯", or lower case for minor ("f♯"). */
 export function circleLabel(key: KeyId, minor: boolean): string {
   const n = minor ? KEYS[key].minor : KEYS[key].major;
@@ -33,6 +39,9 @@ export function circleLabel(key: KeyId, minor: boolean): string {
 
 /** A note of a scale as written: "F♯", "F𝄪". */
 export const noteName = (n: ScaleNote): string => letterName(letterOf(n.step), n.alter);
+
+/** For screen readers, which read a sign as a symbol or skip it (𝄪): "F sharp", "F double sharp". */
+export const noteSpoken = (n: ScaleNote): string => spokenName(letterOf(n.step), n.alter);
 
 /** "W W H W W W H" in the player's language (H, W and 1½). */
 export function stepsText(type: ScaleType): string {
