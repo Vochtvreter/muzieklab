@@ -715,7 +715,7 @@ skill levels; only the app changed (the fields, their sanitizing and their merge
 | Synced to the account | Stays on the device |
 |---|---|
 | Progress: lessons, stars, XP, streak days, daily challenge, Read notes (setup and weak spots) and Scales results, Learn sections read, the setups as last edited; since 0.19.0 the Progress tab's figures (`stats`, below), the achievements earned (`achievements`: id → the day) and the skill levels passed (`skills`: "rhythm:3" → the day) | Calibration (`calibrationMs`, `calibratedAt`): each device has its own delay |
-| Prefs: language, theme, leniency, input mode (with the setup's early hold), metronome look, note names, piano labels (`SYNCED_PREFS`) | Volumes and the sounds switched on (each device has its own speaker), and the How to play and intro flags already seen on this device |
+| Prefs: language, theme, leniency, input mode (with the setup's early hold), metronome look, note names, piano labels (`SYNCED_PREFS`) | Volumes and the sounds switched on (each device has its own speaker), the How to play and intro flags already seen on this device, and the Scales hub's selected key while the setup has keys chosen (`muzieklab.scaleHub.v1`; with one key or round the circle it is the setup's key, which syncs) |
 
 The first plan listed "the path last picked" as a pref; the app keeps no such pref, so there is nothing to sync.
 

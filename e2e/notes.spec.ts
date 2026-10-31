@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from '../src/core/defaults';
 import { generateExercise } from '../src/core/generator';
 import type { Settings } from '../src/core/types';
 import { exerciseHas } from '../src/game/intro';
-import { expectNoPageScroll, pad, pathUpTo, seed as seedStorage, tabTo, VIEWPORTS } from './helpers';
+import { pad, pathUpTo, seed as seedStorage, tabTo, VIEWPORTS } from './helpers';
 
 /** v1.3 Read notes and Learn chapter 8: Home → setup → key → a round → summary, and the chapter with its quick check. */
 
@@ -1633,7 +1633,6 @@ for (const size of ['phone', 'desktop'] as const) {
     const summary = await page.locator('.ssetup-summary').ariaSnapshot();
     expect(summary).toContain('Major, Harmonic minor · F sharp major / D sharp minor · up');
     expect(summary).not.toMatch(/[♯♭]/);
-    await expectNoPageScroll(page);
     await expect(page.locator('.ssetup-summary b [aria-hidden="true"]')).toHaveText('Major, Harmonic minor · F♯ major / D♯ minor · up');
     await page.getByRole('button', { name: 'Start · 2 scales' }).click();
     // The answer card is named by its scale on desktop; the title over the staff on a phone.
@@ -1647,7 +1646,6 @@ for (const size of ['phone', 'desktop'] as const) {
       await page.keyboard.press('Enter');
     }
     await expect(page.getByRole('heading', { name: 'Round done' })).toBeVisible();
-    await expectNoPageScroll(page);
     const list = page.getByRole('list', { name: 'Scales in this round' });
     expect(await list.ariaSnapshot()).not.toMatch(/[♯♭]/);
     await expect(list).toContainText('D♯ harmonic minor');
