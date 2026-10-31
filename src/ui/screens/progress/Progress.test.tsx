@@ -172,8 +172,8 @@ describe('Progress tab, phone (App design canvas, Mobile · Progress)', () => {
     expect(screen.getByText('F♯ major · D♯ minor')).toBeTruthy();
     // The card's lines too, which come straight after the staff's name: as written, and in words.
     const key = heading('Key').closest('section')!;
-    expect(seen(key)).toContain('F♯ major · D♯ minor6 sharps: F♯, C♯, G♯, D♯, A♯, E♯');
-    expect(heard(key)).toContain('F sharp major · D sharp minor6 sharps: F sharp, C sharp, G sharp, D sharp, A sharp, E sharp');
+    expect(seen(key)).toContain('F♯\u00a0major · D♯\u00a0minor6 sharps: F♯, C♯, G♯, D♯, A♯, E♯');
+    expect(heard(key)).toContain('F sharp\u00a0major · D sharp\u00a0minor6 sharps: F sharp, C sharp, G sharp, D sharp, A sharp, E sharp');
     expect(heard(key)).not.toMatch(/[♯♭]/);
     // The slowest notes as the last round's key spells them.
     const slow = within(heading('Slowest notes').closest('section')!).getAllByRole('listitem');
@@ -417,8 +417,8 @@ describe('Progress tab in Dutch', () => {
     expect(screen.getByText('bovenste tussenruimte · viool')).toBeTruthy();
     expect(screen.getByText('3,1 s')).toBeTruthy();
     const key = heading('Toonsoort').closest('section')!;
-    expect(seen(key)).toContain('G majeur · E mineur1 kruis: elke F is een F♯');
-    expect(heard(key)).toContain('G majeur · E mineur1 kruis: elke F is een fis');
+    expect(seen(key)).toContain('G\u00a0majeur · E\u00a0mineur1 kruis: elke F is een F♯');
+    expect(heard(key)).toContain('G\u00a0majeur · E\u00a0mineur1 kruis: elke F is een fis');
     // Keys as said in Dutch, as on the Scales hub: bes majeur, not B♭ majeur.
     view('Toonladders', 'Voortgang tonen voor');
     const majors = within(heading('Majeurtoonladders').closest('section')!).getAllByRole('listitem');

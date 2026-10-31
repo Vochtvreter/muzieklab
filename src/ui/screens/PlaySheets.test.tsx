@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listenToAnnouncements } from '../lib/announce';
+import { listenToAnnouncements, spoken } from '../lib/announce';
 import { PauseContent } from './PlaySheets';
 
 afterEach(cleanup);
@@ -14,7 +14,7 @@ describe('the Pause sheet', () => {
 
   it("says why it paused through the app's live region, not as a status inserted with its text", () => {
     const said: string[] = [];
-    const stop = listenToAnnouncements((text) => said.push(text));
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
     render(pause(true));
     stop();
     expect(screen.getByText('The sound was interrupted. Resume to carry on from this bar.')).toBeTruthy();
@@ -24,7 +24,7 @@ describe('the Pause sheet', () => {
 
   it('says nothing of its own when the player paused', () => {
     const said: string[] = [];
-    const stop = listenToAnnouncements((text) => said.push(text));
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
     render(pause(false));
     stop();
     expect(screen.getByText('The count-in plays again when you resume.')).toBeTruthy();

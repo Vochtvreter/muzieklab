@@ -151,7 +151,7 @@ describe('CopyField', () => {
     vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
     document.execCommand = vi.fn(() => false);
     const said: string[] = [];
-    const stop = listenToAnnouncements((text) => said.push(text));
+    const stop = listenToAnnouncements((text) => said.push(spoken(text)));
     render(<CopyField label="Message" value={'Hi Lies,\nopen this link.'} multiline />);
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     const area = screen.getByLabelText('Message') as HTMLTextAreaElement;

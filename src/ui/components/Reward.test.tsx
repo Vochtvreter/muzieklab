@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { levelStart } from '../../game/xp';
 import { setLocale } from '../../i18n';
-import { listenToAnnouncements } from '../lib/announce';
+import { listenToAnnouncements, spoken } from '../lib/announce';
 import { AchievementBadges, CodeCopy, LevelContent, LevelUpContent } from './Reward';
 
 afterEach(() => {
@@ -156,7 +156,7 @@ describe('CodeCopy (Results)', () => {
       block();
       document.execCommand = vi.fn(() => false);
       const said: string[] = [];
-      const stop = listenToAnnouncements((text) => said.push(text));
+      const stop = listenToAnnouncements((text) => said.push(spoken(text)));
       render(<CodeCopy code={code} className="ghost-btn" />);
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
