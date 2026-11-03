@@ -5,9 +5,11 @@ What the Learn chapters (DESIGN.md §9.1) should contain, checked against the Le
 *Allemaal nootjes*, Flemish academy courses (AMV / MCV), the Dutch HaFaBra A–C exams, ABRSM, Trinity, RCM, Kodály and
 Open Music Theory.
 
-Unit numbers in this plan are the rhythm units of `src/game/path.ts` in their own order. Since 0.11.0 they take turns
-with note units in one Learning path (DESIGN.md §8.2), where rhythm unit *n* is path unit *2n*; the chapter headers
-show the path numbers.
+Unit numbers in this plan are the Learning Path's, as a chapter's header shows them (`units` in `chapters.ts`).
+Since 0.11.0 the rhythm units of `src/game/path.ts` take turns with note units in one path (DESIGN.md §8.2), so rhythm
+unit *n* is path unit *2n*. The rhythm units that are designed but not built yet (9 syncopation, 10 dotted eighth +
+sixteenth, 11 triplets, 12 compound meter) have no number in the path, so they keep their rhythm number: *rhythm unit
+10*.
 
 Researched on 2026-10-18. Source labels as in `THEORY-SOURCES.md`: **V** read directly, **S** from a summary or a page
 only partly readable, **U** not confirmed. Claims that go into a chapter still get their row in `THEORY-SOURCES.md`.
@@ -25,13 +27,13 @@ feature that plays it.
 
 | Chapter | Sections | Practice | State |
 |---|---|---|---|
-| **1 · Pulse and meter** | 1.1 The beat and tempo · 1.2 Bars and time signatures · 1.3 Strong and weak beats · 1.4 The upbeat | Rhythm; Path 1, 3, 5 | **built** (0.5.0) without 1.4 |
-| **2 · Note values** | 2.1 Reading the shape · 2.2 The note tree | Rhythm; Path 1, 3, 4, 8 | **built** (0.5.0) |
-| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly | Rhythm; Path 2, 3, 5 | **built** (0.5.0) |
-| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | Rhythm; Path 4, 5, 8 | **built** (0.5.0) |
-| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes · 5.3 Dotted eighth + sixteenth | Rhythm; Path 6, 7, 10 | **built** (0.5.0) |
-| **6 · Off the beat** | 6.1 Syncopation | Rhythm; Path 9 | **built** (0.5.0) |
-| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight | Rhythm (triplets); Path 11, 12 | **built** (0.5.0) without 7.2; 6/8 later |
+| **1 · Pulse and meter** | 1.1 The beat and tempo · 1.2 Bars and time signatures · 1.3 Strong and weak beats · 1.4 The upbeat | Rhythm; Path 2, 6, 10 | **built** (0.5.0) without 1.4 |
+| **2 · Note values** | 2.1 Reading the shape · 2.2 The note tree | Rhythm; Path 2, 6, 8, 16 | **built** (0.5.0) |
+| **3 · Rests** | 3.1 The five rests · 3.2 Writing rests correctly | Rhythm; Path 4, 6, 10 | **built** (0.5.0) |
+| **4 · Dividing the beat** | 4.1 Eighths: 1 & 2 & · 4.2 Sixteenths: 1 e & a · 4.3 Beams show the beat | Rhythm; Path 8, 10, 16 | **built** (0.5.0) |
+| **5 · Making notes longer** | 5.1 Ties · 5.2 Dotted notes · 5.3 Dotted eighth + sixteenth | Rhythm; Path 12, 14; rhythm unit 10 | **built** (0.5.0) |
+| **6 · Off the beat** | 6.1 Syncopation | Rhythm; rhythm unit 9 | **built** (0.5.0) |
+| **7 · Beats in three** | 7.1 Triplets · 7.2 Six-eight | Rhythm (triplets); rhythm units 11, 12 | **built** (0.5.0) without 7.2; 6/8 later |
 | **8 · Notes on the staff** | 8.1 The staff and two clefs · 8.2 Treble clef · 8.3 Bass clef · 8.4 Middle C and ledger lines · 8.5 Two ways to name notes | Read notes: clefs, range, note names | **built** (0.3.4) |
 | **9 · Sharps, flats and naturals** | 9.1 The piano octave · 9.2 Half steps and whole steps · 9.3 Sharp, flat and natural · 9.4 A sign lasts for the bar | Read notes: piano, extra signs | **built** (0.3.4) |
 | **10 · Key signatures** | 10.1 The key signature · 10.2 The order of sharps and flats · 10.3 Naming the key · 10.4 Major and minor | Read notes: keys, mix keys | **built** (0.3.4) |
@@ -51,8 +53,8 @@ differently from the plan:
   (strict spelling), and the section says so.
 - **The quick checks of chapters 1–6** are the boards'; chapter 7's asks about triplets ("three triplet eighths take
   the same time as…"), since 6/8 is not in it.
-- Path units 9–11 are not built, so chapters 5–7 list only the units that exist (the header line is checked against
-  `UNITS`).
+- Rhythm units 9–11 are not built, so chapters 5–7 list only the units that exist (the header line is checked against
+  `PATH_UNITS`).
 
 ### 1.2 Rhythm (chapters 1–7)
 
@@ -64,13 +66,13 @@ ties and dots, and leaves syncopation, triplets and compound meter for last. Wha
 2. **Triplets belong with compound meter**, not with syncopation. Both are "a beat in three"; Kodály, Open Music Theory
    and the 3/8-to-6/8 research teach them together. Chapter 6 becomes syncopation only, chapter 7 becomes
    *Beats in three* (7.1 Triplets, 7.2 Six-eight). Path units do not move.
-3. **Path unit 10 (dotted eighth + sixteenth) has no section.** Give it **5.3**, with the counting "1 (e &) a".
+3. **Rhythm unit 10 (dotted eighth + sixteenth) has no section.** Give it **5.3**, with the counting "1 (e &) a".
 4. **Common time (C)** is ABRSM grade 1 and RCM level 1: one line and a picture in 1.2.
 5. **Tie vs slur** is the classic mistake with ties: one line in 5.1.
 6. **6/8 is counted in two**, with six as the slow-tempo help. Dutch HaFaBra booklets still count six eighths; the
    Flemish academy course, Kodály and the research count two dotted-quarter beats, as the canvas does.
 7. **Chapter 2 should start from the beat note** (the quarter) and end with the note tree as a summary, not open with the
-   whole note. That is the order Path unit 1 already uses.
+   whole note. That is the order Path unit 2 already uses.
 
 ### 1.3 Reading notes (chapters 8–11)
 
@@ -189,7 +191,7 @@ Today* and the grade 4–5 volumes, Open Music Theory 2e, musictheory.net lesson
   ABRSM lists both in G1, Trinity even has the dotted half (G1) before ties (G2), and the Dutch plans name "stip of
   verlengingsboog" together. Keep it, labelled a teaching convention as `THEORY-SOURCES.md` already does.
 - **Dotted quarter + eighth** is hard because it combines a lengthened and a divided beat; it should follow secure
-  eighths (S, Dalby via MRA). The Path already does this (unit 4 before unit 7).
+  eighths (S, Dalby via MRA). The Path already does this (unit 8 before unit 14).
 
 ### 2.6 Reading notes: what the courses teach
 
@@ -237,28 +239,28 @@ Each row keeps the canvas's chapter page layout: intro, sections with counted no
 marks it read (`chapters.ts`; no board yet). **New** marks content the boards do not have yet; it needs a board
 before it is built (CLAUDE.md, *Designs first*).
 
-### Chapter 1 · Pulse and meter — Path units 1, 3, 5
+### Chapter 1 · Pulse and meter — Path units 2, 6, 10
 
 | Section | Content | Notes |
 |---|---|---|
-| 1.1 The beat and tempo | Beat = the pulse you tap your foot to; BPM; tempo words table. **New:** the metronome mark ♩ = 80, as on the Practice setup. *In the game:* the count-in, the metronome setting, and Echo (listen, then tap it back without the notation). | As on the board. Metronome mark: ABRSM G1, Trinity G2. |
+| 1.1 The beat and tempo | Beat = the pulse you tap your foot to; BPM; tempo words table. **New:** the metronome mark ♩ = 80, as on the Free practice setup. *In the game:* the count-in, the metronome setting, and Echo (listen, then tap it back without the notation). | As on the board. Metronome mark: ABRSM G1, Trinity G2. |
 | 1.2 Bars and time signatures | Bar, barline, final barline; top number = beats, bottom = beat note; 2/4, 3/4, 4/4 counted. **New:** C means 4/4 (common time). | C: ABRSM G1, RCM L1, HaFaBra A booklets. Cut time ¢ waits for 2/2 support (HaFaBra B, ABRSM G2). |
 | 1.3 Strong and weak beats | S W / S W W / S W M W. | As on the board (*maataccent*, *zwaar-licht* in HaFaBra A). |
 | **1.4 The upbeat** (new) | A piece can start before beat 1: the notes before the first full bar are the upbeat, counted from the end of the bar ("4 \| 1 2 3 4"). The last bar is usually short by the same amount. No practice link yet. | Every course: HaFaBra A, Flemish year 1, ABRSM G3, RCM L3. The game's exercises always start on beat 1, so it explains without practice, as chapter 7 does on the board. |
 
 Quick check (board): "How many beats does a bar of 3/4 have?" 2 / **3** / 4.
 
-### Chapter 2 · Note values — Path units 1, 3, 4, 8
+### Chapter 2 · Note values — Path units 2, 6, 8, 16
 
 | Section | Content | Notes |
 |---|---|---|
-| 2.1 Reading the shape | Open or filled head, stem, flags, beams. **Order changed:** start from the quarter (one beat, the note of Path unit 1), then the half (two quarters) and the whole (two halves), then the eighth and sixteenth as halves of the beat. | Kodály: from the beat note, not from the whole note. Matches Path units 1 → 3 → 4 → 8. |
+| 2.1 Reading the shape | Open or filled head, stem, flags, beams. **Order changed:** start from the quarter (one beat, the note of Path unit 2), then the half (two quarters) and the whole (two halves), then the eighth and sixteenth as halves of the beat. | Kodály: from the beat note, not from the whole note. Matches Path units 2 → 6 → 8 → 16. |
 | 2.2 The note tree | The tree as the summary of 2.1: each row one 4/4 bar, whole 4 · half 2 · quarter 1 · eighth ½ · sixteenth ¼. Keep the Notes \| Rests toggle. | As on the board. |
 
 The chapter 2 board is the older layout (no meta line, one practice button, no previous / next cards); redraw it like the
 v1.7 chapters before building. Quick check (board): "How many eighth notes fit in one half note?" 2 / **4** / 8.
 
-### Chapter 3 · Rests — Path units 2, 3, 5
+### Chapter 3 · Rests — Path units 4, 6, 10
 
 | Section | Content | Notes |
 |---|---|---|
@@ -267,27 +269,27 @@ v1.7 chapters before building. Quick check (board): "How many eighth notes fit i
 
 Quick check (board): "A bar of 3/4 is completely silent. How do you write it?" **One whole rest, centred**.
 
-### Chapter 4 · Dividing the beat — Path units 4, 5, 8
+### Chapter 4 · Dividing the beat — Path units 8, 10, 16
 
 | Section | Content | Notes |
 |---|---|---|
-| 4.1 Eighths: 1 & 2 & | Two eighths per beat; the eighth rest on the "&" (Path unit 5). | Add unit 5 to the meta line: it brings the eighth rest. |
-| 4.2 Sixteenths: 1 e & a | Four sixteenths; **add** the two mixed figures Path unit 8 practises: eighth + two sixteenths "1 & a", two sixteenths + eighth "1 e &". | The Flemish course and Path unit 8 (lessons 3–4) both teach these as separate figures. |
+| 4.1 Eighths: 1 & 2 & | Two eighths per beat; the eighth rest on the "&" (Path unit 10). | Add unit 10 to the meta line: it brings the eighth rest. |
+| 4.2 Sixteenths: 1 e & a | Four sixteenths; **add** the two mixed figures Path unit 16 practises: eighth + two sixteenths "1 & a", two sixteenths + eighth "1 e &". | The Flemish course and Path unit 16 (lessons 3–4) both teach these as separate figures. |
 | 4.3 Beams show the beat | One beam per beat; four eighths may share a beam on beats 1–2 or 3–4, never across 2–3; quarters never beamed. | As on the board. |
 
 Quick check (board): never beam over **beats 2–3**.
 
-### Chapter 5 · Making notes longer — Path units 6, 7, 10
+### Chapter 5 · Making notes longer — Path units 12, 14; rhythm unit 10
 
 | Section | Content | Notes |
 |---|---|---|
 | 5.1 Ties | A tie joins two notes of the same pitch into one sound; across the barline and to keep beat 3 visible. **Add:** a curve between *different* notes is a slur, not a tie (on the one-line rhythm staff every curve is a tie). | Tie vs slur: the common mistake (Open Music Theory). |
-| 5.2 Dotted notes | A dot adds half the value; dotted half 3 beats (Path unit 7 starts here, in 3/4); dotted quarter + eighth counted "1 (2) & 3". | As on the board. |
-| **5.3 Dotted eighth + sixteenth** (new) | The beat split as ¾ + ¼, counted "1 (e &) a"; compared with "1 & " and "1 e & a" in one beat grid; the reversed figure (sixteenth + dotted eighth). | Path unit 10. ABRSM G1, Trinity G3, the Flemish course's "gepunteerde achtste + zestiende". |
+| 5.2 Dotted notes | A dot adds half the value; dotted half 3 beats (Path unit 14 starts here, in 3/4); dotted quarter + eighth counted "1 (2) & 3". | As on the board. |
+| **5.3 Dotted eighth + sixteenth** (new) | The beat split as ¾ + ¼, counted "1 (e &) a"; compared with "1 & " and "1 e & a" in one beat grid; the reversed figure (sixteenth + dotted eighth). | Rhythm unit 10. ABRSM G1, Trinity G3, the Flemish course's "gepunteerde achtste + zestiende". |
 
 Quick check (board): a dotted quarter sounds like a **quarter tied to an eighth**.
 
-### Chapter 6 · Off the beat — Path unit 9
+### Chapter 6 · Off the beat — rhythm unit 9
 
 | Section | Content | Notes |
 |---|---|---|
@@ -296,7 +298,7 @@ Quick check (board): a dotted quarter sounds like a **quarter tied to an eighth*
 Triplets move to chapter 7. Quick check (board): eighth, quarter, eighth from beat 1: the quarter starts **on the "&" of
 beat 1**.
 
-### Chapter 7 · Beats in three — Path units 11, 12 (was *Compound meter*, unit 12)
+### Chapter 7 · Beats in three — rhythm units 11, 12 (was *Compound meter*, unit 12)
 
 | Section | Content | Notes |
 |---|---|---|
@@ -362,15 +364,15 @@ circle of fifths · 11.4 Minor scales (natural, harmonic, melodic; relative mino
 
 | Practice | Setting | Section | Learning Path |
 |---|---|---|---|
-| Rhythm | Time signatures 2/4, 3/4, 4/4 | 1.2, 1.3 | units 1, 3, 5 |
-| | Note values whole … sixteenth | 2.1, 2.2, 4.1, 4.2 | units 1, 3, 4, 8 |
-| | Rests | 3.1, 3.2 | units 2, 3, 5 |
-| | Ties | 5.1 | unit 6 |
-| | Dotted notes | 5.2, 5.3 | unit 7; **unit 10 missing** |
-| | Triplets | 7.1 | **unit 11 missing** |
-| | (syncopation, from ties and eighths) | 6.1 | **unit 9 missing** |
-| | Tempo, metronome, count-in | 1.1 | every unit |
-| | Hold notes for their length | 3.1 tip | from unit 2 |
+| Rhythm | Time signatures 2/4, 3/4, 4/4 | 1.2, 1.3 | units 2, 6, 10 |
+| | Note values whole … sixteenth | 2.1, 2.2, 4.1, 4.2 | units 2, 6, 8, 16 |
+| | Rests | 3.1, 3.2 | units 4, 6, 10 |
+| | Ties | 5.1 | unit 12 |
+| | Dotted notes | 5.2, 5.3 | unit 14; **rhythm unit 10 missing** |
+| | Triplets | 7.1 | **rhythm unit 11 missing** |
+| | (syncopation, from ties and eighths) | 6.1 | **rhythm unit 9 missing** |
+| | Tempo, metronome, count-in | 1.1 | every rhythm unit |
+| | Hold notes for their length | 3.1 tip | from unit 4 |
 | | Echo | 1.1 tip | – |
 | | Notation style (Settings) | 6.1 tip | – |
 | Read notes | Clefs | 8.1–8.3 | – |
@@ -381,9 +383,10 @@ circle of fifths · 11.4 Minor scales (natural, harmonic, melodic; relative mino
 | | Key, mix keys | 10.1–10.4 | – |
 | Scales | Keys, scale types, answer with, direction | 11.1–11.4 | – |
 
-Everything the game can practise now has a section. The Learning Path is behind: Path units 9 (syncopation), 10 (dotted
-eighth + sixteenth) and 11 (triplets) are designed (DESIGN.md §8.2) and playable in free practice, but not built yet,
-and Read notes has no Path units at all.
+Everything the game can practise now has a section. The Learning Path is behind: rhythm units 9 (syncopation), 10
+(dotted eighth + sixteenth) and 11 (triplets) are designed (DESIGN.md §8.2) and playable in free practice, but not built
+yet. Read notes and Keys have had Path units since 0.11.0 (DESIGN.md §8.2), but this table does not map them yet, and
+the headers of chapters 8–11 list none.
 
 ---
 

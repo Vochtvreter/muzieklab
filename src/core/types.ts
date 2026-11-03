@@ -114,6 +114,11 @@ export interface Timeline {
 export interface Tap {
   down: number;
   up: number | null; // null while still held / never released
+  /**
+   * The earliest onset (seconds) this press may play. A press after Resume plays only the bars played again: one in
+   * the count-in may play the replayed bar's first note, never a note before it that was missed before the pause.
+   */
+  from?: number;
 }
 
 export type Judgement = 'perfect' | 'great' | 'good' | 'miss';

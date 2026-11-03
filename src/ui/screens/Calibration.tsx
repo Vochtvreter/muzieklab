@@ -13,10 +13,13 @@ import { ExerciseFrame } from '../components/AppShell';
 import { TapPad } from '../components/Bits';
 import { Icon } from '../components/Icon';
 import { useDocTitle } from '../hooks';
+import { announce } from '../lib/announce';
 import { signed, signedMs } from '../lib/format';
 import { calibrateBackQuery } from '../lib/learnReturn';
-import { hashQuery, Link, navigate, useHash } from '../router';
+import { focusLost } from '../lib/screenFocus';
+import { hashQuery, leave, Link, useHash } from '../router';
 import { useStore } from '../store';
+import { AUDIO_START_GRACE_MS, STOPPED_AUDIO } from './playSession';
 
 const CLICKS = 16;
 const BPM = 90;
@@ -43,7 +46,21 @@ export function matchedTaps(taps: number[], clicks: number[], window = MATCH_S):
   return out;
 }
 
-const pct = (v: number): string => ((Math.max(-100, Math.min(100, v)) + 100) / 2).toFixed(2) + '%';
+/** The plot's axis runs from −100 to +100 ms: an offset past it is drawn at its end. */
+const clampMs = (v: number): number => Math.max(-100, Math.min(100, v));
+const pct = (v: number): string => ((clampMs(v) + 100) / 2).toFixed(2) + '%';
+
+/**
+ * Where each tap's dot goes on the plot: across by its offset, and up the stack of the dots before it within 5 ms of
+ * where it is drawn, so taps past ±100 ms stack at the end of the axis. Five high at most (top 16 px), under the early
+ * and late labels in the plot's top corners (app.css, .cal-side): a steady late tapper's stack ran over the label.
+ */
+export function plotDots(offsets: readonly number[]): { left: string; top: number }[] {
+  return offsets.map((v, i) => {
+    const level = offsets.slice(0, i).filter((w) => Math.abs(clampMs(w) - clampMs(v)) < 5).length;
+    return { left: pct(v), top: 56 - Math.min(level, 4) * 10 };
+  });
+}
 
 export function Calibration(): JSX.Element {
   const { state, dispatch } = useStore();
@@ -55,9 +72,17 @@ export function Calibration(): JSX.Element {
   const backQuery = fromResults ? calibrateBackQuery(query) : undefined;
   const [phase, setPhase] = useState<Phase>('idle');
   const [taps, setTaps] = useState<number[]>([]);
+  // The run was cut off (the audio stopped, the app was left): its taps measure nothing, so it ends with Try again.
+  const [interrupted, setInterrupted] = useState(false);
   const clicks = useRef<number[]>([]);
   const rawTaps = useRef<number[]>([]);
+  const startedAt = useRef(0);
   const [pad, setPad] = useState<HTMLButtonElement | null>(null);
+  // Set by Try again, whose button the pad replaces: the pad takes the focus, which would otherwise fall to the page.
+  const focusPad = useRef(false);
+  // Set when the run ends with the focus on the pad, which the result replaces: its first button takes the focus.
+  const focusResult = useRef(false);
+  const actions = useRef<HTMLDivElement>(null);
   const prefsRef = useRef(state.prefs);
   prefsRef.current = state.prefs;
 
@@ -70,7 +95,19 @@ export function Calibration(): JSX.Element {
     rawTaps.current = [];
     setTaps([]);
     clicks.current = eng.clicks(CLICKS, BPM, 1);
+    startedAt.current = performance.now();
     setPhase('measuring');
+  };
+
+  const finish = (): void => {
+    focusResult.current = !!pad && pad === document.activeElement;
+    setPhase('done');
+  };
+
+  const interrupt = (): void => {
+    engine().stop();
+    setInterrupted(true);
+    finish();
   };
 
   // Input: the first press starts the clicks; later presses are measured.
@@ -85,21 +122,51 @@ export function Calibration(): JSX.Element {
         rawTaps.current.push(engine().eventToAudioTime(ts));
         const m = matchedTaps(rawTaps.current, clicks.current);
         setTaps(m);
-        if (m.length >= CLICKS) setPhase('done');
+        if (m.length >= CLICKS) finish();
       },
       up: () => undefined,
     });
   }, [phase, pad]);
 
-  // Done once the last click has passed.
+  useEffect(() => {
+    if (!pad || !focusPad.current) return;
+    focusPad.current = false;
+    if (focusLost()) pad.focus();
+  }, [pad]);
+
+  // The result's first button, Save or else Try again, takes the focus from the pad it replaces.
+  useEffect(() => {
+    if (phase !== 'done' || !focusResult.current) return;
+    focusResult.current = false;
+    if (focusLost()) actions.current?.querySelector('button')?.focus();
+  }, [phase]);
+
+  // Done once the last click has passed. A stopped context freezes the clock that says so, and the clicks with it: an
+  // iOS call or Siri, the browser suspending it, a context that never started. Leaving the app stops the run too, as it
+  // pauses Play (playSession.ts).
   useEffect(() => {
     if (phase !== 'measuring') return;
     const id = window.setInterval(() => {
+      if (STOPPED_AUDIO.has(engine().audioState()) && performance.now() - startedAt.current > AUDIO_START_GRACE_MS) {
+        interrupt();
+        return;
+      }
       const last = clicks.current[clicks.current.length - 1] ?? 0;
-      if (engine().now() > last + 0.6) setPhase('done');
+      if (engine().now() > last + 0.6) finish();
     }, 100);
-    return () => window.clearInterval(id);
-  }, [phase]);
+    const onVis = (): void => {
+      if (document.visibilityState === 'hidden') interrupt();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    const off = engine().onStateChange((s) => {
+      if (STOPPED_AUDIO.has(s)) interrupt();
+    });
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+      off();
+    };
+  }, [phase, pad]);
 
   // Leaving without saving restores the stored offset.
   useEffect(
@@ -121,6 +188,8 @@ export function Calibration(): JSX.Element {
     engine().stop();
     rawTaps.current = [];
     setTaps([]);
+    setInterrupted(false);
+    focusPad.current = true;
     setPhase('idle');
   };
 
@@ -128,24 +197,41 @@ export function Calibration(): JSX.Element {
     if (median === null) return;
     dispatch({ type: 'prefs', patch: { calibrationMs: median, calibratedAt: localDateIso() } });
     engine().setCalibrationOffsetMs(median);
-    navigate(backTo, { query: backQuery });
+    // Done once saved: back to the Settings or Results it was opened from, so Back does not open Calibrate again.
+    leave(backTo, backQuery);
   };
 
-  const dots = offsets.map((v, i) => {
-    const level = offsets.slice(0, i).filter((w) => Math.abs(w - v) < 5).length;
+  const dots = plotDots(offsets).map((at, i) => {
     const last = i === n - 1 && phase === 'measuring';
-    return <span key={i} className={'cal-dot m-in' + (last ? ' is-last' : '')} style={{ left: pct(v), top: 56 - Math.min(level, 5) * 10 }} />;
+    return <span key={i} className={'cal-dot m-in' + (last ? ' is-last' : '')} style={at} />;
   });
 
   const lastLabel = phase === 'idle' ? t('calibrate.pressToStart') : n ? t('calibrate.lastTap', { offset: signedMs(offsets[n - 1]) }) : t('calibrate.tapEach');
   const fmt = (v: number): string => signedMs(v);
   const resultKey = median === null || median === 0 ? 'calibrate.resultZero' : median > 0 ? 'calibrate.resultLate' : 'calibrate.resultEarly';
+  const measured = !interrupted && enough && median !== null;
+  const resultText =
+    phase !== 'done'
+      ? ''
+      : measured
+        ? t(resultKey, { count: n, ms: signed(Math.abs(median)).replace(/^[+−]/, '') })
+        : interrupted
+          ? t('calibrate.interrupted')
+          : t('calibrate.tooFew', { count: n });
+  // The result is read out when the run ends (the focus stays where it was, or goes to Save), through the app's one
+  // live region (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen
+  // reader. Its sentence says the delay too.
+  useEffect(() => {
+    if (resultText) announce(resultText);
+  }, [resultText]);
 
   return (
     <ExerciseFrame className="frame--cal">
       <div className="page cal no-scrollbar">
         <div className="screen-head">
-          <Link to={backTo} query={backQuery} aria-label={t(fromResults ? 'calibrate.backResults' : 'calibrate.back')} className="icon-btn icon-btn--edge">
+          {/* Back to Results leaves Calibrate, as Save does, so after Results' own arrow the browser's Back does not
+              open Calibrate or the finished run again. */}
+          <Link to={backTo} query={backQuery} leaves={fromResults} aria-label={t(fromResults ? 'calibrate.backResults' : 'calibrate.back')} className="icon-btn icon-btn--edge">
             <Icon name="back" />
           </Link>
           <h1 className="screen-title">{t('calibrate.title')}</h1>
@@ -207,14 +293,14 @@ export function Calibration(): JSX.Element {
             <TapPad ref={setPad} progress={n / CLICKS} held={false} />
             <span className="muted-text cal-anykey">{t('calibrate.anyKey')}</span>
           </>
-        ) : enough && median !== null ? (
+        ) : measured ? (
           <>
-            <div className="card cal-result m-in" role="status">
+            <div className="card cal-result m-in">
               <span className="label">{t('calibrate.delay')}</span>
               <span className="cal-result-n">{fmt(median)}</span>
-              <span className="cal-result-text">{t(resultKey, { count: n, ms: signed(Math.abs(median)).replace(/^[+−]/, '') })}</span>
+              <span className="cal-result-text">{resultText}</span>
             </div>
-            <div className="cal-actions m-in">
+            <div ref={actions} className="cal-actions m-in">
               <button type="button" className="btn btn--accent" onClick={save}>
                 {t('calibrate.save')}
               </button>
@@ -225,10 +311,10 @@ export function Calibration(): JSX.Element {
           </>
         ) : (
           <>
-            <div className="card cal-result m-in" role="status">
-              <span className="cal-result-text">{t('calibrate.tooFew', { count: n })}</span>
+            <div className="card cal-result m-in">
+              <span className="cal-result-text">{resultText}</span>
             </div>
-            <div className="cal-actions m-in">
+            <div ref={actions} className="cal-actions m-in">
               <button type="button" className="btn btn--accent" onClick={again}>
                 {t('calibrate.again')}
               </button>

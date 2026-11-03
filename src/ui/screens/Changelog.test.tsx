@@ -30,8 +30,13 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'The test site has a gold icon' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Oct 23 · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Fixes from a full test of the app' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Oct 31 · 12 fixed')).toBeTruthy();
+    // The release before it is open, with its Try link.
+    expect(screen.getByRole('link', { name: 'Open Progress' }).getAttribute('href')).toBe('#/progress');
+    // Accounts (0.12.0) are by invitation: the release promises no sign-up.
+    fireEvent.click(release('0.12.0'));
+    expect(screen.getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
   });
 
@@ -64,8 +69,10 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'De testsite heeft een gouden icoon' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('23 okt · 1 beter')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Verbeteringen na een volledige test van de app' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('31 okt · 12 opgelost')).toBeTruthy();
+    fireEvent.click(release('0.12.0'));
+    expect(screen.getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
   });
 
@@ -73,7 +80,8 @@ describe("What's new", () => {
     width = 834;
     render(<Changelog />);
     const card = screen.getByRole('article');
-    expect(within(card).getAllByText('Better')).toHaveLength(1);
+    expect(within(card).getAllByText('Fixed')).toHaveLength(12);
+    expect(within(card).queryAllByText('New')).toHaveLength(0);
     expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
   });
 
@@ -83,8 +91,8 @@ describe("What's new", () => {
     const list = screen.getByRole('navigation', { name: 'Releases' });
     expect(within(list).getAllByRole('button')).toHaveLength(RELEASES.length);
     expect(release(RELEASES[0].version).getAttribute('aria-current')).toBe('true');
-    expect(screen.getByRole('heading', { level: 2, name: 'The test site has a gold icon' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('October 23, 2026 · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Fixes from a full test of the app' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('October 31, 2026 · 12 fixed')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
     expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
 
@@ -100,5 +108,24 @@ describe("What's new", () => {
     expect(within(screen.getByRole('article')).getByText('Fix release')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /^Newer 0\.3\.0/ }));
     expect(release('0.3.0').getAttribute('aria-current')).toBe('true');
+  });
+
+  it('on a computer, the step left takes the focus when Older reaches the first release or Newer the latest', () => {
+    width = 1280;
+    render(<Changelog />);
+    // Pressed from the keyboard: the button has the focus.
+    const press = (name: RegExp): void => {
+      const btn = screen.getByRole('button', { name });
+      btn.focus();
+      fireEvent.click(btn);
+    };
+    fireEvent.click(release(RELEASES[RELEASES.length - 2].version));
+    press(/^Older/);
+    expect(screen.queryByRole('button', { name: /^Older/ })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Newer/ }));
+    fireEvent.click(release(RELEASES[1].version));
+    press(/^Newer/);
+    expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Older/ }));
   });
 });

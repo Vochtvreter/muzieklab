@@ -1,6 +1,7 @@
 /**
  * A small ICU-style message formatter (DESIGN.md §11): `{name}` variables, `{n, plural, …}` with `=N`,
- * `zero/one/two/few/many/other` and `#`, and `{x, select, … other {…}}`. Nesting works inside branches.
+ * `zero/one/two/few/many/other` and `#`, `{x, select, … other {…}}`, and `{n, number, ::.0}` for a set number of
+ * decimals (ICU's skeleton: each 0 a decimal always shown, each # one shown when needed). Nesting works inside branches.
  * Pure: the catalog and locale are passed in, so it is easy to test.
  */
 export type MessageParams = Record<string, string | number | boolean | null | undefined>;
@@ -64,6 +65,14 @@ function renderArg(body: string, params: MessageParams, locale: string): string 
   if (type === 'select') {
     const key = String(value);
     return render(options.get(key) ?? options.get('other') ?? '', params, locale, null);
+  }
+  if (type === 'number') {
+    const decimals = /^::\.(0*)(#*)$/.exec(secondComma < 0 ? '' : rest.slice(secondComma + 1).trim());
+    const n = typeof value === 'number' ? value : Number(value ?? 0);
+    if (decimals && Number.isFinite(n)) {
+      const min = decimals[1].length;
+      return new Intl.NumberFormat(locale, { minimumFractionDigits: min, maximumFractionDigits: min + decimals[2].length, useGrouping: false }).format(n);
+    }
   }
   return formatValue(value, locale);
 }

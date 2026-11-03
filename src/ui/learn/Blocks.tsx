@@ -2,7 +2,7 @@
  * Draws the content blocks of a Learn section (chapters.ts): text, tips, lists, staves, the piano and side-by-side pairs.
  * Rhythms, the pulse, the note tree, playable staves and the piano can be heard (Listen.tsx).
  */
-import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { BLACK_KEYS, LETTERS, PPQ, getMeter, letterOf, pitchClass, type ScaleAlter, type Letter, type Meter, type MeterId, type NotatedSymbol, type NoteValue } from '../../core/api';
 import { countBar, countText, type CountMark } from '../../render/counting';
 import { PitchStaff, type PitchNote } from '../../render/PitchStaff';
@@ -22,6 +22,8 @@ type BlockOf<K extends Block['kind']> = Extract<Block, { kind: K }>;
 
 interface HeardProps {
   sound: Sound;
+  /** Which example its button plays ("Play: Whole note"): its title, or what its notation shows. */
+  name: string;
   /** The example's first line (its verdict or title); `more` the lines under it, above the notation. */
   first?: ReactNode;
   more?: ReactNode;
@@ -34,11 +36,11 @@ interface HeardProps {
  * phone needs the full width for the notation, so there the button starts the example's first line, or has a line of
  * its own.
  */
-function Heard({ sound, first, more, className, children }: HeardProps): JSX.Element {
+function Heard({ sound, name, first, more, className, children }: HeardProps): JSX.Element {
   const bp = useBreakpoint();
   const { playing, toggle } = useLearnSound();
   const id = useId();
-  const button = <PlayButton on={playing === id} onClick={() => toggle(id, sound)} />;
+  const button = <PlayButton on={playing === id} name={name} onClick={() => toggle(id, sound)} />;
   const box = 'learn-example' + (className ? ' ' + className : '');
   if (bp === 'phone') {
     return (
@@ -197,7 +199,8 @@ function StaffBlock({ id, block: b }: { id: string; block: BlockOf<'staff'> }): 
         }),
     [b.notes, b.labels],
   );
-  const names = notes.map((n) => nameOf(n.step, false, n.sign ?? 0)).join(', ');
+  // The alt text says the notes as a screen reader should: "F sharp", not the sign.
+  const names = notes.map((n) => spokenName(letterOf(n.step), n.sign ?? 0)).join(', ');
   const alt = t(sectionKey(id, b.alt), { names });
   const keyId = b.keyId ?? 'C';
   // A value is shown as written ('F C G D A E B'), or from the catalog when it names a text of the section (a step
@@ -220,7 +223,8 @@ function StaffBlock({ id, block: b }: { id: string; block: BlockOf<'staff'> }): 
   );
   if (b.play) {
     return (
-      <Heard sound={notesSound(staffMidis(notes, keyId, b.barlines === false))} first={head}>
+      <Heard sound={notesSound(staffMidis(notes, keyId, b.barlines === false))} name={b.title ? t(sectionKey(id, b.title)) : alt}
+        first={head}>
         {staff}
       </Heard>
     );
@@ -261,10 +265,11 @@ function RhythmBlock({ id, block: b }: { id: string; block: BlockOf<'rhythm'> })
     </div>
   );
   return (
-    <Heard sound={rhythmSound(meter, bars, b.tempo ?? LEARN_TEMPO)} first={verdict || head} more={verdict && head}>
+    <Heard sound={rhythmSound(meter, bars, b.tempo ?? LEARN_TEMPO)} name={t(sectionKey(id, b.title ?? b.alt))} first={verdict || head}
+      more={verdict && head}>
       <div className="learn-rhythm" style={{ maxWidth: fit }}>
         <Staff bars={bars} meter={meter} barsPerRow={Math.min(bars.length, bp === 'phone' ? 2 : 4)} label={t(sectionKey(id, b.alt))}
-          countText={syllable} timeSig={b.common ? 'C' : undefined} />
+          countText={syllable} timeSig={b.common ? 'C' : undefined} shrinkToFit />
       </div>
     </Heard>
   );
@@ -330,7 +335,7 @@ function Pulse({ tempos, alt }: { tempos: number[]; alt: string }): JSX.Element 
         const count = beatsIn(bpm, PULSE_SECONDS);
         return (
           <div key={bpm} className="learn-pulse-row">
-            <PlayButton on={on === bpm} label={t('learn.pulse.play', { bpm })} onClick={() => toggle(base + bpm, clickSound(count, bpm))} />
+            <PlayButton on={on === bpm} name={t('learn.pulse.bpm', { bpm })} onClick={() => toggle(base + bpm, clickSound(count, bpm))} />
             <span className="mono-muted" aria-hidden="true">
               {t('learn.pulse.bpm', { bpm })}
             </span>
@@ -427,14 +432,14 @@ function NoteTree(): JSX.Element {
       {rows.map((r) => {
         const name = t((kind === 'notes' ? 'value.' : 'rest.') + r.value);
         return (
-          <Heard key={r.value} className="learn-tree-row" sound={rhythmSound(meter, r.bars, LEARN_TEMPO)}
+          <Heard key={r.value} className="learn-tree-row" sound={rhythmSound(meter, r.bars, LEARN_TEMPO)} name={name}
             first={
               <div className="learn-example-head">
                 <b className="learn-tree-name">{name}</b>
                 <span className="mono-accent">{t('learn.tree.len.' + r.value)}</span>
               </div>
             }>
-            <Staff bars={r.bars} meter={meter} barsPerRow={1} label={t('learn.tree.alt', { count: r.count, name })} />
+            <Staff bars={r.bars} meter={meter} barsPerRow={1} label={t('learn.tree.alt', { count: r.count, name })} shrinkToFit />
           </Heard>
         );
       })}
@@ -444,26 +449,30 @@ function NoteTree(): JSX.Element {
 
 /**
  * One piano octave from middle C, labelled with letters: a tapped key sounds. `marked` white keys are tinted, and the
- * play button plays them in order.
+ * play button plays them in order. Each black key comes after the white key it follows: low to high, as drawn.
  */
 function PianoDiagram({ alt, marked }: { alt: string; marked: string[] }): JSX.Element {
   const { tap } = useLearnSound();
   const key = (pc: number) => (): void => tap(notesSound([PIANO_C + pc]));
   const piano = (
     <div className="piano piano--diagram" role="group" aria-label={alt}>
-      {LETTERS.map((L: Letter) => (
-        <button key={L} type="button" className={'piano-white' + (marked.includes(L) ? ' is-marked' : '')} aria-label={spokenName(L, 0)}
-          onClick={key(pitchClass(L, 0))}>
-          <span className="piano-label" aria-hidden="true">
-            {letterName(L, 0)}
-          </span>
-        </button>
-      ))}
-      {BLACK_KEYS.map((b) => (
-        <button key={b.pc} type="button" className="piano-black" aria-label={t('notes.play.blackKey', { sharp: spokenName(b.sharp, 1), flat: spokenName(b.flat, -1) })}
-          style={{ '--after': b.after } as CSSProperties} onClick={key(b.pc)} />
-      ))}
+      {LETTERS.map((L: Letter, i) => {
+        const b = BLACK_KEYS.find((x) => x.after === i + 1);
+        return (
+          <Fragment key={L}>
+            <button type="button" className={'piano-white' + (marked.includes(L) ? ' is-marked' : '')} aria-label={spokenName(L, 0)} onClick={key(pitchClass(L, 0))}>
+              <span className="piano-label" aria-hidden="true">
+                {letterName(L, 0)}
+              </span>
+            </button>
+            {b && (
+              <button type="button" className="piano-black" aria-label={t('notes.play.blackKey', { sharp: spokenName(b.sharp, 1), flat: spokenName(b.flat, -1) })}
+                style={{ '--after': b.after } as CSSProperties} onClick={key(b.pc)} />
+            )}
+          </Fragment>
+        );
+      })}
     </div>
   );
-  return marked.length ? <Heard sound={notesSound(markedMidis(marked))}>{piano}</Heard> : piano;
+  return marked.length ? <Heard sound={notesSound(markedMidis(marked))} name={alt}>{piano}</Heard> : piano;
 }

@@ -155,6 +155,23 @@ describe('attachTapInput: keyboard', () => {
     ]);
   });
 
+  it('with claimActivationKeys, Space/Enter are left to a control that leaveToControl names (one reached with Tab)', () => {
+    const { log, pad } = setup(true, { claimActivationKeys: true, leaveToControl: () => true });
+    const btn = document.getElementById('pause')!;
+    for (const [k, code] of [['Enter', 'Enter'], [' ', 'Space']]) {
+      expect(fire(btn, key('keydown', k, { code }), 1).defaultPrevented).toBe(false);
+      expect(fire(btn, key('keyup', k, { code }), 2).defaultPrevented).toBe(false);
+    }
+    expect(log).toEqual([]);
+    // The focused pad is still played with them.
+    fire(pad!, key('keydown', ' ', { code: 'Space' }), 3);
+    fire(pad!, key('keyup', ' ', { code: 'Space' }), 4);
+    expect(log).toEqual([
+      ['down', 3],
+      ['up', 4],
+    ]);
+  });
+
   it('Space on the pad or the page taps (and does not scroll)', () => {
     const { log, pad } = setup();
     const ev = fire(pad!, key('keydown', ' ', { code: 'Space' }), 7);

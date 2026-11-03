@@ -63,6 +63,23 @@ describe('layoutLane', () => {
     expect(tones).not.toContain('live');
   });
 
+  it('live with no playhead yet (the count-in, a pause): a press still held is a short mark, and one that matched no note no extra', () => {
+    // Held from 0.12 s before the first beat, judged Good against it while the count-in still runs: it was drawn to the
+    // end of the exercise, across the whole lane, until beat 1.
+    const early = { down: -0.12, up: null };
+    const good = { index: 0, judgement: 'good' as const, offsetMs: -120, hold: null, releaseOffsetMs: null, tap: early };
+    const result = { ...demoPlay(timeline, null).result, notes: [good] };
+    const live = { ...base, width: 342, barsPerRow: 4, rowHeight: 26, live: true, now: null };
+    const [mark, ...more] = of(layoutLane({ ...live, taps: [early], result }).shapes, 'hold');
+    expect(more).toEqual([]);
+    expect(mark.w).toBeLessThanOrEqual(4);
+    // One that matches no note yet (0.2 s early) shows nothing before beat 1; neither it nor a press while paused is
+    // outlined as Results' extra tap: it may still match a note.
+    const none = { ...result, notes: [] };
+    expect(of(layoutLane({ ...live, taps: [{ down: -0.2, up: null }], result: none }).shapes, 'hold')).toEqual([]);
+    expect(of(layoutLane({ ...live, taps: [{ down: 1.0, up: 1.1 }], result: none }).shapes, 'hold').map((h) => h.tone)).toEqual(['live']);
+  });
+
   it('tap only: presses are short marks where they landed, not holds', () => {
     const taps = [{ down: 0, up: 1.5 }];
     const l = layoutLane({ ...base, barsPerRow: 4, taps, now: 2, rowHeight: 26, hold: false });
@@ -76,6 +93,51 @@ describe('layoutLane', () => {
     const l = layoutLane({ timeline: tl, barTicks: 192, barsPerRow: 1, taps, width: 200, rowHeight: 30 });
     expect(of(l.shapes, 'note').map((n) => Math.floor(n.y / 30))).toEqual([0, 1]);
     expect(of(l.shapes, 'hold').map((n) => Math.floor(n.y / 30))).toEqual([0, 1]);
+  });
+
+  it('draws only the rows of its window, the first at the top (live Play on a phone)', () => {
+    // Sixteen bars of 4/4 half notes at a beat of 0.5 s; the note on beat 3 of bar 4 is tied over into bar 5.
+    let tick = 0;
+    const notes = Array.from({ length: 31 }, (_, index) => {
+      const durationTicks = index === 7 ? 192 : 96;
+      const note = { index, bar: Math.floor(tick / 192), tick, onset: tick / 96, end: (tick + durationTicks) / 96, durationTicks, next: 'note' as const };
+      tick += durationTicks;
+      return note;
+    });
+    const tl = { notes, totalSeconds: 32, beatSeconds: 0.5 };
+    const missed = (index: number) => ({ index, judgement: 'miss' as const, offsetMs: null, hold: null, releaseOffsetMs: null, tap: null });
+    // The note on beat 3 of bar 5 (9 to 10 s) is let go after 0.2 s.
+    const letGo = { down: 9, up: 9.2 };
+    const short = { index: 8, judgement: 'great' as const, offsetMs: 0, hold: 'short' as const, releaseOffsetMs: -800, tap: letGo };
+    const result = { ...demoPlay(timeline, null).result, notes: [missed(7), short, missed(20)] };
+    // Bars 5–12 (rows 2 and 3) while bar 6 is played; a tap in bar 1 is above the window.
+    const win = { timeline: tl, barTicks: 192, barsPerRow: 4, width: 342, rowHeight: 26, fromBar: 4, rowsShown: 2 };
+    const l = layoutLane({ ...win, taps: [{ down: 1, up: 1.5 }, letGo, { down: 10, up: 10.5 }], result, now: 10.5 });
+    expect(l.height).toBe(52);
+    const grid = of(l.shapes, 'grid');
+    expect(grid).toHaveLength(2 * 17);
+    expect([...new Set(grid.map((g) => g.y1))]).toEqual([2, 28]);
+    // The tied note's second half and the 15 notes of bars 5–12, none above or below the window.
+    expect(of(l.shapes, 'note')).toHaveLength(16);
+    expect(of(l.shapes, 'note').every((n) => n.y > 0 && n.y < 52)).toBe(true);
+    expect(of(l.shapes, 'hold')).toHaveLength(2);
+    // The note let go early gets its dashed outline in the first row of the window.
+    const cut = of(l.shapes, 'short');
+    expect(cut).toHaveLength(1);
+    expect(cut[0].y).toBeGreaterThan(0);
+    expect(cut[0].y + cut[0].h).toBeLessThan(26);
+    // The tied note keeps its × in bar 4, above the window; the miss in bar 11 is in the second row.
+    const miss = of(l.shapes, 'miss');
+    expect(miss).toHaveLength(1);
+    expect(miss[0].cy).toBeGreaterThan(26);
+    expect(of(l.shapes, 'playhead')).toMatchObject([{ y1: 0, y2: 24 }]);
+    // At the end, bars 9–16: the playhead in bar 16 is in the second row.
+    const end = layoutLane({ ...win, fromBar: 8, taps: [], now: 31 });
+    expect(end.height).toBe(52);
+    expect(of(end.shapes, 'playhead')).toMatchObject([{ y1: 26 }]);
+    // The playhead above the window is not drawn; without a window every row is.
+    expect(of(layoutLane({ ...win, taps: [], now: 1 }).shapes, 'playhead')).toHaveLength(0);
+    expect(layoutLane({ ...win, fromBar: undefined, rowsShown: undefined, taps: [] }).height).toBe(104);
   });
 
   it('picks the board row heights', () => {

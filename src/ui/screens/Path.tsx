@@ -59,9 +59,10 @@ export function PathScreen(): JSX.Element {
     </div>
   );
   const units = <Units view={v} progress={p} tiles={bp !== 'phone'} onPlay={(id) => play(id)} />;
+  // Once the path is done it plays the last lesson again, and says so, as Home's Play again does.
   const action = v.start && (
     <button type="button" className="btn btn--accent path-start" onClick={() => play(v.start!.id)}>
-      {t('path.start', { id: v.start.id })}
+      {t(v.next ? 'path.start' : 'path.replay', { id: v.start.id })}
     </button>
   );
 
@@ -133,7 +134,7 @@ function PathInfo({ view: v }: { view: PathView }): JSX.Element {
   const n = { unit: v.unit.id, total: v.track.units.length, stars: v.stars.earned, max: v.stars.max };
   return (
     <div className="track-info">
-      <span className="mono-muted" role="img" aria-label={t('path.trackStarsLabel', n)}>
+      <span className="mono-muted" role="img" aria-label={t(v.next ? 'path.trackStarsLabel' : 'path.trackStarsDoneLabel', n)}>
         {v.next ? t('path.trackStars', n) : t('path.trackStarsDone', n)}
       </span>
       <Link to="/learn" className="track-theory">
@@ -150,14 +151,15 @@ function Units({ view: v, progress: p, tiles, onPlay }: { view: PathView; progre
   // The current unit is open; any open unit can be opened instead, or closed.
   const [openUnit, setOpenUnit] = useState<number | null>(curUnit >= 0 ? track.units[curUnit].id : null);
   const list = useRef<HTMLOListElement>(null);
-  // Show the current unit (unit 7 is below the fold on a phone): the list scrolls, or on a short screen the page.
+  // Show the current unit (unit 7 is below the fold on a phone): the list scrolls, or on a short screen the page. Again
+  // when a phone turns on its side and the list becomes tiles: the shell keeps the page, and with it the old scroll.
   useEffect(() => {
     const box = list.current;
     const el = box?.querySelector('.unit--current');
     const scroller = box && box.scrollHeight > box.clientHeight ? box : box?.closest<HTMLElement>('.page');
     if (!el || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
     scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
-  }, []);
+  }, [tiles]);
   // What opens the locked units is said once, under the first of them; the others show a lock and their title.
   const firstLocked = states.indexOf('locked');
 
@@ -166,9 +168,10 @@ function Units({ view: v, progress: p, tiles, onPlay }: { view: PathView; progre
       {track.units.map((u, i) => {
         const st = states[i];
         const isOpen = st !== 'locked' && openUnit === u.id;
-        // "3/4", "1♯", "Mix" in the display face; two signs ("♯♭", "𝄞𝄢") a size smaller.
-        const isText = /[0-9A-Za-z]/.test(u.glyph);
-        const isPair = !isText && [...u.glyph].length === 2;
+        // "3/4", "1♯", "Mix" in the display face; two signs ("♯♭", "𝄞𝄢") a size smaller. A word is a message key.
+        const glyph = tx(u.glyph);
+        const isText = /[0-9A-Za-z]/.test(glyph);
+        const isPair = !isText && [...glyph].length === 2;
         const title = t('path.unitTitle', { id: u.id, title: tx(u.titleKey) });
         const score = { stars: unitStarsIn(p, track, u.id), max: u.lessons.length * SHOWN_STARS };
         const panel = `unit-${u.id}`;
@@ -176,7 +179,7 @@ function Units({ view: v, progress: p, tiles, onPlay }: { view: PathView; progre
           <li key={u.id} className={'unit unit--' + st}>
             <div className="unit-rail">
               <div aria-hidden="true" className={'unit-node unit-node--' + st + (isText ? ' unit-node--text' : isPair ? ' unit-node--pair' : '')}>
-                {u.glyph}
+                {glyph}
               </div>
               <div className={'unit-spine' + (i === track.units.length - 1 ? ' is-last' : st === 'done' ? ' is-done' : '')} />
             </div>

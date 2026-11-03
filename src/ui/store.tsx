@@ -10,6 +10,7 @@ import {
   generateExercise,
   generateRound,
   generateScaleRound,
+  KEY_IDS,
   noteRoundXp,
   sanitizeNoteSettings,
   sanitizeScaleSettings,
@@ -35,28 +36,40 @@ import {
   type Tap,
 } from '../core/api';
 import { Rng } from '../core/rng';
+import { awardAchievements, roundAchievements } from '../game/achievements';
 import { dailyTier } from '../game/daily';
-import { exerciseHas, introId, lessonIntros } from '../game/intro';
+import { mergePrefs, mergeSynced, sameValue, type Synced } from '../game/merge';
+import { introId, lessonIntros, SHOW_IDS, showScore } from '../game/intro';
 import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
-import { ALL_LESSONS, lessonSettings, recordLessonResult } from '../game/path';
-import { pathLessonOpen } from '../game/tracks';
-import { progressKey } from '../game/track';
+import { ALL_LESSONS, findLesson, lessonSettings, recordLessonResult } from '../game/path';
+import { passSkills } from '../game/skills';
+import { markSeen, recordNotes, recordRhythm, recordScales, SCALE_CAP_S, type EchoPlays } from '../game/stats';
+import { pathLessonOf, pathLessonOpen } from '../game/tracks';
+import { progressKey, type TrackId } from '../game/track';
 import { xpForResult } from '../game/xp';
+import type { Me } from '../../shared/api';
 import {
+  ACCOUNT_KEY,
   addPracticeDay,
   defaultProgress,
   isEmptyProgress,
+  loadAccount,
   loadPrefs,
   loadProgress,
   localDateIso,
+  PREFS_KEY,
+  PROGRESS_KEY,
   resetProgress as clearStoredProgress,
+  saveAccount,
   savePrefs,
   saveProgress,
   streak,
   sanitizeSettings,
+  type AchievementId,
   type Prefs,
   type Progress,
 } from '../game/storage';
+import { wholePercent } from './lib/format';
 import { parseHash } from './router';
 
 export interface Run {
@@ -65,8 +78,15 @@ export interface Run {
   lessonId: string | null;
   /** The daily challenge's date (yyyy-mm-dd) when this run is one, else null. */
   daily: string | null;
-  /** Restored after a reload: Play waits for a tap (Ready · Start) before it makes sound. */
+  /**
+   * No tap led here (restored after a reload, or started from a Learn practice link's own address in a new tab): Play
+   * waits for a tap (Ready · Start) before it makes sound.
+   */
   needsGesture?: boolean;
+  /** What a Learn section's practice shows (ids of game/intro.ts, makeRunShowing): Next keeps it. */
+  shows?: string[];
+  /** The player's Bars where the run plays more (a tie needs 2 bars, makeRunShowing): the setup keeps it (runSetup). */
+  setupBars?: number;
 }
 
 /** The current run, per tab (sessionStorage), so a reload on Play rebuilds the same exercise. */
@@ -77,12 +97,15 @@ interface StoredRun {
   seed: number;
   lessonId: string | null;
   daily?: string | null;
+  /** Run.shows and Run.setupBars, so Retry and Next after a reload keep them too. */
+  shows?: string[];
+  setupBars?: number;
 }
 
 function saveRun(run: Run | null): void {
   try {
     if (!run) sessionStorage.removeItem(RUN_KEY);
-    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId, daily: run.daily } satisfies StoredRun));
+    else sessionStorage.setItem(RUN_KEY, JSON.stringify({ settings: run.exercise.settings, seed: run.exercise.seed, lessonId: run.lessonId, daily: run.daily, shows: run.shows, setupBars: run.setupBars } satisfies StoredRun));
   } catch {
     /* storage blocked: a reload goes back to Setup, as before */
   }
@@ -97,9 +120,14 @@ export function restoreRun(): Run | null {
     if (!v || typeof v.seed !== 'number' || typeof v.settings !== 'object' || v.settings === null) return null;
     const lessonId = typeof v.lessonId === 'string' ? v.lessonId : null;
     const daily = typeof v.daily === 'string' ? v.daily : null;
+    // Every id a practice can ask for (SHOW_IDS), 5.3's 'dotted:eighth' too, so Next after a reload still shows it.
+    const shows = Array.isArray(v.shows) ? v.shows.filter((x) => SHOW_IDS.includes(x)) : [];
     const settings = sanitizeSettings(v.settings);
     const run = settings && makeRun(settings, v.seed, lessonId, daily);
-    return run && { ...run, needsGesture: true };
+    if (!run) return null;
+    const { setupBars } = v;
+    const fewer = typeof setupBars === 'number' && Number.isInteger(setupBars) && setupBars >= 1 && setupBars < run.exercise.settings.bars;
+    return { ...run, needsGesture: true, ...(shows.length ? { shows } : {}), ...(fewer ? { setupBars } : {}) };
   } catch {
     return null;
   }
@@ -119,6 +147,8 @@ export interface NoteRun {
   notes: RoundNote[];
   /** The path lesson this round is, or null for free practice. */
   lesson: NoteLessonRef | null;
+  /** No tap led here (restored after a reload): a first note to hear waits for one (Hear it) before it sounds. */
+  needsGesture?: boolean;
 }
 
 /** The current Read notes round, per tab, so a reload on its Play screen starts the same round again. */
@@ -149,7 +179,7 @@ export function restoreNoteRun(weak: Record<string, number>): NoteRun | null {
     const l = v.lesson;
     const lesson =
       l && isNoteTrack(l.track) && typeof l.id === 'string' && noteLessonSettings(l.track, l.id) ? { track: l.track, id: l.id } : null;
-    return makeNoteRun(settings, v.seed, weak, focus, lesson);
+    return { ...makeNoteRun(settings, v.seed, weak, focus, lesson), needsGesture: true };
   } catch {
     return null;
   }
@@ -191,6 +221,13 @@ export function restoreScaleRun(): ScaleRun | null {
   }
 }
 
+/**
+ * A new personal best a run set, for the level-up sheet's "New personal best" row: a lesson played before whose best
+ * accuracy went up (`lesson` is its number in the Learning path, "4.2"), or the daily challenge's best (as dailyBest).
+ * Accuracy as a whole %.
+ */
+export type PersonalBest = { kind: 'lesson'; lesson: string; accuracy: number } | { kind: 'daily'; accuracy: number };
+
 /** What a finished run earned, for Results and the level-up sheet. */
 export interface Reward {
   xp: number;
@@ -201,6 +238,10 @@ export interface Reward {
   streak: number | null;
   /** A daily challenge beat the best daily accuracy so far. */
   dailyBest: boolean;
+  /** Achievements this run earned (game/achievements.ts), in the Progress tab's order. */
+  achievements: AchievementId[];
+  /** A new personal best, or null. */
+  best: PersonalBest | null;
 }
 
 export interface LastResult {
@@ -243,11 +284,74 @@ export interface ScaleHub {
   key: KeyId;
 }
 
+/**
+ * The key last picked on the Scales hub, on this device: a reload, or the app opened again, comes back to it. One key
+ * and round the circle keep it in the setup's keys (the scaleHub action), as the setup's keys chosen on the Key screen
+ * cannot: those are the round's. It stays out of the progress, so the account's copy and its sync are as before.
+ */
+export const SCALE_HUB_KEY = 'muzieklab.scaleHub.v1';
+
+function saveScaleHubKey(key: KeyId): void {
+  try {
+    localStorage.setItem(SCALE_HUB_KEY, key);
+  } catch {
+    /* storage blocked: a reload opens the hub on the setup's first key, as before */
+  }
+}
+
+/** The hub's key for this setup: the setup's first key, or with keys chosen the one last picked on this device. */
+function scaleHubKey(s: ScaleSettings): KeyId {
+  if (s.keyMode !== 'pick') return s.keys[0];
+  try {
+    const stored = localStorage.getItem(SCALE_HUB_KEY);
+    return (KEY_IDS as readonly unknown[]).includes(stored) ? (stored as KeyId) : s.keys[0];
+  } catch {
+    return s.keys[0];
+  }
+}
+
+/**
+ * A one-line message Settings → Account shows after an account change that ends on Settings (signed out, the account
+ * deleted, a new password set from a link…). It stays until Settings is left. `sessionEnded` is Sign in's instead: a
+ * request was refused because the session had ended (account.ts, handleError).
+ */
+export type AccountNotice = 'signedOut' | 'signedOutEverywhere' | 'deleted' | 'deletedKept' | 'welcome' | 'passwordReset' | 'progressAdded' | 'sessionEnded';
+
+/**
+ * Progress on the account (BACKEND-PLAN.md §6, ui/sync.ts): 'idle' until the first sync of this app session, 'saving'
+ * while a save runs, 'saved' when the account has everything, 'pending' when a change could not be sent (no
+ * connection; it goes when the app is back online), 'failed' when the API refused or failed it.
+ */
+export type SyncStatus = 'idle' | 'saving' | 'saved' | 'pending' | 'failed';
+
+/**
+ * The account (BACKEND-PLAN.md §5): who is signed in, and whether the API answered. `api` is 'unknown' until a screen
+ * that needs the account asked GET /me (ui/account.ts); the app makes no network call before that.
+ */
+export interface AccountState {
+  /** The signed-in account, or null. Kept in storage (ACCOUNT_KEY) so it shows offline. */
+  me: Me | null;
+  api: 'unknown' | 'reachable' | 'unreachable';
+  notice: AccountNotice | null;
+  sync: SyncStatus;
+  /**
+   * Signed in or out in another tab, and taken up here (accountStored): what that says, such as the first sign-in's
+   * line about this device's progress (ui/sync.ts), is said in the tab where it happened, not here as well.
+   */
+  elsewhere: boolean;
+}
+
 export interface AppState {
   prefs: Prefs;
   progress: Progress;
   /** Free-practice settings as edited on the setup screen. */
   settings: Settings;
+  /**
+   * What the setup's next Start must show (ids of game/intro.ts, makeRunShowing): Practice weak spots' weak cells, put
+   * there with its preset (weakSpotsShows). A change by hand, or Start, drops it: only the run the preset starts looks
+   * for them, and its Retry and Next, which keep Run.shows.
+   */
+  setupShows?: string[];
   run: Run | null;
   last: LastResult | null;
   /** Read notes: the setup, the round being played and the last finished round. */
@@ -259,48 +363,87 @@ export interface AppState {
   scaleHub: ScaleHub;
   scaleRun: ScaleRun | null;
   scaleLast: ScaleLast | null;
+  account: AccountState;
 }
 
 export type Action =
   | { type: 'prefs'; patch: Partial<Prefs> }
-  | { type: 'settings'; settings: Settings }
+  /** `shows`: what the setup's next Start must show (AppState.setupShows). */
+  | { type: 'settings'; settings: Settings; shows?: string[] }
   | { type: 'start'; run: Run }
-  | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string }
+  /**
+   * `echo`: how an Echo round was heard (every play to listen, and the replays among them); none for Tap. `playedTo`:
+   * where the music stopped, in seconds into the bars (Skip to results stops it early), for minutes practised.
+   */
+  | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string; echo?: EchoPlays; playedTo?: number }
   | { type: 'resetProgress' }
   | { type: 'noteSettings'; settings: NoteSettings }
   | { type: 'noteStart'; run: NoteRun }
   | { type: 'noteFinish'; answers: NoteAnswer[]; today: string }
-  | { type: 'learnRead'; ids: string[] }
+  | { type: 'learnRead'; ids: string[]; today: string }
   | { type: 'scaleSettings'; settings: ScaleSettings }
   | { type: 'scaleHub'; hub: ScaleHub }
   | { type: 'scaleStart'; run: ScaleRun }
-  | { type: 'scaleFinish'; played: PlayedScale[]; today: string };
+  /** `seconds`: the round's time on its play screen (at most SCALE_CAP_S a scale), for minutes practised. */
+  | { type: 'scaleFinish'; played: PlayedScale[]; today: string; seconds: number }
+  /** Achievements and skill levels met by the progress as it is (once when the app starts: progress from before). */
+  | { type: 'evaluate'; today: string }
+  /** The API answered with this account (signed in, or an account change): it is the account from now on. */
+  | { type: 'signedIn'; me: Me; notice?: AccountNotice }
+  /** The API says nobody is signed in (signed out, the session ended, the account was deleted). */
+  | { type: 'signedOut'; notice?: AccountNotice }
+  /** The API did not answer: a cached account stays, shown as offline. */
+  | { type: 'apiUnreachable' }
+  | { type: 'accountNotice'; notice: AccountNotice | null }
+  /**
+   * The account's copy of the progress and synced prefs (ui/sync.ts), merged into this device's against `base`, the copy
+   * both last agreed on. With `reset`, the account was reset since: its progress replaces this device's.
+   */
+  | { type: 'syncApply'; remote: Synced; base: Synced | null; reset: boolean }
+  | { type: 'syncStatus'; status: SyncStatus }
+  /**
+   * Another tab of the app saved its prefs or progress (the tabs of a browser share its storage): this tab takes up
+   * what is stored now, so it does not save its older copy over it.
+   */
+  | { type: 'storageChanged'; prefs: Prefs; progress: Progress }
+  /**
+   * Another tab signed in or out, or saved the account's new name (muzieklab.account.v1): the session cookie is the
+   * browser's, so this tab's requests are that account's now, and it shows and syncs that one.
+   */
+  | { type: 'accountStored'; me: Me | null };
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'prefs':
       return { ...state, prefs: { ...state.prefs, ...action.patch } };
     case 'settings':
-      return { ...state, settings: action.settings };
+      // Saved with the progress as it is edited, as the Read notes and Scales setups are, so a reload keeps it.
+      return { ...state, settings: action.settings, setupShows: action.shows, progress: { ...state.progress, lastSettings: action.settings } };
     case 'start': {
       const free = !action.run.lessonId && !action.run.daily;
-      const progress = free ? { ...state.progress, lastSettings: action.run.exercise.settings } : state.progress;
-      return { ...state, run: action.run, progress };
+      const progress = free ? { ...state.progress, lastSettings: runSetup(action.run) } : state.progress;
+      return { ...state, run: action.run, progress, setupShows: undefined };
     }
     case 'finish': {
-      if (!state.run) return state;
+      const run = state.run;
+      // Scored once: a second finish of the same run must not add its XP and figures again.
+      if (!run || state.last?.run === run) return state;
       // The streak counts a day with real practice: at least one note hit (letting a run play out untouched does not).
       const { result } = action;
       const practised = result.notes.some((n) => n.judgement !== 'miss');
-      const lessonStarsBefore = state.run.lessonId ? (state.progress.lessons[state.run.lessonId]?.stars ?? 0) : 0;
+      const lessonStarsBefore = run.lessonId ? (state.progress.lessons[run.lessonId]?.stars ?? 0) : 0;
+      const before = run.lessonId ? state.progress.lessons[run.lessonId] : undefined;
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
-      if (state.run.lessonId) progress = recordLessonResult(progress, state.run.lessonId, result.stars, result.accuracy);
+      if (run.lessonId) progress = recordLessonResult(progress, run.lessonId, result.stars, result.accuracy);
+      // The Progress tab's figures count real practice too.
+      if (practised) progress = recordRhythm(progress, run.exercise, result, action.today, state.prefs.leniency, action.echo, action.playedTo);
       let dailyBest = false;
-      const day = state.run.daily;
+      const day = run.daily;
       const firstDaily = !!day && practised && progress.daily?.day !== day;
       if (day && practised) {
         const prev = progress.daily?.day === day ? progress.daily : null;
-        dailyBest = result.accuracy > progress.dailyBest;
+        // Beaten as shown, in whole % rounded down, as a lesson's best (lessonBest); the best kept keeps its fraction.
+        dailyBest = wholePercent(result.accuracy) > wholePercent(progress.dailyBest);
         progress = {
           ...progress,
           // The tier is fixed by the day's first play (dailyTier): the one this run was started at.
@@ -313,19 +456,76 @@ export function reducer(state: AppState, action: Action): AppState {
           dailyBest: Math.max(progress.dailyBest, result.accuracy),
         };
       }
-      const xp = xpForResult(state.run.exercise, result, firstDaily);
+      const xp = xpForResult(run.exercise, result, firstDaily);
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
-      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest };
+      const met = evaluate(progress, action.today, roundAchievements(run.exercise, result, action.echo));
+      progress = met.progress;
+      const best: PersonalBest | null = dailyBest
+        ? { kind: 'daily', accuracy: wholePercent(result.accuracy) }
+        : run.lessonId
+          ? lessonBest('rhythm', run.lessonId, before?.bestAccuracy, result.accuracy)
+          : null;
+      const reward: Reward = {
+        xp,
+        xpBefore,
+        xpAfter: xpBefore + xp,
+        streak: practised ? streak(progress.practiceDays, action.today) : null,
+        dailyBest,
+        achievements: met.achievements,
+        best,
+      };
       const { calibrationMs, calibratedAt } = state.prefs;
-      return { ...state, progress, last: { run: state.run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
+      return { ...state, progress, last: { run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
     }
+    case 'evaluate': {
+      const { progress } = evaluate(state.progress, action.today);
+      return progress === state.progress ? state : { ...state, progress };
+    }
+    case 'signedIn': {
+      // The same account again (GET /me, a change of name…) keeps its sync status, and where it was signed in; another
+      // one starts over.
+      const same = state.account.me?.id === action.me.id;
+      const { sync, elsewhere } = same ? state.account : { sync: 'idle' as const, elsewhere: false };
+      return { ...state, account: { me: action.me, api: 'reachable', notice: action.notice ?? null, sync, elsewhere } };
+    }
+    case 'signedOut': {
+      // A second sign-out with no line of its own keeps the first one's: the progress sync's 401 right after Delete
+      // account's, both before a render, so the sync still saw the account signed in.
+      const notice = action.notice ?? (state.account.me ? null : state.account.notice);
+      return { ...state, account: { me: null, api: 'reachable', notice, sync: 'idle', elsewhere: false } };
+    }
+    case 'syncStatus':
+      return state.account.sync === action.status ? state : { ...state, account: { ...state.account, sync: action.status } };
+    case 'syncApply':
+      return applySynced(state, action.remote, action.base, action.reset);
+    case 'storageChanged': {
+      // Nothing new (another tab saved what this one has) changes nothing.
+      const prefs = sameValue(state.prefs, action.prefs) ? state.prefs : action.prefs;
+      const progress = sameValue(state.progress, action.progress) ? state.progress : action.progress;
+      if (prefs === state.prefs && progress === state.progress) return state;
+      return followSetups(state, { ...state, prefs, progress });
+    }
+    case 'accountStored': {
+      const was = state.account.me;
+      if (sameValue(was, action.me)) return state;
+      // The same account: as it is now. Another one, or nobody: as after a sign-in or out, without the line Settings
+      // shows for that, now or after this tab's first sync (it was said in the tab where it happened).
+      if (action.me && was?.id === action.me.id) return { ...state, account: { ...state.account, me: action.me } };
+      return { ...state, account: { ...state.account, me: action.me, notice: null, sync: 'idle', elsewhere: true } };
+    }
+    case 'apiUnreachable':
+      return state.account.api === 'unreachable' ? state : { ...state, account: { ...state.account, api: 'unreachable' } };
+    case 'accountNotice':
+      return state.account.notice === action.notice ? state : { ...state, account: { ...state.account, notice: action.notice } };
+    // Progress only: the account is kept (signing out is its own action).
     case 'resetProgress':
       return {
         ...state,
         progress: defaultProgress(),
         // The free-practice setup comes from the progress (lastSettings), so it goes back to the defaults too.
         settings: practiceSettings({ prefs: state.prefs, progress: defaultProgress() }, DEFAULT_SETTINGS),
+        setupShows: undefined,
         last: null,
         noteLast: null,
         noteSettings: { ...DEFAULT_NOTE_SETTINGS },
@@ -355,19 +555,33 @@ export function reducer(state: AppState, action: Action): AppState {
       progress = { ...progress, notes: { ...progress.notes, weak: updateWeak(progress.notes.weak, run.notes, given) } };
       const lessonKey = run.lesson ? progressKey(run.lesson.track, run.lesson.id) : null;
       const lessonStarsBefore = lessonKey ? (progress.lessons[lessonKey]?.stars ?? 0) : 0;
+      const before = lessonKey ? progress.lessons[lessonKey] : undefined;
       if (lessonKey) progress = recordLessonResult(progress, lessonKey, result.stars, result.accuracy);
+      if (practised) progress = recordNotes(progress, run.notes, given, run.settings, action.today);
       const xp = noteRoundXp(run.settings, result);
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
-      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest: false };
+      const met = evaluate(progress, action.today);
+      progress = met.progress;
+      const reward: Reward = {
+        xp,
+        xpBefore,
+        xpAfter: xpBefore + xp,
+        streak: practised ? streak(progress.practiceDays, action.today) : null,
+        dailyBest: false,
+        achievements: met.achievements,
+        best: run.lesson ? lessonBest(run.lesson.track, run.lesson.id, before?.bestAccuracy, result.accuracy) : null,
+      };
       return { ...state, progress, noteLast: { run, answers: given, result, reward, lessonStarsBefore } };
     }
     case 'scaleSettings':
       return { ...state, scaleSettings: action.settings, progress: { ...state.progress, scales: { ...state.progress.scales, settings: action.settings } } };
     case 'scaleHub': {
-      // With one key, the setup follows the key picked on the circle.
+      // With one key, the setup follows the key picked on the circle. So does round the circle, which plays all 15
+      // whatever its keys: a reload comes back to it. Keys chosen on the Key screen are the round's and stay; the key
+      // picked is kept on this device then (SCALE_HUB_KEY).
       const s = state.scaleSettings;
-      const settings = s.keyMode === 'one' && s.keys[0] !== action.hub.key ? { ...s, keys: [action.hub.key] } : s;
+      const settings = s.keyMode !== 'pick' && s.keys[0] !== action.hub.key ? { ...s, keys: [action.hub.key] } : s;
       const progress = settings === s ? state.progress : { ...state.progress, scales: { ...state.progress.scales, settings } };
       return { ...state, scaleHub: action.hub, scaleSettings: settings, progress };
     }
@@ -382,18 +596,90 @@ export function reducer(state: AppState, action: Action): AppState {
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
       const starsBefore = progress.scales.stars;
       progress = { ...progress, scales: { ...progress.scales, stars: updateScaleStars(starsBefore, result) } };
+      if (practised) progress = recordScales(progress, Math.min(action.seconds, SCALE_CAP_S * action.played.length), action.today);
       const xp = scaleRoundXp(run.settings, result);
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
-      const reward: Reward = { xp, xpBefore, xpAfter: xpBefore + xp, streak: practised ? streak(progress.practiceDays, action.today) : null, dailyBest: false };
+      const met = evaluate(progress, action.today);
+      progress = met.progress;
+      const reward: Reward = {
+        xp,
+        xpBefore,
+        xpAfter: xpBefore + xp,
+        streak: practised ? streak(progress.practiceDays, action.today) : null,
+        dailyBest: false,
+        achievements: met.achievements,
+        best: null,
+      };
       return { ...state, progress, scaleLast: { run, played: action.played, result, reward, starsBefore } };
     }
     case 'learnRead': {
       const add = action.ids.filter((id) => !state.progress.learnRead.includes(id));
-      if (add.length === 0) return state;
-      return { ...state, progress: { ...state.progress, learnRead: [...state.progress.learnRead, ...add].sort() } };
+      // A quick check answered right is theory practised (a section read again too): Theory's review clears.
+      const seen = state.progress.stats.seen.theory;
+      if (add.length === 0 && seen !== undefined && seen >= action.today) return state;
+      let progress = add.length ? { ...state.progress, learnRead: [...state.progress.learnRead, ...add].sort() } : state.progress;
+      progress = evaluate(markSeen(progress, 'theory', action.today), action.today).progress;
+      return { ...state, progress };
     }
   }
+}
+
+/**
+ * Progress with what it now meets marked on `today`: the 7-day streak and `earned` (what a round earned on its own)
+ * as achievements, and every skill level whose checks are met. `achievements` lists those new to it.
+ */
+function evaluate(p: Progress, today: string, earned: AchievementId[] = []): { progress: Progress; achievements: AchievementId[] } {
+  const a = awardAchievements(p, today, earned);
+  return { progress: passSkills(a.progress, today).progress, achievements: a.added };
+}
+
+/**
+ * A lesson played before whose best accuracy this round beat: a new personal best (by its Learning path number). Beaten
+ * as shown, in whole % rounded down (wholePercent): 87.9% after 87.4% is no new best.
+ */
+function lessonBest(track: TrackId, ref: string, was: number | undefined, accuracy: number): PersonalBest | null {
+  if (was === undefined || !(wholePercent(accuracy) > wholePercent(was))) return null;
+  return { kind: 'lesson', lesson: pathLessonOf(track, ref)?.id ?? progressKey(track, ref), accuracy: wholePercent(accuracy) };
+}
+
+/**
+ * The account's copy merged into the state (game/merge.ts), with the setups that follow from the progress. Always a new
+ * progress object, so the sync's change effect runs and saves the merge when it differs from the account's copy.
+ */
+function applySynced(state: AppState, remote: Synced, base: Synced | null, reset: boolean): AppState {
+  const local: Synced = { prefs: state.prefs, progress: state.progress };
+  const merged = reset
+    ? { prefs: mergePrefs(local.prefs, remote.prefs, base?.prefs ?? null), progress: remote.progress }
+    : mergeSynced(local, remote, base);
+  const prefs = { ...state.prefs, ...merged.prefs };
+  const progress = { ...merged.progress };
+  const next = followSetups(state, { ...state, prefs, progress });
+  if (reset) {
+    next.last = null;
+    next.noteLast = null;
+    next.scaleLast = null;
+  }
+  return next;
+}
+
+/**
+ * `next`, a new state with progress from elsewhere (the account's copy merged in, another tab's), with the setups shown
+ * on their screens following that progress where it changed them.
+ */
+function followSetups(state: AppState, next: AppState): AppState {
+  const was = state.progress;
+  const { prefs, progress } = next;
+  if (!sameValue(was.lastSettings, progress.lastSettings)) {
+    next.settings = practiceSettings({ prefs, progress }, progress.lastSettings ?? DEFAULT_SETTINGS);
+    next.setupShows = undefined;
+  }
+  if (!sameValue(was.notes.settings, progress.notes.settings)) next.noteSettings = progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS };
+  if (!sameValue(was.scales.settings, progress.scales.settings)) {
+    next.scaleSettings = progress.scales.settings ?? { ...DEFAULT_SCALE_SETTINGS };
+    next.scaleHub = { ...state.scaleHub, key: next.scaleSettings.keys[0] };
+  }
+  return next;
 }
 
 /** The hold setting a lesson uses: its preset's `hold: false` wins, otherwise the Input pref. */
@@ -448,21 +734,64 @@ export function makeRun(settings: Settings, seed: number, lessonId: string | nul
 }
 
 /**
- * Seeds a lesson start tries for an exercise with everything the lesson introduces. Most lessons find one in the first
- * few tries; 3.4's whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
+ * Seeds a start tries for an exercise that shows what it should. Most lessons find one in the first few tries; 3.4's
+ * whole rest is in only about 1 exercise in 22, so 200 leave about 1 start in 10,000 without it.
  */
 const INTRO_TRIES = 200;
 
 /**
- * A lesson run whose exercise shows every symbol the lesson introduces (game/intro.ts), so the intro sheet never names
- * one the staff does not have: from `seed`, other seeds are tried until the exercise has them all (else the last one).
+ * What a lesson's exercise must show: every symbol the lesson introduces (game/intro.ts), so the intro sheet never
+ * names one the staff does not have; what its title names, its `preview` (path.ts: 7.4's dotted quarter, where the
+ * generator takes any dotted value, often the dotted half; 8.3's eighth and two sixteenths in one beat); and the dot or
+ * the tie its unit is about, also in a lesson that adds no symbol (6.2 Ties with eighths).
  */
-export function makeLessonRun(settings: Settings, seed: number, lessonId: string): Run | null {
-  const ids = lessonIntros(lessonId).map(introId);
+function lessonShows(settings: Settings, lessonId: string): string[] {
+  const flags = (['dotted', 'ties', 'triplets'] as const).filter((k) => settings[k]);
+  return [...new Set([...lessonIntros(lessonId).map(introId), ...(findLesson(lessonId)?.lesson.preview ?? []), ...flags])];
+}
+
+/**
+ * A run whose exercise shows every symbol given (ids of game/intro.ts, exerciseHas): from `seed`, other seeds are tried
+ * until the exercise has them all, else the run keeps the one that comes closest (showScore: the first ids first). A
+ * Learn section's practice shows what the section teaches (practiceShows in learn/chapters.ts: 5.1's tie, which the
+ * generator only makes likely; 5.3's dotted eighth), and keeps `shows` for Next.
+ */
+export function makeRunShowing(settings: Settings, seed: number, ids: readonly string[], lessonId: string | null = null): Run | null {
+  // No exercise of 1 bar has a tie: the generator ties over a bar line, or in a quarter, half, quarter, which never
+  // ends an exercise. So a run that must show one plays 2 bars, and only that run: the player keeps Bars at 1.
+  const s = ids.includes('ties') && settings.bars < 2 ? { ...settings, bars: 2 } : settings;
+  // Nor has an exercise of 1 or 2 bars a silent bar (3.2's whole rest): the first bar opens with a note and the last
+  // ends on one. So with fewer than 3 bars a run does not look for it, and plays the player's bars.
+  const want = s.bars < 3 ? ids.filter((id) => id !== 'rest:whole') : ids;
+  const all = 2 ** want.length - 1;
   const seeds = new Rng(seed);
-  let run = makeRun(settings, seed, lessonId);
-  for (let i = 1; i < INTRO_TRIES && run && !exerciseHas(run.exercise, ids); i++) run = makeRun(settings, seeds.int(0x7fffffff), lessonId);
-  return run;
+  let run = makeRun(s, seed, lessonId);
+  let score = run ? showScore(run.exercise, want) : all;
+  for (let i = 1; i < INTRO_TRIES && score < all; i++) {
+    const next = makeRun(s, seeds.int(0x7fffffff), lessonId);
+    if (!next) break;
+    const k = showScore(next.exercise, want);
+    if (k > score) {
+      run = next;
+      score = k;
+    }
+  }
+  if (!run || lessonId || !ids.length) return run;
+  return { ...run, shows: [...ids], ...(s !== settings && { setupBars: settings.bars }) };
+}
+
+/**
+ * The setup a free run leaves the player (saved as the free-practice setup; Setup opened from Play or Results): its
+ * exercise's settings, with the player's own Bars where the run played more (setupBars).
+ */
+export function runSetup(run: Run): Settings {
+  const { settings } = run.exercise;
+  return run.setupBars ? { ...settings, bars: run.setupBars } : settings;
+}
+
+/** A lesson run whose exercise shows all its lesson is about (lessonShows). */
+export function makeLessonRun(settings: Settings, seed: number, lessonId: string): Run | null {
+  return makeRunShowing(settings, seed, lessonShows(settings, lessonId), lessonId);
 }
 
 function initialState(): AppState {
@@ -482,9 +811,10 @@ function initialState(): AppState {
     noteRun: route === '/notes/play' ? restoreNoteRun(progress.notes.weak) : null,
     noteLast: null,
     scaleSettings,
-    scaleHub: { tab: 'major', key: scaleSettings.keys[0] },
+    scaleHub: { tab: 'major', key: scaleHubKey(scaleSettings) },
     scaleRun: route === '/scales/play' ? restoreScaleRun() : null,
     scaleLast: null,
+    account: { me: loadAccount(), api: 'unknown', notice: null, sync: 'idle', elsewhere: false },
   };
 }
 
@@ -498,13 +828,15 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }): JSX.Element {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const first = useRef(true);
+  // The prefs and progress last taken up from another tab: in storage already, so not saved again.
+  const stored = useRef<Pick<AppState, 'prefs' | 'progress'> | null>(null);
 
   useEffect(() => {
-    if (first.current) return;
+    if (first.current || state.prefs === stored.current?.prefs) return;
     savePrefs(state.prefs);
   }, [state.prefs]);
   useEffect(() => {
-    if (first.current) return;
+    if (first.current || state.progress === stored.current?.progress) return;
     if (isEmptyProgress(state.progress)) {
       clearStoredProgress();
     } else {
@@ -523,8 +855,33 @@ export function StoreProvider({ children }: { children: ReactNode }): JSX.Elemen
     if (first.current) return;
     saveScaleRun(state.scaleRun);
   }, [state.scaleRun]);
+  // Also the key a load starts on (the setup's first key), so it is the one kept when the setup goes on to keys chosen.
+  useEffect(() => saveScaleHubKey(state.scaleHub.key), [state.scaleHub.key]);
+  // Saved unless storage holds it already, as it does an account taken up from another tab. Compared with what is
+  // stored, so a sign-out here after one taken up from another tab (nobody both times) still forgets the account.
+  useEffect(() => {
+    if (first.current || sameValue(state.account.me, loadAccount())) return;
+    saveAccount(state.account.me);
+  }, [state.account.me]);
+  // The tabs of a browser share its storage, and each saves its whole copy of the prefs and progress: a tab takes up
+  // what another saved, or its next change would put its older copy back over it (the XP and stars earned there gone,
+  // a pref picked there undone). The same for the account: a tab that kept the one signed out elsewhere would show it,
+  // and rename or sync the account signed in since, whose session its requests carry. What is stored is read when the
+  // event comes, so a late one does not undo a newer change.
+  useEffect(() => {
+    const changed = (e: StorageEvent): void => {
+      if (e.key === null || e.key === ACCOUNT_KEY) dispatch({ type: 'accountStored', me: loadAccount() });
+      if (e.key !== null && e.key !== PREFS_KEY && e.key !== PROGRESS_KEY) return;
+      stored.current = { prefs: loadPrefs(), progress: loadProgress() };
+      dispatch({ type: 'storageChanged', ...stored.current });
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, []);
   useEffect(() => {
     first.current = false;
+    // Progress from before (or from an older app) gets the achievements and skill levels it already meets.
+    dispatch({ type: 'evaluate', today: todayIso() });
   }, []);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);

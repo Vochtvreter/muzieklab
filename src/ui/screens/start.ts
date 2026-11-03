@@ -5,8 +5,9 @@ import { dailyChallenge, dailyTier } from '../../game/daily';
 import { findPathLesson } from '../../game/tracks';
 import { unlockAudio } from '../audio';
 import { newSeed } from '../lib/format';
+import { guardFollowUpTap } from '../lib/tapGuard';
 import { navigate } from '../router';
-import { makeLessonRun, makeRun, practiceSettings, runSettings, todayIso, useStore, type Run } from '../store';
+import { makeLessonRun, makeRun, makeRunShowing, practiceSettings, runSettings, runSetup, todayIso, useStore, type Run } from '../store';
 import { useStartNoteLesson } from './notes/start';
 
 /**
@@ -21,6 +22,8 @@ export function useStartLesson(): (lessonId: string, opts?: { replace?: boolean 
       const run = makeLessonRun(runSettings(state, lessonId), newSeed(), lessonId);
       if (!run) return;
       dispatch({ type: 'start', run });
+      // A double tap on Start: its second tap must not press what Play has under it (Skip to results).
+      guardFollowUpTap();
       navigate('/play', { replace: opts.replace });
     },
     [state, dispatch],
@@ -47,16 +50,20 @@ export function useStartPathLesson(): (id: string, opts?: { replace?: boolean })
 
 /**
  * Free practice with the given settings (hold follows the path: practiceSettings). `query` goes along to Play: from a
- * Learn practice link, `from=1.1`, so Quit and Results return to that section.
+ * Learn practice link, `from=1.1`, so Quit and Results return to that section. `replace` swaps the current screen for
+ * Play (the practice link's own address, opened in a new tab). `needsGesture`: no tap led here (that address), so the
+ * audio cannot start yet and Play waits on Ready · Start, as after a reload. `shows`: what the exercise must show (what
+ * a Learn section teaches: practiceShows in learn/chapters.ts; makeRunShowing).
  */
-export function useStartPractice(): (settings: Settings, opts?: { query?: string }) => void {
+export function useStartPractice(): (settings: Settings, opts?: { replace?: boolean; query?: string; needsGesture?: boolean; shows?: readonly string[] }) => void {
   const { state, dispatch } = useStore();
   return useCallback(
-    (settings: Settings, opts: { query?: string } = {}) => {
+    (settings: Settings, { needsGesture, shows = [], ...opts }: { replace?: boolean; query?: string; needsGesture?: boolean; shows?: readonly string[] } = {}) => {
       unlockAudio();
-      const run = makeRun(practiceSettings(state, settings), newSeed(), null);
+      const run = makeRunShowing(practiceSettings(state, settings), newSeed(), shows);
       if (!run) return;
-      dispatch({ type: 'start', run });
+      dispatch({ type: 'start', run: needsGesture ? { ...run, needsGesture } : run });
+      guardFollowUpTap();
       navigate('/play', opts);
     },
     [state, dispatch],
@@ -77,13 +84,15 @@ export function useStartDaily(): () => void {
     const run = makeRun({ ...settings, hold: settings.hold && state.prefs.holdMode === 'hold' }, seed, null, day);
     if (!run) return;
     dispatch({ type: 'start', run });
+    guardFollowUpTap();
     navigate('/play');
   }, [state.progress, state.prefs.holdMode, dispatch]);
 }
 
 /**
- * Retry (the same exercise) or Next (a new seed, same settings and lesson, again showing what the lesson introduces;
- * after a daily challenge, free practice). `query` keeps a Learn section to return to (`from=1.1`).
+ * Retry (the same exercise) or Next (a new seed, same settings and lesson, again showing what the lesson introduces or
+ * a Learn section's practice shows; after a daily challenge, free practice). `query` keeps a Learn section to return
+ * to (`from=1.1`).
  */
 export function useReplay(): (prev: Run, same: boolean, query?: string) => void {
   const { dispatch } = useStore();
@@ -91,13 +100,16 @@ export function useReplay(): (prev: Run, same: boolean, query?: string) => void 
     (prev: Run, same: boolean, query?: string) => {
       unlockAudio();
       const { exercise, lessonId } = prev;
+      // Next in free practice starts from the player's setup (runSetup): with Bars at 1 a tie plays 2 bars again, and
+      // the player keeps 1.
       const run: Run | null = same
-        ? { exercise, lessonId, daily: prev.daily }
+        ? { exercise, lessonId, daily: prev.daily, shows: prev.shows, setupBars: prev.setupBars }
         : lessonId
           ? makeLessonRun(exercise.settings, newSeed(), lessonId)
-          : makeRun(exercise.settings, newSeed(), null);
+          : makeRunShowing(runSetup(prev), newSeed(), prev.shows ?? []);
       if (!run) return;
       dispatch({ type: 'start', run });
+      guardFollowUpTap();
       // Results is swapped for Play (and Play for Results at the end), so Back leaves the exercise, not replays it.
       navigate('/play', { replace: true, query });
     },

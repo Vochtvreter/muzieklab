@@ -138,6 +138,12 @@ class WebAudioEngine implements AudioEngine {
    * never runs again, or whose clock is frozen while it says 'running'), or it was seen stalled.
    */
   private stale = false;
+  /**
+   * The browser refused a context (its constructor threw): silent on the performance clock until the next unlock()
+   * asks again, before a new run (Start, Listen, Calibrate…). Never during one: a tap or a note that brought a context
+   * would move now() to its clock, which starts near 0, and no beat of the run would come.
+   */
+  private refused = false;
   /** Last time the context clock was seen moving, for the stall check in audioState(). */
   private clockSeen = { audio: 0, perf: 0 };
 
@@ -152,11 +158,11 @@ class WebAudioEngine implements AudioEngine {
     window.addEventListener('pagehide', hidden);
   }
 
-  /** Lazily creates the context (null where Web Audio is missing, e.g. tests). */
+  /** Lazily creates the context (null where Web Audio is missing, e.g. tests, or the browser will not make one). */
   private context(): AudioContext | null {
     if (this.ctx) return this.ctx;
     const Ctor = audioContextClass();
-    if (!Ctor) return null;
+    if (!Ctor || this.refused) return null;
     // iOS: 'playback' keeps the clicks audible with the ring/silent switch on (Safari 16.4+).
     const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
     if (session) {
@@ -166,7 +172,15 @@ class WebAudioEngine implements AudioEngine {
         /* read-only in some versions */
       }
     }
-    const ctx = new Ctor({ latencyHint: 'interactive' });
+    let ctx: AudioContext;
+    try {
+      ctx = new Ctor({ latencyHint: 'interactive' });
+    } catch {
+      // Refused (privacy hardening, no audio device, too many contexts): silent on the performance clock, as without
+      // Web Audio, until the next unlock() asks again.
+      this.refused = true;
+      return null;
+    }
     ctx.addEventListener('statechange', () => {
       if (ctx !== this.ctx) return; // a replaced context closing
       this.markClock();
@@ -202,6 +216,9 @@ class WebAudioEngine implements AudioEngine {
   async unlock(): Promise<void> {
     // Inside a gesture, a new context starts reliably; resuming one iOS interrupted or froze in the background does not.
     if (this.ctx && (this.stale || (this.ctx.state as string) === 'interrupted')) this.discard();
+    // A refused context is asked for again here, before a new run, so a refusal that passed (a device plugged in)
+    // brings the sound back.
+    this.refused = false;
     const ctx = this.context();
     if (!ctx) return;
     // iOS: starting a (silent) source inside the gesture unlocks output, resume() alone is not always enough.

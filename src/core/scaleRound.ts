@@ -117,6 +117,11 @@ export function isRightNote(note: ScaleNote, given: ScaleGiven): boolean {
   return given.kind === 'piano' ? given.midi === note.midi : given.alter === note.alter;
 }
 
+/** The note's own key an octave off (the piano window has some keys twice): a mistake, but not a wrong note. */
+export function isWrongOctave(note: ScaleNote, given: ScaleGiven): boolean {
+  return given.kind === 'piano' && given.midi !== note.midi && (given.midi - note.midi) % 12 === 0;
+}
+
 /** The sign buttons: ♭ ♮ ♯, and 𝄪 only in the scales that need one (G♯, D♯ and A♯ minor, §3.7). */
 export function signChoices(s: Scale, direction: Direction = 'up'): ScaleAlter[] {
   return needsDoubleSharp(s, direction) ? [-1, 0, 1, 2] : [-1, 0, 1];

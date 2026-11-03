@@ -2,9 +2,9 @@
 import { restKey, valueKey, type MeterId, type NotatedBar, type NotatedSymbol } from '../../core/api';
 import { t } from '../../i18n';
 
-/** Message key for one symbol: the engine's value/rest keys (value.dottedQuarter, rest.eighth, …). */
+/** Message key for one symbol: the engine's value/rest keys (value.dottedQuarter, rest.eighth, rest.tripletEighth). */
 export function symbolKey(s: NotatedSymbol): string {
-  return s.kind === 'rest' ? restKey(s.value, s.dots) : valueKey(s.value, s.dots, !!s.tuplet);
+  return s.kind === 'rest' ? restKey(s.value, s.dots, !!s.tuplet) : valueKey(s.value, s.dots, !!s.tuplet);
 }
 
 export function describeSymbol(s: NotatedSymbol): string {

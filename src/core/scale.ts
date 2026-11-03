@@ -116,7 +116,8 @@ export const parseScaleId = (id: string): Scale | null => SCALE_BY_ID.get(id) ??
 
 /**
  * The hub's 12 positions, clockwise from C at the top. The three at the bottom have two spellings of the same sound
- * (B/C♭, F♯/G♭, D♭/C♯); the first is shown, tapping the selected key again switches to the second.
+ * (B/C♭, F♯/G♭, D♭/C♯): the selected one is shown, else the one with more progress on the ring in front (the first on
+ * a tie), on both rings, and tapping the selected key again switches to the other.
  */
 export const CIRCLE: readonly (readonly KeyId[])[] = [['C'], ['G'], ['D'], ['A'], ['E'], ['B', 'Cb'], ['F#', 'Gb'], ['Db', 'C#'], ['Ab'], ['Eb'], ['Bb'], ['F']];
 

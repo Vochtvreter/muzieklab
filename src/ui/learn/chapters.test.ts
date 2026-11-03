@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_NOTE_SETTINGS, DEFAULT_SCALE_SETTINGS, DEFAULT_SETTINGS, LETTERS, PPQ, checkSettings, getMeter, sanitizeNoteSettings, sanitizeScaleSettings } from '../../core/api';
-import { PATH_UNITS } from '../../game/tracks';
+import { SHOW_IDS } from '../../game/intro';
+import { ALL_LESSONS, lessonSettings } from '../../game/path';
+import { PATH_UNITS, pathUnitOf } from '../../game/tracks';
 import { parseBars } from '../../render/notationText';
-import { hasMessage } from '../../i18n';
+import { hasMessage, setLocale, t } from '../../i18n';
 import { CHAPTERS, PLANNED_CHAPTERS, parseNoteName, parsePitch, sectionKey, type Block, type Quiz, type Section } from './chapters';
 
 /** Every text key a block uses, relative to its section. */
@@ -48,6 +50,10 @@ describe('Learn chapters', () => {
       expect(c.sections.map((s) => s.id)).toEqual(c.sections.map((_, k) => `${c.n}.${k + 1}`));
     });
     expect(Math.max(...CHAPTERS.map((c) => c.n))).toBeLessThanOrEqual(PLANNED_CHAPTERS);
+  });
+
+  it('say what they build on, except where a track starts: 1 for rhythm, 8 for reading notes', () => {
+    expect(CHAPTERS.filter((c) => !c.builds?.length).map((c) => c.n)).toEqual([1, 8]);
   });
 
   it('build only on earlier chapters, and name Path units that exist', () => {
@@ -132,7 +138,50 @@ describe('Learn chapters', () => {
         const settings = { ...DEFAULT_SETTINGS, mode: 'echo' as const, ...s.practice.rhythm };
         expect(settings.mode, s.id).toBe('tap');
         expect(checkSettings(settings).playable.length, s.id).toBeGreaterThan(0);
+        // An id the start does not know would never be found: every start would try all its seeds in vain.
+        for (const id of s.practice.shows ?? []) expect(SHOW_IDS, s.id).toContain(id);
       }
+    }
+  });
+
+  it('leave tempo, bars and the metronome of rhythm practice to the player', () => {
+    // A link's preset becomes the player's setup (Free practice opens with it), so one that set these would keep them.
+    for (const s of sections) {
+      if (s.practice && 'rhythm' in s.practice) {
+        for (const k of ['tempo', 'bars', 'metronome'] as const) expect(s.practice.rhythm, `${s.id} ${k}`).not.toHaveProperty(k);
+      }
+    }
+  });
+
+  it('call the setup by its name, Free practice, where a text sends the player there', () => {
+    try {
+      for (const locale of ['en', 'nl']) {
+        setLocale(locale);
+        for (const [id, key] of [['1.1', 'mark'], ['6.1', 'game'], ['7.1', 'game']]) {
+          expect(t(sectionKey(id, key)), `${locale} ${id}`).toContain(t('setup.title'));
+        }
+      }
+      // No screen is called Practice ("The Tempo setting in Practice" once named it so).
+      setLocale('en');
+      const texts = sections.flatMap((s) => s.blocks.flatMap(blockKeys).map((key) => t(sectionKey(s.id, key))));
+      expect(texts.filter((text) => /\b(in|under|on) (the )?Practice\b/.test(text))).toEqual([]);
+    } finally {
+      setLocale('en');
+    }
+  });
+
+  it("name in 3.1's tip the Path unit where holding starts, by its number in the Path", () => {
+    // Rhythm unit 2 is the Path's unit 4 (tracks.ts), as chapter 3's header says.
+    const rhythm = ALL_LESSONS.find(({ lesson }) => lessonSettings(lesson.id).hold)!.unit.id;
+    const unit = pathUnitOf('rhythm', rhythm)!;
+    expect(CHAPTERS.find((c) => c.n === 3)!.units).toContain(unit);
+    try {
+      for (const [locale, text] of [['en', `from unit ${unit},`], ['nl', `vanaf blok ${unit},`]]) {
+        setLocale(locale);
+        expect(t(sectionKey('3.1', 'game')), locale).toContain(text);
+      }
+    } finally {
+      setLocale('en');
     }
   });
 });

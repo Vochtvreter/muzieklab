@@ -2,7 +2,7 @@ import { DEFAULT_SETTINGS } from '../core/defaults';
 import { generateExercise } from '../core/generator';
 import { PPQ, type Bar, type Exercise } from '../core/types';
 import { ALL_LESSONS, lessonSettings } from './path';
-import { exerciseHas, INTRO_IDS, introId, introsOf, lessonIntros, unseenIntros } from './intro';
+import { exerciseHas, INTRO_IDS, introId, introsOf, lessonIntros, SHOW_IDS, showScore, unseenIntros } from './intro';
 
 const ids = (lessonId: string): string[] => lessonIntros(lessonId).map(introId);
 
@@ -34,6 +34,11 @@ describe('lessonIntros', () => {
     expect(new Set(all).size).toBe(all.length);
     for (const id of all) expect(INTRO_IDS).toContain(id);
     expect(INTRO_IDS).toEqual(expect.arrayContaining(['triplets', 'rest:sixteenth', 'meter:4/4']));
+  });
+
+  it('every id a start can ask for is known (SHOW_IDS): the intro ids, any rest, each dotted value and the figures', () => {
+    expect(SHOW_IDS).toEqual(expect.arrayContaining([...INTRO_IDS, 'rest', 'dotted:eighth', 'dotted:quarter', 'figure:eighth-pair', 'figure:eighth-sixteenths']));
+    for (const { lesson } of ALL_LESSONS) for (const id of lesson.preview ?? []) expect(SHOW_IDS, lesson.id).toContain(id);
   });
 
   it('an unknown lesson introduces nothing', () => {
@@ -75,6 +80,73 @@ describe('exerciseHas', () => {
     for (const id of ['meter:3/4', 'note:whole', 'rest:half', 'note:eighth', 'ties', 'triplets']) expect(exerciseHas(ex, [id]), id).toBe(false);
     const tied = exercise([{ events: [note(0, 2 * q), note(2 * q, 2 * q)] }, { events: [note(0, 2 * q, { tieFromPrev: true }), note(2 * q, 2 * q)] }]);
     expect(exerciseHas(tied, ['ties'])).toBe(true);
+  });
+
+  it("finds any rest as 'rest', the whole-bar rest too, as 'dotted' is any dotted value", () => {
+    expect(exerciseHas(exercise([{ events: [note(0, 2 * q), rest(2 * q, q), note(3 * q, q)] }]), ['rest'])).toBe(true);
+    expect(exerciseHas(exercise([{ events: [note(0, 4 * q)] }, { events: [rest(0, 4 * q)] }, { events: [note(0, 4 * q)] }]), ['rest'])).toBe(true);
+    expect(exerciseHas(exercise([{ events: [note(0, 2 * q), note(2 * q, 2 * q)] }]), ['rest'])).toBe(false);
+  });
+
+  it('scores how close an exercise comes to showing it all, each symbol before all the ones after it', () => {
+    const ex = exercise([{ events: [note(0, 2 * q), rest(2 * q, q), note(3 * q, q)] }]);
+    expect(showScore(ex, ['note:half', 'rest:quarter'])).toBe(3);
+    expect(showScore(ex, [])).toBe(0);
+    expect(showScore(ex, ['note:eighth', 'rest:whole'])).toBe(0);
+    // The first one shown counts for more than both after it.
+    expect(showScore(ex, ['note:half', 'note:eighth', 'rest:whole'])).toBeGreaterThan(showScore(ex, ['note:eighth', 'note:half', 'rest:quarter']));
+  });
+
+  it('tells one dotted value from another: a dotted half is no dotted quarter', () => {
+    const ex = exercise([{ events: [note(0, 3 * q), note(3 * q, q)] }, { events: [note(0, 4 * q)] }]);
+    expect(exerciseHas(ex, ['dotted', 'dotted:half'])).toBe(true);
+    expect(exerciseHas(ex, ['dotted:quarter'])).toBe(false);
+    const dq = exercise([{ events: [note(0, 1.5 * q), note(1.5 * q, q / 2), note(2 * q, 2 * q)] }]);
+    expect(exerciseHas(dq, ['dotted:quarter', 'note:eighth'])).toBe(true);
+    expect(exerciseHas(dq, ['dotted:half'])).toBe(false);
+  });
+
+  it("finds the skill map's cells, which Practice weak spots asks for: a dotted half tied on counts for ties, and is no half", () => {
+    const threeFour = (bars: Bar[]): Exercise => ({ ...generateExercise({ ...DEFAULT_SETTINGS, meters: ['3/4'], dotted: true, ties: true, bars: bars.length }, 1), bars });
+    const tied = threeFour([{ events: [note(0, 3 * q)] }, { events: [note(0, q, { tieFromPrev: true }), note(q, 2 * q)] }]);
+    expect(exerciseHas(tied, ['dotted:half', 'ties', 'note:half'])).toBe(true);
+    expect(exerciseHas(tied, ['cell:ties', 'cell:half'])).toBe(true);
+    expect(exerciseHas(tied, ['cell:dottedHalf'])).toBe(false);
+    const dotted = threeFour([{ events: [note(0, 3 * q)] }, { events: [rest(0, q), note(q, 2 * q)] }]);
+    expect(exerciseHas(dotted, ['cell:dottedHalf', 'cell:rests', 'cell:half'])).toBe(true);
+    expect(exerciseHas(threeFour([{ events: [note(0, 3 * q)] }, { events: [note(0, 3 * q)] }]), ['cell:half'])).toBe(false);
+    expect(SHOW_IDS).toEqual(expect.arrayContaining(['cell:dottedHalf', 'cell:dottedQE', 'cell:rests']));
+  });
+
+  it('finds an eighth and two sixteenths only where they fill one beat (8.3)', () => {
+    const fig = ['figure:eighth-sixteenths'];
+    // Beat 2: "2 & a".
+    const on = exercise([{ events: [note(0, q / 4), note(q / 4, q / 4), note(q / 2, q / 2), note(q, q / 2), note(1.5 * q, q / 4), note(1.75 * q, q / 4), note(2 * q, 2 * q)] }]);
+    expect(exerciseHas(on, [...fig, 'note:eighth', 'note:sixteenth'])).toBe(true);
+    // The eighth on the "&" of beat 1, its sixteenths on beat 2; two sixteenths and an eighth; a dotted eighth.
+    const across = exercise([{ events: [note(0, q / 2), note(q / 2, q / 2), note(q, q / 4), note(1.25 * q, q / 4), note(1.5 * q, q / 2), note(2 * q, 2 * q)] }]);
+    const reversed = exercise([{ events: [note(0, q / 4), note(q / 4, q / 4), note(q / 2, q / 2), note(q, 3 * q)] }]);
+    const dotted = exercise([{ events: [note(0, 0.75 * q), note(0.75 * q, q / 4), note(q, 3 * q)] }]);
+    for (const ex of [across, reversed, dotted]) expect(exerciseHas(ex, fig)).toBe(false);
+    expect(exerciseHas(across, ['note:eighth', 'note:sixteenth'])).toBe(true);
+  });
+
+  it("finds the other figures a lesson's title names, each from a beat: 4.1's, 7.3's and 8.1's", () => {
+    const figs = ['figure:eighth-pair', 'figure:dotted-quarter-eighth', 'figure:four-sixteenths'];
+    // "1 &", a quarter, "3 (4) &"; then "1 e & a".
+    const on = exercise([
+      { events: [note(0, q / 2), note(q / 2, q / 2), note(q, q), note(2 * q, 1.5 * q), note(3.5 * q, q / 2)] },
+      { events: [note(0, q / 4), note(q / 4, q / 4), note(q / 2, q / 4), note(0.75 * q, q / 4), note(q, q), note(2 * q, 2 * q)] },
+    ]);
+    expect(exerciseHas(on, figs)).toBe(true);
+    // The same values, not in those figures: an eighth and an eighth rest, an eighth and two sixteenths, a dotted
+    // quarter and an eighth rest; three sixteenths and a sixteenth rest, a dotted eighth and a sixteenth.
+    const off = exercise([
+      { events: [note(0, q / 2), rest(q / 2, q / 2), note(q, q / 2), note(1.5 * q, q / 4), note(1.75 * q, q / 4), note(2 * q, 1.5 * q), rest(3.5 * q, q / 2)] },
+      { events: [note(0, q / 4), note(q / 4, q / 4), note(q / 2, q / 4), rest(0.75 * q, q / 4), note(q, 0.75 * q), note(1.75 * q, q / 4), note(2 * q, 2 * q)] },
+    ]);
+    expect(exerciseHas(off, ['note:eighth', 'dotted:quarter', 'note:sixteenth'])).toBe(true);
+    for (const id of figs) expect(exerciseHas(off, [id]), id).toBe(false);
   });
 
   it('finds what a lesson introduces in an exercise that has it', () => {

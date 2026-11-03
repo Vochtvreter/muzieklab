@@ -1,6 +1,30 @@
 /** Small, pure formatting helpers for the screens. Text always comes from the i18n catalog. */
-import { t } from '../../i18n';
+import { createElement, Fragment, type ReactNode } from 'react';
+import { t, translateParams, type MessageParams } from '../../i18n';
 import { DIAMOND, MAX_STARS, SHOWN_STARS, type MeterId } from '../../core/api';
+import { wholePercentOf } from '../../game/stats';
+
+/**
+ * A text from the game logic (a Label of game/skills.ts and game/progressView.ts: a message key and its params): string
+ * params that are message keys (a skill, a cell or a section name) are translated too.
+ */
+export function labelText(label: { key: string; params: Record<string, string | number> }): string {
+  return t(label.key, translateParams(label.params));
+}
+
+/** Marks a slot in a message, so the message can be split around it. */
+const SLOT = '\u0001';
+
+/**
+ * A message with elements in place of some of its params ("<b>Bass clef</b> is your lowest skill: …", "Lesson 7.3 ·
+ * <mono>80%</mono>"): the words keep the catalog's order in every language.
+ */
+export function rich(key: string, params: MessageParams, slots: Record<string, ReactNode>): ReactNode[] {
+  const marks = Object.fromEntries(Object.keys(slots).map((k) => [k, SLOT + k + SLOT]));
+  return t(key, { ...params, ...marks })
+    .split(SLOT)
+    .map((part, i) => (i % 2 ? createElement(Fragment, { key: i }, slots[part]) : part));
+}
 
 /** Tempo word for a BPM (the setup slider label, DESIGN.md §4): a message key under `tempo.`. */
 export function tempoWordKey(bpm: number): string {
@@ -19,6 +43,13 @@ export function difficultyLevel(difficulty: number): number {
   if (!Number.isFinite(difficulty)) return 1;
   return Math.max(1, Math.min(5, Math.ceil(difficulty / 2)));
 }
+
+/**
+ * A run's accuracy as a whole percent, rounded down, so it never shows a threshold the run did not reach (§6.3): 99.69%
+ * is 99%, as 100% is only the diamond's, and 89.7% (two stars) is 89%, not three stars' 90%. The rule, with its 1e-9
+ * for floating point, is wholePercentOf's (game/stats.ts), which the skill checks and Progress use too.
+ */
+export const wholePercent = (accuracy: number): number => wholePercentOf(accuracy, 100);
 
 /** Signed whole number with a typographic minus: "+38", "−12", "0". */
 export function signed(n: number): string {
@@ -53,6 +84,13 @@ export function starsLabel(stars: number): string {
 export function metersLabel(meters: MeterId[]): string {
   const order: MeterId[] = ['2/4', '3/4', '4/4'];
   return order.filter((m) => meters.includes(m)).join(' · ');
+}
+
+/** "a, b, c and d" from texts (already translated). */
+export function andList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  const head = items.slice(0, -1).reduce((a, b) => t('common.commaList', { a, b }));
+  return t('common.and', { a: head, b: items[items.length - 1] });
 }
 
 /** Translated list "a, b or c" from message keys. */

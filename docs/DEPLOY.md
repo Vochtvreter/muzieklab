@@ -112,7 +112,10 @@ sudo apt install -y certbot python3-certbot-nginx && sudo certbot --nginx -d viv
 ```
 
 Both configs cache the hashed files in `assets/` for a year and have browsers check everything else (the page, the
-service worker, the manifest) on every visit, so each deploy reaches people on their next visit.
+service worker, the manifest) on every visit, so each deploy reaches people on their next visit. A name in `assets/`
+that is not there gets its 404 without the year: asked for during a deploy, or brought back by a rollback, it is
+fetched again once it is there. (Caddy sets the header only on a file that exists; nginx's `add_header` leaves out a
+404 by itself.)
 
 ### 6. Add the settings to GitHub
 
@@ -180,6 +183,15 @@ Its icon is gold with a dark note, where production's is teal with a white note,
 home screen tells the two apart. The deploy copies the icons in `public-test/` over those in `public/` before it
 builds; when the icon changes, change both.
 
+### Smoke tests
+
+After every deploy to the test site, the *Smoke test* workflow checks it with `npm run smoke` (once that workflow is on
+the default branch): the files and headers, every screen at phone, tablet and desktop size, offline, the main things to
+do, and accounts, roles and the admin screens with the real API. It signs in with an admin account of the test site,
+from the repository secrets `MUZIEKLAB_TEST_EMAIL` and `MUZIEKLAB_TEST_PASSWORD` (without them it is skipped), and only
+ever changes accounts it makes itself (`smoke-…@example.invalid`), which it removes again. How to run it, and what it
+leaves behind (an entry in *Deleted accounts* for each account it deletes): [SMOKE.md](SMOKE.md).
+
 ### Set up the test site (once)
 
 1. **DNS:** an `A` record with name `test` and the server's IP address (in Hetzner DNS: *Records → Add record*).
@@ -205,10 +217,13 @@ builds; when the icon changes, change both.
 ## The API
 
 The API (`server/`, [BACKEND-PLAN.md](BACKEND-PLAN.md)) runs next to each site: one bundled file,
-`server.cjs`, started by systemd, with MongoDB in Docker. Caddy passes `/api/*` to it. Today it only answers
-`GET /api/v1/health`; accounts follow in phase 1. It runs on the test site first.
+`server.cjs`, started by systemd, with MongoDB in Docker. Caddy passes `/api/*` to it. Under `/api/v1` it answers
+`GET /health` and, since 0.12.0, the accounts: sign-in and sign-out, invite and new-password links, the signed-in
+account (`/me`) and the admin routes (BACKEND-PLAN.md §7). A site without a running API still works: the app then
+shows no Account section. It runs on the test site first; production gets its API before a release whose app needs it
+is merged (*Production's API* below).
 
-| | Test | Production (later) |
+| | Test | Production |
 |---|---|---|
 | Health | https://test.vivanova.app/api/v1/health | https://vivanova.app/api/v1/health |
 | Service | `muzieklab-api@test`, port 3001 | `muzieklab-api@production`, port 3000 |
@@ -292,10 +307,70 @@ All of this runs on the server, as your own user. The files named come from this
    sudo systemctl enable muzieklab-api@$SITE
    ```
 
-6. **Caddy:** copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile` (the test site's block has the `/api/*` route), then
-   `sudo systemctl reload caddy`.
+   The settings file holds `PORT` and `MONGODB_URI`, and may hold `LOG_LEVEL` (*What the API logs*, below). It is
+   readable by root only; systemd reads it before it starts the service as `muzieklab-api`.
+
+   **Feedback from the app** (0.17.0, [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md)) needs no setting: the API stores the
+   reports in its database, and admins review them in the app. Nothing goes to GitHub yet; the GitHub token comes with
+   the step that sends accepted reports there, and so do its instructions. Test builds before the 0.17.0 release read
+   a `GITHUB_TOKEN` from this file: if you added one, take that line out and revoke the token on GitHub.
+
+   **Never put `COOKIE_SECURE` in it.** That setting is for development over plain http only (README). Set to
+   `false`, it drops `Secure` and the `__Host-` and `__Secure-` prefixes from the session cookies, so the browser would
+   also send them over plain http and other subdomains could set them. Without it they are `__Host-session` and
+   `__Secure-refresh`, Secure.
+
+6. **Caddy:** copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile`, then `sudo systemctl reload caddy`. Both site blocks
+   have the `/api/*` route: test.vivanova.app to port 3001, vivanova.app to port 3000. Until a site's API runs, its
+   `/api/*` answers 502, and the app shows no Account section there.
 7. **GitHub:** the repository variable `TEST_API_PATH` = `/srv/muzieklab-api/test` (production: `API_PATH` =
    `/srv/muzieklab-api/production`). Then run *Deploy to test*, and open https://test.vivanova.app/api/v1/health.
+8. **The first admin**, once per site, after a deploy with accounts (0.12.0 or later). The create-admin command in the
+   release makes an admin account and prints a link to choose a password with. Nothing is emailed. It needs `sudo`
+   because the settings file, which holds the database password, is readable by root only:
+
+   ```sh
+   sudo node --env-file=/etc/muzieklab-api/test.env /srv/muzieklab-api/test/current/server.cjs \
+     create-admin --email you@example.com --name "Your Name" --url https://test.vivanova.app
+   ```
+
+   For production: `production.env`, `/srv/muzieklab-api/production/current/server.cjs` and
+   `--url https://vivanova.app`. It prints:
+
+   ```
+   Invited you@example.com as an admin. Send them this link (it works until 2026-10-30T14:55:51.426Z):
+   https://test.vivanova.app/#/invite/<token>
+   ```
+
+   Open the link in a browser within 7 days and choose a password: you are signed in as an admin, and Settings →
+   Account → Accounts invites everyone else.
+   - `--name` is needed only for a new account.
+   - Run it again for an invited account to get a new invite link; the old one stops working.
+   - An account that is active already is made admin. Add `--reset` to also print a new-password link, for 24 hours:
+     the way back in for an admin who forgot their password when no other admin can make one.
+   - Exit codes: 0 done; 1 the account is blocked (nothing changes; another admin can unblock it) or the database
+     could not be reached; 2 bad arguments (a missing `--email` or `--url`, a `--url` that is not https, or a new
+     email without `--name`).
+   - Its audit entries have no actor (BACKEND-PLAN.md §5.1).
+
+### Production's API
+
+The same steps as the test site's, with `production`, port 3000 and the database `muzieklab`. Do them **before
+merging a release whose app needs the API** (0.12.0, accounts, is the first): a push to `main` deploys that release to
+production at once, and its What's new tells people about accounts.
+
+1. **The site:** step 5 with `SITE=production DB=muzieklab PORT=3000`. Steps 1–4 are once per server and done.
+2. **Caddy:** the `vivanova.app` block in `deploy/Caddyfile` has the `/api/*` route to port 3000 (step 6). Copy the
+   file to `/etc/caddy/Caddyfile` if the server's copy is older, then `sudo systemctl reload caddy`.
+3. **GitHub:** the repository variable `API_PATH` = `/srv/muzieklab-api/production`. Then run *Deploy to production*
+   (it deploys `main` as it is, API first) and open https://vivanova.app/api/v1/health: it should answer
+   `"db":"ok"` with the commit of `main`.
+4. **Merge the release.** Its deploy updates the API first, then the app.
+5. **The first admin:** step 8 with `production.env`, `/srv/muzieklab-api/production/current/server.cjs` and
+   `--url https://vivanova.app`.
+
+`sudo systemctl restart muzieklab-api@production` is in `deploy/api/sudoers` already, so the deploy user needs nothing
+new.
 
 ### Look after it
 
@@ -305,6 +380,14 @@ journalctl -u muzieklab-api@test -n 50                    # its log (JSON lines)
 sudo docker ps; sudo docker logs --tail 50 muzieklab-mongo
 ls -lh /var/backups/muzieklab/                            # last night's backup
 ```
+
+**What the API logs** (`server/src/log.ts`, BACKEND-PLAN.md §8): one JSON line per request, with the time, the level,
+the server's own process id and host name, a request number, the method, the route's pattern
+(`/api/v1/admin/accounts/:id`, so no ids), the status and the response time in ms. There is no IP address, no Host,
+no query string (an admin's search holds names and emails), no cookie and no body. Fastify's own request lines are off
+for this reason. Besides these lines, the log has the start and stop of the service, warnings while MongoDB cannot be
+reached, and the error of a request that failed with a 500. Passwords, tokens and cookies never appear. `LOG_LEVEL` in
+the site's settings file sets the level: `info` by default; `warn` leaves the request lines out.
 
 **Restore** a backup (this replaces what is in the database now; `--nsInclude` limits it to one database):
 

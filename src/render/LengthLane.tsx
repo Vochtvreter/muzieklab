@@ -13,15 +13,17 @@ export interface LengthLaneProps {
   result?: JudgeResult; // when present: colour by judgement, dashed cut-short parts, × for misses
   /** Current play position in seconds (live), draws the playhead. */
   now?: number | null;
-  /** Accessible description (an i18n string); defaults to results.laneLabel. */
-  label?: string;
-  /** false for tap-only exercises: presses show as marks, not holds. */
+  /** false for tap-only exercises: presses show as marks, not holds, and the lane's name says it compares taps. */
   hold?: boolean;
   /**
    * On Play: keep the playing row height all the time. The playhead is gone during the count-in and while paused,
-   * and without this the lane took the results height then, so it jumped when the first beat came.
+   * and without this the lane took the results height then, so it jumped when the first beat came. A press that
+   * matched no note is neutral then too: it may still match one (layoutLane).
    */
   live?: boolean;
+  /** Live on a phone: only `rowsShown` rows, from the row of bar `fromBar` (layoutLane). */
+  fromBar?: number;
+  rowsShown?: number;
 }
 
 const DEFAULT_WIDTH = 342;
@@ -77,13 +79,16 @@ export function LengthLane(props: LengthLaneProps): JSX.Element {
     result: props.result,
     now: props.now,
     hold: props.hold,
+    fromBar: props.fromBar,
+    rowsShown: props.rowsShown,
+    live: props.live,
     width,
     rowHeight: laneRowHeight(width, !props.live && props.result !== undefined && props.now == null),
   });
   return (
     <div ref={hostRef} style={{ width: '100%', minWidth: 0 }}>
       <svg width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`} role="img"
-        aria-label={props.label ?? t('results.laneLabel')} style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
+        aria-label={t(props.hold === false ? 'results.laneLabelTap' : 'results.laneLabel')} style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
         {layout.shapes.map(renderShape)}
       </svg>
     </div>

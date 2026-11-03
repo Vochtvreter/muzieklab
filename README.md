@@ -14,8 +14,17 @@ keys around the circle of fifths, played on the piano or spelled with ♭ ♮ �
 pulse and meter to scales. 0.10.0 follows a UX test: the examples in Learn and the notes in Read notes can be heard, a
 lesson shows its new symbols before it starts, Results tells a steady late tapper to calibrate, and the exercise
 screens fit a phone browser. 0.11.0 makes the Path one learning path for notes and rhythm together: the notes come
-one at a time (sol, mi, fa, la, do, re, si), to read, write on the staff and hear. On phone, tablet and desktop, in light and dark. In English and
-Dutch (Settings → Language); adding a language is one new catalog, see [DESIGN.md §11](docs/DESIGN.md).
+one at a time (sol, mi, fa, la, do, re, si), to read, write on the staff and hear. 0.12.0 adds accounts, by
+invitation only and optional (the app needs none): sign in from Settings → Account; change your name, email and
+password, sign out every device, and download or delete your data; admins invite people with a link they send
+themselves, and manage roles, blocking and premium. A privacy statement is in Settings → About. 0.15.0 keeps your
+progress on your account: signed in, it is saved and merged across your devices, and nothing done before signing in is
+lost. Accounts need the API (`server/`); a site without it shows no Account section. 0.19.0 adds the Progress tab
+(the tabs are Home · Path · Learn · Progress · Settings): Rhythm, Notes and Scales views with your level, a streak
+calendar, accuracy, timing and minutes, a skill map of rhythm cells with *Practice weak spots*, notes per clef and the
+slowest notes, and stars per scale; skill levels (six skills of ten levels each); five achievements; and a level-up
+sheet that shows what the run unlocked. On phone, tablet and desktop, in light and dark. In English
+and Dutch (Settings → Language); adding a language is one new catalog, see [DESIGN.md §11](docs/DESIGN.md).
 
 ## Run it
 
@@ -24,20 +33,56 @@ npm install
 npm run dev        # http://localhost:5173
 npm test           # Vitest, including property tests of the rhythm engine
 npm run build      # type check + production build in dist/
-npm run e2e        # Playwright: layout at every screen size and a full lesson (builds first)
+npm run e2e        # Playwright: layout at every screen size and a full lesson (builds first), the API mocked
+npm run e2e:real   # Playwright against the real API: the app, the API bundle and a throwaway MongoDB
+npm run smoke      # Playwright against the deployed test site (docs/SMOKE.md); signs in with MUZIEKLAB_TEST_*
 ```
 
-The API (`server/`, accounts to come: [BACKEND-PLAN.md](docs/BACKEND-PLAN.md)) is its own package:
+`npm run e2e:real` needs `npm install` in `server/` first; its first run downloads MongoDB 9.0.4.
+
+On a computer any key is the tap pad; on a phone, tap the pad on screen. Run
+Settings → Calibrate once per device so the timing scores match what you hear.
+
+### The API
+
+The API (`server/`: accounts, [BACKEND-PLAN.md](docs/BACKEND-PLAN.md)) is its own package:
 
 ```sh
 cd server && npm install
 npm test           # Vitest, against a throwaway MongoDB (mongodb-memory-server)
-MONGODB_URI=mongodb://127.0.0.1:27017/muzieklab_dev npm run dev   # http://127.0.0.1:3000/api/v1/health
 npm run build      # the bundle the server runs: dist/server.cjs
 ```
 
-On a computer any key is the tap pad; on a phone, tap the pad on screen. Run
-Settings → Calibrate once per device so the timing scores match what you hear.
+To run it, the API needs MongoDB as a replica set, because accounts use transactions (a plain `mongod` refuses them).
+Start one in a terminal of its own, in `server/`. In memory, empty each time it starts:
+
+```sh
+node -e "require('mongodb-memory-server').MongoMemoryReplSet.create({ replSet: { name: 'rs0' }, instanceOpts: [{ port: 27017 }] }).then(() => console.log('MongoDB is ready'))"
+```
+
+Or in Docker, keeping its data (after a restart: `docker start muzieklab-dev-mongo`):
+
+```sh
+docker run -d --name muzieklab-dev-mongo -p 127.0.0.1:27017:27017 mongo:9.0.4 --replSet rs0
+docker exec muzieklab-dev-mongo mongosh --quiet --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })'
+```
+
+Then the API, a first admin and the app, each in its own terminal:
+
+```sh
+# in server/, with MONGODB_URI='mongodb://127.0.0.1:27017/muzieklab_dev?replicaSet=rs0' set
+COOKIE_SECURE=false npm run dev    # the API: http://127.0.0.1:3000/api/v1/health
+npx tsx src/main.ts create-admin --email you@example.com --name You --url http://localhost:5173   # prints a link
+# at the root
+npm run dev                        # the app: http://localhost:5173
+```
+
+- The root `npm run dev` passes `/api` on to the API at 127.0.0.1:3000 and keeps the browser's Host header, which the
+  API compares with the Origin of every change. So open the app on http://localhost:5173, then the link create-admin
+  printed, and choose a password.
+- `COOKIE_SECURE=false` makes the session cookies plain `session` and `refresh` without Secure, because browsers drop
+  Secure cookies over plain http. Never set it on a server ([DEPLOY.md](docs/DEPLOY.md)).
+- `npm run preview` and `npm run e2e` have no API: the app then shows no Account section, as on a site without one.
 
 ## Deploy
 
@@ -54,7 +99,12 @@ The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`
 ## Docs
 
 - [Theory sources](docs/THEORY-SOURCES.md): every music theory claim with its source.
-- [Accounts and permissions](docs/BACKEND-PLAN.md): the planned back-end (design, nothing built yet).
+- [Accounts and permissions](docs/BACKEND-PLAN.md): the back-end design; phases 0 (the API, MongoDB, backups), 1
+  (accounts) and 2 (progress on the account) are built.
+- [Feedback loop](docs/FEEDBACK-LOOP.md): while an admin has feedback mode on, with the `feedback.give` permission, mark
+  a spot in the app and send what should change, for admins (`feedback.review`) to accept or decline in Settings →
+  Account → Feedback; and the plan for
+  sending the accepted reports to GitHub as issues, and for the agents that take them from there to a deployed change.
 - [Design document](docs/DESIGN.md): modes, settings, rhythm generator, timing and
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,

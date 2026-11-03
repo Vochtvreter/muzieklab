@@ -1,0 +1,72 @@
+name: Smoke test
+# Checks the test site after each deploy to it (docs/SMOKE.md): the files and headers, every screen, the main things to
+# do, and accounts with the real API (npm run smoke). Also by hand: Actions → Smoke test → Run workflow.
+# GitHub starts workflow_run (and the Run workflow button) from the default branch's copy of this file, so it runs once
+# this file is on the default branch. It never checks production: the suite refuses to sign in there.
+on:
+  workflow_run:
+    workflows: [Deploy to test]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  account:
+    # Only after a deploy that went through, from this repository. Secrets cannot be read in a job's `if`, so this job
+    # checks them: without them the smoke job is skipped, with a notice, and the run stays green.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          EMAIL: ${{ secrets.MUZIEKLAB_TEST_EMAIL }}
+          PASSWORD: ${{ secrets.MUZIEKLAB_TEST_PASSWORD }}
+        run: |
+          if [ -n "$EMAIL" ] && [ -n "$PASSWORD" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Smoke test skipped::Add the MUZIEKLAB_TEST_EMAIL and MUZIEKLAB_TEST_PASSWORD repository secrets to run it (docs/SMOKE.md)."
+          fi
+  smoke:
+    needs: account
+    if: needs.account.outputs.ready == 'true'
+    # One check at a time. A newer deploy's check waits for the running one (never cancels it: a check stopped halfway
+    # leaves its accounts and the admin's sessions behind), and replaces one still waiting. Set on this job, not on the
+    # workflow, so that a run whose jobs are skipped (after a deploy that failed) never joins the group. Not the group
+    # "test": that one is the deploys'.
+    concurrency:
+      group: smoke-test
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The commit that was deployed, so the tests are the ones written for what the site runs.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # The secrets go to this step only. Nothing is uploaded afterwards: this repository is public, and GitHub masks
+      # secrets in logs but not in artifacts. The suite records no traces or videos, and takes no screenshots in CI.
+      # A newer deploy does not wait for this check: when one replaced the release meanwhile (the API restarts, and
+      # reports another commit), a failure says nothing about this commit, so it ends with a notice. That deploy's own
+      # check counts.
+      - name: npm run smoke
+        env:
+          SMOKE_URL: ${{ vars.TEST_URL || 'https://test.vivanova.app/' }}
+          # The API must say it runs this commit (empty when run by hand: then it is only reported).
+          SMOKE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          MUZIEKLAB_TEST_EMAIL: ${{ secrets.MUZIEKLAB_TEST_EMAIL }}
+          MUZIEKLAB_TEST_PASSWORD: ${{ secrets.MUZIEKLAB_TEST_PASSWORD }}
+        run: |
+          if npm run smoke; then exit 0; fi
+          now=$(curl -fsS --max-time 20 "${SMOKE_URL%/}/api/v1/health" | jq -r '.commit // empty' || true)
+          if [ -n "$SMOKE_COMMIT" ] && [ -n "$now" ] && [ "$now" != "$SMOKE_COMMIT" ]; then
+            echo "::notice title=Smoke test superseded::The test site now runs $now, deployed during this check of $SMOKE_COMMIT. The check after that deploy counts."
+            exit 0
+          fi
+          exit 1

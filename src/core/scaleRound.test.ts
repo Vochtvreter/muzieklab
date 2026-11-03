@@ -6,6 +6,7 @@ import {
   afterScale,
   generateScaleRound,
   isRightNote,
+  isWrongOctave,
   sanitizeScaleSettings,
   scaleRoundKeys,
   scaleRoundXp,
@@ -102,6 +103,14 @@ describe('judging a note', () => {
     expect(isRightNote(d[7], { kind: 'piano', midi: 74 })).toBe(true);
     expect(isRightNote(d[2], { kind: 'sign', alter: 1 })).toBe(true);
     expect(isRightNote(d[2], { kind: 'sign', alter: 0 })).toBe(false);
+  });
+
+  it('tells the right key in the wrong octave from a wrong key', () => {
+    expect(isWrongOctave(d[7], { kind: 'piano', midi: 62 })).toBe(true);
+    expect(isWrongOctave(d[0], { kind: 'piano', midi: 74 })).toBe(true);
+    expect(isWrongOctave(d[7], { kind: 'piano', midi: 74 })).toBe(false);
+    expect(isWrongOctave(d[2], { kind: 'piano', midi: 65 })).toBe(false);
+    expect(isWrongOctave(d[2], { kind: 'sign', alter: 0 })).toBe(false);
   });
 
   it('offers 𝄪 only where a scale needs it', () => {

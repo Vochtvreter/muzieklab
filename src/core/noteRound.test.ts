@@ -6,11 +6,14 @@ import {
   isRight,
   missKind,
   missedIds,
+  needsPractice,
+  noteDifficulty,
   noteId,
   noteRoundXp,
   noteMidi,
   noteStars,
   pianoKeyMidi,
+  roundExtras,
   roundHasSigns,
   roundLetters,
   sanitizeNoteSettings,
@@ -152,6 +155,21 @@ describe('the sign row', () => {
   });
 });
 
+describe('extra signs', () => {
+  it('Sharps adds none in C♯ major, where every letter is sharp already: no promise of them and no harder round', () => {
+    const s: NoteSettings = { ...DEFAULT_NOTE_SETTINGS, keys: ['C#'], extras: 'sharps', count: 50 };
+    for (const seed of [1, 2, 3, 4, 5]) expect(generateRound(s, seed).filter((n) => n.sign !== null)).toEqual([]);
+    expect(roundExtras(s)).toBe('none');
+    expect(noteDifficulty(s)).toBe(noteDifficulty({ ...s, extras: 'none' }));
+    // Both still draws naturals there; another key in the mix, or a letter the key leaves plain (F♯ major's B), takes sharps.
+    expect(roundExtras({ ...s, extras: 'both' })).toBe('both');
+    expect(roundExtras({ ...s, keys: ['C#', 'G'], mixKeys: true })).toBe('sharps');
+    expect(roundExtras({ ...s, keys: ['C#', 'G'] })).toBe('none');
+    expect(roundExtras({ ...s, keys: ['F#'] })).toBe('sharps');
+    expect(noteDifficulty({ ...s, keys: ['F#'] })).toBeGreaterThan(noteDifficulty({ ...s, keys: ['F#'], extras: 'none' }));
+  });
+});
+
 describe('the sound of a note', () => {
   it('is the written note with the key signature and its own sign', () => {
     expect(noteMidi({ ...fSharp5, step: 28, alter: 0, key: 'C' })).toBe(60);
@@ -175,6 +193,18 @@ describe('the sound of a note', () => {
         expect(pianoKeyMidi(n, pc)).toBe(noteMidi(n));
       }
     }
+  });
+
+  it('sounds the other keys where their letter is written: for B♯ and C♭ the letter read is a half step from the note', () => {
+    // B♯4 sounds as C5 and C♭5 as B4, across the C from their letter: the key of the letter read sounds next to the
+    // note, not almost an octave away.
+    const bSharp4: RoundNote = { clef: 'treble', key: 'C#', step: 34, alter: 1, sign: null, input: 'piano', task: 'read' };
+    const cFlat5: RoundNote = { clef: 'treble', key: 'Cb', step: 35, alter: -1, sign: null, input: 'piano', task: 'read' };
+    expect(pianoKeyMidi(bSharp4, 0)).toBe(72);
+    expect(pianoKeyMidi(bSharp4, 11)).toBe(71);
+    expect(pianoKeyMidi(cFlat5, 11)).toBe(71);
+    expect(pianoKeyMidi(cFlat5, 0)).toBe(72);
+    expect(pianoKeyMidi({ ...bSharp4, clef: 'bass', step: 20 }, 11)).toBe(47);
   });
 });
 
@@ -230,6 +260,30 @@ describe('scoreRound', () => {
     expect(updateWeak({ 'treble:38': 5 }, notes, answers)['treble:38']).toBe(5);
     expect(missedIds(notes, answers).sort()).toEqual(['treble:34', 'treble:38']);
   });
+
+  it('lists the notes answered with a hint to practise, as Practice missed notes drills them', () => {
+    const answers = [a('right', 500), a('hinted', 1000), a('right', 500), a('hinted', 4000)];
+    const r = scoreRound(notes, answers);
+    expect(r.missed).toEqual([]);
+    expect(r.slow).toEqual([]);
+    expect(r.hintedNotes).toEqual([expect.objectContaining({ step: 32, alter: 0, count: 1 }), expect.objectContaining({ step: 34, alter: 0, count: 1 })]);
+    // Every note Practice missed notes drills is on the Needs practice card.
+    const listed = (x: typeof r): string[] => [...x.missed, ...x.hintedNotes, ...x.slow].map((c) => noteId(c.clef, c.step));
+    for (const id of missedIds(notes, answers)) expect(listed(r)).toContain(id);
+    // A note missed once and answered with a hint once is listed once, as missed.
+    const both = scoreRound(notes, [a('wrong', 900), a('right', 500), a('hinted', 900)]);
+    expect(both.missed).toEqual([expect.objectContaining({ step: 38, count: 1 })]);
+    expect(both.hintedNotes).toEqual([]);
+  });
+
+  it('names each note to practise with its own sign, as it was answered', () => {
+    // F5, then F♯5 on the same line: the miss is the F♯, and an F missed too is a note of its own.
+    const f: RoundNote = { ...fSharp5, key: 'C', alter: 0 };
+    const fis: RoundNote = { ...fSharp5, key: 'C', alter: 1, sign: 1 };
+    expect(needsPractice([f, fis], [a('right', 500), a('wrong', 900)])).toEqual([fis]);
+    expect(needsPractice([fis, f, fis, f], [a('right', 500), a('hinted', 900), a('timeout', 3000), a('wrong', 900)])).toEqual([f, fis]);
+    expect(needsPractice([f, fis], [])).toEqual([]);
+  });
 });
 
 describe('path lessons: some notes, and read, write and hear', () => {
@@ -248,6 +302,20 @@ describe('path lessons: some notes, and read, write and hear', () => {
     const one = generateRound({ ...s, only: [32] }, 9);
     expect(one).toHaveLength(30);
     expect(one.every((n) => n.step === 32)).toBe(true);
+  });
+
+  it('mixes the two notes of a two-note lesson instead of taking turns, and brings the new one up more often', () => {
+    // Sol and mi (path unit 3): never repeating, they took strict turns (E G E G …), so every note after the first
+    // could be answered without reading or hearing it, and the stressed mi came no more often than sol. (The lessons
+    // that show the note stress mi; Hear mi does not, as there it could be answered without listening: notesPath.ts.)
+    const two: NoteSettings = { ...s, only: [32, 30], stress: [30], count: 10 };
+    const rounds = Array.from({ length: 40 }, (_, i) => generateRound(two, i + 1).map((n) => n.step));
+    const turns = (r: number[]): boolean => r.every((x, i) => i === 0 || x !== r[i - 1]);
+    expect(rounds.filter(turns).length).toBeLessThan(rounds.length / 4);
+    // Twice in a row, never three times.
+    for (const r of rounds) for (let i = 2; i < r.length; i++) expect(r[i] === r[i - 1] && r[i] === r[i - 2]).toBe(false);
+    const all = rounds.flat();
+    expect(all.filter((x) => x === 30).length / all.length).toBeGreaterThan(0.55);
   });
 
   it('brings the new note up more often', () => {

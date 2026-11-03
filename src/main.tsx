@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { loadPrefs } from './game/storage';
 import { resolveLocale, setLocale } from './i18n';
+import { keepSignedIn } from './ui/account';
 // Fonts are bundled (no Google Fonts request), so they work offline: Latin and Latin Extended (for Dutch and other
 // European languages such as Dutch), plus the music symbols the chips and pad use.
 import '@fontsource/figtree/latin-400.css';
@@ -29,9 +30,15 @@ import './styles/base.css';
 import './styles/app.css';
 import './styles/notes.css';
 import './styles/scales.css';
+import './styles/account.css';
+import './styles/feedback.css';
+import './styles/progress.css';
+import './styles/skills.css';
 
 // The saved language, or the device's: set before the first paint so nothing flashes in English.
 setLocale(resolveLocale(loadPrefs().language));
+// Someone signed in on this device stays signed in: the session is renewed on start (ui/account.ts).
+keepSignedIn();
 
 const root = document.getElementById('root');
 if (root) {

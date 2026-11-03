@@ -9,6 +9,9 @@
   --ground: #eef1f0;
   --paper: #ffffff;
   --line: #d8dfde;
+  /* A text field's border (account and admin forms, search, dates): 3:1 or more against both paper and ground, in
+     light and dark (WCAG 1.4.11), where --line is a quiet 1.2–1.4:1. Light 3.76:1 paper, 3.31:1 ground. */
+  --field-line: #7a8687;
   --divider: #e7eceb;
   --grid: #e3e8e7;
   --track: #dde4e3;
@@ -28,11 +31,18 @@
   --on-fill: #ffffff;
   --on-fill-muted: #cfe2e2;
   --tile-overlay: rgba(255, 255, 255, 0.1);
+  /* A lesson tile not played yet on the Continue card: --on-fill-muted is 4.85:1 on the fill, but the tile's overlay
+     lightens it, and there it was 3.85:1. Light 4.59:1 on the tile, dark 5.67:1. */
+  --on-tile-muted: #ebf3f3;
   /* Rewards (stars, streak) */
   --reward: #e0a526;
   --reward-soft: #f8edd2;
   --reward-ink: #8a6412;
   --reward-star: #c48a12;
+  /* Gold text on the gold tint or on paper (Progress: a practised day, "Earned", stars on a scale tile), and the ink on
+     a gold fill (a streak day), which stays dark in dark mode because the gold stays bright. */
+  --reward-text: #7a540c;
+  --on-reward: #161b1c;
   --diamond: #4cbfe3;
   --diamond-hi: #d9f6ff;
   --diamond-deep: #2576bd;
@@ -45,7 +55,8 @@
   /* Feedback. Names read by src/render/theme.ts: --good = perfect/great, --gold = good (early/late) */
   --good: #1f8a5b;
   --gold: #b7791f;
-  --gold-ink: #9a6a10;
+  /* Gold words (GOOD · LATE on Play): 4.5:1 on the page and on the pad's card (--accent-soft), as --miss-ink is. */
+  --gold-ink: #835d0c;
   --miss: #c23b3b;
   /* Answer feedback fills (Read notes, Learn checks). Green text uses --good-ink: --good is only 4.3:1 on paper. */
   --good-soft: #e3f2ea;
@@ -76,7 +87,9 @@
   /* Scrollbar, focus, links */
   --scroll-thumb: #b9c3c2;
   --scroll-thumb-hover: #8a9596;
-  --focus: #e0a526;
+  /* The keyboard's focus ring borders what is behind the control: 3:1 or more against the page, a card, a track and
+     the soft accent (WCAG 1.4.11), which the reward gold (1.7–2.2:1) is not. The gold text's colour, --reward-ink. */
+  --focus: #8a6412;
   --link: #2f6669;
   --link-hover: #1f4a4c;
 
@@ -102,6 +115,8 @@
     --ground: #101415;
     --paper: #191f20;
     --line: #2f3839;
+    /* Dark: 4.08:1 on paper, 4.53:1 on ground. */
+    --field-line: #738080;
     --divider: #262e2f;
     --grid: #262e2f;
     --track: #222a2b;
@@ -119,26 +134,18 @@
     --on-fill: #101415;
     --on-fill-muted: #1f4446;
     --tile-overlay: rgba(255, 255, 255, 0.1);
+    --on-tile-muted: #1f4446;
     --reward: #f0b429;
     --reward-soft: #3a2f14;
     --reward-ink: #f0c35a;
     --reward-star: #f0c35a;
-  --diamond: #7fd8f2;
-  --diamond-hi: #f2fdff;
-  --diamond-deep: #4a9fe0;
-  --diamond-glow: rgba(127, 216, 242, 0.45);
-  --diamond-ink: #8fdcf5;
-  --diamond-on-fill-hi: #7fd8f2;
-  --diamond-on-fill: #1f8fc2;
-  --diamond-on-fill-deep: #0f4f8a;
+    --reward-text: #f0c35a;
+    --on-reward: #101415;
     --diamond: #7fd8f2;
     --diamond-hi: #f2fdff;
     --diamond-deep: #4a9fe0;
     --diamond-glow: rgba(127, 216, 242, 0.45);
     --diamond-ink: #8fdcf5;
-  --diamond-on-fill-hi: #7fd8f2;
-  --diamond-on-fill: #1f8fc2;
-  --diamond-on-fill-deep: #0f4f8a;
     --diamond-on-fill-hi: #7fd8f2;
     --diamond-on-fill: #1f8fc2;
     --diamond-on-fill-deep: #0f4f8a;
@@ -180,6 +187,7 @@
   --ground: #101415;
   --paper: #191f20;
   --line: #2f3839;
+  --field-line: #738080;
   --divider: #262e2f;
   --grid: #262e2f;
   --track: #222a2b;
@@ -197,10 +205,21 @@
   --on-fill: #101415;
   --on-fill-muted: #1f4446;
   --tile-overlay: rgba(255, 255, 255, 0.1);
+  --on-tile-muted: #1f4446;
   --reward: #f0b429;
   --reward-soft: #3a2f14;
   --reward-ink: #f0c35a;
   --reward-star: #f0c35a;
+  --reward-text: #f0c35a;
+  --on-reward: #101415;
+  --diamond: #7fd8f2;
+  --diamond-hi: #f2fdff;
+  --diamond-deep: #4a9fe0;
+  --diamond-glow: rgba(127, 216, 242, 0.45);
+  --diamond-ink: #8fdcf5;
+  --diamond-on-fill-hi: #7fd8f2;
+  --diamond-on-fill: #1f8fc2;
+  --diamond-on-fill-deep: #0f4f8a;
   --good: #4cc38a;
   --gold: #f0b429;
   --gold-ink: #f0c35a;

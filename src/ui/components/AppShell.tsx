@@ -13,6 +13,7 @@ const ITEMS: { to: Route; key: string; icon: IconName }[] = [
   { to: '/', key: 'nav.home', icon: 'home' },
   { to: '/path', key: 'nav.path', icon: 'path' },
   { to: '/learn', key: 'nav.learn', icon: 'book' },
+  { to: '/progress', key: 'nav.progress', icon: 'progress' },
   { to: '/settings', key: 'nav.settings', icon: 'sliders' },
 ];
 
@@ -48,35 +49,38 @@ export function AppShell({ bp, active, children, wide, fill }: Props): JSX.Eleme
     </Link>
   );
 
-  if (bp !== 'phone') {
-    const desk = bp === 'desktop';
-    const full = fill || (desk && wide);
-    return (
-      <div className={'shell shell--top shell--' + bp}>
+  // One tree at every size, with the page in the same place: a phone turned on its side (tablet-wide) swaps the tab bar
+  // for the header around it, and a screen that fills the width (a Learn chapter) keeps its state and its scroll.
+  const phone = bp === 'phone';
+  const desk = bp === 'desktop';
+  const full = phone || fill || (desk && wide);
+  return (
+    <div className={'shell ' + (phone ? 'shell--phone' : 'shell--top shell--' + bp)}>
+      {!phone && (
         <header className={'topbar' + (desk ? ' topbar--desk' : '')}>
           {brand}
           <nav aria-label={t('nav.main')} className="nav nav--top">
             {items}
           </nav>
         </header>
-        <main className={'shell-main' + (full ? ' shell-main--wide' : '')}>{full ? children : <div className="column">{children}</div>}</main>
-      </div>
-    );
-  }
-  return (
-    <div className="shell shell--phone">
-      <main className="shell-main">{children}</main>
-      <nav aria-label={t('nav.main')} className="nav nav--tabs">
-        {items}
-      </nav>
+      )}
+      <main className="shell-main">{full ? children : <div className="column">{children}</div>}</main>
+      {phone && (
+        <nav aria-label={t('nav.main')} className="nav nav--tabs">
+          {items}
+        </nav>
+      )}
     </div>
   );
 }
 
-/** Exercise screens (setup, play, results, calibration): no nav, content centred in a 640 px column. */
-export function ExerciseFrame({ children, className }: { children: ReactNode; className?: string }): JSX.Element {
+/**
+ * Exercise screens (setup, play, results, calibration): no nav, content centred in a 640 px column. A `wide` screen
+ * uses the whole width on tablet and desktop (up to 1160 px) for its own two-column layout (`.wide`).
+ */
+export function ExerciseFrame({ children, className, wide }: { children: ReactNode; className?: string; wide?: boolean }): JSX.Element {
   return (
-    <main className={'frame' + (className ? ' ' + className : '')}>
+    <main className={'frame' + (wide ? ' frame--wide' : '') + (className ? ' ' + className : '')}>
       <div className="frame-column">{children}</div>
     </main>
   );
