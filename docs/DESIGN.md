@@ -1439,9 +1439,31 @@ On Light and Dark, each feature (Home, Rhythm, Learn, Read notes, Test yourself,
 row. The row has three columns: its **mobile** screens (390 × 844), then the **tablet**
 (834 × 1194) and **desktop** (1280 wide, fluid) versions of its main screens.
 
-**MVP canvas.** The [Muzieklab MVP canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS) holds the smallest
-product that proves the core promise: endless rhythm exercises built from real theory, with fair timing feedback. It is
-one loop, *pick → play → feedback → next*:
+**MVP canvas.** The [Muzieklab MVP canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS) holds every screen of
+the app, one page per feature: this document holds the requirements, and the pages show them. Each page name ends with
+its status, as the canvas's *Start here* page explains:
+- **Built:** live in the app. A change reaches test.vivanova.app first and vivanova.app with the next release
+  ([DEPLOY.md](DEPLOY.md), Branches). Rows under Planned on a built page are changes still to come.
+- **Next:** the feature we build next.
+- **Planned:** designed, not built.
+- **Idea:** explored, not planned.
+
+The pages are Start here, Foundations, Home & shell · Built, Rhythm practice · Built, Read notes · Built, Learn · Built,
+Path · Built, Settings · Built, Accounts & admin · Built, Progress & rewards · Built, Scales · Built, Test yourself ·
+Planned, Listen & write · Planned, Sheet reader · Idea and Archive. Every feature page has:
+- a spec note at the top: what the page covers, its section in this document, and open conflicts;
+- one row of six boards per screen: phone 390, tablet 834 and desktop 1280 in light, then the same three in dark;
+- the sections Built, Planned and To resolve. To resolve holds boards from the App design canvas that differ from the
+  board in the row above them: decide which one is right, keep it in its screen's row, and delete the other;
+- *Boards still to draw*: built screens or states that no board shows yet.
+
+A new or changed screen goes in its row on its feature page, all six versions, named
+`Screen[-tablet|-desktop][-dark].dc.html` and reusing the shell, tokens and components on Foundations. When a
+requirement changes, this document and the page's spec note change together. When a screen ships, its row moves up to
+Built. Archive keeps earlier versions of screens for history; nothing is built from it.
+
+**The MVP** is the smallest product that proves the core promise: endless rhythm exercises built from real theory,
+with fair timing feedback. It is one loop, *pick → play → feedback → next*, and its first boards drew:
 - Home (Continue + Free practice + streak)
 - Practice setup (tap mode, with validation)
 - Play (first-time How to play, Pause)
@@ -1451,8 +1473,9 @@ one loop, *pick → play → feedback → next*:
 - Desktop Home and Play
 - Light theme only
 
-**v1.1 · Quick wins** (a page on the MVP canvas) holds the first features after the MVP. Each one reuses the MVP's
-engine and screens:
+**v1.1 · Quick wins** are the first features after the MVP. Each one reuses the MVP's engine and screens. On the MVP
+canvas the daily challenge, exercise codes and Echo mode are on Rhythm practice, XP and levels on Progress & rewards,
+and the dark theme is the dark half of every row:
 - **Daily challenge:** a date-seeded preset; one Home card and a results badge.
 - **XP and levels:** one formula on the existing score, plus a level-up sheet.
 - **Exercise codes:** settings + seed, already encoded by the engine, shown with Copy.
@@ -1480,7 +1503,7 @@ Built in v0.2 (dark theme was already in the MVP):
   interrupted. Press play to try again.* (nl *Het geluid werd onderbroken. Druk op afspelen om het opnieuw te
   proberen.*). Leaving the app, the player's own doing, keeps *Listen to the rhythm*.
 
-**v1.2 · Learn** (the next page on the MVP canvas) adds the theory pages for rhythm only: chapters 1–7. Two things
+**v1.2 · Learn** (on the MVP canvas, the Learn page) adds the theory pages for rhythm only: chapters 1–7. Two things
 change in the app:
 - The tab bar becomes Home · Path · Learn · Settings.
 - Every section ends with a practice link.
@@ -1559,7 +1582,7 @@ and Mobile · Results · level up):
 **v1.6 · Flash cards and listen & write** adds *Test yourself* over all eleven Learn chapters (flip or choose from 3),
 started from the Learn tab. It also adds dictation as a third practice mode (Tap · Listen · Echo) and a fourth Home tile.
 
-Everything else on the full canvas comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
+Everything else on the canvases comes after the MVP, including read notes, scales, flash cards, dictation, Learn,
 Progress, XP and levels.
 
 **Design scope: MVP vs later.** MVP is what v1 (milestones M1–M6) needs so that every loop

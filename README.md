@@ -109,5 +109,6 @@ The same pushes also still deploy to GitHub Pages (`.github/workflows/pages.yml`
   scoring, gamification, architecture, milestones and open questions.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): screens,
   foundations (colour, type, components) and the exercise engine.
-- [MVP and release canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS): the MVP and
-  v1.1–v1.7, each on phone, tablet and desktop, light and dark.
+- [MVP canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS): every screen, one page per feature with its
+  status (Built, Next, Planned or Idea), each screen on phone, tablet and desktop, light and dark. Its Start here page
+  explains the convention.
