@@ -29,11 +29,13 @@ export interface StaffProps {
   end?: boolean;
   /** Room for a triplet's 3 when the first row has none: Play's moving window and the Setup preview keep one height. */
   tupletSpace?: boolean;
+  /** A melody on a five-line treble staff (Listen · Melody); the one-line rhythm staff without it. */
+  clef?: 'treble';
 }
 
 /** VexFlow staff (one-line percussion staff), coloured from the theme tokens (§3.1, §9 notation colour rule). */
 export function Staff(props: StaffProps): JSX.Element {
-  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig, scale, shrinkToFit, end, tupletSpace } = props;
+  const { bars, meter, marks, cursor, barsPerRow, label, countText, timeSig, scale, shrinkToFit, end, tupletSpace, clef } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(hostRef);
   const themeVersion = useThemeVersion();
@@ -60,6 +62,7 @@ export function Staff(props: StaffProps): JSX.Element {
       scale,
       shrinkToFit,
       timeSig,
+      clef,
       counts: countText && { text: countText, held: readToken(el, 'muted') },
       palette: {
         ink: readToken(el, 'ink'),
@@ -72,7 +75,7 @@ export function Staff(props: StaffProps): JSX.Element {
     });
     drawn.current = { onsets, colour };
     // cursor is left out on purpose (the effect below moves it); `cursor !== undefined` only sets the room above.
-  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, scale, shrinkToFit, end, tupletSpace, themeVersion, countText, timeSig]);
+  }, [bars, meter, marks, cursor === undefined, barsPerRow, width, scale, shrinkToFit, end, tupletSpace, themeVersion, countText, timeSig, clef]);
 
   // Play moves the cursor once per note: swap the highlight box instead of drawing VexFlow again.
   useLayoutEffect(() => {

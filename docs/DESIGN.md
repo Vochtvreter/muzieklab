@@ -176,9 +176,10 @@ has a tap-only step 2.
 
 ### 3.2 Rhythm Dictation — *listen & write*
 
-The app plays a rhythm; the player writes down what they heard. **Status: Next** (the MVP canvas, *Listen & write ·
-Next*): designed on phone, tablet and desktop, light and dark, and the feature built next. This section is its build
-spec; the boards draw it. Not built yet: the app has Tap and Echo only.
+The app plays a rhythm, or a melody, and the player writes down what they heard. **Status: built in 0.20.0** with the
+Build answer style (the MVP canvas, *Listen & write · Next*: designed on phone, tablet and desktop, light and dark).
+This section is its build spec; the boards draw it. *Choose* (below) is designed but not built yet, so the setup has no
+*Answer* switch until it is (see *Where 0.20.0 differs*).
 
 **Where it lives**
 - *Practice setup* gets a third mode: the switch reads **Tap · Listen · Echo**. Listen's hint: *Hear it, then write
@@ -268,6 +269,41 @@ Escape closes it too.
 - Tablet and desktop: the Listen screen in the 640 px column, with the exercise header as Echo on tablet. Practice
   setup and Results use their built wide layout (since 0.13.0) with the content of the boards, which still draw the
   640 px column (§9, *Listen & write · Next*).
+
+**Melody** (melodic dictation; since 0.20.0; MVP canvas, the rows *Practice setup · Listen · Melody*, *Listen and
+write (Melody)* and *Results (Melody)*; App design canvas, *Mobile · Listen & write · melody*). For a first melodic
+dictation with a few notes, such as low do, mi, sol and la (a common exam set).
+- *Practice setup*, Listen picked: a switch **Write · Rhythm · Melody** (default Rhythm), hints *Write the note values
+  you hear* / *Write the notes and their values*. With Melody, **Notes in the melody**: eight chips, do re mi fa sol la
+  si do’ (the high do; in letters C … C’), in the player's names with the other system small under each; at least two;
+  default do mi sol la (`melody` in the settings, degrees 0–7 from C4). Under them *Treble clef, C major. Each play
+  starts with do.* With fewer than two, Start reads *Pick at least two notes*. The preview draws the melody on a
+  five-line treble staff.
+- The melody (`generateMelody` in `core/dictation.ts`): one note per onset of the generated rhythm, seeded by the
+  exercise's seed. It starts on do (now and then mi or sol), moves mostly by step through the notes picked (a step is to
+  the next picked note), sometimes repeats, skips or leaps, never plays a note three times in a row, and ends on do (the
+  nearer do when both are picked; the lowest note when no do is).
+- A play: do (C4) on the piano on the first count-in beat, the rest of the count-in in clicks, then the melody on the
+  piano tone, each note held for its length. Play bar N plays that bar's notes; the compare plays after Check play the
+  answer's notes and the melody.
+- The screen: the meta reads *4/4 · 2 bars · melody*, the play title *Play the melody*. Your answer is a five-line treble
+  staff with the clef on every row, the notes at their pitch (C4 on its ledger line). Above *Add a value*, a **Note**
+  row: one button per note picked, a radio group (one Tab stop, the arrow keys move); the note picked is accent-filled.
+  A value button adds that value at the picked note; Rest adds a rest. Keys: the letter of a note picks it (C again
+  goes to the other do when both are picked). The hint reads *Pick the note, then add its value.*
+- Check: a beat is right when its rhythm is right and every note sounding in it has the right pitch. The tip names the
+  pitch when only that differs: *Beat 3 of bar 2: you wrote sol; it was mi.*
+- Results: *Melody done*, *The melody* on the treble staff, *Yours* in the treble staff too.
+- Exercise codes: the mode letter L and a segment N with the notes' degrees before the seed (`L44-HQ-RQ-2B-80-N0245-…`).
+
+**Where 0.20.0 differs from the boards** (the PR lists them too)
+- *Choose* is not built, so the setup has no *Answer · Choose · Build* switch: every Listen exercise is Build.
+- Under a wrong bar, *You heard · bar 2* shows that bar as it was played, one staff per wrong bar (the boards draw the
+  bar's glyphs in one line). The bar row reads *Bar 2 of 2* and *1 of 4 beats written*.
+- The XP for plays not used (5 each) needs at least one play and one star, so a guess written without listening earns
+  none of it.
+- The Home tiles are two by two with the icon beside the words on phone and tablet, as the board; desktop keeps its row.
+- Setup on phone scrolls under its Start button (the board's phone setup with Melody is drawn 1100 px tall).
 
 ### 3.3 Echo — *listen & tap back* (bonus mode)
 

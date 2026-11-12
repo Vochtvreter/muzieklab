@@ -30,6 +30,13 @@ export interface StartOptions {
   leadIn?: number;
   /** Count-in beats still fire onBeat (for the visual counter) but make no sound. */
   silentCountIn?: boolean;
+  /**
+   * A melody (Listen · Melody, §3.2): the MIDI number of each onset, played on the piano tone for its length instead of
+   * the woodblock.
+   */
+  melody?: number[];
+  /** A reference note (MIDI) on the first count-in beat: the do a melody starts from. */
+  reference?: number;
 }
 
 export interface Started {
@@ -309,9 +316,16 @@ class WebAudioEngine implements AudioEngine {
       .filter((b) => b.audible && !(b.countIn && opts.silentCountIn))
       .map((b) => ({ time: b.time, play: (c, t) => this.click(c, t, b.accent, b.countIn ? 'cue' : 'metronome') }));
     if (opts.playRhythm) {
+      const melody = opts.melody;
       for (const n of planNotes(opts.timeline, exerciseStart)) {
-        jobs.push({ time: n.time, play: (c, t) => this.woodblock(c, t, n.end) });
+        const midi = melody?.[n.index];
+        jobs.push({ time: n.time, play: midi !== undefined ? (c, t) => this.pianoNote(c, midi, t, n.end) : (c, t) => this.woodblock(c, t, n.end) });
       }
+    }
+    if (opts.reference !== undefined) {
+      const midi = opts.reference;
+      const end = startTime + Math.min(1.2, (60 / opts.tempo) * 2);
+      jobs.push({ time: startTime, play: (c, t) => this.pianoNote(c, midi, t, end) });
     }
     this.run(jobs, beats);
     return { exerciseStart, end: exerciseStart + opts.timeline.totalSeconds };
@@ -500,6 +514,23 @@ class WebAudioEngine implements AudioEngine {
     this.envelope(body.env, at, 0.5, 0.005, 1.2);
     const shine = this.voice(ctx, 'rhythm', 'sine', freq * 2, at, at + 0.6);
     this.envelope(shine.env, at, 0.12, 0.005, 0.5);
+  }
+
+  /**
+   * A piano-like note held for its length (a melody): the struck tone of pianoTone, sustained softly until a little
+   * before `end`, so repeated notes stay separate.
+   */
+  private pianoNote(ctx: AudioContext, midi: number, at: number, end: number): void {
+    const freq = 440 * 2 ** ((midi - 69) / 12);
+    const off = Math.max(at + 0.08, end - 0.04);
+    const body = this.voice(ctx, 'rhythm', 'triangle', freq, at, off + 0.12);
+    body.env.gain.setValueAtTime(SILENT, at);
+    body.env.gain.exponentialRampToValueAtTime(0.5, at + 0.006);
+    body.env.gain.exponentialRampToValueAtTime(0.2, at + 0.35);
+    body.env.gain.setValueAtTime(0.2, Math.max(at + 0.36, off - 0.001));
+    body.env.gain.exponentialRampToValueAtTime(SILENT, off + 0.08);
+    const shine = this.voice(ctx, 'rhythm', 'sine', freq * 2, at, at + 0.5);
+    this.envelope(shine.env, at, 0.1, 0.005, 0.4);
   }
 
   /** Metronome click: beat 1 higher and a little louder. */

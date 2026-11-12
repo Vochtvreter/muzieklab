@@ -34,6 +34,7 @@ import { SkillDetail } from './ui/screens/progress/SkillDetail';
 import { Skills } from './ui/screens/progress/Skills';
 import { Play } from './ui/screens/Play';
 import { Results } from './ui/screens/Results';
+import { ListenResults } from './ui/screens/ListenResults';
 import { ScalesDone } from './ui/screens/scales/ScalesDone';
 import { ScalesHub } from './ui/screens/scales/ScalesHub';
 import { ScalesKey } from './ui/screens/scales/ScalesKey';
@@ -153,6 +154,8 @@ function Route(): JSX.Element {
       return <Play />;
     case '/results':
       return <Results />;
+    case '/listen/done':
+      return <ListenResults />;
     case '/settings':
       return <SettingsScreen />;
     case '/calibrate':

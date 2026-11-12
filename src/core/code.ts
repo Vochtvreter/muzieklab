@@ -9,15 +9,18 @@
  *   4. bars + B:                                                   4B
  *   5. tempo in BPM:                                               120
  *   6. optional flags, X + one letter per setting off its default:  XDT
- *   7. the seed in Crockford base 32:                              7K2QF
+ *   7. Listen · Melody only: N + the melody's notes as degrees, 0 low do … 7 high do:  N0245
+ *   8. the seed in Crockford base 32:                              7K2QF
+ * Mode letters: T tap, E echo, L listen (§3.2).
  * Flags: D dotted · T ties · 3 triplets · N tap only (no hold) · S sparse / B busy · F few / M many rests ·
  * A metronome on beat 1 / O metronome off · 0 silent count-in / 2 two-bar count-in.
  */
 import { DEFAULT_SETTINGS } from './defaults';
+import { melodyDegrees, writesMelody } from './dictation';
 import { METER_IDS, NOTE_VALUES, type MeterId, type NoteValue, type Settings } from './types';
 
 const VALUE_LETTER: Record<NoteValue, string> = { whole: 'W', half: 'H', quarter: 'Q', eighth: 'E', sixteenth: 'S' };
-const MODE_LETTER: Record<Settings['mode'], string> = { tap: 'T', echo: 'E' };
+const MODE_LETTER: Record<Settings['mode'], string> = { tap: 'T', echo: 'E', listen: 'L' };
 const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 type Flag = { letter: string; on(s: Settings): boolean; set(s: Settings): void };
@@ -83,6 +86,7 @@ export function encodeCode(settings: Settings, seed: number): string {
     settings.bars + 'B',
     String(settings.tempo),
     ...(flags ? ['X' + flags] : []),
+    ...(writesMelody(settings) ? ['N' + melodyDegrees(settings).join('')] : []),
     seedToB32(seed),
   ].join('-');
 }
@@ -90,9 +94,12 @@ export function encodeCode(settings: Settings, seed: number): string {
 /** Settings and seed from a code; null when it is not a valid code. */
 export function decodeCode(code: string): { settings: Settings; seed: number } | null {
   const parts = code.trim().toUpperCase().split('-');
-  if (parts.length !== 6 && parts.length !== 7) return null;
+  if (parts.length < 6 || parts.length > 8) return null;
   const [head, notesPart, restsPart, barsPart, tempoPart] = parts;
-  const flagsPart = parts.length === 7 ? parts[5] : null;
+  const extra = parts.slice(5, -1);
+  const melodyPart = extra.length && extra[extra.length - 1].startsWith('N') ? (extra.pop() as string) : null;
+  if (extra.length > 1) return null;
+  const flagsPart = extra.length === 1 ? extra[0] : null;
   const seed = b32ToSeed(parts[parts.length - 1]);
 
   const mode = (Object.keys(MODE_LETTER) as Settings['mode'][]).find((m) => MODE_LETTER[m] === head[0]);
@@ -131,6 +138,13 @@ export function decodeCode(code: string): { settings: Settings; seed: number } |
       if (!f) return null;
       f.set(settings);
     }
+  }
+  if (melodyPart !== null) {
+    if (mode !== 'listen' || !/^N[0-7]{2,8}$/.test(melodyPart)) return null;
+    const degrees = [...melodyPart.slice(1)].map(Number);
+    if (new Set(degrees).size !== degrees.length) return null;
+    settings.write = 'melody';
+    settings.melody = degrees.sort((a, b) => a - b);
   }
   return { settings, seed };
 }
