@@ -273,8 +273,13 @@ Escape closes it too.
 **Melody** (melodic dictation; since 0.20.0; MVP canvas, the rows *Practice setup · Listen · Melody*, *Listen and
 write (Melody)* and *Results (Melody)*; App design canvas, *Mobile · Listen & write · melody*). For a first melodic
 dictation with a few notes, such as low do, mi, sol and la (a common exam set).
-- *Practice setup*, Listen picked: a switch **Write · Rhythm · Melody** (default Rhythm), hints *Write the note values
-  you hear* / *Write the notes and their values*. With Melody, **Notes in the melody**: eight chips, do re mi fa sol la
+- *Practice setup*, Listen picked: a switch **Write · Rhythm · Melody · Both** (default Rhythm; since 0.21.0, before
+  Rhythm · Melody, where Melody was what Both is now), hints *Write the note values you hear* / *Write the notes; every
+  note is a quarter* / *Write the notes in their rhythm*. **Melody** writes the notes alone: every note is a quarter,
+  with no rests (`write: 'notes'`), the setup leaves out Notes, Rests and Extras, and the screen has no value palette:
+  an **Add a note** row of larger buttons (64 px), each adding its note as a quarter (keys: the letter; Shift+C the
+  high do), with the hint *Tap each note you hear; every note is a quarter.* **Both** (`write: 'melody'`) is the
+  melody in its rhythm, below. With Melody or Both, **Notes in the melody**: eight chips, do re mi fa sol la
   si do’ (the high do; in letters C … C’), in the player's names with the other system small under each; at least two;
   default do mi sol la (`melody` in the settings, degrees 0–7 from C4). Under them *Treble clef, C major. Each play
   starts with do.* With fewer than two, Start reads *Pick at least two notes*. The preview draws the melody on a
@@ -294,7 +299,16 @@ dictation with a few notes, such as low do, mi, sol and la (a common exam set).
 - Check: a beat is right when its rhythm is right and every note sounding in it has the right pitch. The tip names the
   pitch when only that differs: *Beat 3 of bar 2: you wrote sol; it was mi.*
 - Results: *Melody done*, *The melody* on the treble staff, *Yours* in the treble staff too.
-- Exercise codes: the mode letter L and a segment N with the notes' degrees before the seed (`L44-HQ-RQ-2B-80-N0245-…`).
+- Exercise codes: the mode letter L and a segment with the notes' degrees before the seed, N for Both and Q for Melody
+  (`L44-HQ-RQ-2B-80-N0245-…`, `…-Q0245-…`).
+
+**Mix 8ths & 16ths** (since 0.21.0; every mode; MVP canvas, *Practice setup · Listen · Melody / Both*). In Extras, after
+Dotted, Ties and Triplets, when eighths and sixteenths are both on: a chip **Mix 8ths & 16ths**, on by default (as
+before). Off (`mixSixteenths: false`, code flag `P`), no beat mixes them, as some courses write dictation: a beat with
+eighths is two eighths (or one after a dotted quarter), one with sixteenths is four sixteenths, never an eighth and two
+sixteenths, a dotted eighth and a sixteenth or a sixteenth, eighth, sixteenth. The generator leaves out the mixed
+figures (two plain beats stand in: two eighths, four sixteenths), its variations do not make them, and two sixteenth
+rests stay two (not one eighth rest). Under the chips, off: *A beat is two eighths or four sixteenths, never mixed.*
 
 **Where 0.20.0 differs from the boards** (the PR lists them too)
 - *Choose* is not built, so the setup has no *Answer · Choose · Build* switch: every Listen exercise is Build.
@@ -639,6 +653,7 @@ the Read notes and Scales setups are, so a reload or the app opened again keeps 
 |---|---|---|
 | **Mode** | Tap · Listen (answer: Choose / Build, §3.2) · Echo | Tap |
 | **Hold notes for their length** | on (tap & hold) · off (tap only) | follows the path: off until unit 2 is open, then on (since 0.10.0, §3.1) |
+| **Mix 8ths & 16ths** | on · off (a beat is two eighths or four sixteenths, never mixed; shown when both are on, §3.2) | on |
 | **Time signatures** | 2/4 · 3/4 · 4/4 *(v1)*; 2/2 · 3/8 · 6/8 · 9/8 · 12/8 · 5/4 *(later)*. Multi-select: each exercise picks one at random. The setup shows only the playable ones; there is no disabled "6/8 soon" chip (since 0.10.0). | 4/4 |
 | **Note values** | whole · half · quarter · eighth · sixteenth | half, quarter |
 | **Rests** | whole · half · quarter · eighth · sixteenth (independent of notes) | quarter |

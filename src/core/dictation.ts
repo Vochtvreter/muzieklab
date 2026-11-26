@@ -27,8 +27,10 @@ export function stepMidi(step: Step): number {
   return 12 * (oct + 1) + pc[((step % 7) + 7) % 7];
 }
 
-/** Whether the settings ask for a melody (Listen with Write · Melody). */
-export const writesMelody = (s: Settings): boolean => s.mode === 'listen' && s.write === 'melody';
+/** Whether the settings ask for a melody (Listen with Write · Melody or Both): the exercise has pitches. */
+export const writesMelody = (s: Settings): boolean => s.mode === 'listen' && (s.write === 'melody' || s.write === 'notes');
+/** Listen with Write · Melody: the notes alone, every one a quarter, so only the pitches are written. */
+export const writesNotesOnly = (s: Settings): boolean => s.mode === 'listen' && s.write === 'notes';
 
 /** The melody's degrees, sorted and valid: at least two, else the default. */
 export function melodyDegrees(s: Pick<Settings, 'melody'>): number[] {

@@ -238,3 +238,63 @@ describe('scoring', () => {
     expect(listenXp(ex, 100, 4, 0)).toBe(listenXp(ex, 100, 4, 3));
   });
 });
+
+describe('eighths and sixteenths apart (mixSixteenths off)', () => {
+  /** The durations starting in each beat that hold an eighth or a sixteenth, note or rest. */
+  const smallBeats = (ex: Exercise): number[][] =>
+    ex.bars.flatMap((bar) =>
+      Array.from({ length: ex.meter.beatsPerBar }, (_, b) =>
+        bar.events.filter((e) => e.start >= b * Q && e.start < (b + 1) * Q && e.duration < Q).map((e) => e.duration),
+      ).filter((d) => d.length > 0),
+    );
+  const busy = { notes: ['quarter', 'eighth', 'sixteenth'] as NoteValue[], rests: ['quarter', 'eighth', 'sixteenth'] as NoteValue[], dotted: true, density: 'busy' as const, bars: 4 };
+
+  it('fills a beat with eighths or with four sixteenths, never both, in every mode', () => {
+    for (const mode of ['tap', 'listen'] as const) {
+      for (let seed = 1; seed < 120; seed++) {
+        const ex = generateExercise({ ...DEFAULT_SETTINGS, ...busy, mode, mixSixteenths: false }, seed);
+        for (const beat of smallBeats(ex)) {
+          // Eighths only (two, or one after a dotted quarter), or four sixteenths: no sixteenth next to an eighth, no
+          // dotted eighth.
+          const ok = beat.every((d) => d === Q / 2) || (beat.length === 4 && beat.every((d) => d === Q / 4));
+          expect(ok, `seed ${seed} (${mode}): a beat of ${beat.join(' + ')}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('still has both eighths and sixteenths, and mixes them when on (the default)', () => {
+    const apart = Array.from({ length: 60 }, (_, i) => generateExercise({ ...DEFAULT_SETTINGS, ...busy, mixSixteenths: false }, i + 1));
+    const durs = new Set(apart.flatMap((ex) => ex.bars.flatMap((b) => b.events.map((e) => e.duration))));
+    expect(durs.has(Q / 2) && durs.has(Q / 4)).toBe(true);
+    const mixed = Array.from({ length: 60 }, (_, i) => generateExercise({ ...DEFAULT_SETTINGS, ...busy }, i + 1));
+    expect(mixed.some((ex) => smallBeats(ex).some((b) => new Set(b).size > 1))).toBe(true);
+  });
+
+  it('is kept in the code', () => {
+    const code = encodeCode({ ...DEFAULT_SETTINGS, ...busy, mixSixteenths: false }, 99);
+    expect(code).toMatch(/-X[A-Z0-9]*P/);
+    expect(decodeCode(code)?.settings.mixSixteenths).toBe(false);
+    expect(decodeCode(encodeCode({ ...DEFAULT_SETTINGS, ...busy }, 99))?.settings.mixSixteenths).toBeUndefined();
+  });
+});
+
+describe('Write · Melody: the notes alone', () => {
+  it('makes quarters only, with no rests, whatever the note values picked, and a pitch for each', () => {
+    for (let seed = 1; seed < 40; seed++) {
+      const s = listen({ write: 'notes', melody: [0, 2, 4, 5], notes: ['half', 'eighth', 'sixteenth'], rests: ['quarter'], dotted: true, bars: 3 });
+      const ex = generateExercise(s, seed);
+      const events = ex.bars.flatMap((b) => b.events);
+      expect(events.every((e) => e.kind === 'note' && e.duration === Q)).toBe(true);
+      expect(ex.pitches).toHaveLength(events.length);
+      expect(ex.settings.notes).toEqual(['half', 'eighth', 'sixteenth']);
+    }
+  });
+
+  it('round-trips through its code with a Q segment, apart from Both (N)', () => {
+    const code = encodeCode(listen({ write: 'notes', melody: [0, 2, 4, 5] }), 4321);
+    expect(code).toMatch(/-Q0245-/);
+    expect(decodeCode(code)?.settings.write).toBe('notes');
+    expect(decodeCode(encodeCode(listen({ write: 'melody', melody: [0, 2, 4, 5] }), 4321))?.settings.write).toBe('melody');
+  });
+});

@@ -472,3 +472,15 @@
 .listen-yours-bar {
   max-width: 380px;
 }
+
+/* Write · Melody: the note buttons are the whole input, so they are larger (each adds its note as a quarter). */
+.listen-notes--add .listen-note {
+  min-height: 64px;
+}
+.listen-notes--add .listen-note-main {
+  font-size: 18px;
+}
+.listen-notes--add .listen-note[aria-disabled='true'] {
+  background: var(--track);
+  color: var(--disabled);
+}
