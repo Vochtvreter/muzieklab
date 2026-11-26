@@ -202,10 +202,13 @@ This section is its build spec; the boards draw it. *Choose* (below) is designed
 - An exercise screen: no tab bar; on tablet and desktop the 640 px column. Header: Quit (×), *Listen and write*, the
   meta *3/4 · 2 bars*, and help (?), which opens How to play (as Echo's header has help and Quit).
 - **Play card:** a round Play button, a title (*Play the rhythm* before the first play, then *Play again*, *Playing…*,
-  *No plays left*), three pips and *3 plays left · fewer = bonus XP* (*You used all 3 plays*).
+  *No plays left*), three pips and, before the first play, *First listen is free · then 3 plays*; after it *3 plays
+  left · fewer = bonus XP* (*You used all 3 plays*).
   - A play is one bar of count-in clicks, then the rhythm on the woodblock; the beat clicks under it follow Settings'
     Metronome switch, as Results' Listen does. Nothing plays by itself: the first play starts on the button.
-  - **3 plays** per exercise. A play of the whole exercise or of **one bar** uses one play each.
+  - **The first listen is free, then 3 plays** per exercise (since 0.23.1; before, the first play used one of the 3).
+    The first play, of the whole exercise or of one bar, takes no pip; after it a play of the whole exercise or of
+    **one bar** uses one play each. So an exercise can be heard 4 times.
   - A play cut off because the sound was interrupted gives that play back, and the title reads *The sound was
     interrupted. Press play to try again.*, as on Echo's listen card (§9).
 - **Your answer card:** the staff of what has been written, two bars a row on phone as on Play, the current bar marked;
@@ -239,22 +242,22 @@ This section is its build spec; the boards draw it. *Choose* (below) is designed
 - Footer as Build; Check reads *Choose bar 2 to check*.
 
 **How to play** — a sheet over the Listen screen (a dialog on desktop) the first time each answer style is played, as
-on Play, and from help. *How to play*, then three steps: *Listen.* Press play to hear the rhythm. You have 3 plays, of
-the whole rhythm or one bar; fewer plays earn bonus XP. — *Write it.* Add each value to the bar with the buttons
+on Play, and from help. *How to play*, then three steps: *Listen.* Press play to hear it. The first listen is free;
+after it you have 3 more plays, of the whole exercise or one bar. Fewer plays earn bonus XP. — *Write it.* Add each value to the bar with the buttons
 below, or the keys 1, 2, 4, 8, 6, R and . (Choose: *Choose it.* For each bar, pick the one you heard from three.) —
 *Check.* Every beat is marked right or wrong, and you can play your answer next to the rhythm. Then **Got it**;
 Escape closes it too.
 
 **Scoring and Results** (§6.3, §6.4, §8.3)
 - **Accuracy** = beats right / beats in the exercise, shown in whole percent rounded down.
-- **Stars:** ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% with at most 2 plays (3 plays cap it at ★★) · the 4th star: every beat
-  right, heard once. No diamond.
-- **XP** = bars × (4 + difficulty) × accuracy, the star bonus, and 5 XP per play not used.
+- **Stars** (plays used after the free first listen): ★ ≥ 50% · ★★ ≥ 75% · ★★★ ≥ 90% with at most 2 plays used (all
+  3 cap it at ★★) · the 4th star: every beat right, heard once (no play used). No diamond.
+- **XP** = bars × (4 + difficulty) × accuracy, the star bonus, and 5 XP per play not used (up to 15).
 - **Results** use the rhythm Results without the timing lane and the judgment counts: the stars, *83% of beats right ·
   +24 XP*, a *2 of 3 plays* badge; the exercise with every note right (green) or wrong (red) and, under a wrong bar,
   the player's answer in grey (*Yours*); a tip (*Beat 3 of bar 2: you wrote a quarter; it was two eighths.*, or *Every
-  beat right.*); Listen, Practice settings and Copy code; **Retry** (the same rhythm, 3 new plays) and **Next** (a new
-  one), or **Try again** as the main button under 2 stars, as in Tap.
+  beat right.*); Listen, Practice settings and Copy code; **Retry** (the same rhythm, a free listen and 3 new plays)
+  and **Next** (a new one), or **Try again** as the main button under 2 stars, as in Tap.
 - A finished Listen exercise with at least one beat right keeps the streak.
 - Progress (§8.5): Listen rounds count in Rhythm's accuracy and minutes, not in timing or the skill map (no taps).
   Skill levels (§8.6): Rhythm by ear counts Listen rounds as well as Echo rounds. Achievements: *No replays needed*
@@ -1042,8 +1045,8 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 - **Combo:** consecutive notes started Perfect/Great **and** held right; a Good, Miss,
   cut-short or held-too-long note resets it. It shows during play; Results no longer shows the max combo (since
   0.10.0).
-- Dictation (Listen, §3.2): % of beats right; plays used; ★★★ needs 90% with at most 2 plays, the 4th star every beat
-  right heard once.
+- Dictation (Listen, §3.2): % of beats right; plays used (the first listen is free); ★★★ needs 90% with at most 2
+  plays used, the 4th star every beat right heard once.
 
 ### 6.4 Results screen
 

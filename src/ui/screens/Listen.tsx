@@ -1,6 +1,6 @@
 /**
- * Listen and write (DESIGN.md §3.2): hear the exercise (3 plays, of the whole or of one bar), write it value by value
- * with the note palette (Build), then Check compares it beat by beat. With Melody (§3.2, Melody) the exercise is a
+ * Listen and write (DESIGN.md §3.2): hear the exercise (a free first listen, then 3 plays, of the whole or of one bar),
+ * write it value by value with the note palette (Build), then Check compares it beat by beat. With Melody (§3.2, Melody) the exercise is a
  * melody on the piano, the staff is a treble staff, and a Note row picks the pitch of each value added.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
@@ -18,6 +18,7 @@ import {
   fitProblem,
   firstWrong,
   LISTEN_PLAYS,
+  playsUsed,
   melodyDegrees,
   paletteOf,
   stepMidi,
@@ -85,7 +86,8 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
   useDocTitle(t('app.docTitle', { page: t('listen.title') }));
 
   const [answer, setAnswer] = useState<Answer>(() => emptyAnswer(ex.bars.length));
-  const [plays, setPlays] = useState(0);
+  /** Times the exercise was heard (a play of the whole or of one bar): the first is free, then each uses a play. */
+  const [heard, setHeard] = useState(0);
   const [playing, setPlaying] = useState<Playing>(null);
   const [stopped, setStopped] = useState(false);
   const [rest, setRest] = useState(false);
@@ -102,7 +104,7 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
 
   const bar = currentBar(answer, meter);
   const complete = answerComplete(answer, meter);
-  const left = LISTEN_PLAYS - plays;
+  const left = LISTEN_PLAYS - playsUsed(heard);
   const checked = check !== null;
 
   const stopAll = useCallback((): void => {
@@ -123,7 +125,7 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
       counting.current = false;
       stopAll();
       setStopped(audio);
-      setPlays((n) => Math.max(0, n - 1));
+      setHeard((n) => Math.max(0, n - 1));
     },
     [stopAll],
   );
@@ -137,7 +139,7 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
         return;
       }
       const uses = what === 'all' || what === 'bar';
-      if (uses && plays >= LISTEN_PLAYS) return;
+      if (uses && left <= 0) return;
       const source: Exercise =
         what === 'bar' ? barExercise(ex, bar) : what === 'yours' ? { ...ex, bars: answerBars(answer), ...(melody ? { pitches: answerSteps(answer) } : {}) } : ex;
       unlockAudio();
@@ -164,7 +166,7 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
       setPlaying(what);
       if (uses) {
         counting.current = true;
-        setPlays((n) => n + 1);
+        setHeard((n) => n + 1);
       }
       watch.current = window.setInterval(() => {
         if (STOPPED_AUDIO.has(eng.audioState()) && performance.now() - at > AUDIO_START_GRACE_MS) cut(true);
@@ -174,7 +176,7 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
         stopAll();
       }, Math.max(0, started.end - eng.now() + 0.3) * 1000);
     },
-    [playing, plays, ex, bar, answer, melody, state.prefs, view, meter, stopAll, cut],
+    [playing, left, ex, bar, answer, melody, state.prefs, view, meter, stopAll, cut],
   );
 
   useEffect(() => {
@@ -232,8 +234,8 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
     const c = checkAnswer(ex, answer);
     setCheck(c);
     const seconds = (performance.now() - startedAt.current) / 1000;
-    dispatch({ type: 'listenFinish', answer, plays, today: todayIso(), seconds });
-  }, [checked, complete, ex, answer, plays, dispatch, stopAll]);
+    dispatch({ type: 'listenFinish', answer, heard, today: todayIso(), seconds });
+  }, [checked, complete, ex, answer, heard, dispatch, stopAll]);
 
   const toResults = (): void => {
     stopAll();
@@ -325,7 +327,7 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
       ? t('listen.interrupted')
       : left <= 0
         ? t('listen.noPlays')
-        : plays === 0
+        : heard === 0
           ? t(melody ? 'listen.playMelody' : 'listen.playRhythm')
           : t('listen.playAgain');
 
@@ -346,7 +348,9 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
             ))}
           </span>
         </div>
-        <span className="muted-text listen-plays">{left > 0 ? t('listen.playsLeft', { count: left }) : t('listen.playsUsed', { count: LISTEN_PLAYS })}</span>
+        <span className="muted-text listen-plays">
+          {heard === 0 ? t('listen.firstFree', { count: LISTEN_PLAYS }) : left > 0 ? t('listen.playsLeft', { count: left }) : t('listen.playsUsed', { count: LISTEN_PLAYS })}
+        </span>
       </div>
     </section>
   );

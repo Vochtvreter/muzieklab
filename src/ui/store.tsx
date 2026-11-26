@@ -36,7 +36,7 @@ import {
   type Stars,
   type Tap,
 } from '../core/api';
-import { checkAnswer, listenAccuracy, listenStars, listenXp, type Answer, type ListenCheck } from '../core/dictation';
+import { checkAnswer, listenAccuracy, listenStars, listenXp, playsUsed, type Answer, type ListenCheck } from '../core/dictation';
 import { Rng } from '../core/rng';
 import { awardAchievements, roundAchievements } from '../game/achievements';
 import { dailyTier } from '../game/daily';
@@ -269,7 +269,7 @@ export interface ListenLast {
   /** Beats right of the beats in the exercise, 0–100. */
   accuracy: number;
   stars: Stars;
-  /** Plays used, of LISTEN_PLAYS. */
+  /** Plays used, of LISTEN_PLAYS (the free first listen is none of them). */
   plays: number;
   reward: Reward;
 }
@@ -393,8 +393,11 @@ export type Action =
    * where the music stopped, in seconds into the bars (Skip to results stops it early), for minutes practised.
    */
   | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string; echo?: EchoPlays; playedTo?: number }
-  /** A Listen round checked: the answer, the plays used, and its time on the screen (seconds) for minutes practised. */
-  | { type: 'listenFinish'; answer: Answer; plays: number; today: string; seconds: number }
+  /**
+   * A Listen round checked: the answer, how many times it was heard (the free first listen and the plays after it), and
+   * its time on the screen (seconds) for minutes practised.
+   */
+  | { type: 'listenFinish'; answer: Answer; heard: number; today: string; seconds: number }
   | { type: 'resetProgress' }
   | { type: 'noteSettings'; settings: NoteSettings }
   | { type: 'noteStart'; run: NoteRun }
@@ -502,12 +505,12 @@ export function reducer(state: AppState, action: Action): AppState {
       if (!run || run.exercise.settings.mode !== 'listen' || state.listenLast?.run === run) return state;
       const check = checkAnswer(run.exercise, action.answer);
       const accuracy = listenAccuracy(check);
-      const stars = listenStars(accuracy, action.plays);
+      const stars = listenStars(accuracy, action.heard);
       // A round with at least one beat right keeps the streak (§3.2).
       const practised = check.beatsRight > 0;
       let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
       if (practised) progress = recordListen(progress, run.exercise, accuracy, stars, action.seconds, action.today);
-      const xp = listenXp(run.exercise, accuracy, stars, action.plays);
+      const xp = listenXp(run.exercise, accuracy, stars, action.heard);
       const xpBefore = progress.xp;
       progress = { ...progress, xp: xpBefore + xp };
       const met = evaluate(progress, action.today);
@@ -521,7 +524,7 @@ export function reducer(state: AppState, action: Action): AppState {
         achievements: met.achievements,
         best: null,
       };
-      return { ...state, progress, listenLast: { run, answer: action.answer, check, accuracy, stars, plays: action.plays, reward } };
+      return { ...state, progress, listenLast: { run, answer: action.answer, check, accuracy, stars, plays: playsUsed(action.heard), reward } };
     }
     case 'evaluate': {
       const { progress } = evaluate(state.progress, action.today);
