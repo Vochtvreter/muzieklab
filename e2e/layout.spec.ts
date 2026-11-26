@@ -1169,6 +1169,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByText('Fair timing for most players.')).toBeVisible();
       await expect(page.getByText('Metronome', { exact: true })).toHaveCount(1);
       await expectClickable(page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }));
+      // Sound → Instrument: piano by default; violin and flute fit beside it at every size, and a pick sticks.
+      const instrument = page.getByRole('group', { name: 'Instrument for notes' });
+      await expect(instrument.getByRole('button', { name: 'Piano' })).toHaveAttribute('aria-pressed', 'true');
+      for (const name of ['Piano', 'Violin', 'Flute']) await expectClickable(instrument.getByRole('button', { name }));
+      await instrument.getByRole('button', { name: 'Flute' }).click();
+      await expect(instrument.getByRole('button', { name: 'Flute' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByText('Plays melodies, scales and Read notes. Pick one to hear it.')).toBeVisible();
+      await expectNoClippedLabels(page);
       // The Beat counter preview keeps its tempo on one line, as on Play, inside the preview (it broke after "=" at 320 px).
       for (const look of ['Digital', 'Analog']) {
         await page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: look }).click();

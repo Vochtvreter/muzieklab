@@ -148,7 +148,7 @@ describe('ProgressSync: a first sign-in', () => {
     await phone.run((d) => d.sync.request('start'));
     const prefs = server.copy.data!.prefs;
     expect(prefs).toMatchObject({ theme: 'dark' });
-    expect(Object.keys(prefs).sort()).toEqual(['holdEarly', 'holdMode', 'language', 'leniency', 'metronomeLook', 'noteNames', 'pianoLabels', 'theme']);
+    expect(Object.keys(prefs).sort()).toEqual(['holdEarly', 'holdMode', 'instrument', 'language', 'leniency', 'metronomeLook', 'noteNames', 'pianoLabels', 'theme']);
   });
 
   it('merges this device’s progress into the account’s, and saves the merge', async () => {
