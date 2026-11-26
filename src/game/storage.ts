@@ -1,5 +1,5 @@
 import type { Leniency, MeterId, NoteValue, Settings, Stars } from '../core/types';
-import { DIAMOND, METER_IDS, MODES, NOTE_VALUES } from '../core/types';
+import { DIAMOND, METER_IDS, MODES, NOTE_VALUES, WRITE_KINDS } from '../core/types';
 import { CLEFS, KEY_IDS, type Clef, type KeyId } from '../core/pitch';
 import { DEFAULT_SETTINGS } from '../core/defaults';
 import { MAX_WEAK, parseNoteId, sanitizeNoteSettings, type NoteSettings, type WeakSpots } from '../core/noteRound';
@@ -28,6 +28,8 @@ export interface Prefs {
   seenHold: boolean;
   /** The Echo mode's How to play was shown once. */
   seenEchoHowTo: boolean;
+  /** Listen & write's How to play was seen (§3.2): it opens by itself the first time only. */
+  seenListenHowTo: boolean;
   /** The new symbols a lesson's intro sheet has shown ("note:half", "meter:3/4"; game/intro.ts), so each shows once. */
   seenIntros: string[];
   /**
@@ -171,6 +173,7 @@ export const DEFAULT_PREFS: Prefs = {
   seenHowTo: false,
   seenHold: false,
   seenEchoHowTo: false,
+  seenListenHowTo: false,
   seenIntros: [],
   holdMode: 'hold',
   holdEarly: null,
@@ -289,6 +292,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     seenHowTo: bool(raw.seenHowTo, d.seenHowTo),
     seenHold: bool(raw.seenHold, d.seenHold),
     seenEchoHowTo: bool(raw.seenEchoHowTo, d.seenEchoHowTo),
+    seenListenHowTo: bool(raw.seenListenHowTo, d.seenListenHowTo),
     seenIntros: Array.isArray(raw.seenIntros) ? INTRO_IDS.filter((id) => (raw.seenIntros as unknown[]).includes(id)) : [],
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
     // Saved as true before it kept the mode it replaced: tap & hold, the default, so turning it off keeps Input as is.
@@ -322,7 +326,17 @@ export function sanitizeSettings(raw: unknown): Settings | null {
     countIn: oneOf(raw.countIn, [0, 1, 2] as const, d.countIn),
     density: oneOf(raw.density, ['sparse', 'balanced', 'busy'] as const, d.density),
     restAmount: oneOf(raw.restAmount, ['few', 'some', 'many'] as const, d.restAmount),
+    // Listen (§3.2): what it writes, and a melody's notes (degrees 0–7 from low do, at least two).
+    ...(raw.write !== undefined ? { write: oneOf(raw.write, WRITE_KINDS, 'rhythm') } : {}),
+    ...(melodyOf(raw.melody) ? { melody: melodyOf(raw.melody) as number[] } : {}),
   };
+}
+
+/** A melody's notes: whole degrees 0–7, each once, sorted; null with fewer than two. */
+function melodyOf(raw: unknown): number[] | null {
+  if (!Array.isArray(raw)) return null;
+  const set = [...new Set(raw.filter((x): x is number => Number.isInteger(x) && x >= 0 && x <= 7))].sort((a, b) => a - b);
+  return set.length >= 2 ? set : null;
 }
 
 export function sanitizeProgress(raw: unknown): Progress {

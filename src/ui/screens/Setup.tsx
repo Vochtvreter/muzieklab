@@ -1,6 +1,7 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { checkSettings, DEFAULT_SETTINGS, MAX_BARS, MAX_TEMPO, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings } from '../../core/api';
+import { checkSettings, DEFAULT_SETTINGS, MAX_BARS, MAX_TEMPO, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings, type WriteKind } from '../../core/api';
+import { DEFAULT_MELODY, LISTEN_MAX_BARS, MELODY_DEGREES, writesMelody } from '../../core/dictation';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
 import { ExerciseFrame } from '../components/AppShell';
@@ -11,6 +12,7 @@ import { useDocTitle } from '../hooks';
 import { announce } from '../lib/announce';
 import { difficultyLevel, newSeed, tempoWordKey } from '../lib/format';
 import { describeBars } from '../lib/notation';
+import { degreeName, degreeSub } from '../lib/listenText';
 import { useLearnReturn } from '../lib/learnReturn';
 import { NO_NOTES_HINT_ID, meterHintId, setupHints, startBlockedKey } from '../lib/setupHints';
 import { Link } from '../router';
@@ -19,6 +21,11 @@ import { useStartPractice } from './start';
 
 const NOTE_GLYPH: Record<NoteValue, string> = { whole: '𝅝', half: '𝅗𝅥', quarter: '𝅘𝅥', eighth: '𝅘𝅥𝅮', sixteenth: '𝅘𝅥𝅯' };
 const REST_GLYPH: Record<NoteValue, string> = { whole: '𝄻', half: '𝄼', quarter: '𝄽', eighth: '𝄾', sixteenth: '𝄿' };
+
+/** The hint under the greyed Ties and Triplets chips in Listen (aria-describedby). */
+const LISTEN_EXTRAS_HINT_ID = 'listen-extras-hint';
+
+const MODE_HINT: Record<Mode, string> = { tap: 'setup.hintTap', echo: 'setup.hintEcho', listen: 'setup.hintListen' };
 
 const toggle = <T,>(list: T[], v: T, order: readonly T[]): T[] =>
   list.includes(v) ? list.filter((x) => x !== v) : order.filter((x) => x === v || list.includes(x));
@@ -34,6 +41,14 @@ export function Setup(): JSX.Element {
 
   const s: Settings = practiceSettings(state, state.settings);
   const hold = s.hold;
+  // Listen (§3.2): nothing is tapped, ties and triplets are not in it yet, and it plays at most 8 bars. The player's own
+  // choices stay in the setup, so Tap and Echo get them back.
+  const listen = s.mode === 'listen';
+  const melody = writesMelody(s);
+  const degrees = s.melody ?? DEFAULT_MELODY;
+  const bars = listen ? Math.min(LISTEN_MAX_BARS, s.bars) : s.bars;
+  const maxBars = listen ? LISTEN_MAX_BARS : MAX_BARS;
+  const names = state.prefs.noteNames;
   const update = (patch: Partial<Settings>): void => {
     dispatch({ type: 'settings', settings: { ...s, ...patch } });
     setPreviewSeed(newSeed());
@@ -48,7 +63,7 @@ export function Setup(): JSX.Element {
     }
   }, [JSON.stringify(s)]);
   const hints = setupHints(s, feas);
-  const blockedKey = startBlockedKey(s, feas);
+  const blockedKey = startBlockedKey(s, feas) ?? (melody && degrees.length < 2 ? 'setup.blockedMelody' : null);
   // A change that brings a hint (the last note value off, which turns Start off) has it read out through the app's one
   // live region (ui/lib/announce.ts): a role="status" put in already holding its text is not read by every screen
   // reader. The hints a setup opens with are read with the page. Each is a line of its own on screen, so a sentence
@@ -79,7 +94,7 @@ export function Setup(): JSX.Element {
           <div className="screen-head-text">
             <h1 className="screen-title">{t('setup.title')}</h1>
           </div>
-          <button type="button" className="text-btn" onClick={() => update({ ...DEFAULT_SETTINGS, mode: s.mode, hold })}>
+          <button type="button" className="text-btn" onClick={() => update({ ...DEFAULT_SETTINGS, mode: s.mode, hold, ...(listen ? { bars: 2, write: s.write } : {}) })}>
             {t('setup.reset')}
           </button>
         </div>
@@ -90,21 +105,54 @@ export function Setup(): JSX.Element {
               <Segmented<Mode> label={t('setup.mode')} value={s.mode} onChange={(v) => update({ mode: v })}
                 options={[
                   { value: 'tap', label: t('setup.modeTap') },
+                  { value: 'listen', label: t('setup.modeListen') },
                   { value: 'echo', label: t('setup.modeEcho') },
                 ]} />
               <span className="muted-text" aria-live="polite">
-                {t(s.mode === 'echo' ? 'setup.hintEcho' : 'setup.hintTap')}
+                {t(MODE_HINT[s.mode])}
               </span>
             </div>
 
-            <button type="button" role="switch" aria-checked={hold} className="switch-row"
-              onClick={() => dispatch({ type: 'prefs', patch: practiceHoldPatch(state, !hold) })}>
-              <span className="switch-row-text">
-                <b>{t('setup.holdTitle')}</b>
-                <span className="muted-text">{t(hold ? 'setup.holdOn' : 'setup.holdOff')}</span>
-              </span>
-              <SwitchTrack on={hold} />
-            </button>
+            {listen ? (
+              <>
+                <div className="mode-field">
+                  <Segmented<WriteKind> label={t('setup.write')} value={s.write ?? 'rhythm'} onChange={(v) => update({ write: v, ...(v === 'melody' && !s.melody ? { melody: [...DEFAULT_MELODY] } : {}) })}
+                    options={[
+                      { value: 'rhythm', label: t('setup.writeRhythm') },
+                      { value: 'melody', label: t('setup.writeMelody') },
+                    ]} />
+                  <span className="muted-text" aria-live="polite">
+                    {t(melody ? 'setup.hintMelody' : 'setup.hintRhythm')}
+                  </span>
+                </div>
+                {melody && (
+                  <div className="field">
+                    <div className="label" id="melody-notes-label">
+                      {t('setup.melodyNotes')}
+                    </div>
+                    <div className="chip-row melody-chips" role="group" aria-labelledby="melody-notes-label">
+                      {MELODY_DEGREES.map((d) => (
+                        <Chip key={d} on={degrees.includes(d)} className="chip--note" label={degreeName(d, names)}
+                          onToggle={() => update({ melody: toggle(degrees, d, MELODY_DEGREES) })}>
+                          <span className="chip-note-main">{degreeName(d, names)}</span>
+                          <span className="chip-note-sub" aria-hidden="true">{degreeSub(d, names)}</span>
+                        </Chip>
+                      ))}
+                    </div>
+                    <span className="muted-text">{t('setup.melodyHint')}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <button type="button" role="switch" aria-checked={hold} className="switch-row"
+                onClick={() => dispatch({ type: 'prefs', patch: practiceHoldPatch(state, !hold) })}>
+                <span className="switch-row-text">
+                  <b>{t('setup.holdTitle')}</b>
+                  <span className="muted-text">{t(hold ? 'setup.holdOn' : 'setup.holdOff')}</span>
+                </span>
+                <SwitchTrack on={hold} />
+              </button>
+            )}
 
             <div className="field">
               <div className="label">{t('setup.meters')}</div>
@@ -159,13 +207,20 @@ export function Setup(): JSX.Element {
                 <Chip on={s.dotted} className="chip--text" onToggle={() => update({ dotted: !s.dotted })}>
                   {t('setup.dotted')}
                 </Chip>
-                <Chip on={s.ties} className="chip--text" onToggle={() => update({ ties: !s.ties })}>
+                <Chip on={s.ties && !listen} blocked={listen} describedBy={listen ? LISTEN_EXTRAS_HINT_ID : undefined} className="chip--text"
+                  onToggle={() => !listen && update({ ties: !s.ties })}>
                   {t('setup.ties')}
                 </Chip>
-                <Chip on={s.triplets} className="chip--text" onToggle={() => update({ triplets: !s.triplets })}>
+                <Chip on={s.triplets && !listen} blocked={listen} describedBy={listen ? LISTEN_EXTRAS_HINT_ID : undefined} className="chip--text"
+                  onToggle={() => !listen && update({ triplets: !s.triplets })}>
                   {t('setup.triplets')}
                 </Chip>
               </div>
+              {listen && (
+                <span id={LISTEN_EXTRAS_HINT_ID} className="muted-text">
+                  {t('setup.listenExtras')}
+                </span>
+              )}
             </div>
 
             <div className="bars-tempo">
@@ -175,16 +230,16 @@ export function Setup(): JSX.Element {
                 </div>
                 {/* A step at its end has nothing to do: aria-disabled, as disabled drops the focus to the page. */}
                 <div className="stepper" role="group" aria-labelledby="bars-label">
-                  <button type="button" aria-label={t('setup.fewerBars')} aria-disabled={s.bars <= 1 || undefined}
+                  <button type="button" aria-label={t('setup.fewerBars')} aria-disabled={bars <= 1 || undefined}
                     onClick={() => {
-                      if (s.bars > 1) update({ bars: Math.max(1, s.bars - 1) });
+                      if (bars > 1) update({ bars: Math.max(1, bars - 1) });
                     }}>
                     −
                   </button>
-                  <span aria-live="polite">{s.bars}</span>
-                  <button type="button" aria-label={t('setup.moreBars')} aria-disabled={s.bars >= MAX_BARS || undefined}
+                  <span aria-live="polite">{bars}</span>
+                  <button type="button" aria-label={t('setup.moreBars')} aria-disabled={bars >= maxBars || undefined}
                     onClick={() => {
-                      if (s.bars < MAX_BARS) update({ bars: Math.min(MAX_BARS, s.bars + 1) });
+                      if (bars < maxBars) update({ bars: Math.min(maxBars, bars + 1) });
                     }}>
                     +
                   </button>
@@ -259,7 +314,7 @@ export function Setup(): JSX.Element {
               {preview ? (
                 // With Triplets on, room for a 3 whether or not this bar has one: the card keeps one height.
                 <StaffBox bars={preview.bars} meter={preview.run.exercise.meter} barsPerRow={1} label={describeBars(preview.bars, preview.run.exercise.meter.id)}
-                  tupletSpace={s.triplets} />
+                  tupletSpace={s.triplets && !listen} clef={melody ? 'treble' : undefined} />
               ) : (
                 <p className="preview-none">{t('setup.previewNone')}</p>
               )}
@@ -271,7 +326,7 @@ export function Setup(): JSX.Element {
               </button>
             ) : (
               <button type="button" className="btn btn--accent start-btn" onClick={() => start(s, { query: carry, shows: state.setupShows })}>
-                {t('setup.start', { bars: t('common.bars', { count: s.bars }) })}
+                {t('setup.start', { bars: t('common.bars', { count: bars }) })}
               </button>
             )}
           </div>

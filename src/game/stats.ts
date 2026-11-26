@@ -145,6 +145,24 @@ export function recordRhythm(p: Progress, exercise: Exercise, result: JudgeResul
   return markSeen(next, isEcho ? 'ear' : 'rhythm', today);
 }
 
+/**
+ * A finished Listen round (§3.2): its seconds (the plays heard, and the writing, capped) and accuracy on today's
+ * Rhythm figures, not timing or the skill map (nothing was tapped). Rhythm by ear counts it as an Echo round.
+ */
+export function recordListen(p: Progress, exercise: Exercise, accuracy: number, stars: number, seconds: number, today: string): Progress {
+  let next = changeDay(p, today, (d) => ({
+    ...d,
+    sec: d.sec + Math.round(Math.max(0, Math.min(LISTEN_CAP_S, finite(seconds)))),
+    rounds: d.rounds + 1,
+    acc: d.acc + Math.floor(Math.max(0, Math.min(100, finite(accuracy))) + 1e-9),
+  }));
+  next = recordEcho(next, exercise, { stars: stars as JudgeResult['stars'] });
+  return markSeen(next, 'ear', today);
+}
+
+/** The most a Listen round counts as minutes practised: 10 minutes, so an exercise left open does not count for hours. */
+export const LISTEN_CAP_S = 600;
+
 /** An Echo round at ★★ or more counts for its material level; one of 4 bars or more keeps its best stars there. */
 export function recordEcho(p: Progress, exercise: Exercise, result: Pick<JudgeResult, 'stars'>): Progress {
   const stars = Math.max(0, Math.min(DIAMOND, Math.round(finite(result.stars))));

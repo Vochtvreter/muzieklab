@@ -104,7 +104,6 @@ function beamAndTuplets(meter: Meter, symbols: NotatedSymbol[]): void {
 
 /** Rhythm -> notation (§5.7). onsetIndex numbering matches buildTimeline(). */
 export function spellExercise(exercise: Exercise): NotatedBar[] {
-  const { meter, settings: s } = exercise;
   let onset = 0;
   // A tie only continues a sounding note; a stray tieFromPrev after a rest is a new onset (as in buildTimeline).
   const continues = new Set<RhythmEvent>();
@@ -114,6 +113,27 @@ export function spellExercise(exercise: Exercise): NotatedBar[] {
     prev = e;
   }
   const tiedOn = (e: RhythmEvent | undefined): boolean => !!e && continues.has(e);
+  const bars = spellBars(exercise, continues, tiedOn, () => onset++);
+  // A melody's notes carry their step: an onset its own, a tied piece its onset's (§3.2, Listen · Melody).
+  const pitches = exercise.pitches;
+  if (pitches) {
+    let last: number | undefined;
+    for (const sym of bars.flatMap((bar) => bar.symbols)) {
+      if (sym.kind !== 'note') continue;
+      if (sym.onsetIndex >= 0) last = pitches[sym.onsetIndex];
+      if (last !== undefined) sym.step = last;
+    }
+  }
+  return bars;
+}
+
+function spellBars(
+  exercise: Exercise,
+  continues: Set<RhythmEvent>,
+  tiedOn: (e: RhythmEvent | undefined) => boolean,
+  nextOnset: () => number,
+): NotatedBar[] {
+  const { meter, settings: s } = exercise;
   return exercise.bars.map((bar, b) => {
     if (bar.events.every((e) => e.kind === 'rest')) {
       return {
@@ -129,7 +149,7 @@ export function spellExercise(exercise: Exercise): NotatedBar[] {
       if (e.triplet) {
         const sym: NotatedSymbol = { value: 'eighth', dots: 0, kind: e.kind, tieToNext: false, start: e.start, duration: e.duration, onsetIndex: -1, tuplet: { num: 3, den: 2, id: 0 } };
         if (e.kind === 'note') {
-          if (!continues.has(e)) sym.onsetIndex = onset++;
+          if (!continues.has(e)) sym.onsetIndex = nextOnset();
           sym.tieToNext = tiedOn(events[i + 1] ?? nextBarFirst);
         }
         symbols.push(sym);
@@ -147,7 +167,7 @@ export function spellExercise(exercise: Exercise): NotatedBar[] {
           tieToNext: e.kind === 'note' && (!last || tiedOn(next)),
           start: p.start,
           duration: p.duration,
-          onsetIndex: e.kind === 'note' && k === 0 && !continues.has(e) ? onset++ : -1,
+          onsetIndex: e.kind === 'note' && k === 0 && !continues.has(e) ? nextOnset() : -1,
         });
       });
     });

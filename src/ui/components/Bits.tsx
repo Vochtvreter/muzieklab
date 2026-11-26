@@ -98,6 +98,7 @@ interface StaffBoxProps {
   shrinkToFit?: boolean;
   end?: boolean;
   tupletSpace?: boolean;
+  clef?: 'treble';
 }
 
 /** The VexFlow staff; if drawing fails, the text alternative is shown instead of breaking the screen. */

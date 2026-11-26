@@ -105,7 +105,7 @@ function NotePreview({ lesson, wide }: { lesson: PathLesson; wide?: boolean }): 
 }
 
 export function Home(): JSX.Element {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const bp = useBreakpoint();
   const startLesson = useStartPathLesson();
   const startDaily = useStartDaily();
@@ -213,7 +213,7 @@ export function Home(): JSX.Element {
       <h2 id="free-title" className="free-title">
         {t('home.freeHeading')}
       </h2>
-      <div className="free-tiles">
+      <div className="free-tiles free-tiles--four">
         <Link to="/setup" className="free-tile">
           <span aria-hidden="true" className="free-tile-icon">
             𝅘𝅥𝅘𝅥𝅮
@@ -246,6 +246,16 @@ export function Home(): JSX.Element {
           <span className="free-tile-text">
             <b>{t('home.scalesTile')}</b>
             <span>{t('home.scalesTileSub')}</span>
+          </span>
+        </Link>
+        {/* Listen opens Practice setup with Listen picked, not the exercise itself (§3.2). */}
+        <Link to="/setup" className="free-tile" onClick={() => dispatch({ type: 'settings', settings: { ...state.settings, mode: 'listen' } })}>
+          <span aria-hidden="true" className="free-tile-icon">
+            𝄽𝅗𝅥
+          </span>
+          <span className="free-tile-text">
+            <b>{t('home.listenTile')}</b>
+            <span>{t('home.listenTileSub')}</span>
           </span>
         </Link>
       </div>

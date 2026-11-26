@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteSettings } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
+import { generateExercise } from '../src/core/generator';
+import { DEFAULT_SETTINGS } from '../src/core/defaults';
 import { pianoWindow, scaleNotes, type Scale } from '../src/core/scale';
 import { noteLessonSettings } from '../src/game/notesPath';
 import { lessonSettings } from '../src/game/path';
@@ -964,6 +966,74 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(pad(page)).toBeInViewport({ ratio: 1 });
         await expectFits(page);
       }
+      await expectNoSideScroll(page);
+    });
+
+    test('listen: the Listen tile, the setup with Melody, writing a melody, Check and Results', async ({ page }) => {
+      known(name, 'listen');
+      await seed(page, { prefs: { noteNames: 'solfege' } });
+      await page.goto('./');
+      // Home: a fourth Free practice tile opens Practice setup with Listen picked (DESIGN.md §3.2).
+      const tile = page.getByRole('link', { name: /^Listen/ });
+      await expectClickable(tile);
+      await tile.click();
+      const mode = page.getByRole('group', { name: 'Mode' });
+      await expect(mode.getByRole('button', { name: 'Listen' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('switch', { name: /Hold notes/ })).toHaveCount(0);
+      await page.getByRole('group', { name: 'Write' }).getByRole('button', { name: 'Melody' }).click();
+      // Notes in the melody: do re mi fa sol la si do', do mi sol la picked.
+      const notes = page.getByRole('group', { name: 'Notes in the melody' });
+      await expect(notes.getByRole('button')).toHaveCount(8);
+      for (const n of ['do', 'mi', 'sol', 'la']) await expect(notes.getByRole('button', { name: n, exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(notes.getByRole('button', { name: 're', exact: true })).toHaveAttribute('aria-pressed', 'false');
+      for (const b of await notes.getByRole('button').all()) await expectTouchHeight(b);
+      await expect(page.getByText('Ties and triplets are not in Listen yet')).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: /^Start · / }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+
+      // A known exercise, written right value by value with the keys.
+      const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'melody', melody: [0, 2, 4, 5], bars: 2 } as const;
+      const ex = generateExercise({ ...settings, melody: [0, 2, 4, 5] }, 4242);
+      await seedRun(page, settings, 4242, { noteNames: 'solfege' });
+      await page.goto('about:blank');
+      await page.goto('./#/play');
+      // How to play opens the first time; Esc closes it.
+      await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Got it' }));
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expectClickable(page.getByRole('button', { name: 'Play the melody' }), { scroll: false });
+      const radios = page.getByRole('radiogroup', { name: 'Note' }).getByRole('radio');
+      await expect(radios).toHaveCount(4);
+      await expect(page.getByRole('button', { name: 'Fill bar 1 to check' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Fill bar 1 to check' })).toBeInViewport();
+      for (const r of await radios.all()) await expectTouchHeight(r);
+      await expectNoSideScroll(page);
+      let k = 0;
+      const key: Record<number, string> = { 192: '1', 96: '2', 48: '4', 24: '8', 12: '6' };
+      for (const bar of ex.bars) {
+        for (const e of bar.events) {
+          if (e.kind === 'rest') await page.keyboard.press('r');
+          else await page.keyboard.press(letterOf(ex.pitches![k++]).toLowerCase());
+          await page.keyboard.press(key[e.duration]);
+        }
+      }
+      const check = page.getByRole('button', { name: /^Check/ });
+      await expectClickable(check, { scroll: false });
+      await check.click();
+      await expect(page.getByText('All right', { exact: true })).toBeVisible();
+      const next = page.getByRole('button', { name: /^Next/ });
+      await expectClickable(next, { scroll: false });
+      await expectNoSideScroll(page);
+      await next.click();
+      // Results: every beat right, with the melody on its staff.
+      await expect(page.getByRole('heading', { name: 'Melody done' })).toBeVisible();
+      await expect(page.locator('.score-pct')).toHaveText('100%');
+      await expect(page.getByText('Every beat right.')).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Retry' }));
+      await expectClickable(page.getByRole('button', { name: 'Next' }));
+      await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
     });
 
