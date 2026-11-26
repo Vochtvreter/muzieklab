@@ -34,8 +34,9 @@ describe("What's new", () => {
     expect(within(screen.getByRole('article')).getByText('Nov 26 · 1 better')).toBeTruthy();
     expect(within(screen.getByRole('article')).getByRole('link', { name: 'Open Settings' }).getAttribute('href')).toBe('#/settings');
     // The release before it is open, with its Try link.
-    const before = document.getElementById(release(RELEASES[1].version).getAttribute('aria-controls')!)!;
-    expect(within(before).getByRole('link', { name: 'Open Settings' }).getAttribute('href')).toBe('#/settings');
+    // The release before it (the free first listen, which has no Try link) is open.
+    expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
+    expect(release(RELEASES[1].version).textContent).toContain('0.23.1');
     // Accounts (0.12.0) are by invitation: the release promises no sign-up.
     fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();

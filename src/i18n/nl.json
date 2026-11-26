@@ -432,6 +432,7 @@
     "stop": "Stop",
     "playsLeft": "Nog {count, plural, one {# keer} other {# keer}} · minder = bonus-XP",
     "playsUsed": "Je hebt alle {count} keer gebruikt",
+    "firstFree": "Eerste keer gratis · daarna nog {count} keer",
     "yourAnswer": "Jouw antwoord",
     "answerLabel": "Jouw antwoord: {rhythm}",
     "heardLabel": "Wat er speelde: {rhythm}",
@@ -465,7 +466,7 @@
     "howto": {
       "first": "Voor het eerst hier",
       "again": "Luister en schrijf",
-      "step1": "Luister. Druk op afspelen om het te horen. Je mag het {plays} keer horen, helemaal of één maat; minder keer geeft bonus-XP.",
+      "step1": "Luister. Druk op afspelen om het te horen. De eerste keer is gratis; daarna mag je het nog {plays} keer horen, helemaal of één maat. Minder keer geeft bonus-XP.",
       "step2": "Schrijf het. Voeg elke waarde aan de maat toe met de knoppen hieronder.",
       "step2Melody": "Schrijf het. Kies de noot en voeg dan zijn waarde toe met de knoppen hieronder. Eerst klinkt de referentienoot (do, of de noot waarop hij begint), zodat je weet waar je begint.",
       "step2Notes": "Schrijf het. Tik elke noot die je hoort met de knoppen hieronder; elke noot is een kwartnoot. Eerst klinkt de referentienoot (do, of de noot waarop hij begint), zodat je weet waar je begint.",
@@ -3177,9 +3178,13 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
-    "v0_23_1": {
+    "v0_23_2": {
       "title": "Elke oefening op je instrument",
       "rhythm": "Ritmes klinken nu ook op het instrument dat je kiest bij Instellingen → Instrument, in plaats van op een houtblok: Echo, Luister en schrijf, Luisteren bij de resultaten en de voorbeelden in Leren. Alleen de metronoomtikken en het tikgeluid blijven zoals ze waren."
+    },
+    "v0_23_1": {
+      "title": "Eerste keer luisteren gratis",
+      "firstListen": "Luister en schrijf: de eerste keer luisteren is gratis. Daarna mag je het nog 3 keer horen, helemaal of één maat; voor ★★★ moet je nog een keer over hebben, zoals eerst."
     },
     "v0_23_0": {
       "title": "Piano, viool of fluit",

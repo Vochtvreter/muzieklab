@@ -432,6 +432,7 @@
     "stop": "Stop",
     "playsLeft": "{count, plural, one {# play left} other {# plays left}} · fewer = bonus XP",
     "playsUsed": "You used all {count} plays",
+    "firstFree": "First listen is free · then {count} plays",
     "yourAnswer": "Your answer",
     "answerLabel": "Your answer: {rhythm}",
     "heardLabel": "What was played: {rhythm}",
@@ -465,7 +466,7 @@
     "howto": {
       "first": "First time here",
       "again": "Listen and write",
-      "step1": "Listen. Press play to hear it. You have {plays} plays, of the whole exercise or one bar; fewer plays earn bonus XP.",
+      "step1": "Listen. Press play to hear it. The first listen is free; after it you have {plays} more plays, of the whole exercise or one bar. Fewer plays earn bonus XP.",
       "step2": "Write it. Add each value to the bar with the buttons below.",
       "step2Melody": "Write it. Pick the note, then add its value with the buttons below. The reference note sounds first (do, or the note it starts on), so you know where you start.",
       "step2Notes": "Write it. Tap each note you hear with the buttons below; every note is a quarter. The reference note sounds first (do, or the note it starts on), so you know where you start.",
@@ -3177,9 +3178,13 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
-    "v0_23_1": {
+    "v0_23_2": {
       "title": "Every exercise on your instrument",
       "rhythm": "Rhythms now play on the instrument picked in Settings → Instrument too, instead of a woodblock: Echo, Listen and write, Results' Listen and Learn's examples. Only the metronome clicks and the tap sound stay as they were."
+    },
+    "v0_23_1": {
+      "title": "A free first listen",
+      "firstListen": "Listen and write: the first listen is free. Then you still have 3 plays, of the whole exercise or one bar; ★★★ needs a play left over, as before."
     },
     "v0_23_0": {
       "title": "Piano, violin or flute",
