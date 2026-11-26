@@ -429,6 +429,9 @@
     "playRhythm": "Speel het ritme",
     "playMelody": "Speel de melodie",
     "playAgain": "Speel opnieuw",
+    "reference": "Referentienoot",
+    "referenceThen": "Daarna het voortellen en de melodie.",
+    "referenceLabel": "Referentienoot: {note}",
     "stop": "Stop",
     "playsLeft": "Nog {count, plural, one {# keer} other {# keer}} · minder = bonus-XP",
     "playsUsed": "Je hebt alle {count} keer gebruikt",
@@ -3178,9 +3181,14 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
-    "v0_23_2": {
+    "v0_24_1": {
       "title": "Elke oefening op je instrument",
       "rhythm": "Ritmes klinken nu ook op het instrument dat je kiest bij Instellingen → Instrument, in plaats van op een houtblok: Echo, Luister en schrijf, Luisteren bij de resultaten en de voorbeelden in Leren. Alleen de metronoomtikken en het tikgeluid blijven zoals ze waren."
+    },
+    "v0_24_0": {
+      "title": "De referentienoot, in beeld",
+      "try": "Open vrij oefenen",
+      "reference": "Luister met Melodie of Beide: de referentienoot klinkt nu apart, vóór het voortellen, en een popover noemt hem, met een ring die afloopt zolang hij klinkt. Hij is weg voordat de melodie begint, zodat je de referentie en de melodie uit elkaar houdt."
     },
     "v0_23_1": {
       "title": "Eerste keer luisteren gratis",

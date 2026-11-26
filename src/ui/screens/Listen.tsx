@@ -3,7 +3,7 @@
  * write it value by value with the note palette (Build), then Check compares it beat by beat. With Melody (§3.2, Melody) the exercise is a
  * melody on the piano, the staff is a treble staff, and a Note row picks the pitch of each value added.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { buildTimeline, NOTE_VALUES, type Exercise, type NoteValue } from '../../core/api';
 import {
   addValue,
@@ -58,6 +58,12 @@ const LANDSCAPE = '(max-height: 560px) and (orientation: landscape)';
 /** What is playing: the whole exercise, one bar, or after Check the answer or the exercise to compare. */
 type Playing = 'all' | 'bar' | 'yours' | 'theirs' | null;
 
+/**
+ * The reference note while it sounds, before the count-in (§3.2, Melody): its step, the seconds until it sounds and how
+ * long it is held (the ring runs down over that), and an id per play so a new play starts a new ring.
+ */
+type Reference = { step: Step; delay: number; seconds: number; id: number };
+
 /** The steps of the onsets in bar `bar` and after, from the exercise's pitches. */
 function barExercise(ex: Exercise, bar: number): Exercise {
   const before = ex.bars.slice(0, bar).reduce((n, b) => n + b.events.filter((e) => e.kind === 'note' && !e.tieFromPrev).length, 0);
@@ -95,10 +101,12 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
   const [pitch, setPitch] = useState<Step>(() => steps[0]);
   const [check, setCheck] = useState<ListenCheck | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [reference, setReference] = useState<Reference | null>(null);
   const [help, setHelp] = useState<'help' | null>(state.prefs.seenListenHowTo ? null : 'help');
   const startedAt = useRef(performance.now());
   const timer = useRef<number | null>(null);
   const watch = useRef<number | null>(null);
+  const refTimer = useRef<number | null>(null);
   /** A play that counts and has not ended: given back once when it is cut off. */
   const counting = useRef(false);
 
@@ -110,9 +118,11 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
   const stopAll = useCallback((): void => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     if (watch.current !== null) window.clearInterval(watch.current);
-    timer.current = watch.current = null;
+    if (refTimer.current !== null) window.clearTimeout(refTimer.current);
+    timer.current = watch.current = refTimer.current = null;
     engine().stop();
     setPlaying(null);
+    setReference(null);
   }, []);
 
   // A play cut off (the app left, the audio stopped or never started) stops and is given back, as on Echo (§3.3).
@@ -146,9 +156,11 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
       const eng = engine();
       applyAudioPrefs(state.prefs, eng);
       const timeline = what === 'all' || what === 'theirs' ? view.timeline : buildTimeline(source);
-      // A play: one bar of count-in clicks, then the rhythm (Melody: the do it starts from on the first count-in beat,
+      // A play: one bar of count-in clicks, then the rhythm (Melody: first the reference note alone, then the count-in,
       // then the melody on the piano). Compare plays start at once, without a count-in.
       const countInBars = uses ? 1 : 0;
+      // The reference before a play: the note the melody starts on when the setup chose one (Starts on), else do.
+      const refStep = melody && uses ? degreeStep(referenceDegree(ex.settings)) : null;
       const started = eng.start({
         timeline,
         meter,
@@ -158,10 +170,19 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
         playRhythm: true,
         leadIn: 0.15,
         ...(source.pitches ? { melody: source.pitches.map(stepMidi) } : {}),
-        // The reference before a play: the note the melody starts on when the setup chose one (Starts on), else do.
-        ...(melody && uses ? { reference: stepMidi(degreeStep(referenceDegree(ex.settings))) } : {}),
+        ...(refStep !== null ? { reference: stepMidi(refStep) } : {}),
       });
       const at = performance.now();
+      // While the reference sounds, a popover names it with a ring running down; it is gone before the melody.
+      if (refStep !== null && started.reference) {
+        const now = eng.now();
+        const { start, end } = started.reference;
+        setReference({ step: refStep, delay: Math.max(0, start - now), seconds: end - start, id: at });
+        refTimer.current = window.setTimeout(() => {
+          refTimer.current = null;
+          setReference(null);
+        }, Math.max(0, end - now) * 1000);
+      }
       setStopped(false);
       setPlaying(what);
       if (uses) {
@@ -331,6 +352,28 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
           ? t(melody ? 'listen.playMelody' : 'listen.playRhythm')
           : t('listen.playAgain');
 
+  const { shown: refShown, closing: refClosing } = useLingering(reference, 180);
+  const referencePop = refShown && (
+    <div key={refShown.id} className={'listen-ref' + (refClosing ? ' is-closing' : '')} role="status">
+      <span className="sr-only">{t('listen.referenceLabel', { note: stepName(refShown.step, names) })}</span>
+      <span className="listen-ref-dial">
+        <svg className="listen-ref-ring" viewBox="0 0 64 64" aria-hidden="true">
+          <circle className="listen-ref-track" cx="32" cy="32" r="29" />
+          <circle className="listen-ref-arc" cx="32" cy="32" r="29" pathLength={100}
+            style={{ '--ref-seconds': refShown.seconds + 's', '--ref-delay': refShown.delay + 's' } as CSSProperties} />
+        </svg>
+        <span className="listen-ref-name" aria-hidden="true">
+          {stepName(refShown.step, names)}
+          <small>{stepSub(refShown.step, names)}</small>
+        </span>
+      </span>
+      <span className="listen-ref-text" aria-hidden="true">
+        <b>{t('listen.reference')}</b>
+        <span className="muted-text">{t('listen.referenceThen')}</span>
+      </span>
+    </div>
+  );
+
   const playCard = (
     <section className="card listen-play" aria-labelledby="listen-play-title">
       <button type="button" className={'listen-play-btn' + (playing === 'all' ? ' is-playing' : '')} disabled={checked || (!playing && left <= 0)}
@@ -352,6 +395,7 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
           {heard === 0 ? t('listen.firstFree', { count: LISTEN_PLAYS }) : left > 0 ? t('listen.playsLeft', { count: left }) : t('listen.playsUsed', { count: LISTEN_PLAYS })}
         </span>
       </div>
+      {referencePop}
     </section>
   );
 

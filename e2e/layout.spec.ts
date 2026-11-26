@@ -1062,6 +1062,36 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('listen: the reference note in a popover while it sounds, gone before the melody', async ({ page }) => {
+      known(name, 'listen-reference');
+      const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'melody', melody: [0, 2, 4, 5], startNote: 4, bars: 2 } as const;
+      await seedRun(page, settings, 4242, { noteNames: 'solfege', seenListenHowTo: true });
+      await page.goto('about:blank');
+      await page.goto('./#/play');
+      await page.getByRole('button', { name: 'Play the melody' }).click();
+      // The reference (sol, chosen in Starts on) sounds alone: the popover names it under the play button, with its ring.
+      const pop = page.getByRole('status').filter({ hasText: 'Reference note' });
+      await expect(pop).toBeVisible();
+      await expect(pop).toContainText('Reference note: sol');
+      await expect(pop.locator('.listen-ref-name')).toHaveText('solG');
+      await expect(pop.locator('.listen-ref-arc')).toBeVisible();
+      await expect(pop).toBeInViewport({ ratio: 1 });
+      const [p, card] = [(await pop.boundingBox())!, (await page.locator('.listen-play').boundingBox())!];
+      expect(p.y, 'the popover hangs under the play card').toBeGreaterThanOrEqual(card.y + card.height);
+      expect(p.x + p.width, 'the popover stays inside the card').toBeLessThanOrEqual(card.x + card.width + 1);
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      // Gone when the note stops, before the count-in, while the play goes on to the melody.
+      await expect(pop).toHaveCount(0, { timeout: 3000 });
+      await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
+      // Stop: no popover is left behind, and a new play shows it again.
+      await page.getByRole('button', { name: 'Stop' }).click();
+      await page.getByRole('button', { name: 'Play again' }).click();
+      await expect(pop).toBeVisible();
+      await page.getByRole('button', { name: 'Stop' }).click();
+      await expect(pop).toHaveCount(0);
+    });
+
     test('listen: Write · Melody alone, every note a quarter, added with the note buttons', async ({ page }) => {
       known(name, 'listen-notes');
       const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'notes', melody: [0, 2, 4, 5], bars: 2 } as const;
