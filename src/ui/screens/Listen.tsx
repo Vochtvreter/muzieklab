@@ -23,6 +23,7 @@ import {
   stepMidi,
   undoValue,
   checkAnswer,
+  writesNotesOnly,
   type Answer,
   type ListenCheck,
   type Written,
@@ -72,9 +73,14 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
   const ex = run.exercise;
   const meter = ex.meter;
   const melody = !!ex.pitches;
+  // Write · Melody: the notes alone, every one a quarter. A note button adds its note; there is no value palette.
+  const notesOnly = writesNotesOnly(ex.settings);
   const names = state.prefs.noteNames;
   const steps = useMemo(() => melodyDegrees(ex.settings).map(degreeStep), [ex.settings]);
-  const palette = useMemo(() => paletteOf(ex.settings), [ex.settings]);
+  const palette = useMemo(
+    () => (writesNotesOnly(ex.settings) ? { notes: ['quarter' as NoteValue], rests: [], dotted: false } : paletteOf(ex.settings)),
+    [ex.settings],
+  );
   useDocTitle(t('app.docTitle', { page: t('listen.title') }));
 
   const [answer, setAnswer] = useState<Answer>(() => emptyAnswer(ex.bars.length));
@@ -203,6 +209,15 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
     },
     [checked, complete, rest, dot, palette, melody, pitch, answer, bar, meter],
   );
+  /** Melody alone: a quarter at this note. */
+  const addNote = useCallback(
+    (step: Step): void => {
+      if (checked || complete) return;
+      setProblem(null);
+      setAnswer((a) => addValue(a, meter, { value: 'quarter', dots: 0, kind: 'note', step }));
+    },
+    [checked, complete, meter],
+  );
   const undo = useCallback((): void => {
     if (checked) return;
     setProblem(null);
@@ -262,7 +277,9 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
       } else if (melody && /^[a-gA-G]$/.test(e.key)) {
         const letter = e.key.toUpperCase();
         const matches = steps.filter((s) => letterOf(s) === letter);
-        if (matches.length) setPitch((p) => (matches.length > 1 && p === matches[0] ? matches[1] : matches[0]));
+        // Melody alone: the letter adds its note (with Shift the high do, when both are picked).
+        if (notesOnly && matches.length) addNote(e.shiftKey ? matches[matches.length - 1] : matches[0]);
+        else if (matches.length) setPitch((p) => (matches.length > 1 && p === matches[0] ? matches[1] : matches[0]));
       } else {
         const v = NOTE_VALUES.find((x) => VALUE_KEY[x] === e.key);
         if (v && palette.notes.concat(palette.rests).includes(v)) add(v);
@@ -398,8 +415,29 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
 
   // With Rest on, the rests that are on; otherwise the note values.
   const valueButtons = NOTE_VALUES.filter((v) => (rest ? palette.rests : palette.notes).includes(v));
-  const hint = problem ?? (complete ? t('listen.hintFull') : melody ? t('listen.hintMelody') : t('listen.hint', { bar: bar + 1 }));
-  const paletteBlock = !checked && (
+  const hint = problem ?? (complete ? t('listen.hintFull') : notesOnly ? t('listen.hintNotes') : melody ? t('listen.hintMelody') : t('listen.hint', { bar: bar + 1 }));
+  const notesBlock = !checked && notesOnly && (
+    <div className="listen-palette">
+      <div className="listen-label" id="listen-note-label">
+        {t('listen.addNote')}
+      </div>
+      <div role="group" aria-labelledby="listen-note-label" className="listen-notes listen-notes--add" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+        {steps.map((s) => (
+          <button key={s} type="button" className="listen-note" aria-disabled={complete || undefined} aria-keyshortcuts={letterOf(s)}
+            aria-label={t('listen.addNoteLabel', { note: stepName(s, names) })} onClick={() => addNote(s)}>
+            <span className="listen-note-main">{stepName(s, names)}</span>
+            <span className="listen-note-sub" aria-hidden="true">
+              {stepSub(s, names)}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="muted-text listen-hint" aria-live="polite">
+        {hint}
+      </div>
+    </div>
+  );
+  const paletteBlock = notesOnly ? notesBlock : !checked && (
     <div className="listen-palette">
       {melody && (
         <div className="listen-notes-row">
@@ -501,11 +539,11 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
             <span className="step-n" aria-hidden="true">
               {n}
             </span>
-            <span>{t(n === 2 && melody ? 'listen.howto.step2Melody' : 'listen.howto.step' + n, { plays: LISTEN_PLAYS })}</span>
+            <span>{t(n === 2 && notesOnly ? 'listen.howto.step2Notes' : n === 2 && melody ? 'listen.howto.step2Melody' : 'listen.howto.step' + n, { plays: LISTEN_PLAYS })}</span>
           </li>
         ))}
       </ol>
-      {keys && <span className="sheet-note">{t(melody ? 'listen.howto.keysMelody' : 'listen.howto.keys')}</span>}
+      {keys && <span className="sheet-note">{t(notesOnly ? 'listen.howto.keysNotes' : melody ? 'listen.howto.keysMelody' : 'listen.howto.keys')}</span>}
       <button type="button" data-autofocus className="btn btn--accent sheet-cta" onClick={closeHelp}>
         {t('howto.gotIt')}
         {keys && <kbd className="kbd kbd--on-fill">{t('pause.esc')}</kbd>}

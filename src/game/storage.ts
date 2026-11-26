@@ -326,6 +326,7 @@ export function sanitizeSettings(raw: unknown): Settings | null {
     countIn: oneOf(raw.countIn, [0, 1, 2] as const, d.countIn),
     density: oneOf(raw.density, ['sparse', 'balanced', 'busy'] as const, d.density),
     restAmount: oneOf(raw.restAmount, ['few', 'some', 'many'] as const, d.restAmount),
+    ...(raw.mixSixteenths === false ? { mixSixteenths: false } : {}),
     // Listen (§3.2): what it writes, and a melody's notes (degrees 0–7 from low do, at least two).
     ...(raw.write !== undefined ? { write: oneOf(raw.write, WRITE_KINDS, 'rhythm') } : {}),
     ...(melodyOf(raw.melody) ? { melody: melodyOf(raw.melody) as number[] } : {}),

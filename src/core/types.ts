@@ -33,9 +33,12 @@ export type Leniency = 'strict' | 'normal' | 'relaxed';
 export type Mode = 'tap' | 'echo' | 'listen';
 export const MODES: Mode[] = ['tap', 'echo', 'listen'];
 
-/** What Listen writes: the rhythm alone, or a melody (its notes and their values). */
-export type WriteKind = 'rhythm' | 'melody';
-export const WRITE_KINDS: WriteKind[] = ['rhythm', 'melody'];
+/**
+ * What Listen writes: the rhythm alone ('rhythm'), a melody's notes alone, every note a quarter ('notes'), or both, the
+ * notes in their rhythm ('melody', shown as Both; the name it had before 'notes' came, so saved setups keep it).
+ */
+export type WriteKind = 'rhythm' | 'notes' | 'melody';
+export const WRITE_KINDS: WriteKind[] = ['rhythm', 'notes', 'melody'];
 
 /** Practice settings (§4). */
 export interface Settings {
@@ -53,7 +56,12 @@ export interface Settings {
   countIn: 0 | 1 | 2;
   density: Density;
   restAmount: RestAmount;
-  /** Listen: write the rhythm (default) or a melody. */
+  /**
+   * Eighths and sixteenths together in one beat (an eighth and two sixteenths, a dotted eighth and a sixteenth): on
+   * when not set. Off, a beat with eighths is two eighths and one with sixteenths four sixteenths.
+   */
+  mixSixteenths?: boolean;
+  /** Listen: write the rhythm (default), a melody's notes, or both. */
   write?: WriteKind;
   /** Listen · Melody: the notes it uses, as degrees from low do (0 = C4 … 7 = C5); default do mi sol la. */
   melody?: number[];

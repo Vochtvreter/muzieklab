@@ -980,7 +980,24 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       const mode = page.getByRole('group', { name: 'Mode' });
       await expect(mode.getByRole('button', { name: 'Listen' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('switch', { name: /Hold notes/ })).toHaveCount(0);
-      await page.getByRole('group', { name: 'Write' }).getByRole('button', { name: 'Melody' }).click();
+      // Write: Rhythm · Melody · Both. Melody alone leaves out the note values, rests and extras (every note a quarter).
+      const write = page.getByRole('group', { name: 'Write' });
+      await expect(write.getByRole('button')).toHaveText(['Rhythm', 'Melody', 'Both']);
+      await write.getByRole('button', { name: 'Melody' }).click();
+      await expect(page.getByText('Write the notes; every note is a quarter')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Eighth note' })).toHaveCount(0);
+      await write.getByRole('button', { name: 'Both' }).click();
+      // Mix 8ths & 16ths shows once eighths and sixteenths are both on; off, the setup says what a beat holds.
+      await expect(page.getByRole('button', { name: 'Mix 8ths & 16ths' })).toHaveCount(0);
+      for (const v of ['Eighth note', 'Sixteenth note']) {
+        const chip = page.getByRole('button', { name: v, exact: true });
+        if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click();
+      }
+      const mix = page.getByRole('button', { name: 'Mix 8ths & 16ths' });
+      await expect(mix).toHaveAttribute('aria-pressed', 'true');
+      await mix.click();
+      await expect(page.getByText('A beat is two eighths or four sixteenths, never mixed.')).toBeVisible();
+      await expectTouchHeight(mix);
       // Notes in the melody: do re mi fa sol la si do', do mi sol la picked.
       const notes = page.getByRole('group', { name: 'Notes in the melody' });
       await expect(notes.getByRole('button')).toHaveCount(8);
@@ -1034,6 +1051,27 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectClickable(page.getByRole('button', { name: 'Retry' }));
       await expectClickable(page.getByRole('button', { name: 'Next' }));
       await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('listen: Write · Melody alone, every note a quarter, added with the note buttons', async ({ page }) => {
+      known(name, 'listen-notes');
+      const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'notes', melody: [0, 2, 4, 5], bars: 2 } as const;
+      const ex = generateExercise({ ...settings, melody: [0, 2, 4, 5] }, 777);
+      await seedRun(page, settings, 777, { noteNames: 'solfege', seenListenHowTo: true });
+      await page.goto('about:blank');
+      await page.goto('./#/play');
+      // No value palette: the note buttons are the input, plain buttons that each add a quarter.
+      await expect(page.getByText('Add a value')).toHaveCount(0);
+      const group = page.getByRole('group', { name: 'Add a note' });
+      await expect(group.getByRole('button')).toHaveCount(4);
+      for (const b of await group.getByRole('button').all()) await expectTouchHeight(b);
+      const names: Record<string, string> = { C: 'do', D: 're', E: 'mi', F: 'fa', G: 'sol', A: 'la', B: 'si' };
+      for (const step of ex.pitches!) await group.getByRole('button', { name: 'Add ' + names[letterOf(step)], exact: true }).click();
+      const check = page.getByRole('button', { name: /^Check/ });
+      await expectClickable(check, { scroll: false });
+      await check.click();
+      await expect(page.getByText('All right', { exact: true })).toBeVisible();
       await expectNoSideScroll(page);
     });
 

@@ -1,7 +1,7 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { checkSettings, DEFAULT_SETTINGS, MAX_BARS, MAX_TEMPO, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings, type WriteKind } from '../../core/api';
-import { DEFAULT_MELODY, LISTEN_MAX_BARS, MELODY_DEGREES, writesMelody } from '../../core/dictation';
+import { DEFAULT_MELODY, LISTEN_MAX_BARS, MELODY_DEGREES, writesMelody, writesNotesOnly } from '../../core/dictation';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
 import { ExerciseFrame } from '../components/AppShell';
@@ -24,6 +24,7 @@ const REST_GLYPH: Record<NoteValue, string> = { whole: '𝄻', half: '𝄼', qua
 
 /** The hint under the greyed Ties and Triplets chips in Listen (aria-describedby). */
 const LISTEN_EXTRAS_HINT_ID = 'listen-extras-hint';
+const WRITE_HINT: Record<WriteKind, string> = { rhythm: 'setup.hintRhythm', notes: 'setup.hintNotes', melody: 'setup.hintMelody' };
 
 const MODE_HINT: Record<Mode, string> = { tap: 'setup.hintTap', echo: 'setup.hintEcho', listen: 'setup.hintListen' };
 
@@ -45,6 +46,12 @@ export function Setup(): JSX.Element {
   // choices stay in the setup, so Tap and Echo get them back.
   const listen = s.mode === 'listen';
   const melody = writesMelody(s);
+  // Write · Melody: the notes alone, every one a quarter, so the rhythm's choices (note values, rests, extras) do not
+  // apply and are left out.
+  const notesOnly = writesNotesOnly(s);
+  // Mix 8ths & 16ths: only a choice when both are on (and the rhythm is written).
+  const bothSmall = s.notes.includes('eighth') && s.notes.includes('sixteenth') && !notesOnly;
+  const mix = s.mixSixteenths !== false;
   const degrees = s.melody ?? DEFAULT_MELODY;
   const bars = listen ? Math.min(LISTEN_MAX_BARS, s.bars) : s.bars;
   const maxBars = listen ? LISTEN_MAX_BARS : MAX_BARS;
@@ -94,7 +101,7 @@ export function Setup(): JSX.Element {
           <div className="screen-head-text">
             <h1 className="screen-title">{t('setup.title')}</h1>
           </div>
-          <button type="button" className="text-btn" onClick={() => update({ ...DEFAULT_SETTINGS, mode: s.mode, hold, ...(listen ? { bars: 2, write: s.write } : {}) })}>
+          <button type="button" className="text-btn" onClick={() => update({ ...DEFAULT_SETTINGS, mode: s.mode, hold, mixSixteenths: undefined, ...(listen ? { bars: 2, write: s.write } : {}) })}>
             {t('setup.reset')}
           </button>
         </div>
@@ -116,13 +123,14 @@ export function Setup(): JSX.Element {
             {listen ? (
               <>
                 <div className="mode-field">
-                  <Segmented<WriteKind> label={t('setup.write')} value={s.write ?? 'rhythm'} onChange={(v) => update({ write: v, ...(v === 'melody' && !s.melody ? { melody: [...DEFAULT_MELODY] } : {}) })}
+                  <Segmented<WriteKind> label={t('setup.write')} value={s.write ?? 'rhythm'} onChange={(v) => update({ write: v, ...(v !== 'rhythm' && !s.melody ? { melody: [...DEFAULT_MELODY] } : {}) })}
                     options={[
                       { value: 'rhythm', label: t('setup.writeRhythm') },
-                      { value: 'melody', label: t('setup.writeMelody') },
+                      { value: 'notes', label: t('setup.writeNotes') },
+                      { value: 'melody', label: t('setup.writeBoth') },
                     ]} />
                   <span className="muted-text" aria-live="polite">
-                    {t(melody ? 'setup.hintMelody' : 'setup.hintRhythm')}
+                    {t(WRITE_HINT[s.write ?? 'rhythm'])}
                   </span>
                 </div>
                 {melody && (
@@ -179,6 +187,8 @@ export function Setup(): JSX.Element {
               )}
             </div>
 
+            {!notesOnly && (
+            <>
             <div className="field">
               <div className="label">{t('setup.notes')}</div>
               <div className="glyph-grid">
@@ -215,13 +225,21 @@ export function Setup(): JSX.Element {
                   onToggle={() => !listen && update({ triplets: !s.triplets })}>
                   {t('setup.triplets')}
                 </Chip>
+                {bothSmall && (
+                  <Chip on={mix} className="chip--text" onToggle={() => update({ mixSixteenths: !mix })}>
+                    {t('setup.mixSixteenths')}
+                  </Chip>
+                )}
               </div>
               {listen && (
                 <span id={LISTEN_EXTRAS_HINT_ID} className="muted-text">
                   {t('setup.listenExtras')}
                 </span>
               )}
+              {bothSmall && !mix && <span className="muted-text">{t('setup.mixSixteenthsOff')}</span>}
             </div>
+            </>
+            )}
 
             <div className="bars-tempo">
               <div className="field">

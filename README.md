@@ -25,7 +25,8 @@ calendar, accuracy, timing and minutes, a skill map of rhythm cells with *Practi
 slowest notes, and stars per scale; skill levels (six skills of ten levels each); five achievements; and a level-up
 sheet that shows what the run unlocked. 0.20.0 adds Listen and write (dictation), a third practice mode: hear a rhythm, or with *Write · Melody* a
 melody on the piano from the notes you pick (such as low do, mi, sol and la), write it down value by value, and check it
-beat by beat. On phone, tablet and desktop, in light and dark. In English
+beat by beat. 0.21.0 lets Listen write the rhythm, the melody (notes alone) or both, and adds *Mix 8ths &
+16ths*: off, a beat is two eighths or four sixteenths, never mixed. On phone, tablet and desktop, in light and dark. In English
 and Dutch (Settings → Language); adding a language is one new catalog, see [DESIGN.md §11](docs/DESIGN.md).
 
 ## Run it

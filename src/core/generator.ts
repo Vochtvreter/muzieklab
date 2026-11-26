@@ -9,7 +9,7 @@ import { baseOf, formString, pickForm, randomOp, sameBar, vary } from './phrase'
 import { valueForTicks, VALUE_TICKS } from './values';
 import { rateDifficulty } from './difficulty';
 import { MAX_BARS, MAX_TEMPO } from './defaults';
-import { generateMelody, LISTEN_MAX_BARS, melodyDegrees, writesMelody } from './dictation';
+import { generateMelody, LISTEN_MAX_BARS, melodyDegrees, writesMelody, writesNotesOnly } from './dictation';
 
 /** Whole-exercise attempts (§5.5); after GOOD_ENOUGH_AFTER attempts a single soft miss is accepted. */
 const ATTEMPTS = 24;
@@ -255,7 +255,10 @@ function buildCandidate(ctx: GenContext, n: number, required: Set<string>): Cand
  * exercise keeps the player's settings, so Tap and Echo get them back and a code rebuilds the same exercise.
  */
 function listenGen(s: Settings): Settings {
-  return s.mode === 'listen' ? { ...s, ties: false, triplets: false, bars: Math.min(LISTEN_MAX_BARS, s.bars) } : s;
+  if (s.mode !== 'listen') return s;
+  const listen = { ...s, ties: false, triplets: false, bars: Math.min(LISTEN_MAX_BARS, s.bars) };
+  // Melody alone: every note a quarter, no rests, so only the pitches are written.
+  return writesNotesOnly(s) ? { ...listen, notes: ['quarter'], rests: [], dotted: false } : listen;
 }
 
 /** Seeded, deterministic exercise generator (§5.3–5.5). */
