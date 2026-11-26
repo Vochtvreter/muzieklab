@@ -767,7 +767,7 @@ test('hearing a note: sol, then the note, named from the notes learned so far', 
 });
 
 test('hearing a note after a reload: nothing sounds until a tap, then Hear it plays sol and the note', async ({ page }) => {
-  // Every tone that starts, by its body (one triangle oscillator a piano tone; its overtones are sines), not the silent
+  // Every piano tone that starts, counted by its triangle body (its overtones are sines, since 0.23.0), not the silent
   // sound that unlocks the audio.
   await page.addInitScript(() => {
     const w = window as unknown as { tones: number };
@@ -1301,4 +1301,40 @@ test('calibrate: the result takes the focus from the Tap pad, and Try again give
   await page.keyboard.press('Enter');
   await expect(pad(page)).toBeFocused();
   await expect(page.getByText('PRESS THE PAD TO START')).toBeVisible();
+});
+
+test('listen: the first listen is free, then 3 plays, of the whole exercise or one bar', async ({ page }) => {
+  await seed(page, { progress: { lessons: {}, practiceDays: [], lastSettings: { ...QUARTERS, mode: 'listen', bars: 2 } } });
+  await page.goto('./#/setup');
+  await page.getByRole('button', { name: /^Start · / }).click();
+  // How to play opens the first time and says so; closing it uses no play.
+  const sheet = page.getByRole('dialog', { name: 'How to play' });
+  await expect(sheet.getByText(/The first listen is free; after it you have 3 more plays/)).toBeVisible();
+  await sheet.getByRole('button', { name: 'Got it' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const left = page.locator('.listen-plays');
+  const pipsOn = page.locator('.listen-pips .is-on');
+  await expect(left).toHaveText('First listen is free · then 3 plays');
+  await expect(pipsOn).toHaveCount(3);
+  // The first play takes no pip; a second press stops it.
+  const play = page.locator('.listen-play-btn');
+  await play.click();
+  await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
+  await expect(left).toHaveText('3 plays left · fewer = bonus XP');
+  await expect(pipsOn).toHaveCount(3);
+  await play.click();
+  await expect(page.getByRole('heading', { name: 'Play again' })).toBeVisible();
+  // Then each play uses one, a play of one bar too.
+  await page.getByRole('button', { name: 'Play bar 1' }).click();
+  await expect(left).toHaveText('2 plays left · fewer = bonus XP');
+  await page.getByRole('button', { name: 'Play bar 1' }).click();
+  for (const text of ['1 play left · fewer = bonus XP', 'You used all 3 plays']) {
+    await play.click();
+    await expect(left).toHaveText(text);
+    await play.click();
+  }
+  await expect(pipsOn).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'No plays left' })).toBeVisible();
+  await expect(play).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Play bar 1' })).toBeDisabled();
 });

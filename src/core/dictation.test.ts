@@ -19,6 +19,7 @@ import {
   listenAccuracy,
   listenStars,
   listenXp,
+  playsUsed,
   LISTEN_MAX_BARS,
   stepMidi,
   undoValue,
@@ -222,22 +223,28 @@ describe('Listen exercises', () => {
 });
 
 describe('scoring', () => {
-  it('stars: 90% needs at most 2 plays; the 4th star all right heard once', () => {
+  it('the first listen is free: then each time heard uses one of the 3 plays', () => {
+    expect([0, 1, 2, 3, 4, 5].map(playsUsed)).toEqual([0, 0, 1, 2, 3, 3]);
+  });
+
+  it('stars (times heard): 90% needs at most 2 of the 3 plays used; the 4th star all right heard once', () => {
     expect(listenStars(100, 1)).toBe(4);
     expect(listenStars(100, 2)).toBe(3);
-    expect(listenStars(95, 3)).toBe(2);
+    expect(listenStars(95, 3)).toBe(3);
+    expect(listenStars(95, 4)).toBe(2);
     expect(listenStars(80, 1)).toBe(2);
-    expect(listenStars(50, 3)).toBe(1);
+    expect(listenStars(50, 4)).toBe(1);
     expect(listenStars(49, 1)).toBe(0);
   });
 
-  it('XP: nothing without a beat right, 5 for each play not used', () => {
+  it('XP: nothing without a beat right, 5 for each play not used after the free listen', () => {
     const ex = makeExercise('4/4', [[[Q * 4, 'n']]]);
     expect(listenXp(ex, 0, 0, 1)).toBe(0);
-    expect(listenXp(ex, 100, 4, 1) - listenXp(ex, 100, 4, 3)).toBe(10);
+    expect(listenXp(ex, 100, 4, 1) - listenXp(ex, 100, 4, 4)).toBe(15);
+    expect(listenXp(ex, 100, 3, 2) - listenXp(ex, 100, 3, 3)).toBe(5);
     // Not heard at all, or no star: no bonus for plays saved.
-    expect(listenXp(ex, 40, 0, 1)).toBe(listenXp(ex, 40, 0, 3));
-    expect(listenXp(ex, 100, 4, 0)).toBe(listenXp(ex, 100, 4, 3));
+    expect(listenXp(ex, 40, 0, 1)).toBe(listenXp(ex, 40, 0, 4));
+    expect(listenXp(ex, 100, 4, 0)).toBe(listenXp(ex, 100, 4, 4));
   });
 });
 

@@ -32,6 +32,12 @@ export const RELEASES: Release[] = [
     action: { to: '/setup', label: 'changelog.v0_24_0.try' },
   },
   {
+    version: '0.23.1',
+    date: '2026-11-26',
+    title: 'changelog.v0_23_1.title',
+    changes: [{ kind: 'better', text: 'changelog.v0_23_1.firstListen' }],
+  },
+  {
     version: '0.23.0',
     date: '2026-11-26',
     title: 'changelog.v0_23_0.title',

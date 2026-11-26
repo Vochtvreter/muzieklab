@@ -435,6 +435,7 @@
     "stop": "Stop",
     "playsLeft": "{count, plural, one {# play left} other {# plays left}} · fewer = bonus XP",
     "playsUsed": "You used all {count} plays",
+    "firstFree": "First listen is free · then {count} plays",
     "yourAnswer": "Your answer",
     "answerLabel": "Your answer: {rhythm}",
     "heardLabel": "What was played: {rhythm}",
@@ -468,7 +469,7 @@
     "howto": {
       "first": "First time here",
       "again": "Listen and write",
-      "step1": "Listen. Press play to hear it. You have {plays} plays, of the whole exercise or one bar; fewer plays earn bonus XP.",
+      "step1": "Listen. Press play to hear it. The first listen is free; after it you have {plays} more plays, of the whole exercise or one bar. Fewer plays earn bonus XP.",
       "step2": "Write it. Add each value to the bar with the buttons below.",
       "step2Melody": "Write it. Pick the note, then add its value with the buttons below. The reference note sounds first (do, or the note it starts on), so you know where you start.",
       "step2Notes": "Write it. Tap each note you hear with the buttons below; every note is a quarter. The reference note sounds first (do, or the note it starts on), so you know where you start.",
@@ -3184,6 +3185,10 @@
       "title": "The reference note, on screen",
       "try": "Open Free practice",
       "reference": "Listen with Melody or Both: the reference note now sounds on its own before the count-in, and a popover names it, with a ring that runs down while it sounds. It is gone before the melody starts, so you can tell the reference from the melody."
+    },
+    "v0_23_1": {
+      "title": "A free first listen",
+      "firstListen": "Listen and write: the first listen is free. Then you still have 3 plays, of the whole exercise or one bar; ★★★ needs a play left over, as before."
     },
     "v0_23_0": {
       "title": "Piano, violin or flute",

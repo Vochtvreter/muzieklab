@@ -34,7 +34,8 @@ describe("What's new", () => {
     expect(within(screen.getByRole('article')).getByText('Nov 26 · 1 new')).toBeTruthy();
     expect(within(screen.getByRole('article')).getByRole('link', { name: 'Open Free practice' }).getAttribute('href')).toBe('#/setup');
     // The release before it is open, with its Try link.
-    expect(screen.getByRole('link', { name: 'Open Progress' }).getAttribute('href')).toBe('#/progress');
+    expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getAllByRole('link', { name: 'Open Settings' }).map((l) => l.getAttribute('href'))).toContain('#/settings');
     // Accounts (0.12.0) are by invitation: the release promises no sign-up.
     fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();
