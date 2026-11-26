@@ -430,7 +430,7 @@
     "playMelody": "Play the melody",
     "playAgain": "Play again",
     "reference": "Reference note",
-    "referenceThen": "Then the count-in and the melody.",
+    "referenceThen": "The melody starts after this bar.",
     "referenceLabel": "Reference note: {note}",
     "stop": "Stop",
     "playsLeft": "{count, plural, one {# play left} other {# plays left}} · fewer = bonus XP",
@@ -3181,6 +3181,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_24_1": {
+      "title": "The reference note holds for a bar",
+      "reference": "Listen with Melody or Both: the reference note now holds through the count-in bar, with its beats shown in the popover instead of clicked, and the melody starts right after it."
+    },
     "v0_24_0": {
       "title": "The reference note, on screen",
       "try": "Open Free practice",

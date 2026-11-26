@@ -117,8 +117,8 @@
   font-size: 13px;
 }
 
-/* Reference note (§3.2, Melody): while it sounds before the count-in, a popover under the play button names it, with a
-   ring that runs down while it is held. It is gone before the count-in, so the melody plays without it. */
+/* Reference note (§3.2, Melody): held through the count-in bar, a popover under the play button names it, with a ring
+   that runs down over the bar and its beats as a metronome. It is gone when the melody starts. */
 .listen-play {
   position: relative;
   z-index: 2;
@@ -219,6 +219,39 @@
 .listen-ref-text .muted-text {
   font-size: 13px;
 }
+/* The metronome under the reference: one dot a beat of the count-in bar, lit as it sounds. */
+.listen-ref-beats {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.listen-ref-beats span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--track);
+  color: var(--muted);
+}
+.listen-ref-beats span.is-on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.listen-ref-beats span.is-now {
+  background: var(--accent);
+  color: var(--on-fill);
+  animation: listen-ref-tick 0.18s ease-out;
+}
+@keyframes listen-ref-tick {
+  from {
+    transform: scale(1.25);
+  }
+}
 /* The ring is a timer, not decoration: it still runs down with reduced motion (base.css stops other animations). */
 @media (prefers-reduced-motion: reduce) {
   .listen-ref-arc {
@@ -226,6 +259,11 @@
   }
 }
 @media (forced-colors: active) {
+  .listen-ref-beats span.is-now {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
   .listen-ref-track {
     stroke: GrayText;
   }
