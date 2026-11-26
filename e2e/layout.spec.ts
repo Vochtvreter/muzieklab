@@ -1062,32 +1062,43 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
-    test('listen: the reference note in a popover while it sounds, gone before the melody', async ({ page }) => {
+    test('listen: the reference note held for the count-in bar, its beats in a popover, gone when the melody starts', async ({ page }) => {
       known(name, 'listen-reference');
-      const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'melody', melody: [0, 2, 4, 5], startNote: 4, bars: 2 } as const;
+      // 4/4 at 80: the count-in bar, and so the reference, lasts 3 s.
+      const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'melody', melody: [0, 2, 4, 5], startNote: 4, bars: 2, tempo: 80 } as const;
       await seedRun(page, settings, 4242, { noteNames: 'solfege', seenListenHowTo: true });
       await page.goto('about:blank');
       await page.goto('./#/play');
       await page.getByRole('button', { name: 'Play the melody' }).click();
-      // The reference (sol, chosen in Starts on) sounds alone: the popover names it under the play button, with its ring.
+      const clicked = Date.now();
+      // The reference (sol, chosen in Starts on): the popover names it under the play button, with its ring and the beats.
       const pop = page.getByRole('status').filter({ hasText: 'Reference note' });
       await expect(pop).toBeVisible();
       await expect(pop).toContainText('Reference note: sol');
       await expect(pop.locator('.listen-ref-name')).toHaveText('solG');
       await expect(pop.locator('.listen-ref-arc')).toBeVisible();
+      await expect(pop.getByText('The melody starts after this bar.')).toBeVisible();
+      const beats = pop.locator('.listen-ref-beats span');
+      await expect(beats).toHaveText(['1', '2', '3', '4']);
       await expect(pop).toBeInViewport({ ratio: 1 });
       const [p, card] = [(await pop.boundingBox())!, (await page.locator('.listen-play').boundingBox())!];
       expect(p.y, 'the popover hangs under the play card').toBeGreaterThanOrEqual(card.y + card.height);
       expect(p.x + p.width, 'the popover stays inside the card').toBeLessThanOrEqual(card.x + card.width + 1);
       await expectNoClippedLabels(page);
       await expectNoSideScroll(page);
-      // Gone when the note stops, before the count-in, while the play goes on to the melody.
-      await expect(pop).toHaveCount(0, { timeout: 3000 });
+      // The metronome counts the bar: beat 2, then beat 4, each lit as it passes.
+      await expect(pop.locator('.listen-ref-beats .is-now')).toHaveText('2');
+      await expect(pop.locator('.listen-ref-beats .is-now')).toHaveText('4');
+      await expect(pop.locator('.listen-ref-beats .is-on')).toHaveCount(4);
+      // Gone when the melody starts, after the whole bar, while the play goes on.
+      await expect(pop).toHaveCount(0, { timeout: 5000 });
+      expect(Date.now() - clicked, 'the reference lasts the bar').toBeGreaterThan(2500);
       await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
-      // Stop: no popover is left behind, and a new play shows it again.
+      // Stop: no popover is left behind, and a new play shows it again, counting from the start.
       await page.getByRole('button', { name: 'Stop' }).click();
       await page.getByRole('button', { name: 'Play again' }).click();
       await expect(pop).toBeVisible();
+      await expect(pop.locator('.listen-ref-beats .is-on')).not.toHaveCount(4);
       await page.getByRole('button', { name: 'Stop' }).click();
       await expect(pop).toHaveCount(0);
     });

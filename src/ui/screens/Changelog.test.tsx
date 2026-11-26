@@ -30,9 +30,9 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'The reference note, on screen' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Nov 26 · 1 new')).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByRole('link', { name: 'Open Free practice' }).getAttribute('href')).toBe('#/setup');
+    expect(screen.getByRole('heading', { level: 2, name: 'The reference note holds for a bar' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Nov 26 · 1 better')).toBeTruthy();
+    expect(within(screen.getByRole('article')).queryByRole('link')).toBeNull();
     // The release before it is open, with its Try link.
     expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
     expect(screen.getAllByRole('link', { name: 'Open Settings' }).map((l) => l.getAttribute('href'))).toContain('#/settings');
@@ -71,8 +71,8 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'De referentienoot, in beeld' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('26 nov · 1 nieuw')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'De referentienoot klinkt een maat lang' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('26 nov · 1 beter')).toBeTruthy();
     fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
@@ -82,8 +82,8 @@ describe("What's new", () => {
     width = 834;
     render(<Changelog />);
     const card = screen.getByRole('article');
-    expect(within(card).getAllByText('New')).toHaveLength(1);
-    expect(within(card).queryAllByText('Better')).toHaveLength(0);
+    expect(within(card).queryAllByText('New')).toHaveLength(0);
+    expect(within(card).getAllByText('Better')).toHaveLength(1);
     expect(within(card).queryAllByText('Fixed')).toHaveLength(0);
     expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
   });
@@ -94,8 +94,8 @@ describe("What's new", () => {
     const list = screen.getByRole('navigation', { name: 'Releases' });
     expect(within(list).getAllByRole('button')).toHaveLength(RELEASES.length);
     expect(release(RELEASES[0].version).getAttribute('aria-current')).toBe('true');
-    expect(screen.getByRole('heading', { level: 2, name: 'The reference note, on screen' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('November 26, 2026 · 1 new')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'The reference note holds for a bar' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('November 26, 2026 · 1 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
     expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
 
