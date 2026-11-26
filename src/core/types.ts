@@ -65,6 +65,11 @@ export interface Settings {
   write?: WriteKind;
   /** Listen · Melody: the notes it uses, as degrees from low do (0 = C4 … 7 = C5); default do mi sol la. */
   melody?: number[];
+  /**
+   * Listen · Melody and Both: the note the melody starts on (a degree, one of `melody`), which also sounds as the
+   * reference before every play. Not set: Any (the melody starts on do, now and then mi or sol; the reference is do).
+   */
+  startNote?: number;
 }
 
 export interface RhythmEvent {

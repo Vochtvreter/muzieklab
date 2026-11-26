@@ -284,11 +284,17 @@ dictation with a few notes, such as low do, mi, sol and la (a common exam set).
   default do mi sol la (`melody` in the settings, degrees 0–7 from C4). Under them *Treble clef, C major. Each play
   starts with do.* With fewer than two, Start reads *Pick at least two notes*. The preview draws the melody on a
   five-line treble staff.
+- **Starts on** (since 0.22.0; MVP canvas, the same setup row): under the notes, a single choice of **Any** or one of
+  the notes picked (`startNote`, a degree). The melody starts on that note, and it sounds as the reference before every
+  play, in place of do; the line under the notes reads *Treble clef, C major. The melody starts on sol, and sol sounds
+  before every play.* Any is as before: the reference is do, and the line stays *… Each play starts with do.* (the
+  board writes Any's line as "starts on do", but a melody on Any can start on mi or sol). Taking the chosen note out
+  of the melody goes back to Any. In the code, the melody segment ends with S and the degree (`N0245S4`).
 - The melody (`generateMelody` in `core/dictation.ts`): one note per onset of the generated rhythm, seeded by the
-  exercise's seed. It starts on do (now and then mi or sol), moves mostly by step through the notes picked (a step is to
+  exercise's seed. It starts on the note chosen in Starts on, or with Any on do (now and then mi or sol), moves mostly by step through the notes picked (a step is to
   the next picked note), sometimes repeats, skips or leaps, never plays a note three times in a row, and ends on do (the
   nearer do when both are picked; the lowest note when no do is).
-- A play: do (C4) on the piano on the first count-in beat, the rest of the count-in in clicks, then the melody on the
+- A play: the reference note on the piano on the first count-in beat (do, C4, or the note chosen in Starts on), the rest of the count-in in clicks, then the melody on the
   piano tone, each note held for its length. Play bar N plays that bar's notes; the compare plays after Check play the
   answer's notes and the melody.
 - The screen: the meta reads *4/4 · 2 bars · melody*, the play title *Play the melody*. Your answer is a five-line treble

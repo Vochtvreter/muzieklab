@@ -10,7 +10,8 @@
  *   5. tempo in BPM:                                               120
  *   6. optional flags, X + one letter per setting off its default:  XDT
  *   7. Listen with a melody only: N (Both: notes in their rhythm) or Q (Melody: notes alone, every one a quarter) +
- *      the melody's notes as degrees, 0 low do … 7 high do:                                N0245 · Q0245
+ *      the melody's notes as degrees, 0 low do … 7 high do, and S + the note it starts on when one is chosen:
+ *                                                                                           N0245 · Q0245 · N0245S4
  *   8. the seed in Crockford base 32:                              7K2QF
  * Mode letters: T tap, E echo, L listen (§3.2).
  * Flags: D dotted · T ties · 3 triplets · N tap only (no hold) · S sparse / B busy · F few / M many rests ·
@@ -18,7 +19,7 @@
  * (never mixed in one beat).
  */
 import { DEFAULT_SETTINGS } from './defaults';
-import { melodyDegrees, writesMelody } from './dictation';
+import { melodyDegrees, melodyStart, writesMelody } from './dictation';
 import { METER_IDS, NOTE_VALUES, type MeterId, type NoteValue, type Settings } from './types';
 
 const VALUE_LETTER: Record<NoteValue, string> = { whole: 'W', half: 'H', quarter: 'Q', eighth: 'E', sixteenth: 'S' };
@@ -89,7 +90,9 @@ export function encodeCode(settings: Settings, seed: number): string {
     settings.bars + 'B',
     String(settings.tempo),
     ...(flags ? ['X' + flags] : []),
-    ...(writesMelody(settings) ? [(settings.write === 'notes' ? 'Q' : 'N') + melodyDegrees(settings).join('')] : []),
+    ...(writesMelody(settings)
+      ? [(settings.write === 'notes' ? 'Q' : 'N') + melodyDegrees(settings).join('') + (melodyStart(settings) !== undefined ? 'S' + melodyStart(settings) : '')]
+      : []),
     seedToB32(seed),
   ].join('-');
 }
@@ -143,10 +146,15 @@ export function decodeCode(code: string): { settings: Settings; seed: number } |
     }
   }
   if (melodyPart !== null) {
-    if (mode !== 'listen' || !/^[NQ][0-7]{2,8}$/.test(melodyPart)) return null;
-    const degrees = [...melodyPart.slice(1)].map(Number);
+    const m = /^([NQ])([0-7]{2,8})(?:S([0-7]))?$/.exec(melodyPart);
+    if (mode !== 'listen' || !m) return null;
+    const degrees = [...m[2]].map(Number);
     if (new Set(degrees).size !== degrees.length) return null;
-    settings.write = melodyPart[0] === 'Q' ? 'notes' : 'melody';
+    settings.write = m[1] === 'Q' ? 'notes' : 'melody';
+    if (m[3] !== undefined) {
+      if (!degrees.includes(Number(m[3]))) return null;
+      settings.startNote = Number(m[3]);
+    }
     settings.melody = degrees.sort((a, b) => a - b);
   }
   return { settings, seed };

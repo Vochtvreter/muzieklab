@@ -370,6 +370,9 @@
     "hintMelody": "Write the notes in their rhythm",
     "melodyNotes": "Notes in the melody",
     "melodyHint": "Treble clef, C major. Each play starts with do.",
+    "startsOn": "Starts on",
+    "startsOnAny": "Any",
+    "melodyHintStart": "Treble clef, C major. The melody starts on {note}, and {note} sounds before every play.",
     "listenExtras": "Ties and triplets are not in Listen yet",
     "blockedMelody": "Pick at least two notes",
     "mixSixteenths": "Mix 8ths & 16ths",
@@ -464,8 +467,8 @@
       "again": "Listen and write",
       "step1": "Listen. Press play to hear it. You have {plays} plays, of the whole exercise or one bar; fewer plays earn bonus XP.",
       "step2": "Write it. Add each value to the bar with the buttons below.",
-      "step2Melody": "Write it. Pick the note, then add its value with the buttons below. Do sounds first, so you know where you start.",
-      "step2Notes": "Write it. Tap each note you hear with the buttons below; every note is a quarter. Do sounds first, so you know where you start.",
+      "step2Melody": "Write it. Pick the note, then add its value with the buttons below. The reference note sounds first (do, or the note it starts on), so you know where you start.",
+      "step2Notes": "Write it. Tap each note you hear with the buttons below; every note is a quarter. The reference note sounds first (do, or the note it starts on), so you know where you start.",
       "step3": "Check. Every beat is marked right or wrong, and you can play your answer next to what was played.",
       "keys": "Keys: 1 2 4 8 6 add a value, R rest, . dot, Backspace undo, Space play, Enter check.",
       "keysMelody": "Keys: C D E F G A B pick the note; 1 2 4 8 6 add a value, R rest, . dot, Backspace undo, Space play, Enter check.",
@@ -3168,6 +3171,11 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_22_0": {
+      "title": "Choose the starting note",
+      "try": "Open Free practice",
+      "start": "Starts on, for Listen with Melody or Both: pick the note the melody starts on, such as sol. That note sounds as the reference before every play. Any keeps the old way: the reference is do."
+    },
     "v0_21_0": {
       "title": "Melody, rhythm or both",
       "try": "Open Free practice",

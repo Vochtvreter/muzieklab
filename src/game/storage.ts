@@ -330,6 +330,7 @@ export function sanitizeSettings(raw: unknown): Settings | null {
     // Listen (§3.2): what it writes, and a melody's notes (degrees 0–7 from low do, at least two).
     ...(raw.write !== undefined ? { write: oneOf(raw.write, WRITE_KINDS, 'rhythm') } : {}),
     ...(melodyOf(raw.melody) ? { melody: melodyOf(raw.melody) as number[] } : {}),
+    ...(Number.isInteger(raw.startNote) && (raw.startNote as number) >= 0 && (raw.startNote as number) <= 7 ? { startNote: raw.startNote as number } : {}),
   };
 }
 

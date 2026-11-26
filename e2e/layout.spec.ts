@@ -1004,6 +1004,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       for (const n of ['do', 'mi', 'sol', 'la']) await expect(notes.getByRole('button', { name: n, exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expect(notes.getByRole('button', { name: 're', exact: true })).toHaveAttribute('aria-pressed', 'false');
       for (const b of await notes.getByRole('button').all()) await expectTouchHeight(b);
+      // Starts on: Any, or one of the notes picked; the melody starts on it and it sounds before every play.
+      const starts = page.getByRole('radiogroup', { name: 'Starts on' });
+      await expect(starts.getByRole('radio')).toHaveCount(5);
+      await expect(starts.getByRole('radio', { name: 'Any' })).toHaveAttribute('aria-checked', 'true');
+      await starts.getByRole('radio', { name: 'sol', exact: true }).click();
+      await expect(starts.getByRole('radio', { name: 'sol', exact: true })).toHaveAttribute('aria-checked', 'true');
+      await expect(page.getByText('The melody starts on sol, and sol sounds before every play.')).toBeVisible();
+      for (const r of await starts.getByRole('radio').all()) await expectTouchHeight(r);
       await expect(page.getByText('Ties and triplets are not in Listen yet')).toBeVisible();
       await expectClickable(page.getByRole('button', { name: /^Start · / }));
       await expectNoClippedLabels(page);

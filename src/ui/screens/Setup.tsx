@@ -1,7 +1,7 @@
 /** Practice setup (DESIGN.md §4): every setting on one screen, live preview, difficulty meter and validation (§4.1). */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { checkSettings, DEFAULT_SETTINGS, MAX_BARS, MAX_TEMPO, METER_IDS, NOTE_VALUES, type Density, type MeterId, type Mode, type NoteValue, type RestAmount, type Settings, type WriteKind } from '../../core/api';
-import { DEFAULT_MELODY, LISTEN_MAX_BARS, MELODY_DEGREES, writesMelody, writesNotesOnly } from '../../core/dictation';
+import { DEFAULT_MELODY, LISTEN_MAX_BARS, MELODY_DEGREES, melodyStart, writesMelody, writesNotesOnly } from '../../core/dictation';
 import { t } from '../../i18n';
 import { Chip, Segmented, SwitchTrack } from '../components/Controls';
 import { ExerciseFrame } from '../components/AppShell';
@@ -56,6 +56,8 @@ export function Setup(): JSX.Element {
   const bars = listen ? Math.min(LISTEN_MAX_BARS, s.bars) : s.bars;
   const maxBars = listen ? LISTEN_MAX_BARS : MAX_BARS;
   const names = state.prefs.noteNames;
+  // Starts on: the note picked for the melody to start on, or undefined for Any.
+  const startNote = melodyStart({ melody: degrees, startNote: s.startNote });
   const update = (patch: Partial<Settings>): void => {
     dispatch({ type: 'settings', settings: { ...s, ...patch } });
     setPreviewSeed(newSeed());
@@ -141,13 +143,39 @@ export function Setup(): JSX.Element {
                     <div className="chip-row melody-chips" role="group" aria-labelledby="melody-notes-label">
                       {MELODY_DEGREES.map((d) => (
                         <Chip key={d} on={degrees.includes(d)} className="chip--note" label={degreeName(d, names)}
-                          onToggle={() => update({ melody: toggle(degrees, d, MELODY_DEGREES) })}>
+                          // A note taken out of the melody can no longer be the one it starts on: back to Any.
+                          onToggle={() => update({ melody: toggle(degrees, d, MELODY_DEGREES), ...(s.startNote === d && degrees.includes(d) ? { startNote: undefined } : {}) })}>
                           <span className="chip-note-main">{degreeName(d, names)}</span>
                           <span className="chip-note-sub" aria-hidden="true">{degreeSub(d, names)}</span>
                         </Chip>
                       ))}
                     </div>
-                    <span className="muted-text">{t('setup.melodyHint')}</span>
+                    <span className="muted-text">
+                      {startNote === undefined ? t('setup.melodyHint') : t('setup.melodyHintStart', { note: degreeName(startNote, names) })}
+                    </span>
+                  </div>
+                )}
+                {melody && (
+                  <div className="field">
+                    <div className="label" id="melody-start-label">
+                      {t('setup.startsOn')}
+                    </div>
+                    {/* One choice: Any, or one of the notes picked. The melody starts on it, and it sounds before every play. */}
+                    <div className="chip-row melody-chips melody-start" role="radiogroup" aria-labelledby="melody-start-label">
+                      <button type="button" role="radio" aria-checked={startNote === undefined} className={'chip chip--note' + (startNote === undefined ? ' is-on' : '')}
+                        onClick={() => update({ startNote: undefined })}>
+                        <span className="chip-note-main">{t('setup.startsOnAny')}</span>
+                      </button>
+                      {degrees.filter((d) => MELODY_DEGREES.includes(d as (typeof MELODY_DEGREES)[number])).map((d) => (
+                        <button key={d} type="button" role="radio" aria-checked={startNote === d} aria-label={degreeName(d, names)}
+                          className={'chip chip--note' + (startNote === d ? ' is-on' : '')} onClick={() => update({ startNote: d })}>
+                          <span className="chip-note-main">{degreeName(d, names)}</span>
+                          <span className="chip-note-sub" aria-hidden="true">
+                            {degreeSub(d, names)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </>
