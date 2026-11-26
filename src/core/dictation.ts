@@ -18,6 +18,18 @@ export const MELODY_DEGREES = [0, 1, 2, 3, 4, 5, 6, 7] as const;
 /** Low do, mi, sol and la: the default set (a common first melodic dictation). */
 export const DEFAULT_MELODY: number[] = [0, 2, 4, 5];
 
+/**
+ * Starts on: the note the melody starts on, as a degree, when the player chose one of its notes; undefined for Any (the
+ * melody starts on do, now and then mi or sol).
+ */
+export function melodyStart(s: Pick<Settings, 'melody' | 'startNote'>): number | undefined {
+  const d = s.startNote;
+  return d !== undefined && melodyDegrees(s).includes(d) ? d : undefined;
+}
+
+/** The reference note before every play of a melody: the note it starts on, or do with Any. */
+export const referenceDegree = (s: Pick<Settings, 'melody' | 'startNote'>): number => melodyStart(s) ?? 0;
+
 /** The staff step of a melody degree: degree 0 is C4 (middle C), 7 is C5. */
 export const degreeStep = (degree: number): Step => MIDDLE_C + degree;
 /** MIDI number of a melody step (C major, no signs): C4 = 60. */
@@ -43,7 +55,7 @@ export function melodyDegrees(s: Pick<Settings, 'melody'>): number[] {
  * moves mostly by step through the notes picked (a step is to the next note of the set), sometimes repeats or leaps,
  * and ends on do. Seeded, so an exercise's code rebuilds the same melody.
  */
-export function generateMelody(onsets: number, degrees: readonly number[], seed: number): Step[] {
+export function generateMelody(onsets: number, degrees: readonly number[], seed: number, start?: number): Step[] {
   const set = [...degrees].sort((a, b) => a - b);
   const rng = new Rng((seed ^ 0x5bd1e995) >>> 0);
   const homeIndex = set.includes(0) ? set.indexOf(0) : set.includes(7) ? set.indexOf(7) : 0;
@@ -51,7 +63,10 @@ export function generateMelody(onsets: number, degrees: readonly number[], seed:
   let i = homeIndex;
   let repeats = 0;
   for (let n = 0; n < onsets; n++) {
-    if (n === 0) {
+    if (n === 0 && start !== undefined && set.includes(start)) {
+      // The note the player chose to start on (Starts on).
+      i = set.indexOf(start);
+    } else if (n === 0) {
       // First note: do, or now and then another note of the do chord (mi, sol), as melodies often start.
       const chord = set.map((d, k) => (d === 2 || d === 4 ? k : -1)).filter((k) => k >= 0);
       i = chord.length && rng.chance(0.25) ? rng.pick(chord) : homeIndex;

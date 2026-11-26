@@ -24,6 +24,7 @@ import {
   undoValue,
   checkAnswer,
   writesNotesOnly,
+  referenceDegree,
   type Answer,
   type ListenCheck,
   type Written,
@@ -155,7 +156,8 @@ export function ListenPlay({ run, view, exit }: { run: Run; view: ExerciseView; 
         playRhythm: true,
         leadIn: 0.15,
         ...(source.pitches ? { melody: source.pitches.map(stepMidi) } : {}),
-        ...(melody && uses ? { reference: stepMidi(degreeStep(0)) } : {}),
+        // The reference before a play: the note the melody starts on when the setup chose one (Starts on), else do.
+        ...(melody && uses ? { reference: stepMidi(degreeStep(referenceDegree(ex.settings))) } : {}),
       });
       const at = performance.now();
       setStopped(false);

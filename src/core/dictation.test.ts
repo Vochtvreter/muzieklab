@@ -8,6 +8,8 @@ import {
   checkAnswer,
   currentBar,
   DEFAULT_MELODY,
+  melodyStart,
+  referenceDegree,
   degreeStep,
   emptyAnswer,
   fillable,
@@ -296,5 +298,35 @@ describe('Write · Melody: the notes alone', () => {
     expect(code).toMatch(/-Q0245-/);
     expect(decodeCode(code)?.settings.write).toBe('notes');
     expect(decodeCode(encodeCode(listen({ write: 'melody', melody: [0, 2, 4, 5] }), 4321))?.settings.write).toBe('melody');
+  });
+});
+
+describe('Starts on: the note a melody starts on, and its reference', () => {
+  it('starts every melody on the note chosen, in Melody and Both', () => {
+    for (const write of ['notes', 'melody'] as const) {
+      for (const start of [2, 4, 5]) {
+        for (let seed = 1; seed < 30; seed++) {
+          const ex = generateExercise(listen({ write, melody: [0, 2, 4, 5], startNote: start }), seed);
+          expect(ex.pitches![0]).toBe(degreeStep(start));
+        }
+      }
+    }
+  });
+
+  it('is Any (do as the reference) when not set or not one of the notes picked', () => {
+    expect(melodyStart({ melody: [0, 2, 4, 5] })).toBeUndefined();
+    expect(melodyStart({ melody: [0, 2, 4, 5], startNote: 1 })).toBeUndefined();
+    expect(referenceDegree({ melody: [0, 2, 4, 5], startNote: 1 })).toBe(0);
+    expect(referenceDegree({ melody: [0, 2, 4, 5], startNote: 4 })).toBe(4);
+  });
+
+  it('is kept in the code (S + the degree), and a code naming a note not picked is no code', () => {
+    const code = encodeCode(listen({ write: 'melody', melody: [0, 2, 4, 5], startNote: 4 }), 2024);
+    expect(code).toMatch(/-N0245S4-/);
+    const back = decodeCode(code)!;
+    expect(back.settings.startNote).toBe(4);
+    expect(generateExercise(back.settings, 2024).pitches![0]).toBe(degreeStep(4));
+    expect(encodeCode(listen({ write: 'melody', melody: [0, 2, 4, 5] }), 2024)).not.toMatch(/S\d-/);
+    expect(decodeCode(code.replace('N0245S4', 'N0245S1'))).toBeNull();
   });
 });

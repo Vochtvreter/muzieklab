@@ -370,6 +370,9 @@
     "hintMelody": "Schrijf de noten in hun ritme",
     "melodyNotes": "Noten in de melodie",
     "melodyHint": "Solsleutel, C majeur. Elke keer afspelen begint met do.",
+    "startsOn": "Begint op",
+    "startsOnAny": "Vrij",
+    "melodyHintStart": "Solsleutel, C majeur. De melodie begint op {note}, en {note} klinkt voor elke keer afspelen.",
     "listenExtras": "Overbindingen en triolen zitten nog niet in Luister",
     "blockedMelody": "Kies minstens twee noten",
     "mixSixteenths": "8e en 16e mengen",
@@ -464,8 +467,8 @@
       "again": "Luister en schrijf",
       "step1": "Luister. Druk op afspelen om het te horen. Je mag het {plays} keer horen, helemaal of één maat; minder keer geeft bonus-XP.",
       "step2": "Schrijf het. Voeg elke waarde aan de maat toe met de knoppen hieronder.",
-      "step2Melody": "Schrijf het. Kies de noot en voeg dan zijn waarde toe met de knoppen hieronder. Eerst klinkt do, zodat je weet waar je begint.",
-      "step2Notes": "Schrijf het. Tik elke noot die je hoort met de knoppen hieronder; elke noot is een kwartnoot. Eerst klinkt do, zodat je weet waar je begint.",
+      "step2Melody": "Schrijf het. Kies de noot en voeg dan zijn waarde toe met de knoppen hieronder. Eerst klinkt de referentienoot (do, of de noot waarop hij begint), zodat je weet waar je begint.",
+      "step2Notes": "Schrijf het. Tik elke noot die je hoort met de knoppen hieronder; elke noot is een kwartnoot. Eerst klinkt de referentienoot (do, of de noot waarop hij begint), zodat je weet waar je begint.",
       "step3": "Controleer. Elke tel krijgt goed of fout, en je kunt jouw antwoord naast wat er speelde afspelen.",
       "keys": "Toetsen: 1 2 4 8 6 voegen een waarde toe, R rust, . punt, Backspace ongedaan, spatie afspelen, Enter controleren.",
       "keysMelody": "Toetsen: C D E F G A B kiezen de noot; 1 2 4 8 6 voegen een waarde toe, R rust, . punt, Backspace ongedaan, spatie afspelen, Enter controleren.",
@@ -3168,6 +3171,11 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_22_0": {
+      "title": "Kies de beginnoot",
+      "try": "Open vrij oefenen",
+      "start": "Begint op, bij Luister met Melodie of Beide: kies de noot waarop de melodie begint, zoals sol. Die noot klinkt als referentie voor elke keer afspelen. Vrij werkt zoals eerst: de referentie is do."
+    },
     "v0_21_0": {
       "title": "Melodie, ritme of beide",
       "try": "Open vrij oefenen",

@@ -9,7 +9,7 @@ import { baseOf, formString, pickForm, randomOp, sameBar, vary } from './phrase'
 import { valueForTicks, VALUE_TICKS } from './values';
 import { rateDifficulty } from './difficulty';
 import { MAX_BARS, MAX_TEMPO } from './defaults';
-import { generateMelody, LISTEN_MAX_BARS, melodyDegrees, writesMelody, writesNotesOnly } from './dictation';
+import { generateMelody, LISTEN_MAX_BARS, melodyDegrees, melodyStart, writesMelody, writesNotesOnly } from './dictation';
 
 /** Whole-exercise attempts (§5.5); after GOOD_ENOUGH_AFTER attempts a single soft miss is accepted. */
 const ATTEMPTS = 24;
@@ -290,6 +290,6 @@ export function generateExercise(settings: Settings, seed: number): Exercise {
     bars: chosen.bars,
     form: formString(chosen.groups),
     difficulty: rateDifficulty(meter, chosen.bars, s.tempo),
-    ...(writesMelody(s) ? { pitches: generateMelody(onsets, melodyDegrees(s), seed) } : {}),
+    ...(writesMelody(s) ? { pitches: generateMelody(onsets, melodyDegrees(s), seed, melodyStart(s)) } : {}),
   };
 }
