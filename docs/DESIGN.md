@@ -1138,8 +1138,19 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 ## 7. Audio
 
 - Sounds synthesised in Web Audio (no downloads): metronome click (accented high click on
-  beat 1), woodblock/clave for rhythm playback, short soft "tok" as tap feedback, and a short
-  piano tone (Scales, Read notes and Learn's scales and piano diagrams, since 0.10.0: §3.5, §9.1).
+  beat 1), woodblock/clave for rhythm playback, short soft "tok" as tap feedback, and notes on the instrument chosen in
+  Settings → Instrument (since 0.23.0): Scales, Read notes, Learn's scales and piano diagrams (since 0.10.0: §3.5,
+  §9.1), and a Listen melody with its reference note. Everything this document calls the *piano tone* is played on
+  that instrument.
+  - **Piano** (the default): a triangle through a low-pass that closes over 0.8 s (bright when struck, mellower as it
+    rings), three slightly sharp overtones that fade faster the higher they are, and a short noise knock for the hammer.
+    Alone (Scales, Read notes) a note rings on for about a second; in a melody it is held softly for its length.
+  - **Violin**: a sawtooth through a low-pass and a body resonance near 2.8 kHz, a 60 ms bow attack, held until just
+    before the next note, with a vibrato (5.6 Hz, ±14 cents) that comes in after the attack on notes over 0.3 s.
+  - **Flute**: a sine with quiet 2nd and 3rd harmonics and band-passed breath noise, strongest as the note speaks, held
+    like the violin, with a gentle vibrato (5 Hz, ±9 cents) on notes over 0.3 s.
+  - Violin and flute notes that follow one another (a scale, *Hear it so far*) are held until just before the next one,
+    and the last for 0.9 s. The three are matched in loudness.
 - Optional sample pack later (piano note, snare).
 - Volume sliders: metronome / rhythm / tap feedback.
 - iOS: audio context unlocked on the first tap of the *Start* button; silent-switch note.
@@ -2053,7 +2064,7 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 | **Path** | One Learning path (since 0.11.0; before, three paths behind a switcher): note units and rhythm units taking turns, as a vertical path whose units open to show their lessons by name, with stars and locks (§8.2). |
 | **Progress** | Since 0.19.0 (§8.5): a Rhythm · Notes · Scales switch; the level, the streak calendar, accuracy and timing over 14 days, minutes this week, the skill map with *Practice weak spots*, achievements; accuracy per clef, the slowest notes and the last key; the scale stars; Skill levels (§8.6). |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
-| **Settings** | Account first, once the API answers (since 0.12.0; §9.2), language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
+| **Settings** | Account first, once the API answers (since 0.12.0; §9.2), language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off) and the instrument notes are played on (piano, violin or flute, since 0.23.0), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |
 
 **Home** (since 0.10.0). On phone and tablet the order is the brand or title, then the level and streak chips (they
 wrap under the brand on narrow phones, and in Dutch on a new profile), Continue, the daily challenge and Free practice.
@@ -2064,7 +2075,10 @@ lesson**. Continue is the only filled button on Home: the daily's Play is outlin
 and its staff keep their own height (about 110 px for one line of notes) and do not stretch to fill the screen; on a
 phone the card still fills the screen. The lesson tiles show their stars as on the Path (§6.3).
 
-**Settings** (since 0.10.0). Sound has one *Metronome* row (volume and on/off). The Display row for the digital or
+**Settings** (since 0.10.0). Sound has one *Metronome* row (volume and on/off). Under the volumes, **Instrument**
+(since 0.23.0; no board yet): *Piano* (the default) · *Violin* · *Flute*, a segmented control with the group label
+*Instrument for notes* and the hint *Plays melodies, scales and Read notes. Pick one to hear it.* A pick plays C E G C
+on it at the Playback volume. It follows the account, like the theme (§9.2, `SYNCED_PREFS`). The Display row for the digital or
 analog look is *Beat counter* (nl *Telteller*), with the group label *Beat counter style*. The leniency hints describe
 each level in words, with no milliseconds: Strict *Tight timing, for confident players.*, Normal *Fair timing for most
 players.*, Relaxed *Wide timing, for young beginners.* Calibration is in §6.1. Picking another language redraws the

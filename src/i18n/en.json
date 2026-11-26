@@ -776,6 +776,12 @@
     "playbackVolume": "Rhythm playback volume",
     "tapSound": "Tap sound",
     "tapVolume": "Tap sound volume",
+    "instrument": "Instrument",
+    "instrumentGroup": "Instrument for notes",
+    "piano": "Piano",
+    "violin": "Violin",
+    "flute": "Flute",
+    "hintInstrument": "Plays melodies, scales and Read notes. Pick one to hear it.",
     "timing": "Timing",
     "calibrate": "Calibrate",
     "calibrated": "calibrated {date}",
@@ -3171,6 +3177,12 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_23_0": {
+      "title": "Piano, violin or flute",
+      "try": "Open Settings",
+      "instrument": "Settings → Instrument: hear melodies, scales and Read notes on the piano, the violin or the flute. Piano is the default; pick one to hear it.",
+      "piano": "The piano sounds more like a piano: brighter as a key is struck, mellowing as it rings."
+    },
     "v0_22_0": {
       "title": "Choose the starting note",
       "try": "Open Free practice",

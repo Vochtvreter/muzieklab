@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS } from '../core/defaults';
 import { MAX_WEAK, parseNoteId, sanitizeNoteSettings, type NoteSettings, type WeakSpots } from '../core/noteRound';
 import { parseScaleId, type ScaleStars } from '../core/scale';
 import { sanitizeScaleSettings, type ScaleSettings } from '../core/scaleRound';
-import type { Volumes } from '../audio/engine';
+import { INSTRUMENTS, type Instrument, type Volumes } from '../audio/engine';
 import { isLocale } from '../i18n';
 import { LOCALES as ACCOUNT_LOCALES, PERMISSIONS, ROLE_ID_PATTERN, type Me } from '../../shared/api';
 import { INTRO_IDS, introsOf } from './intro';
@@ -43,6 +43,8 @@ export interface Prefs {
    * turned off or Input is picked in Settings.
    */
   holdEarly: Prefs['holdMode'] | null;
+  /** Settings → Instrument: what notes are played on (melodies, scales, Read notes, Learn). Piano unless changed. */
+  instrument: Instrument;
   /** Settings → Metronome look: the beat counter on Play shows digits (default) or a swinging pendulum. */
   metronomeLook: 'digital' | 'analog';
   /** Read notes: the name buttons show do re mi (fixed do) or letters. A new player gets their device language's usual one. */
@@ -177,6 +179,7 @@ export const DEFAULT_PREFS: Prefs = {
   seenIntros: [],
   holdMode: 'hold',
   holdEarly: null,
+  instrument: 'piano',
   metronomeLook: 'digital',
   noteNames: 'letters',
   pianoLabels: 'letters',
@@ -297,6 +300,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     holdMode: oneOf(raw.holdMode, ['hold', 'tap'] as const, d.holdMode),
     // Saved as true before it kept the mode it replaced: tap & hold, the default, so turning it off keeps Input as is.
     holdEarly: raw.holdEarly === 'hold' || raw.holdEarly === 'tap' ? raw.holdEarly : raw.holdEarly === true ? 'hold' : null,
+    instrument: oneOf(raw.instrument, INSTRUMENTS, d.instrument),
     metronomeLook: oneOf(raw.metronomeLook, ['digital', 'analog'] as const, d.metronomeLook),
     noteNames: oneOf(raw.noteNames, ['solfege', 'letters'] as const, d.noteNames),
     pianoLabels: oneOf(raw.pianoLabels, ['letters', 'solfege', 'off'] as const, d.pianoLabels),

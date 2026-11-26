@@ -69,12 +69,38 @@ class FakeContext extends EventTarget {
     super();
     FakeContext.made.push(this);
   }
-  private param = () => ({ value: 1, setValueAtTime() {}, setTargetAtTime() {}, exponentialRampToValueAtTime() {}, cancelScheduledValues() {} });
-  private node = () => ({ connect() {}, disconnect() {}, start() {}, stop() {}, gain: this.param(), frequency: this.param() });
+  /** Every oscillator made, with its type and the time it was told to stop. */
+  oscillators: { type: string; stopAt: number | null }[] = [];
+  filters = 0;
+  noise = 0;
+  private param = () => ({
+    value: 1,
+    setValueAtTime() {},
+    setTargetAtTime() {},
+    exponentialRampToValueAtTime() {},
+    linearRampToValueAtTime() {},
+    cancelScheduledValues() {},
+  });
+  private node = () => ({ connect() {}, disconnect() {}, start() {}, stop() {}, gain: this.param(), frequency: this.param(), detune: this.param(), Q: this.param() });
   createGain = this.node;
-  createOscillator = this.node;
-  createBuffer = () => ({});
-  createBufferSource = () => ({ ...this.node(), buffer: null });
+  createOscillator = () => {
+    const rec = { type: 'sine', stopAt: null as number | null };
+    this.oscillators.push(rec);
+    const n = this.node();
+    n.stop = ((t: number) => {
+      rec.stopAt = t;
+    }) as () => void;
+    return Object.defineProperty(n, 'type', { set: (v: string) => (rec.type = v), get: () => rec.type });
+  };
+  createBiquadFilter = () => {
+    this.filters++;
+    return { ...this.node(), type: 'lowpass' };
+  };
+  createBuffer = (_channels: number, length: number) => ({ getChannelData: () => new Float32Array(length) });
+  createBufferSource = () => {
+    this.noise++;
+    return { ...this.node(), buffer: null, loop: false };
+  };
   resume = async () => undefined;
   close = async () => {
     this.closed = true;
@@ -222,5 +248,101 @@ describe('audio engine whose AudioContext cannot be created', () => {
     FakeContext.made[0].currentTime = 0.5;
     expect(engine.now()).toBe(0.5);
     expect(engine.audioState()).toBe('running');
+  });
+});
+
+// Settings → Instrument: the notes of pitches() and a melody, on the piano (default), the violin or the flute.
+describe('audio engine instruments', () => {
+  const meter = { id: '4/4', barTicks: 192, beatTicks: 48, beatsPerBar: 4, beamGroups: [48, 48, 48, 48], weightAt: () => 0 } as Meter;
+  const timeline: Timeline = {
+    notes: [
+      { index: 0, bar: 0, tick: 0, onset: 0, end: 1, durationTicks: 96, next: 'note' },
+      { index: 1, bar: 0, tick: 96, onset: 1, end: 2, durationTicks: 96, next: 'end' },
+    ],
+    totalSeconds: 2,
+    beatSeconds: 0.5,
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] });
+    vi.resetModules();
+    FakeContext.made = [];
+    vi.stubGlobal('AudioContext', FakeContext);
+    vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible' }));
+    vi.stubGlobal('window', new EventTarget());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  /** Moves the context's clock and the scheduler on together, 3 s in 50 ms steps. */
+  const play = (ctx: FakeContext): void => {
+    for (let i = 0; i < 60; i++) {
+      ctx.currentTime += 0.05;
+      vi.advanceTimersByTime(50);
+    }
+  };
+
+  const fresh = async () => {
+    const engine = (await import('./engine')).getAudioEngine();
+    await engine.unlock();
+    return { engine, ctx: FakeContext.made[0] };
+  };
+
+  it('plays pitches on the piano by default: a string with its overtones and a hammer, ringing on', async () => {
+    const { engine, ctx } = await fresh();
+    engine.pitches([60, 64], 0.3);
+    const note = ['triangle', 'sine', 'sine', 'sine'];
+    expect(ctx.oscillators.map((o) => o.type)).toEqual([...note, ...note]);
+    expect(ctx.filters).toBe(4); // the darkening low-pass and the hammer's band each
+    expect(ctx.noise).toBe(3); // unlock()'s silent buffer, and a hammer each
+    // Struck: the first note rings past the second.
+    expect(ctx.oscillators[0].stopAt!).toBeGreaterThan(0.3 + 0.5);
+  });
+
+  it('plays the violin as a filtered sawtooth with vibrato, held until just before the next note', async () => {
+    const { engine, ctx } = await fresh();
+    engine.setInstrument('violin');
+    engine.pitches([60, 64, 67, 72], 0.3);
+    const bows = ctx.oscillators.filter((o) => o.type === 'sawtooth');
+    expect(bows).toHaveLength(4);
+    expect(ctx.filters).toBe(8); // a low-pass and a body resonance each
+    // The first note ends near the second one's start (0.02 + 0.3), not a struck note's long ring.
+    expect(bows[0].stopAt!).toBeLessThan(0.02 + 0.3 + 0.25);
+    // The last one is held longer, long enough for vibrato (a sine driving the detune).
+    expect(bows[3].stopAt!).toBeGreaterThan(0.02 + 0.9 + 0.9);
+    expect(ctx.oscillators.filter((o) => o.type === 'sine')).toHaveLength(1);
+  });
+
+  it('plays the flute as a pure tone with soft overtones and breath', async () => {
+    const { engine, ctx } = await fresh();
+    engine.setInstrument('flute');
+    engine.pitches([60], 0.3);
+    expect(ctx.oscillators.filter((o) => o.type !== 'sine')).toHaveLength(0);
+    expect(ctx.noise).toBe(2); // unlock()'s silent buffer, and the breath
+    expect(ctx.filters).toBe(1);
+  });
+
+  it('plays a melody and its reference note on the instrument, and the rhythm without one on the woodblock', async () => {
+    const { engine, ctx } = await fresh();
+    engine.setInstrument('violin');
+    engine.start({ timeline, meter, tempo: 120, countInBars: 0, metronome: 'off', playRhythm: true, leadIn: 0, melody: [60, 62], reference: 60 });
+    play(ctx);
+    expect(ctx.oscillators.filter((o) => o.type === 'sawtooth')).toHaveLength(3);
+    engine.stop();
+    ctx.oscillators = [];
+    engine.start({ timeline, meter, tempo: 120, countInBars: 0, metronome: 'off', playRhythm: true, leadIn: 0 });
+    play(ctx);
+    expect(ctx.oscillators.filter((o) => o.type === 'sawtooth')).toHaveLength(0);
+    expect(ctx.oscillators.length).toBeGreaterThan(0);
+    engine.stop();
+  });
+
+  it('falls back to the piano for an instrument it does not know', async () => {
+    const { engine, ctx } = await fresh();
+    engine.setInstrument('tuba' as never);
+    engine.pitches([60]);
+    expect(ctx.oscillators.map((o) => o.type)).toEqual(['triangle', 'sine', 'sine', 'sine']);
   });
 });

@@ -112,6 +112,26 @@ describe('Settings → Language', () => {
   });
 });
 
+describe('Settings → Instrument', () => {
+  it('is the piano until another is picked; a pick is saved and plays a few notes on it', async () => {
+    const { getAudioEngine } = await import('../../audio/engine');
+    const eng = getAudioEngine();
+    const setInstrument = vi.spyOn(eng, 'setInstrument');
+    const pitches = vi.spyOn(eng, 'pitches');
+    render(<App />);
+    const group = await screen.findByRole('group', { name: 'Instrument for notes' });
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Piano', 'Violin', 'Flute']);
+    expect(within(group).getByRole('button', { name: 'Piano' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(within(group).getByRole('button', { name: 'Violin' }));
+    expect(within(group).getByRole('button', { name: 'Violin' }).getAttribute('aria-pressed')).toBe('true');
+    expect(setInstrument).toHaveBeenLastCalledWith('violin');
+    expect(pitches).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem('muzieklab.prefs.v1')!).instrument).toBe('violin');
+    setInstrument.mockRestore();
+    pitches.mockRestore();
+  });
+});
+
 describe('Settings → Language, picked in another tab while an exercise is played', () => {
   it('waits until its screen is left, so the exercise does not start over; then the next screen is in that language', async () => {
     window.location.hash = '#/calibrate';

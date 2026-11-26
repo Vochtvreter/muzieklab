@@ -24,7 +24,7 @@ import { HISTORY_DAYS, newestDays, sanitizePrefs, sanitizeProgress } from './sto
  * The prefs that follow the account (§6.1). Calibration, volumes, the sounds switched on and the How to play and intro
  * flags stay on the device: each device has its own delay and speaker, and a person meets the help once per device.
  */
-export const SYNCED_PREFS = ['language', 'theme', 'leniency', 'holdMode', 'holdEarly', 'metronomeLook', 'noteNames', 'pianoLabels'] as const;
+export const SYNCED_PREFS = ['language', 'theme', 'leniency', 'holdMode', 'holdEarly', 'metronomeLook', 'instrument', 'noteNames', 'pianoLabels'] as const;
 export type SyncedPrefKey = (typeof SYNCED_PREFS)[number];
 export type SyncedPrefs = Pick<Prefs, SyncedPrefKey>;
 
