@@ -8,8 +8,13 @@ import { Rng } from './rng';
 import { VALUE_TICKS } from './values';
 import { NOTE_VALUES, type Bar, type Exercise, type Meter, type NotatedBar, type NotatedSymbol, type NoteValue, type RhythmEvent, type Settings, type Stars } from './types';
 
-/** How often an exercise can be heard: a play of the whole exercise or of one bar each uses one. */
+/**
+ * The plays an exercise has after its first listen, which is free: then a play of the whole exercise or of one bar each
+ * uses one. So it can be heard LISTEN_PLAYS + 1 times.
+ */
 export const LISTEN_PLAYS = 3;
+/** The plays used of LISTEN_PLAYS, from the times the exercise was heard (the first listen is free). */
+export const playsUsed = (heard: number): number => Math.max(0, Math.min(LISTEN_PLAYS, heard - 1));
 /** Listen plays at most this many bars; a higher Bars shows as this while Listen is picked. */
 export const LISTEN_MAX_BARS = 8;
 
@@ -370,26 +375,28 @@ export function checkAnswer(ex: Exercise, answer: Answer): ListenCheck {
 export const listenAccuracy = (c: ListenCheck): number => (c.beats.length ? (100 * c.beatsRight) / c.beats.length : 0);
 
 /**
- * Stars (§6.3): ★ 50% · ★★ 75% · ★★★ 90% with at most 2 plays (all 3 plays cap it at ★★) · the 4th star every beat
- * right, heard once. No diamond.
+ * Stars (§6.3), from the times the exercise was heard: ★ 50% · ★★ 75% · ★★★ 90% with at most 2 of the 3 plays used
+ * (all 3 cap it at ★★) · the 4th star every beat right, heard once (no play used after the free listen). No diamond.
  */
-export function listenStars(accuracy: number, plays: number): Stars {
-  if (accuracy >= 100 && plays <= 1) return 4;
-  if (accuracy >= 90 && plays <= 2) return 3;
+export function listenStars(accuracy: number, heard: number): Stars {
+  const used = playsUsed(heard);
+  if (accuracy >= 100 && used === 0) return 4;
+  if (accuracy >= 90 && used <= 2) return 3;
   if (accuracy >= 75) return 2;
   if (accuracy >= 50) return 1;
   return 0;
 }
 
 /**
- * XP = bars × (4 + difficulty) × accuracy, the star bonus (5 / 10 for ★★★ / the 4th), and 5 per play not used. The
- * plays bonus needs a round that was heard and earned a star: a guess written without listening earns none.
+ * XP = bars × (4 + difficulty) × accuracy, the star bonus (5 / 10 for ★★★ / the 4th), and 5 per play not used (the
+ * free first listen is none of them). The plays bonus needs a round that was heard and earned a star: a guess written
+ * without listening earns none.
  */
-export function listenXp(ex: Exercise, accuracy: number, stars: Stars, plays: number): number {
+export function listenXp(ex: Exercise, accuracy: number, stars: Stars, heard: number): number {
   if (accuracy <= 0) return 0;
   const base = Math.round(ex.bars.length * (4 + ex.difficulty) * (accuracy / 100));
   const bonus = stars >= 4 ? 10 : stars >= 3 ? 5 : 0;
-  const saved = plays >= 1 && stars >= 1 ? 5 * Math.max(0, LISTEN_PLAYS - plays) : 0;
+  const saved = heard >= 1 && stars >= 1 ? 5 * (LISTEN_PLAYS - playsUsed(heard)) : 0;
   return base + bonus + saved;
 }
 
