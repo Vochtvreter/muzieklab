@@ -2076,9 +2076,9 @@ and its staff keep their own height (about 110 px for one line of notes) and do 
 phone the card still fills the screen. The lesson tiles show their stars as on the Path (§6.3).
 
 **Settings** (since 0.10.0). Sound has one *Metronome* row (volume and on/off). Under the volumes, **Instrument**
-(since 0.23.0; MVP canvas, Settings: every Settings board, and the App design canvas Settings boards, after Tap sound): *Piano* (the default) · *Violin* · *Flute*, a segmented control with the group label
-*Instrument for notes* and the hint *Plays melodies, scales and Read notes. Pick one to hear it.* A pick plays C E G C
-on it at the Playback volume. It follows the account, like the theme (§9.2, `SYNCED_PREFS`). The Display row for the digital or
+(since 0.23.0; on every Settings board of both canvases, after Tap sound): *Piano* (the default) · *Violin* ·
+*Flute*, a segmented control with the group label *Instrument for notes* and the hint *Plays melodies, scales and Read
+notes. Pick one to hear it.* A pick plays C E G C on it at the Playback volume. It follows the account, like the theme (§9.2, `SYNCED_PREFS`). The Display row for the digital or
 analog look is *Beat counter* (nl *Telteller*), with the group label *Beat counter style*. The leniency hints describe
 each level in words, with no milliseconds: Strict *Tight timing, for confident players.*, Normal *Fair timing for most
 players.*, Relaxed *Wide timing, for young beginners.* Calibration is in §6.1. Picking another language redraws the
