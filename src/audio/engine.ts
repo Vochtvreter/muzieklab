@@ -39,15 +39,25 @@ export interface StartOptions {
    * the woodblock.
    */
   melody?: number[];
-  /** A reference note (MIDI) on the first count-in beat: the do a melody starts from. */
+  /**
+   * A reference note (MIDI): the note a melody starts from (Listen · Melody, §3.2). It sounds alone, held for
+   * REFERENCE_NOTE_SECONDS, and the count-in starts REFERENCE_SECONDS after it.
+   */
   reference?: number;
 }
+
+/** How long a reference note is held (§3.2). */
+export const REFERENCE_NOTE_SECONDS = 1.6;
+/** From the reference note to the first count-in click: the note, then a short rest. */
+export const REFERENCE_SECONDS = 2.2;
 
 export interface Started {
   /** Audio time (s) of the exercise's first beat, after the count-in. */
   exerciseStart: number;
   /** Audio time (s) when the exercise ends. */
   end: number;
+  /** With a reference note: the audio times (s) it starts and stops. The count-in starts after it. */
+  reference?: { start: number; end: number };
 }
 
 /** Web Audio engine with a look-ahead scheduler (§6.1, §7). */
@@ -326,7 +336,9 @@ class WebAudioEngine implements AudioEngine {
     const ctx = this.context();
     if (ctx && ctx.state !== 'running') void ctx.resume().catch(() => undefined);
     this.markClock();
-    const startTime = this.now() + (opts.leadIn ?? 0.1);
+    const first = this.now() + (opts.leadIn ?? 0.1);
+    // The reference note sounds alone, before the count-in, so it is not heard as part of the melody.
+    const startTime = first + (opts.reference !== undefined ? REFERENCE_SECONDS : 0);
     const { beatsPerBar } = opts.meter;
     const beats = planBeats({
       startTime,
@@ -347,13 +359,14 @@ class WebAudioEngine implements AudioEngine {
         jobs.push({ time: n.time, play: midi !== undefined ? (c, t) => this.note(c, midi, t, n.end) : (c, t) => this.woodblock(c, t, n.end) });
       }
     }
+    let reference: Started['reference'];
     if (opts.reference !== undefined) {
       const midi = opts.reference;
-      const end = startTime + Math.min(1.2, (60 / opts.tempo) * 2);
-      jobs.push({ time: startTime, play: (c, t) => this.note(c, midi, t, end) });
+      reference = { start: first, end: first + REFERENCE_NOTE_SECONDS };
+      jobs.push({ time: first, play: (c, t) => this.note(c, midi, t, first + REFERENCE_NOTE_SECONDS) });
     }
     this.run(jobs, beats);
-    return { exerciseStart, end: exerciseStart + opts.timeline.totalSeconds };
+    return { exerciseStart, end: exerciseStart + opts.timeline.totalSeconds, ...(reference ? { reference } : {}) };
   }
 
   clicks(count: number, bpm: number, leadIn?: number): number[] {

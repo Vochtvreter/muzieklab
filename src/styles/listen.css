@@ -117,6 +117,123 @@
   font-size: 13px;
 }
 
+/* Reference note (§3.2, Melody): while it sounds before the count-in, a popover under the play button names it, with a
+   ring that runs down while it is held. It is gone before the count-in, so the melody plays without it. */
+.listen-play {
+  position: relative;
+  z-index: 2;
+}
+.listen-ref {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 14px;
+  max-width: calc(100% - 28px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px 12px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--dialog-shadow);
+  animation: m-in 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+/* The point, up at the middle of the play button. */
+.listen-ref::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 24px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border: 1px solid var(--line);
+  border-right: 0;
+  border-bottom: 0;
+  transform: rotate(45deg);
+}
+.listen-ref.is-closing {
+  animation: m-fade-out 0.18s ease-in both;
+}
+.listen-ref-dial {
+  position: relative;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.listen-ref-ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.listen-ref-ring circle {
+  fill: none;
+  stroke-width: 4;
+}
+.listen-ref-track {
+  stroke: var(--track);
+}
+.listen-ref-arc {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  /* How long the note is held and when it starts, set per play. */
+  animation: listen-ref-run var(--ref-seconds, 1.6s) linear var(--ref-delay, 0s) both;
+}
+@keyframes listen-ref-run {
+  to {
+    stroke-dashoffset: 100;
+  }
+}
+.listen-ref-name {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--accent-ink);
+}
+.listen-ref-name small {
+  margin-top: 3px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.listen-ref-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.listen-ref-text b {
+  font-size: 16px;
+}
+.listen-ref-text .muted-text {
+  font-size: 13px;
+}
+/* The ring is a timer, not decoration: it still runs down with reduced motion (base.css stops other animations). */
+@media (prefers-reduced-motion: reduce) {
+  .listen-ref-arc {
+    animation: listen-ref-run var(--ref-seconds, 1.6s) linear var(--ref-delay, 0s) both !important;
+  }
+}
+@media (forced-colors: active) {
+  .listen-ref-track {
+    stroke: GrayText;
+  }
+  .listen-ref-arc {
+    stroke: Highlight;
+  }
+}
+
 /* Your answer: the staff, the bar line, the beat strip and, after Check, what was heard and the compare buttons. */
 .listen-answer {
   display: flex;
