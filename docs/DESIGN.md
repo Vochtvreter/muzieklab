@@ -297,17 +297,18 @@ dictation with a few notes, such as low do, mi, sol and la (a common exam set).
   exercise's seed. It starts on the note chosen in Starts on, or with Any on do (now and then mi or sol), moves mostly by step through the notes picked (a step is to
   the next picked note), sometimes repeats, skips or leaps, never plays a note three times in a row, and ends on do (the
   nearer do when both are picked; the lowest note when no do is).
-- A play: the reference note on its own (do, C4, or the note chosen in Starts on; since 0.24.0, before it sounded on
-  the first count-in beat), held 1.6 s, then after a short rest (2.2 s from the reference) the count-in in clicks, then
-  the melody on the piano tone, each note held for its length.
+- A play: the reference note (do, C4, or the note chosen in Starts on) starts on the first count-in beat and is held
+  through the count-in bar, up to the melody's first note (since 0.24.1; 0.24.0 played it alone, then a short rest, then
+  the count-in clicks, and before that it was a short note on the first count-in beat). Under it the count-in clicks
+  are silent: its beats are shown in the popover instead. Then the melody on the instrument, each note held for its
+  length. Play bar N plays that bar's notes; the compare plays after Check play the answer's notes and the melody,
+  without a reference or a count-in.
 - **Reference note popover** (since 0.24.0; no board yet): while the reference sounds, a popover hangs under the play
   card, its point at the play button: a 64 px ring with the note's name inside (the player's names, the other system
-  small under it), beside it **Reference note** and *Then the count-in and the melody.* The ring (accent on the track
-  colour) runs down while the note is held, also with reduced motion, since it is a timer. The popover goes when the
-  note stops, before the count-in, so the melody never plays under it. It is a status for screen readers (*Reference
-  note: sol*). It shows on Play the melody and Play bar N, not on the compare plays after Check, which have no
-  reference. Play bar N plays that bar's notes; the compare plays after Check play the
-  answer's notes and the melody.
+  small under it), beside it **Reference note**, *The melody starts after this bar.* and the metronome: one numbered
+  dot a beat of the bar (22 px), lit as each beat passes, the current one accent-filled. The ring (accent on the track
+  colour) runs down over the bar, also with reduced motion, since it is a timer. The popover goes when the melody
+  starts. It is a status for screen readers (*Reference note: sol*). It shows on Play the melody and Play bar N.
 - The screen: the meta reads *4/4 · 2 bars · melody*, the play title *Play the melody*. Your answer is a five-line treble
   staff with the clef on every row, the notes at their pitch (C4 on its ledger line). Above *Add a value*, a **Note**
   row: one button per note picked, a radio group (one Tab stop, the arrow keys move); the note picked is accent-filled.
@@ -1151,7 +1152,7 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 - Sounds synthesised in Web Audio (no downloads): metronome click (accented high click on
   beat 1), short soft "tok" as tap feedback, and everything else on the instrument chosen in Settings → Instrument
   (since 0.23.0): Scales, Read notes, Learn's scales and piano diagrams (since 0.10.0: §3.5, §9.1), a Listen melody
-  with its reference note, and (since 0.24.1, instead of a woodblock) every rhythm played back: Echo's listen, Listen
+  with its reference note, and (since 0.24.2, instead of a woodblock) every rhythm played back: Echo's listen, Listen
   and write, Results' Listen, the sheets and Learn's rhythm examples. A rhythm without a melody is played on one note,
   G4 (`RHYTHM_PITCH`), in the range of all three instruments. Everything this document calls the *piano tone* is
   played on that instrument.

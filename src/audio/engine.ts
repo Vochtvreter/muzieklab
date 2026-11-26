@@ -43,23 +43,21 @@ export interface StartOptions {
    */
   melody?: number[];
   /**
-   * A reference note (MIDI): the note a melody starts from (Listen · Melody, §3.2). It sounds alone, held for
-   * REFERENCE_NOTE_SECONDS, and the count-in starts REFERENCE_SECONDS after it.
+   * A reference note (MIDI): the note a melody starts from (Listen · Melody, §3.2). It starts on the first count-in beat
+   * and is held through the count-in, up to the melody's first note.
    */
   reference?: number;
 }
 
-/** How long a reference note is held (§3.2). */
-export const REFERENCE_NOTE_SECONDS = 1.6;
-/** From the reference note to the first count-in click: the note, then a short rest. */
-export const REFERENCE_SECONDS = 2.2;
+/** A held reference note stops this long before the melody, so a first note on the same pitch is struck again. */
+const REFERENCE_GAP_S = 0.06;
 
 export interface Started {
   /** Audio time (s) of the exercise's first beat, after the count-in. */
   exerciseStart: number;
   /** Audio time (s) when the exercise ends. */
   end: number;
-  /** With a reference note: the audio times (s) it starts and stops. The count-in starts after it. */
+  /** With a reference note: the audio times (s) it starts (the first count-in beat) and ends (the melody's start). */
   reference?: { start: number; end: number };
 }
 
@@ -341,9 +339,7 @@ class WebAudioEngine implements AudioEngine {
     const ctx = this.context();
     if (ctx && ctx.state !== 'running') void ctx.resume().catch(() => undefined);
     this.markClock();
-    const first = this.now() + (opts.leadIn ?? 0.1);
-    // The reference note sounds alone, before the count-in, so it is not heard as part of the melody.
-    const startTime = first + (opts.reference !== undefined ? REFERENCE_SECONDS : 0);
+    const startTime = this.now() + (opts.leadIn ?? 0.1);
     const { beatsPerBar } = opts.meter;
     const beats = planBeats({
       startTime,
@@ -367,8 +363,10 @@ class WebAudioEngine implements AudioEngine {
     let reference: Started['reference'];
     if (opts.reference !== undefined) {
       const midi = opts.reference;
-      reference = { start: first, end: first + REFERENCE_NOTE_SECONDS };
-      jobs.push({ time: first, play: (c, t) => this.note(c, midi, t, first + REFERENCE_NOTE_SECONDS) });
+      // Held through the count-in (without one, for a bar), so it is the only note heard before the melody.
+      const end = Math.max(exerciseStart, startTime + (60 / opts.tempo) * beatsPerBar);
+      reference = { start: startTime, end };
+      jobs.push({ time: startTime, play: (c, t) => this.note(c, midi, t, end - REFERENCE_GAP_S) });
     }
     this.run(jobs, beats);
     return { exerciseStart, end: exerciseStart + opts.timeline.totalSeconds, ...(reference ? { reference } : {}) };
