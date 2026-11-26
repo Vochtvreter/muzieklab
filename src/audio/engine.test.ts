@@ -1,5 +1,5 @@
 import type { Meter, Timeline } from '../core/types';
-import { getAudioEngine } from './engine';
+import { getAudioEngine, REFERENCE_NOTE_SECONDS, REFERENCE_SECONDS } from './engine';
 
 // Node has no Web Audio: the engine runs on the performance clock, silently. This checks the scheduler loop and onBeat.
 describe('audio engine without Web Audio', () => {
@@ -31,6 +31,24 @@ describe('audio engine without Web Audio', () => {
     expect(seen.slice(0, 4).every((b) => b.countIn)).toBe(true);
     expect(seen.map((b) => b.inBar)).toEqual([0, 1, 2, 3, 0, 1, 2, 3]);
     for (const b of seen) expect(b.late).toBeLessThan(0.03); // within one scheduler tick
+    off();
+  });
+
+  it('plays a reference note alone, before the count-in, and says when it sounds', () => {
+    const engine = getAudioEngine();
+    const seen: number[] = [];
+    const off = engine.onBeat((b) => seen.push(b.index));
+    const t0 = engine.now();
+    const started = engine.start({ timeline, meter, tempo: 120, countInBars: 1, metronome: 'off', playRhythm: true, leadIn: 0.2, melody: [], reference: 60 });
+    expect(started.reference!.start).toBeCloseTo(t0 + 0.2);
+    expect(started.reference!.end).toBeCloseTo(t0 + 0.2 + REFERENCE_NOTE_SECONDS);
+    expect(REFERENCE_SECONDS).toBeGreaterThan(REFERENCE_NOTE_SECONDS);
+    expect(started.exerciseStart).toBeCloseTo(t0 + 0.2 + REFERENCE_SECONDS + 2);
+    // No count-in beat while the reference sounds.
+    vi.advanceTimersByTime((0.2 + REFERENCE_NOTE_SECONDS) * 1000);
+    expect(seen).toEqual([]);
+    vi.advanceTimersByTime((REFERENCE_SECONDS - REFERENCE_NOTE_SECONDS) * 1000 + 100);
+    expect(seen).toEqual([-4]);
     off();
   });
 
@@ -329,6 +347,7 @@ describe('audio engine instruments', () => {
     engine.setInstrument('violin');
     engine.start({ timeline, meter, tempo: 120, countInBars: 0, metronome: 'off', playRhythm: true, leadIn: 0, melody: [60, 62], reference: 60 });
     play(ctx);
+    play(ctx); // the reference sounds alone first, so the melody comes after it
     expect(ctx.oscillators.filter((o) => o.type === 'sawtooth')).toHaveLength(3);
     engine.stop();
     ctx.oscillators = [];

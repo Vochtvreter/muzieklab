@@ -429,6 +429,9 @@
     "playRhythm": "Play the rhythm",
     "playMelody": "Play the melody",
     "playAgain": "Play again",
+    "reference": "Reference note",
+    "referenceThen": "Then the count-in and the melody.",
+    "referenceLabel": "Reference note: {note}",
     "stop": "Stop",
     "playsLeft": "{count, plural, one {# play left} other {# plays left}} · fewer = bonus XP",
     "playsUsed": "You used all {count} plays",
@@ -3177,6 +3180,11 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_24_0": {
+      "title": "The reference note, on screen",
+      "try": "Open Free practice",
+      "reference": "Listen with Melody or Both: the reference note now sounds on its own before the count-in, and a popover names it, with a ring that runs down while it sounds. It is gone before the melody starts, so you can tell the reference from the melody."
+    },
     "v0_23_0": {
       "title": "Piano, violin or flute",
       "try": "Open Settings",
