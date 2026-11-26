@@ -767,7 +767,8 @@ test('hearing a note: sol, then the note, named from the notes learned so far', 
 });
 
 test('hearing a note after a reload: nothing sounds until a tap, then Hear it plays sol and the note', async ({ page }) => {
-  // Every tone that starts (two oscillators a piano tone), not the silent sound that unlocks the audio.
+  // Every oscillator that starts (four a piano tone: the string and three overtones), not the silent sound that unlocks
+  // the audio. Sol and the note are two piano tones.
   await page.addInitScript(() => {
     const w = window as unknown as { tones: number };
     w.tones = 0;
@@ -784,7 +785,7 @@ test('hearing a note after a reload: nothing sounds until a tap, then Hear it pl
   await page.getByRole('button', { name: 'Start lesson 3.3' }).click();
   // Started with a tap: sol and the note sound at once.
   await expect(page.getByRole('button', { name: 'Hear it again' })).toBeVisible();
-  await expect.poll(tones).toBe(4);
+  await expect.poll(tones).toBe(8);
   // A reload (a phone bringing back a discarded tab) comes back to the same note with no tap, when a browser does not
   // let the audio start: the tones would go into a silent context and come out together at the next tap. It waits.
   await page.reload();
@@ -794,7 +795,7 @@ test('hearing a note after a reload: nothing sounds until a tap, then Hear it pl
   await page.waitForTimeout(1000);
   expect(await tones(), 'tones before a tap').toBe(0);
   await hear.click();
-  await expect.poll(tones).toBe(4);
+  await expect.poll(tones).toBe(8);
   await expect(page.getByRole('button', { name: 'Hear it again' })).toBeVisible();
   await expect(page.locator('.nfeedback')).toHaveText('Listen: first sol, then the note. Which one is it?');
 });
