@@ -31,7 +31,8 @@ jobs:
       - run: npm run build
   e2e:
     # Layout at phone, landscape, tablet and desktop sizes, and one full lesson, against the production build.
-    runs-on: ubuntu-latest
+    # Ubuntu 24.04, not ubuntu-latest: that is Ubuntu 26.04 now, where Playwright 1.56 cannot install Chromium.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -49,7 +50,8 @@ jobs:
     # The app against the real API: the API bundle on a throwaway MongoDB (mongodb-memory-server) and the production
     # build in a real browser, nothing mocked: create-admin, invites, blocking, new passwords, too many tries, deleting
     # an account (e2e/real-api.spec.ts, playwright.real.config.ts).
-    runs-on: ubuntu-latest
+    # Ubuntu 24.04, not ubuntu-latest: that is Ubuntu 26.04 now, where Playwright 1.56 cannot install Chromium.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
