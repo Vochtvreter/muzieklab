@@ -781,7 +781,7 @@
     "piano": "Piano",
     "violin": "Viool",
     "flute": "Fluit",
-    "hintInstrument": "Speelt melodieën, toonladders en Noten lezen. Kies er een om het te horen.",
+    "hintInstrument": "Speelt elke oefening: ritmes, melodieën, toonladders en Noten lezen. Kies er een om het te horen.",
     "timing": "Timing",
     "calibrate": "Kalibreren",
     "calibrated": "gekalibreerd op {date}",
@@ -3177,6 +3177,10 @@
     "countBetter": "{count} beter",
     "countFix": "{count} opgelost",
     "footer": "Updates komen vanzelf binnen de volgende keer dat je Muzieklab opent. Je voortgang blijft op dit apparaat en blijft bij elke update bewaard.",
+    "v0_23_1": {
+      "title": "Elke oefening op je instrument",
+      "rhythm": "Ritmes klinken nu ook op het instrument dat je kiest bij Instellingen → Instrument, in plaats van op een houtblok: Echo, Luister en schrijf, Luisteren bij de resultaten en de voorbeelden in Leren. Alleen de metronoomtikken en het tikgeluid blijven zoals ze waren."
+    },
     "v0_23_0": {
       "title": "Piano, viool of fluit",
       "try": "Open Instellingen",

@@ -81,7 +81,7 @@ export function useLearnSound(): LearnSound {
   return { playing, toggle, tap };
 }
 
-/** The rhythm on the woodblock with the beat clicking, after one bar of count-in. */
+/** The rhythm on the instrument (Settings → Instrument) with the beat clicking, after one bar of count-in. */
 export const rhythmSound =
   (meter: Meter, bars: NotatedBar[], tempo: number): Sound =>
   (eng) => {

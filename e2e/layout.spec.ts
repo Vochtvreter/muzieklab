@@ -1175,7 +1175,7 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       for (const name of ['Piano', 'Violin', 'Flute']) await expectClickable(instrument.getByRole('button', { name }));
       await instrument.getByRole('button', { name: 'Flute' }).click();
       await expect(instrument.getByRole('button', { name: 'Flute' })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.getByText('Plays melodies, scales and Read notes. Pick one to hear it.')).toBeVisible();
+      await expect(page.getByText('Plays every exercise: rhythms, melodies, scales and Read notes. Pick one to hear it.')).toBeVisible();
       await expectNoClippedLabels(page);
       // The Beat counter preview keeps its tempo on one line, as on Play, inside the preview (it broke after "=" at 320 px).
       for (const look of ['Digital', 'Analog']) {

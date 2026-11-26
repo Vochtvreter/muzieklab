@@ -30,11 +30,12 @@ describe("What's new", () => {
   it('shows the latest release on its own card, and a way back to Settings', () => {
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: "What's new" })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Piano, violin or flute' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('Nov 26 · 1 new · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Every exercise on your instrument' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('Nov 26 · 1 better')).toBeTruthy();
     expect(within(screen.getByRole('article')).getByRole('link', { name: 'Open Settings' }).getAttribute('href')).toBe('#/settings');
     // The release before it is open, with its Try link.
-    expect(screen.getByRole('link', { name: 'Open Progress' }).getAttribute('href')).toBe('#/progress');
+    const before = document.getElementById(release(RELEASES[1].version).getAttribute('aria-controls')!)!;
+    expect(within(before).getByRole('link', { name: 'Open Settings' }).getAttribute('href')).toBe('#/settings');
     // Accounts (0.12.0) are by invitation: the release promises no sign-up.
     fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, by invitation only: with an invitation you sign in from Settings/)).toBeTruthy();
@@ -70,8 +71,8 @@ describe("What's new", () => {
     setLocale('nl');
     render(<Changelog />);
     expect(screen.getByRole('heading', { level: 1, name: 'Wat is er nieuw' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Piano, viool of fluit' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('26 nov · 1 nieuw · 1 beter')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Elke oefening op je instrument' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('26 nov · 1 beter')).toBeTruthy();
     fireEvent.click(release('0.12.0'));
     expect(screen.getByText(/^Accounts, alleen op uitnodiging:/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Terug naar instellingen' })).toBeTruthy();
@@ -81,7 +82,7 @@ describe("What's new", () => {
     width = 834;
     render(<Changelog />);
     const card = screen.getByRole('article');
-    expect(within(card).getAllByText('New')).toHaveLength(1);
+    expect(within(card).queryAllByText('New')).toHaveLength(0);
     expect(within(card).getAllByText('Better')).toHaveLength(1);
     expect(within(card).queryAllByText('Fixed')).toHaveLength(0);
     expect(release(RELEASES[1].version).getAttribute('aria-expanded')).toBe('true');
@@ -93,8 +94,8 @@ describe("What's new", () => {
     const list = screen.getByRole('navigation', { name: 'Releases' });
     expect(within(list).getAllByRole('button')).toHaveLength(RELEASES.length);
     expect(release(RELEASES[0].version).getAttribute('aria-current')).toBe('true');
-    expect(screen.getByRole('heading', { level: 2, name: 'Piano, violin or flute' })).toBeTruthy();
-    expect(within(screen.getByRole('article')).getByText('November 26, 2026 · 1 new · 1 better')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Every exercise on your instrument' })).toBeTruthy();
+    expect(within(screen.getByRole('article')).getByText('November 26, 2026 · 1 better')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to settings' }).getAttribute('href')).toBe('#/settings');
     expect(screen.queryByRole('button', { name: /^Newer/ })).toBeNull();
 
