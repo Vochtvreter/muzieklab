@@ -3,7 +3,7 @@ import { PPQ } from './types';
 
 /**
  * Rest grouping: rests that exactly fill an eighth, a beat, or (4/4) a half bar on beat 1 or 3 become one rest,
- * when that rest value is on.
+ * when that rest value is on (an eighth not with eighths and sixteenths apart).
  */
 export function groupRests(meter: Meter, s: Settings, events: RhythmEvent[]): RhythmEvent[] {
   let list = events.slice();
@@ -14,6 +14,8 @@ export function groupRests(meter: Meter, s: Settings, events: RhythmEvent[]): Rh
   if (meter.id === '4/4') levels.push([2 * PPQ, 'half']);
   for (const [len, value] of levels) {
     if (!s.rests.includes(value)) continue;
+    // Eighths and sixteenths apart: two sixteenth rests stay two, so a beat of sixteenths keeps its four.
+    if (value === 'eighth' && s.mixSixteenths === false) continue;
     const merged: RhythmEvent[] = [];
     let i = 0;
     while (i < list.length) {

@@ -30,6 +30,7 @@ import { guardFollowUpTap } from '../lib/tapGuard';
 import { leave, Link, navigate, openedFrom, type Route } from '../router';
 import { runSetup, todayIso, useStore, type Run } from '../store';
 import { ECHO_PLAYS, EchoCard, echoWhere, EchoListen } from './Echo';
+import { ListenPlay } from './Listen';
 import { PlayCountRow, PlayDeskRow, type CountProps } from './PlayParts';
 import { HowToContent, IntroContent, PauseContent, ReadyContent, useListen } from './PlaySheets';
 import { howToEyebrow, usePlaySession } from './playSession';
@@ -49,7 +50,14 @@ export function Play(): JSX.Element | null {
   }, [run, view]);
   if (!run || !view) return null;
   if (run.exercise.settings.mode === 'echo') return <EchoPlay run={run} view={view} />;
+  if (run.exercise.settings.mode === 'listen') return <ListenRun run={run} view={view} />;
   return <PlayRun run={run} view={view} />;
+}
+
+/** Listen and write (§3.2), quitting where Play quits. */
+function ListenRun({ run, view }: { run: Run; view: ExerciseView }): JSX.Element {
+  const { back, carry } = useLearnReturn();
+  return <ListenPlay run={run} view={view} exit={playExit(run, back, carry)} />;
 }
 
 /**

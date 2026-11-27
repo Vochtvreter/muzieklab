@@ -5,8 +5,13 @@
 Every screen is designed on the canvases before it is built, on phone (390 × 844), tablet (834 × 1194) and desktop
 (1280 wide), light and dark:
 
-- [MVP and release canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS): one page per release (MVP, v1.1–v1.7,
-  Metronome style). Use the board for the screen you are changing, at each size.
+- [MVP canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS): one page per feature, and each page name ends with
+  its status (*Rhythm practice · Built*, *Test yourself · Planned*): Built (live in the app), Next (built next),
+  Planned (designed, not built) or Idea (explored, not planned). Start here and Foundations come first, and Archive
+  (earlier versions, not to build from) comes last. Start here explains the convention. Each feature page has a spec
+  note at the top (what it covers, its DESIGN.md section, open conflicts), one row of six boards per screen (phone,
+  tablet, desktop in light, then the same in dark), and the sections Built, Planned and To resolve. Use the board for
+  the screen you are changing, at each size.
 - [App design canvas](https://claude.ai/artifact/BDXaeTSb188RhDqTY3LHgE): foundations (colour, type, components).
 - [DESIGN.md](docs/DESIGN.md) §9: breakpoints and layout rules.
 
@@ -23,11 +28,13 @@ The two canvases and DESIGN.md describe one app, so they must agree. The shell i
 bar on phone, and a top header on tablet and desktop (the App design canvas, Desktop · Home; DESIGN.md §9). There is no
 desktop sidebar.
 
-- **Before you build a designed screen,** compare its boards on both canvases (the release page on the MVP canvas and
+- **Before you build a designed screen,** compare its boards on both canvases (its feature page on the MVP canvas and
   the matching board on the App design canvas) with DESIGN.md: shell, layout, which parts are shown, and copy.
 - **When you add or change a board,** reuse the shell, tokens and component markup of the boards that already exist,
   and check that it still agrees with the same screen on the other canvas and with DESIGN.md. Update every board that
-  draws that screen, in light and dark.
+  draws that screen, in light and dark. On the MVP canvas, follow its Start here page: put the screen in its row on its
+  feature page, all six versions, named `Screen[-tablet|-desktop][-dark].dc.html`; change the page's spec note along
+  with DESIGN.md; and when the screen ships, move its row up to Built.
 - **When two designs conflict** (two boards for one screen, a board and DESIGN.md, or a board and what is built), do
   not pick one silently. Point the conflict out to the user, naming the boards or sections on each side and how they
   differ, so they can investigate, and list it in the PR. If work has to go on before they answer, follow the newer

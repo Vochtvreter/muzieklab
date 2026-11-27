@@ -33,8 +33,10 @@ import {
   type ScaleSettings,
   type ScaleStars,
   type Settings,
+  type Stars,
   type Tap,
 } from '../core/api';
+import { checkAnswer, listenAccuracy, listenStars, listenXp, playsUsed, type Answer, type ListenCheck } from '../core/dictation';
 import { Rng } from '../core/rng';
 import { awardAchievements, roundAchievements } from '../game/achievements';
 import { dailyTier } from '../game/daily';
@@ -43,7 +45,7 @@ import { introId, lessonIntros, SHOW_IDS, showScore } from '../game/intro';
 import { isNoteTrack, noteLessonSettings, type NoteTrackId } from '../game/notesPath';
 import { ALL_LESSONS, findLesson, lessonSettings, recordLessonResult } from '../game/path';
 import { passSkills } from '../game/skills';
-import { markSeen, recordNotes, recordRhythm, recordScales, SCALE_CAP_S, type EchoPlays } from '../game/stats';
+import { markSeen, recordListen, recordNotes, recordRhythm, recordScales, SCALE_CAP_S, type EchoPlays } from '../game/stats';
 import { pathLessonOf, pathLessonOpen } from '../game/tracks';
 import { progressKey, type TrackId } from '../game/track';
 import { xpForResult } from '../game/xp';
@@ -259,6 +261,19 @@ export interface LastResult {
   calibrated: boolean;
 }
 
+/** A finished Listen round (§3.2): what was written, how it compares, and what it earned. */
+export interface ListenLast {
+  run: Run;
+  answer: Answer;
+  check: ListenCheck;
+  /** Beats right of the beats in the exercise, 0–100. */
+  accuracy: number;
+  stars: Stars;
+  /** Plays used, of LISTEN_PLAYS (the free first listen is none of them). */
+  plays: number;
+  reward: Reward;
+}
+
 export interface NoteLast {
   run: NoteRun;
   /** The notes answered (a lesson's score also counts the ones left as missed: see `result`). */
@@ -354,6 +369,8 @@ export interface AppState {
   setupShows?: string[];
   run: Run | null;
   last: LastResult | null;
+  /** Listen: the last finished round. */
+  listenLast?: ListenLast | null;
   /** Read notes: the setup, the round being played and the last finished round. */
   noteSettings: NoteSettings;
   noteRun: NoteRun | null;
@@ -376,6 +393,11 @@ export type Action =
    * where the music stopped, in seconds into the bars (Skip to results stops it early), for minutes practised.
    */
   | { type: 'finish'; result: JudgeResult; taps: Tap[]; today: string; echo?: EchoPlays; playedTo?: number }
+  /**
+   * A Listen round checked: the answer, how many times it was heard (the free first listen and the plays after it), and
+   * its time on the screen (seconds) for minutes practised.
+   */
+  | { type: 'listenFinish'; answer: Answer; heard: number; today: string; seconds: number }
   | { type: 'resetProgress' }
   | { type: 'noteSettings'; settings: NoteSettings }
   | { type: 'noteStart'; run: NoteRun }
@@ -477,6 +499,32 @@ export function reducer(state: AppState, action: Action): AppState {
       };
       const { calibrationMs, calibratedAt } = state.prefs;
       return { ...state, progress, last: { run, result, taps: action.taps, reward, lessonStarsBefore, calibrationMs, calibrated: !!calibratedAt } };
+    }
+    case 'listenFinish': {
+      const run = state.run;
+      if (!run || run.exercise.settings.mode !== 'listen' || state.listenLast?.run === run) return state;
+      const check = checkAnswer(run.exercise, action.answer);
+      const accuracy = listenAccuracy(check);
+      const stars = listenStars(accuracy, action.heard);
+      // A round with at least one beat right keeps the streak (§3.2).
+      const practised = check.beatsRight > 0;
+      let progress = practised ? addPracticeDay(state.progress, action.today) : state.progress;
+      if (practised) progress = recordListen(progress, run.exercise, accuracy, stars, action.seconds, action.today);
+      const xp = listenXp(run.exercise, accuracy, stars, action.heard);
+      const xpBefore = progress.xp;
+      progress = { ...progress, xp: xpBefore + xp };
+      const met = evaluate(progress, action.today);
+      progress = met.progress;
+      const reward: Reward = {
+        xp,
+        xpBefore,
+        xpAfter: xpBefore + xp,
+        streak: practised ? streak(progress.practiceDays, action.today) : null,
+        dailyBest: false,
+        achievements: met.achievements,
+        best: null,
+      };
+      return { ...state, progress, listenLast: { run, answer: action.answer, check, accuracy, stars, plays: playsUsed(action.heard), reward } };
     }
     case 'evaluate': {
       const { progress } = evaluate(state.progress, action.today);
@@ -807,6 +855,7 @@ function initialState(): AppState {
     settings: practiceSettings({ prefs, progress }, settings),
     run: route === '/play' ? restoreRun() : null,
     last: null,
+    listenLast: null,
     noteSettings: progress.notes.settings ?? { ...DEFAULT_NOTE_SETTINGS },
     noteRun: route === '/notes/play' ? restoreNoteRun(progress.notes.weak) : null,
     noteLast: null,

@@ -58,7 +58,7 @@ time, and leaving the chapter stops it. The sound follows the Sound volumes in S
 
 | Block | Play button | What it plays |
 |---|---|---|
-| `rhythm` | always | one bar of count-in clicks, then the rhythm on the woodblock with every beat clicking, at `tempo` (default 80 BPM) |
+| `rhythm` | always | one bar of count-in clicks, then the rhythm on the instrument (Settings → Instrument) with every beat clicking, at `tempo` (default 80 BPM) |
 | `noteTree` | always, per row | that row's bar the same way (a rests row: only the clicks) |
 | `pulse` | always, per tempo | four seconds of beat clicks; the dot of each beat lights up |
 | `staff` | with `play: true` | the notes left to right as piano tones (the scales of chapter 11 go up); a note without a sign takes the key signature's |

@@ -34,6 +34,7 @@ import './styles/account.css';
 import './styles/feedback.css';
 import './styles/progress.css';
 import './styles/skills.css';
+import './styles/listen.css';
 
 // The saved language, or the device's: set before the first paint so nothing flashes in English.
 setLocale(resolveLocale(loadPrefs().language));

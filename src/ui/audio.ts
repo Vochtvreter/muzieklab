@@ -6,7 +6,10 @@ export function engine(): AudioEngine {
   return getAudioEngine();
 }
 
-/** Volumes with switched-off channels at 0 (the metronome is muted, so the count-in still sounds), plus the calibration offset. */
+/**
+ * Volumes with switched-off channels at 0 (the metronome is muted, so the count-in still sounds), the instrument notes
+ * are played on, and the calibration offset.
+ */
 export function applyAudioPrefs(prefs: Prefs, eng: AudioEngine = getAudioEngine()): void {
   eng.setVolumes({
     metronome: prefs.volumes.metronome,
@@ -14,6 +17,7 @@ export function applyAudioPrefs(prefs: Prefs, eng: AudioEngine = getAudioEngine(
     tap: prefs.tapSoundOn ? prefs.volumes.tap : 0,
   });
   eng.setMetronomeMuted(!prefs.metronomeOn);
+  eng.setInstrument(prefs.instrument);
   eng.setCalibrationOffsetMs(prefs.calibrationMs);
 }
 

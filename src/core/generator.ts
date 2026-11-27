@@ -9,6 +9,7 @@ import { baseOf, formString, pickForm, randomOp, sameBar, vary } from './phrase'
 import { valueForTicks, VALUE_TICKS } from './values';
 import { rateDifficulty } from './difficulty';
 import { MAX_BARS, MAX_TEMPO } from './defaults';
+import { generateMelody, LISTEN_MAX_BARS, melodyDegrees, melodyStart, writesMelody, writesNotesOnly } from './dictation';
 
 /** Whole-exercise attempts (§5.5); after GOOD_ENOUGH_AFTER attempts a single soft miss is accepted. */
 const ATTEMPTS = 24;
@@ -249,9 +250,21 @@ function buildCandidate(ctx: GenContext, n: number, required: Set<string>): Cand
   return { bars: out, groups, penalty };
 }
 
+/**
+ * What Listen generates from the player's setup (§3.2): no ties or triplets yet, and at most LISTEN_MAX_BARS bars. The
+ * exercise keeps the player's settings, so Tap and Echo get them back and a code rebuilds the same exercise.
+ */
+function listenGen(s: Settings): Settings {
+  if (s.mode !== 'listen') return s;
+  const listen = { ...s, ties: false, triplets: false, bars: Math.min(LISTEN_MAX_BARS, s.bars) };
+  // Melody alone: every note a quarter, no rests, so only the pitches are written.
+  return writesNotesOnly(s) ? { ...listen, notes: ['quarter'], rests: [], dotted: false } : listen;
+}
+
 /** Seeded, deterministic exercise generator (§5.3–5.5). */
 export function generateExercise(settings: Settings, seed: number): Exercise {
-  const s = normaliseSettings(settings);
+  const own = normaliseSettings(settings);
+  const s = listenGen(own);
   const rng = new Rng(seed);
   const playable = checkSettings(s).playable;
   const meter = getMeter(playable.length ? rng.pick(playable) : '4/4');
@@ -268,13 +281,15 @@ export function generateExercise(settings: Settings, seed: number): Exercise {
   }
   const chosen = best as Candidate;
   if (longestRest(chosen.bars) > meter.barTicks) breakLongRests(meter, chosen);
+  const onsets = chosen.bars.reduce((n, b) => n + b.events.filter((e) => e.kind === 'note' && !e.tieFromPrev).length, 0);
   return {
     seed,
-    settings: s,
+    settings: own,
     meter,
     tempo: s.tempo,
     bars: chosen.bars,
     form: formString(chosen.groups),
     difficulty: rateDifficulty(meter, chosen.bars, s.tempo),
+    ...(writesMelody(s) ? { pitches: generateMelody(onsets, melodyDegrees(s), seed, melodyStart(s)) } : {}),
   };
 }

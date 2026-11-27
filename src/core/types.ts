@@ -26,9 +26,19 @@ export type Density = 'sparse' | 'balanced' | 'busy';
 export type RestAmount = 'few' | 'some' | 'many';
 export type Leniency = 'strict' | 'normal' | 'relaxed';
 
-/** Tap: read and tap the notation. Echo: hear the rhythm and tap it back with the notation hidden (§3.3). */
-export type Mode = 'tap' | 'echo';
-export const MODES: Mode[] = ['tap', 'echo'];
+/**
+ * Tap: read and tap the notation. Echo: hear the rhythm and tap it back with the notation hidden (§3.3). Listen: hear
+ * it and write it down (§3.2).
+ */
+export type Mode = 'tap' | 'echo' | 'listen';
+export const MODES: Mode[] = ['tap', 'echo', 'listen'];
+
+/**
+ * What Listen writes: the rhythm alone ('rhythm'), a melody's notes alone, every note a quarter ('notes'), or both, the
+ * notes in their rhythm ('melody', shown as Both; the name it had before 'notes' came, so saved setups keep it).
+ */
+export type WriteKind = 'rhythm' | 'notes' | 'melody';
+export const WRITE_KINDS: WriteKind[] = ['rhythm', 'notes', 'melody'];
 
 /** Practice settings (§4). */
 export interface Settings {
@@ -46,6 +56,20 @@ export interface Settings {
   countIn: 0 | 1 | 2;
   density: Density;
   restAmount: RestAmount;
+  /**
+   * Eighths and sixteenths together in one beat (an eighth and two sixteenths, a dotted eighth and a sixteenth): on
+   * when not set. Off, a beat with eighths is two eighths and one with sixteenths four sixteenths.
+   */
+  mixSixteenths?: boolean;
+  /** Listen: write the rhythm (default), a melody's notes, or both. */
+  write?: WriteKind;
+  /** Listen · Melody: the notes it uses, as degrees from low do (0 = C4 … 7 = C5); default do mi sol la. */
+  melody?: number[];
+  /**
+   * Listen · Melody and Both: the note the melody starts on (a degree, one of `melody`), which also sounds as the
+   * reference before every play. Not set: Any (the melody starts on do, now and then mi or sol; the reference is do).
+   */
+  startNote?: number;
 }
 
 export interface RhythmEvent {
@@ -70,6 +94,8 @@ export interface Exercise {
   bars: Bar[];
   form: string; // e.g. "a a' b a"
   difficulty: number; // 0–10
+  /** Listen · Melody: the staff step of each onset, in time order (C4 = 28, core/pitch.ts). */
+  pitches?: number[];
 }
 
 /** One engraved symbol, output of the speller, input of the renderer (§5.9). */
@@ -86,6 +112,10 @@ export interface NotatedSymbol {
   onsetIndex: number;
   /** Whole-bar rest, drawn centred. */
   wholeBarRest?: boolean;
+  /** A melody's note: its staff step (C4 = 28); drawn on a treble staff. */
+  step?: number;
+  /** Takes up time but is not drawn: the part of a bar not written yet (Listen's answer). */
+  ghost?: boolean;
 }
 
 export interface NotatedBar {

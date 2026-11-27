@@ -1,14 +1,15 @@
 /**
- * Settings: account (when the API answers, or an account is cached), language, sound, timing (calibrate, leniency),
- * playing (input), display (theme, beat counter), about (what's new, privacy, version, offline, reset). Phone: one
- * column. Tablet and desktop: the sections listed on the left and the cards in two columns (App design canvas,
- * SettingsTablet and SettingsDesktop).
+ * Settings: account (when the API answers, or an account is cached), language, sound (volumes, instrument), timing
+ * (calibrate, leniency), playing (input), display (theme, beat counter), about (what's new, privacy, version, offline,
+ * reset). Phone: one column. Tablet and desktop: the sections listed on the left and the cards in two columns (App
+ * design canvas, SettingsTablet and SettingsDesktop).
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Leniency } from '../../core/api';
 import type { Prefs } from '../../game/storage';
 import { formatShortDate, getLocale, LOCALES, t } from '../../i18n';
-import { applyAudioPrefs } from '../audio';
+import { INSTRUMENTS, type Instrument } from '../../audio/engine';
+import { applyAudioPrefs, engine, unlockAudio } from '../audio';
 import { AppShell } from '../components/AppShell';
 import { AnalogMetronome, BeatRow } from '../components/Bits';
 import { Segmented, SwitchTrack } from '../components/Controls';
@@ -48,6 +49,16 @@ export function SettingsScreen(): JSX.Element {
   const setVol = (k: VolKey, v: number, sw?: 'metronomeOn' | 'tapSoundOn'): void =>
     set({ volumes: { ...prefs.volumes, [k]: v / 100 }, ...(sw ? { [sw]: true } : {}) });
 
+  // A pick plays a few notes on it: C E G C, at the playback volume.
+  const pickInstrument = (v: Instrument): void => {
+    set({ instrument: v });
+    unlockAudio();
+    const eng = engine();
+    applyAudioPrefs({ ...prefs, instrument: v }, eng);
+    eng.stop();
+    eng.pitches(PREVIEW_NOTES, PREVIEW_GAP_S);
+  };
+
   const offline = useOfflineReady();
   const cancelReset = (): void => {
     setConfirm(false);
@@ -70,6 +81,8 @@ export function SettingsScreen(): JSX.Element {
       <VolumeRow label={t('settings.playback')} aria={t('settings.playbackVolume')} value={prefs.volumes.rhythm} on onChange={(v) => setVol('rhythm', v)} />
       <VolumeRow label={t('settings.tapSound')} aria={t('settings.tapVolume')} value={prefs.volumes.tap} on={prefs.tapSoundOn}
         onChange={(v) => setVol('tap', v, 'tapSoundOn')} onToggle={() => set({ tapSoundOn: !prefs.tapSoundOn })} />
+      <SegRow label={t('settings.instrument')} group={t('settings.instrumentGroup')} value={prefs.instrument} onChange={pickInstrument}
+        hint={t('settings.hintInstrument')} options={INSTRUMENTS.map((i) => ({ value: i, label: t('settings.' + i) }))} />
     </Section>
   );
   const timing = (
@@ -421,6 +434,10 @@ function LanguageRow({ onChange }: { onChange(code: string): void }): JSX.Elemen
     </div>
   );
 }
+
+/** Settings → Instrument: the notes a pick plays (MIDI: C4 E4 G4 C5), and the time between them (s). */
+const PREVIEW_NOTES = [60, 64, 67, 72];
+const PREVIEW_GAP_S = 0.3;
 
 const PREVIEW_BPM = 80;
 const PREVIEW_BEATS = 4;

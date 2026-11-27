@@ -25,6 +25,71 @@ export const KINDS: ChangeKind[] = ['new', 'better', 'fix'];
 
 export const RELEASES: Release[] = [
   {
+    version: '0.24.2',
+    date: '2026-11-26',
+    title: 'changelog.v0_24_2.title',
+    changes: [{ kind: 'better', text: 'changelog.v0_24_2.rhythm' }],
+    action: { to: '/settings', label: 'changelog.v0_23_0.try' },
+  },
+  {
+    version: '0.24.1',
+    date: '2026-11-26',
+    title: 'changelog.v0_24_1.title',
+    changes: [{ kind: 'better', text: 'changelog.v0_24_1.reference' }],
+  },
+  {
+    version: '0.24.0',
+    date: '2026-11-26',
+    title: 'changelog.v0_24_0.title',
+    changes: [{ kind: 'new', text: 'changelog.v0_24_0.reference' }],
+    action: { to: '/setup', label: 'changelog.v0_24_0.try' },
+  },
+  {
+    version: '0.23.1',
+    date: '2026-11-26',
+    title: 'changelog.v0_23_1.title',
+    changes: [{ kind: 'better', text: 'changelog.v0_23_1.firstListen' }],
+  },
+  {
+    version: '0.23.0',
+    date: '2026-11-26',
+    title: 'changelog.v0_23_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_23_0.instrument' },
+      { kind: 'better', text: 'changelog.v0_23_0.piano' },
+    ],
+    action: { to: '/settings', label: 'changelog.v0_23_0.try' },
+  },
+  {
+    version: '0.22.0',
+    date: '2026-11-26',
+    title: 'changelog.v0_22_0.title',
+    changes: [{ kind: 'new', text: 'changelog.v0_22_0.start' }],
+    action: { to: '/setup', label: 'changelog.v0_22_0.try' },
+  },
+  {
+    version: '0.21.0',
+    date: '2026-11-26',
+    title: 'changelog.v0_21_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_21_0.write' },
+      { kind: 'new', text: 'changelog.v0_21_0.mix' },
+    ],
+    action: { to: '/setup', label: 'changelog.v0_21_0.try' },
+  },
+  {
+    version: '0.20.0',
+    date: '2026-11-12',
+    title: 'changelog.v0_20_0.title',
+    changes: [
+      { kind: 'new', text: 'changelog.v0_20_0.listen' },
+      { kind: 'new', text: 'changelog.v0_20_0.melody' },
+      { kind: 'new', text: 'changelog.v0_20_0.check' },
+      { kind: 'better', text: 'changelog.v0_20_0.home' },
+    ],
+    action: { to: '/setup', label: 'changelog.v0_20_0.try' },
+  },
+  {
     version: '0.19.1',
     date: '2026-10-31',
     title: 'changelog.v0_19_1.title',

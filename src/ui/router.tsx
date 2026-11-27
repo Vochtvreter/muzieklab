@@ -1,5 +1,5 @@
 /**
- * A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/settings, #/calibrate, #/changelog, Read notes (#/notes, #/notes/key,
+ * A tiny hash router: #/, #/path, #/setup, #/play, #/results, #/listen/done (Listen's results), #/settings, #/calibrate, #/changelog, Read notes (#/notes, #/notes/key,
  * #/notes/play, #/notes/done), Scales (#/scales, #/scales/setup, #/scales/key, #/scales/play, #/scales/done), Learn (#/learn and a chapter, #/learn/8), and #/dev/render. A `?s=10.2` query names a Learn section.
  * #/learn/practice?s=8.2 starts a section's practice (its practice link, opened in a new tab).
  * Progress (#/progress, and its skill levels #/progress/skills and one skill, #/progress/skills/rhythm).
@@ -16,6 +16,7 @@ export type Route =
   | '/setup'
   | '/play'
   | '/results'
+  | '/listen/done'
   | '/settings'
   | '/calibrate'
   | '/changelog'
@@ -53,6 +54,7 @@ const ROUTES: Route[] = [
   '/setup',
   '/play',
   '/results',
+  '/listen/done',
   '/settings',
   '/calibrate',
   '/changelog',

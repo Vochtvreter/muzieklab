@@ -37,6 +37,12 @@ export interface NodeOption {
   /** Note values that must be on as notes (e.g. quarter–half–quarter is spelled with tied quarters). */
   needsNotes?: NoteValue[];
   needsTies?: boolean;
+  /**
+   * Eighths and sixteenths in one beat (an eighth and two sixteenths, a dotted eighth and a sixteenth): only when the
+   * settings mix them (`mixSixteenths`, the default). 'plain' options are their stand-ins when they do not: a beat of
+   * two eighths or of four sixteenths, never split further.
+   */
+  mix?: 'mixed' | 'plain';
   tag?: CellTag;
   /** Base weight before the density profile (§5.3: deeper splits are less likely). */
   weight: number;
@@ -96,11 +102,16 @@ const OPTIONS: Record<NodeKind, NodeOption[]> = {
   ],
   beat: [
     { id: 'quarter', type: 'fill', weight: 1, parts: [L(0, leaf(Q, 'quarter', 0, true))] },
-    { id: 'eighths', type: 'split', weight: 0.9, parts: [N(0, 'eighth'), N(Q / 2, 'eighth')] },
+    { id: 'eighths', type: 'split', mix: 'mixed', weight: 0.9, parts: [N(0, 'eighth'), N(Q / 2, 'eighth')] },
+    // Eighths and sixteenths apart: two eighths, or four sixteenths (as the 'eighths' split above, with or without its
+    // halves split, weighs them).
+    { id: 'eighths-plain', type: 'cell', mix: 'plain', weight: 0.9 * 0.6, parts: [0, 1].map((i) => L((i * Q) / 2, leaf(Q / 2, 'eighth', 0, true))) },
+    { id: 'sixteenths-plain', type: 'cell', mix: 'plain', weight: 0.9 * 0.4, parts: [0, 1, 2, 3].map((i) => L((i * Q) / 4, leaf(Q / 4, 'sixteenth', 0, true))) },
     {
       id: 'de-s',
       type: 'cell',
       tag: 'dotted',
+      mix: 'mixed',
       weight: 0.45,
       parts: [L(0, leaf(0.75 * Q, 'eighth', 1, false)), L(0.75 * Q, leaf(Q / 4, 'sixteenth', 0, true))],
     },
@@ -108,12 +119,14 @@ const OPTIONS: Record<NodeKind, NodeOption[]> = {
       id: 's-de',
       type: 'cell',
       tag: 'dotted',
+      mix: 'mixed',
       weight: 0.25,
       parts: [L(0, leaf(Q / 4, 'sixteenth', 0, true)), L(Q / 4, leaf(0.75 * Q, 'eighth', 1, false))],
     },
     {
       id: 's-e-s',
       type: 'cell',
+      mix: 'mixed',
       weight: 0.3,
       parts: [L(0, leaf(Q / 4, 'sixteenth', 0, true)), L(Q / 4, leaf(Q / 2, 'eighth', 0, false)), L(0.75 * Q, leaf(Q / 4, 'sixteenth', 0, true))],
     },
@@ -196,6 +209,9 @@ export class Tree {
   optionOk(opt: NodeOption, start: number, firstNote: boolean): boolean {
     const s = this.settings;
     if (opt.needsTies && !s.ties) return false;
+    // Mixing eighths and sixteenths in a beat is the default; off, the plain beats stand in for the mixed ones.
+    const mix = s.mixSixteenths !== false;
+    if (opt.mix === (mix ? 'plain' : 'mixed')) return false;
     if (opt.needsNotes && !opt.needsNotes.every((v) => s.notes.includes(v))) return false;
     return opt.parts.every((p, i) => {
       const fn = firstNote && i === 0;

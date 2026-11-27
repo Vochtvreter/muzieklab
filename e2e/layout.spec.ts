@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { DEFAULT_NOTE_SETTINGS, generateRound, type NoteSettings } from '../src/core/noteRound';
 import { letterOf } from '../src/core/pitch';
+import { generateExercise } from '../src/core/generator';
+import { DEFAULT_SETTINGS } from '../src/core/defaults';
 import { pianoWindow, scaleNotes, type Scale } from '../src/core/scale';
 import { noteLessonSettings } from '../src/game/notesPath';
 import { lessonSettings } from '../src/game/path';
@@ -967,6 +969,161 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expectNoSideScroll(page);
     });
 
+    test('listen: the Listen tile, the setup with Melody, writing a melody, Check and Results', async ({ page }) => {
+      known(name, 'listen');
+      await seed(page, { prefs: { noteNames: 'solfege' } });
+      await page.goto('./');
+      // Home: a fourth Free practice tile opens Practice setup with Listen picked (DESIGN.md §3.2).
+      const tile = page.getByRole('link', { name: /^Listen/ });
+      await expectClickable(tile);
+      await tile.click();
+      const mode = page.getByRole('group', { name: 'Mode' });
+      await expect(mode.getByRole('button', { name: 'Listen' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('switch', { name: /Hold notes/ })).toHaveCount(0);
+      // Write: Rhythm · Melody · Both. Melody alone leaves out the note values, rests and extras (every note a quarter).
+      const write = page.getByRole('group', { name: 'Write' });
+      await expect(write.getByRole('button')).toHaveText(['Rhythm', 'Melody', 'Both']);
+      await write.getByRole('button', { name: 'Melody' }).click();
+      await expect(page.getByText('Write the notes; every note is a quarter')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Eighth note' })).toHaveCount(0);
+      await write.getByRole('button', { name: 'Both' }).click();
+      // Mix 8ths & 16ths shows once eighths and sixteenths are both on; off, the setup says what a beat holds.
+      await expect(page.getByRole('button', { name: 'Mix 8ths & 16ths' })).toHaveCount(0);
+      for (const v of ['Eighth note', 'Sixteenth note']) {
+        const chip = page.getByRole('button', { name: v, exact: true });
+        if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click();
+      }
+      const mix = page.getByRole('button', { name: 'Mix 8ths & 16ths' });
+      await expect(mix).toHaveAttribute('aria-pressed', 'true');
+      await mix.click();
+      await expect(page.getByText('A beat is two eighths or four sixteenths, never mixed.')).toBeVisible();
+      await expectTouchHeight(mix);
+      // Notes in the melody: do re mi fa sol la si do', do mi sol la picked.
+      const notes = page.getByRole('group', { name: 'Notes in the melody' });
+      await expect(notes.getByRole('button')).toHaveCount(8);
+      for (const n of ['do', 'mi', 'sol', 'la']) await expect(notes.getByRole('button', { name: n, exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(notes.getByRole('button', { name: 're', exact: true })).toHaveAttribute('aria-pressed', 'false');
+      for (const b of await notes.getByRole('button').all()) await expectTouchHeight(b);
+      // Starts on: Any, or one of the notes picked; the melody starts on it and it sounds before every play.
+      const starts = page.getByRole('radiogroup', { name: 'Starts on' });
+      await expect(starts.getByRole('radio')).toHaveCount(5);
+      await expect(starts.getByRole('radio', { name: 'Any' })).toHaveAttribute('aria-checked', 'true');
+      await starts.getByRole('radio', { name: 'sol', exact: true }).click();
+      await expect(starts.getByRole('radio', { name: 'sol', exact: true })).toHaveAttribute('aria-checked', 'true');
+      await expect(page.getByText('The melody starts on sol, and sol sounds before every play.')).toBeVisible();
+      for (const r of await starts.getByRole('radio').all()) await expectTouchHeight(r);
+      await expect(page.getByText('Ties and triplets are not in Listen yet')).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: /^Start · / }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+
+      // A known exercise, written right value by value with the keys.
+      const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'melody', melody: [0, 2, 4, 5], bars: 2 } as const;
+      const ex = generateExercise({ ...settings, melody: [0, 2, 4, 5] }, 4242);
+      await seedRun(page, settings, 4242, { noteNames: 'solfege' });
+      await page.goto('about:blank');
+      await page.goto('./#/play');
+      // How to play opens the first time; Esc closes it.
+      await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Got it' }));
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expectClickable(page.getByRole('button', { name: 'Play the melody' }), { scroll: false });
+      const radios = page.getByRole('radiogroup', { name: 'Note' }).getByRole('radio');
+      await expect(radios).toHaveCount(4);
+      await expect(page.getByRole('button', { name: 'Fill bar 1 to check' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Fill bar 1 to check' })).toBeInViewport();
+      for (const r of await radios.all()) await expectTouchHeight(r);
+      await expectNoSideScroll(page);
+      let k = 0;
+      const key: Record<number, string> = { 192: '1', 96: '2', 48: '4', 24: '8', 12: '6' };
+      for (const bar of ex.bars) {
+        for (const e of bar.events) {
+          if (e.kind === 'rest') await page.keyboard.press('r');
+          else await page.keyboard.press(letterOf(ex.pitches![k++]).toLowerCase());
+          await page.keyboard.press(key[e.duration]);
+        }
+      }
+      const check = page.getByRole('button', { name: /^Check/ });
+      await expectClickable(check, { scroll: false });
+      await check.click();
+      await expect(page.getByText('All right', { exact: true })).toBeVisible();
+      const next = page.getByRole('button', { name: /^Next/ });
+      await expectClickable(next, { scroll: false });
+      await expectNoSideScroll(page);
+      await next.click();
+      // Results: every beat right, with the melody on its staff.
+      await expect(page.getByRole('heading', { name: 'Melody done' })).toBeVisible();
+      await expect(page.locator('.score-pct')).toHaveText('100%');
+      await expect(page.getByText('Every beat right.')).toBeVisible();
+      await expectClickable(page.getByRole('button', { name: 'Retry' }));
+      await expectClickable(page.getByRole('button', { name: 'Next' }));
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+    });
+
+    test('listen: the reference note held for the count-in bar, its beats in a popover, gone when the melody starts', async ({ page }) => {
+      known(name, 'listen-reference');
+      // 4/4 at 80: the count-in bar, and so the reference, lasts 3 s.
+      const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'melody', melody: [0, 2, 4, 5], startNote: 4, bars: 2, tempo: 80 } as const;
+      await seedRun(page, settings, 4242, { noteNames: 'solfege', seenListenHowTo: true });
+      await page.goto('about:blank');
+      await page.goto('./#/play');
+      await page.getByRole('button', { name: 'Play the melody' }).click();
+      const clicked = Date.now();
+      // The reference (sol, chosen in Starts on): the popover names it under the play button, with its ring and the beats.
+      const pop = page.getByRole('status').filter({ hasText: 'Reference note' });
+      await expect(pop).toBeVisible();
+      await expect(pop).toContainText('Reference note: sol');
+      await expect(pop.locator('.listen-ref-name')).toHaveText('solG');
+      await expect(pop.locator('.listen-ref-arc')).toBeVisible();
+      await expect(pop.getByText('The melody starts after this bar.')).toBeVisible();
+      const beats = pop.locator('.listen-ref-beats span');
+      await expect(beats).toHaveText(['1', '2', '3', '4']);
+      await expect(pop).toBeInViewport({ ratio: 1 });
+      const [p, card] = [(await pop.boundingBox())!, (await page.locator('.listen-play').boundingBox())!];
+      expect(p.y, 'the popover hangs under the play card').toBeGreaterThanOrEqual(card.y + card.height);
+      expect(p.x + p.width, 'the popover stays inside the card').toBeLessThanOrEqual(card.x + card.width + 1);
+      await expectNoClippedLabels(page);
+      await expectNoSideScroll(page);
+      // The metronome counts the bar: beat 2, then beat 4, each lit as it passes.
+      await expect(pop.locator('.listen-ref-beats .is-now')).toHaveText('2');
+      await expect(pop.locator('.listen-ref-beats .is-now')).toHaveText('4');
+      await expect(pop.locator('.listen-ref-beats .is-on')).toHaveCount(4);
+      // Gone when the melody starts, after the whole bar, while the play goes on.
+      await expect(pop).toHaveCount(0, { timeout: 5000 });
+      expect(Date.now() - clicked, 'the reference lasts the bar').toBeGreaterThan(2500);
+      await expect(page.getByRole('heading', { name: 'Playing…' })).toBeVisible();
+      // Stop: no popover is left behind, and a new play shows it again, counting from the start.
+      await page.getByRole('button', { name: 'Stop' }).click();
+      await page.getByRole('button', { name: 'Play again' }).click();
+      await expect(pop).toBeVisible();
+      await expect(pop.locator('.listen-ref-beats .is-on')).not.toHaveCount(4);
+      await page.getByRole('button', { name: 'Stop' }).click();
+      await expect(pop).toHaveCount(0);
+    });
+
+    test('listen: Write · Melody alone, every note a quarter, added with the note buttons', async ({ page }) => {
+      known(name, 'listen-notes');
+      const settings = { ...DEFAULT_SETTINGS, mode: 'listen', write: 'notes', melody: [0, 2, 4, 5], bars: 2 } as const;
+      const ex = generateExercise({ ...settings, melody: [0, 2, 4, 5] }, 777);
+      await seedRun(page, settings, 777, { noteNames: 'solfege', seenListenHowTo: true });
+      await page.goto('about:blank');
+      await page.goto('./#/play');
+      // No value palette: the note buttons are the input, plain buttons that each add a quarter.
+      await expect(page.getByText('Add a value')).toHaveCount(0);
+      const group = page.getByRole('group', { name: 'Add a note' });
+      await expect(group.getByRole('button')).toHaveCount(4);
+      for (const b of await group.getByRole('button').all()) await expectTouchHeight(b);
+      const names: Record<string, string> = { C: 'do', D: 're', E: 'mi', F: 'fa', G: 'sol', A: 'la', B: 'si' };
+      for (const step of ex.pitches!) await group.getByRole('button', { name: 'Add ' + names[letterOf(step)], exact: true }).click();
+      const check = page.getByRole('button', { name: /^Check/ });
+      await expectClickable(check, { scroll: false });
+      await check.click();
+      await expect(page.getByText('All right', { exact: true })).toBeVisible();
+      await expectNoSideScroll(page);
+    });
+
     test('path: start lesson', async ({ page }) => {
       known(name, 'path');
       await page.goto('./#/path');
@@ -1053,6 +1210,14 @@ for (const name of Object.keys(VIEWPORTS) as ViewportName[]) {
       await expect(page.getByText('Fair timing for most players.')).toBeVisible();
       await expect(page.getByText('Metronome', { exact: true })).toHaveCount(1);
       await expectClickable(page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: 'Analog' }));
+      // Sound → Instrument: piano by default; violin and flute fit beside it at every size, and a pick sticks.
+      const instrument = page.getByRole('group', { name: 'Instrument for notes' });
+      await expect(instrument.getByRole('button', { name: 'Piano' })).toHaveAttribute('aria-pressed', 'true');
+      for (const name of ['Piano', 'Violin', 'Flute']) await expectClickable(instrument.getByRole('button', { name }));
+      await instrument.getByRole('button', { name: 'Flute' }).click();
+      await expect(instrument.getByRole('button', { name: 'Flute' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByText('Plays every exercise: rhythms, melodies, scales and Read notes. Pick one to hear it.')).toBeVisible();
+      await expectNoClippedLabels(page);
       // The Beat counter preview keeps its tempo on one line, as on Play, inside the preview (it broke after "=" at 320 px).
       for (const look of ['Digital', 'Analog']) {
         await page.getByRole('group', { name: 'Beat counter style' }).getByRole('button', { name: look }).click();

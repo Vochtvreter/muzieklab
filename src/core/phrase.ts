@@ -161,7 +161,29 @@ const cellSwap: Op = (ctx, bar) => {
   return null;
 };
 
-const OPS: Op[] = [diminution, augmentation, restSubstitution, cellSwap];
+/**
+ * A beat that mixes eighths and sixteenths: a sixteenth next to an eighth, a dotted eighth, or sixteenths that are not
+ * the beat's four. Values of a beat or longer, and a lone eighth after a dotted quarter, do not count.
+ */
+export function mixesSmall(meter: GenContext['meter'], bar: Bar): boolean {
+  for (let b = 0; b < meter.barTicks; b += meter.beatTicks) {
+    const small = bar.events.filter((e) => e.start >= b && e.start < b + meter.beatTicks && e.duration < meter.beatTicks && !e.triplet).map((e) => e.duration);
+    if (!small.length || small.every((d) => d === PPQ / 2)) continue;
+    if (small.length === 4 && small.every((d) => d === PPQ / 4)) continue;
+    return true;
+  }
+  return false;
+}
+
+/** With eighths and sixteenths apart (mixSixteenths off), a variation that mixes them in a beat does not apply. */
+const apart =
+  (op: Op): Op =>
+  (ctx, bar) => {
+    const out = op(ctx, bar);
+    return out && ctx.settings.mixSixteenths === false && mixesSmall(ctx.meter, out) ? null : out;
+  };
+
+const OPS: Op[] = [diminution, augmentation, restSubstitution, cellSwap].map(apart);
 
 /** One random variation operation; null when it does not apply. */
 export function randomOp(ctx: GenContext, bar: Bar, rng: Rng): Bar | null {

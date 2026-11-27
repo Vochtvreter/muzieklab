@@ -1,5 +1,6 @@
 import { Beam, Barline, Dot, Formatter, GhostNote, Renderer, Stave, StaveNote, StaveTie, Tuplet, Voice } from 'vexflow/bravura';
 import type { Meter, NotatedBar, NotatedSymbol, NoteValue } from '../core/types';
+import { letterOf, octaveOf } from '../core/pitch';
 import { countBar, countText, type CountMark } from './counting';
 
 export type NoteMark = 'perfect' | 'great' | 'good' | 'miss' | 'pending';
@@ -32,6 +33,11 @@ export interface DrawStaffOptions {
   palette: StaffPalette;
   /** The time signature as drawn, when not the meter's numbers: 'C' for common time. */
   timeSig?: string;
+  /**
+   * A melody (Listen · Melody, §3.2): a five-line treble staff with the clef on every row, each note at its step.
+   * Without it, the one-line rhythm staff.
+   */
+  clef?: 'treble';
   /** Counting under the notes (Learn): the word for each count, and the colour of held and silent counts. */
   counts?: { text(mark: CountMark): string; held: string };
   /**
@@ -65,6 +71,9 @@ const WORD_PAD = 3.5;
 const MIN_SCALE = 0.75; // the smallest a staff is drawn to make its notes and counts fit
 const END_LINE = 5; // the final barline's thin line, this far before the end of its stave
 const MISS_DY = 17; // a missed note's × sits this far below its head: clear of ties and the cursor, inside the row
+// The five-line staff of a melody: taller rows (stems above, middle C's ledger line and its × below) and the clef.
+const MELODY_ROW_H = 132;
+const CLEF_EXTRA = 34; // width of the treble clef at the start of every row
 
 const DURATION: Record<NoteValue, string> = { whole: 'w', half: 'h', quarter: 'q', eighth: '8', sixteenth: '16' };
 
@@ -84,11 +93,15 @@ function markColour(mark: NoteMark | undefined, p: StaffPalette): string | null 
 
 function makeNote(sym: NotatedSymbol): StaveNote {
   const rest = sym.kind === 'rest';
+  // A melody's note at its step, its stem as the staff wants it (down from the middle line up); otherwise every note on
+  // the one line, stems up.
+  const pitched = !rest && sym.step !== undefined;
   const note = new StaveNote({
-    keys: ['b/4'], // middle line: notes on the line, rests in their standard place
+    // Rests and rhythm notes on the middle line: notes on the line, rests in their standard place.
+    keys: [pitched ? `${letterOf(sym.step as number).toLowerCase()}/${octaveOf(sym.step as number)}` : 'b/4'],
     duration: DURATION[sym.value] + (sym.dots ? 'd' : '') + (rest ? 'r' : ''),
     stem_direction: 1,
-    auto_stem: false,
+    auto_stem: pitched,
     align_center: !!sym.wholeBarRest,
   });
   if (sym.dots) Dot.buildAndAttach([note], { all: true });
@@ -201,7 +214,9 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
   // Room above the first row for a triplet's 3: always on Learn staves (with counts), else when that row has one.
   const tupletRoom = o.tupletSpace || o.counts || bars.slice(0, per).some((b) => b.symbols.some((s) => s.tuplet));
   const top = Math.max(o.cursorSpace ? CURSOR_TOP : 0, tupletRoom ? TUPLET_TOP : 0);
-  const rowH = ROW_H + (o.counts ? COUNT_H : 0);
+  const melody = o.clef === 'treble';
+  const rowH = (melody ? MELODY_ROW_H : ROW_H) + (o.counts ? COUNT_H : 0);
+  const headW = TS_EXTRA + (melody ? CLEF_EXTRA : 0);
   // Drawn in the svg's own units (`layoutW` × `height`), shown `scale` times that size.
   const layoutW = width / scale;
   const height = rows * rowH + top - 6;
@@ -210,7 +225,7 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
   renderer.resize(layoutW, height);
   const ctx = renderer.getContext();
 
-  const barW = (layoutW - TS_EXTRA - 2) / per;
+  const barW = (layoutW - headW - 2) / per;
   const colourById = new Map<string, string>(); // VexFlow note id -> mark colour
   let cursorNote: StaveNote | null = null;
   const onsetNotes: [number, StaveNote][] = [];
@@ -225,10 +240,11 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
   bars.forEach((bar, i) => {
     const row = Math.floor(i / per);
     const col = i % per;
-    const x = col === 0 ? 0 : TS_EXTRA + barW * col;
-    const w = col === 0 ? barW + TS_EXTRA : barW;
-    const stave = new Stave(x, top + row * rowH, w, { space_above_staff_ln: 2, space_below_staff_ln: 2 });
-    stave.setConfigForLines([0, 1, 2, 3, 4].map((l) => ({ visible: l === 2 })));
+    const x = col === 0 ? 0 : headW + barW * col;
+    const w = col === 0 ? barW + headW : barW;
+    const stave = new Stave(x, top + row * rowH, w, melody ? { space_above_staff_ln: 3, space_below_staff_ln: 4 } : { space_above_staff_ln: 2, space_below_staff_ln: 2 });
+    if (!melody) stave.setConfigForLines([0, 1, 2, 3, 4].map((l) => ({ visible: l === 2 })));
+    if (melody && col === 0) stave.addClef('treble');
     if (i === 0) stave.addTimeSignature(o.timeSig ?? meter.id);
     // A window of a longer exercise (Play) ends with a plain bar line: the final barline ends the piece (Learn 1.2).
     const ends = i === bars.length - 1 && o.end !== false;
@@ -260,6 +276,11 @@ function drawAt(host: HTMLElement, o: DrawStaffOptions, scale: number): { staff:
         tieFrom = sym.tieToNext ? { note, row } : null;
       } else {
         tieFrom = null;
+        // Not written yet (Listen's answer): it keeps its time but is not seen.
+        if (sym.ghost) {
+          note.setStyle({ fillStyle: 'transparent', strokeStyle: 'transparent' });
+          colourById.set(note.getAttribute('id') as string, 'transparent');
+        }
       }
       return note;
     });

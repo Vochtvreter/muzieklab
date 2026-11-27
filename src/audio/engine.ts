@@ -12,6 +12,13 @@ import {
   type BeatEvent,
 } from './schedule';
 
+/**
+ * Settings → Instrument: what every exercise is played on (piano by default): melodies, rhythms, scales, Read notes and
+ * Learn's examples. Only the metronome clicks and the tap feedback have sounds of their own.
+ */
+export type Instrument = 'piano' | 'violin' | 'flute';
+export const INSTRUMENTS: readonly Instrument[] = ['piano', 'violin', 'flute'];
+
 export interface Volumes {
   metronome: number; // 0–1
   rhythm: number;
@@ -24,19 +31,34 @@ export interface StartOptions {
   tempo: number;
   countInBars: number;
   metronome: 'on' | 'accent' | 'off';
-  /** Play the rhythm itself (Listen / correct playback). */
+  /** Play the rhythm itself (Listen / correct playback), on the instrument: on RHYTHM_PITCH unless `melody` is given. */
   playRhythm: boolean;
   /** Seconds between now and the first count-in click. */
   leadIn?: number;
   /** Count-in beats still fire onBeat (for the visual counter) but make no sound. */
   silentCountIn?: boolean;
+  /**
+   * A melody (Listen · Melody, §3.2): the MIDI number of each onset, played on the instrument for its length instead of
+   * RHYTHM_PITCH.
+   */
+  melody?: number[];
+  /**
+   * A reference note (MIDI): the note a melody starts from (Listen · Melody, §3.2). It starts on the first count-in beat
+   * and is held through the count-in, up to the melody's first note.
+   */
+  reference?: number;
 }
+
+/** A held reference note stops this long before the melody, so a first note on the same pitch is struck again. */
+const REFERENCE_GAP_S = 0.06;
 
 export interface Started {
   /** Audio time (s) of the exercise's first beat, after the count-in. */
   exerciseStart: number;
   /** Audio time (s) when the exercise ends. */
   end: number;
+  /** With a reference note: the audio times (s) it starts (the first count-in beat) and ends (the melody's start). */
+  reference?: { start: number; end: number };
 }
 
 /** Web Audio engine with a look-ahead scheduler (§6.1, §7). */
@@ -52,14 +74,17 @@ export interface AudioEngine {
    */
   heardNow(): number;
   setVolumes(v: Volumes): void;
+  /** The instrument notes are played on from now on (pitches(), a rhythm or melody, and its reference note). */
+  setInstrument(instrument: Instrument): void;
   /** Silences the metronome during play only; count-in and calibration clicks stay audible at the metronome volume. */
   setMetronomeMuted(muted: boolean): void;
   setCalibrationOffsetMs(ms: number): void;
   start(opts: StartOptions): Started;
   stop(): void;
   /**
-   * Plays notes by MIDI number (60 = middle C), one after the other, `gap` seconds apart, starting now: a soft piano-like
-   * tone on the rhythm channel (Scales: each right note, and *Hear it so far*).
+   * Plays notes by MIDI number (60 = middle C), one after the other, `gap` seconds apart, starting now, on the instrument
+   * (setInstrument) on the rhythm channel (Scales: each right note, and *Hear it so far*). A piano note rings on as
+   * struck; a violin or flute note is held until just before the next one.
    */
   pitches(midis: number[], gap?: number): void;
   /** Tap feedback sound: starts on press, sustains softly while held, stops on release. */
@@ -95,7 +120,7 @@ interface Job {
 
 /** A sounding source with its own envelope, so it can be faded out on stop(). */
 interface Voice {
-  src: OscillatorNode;
+  src: AudioScheduledSourceNode;
   env: GainNode;
 }
 
@@ -107,6 +132,18 @@ const BEAT_EARLY_S = 0.008;
 const SILENT = 0.0001;
 /** A 'running' context whose clock has not moved for this long is stalled (ms). */
 const STALL_MS = 500;
+/** How long pitches() holds a violin or flute note at most, and the last one of a run (s). */
+const HELD_S = 0.9;
+/** The note a rhythm without a melody is played on, on the instrument (G4: in the range of the piano, violin and flute). */
+export const RHYTHM_PITCH = 67;
+
+const midiFreq = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
+/** A struck piano string's overtones above the fundamental: [harmonic, peak, decay in s]. Slightly sharp, as on a piano. */
+const PIANO_PARTIALS: readonly (readonly [number, number, number])[] = [
+  [2.002, 0.12, 0.5],
+  [3.006, 0.05, 0.3],
+  [4.012, 0.025, 0.18],
+];
 
 function audioContextClass(): typeof AudioContext | null {
   const g = globalThis as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
@@ -120,6 +157,9 @@ class WebAudioEngine implements AudioEngine {
   private channels: Record<Route, GainNode> | null = null;
   private metronomeMuted = false;
   private volumes: Volumes = { ...DEFAULT_VOLUMES };
+  private instrument: Instrument = 'piano';
+  /** A second of white noise, for the piano's hammer and the flute's breath: made once per context. */
+  private noise: AudioBuffer | null = null;
   private calibrationMs = 0;
 
   private jobs: Job[] = [];
@@ -209,6 +249,7 @@ class WebAudioEngine implements AudioEngine {
     this.voices.clear();
     this.ctx = null;
     this.channels = null;
+    this.noise = null;
     this.stale = false;
     if (typeof old.close === 'function') void old.close().catch(() => undefined);
   }
@@ -269,6 +310,10 @@ class WebAudioEngine implements AudioEngine {
     this.applyVolumes();
   }
 
+  setInstrument(instrument: Instrument): void {
+    this.instrument = INSTRUMENTS.includes(instrument) ? instrument : 'piano';
+  }
+
   private applyVolumes(): void {
     const ctx = this.ctx;
     if (!ctx || !this.channels) return;
@@ -309,12 +354,22 @@ class WebAudioEngine implements AudioEngine {
       .filter((b) => b.audible && !(b.countIn && opts.silentCountIn))
       .map((b) => ({ time: b.time, play: (c, t) => this.click(c, t, b.accent, b.countIn ? 'cue' : 'metronome') }));
     if (opts.playRhythm) {
+      const melody = opts.melody;
       for (const n of planNotes(opts.timeline, exerciseStart)) {
-        jobs.push({ time: n.time, play: (c, t) => this.woodblock(c, t, n.end) });
+        const midi = melody?.[n.index] ?? RHYTHM_PITCH;
+        jobs.push({ time: n.time, play: (c, t) => this.note(c, midi, t, n.end) });
       }
     }
+    let reference: Started['reference'];
+    if (opts.reference !== undefined) {
+      const midi = opts.reference;
+      // Held through the count-in (without one, for a bar), so it is the only note heard before the melody.
+      const end = Math.max(exerciseStart, startTime + (60 / opts.tempo) * beatsPerBar);
+      reference = { start: startTime, end };
+      jobs.push({ time: startTime, play: (c, t) => this.note(c, midi, t, end - REFERENCE_GAP_S) });
+    }
     this.run(jobs, beats);
-    return { exerciseStart, end: exerciseStart + opts.timeline.totalSeconds };
+    return { exerciseStart, end: exerciseStart + opts.timeline.totalSeconds, ...(reference ? { reference } : {}) };
   }
 
   clicks(count: number, bpm: number, leadIn?: number): number[] {
@@ -449,23 +504,74 @@ class WebAudioEngine implements AudioEngine {
 
   // --- sounds ------------------------------------------------------------------------------
 
-  private voice(ctx: AudioContext, channel: Route, type: OscillatorType, freq: number, at: number, stopAt: number | null): Voice {
+  /** An oscillator through `chain` (filters, in order) and its own envelope to `channel`, from `at` until `stopAt`. */
+  private voice(
+    ctx: AudioContext,
+    channel: Route,
+    type: OscillatorType,
+    freq: number,
+    at: number,
+    stopAt: number | null,
+    chain: AudioNode[] = [],
+  ): { src: OscillatorNode; env: GainNode } {
     const src = ctx.createOscillator();
     src.type = type;
     src.frequency.setValueAtTime(freq, at);
+    return this.own(ctx, src, channel, at, stopAt, chain);
+  }
+
+  /** Wires a source through `chain` and a new envelope to `channel`, starts it and keeps it in `voices` until it ends. */
+  private own<S extends AudioScheduledSourceNode>(
+    ctx: AudioContext,
+    src: S,
+    channel: Route,
+    at: number,
+    stopAt: number | null,
+    chain: AudioNode[] = [],
+  ): { src: S; env: GainNode } {
     const env = ctx.createGain();
     env.gain.setValueAtTime(SILENT, at);
-    src.connect(env);
+    let out: AudioNode = src;
+    for (const n of chain) {
+      out.connect(n);
+      out = n;
+    }
+    out.connect(env);
     env.connect(this.channels![channel]);
     src.start(at);
     if (stopAt !== null) src.stop(stopAt);
-    const v: Voice = { src, env };
+    const v = { src, env };
     this.voices.add(v);
     src.onended = () => {
       this.voices.delete(v);
       env.disconnect();
+      for (const n of chain) n.disconnect();
     };
     return v;
+  }
+
+  /** A filter of `type` at `freq` (Hz), for a voice to sound through. */
+  private filter(ctx: AudioContext, type: BiquadFilterType, freq: number, q: number): BiquadFilterNode {
+    const f = ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = q;
+    return f;
+  }
+
+  /** Vibrato on `src`: `cents` deep at `rate` Hz, coming in over `fadeIn` seconds from `from`, until `stopAt`. */
+  private vibrato(ctx: AudioContext, src: OscillatorNode, rate: number, cents: number, from: number, fadeIn: number, stopAt: number): void {
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = rate;
+    const depth = ctx.createGain();
+    depth.gain.setValueAtTime(0, from);
+    depth.gain.linearRampToValueAtTime(cents, from + fadeIn);
+    lfo.connect(depth);
+    depth.connect(src.detune);
+    lfo.start(from);
+    lfo.stop(stopAt);
+    lfo.onended = () => depth.disconnect();
   }
 
   /** Fast attack to `peak`, exponential decay over `decay` seconds. */
@@ -490,37 +596,141 @@ class WebAudioEngine implements AudioEngine {
     const ctx = this.context();
     if (!ctx || !this.channels) return;
     const at = ctx.currentTime + 0.02;
-    midis.forEach((m, i) => this.pianoTone(ctx, m, at + i * gap));
+    const last = midis.length - 1;
+    midis.forEach((m, i) => {
+      const t = at + i * gap;
+      // Held until a little before the next note (legato), the last one a little longer.
+      const hold = i === last ? HELD_S : Math.min(HELD_S, Math.max(0.12, gap * 0.92));
+      this.note(ctx, m, t, t + hold, true);
+    });
   }
 
-  /** A short struck tone: a triangle with a quieter octave above, fast attack and a long-ish decay. */
+  /**
+   * One note on the instrument from `at`, held until `end`. A piano note `struck` (pitches()) rings on by itself instead,
+   * as a key pressed and let go; a violin or flute note always stops at `end`.
+   */
+  private note(ctx: AudioContext, midi: number, at: number, end: number, struck = false): void {
+    if (this.instrument === 'violin') this.violinNote(ctx, midi, at, end);
+    else if (this.instrument === 'flute') this.fluteNote(ctx, midi, at, end);
+    else if (struck) this.pianoTone(ctx, midi, at);
+    else this.pianoNote(ctx, midi, at, end);
+  }
+
+  /** A struck piano note, ringing on: it fades over about a second and grows darker as it does. */
   private pianoTone(ctx: AudioContext, midi: number, at: number): void {
-    const freq = 440 * 2 ** ((midi - 69) / 12);
-    const body = this.voice(ctx, 'rhythm', 'triangle', freq, at, at + 1.3);
+    const freq = midiFreq(midi);
+    const body = this.voice(ctx, 'rhythm', 'triangle', freq, at, at + 1.3, [this.damper(ctx, freq, at)]);
     this.envelope(body.env, at, 0.5, 0.005, 1.2);
-    const shine = this.voice(ctx, 'rhythm', 'sine', freq * 2, at, at + 0.6);
-    this.envelope(shine.env, at, 0.12, 0.005, 0.5);
+    this.strike(ctx, freq, at, at + 0.6);
+  }
+
+  /**
+   * A piano note held for its length (a melody): the struck tone of pianoTone, sustained softly until a little before
+   * `end`, so repeated notes stay separate.
+   */
+  private pianoNote(ctx: AudioContext, midi: number, at: number, end: number): void {
+    const freq = midiFreq(midi);
+    const off = Math.max(at + 0.08, end - 0.04);
+    const body = this.voice(ctx, 'rhythm', 'triangle', freq, at, off + 0.12, [this.damper(ctx, freq, at)]);
+    body.env.gain.setValueAtTime(SILENT, at);
+    body.env.gain.exponentialRampToValueAtTime(0.5, at + 0.006);
+    body.env.gain.exponentialRampToValueAtTime(0.2, at + 0.35);
+    body.env.gain.setValueAtTime(0.2, Math.max(at + 0.36, off - 0.001));
+    body.env.gain.exponentialRampToValueAtTime(SILENT, off + 0.08);
+    this.strike(ctx, freq, at, Math.min(at + 0.5, off + 0.08));
+  }
+
+  /** A low-pass that closes after the strike: a piano string is bright as it is hit and mellows as it rings. */
+  private damper(ctx: AudioContext, freq: number, at: number): BiquadFilterNode {
+    const f = this.filter(ctx, 'lowpass', Math.min(12000, freq * 10), 0.5);
+    f.frequency.setValueAtTime(Math.min(12000, freq * 10), at);
+    f.frequency.exponentialRampToValueAtTime(Math.min(12000, Math.max(500, freq * 2.5)), at + 0.8);
+    return f;
+  }
+
+  /**
+   * What makes a struck string sound struck: its overtones, each a little sharp (as a piano's are) and fading faster the
+   * higher it is, all gone by `until`, and a short knock of the hammer.
+   */
+  private strike(ctx: AudioContext, freq: number, at: number, until: number): void {
+    for (const [n, peak, decay] of PIANO_PARTIALS) {
+      const f = freq * n;
+      if (f > 14000) continue;
+      const p = this.voice(ctx, 'rhythm', 'sine', f, at, Math.min(until, at + decay + 0.1));
+      this.envelope(p.env, at, peak, 0.004, Math.min(decay, until - at - 0.005));
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(ctx);
+    const hammer = this.own(ctx, src, 'rhythm', at, at + 0.06, [this.filter(ctx, 'bandpass', Math.min(5000, Math.max(1200, freq * 4)), 1)]);
+    this.envelope(hammer.env, at, 0.06, 0.001, 0.03);
+  }
+
+  /**
+   * A bowed note: a sawtooth through a low-pass (the string's brightness) and a body resonance, a soft bow attack,
+   * held until a little before `end`, with a vibrato that comes in once the note has settled.
+   */
+  private violinNote(ctx: AudioContext, midi: number, at: number, end: number): void {
+    const freq = midiFreq(midi);
+    const off = Math.max(at + 0.1, end - 0.04);
+    const stopAt = off + 0.2;
+    const string = this.filter(ctx, 'lowpass', Math.min(5000, Math.max(1500, freq * 5)), 0.9);
+    const body = this.filter(ctx, 'peaking', 2800, 1.2);
+    body.gain.value = 4;
+    const bow = this.voice(ctx, 'rhythm', 'sawtooth', freq, at, stopAt, [string, body]);
+    const g = bow.env.gain;
+    g.setValueAtTime(SILENT, at);
+    g.exponentialRampToValueAtTime(0.26, at + 0.06);
+    g.linearRampToValueAtTime(0.21, at + 0.18);
+    g.setValueAtTime(0.21, Math.max(at + 0.19, off - 0.001));
+    g.exponentialRampToValueAtTime(SILENT, off + 0.15);
+    if (off - at > 0.3) this.vibrato(ctx, bow.src, 5.6, 14, at + 0.18, 0.25, stopAt);
+  }
+
+  /**
+   * A blown note: a pure tone with quiet overtones, a little breath noise that is strongest as the note speaks, held
+   * until a little before `end`, with a gentle vibrato on longer notes.
+   */
+  private fluteNote(ctx: AudioContext, midi: number, at: number, end: number): void {
+    const freq = midiFreq(midi);
+    const off = Math.max(at + 0.08, end - 0.04);
+    const stopAt = off + 0.15;
+    const hold = (g: GainNode, peak: number, sustain: number, attack: number): void => {
+      g.gain.setValueAtTime(SILENT, at);
+      g.gain.exponentialRampToValueAtTime(peak, at + attack);
+      g.gain.linearRampToValueAtTime(sustain, at + attack + 0.08);
+      g.gain.setValueAtTime(sustain, Math.max(at + attack + 0.09, off - 0.001));
+      g.gain.exponentialRampToValueAtTime(SILENT, off + 0.1);
+    };
+    const tone = this.voice(ctx, 'rhythm', 'sine', freq, at, stopAt);
+    hold(tone.env, 0.25, 0.21, 0.05);
+    const second = this.voice(ctx, 'rhythm', 'sine', freq * 2, at, stopAt);
+    hold(second.env, 0.04, 0.03, 0.04);
+    const third = this.voice(ctx, 'rhythm', 'sine', freq * 3, at, stopAt);
+    hold(third.env, 0.015, 0.009, 0.04);
+    if (off - at > 0.3) {
+      // In cents, so the overtones move with the tone.
+      for (const v of [tone, second, third]) this.vibrato(ctx, v.src, 5, 9, at + 0.2, 0.3, stopAt);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(ctx);
+    src.loop = true;
+    const breath = this.own(ctx, src, 'rhythm', at, stopAt, [this.filter(ctx, 'bandpass', Math.min(8000, freq * 2), 1.5)]);
+    hold(breath.env, 0.05, 0.012, 0.03);
+  }
+
+  private noiseBuffer(ctx: AudioContext): AudioBuffer {
+    if (this.noise) return this.noise;
+    const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    this.noise = buf;
+    return buf;
   }
 
   /** Metronome click: beat 1 higher and a little louder. */
   private click(ctx: AudioContext, at: number, accent: boolean, route: Route): void {
     const v = this.voice(ctx, route, 'triangle', accent ? 1760 : 1175, at, at + 0.06);
     this.envelope(v.env, at, accent ? 0.9 : 0.6, 0.001, 0.045);
-  }
-
-  /** Woodblock hit for rhythm playback, with a soft tone underneath that lasts the note's length. */
-  private woodblock(ctx: AudioContext, at: number, end: number): void {
-    const body = this.voice(ctx, 'rhythm', 'sine', 740, at, at + 0.12);
-    this.envelope(body.env, at, 0.8, 0.001, 0.09);
-    const knock = this.voice(ctx, 'rhythm', 'sine', 1810, at, at + 0.06);
-    this.envelope(knock.env, at, 0.35, 0.001, 0.035);
-    // Ends a little early so repeated notes stay separate.
-    const off = Math.max(at + 0.05, end - 0.03);
-    const tone = this.voice(ctx, 'rhythm', 'triangle', 392, at, off + 0.08);
-    tone.env.gain.setValueAtTime(SILENT, at);
-    tone.env.gain.exponentialRampToValueAtTime(0.1, at + 0.02);
-    tone.env.gain.setValueAtTime(0.1, off);
-    tone.env.gain.exponentialRampToValueAtTime(SILENT, off + 0.06);
   }
 }
 

@@ -2,6 +2,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react';
 import type { SkillId } from './game/storage';
 import { resolveLocale, setLocale, t } from './i18n';
+import { engine } from './ui/audio';
 import { Announcer } from './ui/components/Announcer';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { FeedbackTool } from './ui/feedback/FeedbackTool';
@@ -34,6 +35,7 @@ import { SkillDetail } from './ui/screens/progress/SkillDetail';
 import { Skills } from './ui/screens/progress/Skills';
 import { Play } from './ui/screens/Play';
 import { Results } from './ui/screens/Results';
+import { ListenResults } from './ui/screens/ListenResults';
 import { ScalesDone } from './ui/screens/scales/ScalesDone';
 import { ScalesHub } from './ui/screens/scales/ScalesHub';
 import { ScalesKey } from './ui/screens/scales/ScalesKey';
@@ -83,6 +85,9 @@ function Screens(): JSX.Element {
   const { state } = useStore();
   const route = useRoute();
   useTheme(state.prefs.theme);
+  // Settings → Instrument, for every screen that plays notes (Scales, Read notes and Learn play them without a run).
+  const instrument = state.prefs.instrument;
+  useEffect(() => engine().setInstrument(instrument), [instrument]);
   // Progress on the account, while someone is signed in (BACKEND-PLAN.md §6).
   useProgressSync();
   // A tablet turned, or a window made wider or narrower, draws the screen in its other layout: the focus goes on to the
@@ -153,6 +158,8 @@ function Route(): JSX.Element {
       return <Play />;
     case '/results':
       return <Results />;
+    case '/listen/done':
+      return <ListenResults />;
     case '/settings':
       return <SettingsScreen />;
     case '/calibrate':
