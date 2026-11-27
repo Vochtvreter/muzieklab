@@ -204,7 +204,7 @@ This section is its build spec; the boards draw it. *Choose* (below) is designed
 - **Play card:** a round Play button, a title (*Play the rhythm* before the first play, then *Play again*, *Playing…*,
   *No plays left*), three pips and, before the first play, *First listen is free · then 3 plays*; after it *3 plays
   left · fewer = bonus XP* (*You used all 3 plays*).
-  - A play is one bar of count-in clicks, then the rhythm on the woodblock; the beat clicks under it follow Settings'
+  - A play is one bar of count-in clicks, then the rhythm on the instrument (§7); the beat clicks under it follow Settings'
     Metronome switch, as Results' Listen does. Nothing plays by itself: the first play starts on the button.
   - **The first listen is free, then 3 plays** per exercise (since 0.23.1; before, the first play used one of the 3).
     The first play, of the whole exercise or of one bar, takes no pip; after it a play of the whole exercise or of
@@ -1150,10 +1150,12 @@ is 0 % and 79 %, and the levels are still told apart, mainly by press timing.
 ## 7. Audio
 
 - Sounds synthesised in Web Audio (no downloads): metronome click (accented high click on
-  beat 1), woodblock/clave for rhythm playback, short soft "tok" as tap feedback, and notes on the instrument chosen in
-  Settings → Instrument (since 0.23.0): Scales, Read notes, Learn's scales and piano diagrams (since 0.10.0: §3.5,
-  §9.1), and a Listen melody with its reference note. Everything this document calls the *piano tone* is played on
-  that instrument.
+  beat 1), short soft "tok" as tap feedback, and everything else on the instrument chosen in Settings → Instrument
+  (since 0.23.0): Scales, Read notes, Learn's scales and piano diagrams (since 0.10.0: §3.5, §9.1), a Listen melody
+  with its reference note, and (since 0.24.2, instead of a woodblock) every rhythm played back: Echo's listen, Listen
+  and write, Results' Listen, the sheets and Learn's rhythm examples. A rhythm without a melody is played on one note,
+  G4 (`RHYTHM_PITCH`), in the range of all three instruments. Everything this document calls the *piano tone* is
+  played on that instrument.
   - **Piano** (the default): a triangle through a low-pass that closes over 0.8 s (bright when struck, mellower as it
     rings), three slightly sharp overtones that fade faster the higher they are, and a short noise knock for the hammer.
     Alone (Scales, Read notes) a note rings on for about a second; in a melody it is held softly for its length.
@@ -2089,7 +2091,7 @@ phone the card still fills the screen. The lesson tiles show their stars as on t
 
 **Settings** (since 0.10.0). Sound has one *Metronome* row (volume and on/off). Under the volumes, **Instrument**
 (since 0.23.0; no board yet): *Piano* (the default) · *Violin* · *Flute*, a segmented control with the group label
-*Instrument for notes* and the hint *Plays melodies, scales and Read notes. Pick one to hear it.* A pick plays C E G C
+*Instrument for notes* and the hint *Plays every exercise: rhythms, melodies, scales and Read notes. Pick one to hear it.* A pick plays C E G C
 on it at the Playback volume. It follows the account, like the theme (§9.2, `SYNCED_PREFS`). The Display row for the digital or
 analog look is *Beat counter* (nl *Telteller*), with the group label *Beat counter style*. The leniency hints describe
 each level in words, with no milliseconds: Strict *Tight timing, for confident players.*, Normal *Fair timing for most
@@ -2200,7 +2202,7 @@ browser does not keep the place through that).
 with the example: a 36 px accent circle in a 44 px touch target, with an on-fill icon and the label *Play* / *Stop*.
 While it plays, the icon becomes a stop square and the circle gets an accent-halo ring. A section has several, so the
 label says which example it plays: its title, or what its notation shows (*Play: Whole note*, *Stop: 60 BPM*).
-- Rhythm examples: a one-bar count-in, then the rhythm on the woodblock with every beat clicking, at 80 BPM or the
+- Rhythm examples: a one-bar count-in, then the rhythm on the instrument (§7) with every beat clicking, at 80 BPM or the
   block's `tempo`. Ties are merged and rests are silent.
 - The note tree (2.2): each row plays its bar the same way; the Rests row plays only the clicks.
 - The 1.1 pulse: each tempo row has its own button, which clicks four seconds of beats; the dot of the beat just heard
@@ -2210,7 +2212,7 @@ label says which example it plays: its title, or what its notation shows (*Play:
   in order, each above the one before, so E–F and B–C are heard as half steps.
 - Silent: tables, text, the beat grids (4.2, 5.3, 7.1) and the pitch staves of chapters 8–10.
 - One example sounds at a time: starting one stops the other, and opening another chapter or leaving Learn stops it.
-- Sound starts from the tap and follows the Sound volumes: clicks use the Metronome volume, the woodblock and the piano
+- Sound starts from the tap and follows the Sound volumes: clicks use the Metronome volume, the rhythms and the piano
   tones use Playback. The beat clicks under a rhythm follow the Metronome switch, as Results' Listen does; the
   count-in and the pulse clicks always sound.
 - Layout: on tablet and desktop the button stands in front of the notation. On phones (< 700 px) it starts the
@@ -2568,7 +2570,7 @@ src/
     dictation.ts        # answer comparison, distractor generation
   audio/
     engine.ts           # AudioContext, look-ahead scheduler
-    sounds.ts           # synthesised click / woodblock / tok
+    sounds.ts           # synthesised click / instrument notes / tok
     calibration.ts
   input/
     tapInput.ts         # keyboard + pointer -> timestamped taps

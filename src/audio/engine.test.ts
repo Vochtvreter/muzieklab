@@ -1,5 +1,5 @@
 import type { Meter, Timeline } from '../core/types';
-import { getAudioEngine } from './engine';
+import { RHYTHM_PITCH, getAudioEngine } from './engine';
 
 // Node has no Web Audio: the engine runs on the performance clock, silently. This checks the scheduler loop and onBeat.
 describe('audio engine without Web Audio', () => {
@@ -85,8 +85,8 @@ class FakeContext extends EventTarget {
     super();
     FakeContext.made.push(this);
   }
-  /** Every oscillator made, with its type and the time it was told to stop. */
-  oscillators: { type: string; stopAt: number | null }[] = [];
+  /** Every oscillator made, with its type, the frequency it starts on and the time it was told to stop. */
+  oscillators: { type: string; freq: number | null; stopAt: number | null }[] = [];
   filters = 0;
   noise = 0;
   private param = () => ({
@@ -100,9 +100,12 @@ class FakeContext extends EventTarget {
   private node = () => ({ connect() {}, disconnect() {}, start() {}, stop() {}, gain: this.param(), frequency: this.param(), detune: this.param(), Q: this.param() });
   createGain = this.node;
   createOscillator = () => {
-    const rec = { type: 'sine', stopAt: null as number | null };
+    const rec = { type: 'sine', freq: null as number | null, stopAt: null as number | null };
     this.oscillators.push(rec);
     const n = this.node();
+    n.frequency.setValueAtTime = ((v: number) => {
+      rec.freq ??= v;
+    }) as () => void;
     n.stop = ((t: number) => {
       rec.stopAt = t;
     }) as () => void;
@@ -340,18 +343,28 @@ describe('audio engine instruments', () => {
     expect(ctx.filters).toBe(1);
   });
 
-  it('plays a melody and its reference note on the instrument, and the rhythm without one on the woodblock', async () => {
+  it('plays a melody and its reference note on the instrument', async () => {
     const { engine, ctx } = await fresh();
     engine.setInstrument('violin');
     engine.start({ timeline, meter, tempo: 120, countInBars: 0, metronome: 'off', playRhythm: true, leadIn: 0, melody: [60, 62], reference: 60 });
     play(ctx);
-    expect(ctx.oscillators.filter((o) => o.type === 'sawtooth')).toHaveLength(3);
+    const bows = ctx.oscillators.filter((o) => o.type === 'sawtooth');
+    expect(bows.map((o) => Math.round(o.freq ?? 0))).toEqual([262, 262, 294]);
     engine.stop();
-    ctx.oscillators = [];
+  });
+
+  it.each([
+    ['piano', 'triangle'],
+    ['violin', 'sawtooth'],
+    ['flute', 'sine'],
+  ] as const)('plays a rhythm without a melody on the %s, on one note', async (instrument, type) => {
+    const { engine, ctx } = await fresh();
+    engine.setInstrument(instrument);
     engine.start({ timeline, meter, tempo: 120, countInBars: 0, metronome: 'off', playRhythm: true, leadIn: 0 });
     play(ctx);
-    expect(ctx.oscillators.filter((o) => o.type === 'sawtooth')).toHaveLength(0);
-    expect(ctx.oscillators.length).toBeGreaterThan(0);
+    const freq = Math.round(440 * 2 ** ((RHYTHM_PITCH - 69) / 12));
+    const tones = ctx.oscillators.filter((o) => o.type === type && Math.round(o.freq ?? 0) === freq);
+    expect(tones).toHaveLength(2); // one per note of the timeline
     engine.stop();
   });
 

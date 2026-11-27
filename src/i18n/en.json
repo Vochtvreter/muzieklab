@@ -785,7 +785,7 @@
     "piano": "Piano",
     "violin": "Violin",
     "flute": "Flute",
-    "hintInstrument": "Plays melodies, scales and Read notes. Pick one to hear it.",
+    "hintInstrument": "Plays every exercise: rhythms, melodies, scales and Read notes. Pick one to hear it.",
     "timing": "Timing",
     "calibrate": "Calibrate",
     "calibrated": "calibrated {date}",
@@ -3181,6 +3181,10 @@
     "countBetter": "{count} better",
     "countFix": "{count} fixed",
     "footer": "Updates arrive by themselves the next time you open Muzieklab. Your progress stays on this device and is kept with every update.",
+    "v0_24_2": {
+      "title": "Every exercise on your instrument",
+      "rhythm": "Rhythms now play on the instrument picked in Settings → Instrument too, instead of a woodblock: Echo, Listen and write, Results' Listen and Learn's examples. Only the metronome clicks and the tap sound stay as they were."
+    },
     "v0_24_1": {
       "title": "The reference note holds for a bar",
       "reference": "Listen with Melody or Both: the reference note now holds through the count-in bar, with its beats shown in the popover instead of clicked, and the melody starts right after it."

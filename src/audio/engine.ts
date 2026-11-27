@@ -12,7 +12,10 @@ import {
   type BeatEvent,
 } from './schedule';
 
-/** Settings → Instrument: what the notes of melodies, scales, Read notes and Learn are played on (piano by default). */
+/**
+ * Settings → Instrument: what every exercise is played on (piano by default): melodies, rhythms, scales, Read notes and
+ * Learn's examples. Only the metronome clicks and the tap feedback have sounds of their own.
+ */
 export type Instrument = 'piano' | 'violin' | 'flute';
 export const INSTRUMENTS: readonly Instrument[] = ['piano', 'violin', 'flute'];
 
@@ -28,7 +31,7 @@ export interface StartOptions {
   tempo: number;
   countInBars: number;
   metronome: 'on' | 'accent' | 'off';
-  /** Play the rhythm itself (Listen / correct playback). */
+  /** Play the rhythm itself (Listen / correct playback), on the instrument: on RHYTHM_PITCH unless `melody` is given. */
   playRhythm: boolean;
   /** Seconds between now and the first count-in click. */
   leadIn?: number;
@@ -36,7 +39,7 @@ export interface StartOptions {
   silentCountIn?: boolean;
   /**
    * A melody (Listen · Melody, §3.2): the MIDI number of each onset, played on the instrument for its length instead of
-   * the woodblock.
+   * RHYTHM_PITCH.
    */
   melody?: number[];
   /**
@@ -71,7 +74,7 @@ export interface AudioEngine {
    */
   heardNow(): number;
   setVolumes(v: Volumes): void;
-  /** The instrument notes are played on from now on (pitches(), a melody and its reference note). */
+  /** The instrument notes are played on from now on (pitches(), a rhythm or melody, and its reference note). */
   setInstrument(instrument: Instrument): void;
   /** Silences the metronome during play only; count-in and calibration clicks stay audible at the metronome volume. */
   setMetronomeMuted(muted: boolean): void;
@@ -131,6 +134,8 @@ const SILENT = 0.0001;
 const STALL_MS = 500;
 /** How long pitches() holds a violin or flute note at most, and the last one of a run (s). */
 const HELD_S = 0.9;
+/** The note a rhythm without a melody is played on, on the instrument (G4: in the range of the piano, violin and flute). */
+export const RHYTHM_PITCH = 67;
 
 const midiFreq = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
 /** A struck piano string's overtones above the fundamental: [harmonic, peak, decay in s]. Slightly sharp, as on a piano. */
@@ -351,8 +356,8 @@ class WebAudioEngine implements AudioEngine {
     if (opts.playRhythm) {
       const melody = opts.melody;
       for (const n of planNotes(opts.timeline, exerciseStart)) {
-        const midi = melody?.[n.index];
-        jobs.push({ time: n.time, play: midi !== undefined ? (c, t) => this.note(c, midi, t, n.end) : (c, t) => this.woodblock(c, t, n.end) });
+        const midi = melody?.[n.index] ?? RHYTHM_PITCH;
+        jobs.push({ time: n.time, play: (c, t) => this.note(c, midi, t, n.end) });
       }
     }
     let reference: Started['reference'];
@@ -726,21 +731,6 @@ class WebAudioEngine implements AudioEngine {
   private click(ctx: AudioContext, at: number, accent: boolean, route: Route): void {
     const v = this.voice(ctx, route, 'triangle', accent ? 1760 : 1175, at, at + 0.06);
     this.envelope(v.env, at, accent ? 0.9 : 0.6, 0.001, 0.045);
-  }
-
-  /** Woodblock hit for rhythm playback, with a soft tone underneath that lasts the note's length. */
-  private woodblock(ctx: AudioContext, at: number, end: number): void {
-    const body = this.voice(ctx, 'rhythm', 'sine', 740, at, at + 0.12);
-    this.envelope(body.env, at, 0.8, 0.001, 0.09);
-    const knock = this.voice(ctx, 'rhythm', 'sine', 1810, at, at + 0.06);
-    this.envelope(knock.env, at, 0.35, 0.001, 0.035);
-    // Ends a little early so repeated notes stay separate.
-    const off = Math.max(at + 0.05, end - 0.03);
-    const tone = this.voice(ctx, 'rhythm', 'triangle', 392, at, off + 0.08);
-    tone.env.gain.setValueAtTime(SILENT, at);
-    tone.env.gain.exponentialRampToValueAtTime(0.1, at + 0.02);
-    tone.env.gain.setValueAtTime(0.1, off);
-    tone.env.gain.exponentialRampToValueAtTime(SILENT, off + 0.06);
   }
 }
 
