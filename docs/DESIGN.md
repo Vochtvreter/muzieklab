@@ -1182,7 +1182,8 @@ Keep rounds short; *Next* is one tap; the next exercise is pre-generated during 
 ### 8.2 Learning Path (default curriculum)
 
 Each unit has ~5 lessons (settings presets) and a "boss" exercise (more bars, faster).
-Two stars on a lesson unlocks the next.
+Two stars on a lesson unlocks the next. *Find your level* (§8.7, planned) can open the first units of the path
+without their stars.
 
 | Unit | Content |
 |---|---|
@@ -1579,6 +1580,67 @@ A level's name or a check that writes a sign (*A and E♭ major*, *E♭ major at
 (*A and E flat major*, Dutch *A en es majeur*; `skills.levelSpoken`), here and in the list's rows, as the Scales hub
 says its keys (§3.7).
 
+### 8.7 Find your level — *placement test* (planned)
+
+Not built. Boards: MVP canvas, *Find your level · Planned*. A player who already reads music should not have to earn
+two stars on 130 lessons before reaching what they don't know. *Find your level* is a short test that climbs the
+Learning path (§8.2) in checkpoints and opens every unit below the first checkpoint the player does not pass. It is
+called *Find your level*, not a test, so it is not mixed up with *Test yourself* (§3.6, flash cards).
+
+**Checkpoints.** Six, each at the end of a stretch of the path, each with what the stretch brings:
+
+| Checkpoint | Units | Read notes (12 notes) | Tap a rhythm (4 bars) |
+|---|---|---|---|
+| 1 | 1–4 | sol and mi, as lesson 3.5 | rests, as lesson 4.5 |
+| 2 | 5–8 | sol, mi, fa and la, as lesson 7.5 | eighth notes, as lesson 8.5 |
+| 3 | 9–12 | the first six notes, as lesson 11.5 | ties, as lesson 12.5 |
+| 4 | 13–16 | the whole treble staff, as lesson 15.5 | sixteenths, as lesson 16.5 |
+| 5 | 17–20 | bass clef, both clefs and ledger lines, as lesson 19.5 | (none) |
+| 6 | 21–26 | the keys, as lesson 26.5 | (none) |
+
+A part plays the setup of the unit review it names (the notes, clefs, keys and tasks of that lesson; the meters,
+values and tempo of that rhythm lesson) with the length above, so the test needs no content of its own and follows the
+path when lessons change. The notes part reads, writes and hears in turns, as the review does.
+
+**Passing.** A checkpoint is passed when both parts reach two stars' worth: 85% of the notes right (`noteStars`) and
+75% rhythm accuracy (`STAR_ACCURACY[2]`), the scores that open the next lesson. Each part is played once: no Hint, no
+*Skip to summary*, no Retry inside the test. After a passed checkpoint the player can stop or go on; the test ends at
+the first checkpoint not passed, or after checkpoint 6.
+
+**What a passed checkpoint gives.** Every lesson of its units counts as passed: it is open, the units after it open by
+the usual rules, and the path goes on from the first lesson after the last passed checkpoint. Those lessons get **no
+stars**: stars, XP, achievements and skill levels (§8.6) still come only from playing them. A lesson counted as passed
+shows *Skipped* (on the Path: hollow stars and a dashed done node) until it is played; playing it gives stars as
+usual, and a score under two stars does not close anything. The test's rounds count as practice where every round
+does (minutes, the skill map, the Notes view), but give no XP.
+
+- Kept as one number, `progress.placedUnit`: the first path unit not skipped (9 after checkpoints 1 and 2). A lesson
+  is passed when it has two stars or its unit is below `placedUnit` (`track.ts` takes it as an extra rule; the
+  Learning path is the only path that sets it). Sync keeps the higher value (`merge.ts`).
+- It only moves forward: the test starts at the first checkpoint past where the player is (a player in unit 6
+  starts at checkpoint 2), and a failed checkpoint never takes back what lessons or an earlier test opened.
+- It can be taken again any time; checkpoints already behind the player are shown as done.
+
+**Screens** (exercise screens: no tab bar or header, the 640 px column on tablet and desktop):
+- **Path:** a *Find your level* card while a checkpoint other than the last is ahead of the player (their next lesson
+  is in units 1–20): first in the unit list on phone and tablet (it scrolls with the units), under the *Notes and
+  rhythm* card on desktop. *Skip what you know* · *Pass a checkpoint to skip its units.* · *Find your level*.
+- **Intro:** the six checkpoints with their units and what they bring (*Next*, or *Done* for one behind the player),
+  *About a minute each · Stop after any checkpoint · Your stars stay*, the line on skipped lessons, and *Start
+  checkpoint N*. Back goes to the Path.
+- **A checkpoint:** the round's own screen (Read notes, then Play) with the test's head instead of the lesson's:
+  *Checkpoint 2 of 6 · Units 5–8* and the two parts (*Read notes*, *Tap a rhythm*), the current one marked. Quit goes
+  back to the Path and keeps what passed checkpoints gave.
+- **Checkpoint passed:** both parts with their score and pass mark, *Units 5–8 skipped*, what the next checkpoint
+  brings, and *Stop here* / *Next checkpoint*.
+- **Your level:** *Start at unit 9 · Do: the 3rd space*, the checkpoints (passed, not passed with the part that missed
+  and its score, not taken), *Units 1–8 count as passed …*, and *Back to the path* / *Start lesson 9.1*. With
+  checkpoint 1 not passed: *Start at unit 1*, nothing skipped, *Start lesson 1.1*.
+- **Path after the test:** skipped units have a dashed done node and *Skipped* where their stars would be; a closed
+  skipped unit shows hollow stars, each still a link to its lesson.
+
+Open: whether Home's Continue card offers *Find your level* to a new player too (no board yet).
+
 ---
 
 ## 9. Screens & UX
@@ -1606,7 +1668,7 @@ its status, as the canvas's *Start here* page explains:
 
 The pages are Start here, Foundations, Home & shell · Built, Rhythm practice · Built, Read notes · Built, Learn · Built,
 Path · Built, Settings · Built, Accounts & admin · Built, Progress & rewards · Built, Scales · Built, Test yourself ·
-Planned, Listen & write · Next, Sheet reader · Idea and Archive. Every feature page has:
+Planned, Find your level · Planned, Listen & write · Next, Sheet reader · Idea and Sing & play · Idea. Every feature page has:
 - a spec note at the top: what the page covers, its section in this document, and open conflicts;
 - one row of six boards per screen: phone 390, tablet 834 and desktop 1280 in light, then the same three in dark;
 - the sections Built, Planned and To resolve. To resolve holds boards from the App design canvas that differ from the
@@ -1616,7 +1678,9 @@ Planned, Listen & write · Next, Sheet reader · Idea and Archive. Every feature
 A new or changed screen goes in its row on its feature page, all six versions, named
 `Screen[-tablet|-desktop][-dark].dc.html` and reusing the shell, tokens and components on Foundations. When a
 requirement changes, this document and the page's spec note change together. When a screen ships, its row moves up to
-Built. Archive keeps earlier versions of screens for history; nothing is built from it.
+Built. Earlier versions of screens are kept for history on the [Muzieklab archive canvas](https://claude.ai/artifact/TBh8vz6P5aV23uLX9GF7U6); nothing is built
+from them. They moved there from the MVP canvas's Archive page on 27 November 2026, when that canvas reached its limit
+of 512 files (a canvas holds no more).
 
 **The MVP** is the smallest product that proves the core promise: endless rhythm exercises built from real theory,
 with fair timing feedback. It is one loop, *pick → play → feedback → next*, and its first boards drew:
@@ -2076,6 +2140,7 @@ This holds on Results and on the live staff in Play. The Read notes staff is unc
 | **Dictation** | Play/replay button with plays left; staff showing what you've entered; bar fill meter; note palette; *Check*. |
 | **Results** | Stars, accuracy, timing strip, tips (with Calibrate when it may be the device), Retry / Next, or Try again under 2 stars (§6.4). |
 | **Path** | One Learning path (since 0.11.0; before, three paths behind a switcher): note units and rhythm units taking turns, as a vertical path whose units open to show their lessons by name, with stars and locks (§8.2). |
+| **Find your level** | Planned (§8.7): a placement test in six checkpoints that opens the units below the first one not passed, without their stars. |
 | **Progress** | Since 0.19.0 (§8.5): a Rhythm · Notes · Scales switch; the level, the streak calendar, accuracy and timing over 14 days, minutes this week, the skill map with *Practice weak spots*, achievements; accuracy per clef, the slowest notes and the last key; the scale stars; Skill levels (§8.6). |
 | **Learn** | Topic list with read status and search; topic pages (mobile) and a full theory reference (desktop). |
 | **Settings** | Account first, once the API answers (since 0.12.0; §9.2), language (English and Nederlands since 0.4; follows the device's language until one is picked; a segmented control for up to three languages, a drop-down list beyond that), sounds & volumes (one *Metronome* row, for its volume and on/off) and the instrument notes are played on (piano, violin or flute, since 0.23.0), calibration, timing leniency (in words, no milliseconds), input (tap & hold or tap only), notation style (common/strict), theme, beat counter style (digital: beat numbers light up; analog: a pyramid metronome whose pendulum reaches a side on every beat, stepping instead of swinging with reduced motion). |

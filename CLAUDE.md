@@ -7,8 +7,9 @@ Every screen is designed on the canvases before it is built, on phone (390 × 84
 
 - [MVP canvas](https://claude.ai/artifact/JG3FiE3WgPsph3dcSGrjrS): one page per feature, and each page name ends with
   its status (*Rhythm practice · Built*, *Test yourself · Planned*): Built (live in the app), Next (built next),
-  Planned (designed, not built) or Idea (explored, not planned). Start here and Foundations come first, and Archive
-  (earlier versions, not to build from) comes last. Start here explains the convention. Each feature page has a spec
+  Planned (designed, not built) or Idea (explored, not planned). Start here and Foundations come first. Start here
+  explains the convention. A canvas holds at most 512 files, so earlier versions of screens (not to build from) are on
+  the [archive canvas](https://claude.ai/artifact/TBh8vz6P5aV23uLX9GF7U6). Each feature page has a spec
   note at the top (what it covers, its DESIGN.md section, open conflicts), one row of six boards per screen (phone,
   tablet, desktop in light, then the same in dark), and the sections Built, Planned and To resolve. Use the board for
   the screen you are changing, at each size.
